@@ -294,9 +294,8 @@ func SpecCreate() Color { return Green }
 func SpecCreateProgress() Color {
 	if GetGlobalColorLevel() == Full {
 		return DarkerGreen
-	} else {
-		return SpecNote()
 	}
+	return SpecNote()
 }
 
 // for changes (in the diff sense).
@@ -306,9 +305,8 @@ func SpecUpdate() Color { return Yellow }
 func SpecUpdateProgress() Color {
 	if GetGlobalColorLevel() == Full {
 		return DarkYellow
-	} else {
-		return SpecNote()
 	}
+	return SpecNote()
 }
 
 // for replacements (in the diff sense).
@@ -318,9 +316,8 @@ func SpecReplace() Color { return BrightMagenta }
 func SpecReplaceProgress() Color {
 	if GetGlobalColorLevel() == Full {
 		return DarkMagenta
-	} else {
-		return SpecNote()
 	}
+	return SpecNote()
 }
 
 // for deletes (in the diff sense).
@@ -330,9 +327,8 @@ func SpecDelete() Color { return Red }
 func SpecDeleteProgress() Color {
 	if GetGlobalColorLevel() == Full {
 		return DarkerRed
-	} else {
-		return SpecNote()
 	}
+	return SpecNote()
 }
 
 // for replacement creates (in the diff sense).
@@ -342,9 +338,8 @@ func SpecCreateReplacement() Color { return BrightGreen }
 func SpecCreateReplacementProgress() Color {
 	if GetGlobalColorLevel() == Full {
 		return DarkGreen
-	} else {
-		return SpecNote()
 	}
+	return SpecNote()
 }
 
 // for replacement deletes (in the diff sense).
@@ -354,9 +349,8 @@ func SpecDeleteReplaced() Color { return BrightRed }
 func SpecDeleteReplacedProgress() Color {
 	if GetGlobalColorLevel() == Full {
 		return DarkRed
-	} else {
-		return SpecNote()
 	}
+	return SpecNote()
 }
 
 // for reads
@@ -366,7 +360,6 @@ func SpecRead() Color { return BrightCyan }
 func SpecReadProgress() Color {
 	if GetGlobalColorLevel() == Full {
 		return DarkCyan
-	} else {
-		return SpecNote()
 	}
+	return SpecNote()
 }

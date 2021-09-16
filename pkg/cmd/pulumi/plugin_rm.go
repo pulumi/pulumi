@@ -103,7 +103,7 @@ func newPluginRmCmd() *cobra.Command {
 			fmt.Print(
 				opts.Color.Colorize(
 					fmt.Sprintf("%sThis will remove %d plugin%s from the cache:%s\n",
-						colors.SpecAttention, len(deletes), suffix, colors.Reset)))
+						colors.SpecAttention(), len(deletes), suffix, colors.Reset)))
 			for _, del := range deletes {
 				fmt.Printf("    %s %s\n", del.Kind, del.String())
 			}

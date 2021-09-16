@@ -518,13 +518,13 @@ func confirmPrompt(prompt string, name string, opts display.Options) bool {
 	if prompt != "" {
 		fmt.Print(
 			opts.Color.Colorize(
-				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
+				fmt.Sprintf("%s%s%s\n", colors.SpecAttention(), prompt, colors.Reset)))
 	}
 
 	fmt.Print(
 		opts.Color.Colorize(
 			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
-				colors.SpecAttention, colors.SpecPrompt, name, colors.SpecAttention, colors.Reset)))
+				colors.SpecAttention(), colors.SpecPrompt(), name, colors.SpecAttention(), colors.Reset)))
 
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
