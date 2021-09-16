@@ -181,42 +181,46 @@ func TestSDKCodegen(t *testing.T, opts *TestSDKCodegenOptions) {
 			}
 
 			// Define check filter.
-			ok := func(check string) bool {
+			shouldSkipCheck := func(check string) bool {
 
 				// Only language-specific checks.
 				if !strings.HasPrefix(check, opts.Language+"/") {
-					return false
+					return true
 				}
 
-				// Obey SkipCompileCheck.
+				// Obey SkipCompileCheck to skip compile and test targets.
 				if tt.SkipCompileCheck != nil &&
 					tt.SkipCompileCheck.Has(opts.Language) &&
-					check == fmt.Sprintf("%s/compile", opts.Language) {
-					return false
+					(check == fmt.Sprintf("%s/compile", opts.Language) ||
+						check == fmt.Sprintf("%s/test", opts.Language)) {
+					return true
 				}
 
 				// Obey Skip.
 				if tt.Skip != nil && tt.Skip.Has(check) {
-					return false
+					return true
 				}
 
-				return true
+				return false
 			}
 
-			// Filter and sort the checks in alphabetical order.
+			// Sort the checks in alphabetical order.
 			var checkOrder []string
 			for check := range allChecks {
-				if ok(check) {
-					checkOrder = append(checkOrder, check)
-				}
+				checkOrder = append(checkOrder, check)
 			}
 			sort.Strings(checkOrder)
 
-			// Perform the checks.
 			codeDir := filepath.Join(dirPath, opts.Language)
-			for _, check := range checkOrder {
-				checkFun := allChecks[check]
+
+			// Perform the checks.
+			for _, checkVar := range checkOrder {
+				check := checkVar
 				t.Run(check, func(t *testing.T) {
+					if shouldSkipCheck(check) {
+						t.Skip()
+					}
+					checkFun := allChecks[check]
 					checkFun(t, codeDir)
 				})
 			}
