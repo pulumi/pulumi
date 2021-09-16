@@ -22,10 +22,13 @@ install_plugin::
 
 install:: install_plugin
 
-test_all:: test_fast
+test_all:: test_fast test_auto
 
 test_fast:: $(TEST_ALL_DEPS)
-	$(GO_TEST_FAST) ${PROJECT_PKGS}
+	$(GO_TEST_FAST) ./pulumi/... ./common/... ./pulumi-language-go/...
+
+test_auto:: $(TEST_ALL_DEPS)
+	$(GO_TEST) ./auto/...
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
