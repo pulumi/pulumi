@@ -290,7 +290,7 @@ async def serialize_property(value: 'Input[Any]',
         value = await serialize_property(output.future(), deps, input_transformer, typ, keep_output_values=False)
 
         if keep_output_values and await settings.monitor_supports_output_values():
-            # TODO expand the dependencies
+            # TODO[pulumi/pulumi#7977]: Expand dependencies
             dependencies: Set[str] = set()
             for resource in value_resources:
                 urn = await serialize_property(resource.urn, deps, input_transformer, keep_output_values=False)
