@@ -161,7 +161,7 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 		return out.String()
 	}
 	fprintIgnoreError(out, opts.Color.Colorize(
-		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline, colors.Reset)))
+		fmt.Sprintf("%sResources:%s\n", colors.SpecHeadline(), colors.Reset)))
 
 	var planTo string
 	if event.IsPreview {
@@ -238,7 +238,7 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 		roundedDuration := time.Duration(roundedSeconds) * time.Second
 
 		fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sDuration:%s %s\n",
-			colors.SpecHeadline, colors.Reset, roundedDuration)))
+			colors.SpecHeadline(), colors.Reset, roundedDuration)))
 	}
 
 	return out.String()
@@ -249,7 +249,7 @@ func renderPolicyPacks(out io.Writer, policyPacks map[string]string, opts Option
 		return
 	}
 	fprintIgnoreError(out, opts.Color.Colorize(fmt.Sprintf("\n%sPolicy Packs run:%s\n",
-		colors.SpecHeadline, colors.Reset)))
+		colors.SpecHeadline(), colors.Reset)))
 
 	// Calculate column width for the `name` column
 	const nameColHeader = "Name"
@@ -279,7 +279,7 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 
 	out := &bytes.Buffer{}
 	fprintIgnoreError(out, opts.Color.Colorize(
-		fmt.Sprintf("%sConfiguration:%s\n", colors.SpecUnimportant, colors.Reset)))
+		fmt.Sprintf("%sConfiguration:%s\n", colors.SpecUnimportant(), colors.Reset)))
 
 	var keys []string
 	for key := range event.Config {

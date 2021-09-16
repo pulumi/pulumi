@@ -790,7 +790,7 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	surveycore.QuestionIcon = ""
 	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a template:"
-	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
+	message = opts.Color.Colorize(colors.SpecPrompt() + message + colors.Reset)
 
 	showAll := false
 	var selectedOption workspace.Template

@@ -355,19 +355,19 @@ func (data *resourceRowData) getInfoColumn() string {
 		// If we are done, show a summary of how many messages were printed.
 		if c := diagInfo.ErrorCount; c > 0 {
 			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
-				c, colors.SpecError, english.PluralWord(c, "error", ""), colors.Reset))
+				c, colors.SpecError(), english.PluralWord(c, "error", ""), colors.Reset))
 		}
 		if c := diagInfo.WarningCount; c > 0 {
 			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
-				c, colors.SpecWarning, english.PluralWord(c, "warning", ""), colors.Reset))
+				c, colors.SpecWarning(), english.PluralWord(c, "warning", ""), colors.Reset))
 		}
 		if c := diagInfo.InfoCount; c > 0 {
 			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
-				c, colors.SpecInfo, english.PluralWord(c, "message", ""), colors.Reset))
+				c, colors.SpecInfo(), english.PluralWord(c, "message", ""), colors.Reset))
 		}
 		if c := diagInfo.DebugCount; c > 0 {
 			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
-				c, colors.SpecDebug, english.PluralWord(c, "debug", ""), colors.Reset))
+				c, colors.SpecDebug(), english.PluralWord(c, "debug", ""), colors.Reset))
 		}
 	} else {
 		// If we're not totally done, and we're in the tree-view, just print out the last error (if

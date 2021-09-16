@@ -1059,27 +1059,27 @@ var StepOps = []StepOp{
 func (op StepOp) Color() string {
 	switch op {
 	case OpSame:
-		return colors.SpecUnimportant
+		return colors.SpecUnimportant()
 	case OpCreate, OpImport:
-		return colors.SpecCreate
+		return colors.SpecCreate()
 	case OpDelete:
-		return colors.SpecDelete
+		return colors.SpecDelete()
 	case OpUpdate:
-		return colors.SpecUpdate
+		return colors.SpecUpdate()
 	case OpReplace:
-		return colors.SpecReplace
+		return colors.SpecReplace()
 	case OpCreateReplacement:
-		return colors.SpecCreateReplacement
+		return colors.SpecCreateReplacement()
 	case OpDeleteReplaced:
-		return colors.SpecDeleteReplaced
+		return colors.SpecDeleteReplaced()
 	case OpRead:
-		return colors.SpecRead
+		return colors.SpecRead()
 	case OpReadReplacement, OpImportReplacement:
-		return colors.SpecReplace
+		return colors.SpecReplace()
 	case OpRefresh:
-		return colors.SpecUpdate
+		return colors.SpecUpdate()
 	case OpReadDiscard, OpDiscardReplaced:
-		return colors.SpecDelete
+		return colors.SpecDelete()
 	default:
 		contract.Failf("Unrecognized resource step op: '%v'", op)
 		return ""
@@ -1091,27 +1091,27 @@ func (op StepOp) Color() string {
 func (op StepOp) ColorProgress() string {
 	switch op {
 	case OpSame:
-		return colors.SpecUnimportant
+		return colors.SpecUnimportant()
 	case OpCreate, OpImport:
-		return colors.SpecCreateProgress
+		return colors.SpecCreateProgress()
 	case OpDelete:
-		return colors.SpecDeleteProgress
+		return colors.SpecDeleteProgress()
 	case OpUpdate:
-		return colors.SpecUpdateProgress
+		return colors.SpecUpdateProgress()
 	case OpReplace:
-		return colors.SpecReplaceProgress
+		return colors.SpecReplaceProgress()
 	case OpCreateReplacement:
-		return colors.SpecCreateReplacementProgress
+		return colors.SpecCreateReplacementProgress()
 	case OpDeleteReplaced:
-		return colors.SpecDeleteReplacedProgress
+		return colors.SpecDeleteReplacedProgress()
 	case OpRead:
-		return colors.SpecReadProgress
+		return colors.SpecReadProgress()
 	case OpReadReplacement, OpImportReplacement:
-		return colors.SpecReplaceProgress
+		return colors.SpecReplaceProgress()
 	case OpRefresh:
-		return colors.SpecUpdateProgress
+		return colors.SpecUpdateProgress()
 	case OpReadDiscard, OpDiscardReplaced:
-		return colors.SpecDeleteProgress
+		return colors.SpecDeleteProgress()
 	default:
 		contract.Failf("Unrecognized resource step op: '%v'", op)
 		return ""

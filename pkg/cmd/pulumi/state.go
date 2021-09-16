@@ -77,7 +77,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	surveycore.QuestionIcon = ""
 	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	prompt := "Multiple resources with the given URN exist, please select the one to edit:"
-	prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
+	prompt = opts.Color.Colorize(colors.SpecPrompt() + prompt + colors.Reset)
 
 	var options []string
 	optionMap := make(map[string]*resource.State)

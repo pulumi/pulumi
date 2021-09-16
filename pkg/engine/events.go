@@ -539,9 +539,9 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 	var prefix bytes.Buffer
 	switch d.EnforcementLevel {
 	case apitype.Mandatory:
-		prefix.WriteString(colors.SpecError)
+		prefix.WriteString(colors.SpecError())
 	case apitype.Advisory:
-		prefix.WriteString(colors.SpecWarning)
+		prefix.WriteString(colors.SpecWarning())
 	default:
 		contract.Failf("Unrecognized diagnostic severity: %v", d)
 	}
@@ -552,7 +552,7 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 
 	// Write the message itself.
 	var buffer bytes.Buffer
-	buffer.WriteString(colors.SpecNote)
+	buffer.WriteString(colors.SpecNote())
 
 	buffer.WriteString(d.Message)
 

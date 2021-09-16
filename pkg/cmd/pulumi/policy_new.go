@@ -277,7 +277,7 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 	surveycore.QuestionIcon = ""
 	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a template:"
-	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
+	message = opts.Color.Colorize(colors.SpecPrompt() + message + colors.Reset)
 
 	options, optionToTemplateMap := policyTemplatesToOptionArrayAndMap(templates)
 

@@ -787,7 +787,7 @@ func ReadCloserProgressBar(
 	// If we know the length of the download, show a progress bar.
 	bar := pb.New(int(size))
 	bar.Output = os.Stderr
-	bar.Prefix(colorization.Colorize(colors.SpecUnimportant + message + ":"))
+	bar.Prefix(colorization.Colorize(colors.SpecUnimportant() + message + ":"))
 	bar.Postfix(colorization.Colorize(colors.Reset))
 	bar.SetMaxWidth(80)
 	bar.SetUnits(pb.U_BYTES)
