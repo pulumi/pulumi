@@ -1,0 +1,11 @@
+# {{.Name}} Type
+
+```{{.Language}}
+{{.Type}}
+```
+
+| Name | Value |
+|------|-------|
+{{range .Elements}}
+| {{.Name}} | {{.Value}} |
+{{end}}

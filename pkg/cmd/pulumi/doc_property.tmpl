@@ -1,0 +1,17 @@
+# {{.Name}} Property
+
+```{{.Language}}
+{{.Type}}
+```
+
+| Attribute | Value         |
+|-----------|---------------|
+| Constant  | {{.Constant}} |
+| Default   | {{.Default}}  |
+| Secret    | {{.Secret}}   |
+{{- with .DeprecationMessage}}
+
+*Deprecated*: {{.}}
+{{- end}}
+
+{{.Comment}}

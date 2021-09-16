@@ -1,0 +1,40 @@
+# {{.Name}} Resource
+{{- with .DeprecationMessage}}
+
+*Deprecated*: {{.}}
+{{- end}}
+
+{{.Comment}}
+
+## Properties
+
+| Name | Type |
+|------|------|
+{{range .Properties}}| {{.Name}} | {{.Type}} |
+{{end}}
+
+## Input Properties
+
+| Name | Type |
+|------|------|
+{{range .InputProperties}}| {{.Name}} | {{.Type}} |
+{{end}}
+{{- with .StateInputProperties }}
+
+## State Inputs
+
+| Name | Type |
+|------|------|
+{{range .}}| {{.Name}} | {{.Type}} |
+{{end}}
+{{end}}
+{{- with .Methods}}
+
+## Methods
+
+| Name |
+|------|
+{{range .}}
+| {{.Name}} |
+{{end}}
+{{- end}}

@@ -1,0 +1,28 @@
+# {{.Name}} Function
+{{- with .DeprecationMessage}}
+
+*Deprecated*: {{.}}
+{{- end}}
+
+{{.Comment}}
+{{- with .Inputs}}
+
+## Inputs
+
+| Name | Type |
+|------|------|
+{{range .Inputs.Properties}}
+| {{.Name}} | {{.Type}} |
+{{end}}
+{{- end}}
+{{- with .Outputs}}
+
+## Outputs
+
+| Name | Type |
+|------|------|
+{{range .InputProperties}}
+| {{.Name}} | {{.Type}} |
+{{end}}
+{{- end}}
+

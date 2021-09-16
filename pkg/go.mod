@@ -11,6 +11,7 @@ require (
 	cloud.google.com/go/logging v1.0.0
 	cloud.google.com/go/storage v1.15.0
 	github.com/StackExchange/wmi v1.2.1 // indirect
+	github.com/alecthomas/chroma v0.9.4
 	github.com/aws/aws-sdk-go v1.38.35
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/davecgh/go-spew v1.1.1
@@ -33,7 +34,8 @@ require (
 	github.com/mxschmitt/golang-combinations v1.0.0
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
+	github.com/pgavlin/goldmark v1.1.33-0.20210916052350-16f491902b32
+	github.com/pgavlin/markdown-kit v0.0.0-20210919233640-5ae943a10f6e
 	github.com/pulumi/pulumi/sdk/v3 v3.19.0
 	github.com/rjeczalik/notify v0.9.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
@@ -44,7 +46,7 @@ require (
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.3
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/tklauser/go-sysconf v0.3.8 // indirect
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/xeipuuv/gojsonschema v1.2.0
@@ -55,6 +57,7 @@ require (
 	golang.org/x/net v0.0.0-20210505214959-0714010a04ed
 	golang.org/x/oauth2 v0.0.0-20210427180440-81ed05c6b58c
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf
 	google.golang.org/api v0.46.0
 	google.golang.org/genproto v0.0.0-20210506142907-4a47615972c2
 	google.golang.org/grpc v1.37.0
@@ -88,11 +91,17 @@ require (
 	github.com/cheggaaa/pb v1.0.18 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
+	github.com/disintegration/imaging v1.6.2 // indirect
+	github.com/dlclark/regexp2 v1.4.0 // indirect
+	github.com/eliukblau/pixterm v1.3.1 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
+	github.com/flopp/go-findfont v0.0.0-20201114153133-e7393a00c15b // indirect
+	github.com/fogleman/gg v1.3.0 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/gofrs/flock v0.7.1 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/go-cmp v0.5.5 // indirect
@@ -115,10 +124,11 @@ require (
 	github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
+	github.com/lucasb-eyer/go-colorful v1.0.3 // indirect
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-ieproxy v0.0.1 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
-	github.com/mattn/go-runewidth v0.0.8 // indirect
+	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
@@ -127,7 +137,10 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/opentracing/basictracer-go v1.0.0 // indirect
+	github.com/pgavlin/ansicsi v0.0.0-20210128180815-facca45e1fdd // indirect
+	github.com/pgavlin/svg2 v0.0.0-20210919231505-4ace7308edc1 // indirect
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -138,6 +151,7 @@ require (
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
+	github.com/tdewolff/parse/v2 v2.5.10 // indirect
 	github.com/texttheater/golang-levenshtein v0.0.0-20191208221605-eb6844b05fc6 // indirect
 	github.com/tklauser/numcpus v0.2.3 // indirect
 	github.com/uber/jaeger-client-go v2.22.1+incompatible // indirect
@@ -147,10 +161,10 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
+	golang.org/x/image v0.0.0-20210216034530-4410531fe030 // indirect
 	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2 // indirect
-	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
 	golang.org/x/tools v0.1.0 // indirect
