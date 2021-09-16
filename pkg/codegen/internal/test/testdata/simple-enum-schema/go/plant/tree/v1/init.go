@@ -8,7 +8,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"plant/plant"
+	"simple-enum-schema/plant"
 )
 
 type module struct {
