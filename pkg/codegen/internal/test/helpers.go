@@ -79,7 +79,7 @@ func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 
 // Recursively loads files from a directory into the `fs` map. Ignores
 // entries that match `ignore(path)==true`, also skips descending into
-// directores that are ignored. This is useful for example to avoid
+// directories that are ignored. This is useful for example to avoid
 // `node_modules`.
 func loadDirectory(fs map[string][]byte, root, path string, ignore func(path string) bool) error {
 	entries, err := os.ReadDir(path)
@@ -268,7 +268,8 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 	case err == nil:
 		ignore, err := loadIgnoreMap(baseline)
 		require.NoError(t, err)
-		removeFilesFromDirUnlessIgnored(baseline, baseline, ignore)
+		err = removeFilesFromDirUnlessIgnored(baseline, baseline, ignore)
+		require.NoError(t, err)
 	case os.IsNotExist(err):
 		// OK
 	default:
