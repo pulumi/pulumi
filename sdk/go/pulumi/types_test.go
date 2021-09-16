@@ -649,3 +649,30 @@ func TestMixedWaitGroupsApply(t *testing.T) {
 		})
 	})
 }
+
+type Foo interface {
+}
+
+type FooInput interface {
+	Input
+
+	ToFooOutput() Output
+}
+type FooArgs struct {
+}
+
+func (FooArgs) ElementType() reflect.Type {
+	return nil
+}
+
+func TestRegisterInputType(t *testing.T) {
+	assert.PanicsWithError(t, "expected string to be an interface", func() {
+		RegisterInputType(reflect.TypeOf(""), FooArgs{})
+	})
+	assert.PanicsWithError(t, "expected pulumi.Foo to implement pulumi.Input", func() {
+		RegisterInputType(reflect.TypeOf((*Foo)(nil)).Elem(), FooArgs{})
+	})
+	assert.PanicsWithError(t, "expected pulumi.FooArgs to implement interface pulumi.FooInput", func() {
+		RegisterInputType(reflect.TypeOf((*FooInput)(nil)).Elem(), FooArgs{})
+	})
+}
