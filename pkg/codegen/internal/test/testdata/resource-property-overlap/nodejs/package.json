@@ -4,11 +4,12 @@
     "scripts": {
         "build": "tsc"
     },
-    "devDependencies": {
-        "typescript": "^4.3.5"
+    "dependencies": {
+        "@pulumi/pulumi": "^3.12",
+        "@pulumi/random": "^4.2.0"
     },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
+    "devDependencies": {
+        "typescript": "^3.7.0"
     },
     "pulumi": {
         "resource": true

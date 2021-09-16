@@ -50,7 +50,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "nested-module-thirdparty",
 		Description:      "Third-party nested module",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
 		Directory:   "plain-schema-gh6957",

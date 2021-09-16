@@ -27,7 +27,14 @@
     "go": {
       "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/nested-module/go/foo"
     },
-    "nodejs": {},
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
     "python": {}
   }
 }
