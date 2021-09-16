@@ -137,28 +137,27 @@ func removeFilesFromDirUnlessIgnored(root, path string, ignore func(path string)
 	return nil
 }
 
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+
+	if err == nil {
+		return true, nil
+	}
+
+	return false, err
+}
+
 // Reads `.sdkcodegenignore` file if present to use as loadDirectory ignore func.
 func loadIgnoreMap(dir string) (func(path string) bool, error) {
-
-	pathExists := func(path string) (bool, error) {
-		_, err := os.Stat(path)
-
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-
-		if err == nil {
-			return true, nil
-		}
-
-		return false, err
-
-	}
 
 	load1 := func(dir string, ignoredPathSet map[string]bool) error {
 		p := filepath.Join(dir, ".sdkcodegenignore")
 
-		gotIgnore, err := pathExists(p)
+		gotIgnore, err := PathExists(p)
 		if err != nil {
 			return err
 		}
@@ -181,7 +180,7 @@ func loadIgnoreMap(dir string) (func(path string) bool, error) {
 
 	loadAll := func(dir string, ignoredPathSet map[string]bool) error {
 		for {
-			atTopOfRepo, err := pathExists(filepath.Join(dir, ".git"))
+			atTopOfRepo, err := PathExists(filepath.Join(dir, ".git"))
 			if err != nil {
 				return err
 			}
