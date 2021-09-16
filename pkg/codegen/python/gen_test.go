@@ -59,7 +59,7 @@ func TestRelPathToRelImport(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
-	test.TestSDKCodegen(t, &test.TestSDKCodegenOptions{
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "python",
 		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{

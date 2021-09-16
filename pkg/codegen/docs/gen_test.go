@@ -157,12 +157,12 @@ func initTestPackageSpec(t *testing.T) {
 {{% /example %}}
 {{% /examples %}}
 
-## Import 
+## Import
 
 The import docs would be here
 
 ` + codeFence + `sh
-$ pulumi import prov:module/resource:Resource test test		
+$ pulumi import prov:module/resource:Resource test test
 ` + codeFence + `
 `,
 				},
@@ -413,5 +413,8 @@ func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 func TestGeneratePackage(t *testing.T) {
 	// TODO: do we have a compile step on templates?
-	test.TestSDKCodegen(t, "docs", generatePackage, func(*testing.T, string) {})
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
+		Language:   "docs",
+		GenPackage: generatePackage,
+	})
 }

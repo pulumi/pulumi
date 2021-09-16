@@ -15,7 +15,7 @@ import (
 )
 
 func TestGeneratePackage(t *testing.T) {
-	test.TestSDKCodegen(t, &test.TestSDKCodegenOptions{
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "nodejs",
 		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{

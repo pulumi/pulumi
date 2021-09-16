@@ -13,7 +13,7 @@ import (
 )
 
 func TestGeneratePackage(t *testing.T) {
-	test.TestSDKCodegen(t, &test.TestSDKCodegenOptions{
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "dotnet",
 		GenPackage: generatePackageWithVersion,
 		Checks: map[string]test.CodegenCheck{
@@ -23,7 +23,10 @@ func TestGeneratePackage(t *testing.T) {
 }
 
 // TODO replace this with GeneratePackage when https://github.com/pulumi/pulumi/pull/7938 lands.
-func generatePackageWithVersion(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+func generatePackageWithVersion(
+	tool string,
+	pkg *schema.Package,
+	extraFiles map[string][]byte) (map[string][]byte, error) {
 	if extraFiles == nil {
 		extraFiles = make(map[string][]byte)
 	}
