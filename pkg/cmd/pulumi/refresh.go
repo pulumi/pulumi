@@ -146,6 +146,7 @@ func newRefreshCmd() *cobra.Command {
 				UseLegacyDiff:             useLegacyDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
+				DisableOutputValues:       disableOutputValues(),
 				RefreshTargets:            targetUrns,
 			}
 

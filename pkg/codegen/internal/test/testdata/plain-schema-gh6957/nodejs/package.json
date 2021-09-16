@@ -5,13 +5,11 @@
         "build": "tsc"
     },
     "dependencies": {
-        "@pulumi/aws": "^4.0.0"
+        "@pulumi/aws": "^3.7.0",
+        "@pulumi/pulumi": "^3.12"
     },
     "devDependencies": {
         "typescript": "^3.7.0"
-    },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
     },
     "pulumi": {
         "resource": true

@@ -1231,6 +1231,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
+		replaceOnChanges:        resOpts.replaceOnChanges,
 	}, nil
 }
 
@@ -1255,6 +1256,7 @@ type resourceOpts struct {
 	importID                ID
 	ignoreChanges           []string
 	additionalSecretOutputs []string
+	replaceOnChanges        []string
 }
 
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
@@ -1328,6 +1330,7 @@ func (ctx *Context) getOpts(res Resource, t string, provider ProviderResource, o
 		importID:                importID,
 		ignoreChanges:           opts.IgnoreChanges,
 		additionalSecretOutputs: opts.AdditionalSecretOutputs,
+		replaceOnChanges:        opts.ReplaceOnChanges,
 	}, nil
 }
 

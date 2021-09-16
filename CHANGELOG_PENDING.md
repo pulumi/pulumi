@@ -1,27 +1,18 @@
 ### Improvements
 
-- [build] - make lint returns an accurate status code
-  [#7844](https://github.com/pulumi/pulumi/pull/7844)
+- [sdk/go] - Improve error messages for (un)marshalling properties.
+  [#7936](https://github.com/pulumi/pulumi/pull/7936)
 
-- [codegen/python] - Add helper function forms `$fn_output` that
-  accept `Input`s, return an `Output`, and wrap the underlying `$fn`
-  call. This change addreses
-  [#5758](https://github.com/pulumi/pulumi/issues/) for Python,
-  making it easier to compose functions/datasources with Pulumi
-  resources. [#7784](https://github.com/pulumi/pulumi/pull/7784)
-
-- [cli/about] - Add comand for debug information
-  [#7817](https://github.com/pulumi/pulumi/pull/7817)
-
-- [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
-  [#7865](https://github.com/pulumi/pulumi/pull/7865)
-  
 - [cli/diffs] - Add color to indicate if a action is in progress. 
   [#7918](https://github.com/pulumi/pulumi/pull/7918)
 
+- [sdk/go] - Initial support for (un)marshalling output values.
+  [#7861](https://github.com/pulumi/pulumi/pull/7861)
+
 ### Bug Fixes
 
-- [sdk/python] Fix a regression in Python dynamic providers introduced in #7755.
+- [cli] Use json.Unmarshal instead of custom parser
+  [#7954](https://github.com/pulumi/pulumi/pull/7954)
 
-- [automation/go] Fix loading of stack settings/configs from yaml files.
-  [#pulumi-kubernetes-operator/183](https://github.com/pulumi/pulumi-kubernetes-operator/issues/183)
+- [sdk/{go,dotnet}] - Thread replaceOnChanges through Go and .NET
+  [#7967](https://github.com/pulumi/pulumi/pull/7967)

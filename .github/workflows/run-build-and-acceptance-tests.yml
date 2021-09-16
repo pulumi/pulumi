@@ -114,7 +114,7 @@ jobs:
 
         # See scripts/tests_subsets.py when editing
         test-subset: [ integration, auto-and-lifecycletest, native, etc ]
-
+      fail-fast: false
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ matrix.platform }}
     steps:

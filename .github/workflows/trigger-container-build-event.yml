@@ -25,16 +25,6 @@ jobs:
           additional-tags: v${{ env.VERSION }}
           tag-latest: true
           build-args: PULUMI_VERSION=v${{ env.VERSION }}
-      - name: Build Pulumi GitHub Actions Image
-        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
-        with:
-          repository: pulumi/actions
-          username: "pulumibot"
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-          dockerfile: docker/actions/Dockerfile
-          additional-tags: v${{ env.VERSION }}
-          tag-latest: true
-          build-args: PULUMI_VERSION=v${{ env.VERSION }}
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:

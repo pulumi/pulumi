@@ -5,10 +5,33 @@
 from enum import Enum
 
 __all__ = [
+    'CloudAuditOptionsLogName',
     'ContainerBrightness',
     'ContainerColor',
     'ContainerSize',
 ]
+
+
+class CloudAuditOptionsLogName(str, Enum):
+    """
+    The log_name to populate in the Cloud Audit Record. This is added to regress pulumi/pulumi issue #7913
+    """
+    UNSPECIFIED_LOG_NAME = "UNSPECIFIED_LOG_NAME"
+    """
+    Default. Should not be used.
+    """
+    ADMIN_ACTIVITY = "ADMIN_ACTIVITY"
+    """
+    Corresponds to "cloudaudit.googleapis.com/activity"
+    """
+    DATA_ACCESS = "DATA_ACCESS"
+    """
+    Corresponds to "cloudaudit.googleapis.com/data_access"
+    """
+    SYNTHETIC = "SYNTHETIC"
+    """
+    What if triple quotes \"\"\" are used in the description
+    """
 
 
 class ContainerBrightness(float, Enum):
