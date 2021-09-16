@@ -198,7 +198,7 @@ def get_root_resource() -> Optional['Resource']:
     """
     Returns the implicit root stack resource for all resources created in this program.
     """
-    global ROOT
+    global ROOT  # pylint: disable=global-variable-not-assigned
     return ROOT
 
 
@@ -223,7 +223,7 @@ async def monitor_supports_feature(feature: str) -> bool:
                 resp = monitor.SupportsFeature(req)
                 return resp.hasSupport
             except grpc.RpcError as exn:
-                if exn.code() != grpc.StatusCode.UNIMPLEMENTED: # pylint: disable=no-member
+                if exn.code() != grpc.StatusCode.UNIMPLEMENTED:  # pylint: disable=no-member
                     handle_grpc_error(exn)
                 return False
 
