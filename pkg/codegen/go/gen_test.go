@@ -80,11 +80,12 @@ func TestGeneratePackage(t *testing.T) {
 		GenPackage: generatePackage,
 		Checks: map[string]test.CodegenCheck{
 			"go/compile": typeCheckGeneratedPackage,
+			"go/test":    testGeneratedPackage,
 		},
 	})
 }
 
-func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
+func inferModuleName(codeDir string) string {
 	// For example for this path:
 	//
 	// codeDir = "../internal/test/testdata/external-resource-schema/go/"
@@ -92,9 +93,10 @@ func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
 	// We will generate "$codeDir/go.mod" using
 	// `external-resource-schema` as the module name so that it
 	// can compile independently.
+	return filepath.Base(filepath.Dir(codeDir))
+}
 
-	modName := filepath.Base(filepath.Dir(codeDir))
-
+func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
 	goExe, err := executable.FindExecutable("go")
 	require.NoError(t, err)
 
@@ -107,9 +109,16 @@ func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
 		require.NoError(t, err)
 	}
 
-	runCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", modName)
+	runCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
 	runCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
 	runCommand(t, "go_build", codeDir, goExe, "build", "-v", "all")
+}
+
+func testGeneratedPackage(t *testing.T, codeDir string) {
+	goExe, err := executable.FindExecutable("go")
+	require.NoError(t, err)
+
+	runCommand(t, "go-test", codeDir, goExe, "test", fmt.Sprintf("%s/...", inferModuleName(codeDir)))
 }
 
 func runCommand(t *testing.T, name string, cwd string, executable string, args ...string) {

@@ -1,10 +1,10 @@
-package main
+package tests
 
 import (
 	"reflect"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/resource-args-python/go/example"
+	"resource-args-python/example"
 
 	"github.com/stretchr/testify/assert"
 )

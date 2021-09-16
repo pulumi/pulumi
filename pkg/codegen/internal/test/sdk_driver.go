@@ -3,7 +3,6 @@ package test
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -72,17 +71,6 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "resource-args-python",
 		Description: "Resource args with same named resource and type",
-		Checks: map[string]CodegenCheck{
-			"go/test": func(t *testing.T, codeDir string) {
-				cmd := exec.Command("go", "test", "./...")
-				cmd.Dir = filepath.Join(codeDir, "go-program")
-				out, err := cmd.CombinedOutput()
-				require.NoError(t, err)
-				if err != nil {
-					t.Logf("output: %v", string(out))
-				}
-			},
-		},
 	},
 	{
 		Directory:   "simple-enum-schema",
