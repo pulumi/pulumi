@@ -50,7 +50,7 @@ auto_test:: $(TEST_ALL_DEPS)
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: dotnet_test
+test_all:: dotnet_test auto_test
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
