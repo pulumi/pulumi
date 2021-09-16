@@ -29,6 +29,9 @@
       "packageReferences": {
         "Pulumi": "3.12"
       }
+    },
+    "go": {
+      "importBasePath": "nested-module-thirdparty/foo"
     }
   }
 }
