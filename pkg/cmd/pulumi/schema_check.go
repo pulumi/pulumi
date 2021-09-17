@@ -72,7 +72,7 @@ func newSchemaCheckCommand() *cobra.Command {
 			diagWriter := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 0, true)
 			wrErr := diagWriter.WriteDiagnostics(diags)
 			contract.IgnoreError(wrErr)
-			if err == nil && len(diags) != 0 {
+			if err == nil && diags.HasErrors() {
 				return errors.New("schema validation failed")
 			}
 			return err
