@@ -18,6 +18,7 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 	minimalSchema := `
         {
             "name": "aws",
+			"version": "0.0.1",
             "meta": {
                 "moduleFormat": "(.*)(?:/[^/]*)"
             },

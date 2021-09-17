@@ -1520,6 +1520,11 @@ func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
 func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*Package, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
+	// Validate that there is a name
+	if spec.Name == "" {
+		diags = diags.Append(errorf("#/name", "no name provided"))
+	}
+
 	// Parse the version, if any.
 	var version *semver.Version
 	if spec.Version != "" {
@@ -1990,6 +1995,9 @@ func (t *types) bindType(path string, spec TypeSpec, inputShape bool) (result Ty
 		var discriminator string
 		var mapping map[string]string
 		if spec.Discriminator != nil {
+			if spec.Discriminator.PropertyName == "" {
+				diags = diags.Append(errorf(path, "discriminator must provide a property name"))
+			}
 			discriminator = spec.Discriminator.PropertyName
 			mapping = spec.Discriminator.Mapping
 		}
@@ -2134,6 +2142,9 @@ func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Typ
 		language := make(map[string]interface{})
 		for name, raw := range spec.Language {
 			language[name] = json.RawMessage(raw)
+		}
+		if len(spec.Environment) == 0 {
+			diags = diags.Append(errorf(path, "Default must specify an environment"))
 		}
 
 		dv.Environment, dv.Language = spec.Environment, language

@@ -1,4 +1,6 @@
 {
+  "name": "py_tests",
+  "version": "0.0.1",
   "functions": {
     "madeup-package:codegentest:funcWithDictParam": {
       "description": "Check codegen of functions with a Dict<str,str> parameter.",

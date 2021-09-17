@@ -11,6 +11,9 @@
 
 ### Bug Fixes
 
+- [codegen/schema] - Correct validation for Package
+  [#7896](https://github.com/pulumi/pulumi/pull/7896)
+
 - [cli] Use json.Unmarshal instead of custom parser
   [#7954](https://github.com/pulumi/pulumi/pull/7954)
 

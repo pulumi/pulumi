@@ -60,6 +60,7 @@ func initTestPackageSpec(t *testing.T) {
 	}
 	testPackageSpec = schema.PackageSpec{
 		Name:        providerPackage,
+		Version:     "0.0.1",
 		Description: "A fake provider package used for testing.",
 		Meta: &schema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
