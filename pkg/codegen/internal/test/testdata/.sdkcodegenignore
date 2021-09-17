@@ -1,4 +1,10 @@
-node_modules
-yarn.lock
+__pycache__
 bin
+node_modules
 tests
+yarn.lock
+package-lock.json
+obj
+command-output
+go.sum
+go.mod
