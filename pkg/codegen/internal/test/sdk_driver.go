@@ -34,7 +34,7 @@ type sdkTest struct {
 }
 
 const (
-	// python = "python"
+	python = "python"
 	nodejs = "nodejs"
 	dotnet = "dotnet"
 	golang = "go"
@@ -117,6 +117,11 @@ var sdkTests = []sdkTest{
 		Description:      "A resource with the same name as it's property",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 	},
+	{
+		Directory:        "output-funcs",
+		Description:      "Test generation of $fn_Output helper forms",
+		SkipCompileCheck: codegen.NewStringSet(dotnet, python, golang),
+	},
 }
 
 type SDKCodegenOptions struct {
@@ -150,7 +155,9 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) {
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 
 	for _, tt := range sdkTests {
-		t.Run(tt.Description, func(t *testing.T) {
+		t.Run(tt.Directory, func(t *testing.T) {
+			t.Log(tt.Description)
+
 			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
 
 			schemaPath := filepath.Join(dirPath, "schema.json")

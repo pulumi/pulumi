@@ -570,5 +570,15 @@
         "value"
       ]
     }
+  },
+  "language": {
+    "nodejs": {
+      "devDependencies": {
+        "@types/mocha": "latest",
+        "@types/node": "latest",
+        "mocha": "latest",
+        "ts-node": "latest"
+      }
+    }
   }
 }
