@@ -110,6 +110,7 @@ var sdkTests = []sdkTest{
 		Directory:        "replace-on-change",
 		Description:      "Simple use of replaceOnChange in schema",
 		SkipCompileCheck: codegen.NewStringSet(golang),
+		Skip:             codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:        "resource-property-overlap",

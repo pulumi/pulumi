@@ -2,7 +2,6 @@
 package nodejs
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -14,7 +13,7 @@ import (
 func TestGeneratePackage(t *testing.T) {
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "nodejs",
-		GenPackage: GeneratePackage,
+		GenPackage: generatePackage,
 		Checks: map[string]test.CodegenCheck{
 			"nodejs/compile": typeCheckGeneratedPackage,
 			"nodejs/test":    testGeneratedPackage,
@@ -49,34 +48,16 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 // Runs unit tests against the generated code.
 func testGeneratedPackage(t *testing.T, pwd string) {
 	test.RunCommand(t, "mocha", pwd,
-		"yarn", "run", "yarn", "run", "mocha", "-r", "ts-node/register", "tests/**/*.spec.ts")
+		"yarn", "run", "mocha", "-r", "ts-node/register", "tests/**/*.spec.ts")
 }
 
 func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
 	p := *pkg
-	if len(p.Language) > 0 {
-		panic(fmt.Sprintf("%v", p.Language))
-	}
-	if extraFiles == nil {
-		extraFiles = make(map[string][]byte)
-	}
-	nodePkgInfo := NodePackageInfo{
-		PackageName: "@pulumi/mypkg",
-		DevDependencies: map[string]string{
-			"@types/node":  "latest",
-			"@types/mocha": "latest",
-			"ts-node":      "latest",
-			"mocha":        "latest",
-		},
-	}
-	p.Language["nodejs"] = nodePkgInfo
 	return GeneratePackageWithOptions(&GeneratePackageOptions{
-		Tool:       tool,
-		Pkg:        &p,
-		ExtraFiles: extraFiles,
-		ExtraFilesInPackageMetadata: []string{
-			"tests/codegen.spec.ts",
-		},
+		Tool:                        tool,
+		Pkg:                         &p,
+		ExtraFiles:                  extraFiles,
+		ExtraFilesInPackageMetadata: []string{},
 	})
 }
 

@@ -31,6 +31,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 // GenPkgSignature corresponds to the shape of the codegen GeneratePackage functions.
@@ -418,14 +419,19 @@ func ValidateFileTransformer(
 	ValidateFileEquality(t, actual, expected)
 }
 
-func RunCommand(t *testing.T, name string, cwd string, executable string, args ...string) {
+func RunCommand(t *testing.T, name string, cwd string, exec string, args ...string) {
+	exec, err := executable.FindExecutable(exec)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
 	wd, err := filepath.Abs(cwd)
 	require.NoError(t, err)
 	var stdout, stderr bytes.Buffer
 	cmdOptions := integration.ProgramTestOptions{Stderr: &stderr, Stdout: &stdout, Verbose: true}
 	err = integration.RunCommand(t,
 		name,
-		append([]string{executable}, args...),
+		append([]string{exec}, args...),
 		wd,
 		&cmdOptions)
 	require.NoError(t, err)
