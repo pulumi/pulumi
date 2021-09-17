@@ -36,7 +36,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -1904,9 +1903,9 @@ func genPackageMetadata(
 		packageVersion = pythonVersion(pkg.Version)
 	}
 	pluginVersion := "0.0.0"
-	if version.Version != "" {
+	if pkg.Version != nil {
 		// This happens in test builds
-		pluginVersion = version.Version
+		pluginVersion = pkg.Version.String()
 	}
 
 	fmt.Fprintf(w, "VERSION = %q\n", packageVersion)
