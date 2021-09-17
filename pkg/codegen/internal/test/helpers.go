@@ -80,7 +80,7 @@ func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 
 // Recursively loads files from a directory into the `fs` map. Ignores
 // entries that match `ignore(path)==true`, also skips descending into
-// directores that are ignored. This is useful for example to avoid
+// directories that are ignored. This is useful for example to avoid
 // `node_modules`.
 func loadDirectory(fs map[string][]byte, root, path string, ignore func(path string) bool) error {
 	entries, err := os.ReadDir(path)
@@ -91,8 +91,8 @@ func loadDirectory(fs map[string][]byte, root, path string, ignore func(path str
 	for _, e := range entries {
 		entryPath := filepath.Join(path, e.Name())
 		relativeEntryPath := entryPath[len(root)+1:]
-
-		if ignore != nil && ignore(relativeEntryPath) {
+		baseName := filepath.Base(relativeEntryPath)
+		if ignore != nil && (ignore(relativeEntryPath) || ignore(baseName)) {
 			// pass
 		} else if e.IsDir() {
 			if err = loadDirectory(fs, root, entryPath, ignore); err != nil {
@@ -152,6 +152,20 @@ func removeFilesFromDirUnlessIgnored(root, path string, ignore func(path string)
 	return nil
 }
 
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+
+	if err == nil {
+		return true, nil
+	}
+
+	return false, err
+}
+
 // Reads `.sdkcodegenignore` file if present to use as loadDirectory ignore func.
 func loadIgnoreMap(dir string) (func(path string) bool, error) {
 
@@ -204,6 +218,7 @@ func loadIgnoreMap(dir string) (func(path string) bool, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return func(path string) bool {
 		path = strings.ReplaceAll(path, "\\", "/")
 		_, ignoredPath := ignoredPathSet[path]
