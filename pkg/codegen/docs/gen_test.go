@@ -60,6 +60,7 @@ func initTestPackageSpec(t *testing.T) {
 	}
 	testPackageSpec = schema.PackageSpec{
 		Name:        providerPackage,
+		Version:     "0.0.1",
 		Description: "A fake provider package used for testing.",
 		Meta: &schema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
@@ -411,5 +412,6 @@ func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 }
 
 func TestGeneratePackage(t *testing.T) {
-	test.TestSDKCodegen(t, "docs", generatePackage)
+	// TODO: do we have a compile step on templates?
+	test.TestSDKCodegen(t, "docs", generatePackage, func(*testing.T, string) {})
 }

@@ -1,4 +1,6 @@
 {
+  "name": "py_tests",
+  "version": "0.0.1",
   "functions": {
     "madeup-package:codegentest:funcWithListParam": {
       "description": "Check codegen of functions with a List parameter.",

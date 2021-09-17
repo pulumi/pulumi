@@ -21,6 +21,9 @@ TEST_SUBSETS = {
         'github.com/pulumi/pulumi/tests/integration'
     ],
     'auto-and-lifecycletest': [
+        'auto-dotnet',
+        'auto-nodejs',
+        'auto-python',
         'github.com/pulumi/pulumi/sdk/v3/go/auto',
         'github.com/pulumi/pulumi/pkg/v3/engine/lifeycletest'
     ],

@@ -75,6 +75,10 @@ func disableResourceReferences() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOURCE_REFERENCES"))
 }
 
+func disableOutputValues() bool {
+	return !cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_OUTPUT_VALUES"))
+}
+
 // skipConfirmations returns whether or not confirmation prompts should
 // be skipped. This should be used by pass any requirement that a --yes
 // parameter has been set for non-interactive scenarios.

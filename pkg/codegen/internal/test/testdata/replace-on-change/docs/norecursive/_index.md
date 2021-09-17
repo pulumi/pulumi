@@ -189,7 +189,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#rec_csharp" style="color: inherit; text-decoration: inherit;">Rec</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Pulumi.<wbr>Example.<wbr>Rec</span>
+        <span class="property-type"><a href="#rec">Rec</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -217,7 +217,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#rec_go" style="color: inherit; text-decoration: inherit;">Rec</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Rec</span>
+        <span class="property-type"><a href="#rec">Rec</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -245,7 +245,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#rec_nodejs" style="color: inherit; text-decoration: inherit;">rec</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Rec</span>
+        <span class="property-type"><a href="#rec">Rec</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -273,7 +273,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#rec_python" style="color: inherit; text-decoration: inherit;">rec</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Rec</span>
+        <span class="property-type"><a href="#rec">Rec</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -291,6 +291,60 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
+
+## Supporting Types
+
+
+
+<h4 id="rec">Rec</h4>
+
+{{% choosable language csharp %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="rec1_csharp">
+<a href="#rec1_csharp" style="color: inherit; text-decoration: inherit;">Rec1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#rec">Rec</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language go %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="rec1_go">
+<a href="#rec1_go" style="color: inherit; text-decoration: inherit;">Rec1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#rec">Rec</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language nodejs %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="rec1_nodejs">
+<a href="#rec1_nodejs" style="color: inherit; text-decoration: inherit;">rec1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#rec">Rec</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language python %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="rec1_python">
+<a href="#rec1_python" style="color: inherit; text-decoration: inherit;">rec1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#rec">Rec</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
 
 
 <h2 id="package-details">Package Details</h2>

@@ -1,4 +1,6 @@
 {
+    "name": "bad-methods-4",
+    "version": "0.0.1",
     "resources": {
         "xyz:index:Foo": {
             "methods": {

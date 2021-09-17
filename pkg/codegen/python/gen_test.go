@@ -18,17 +18,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	filesystem "io/fs"
 	"io/ioutil"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/python"
-
-	"github.com/stretchr/testify/require"
 )
 
 var pathTests = []struct {
@@ -57,7 +59,26 @@ func TestRelPathToRelImport(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
-	test.TestSDKCodegen(t, "python", GeneratePackage)
+	test.TestSDKCodegen(t, "python", GeneratePackage, typeCheckGeneratedPackage)
+}
+
+// We can't type check a python program. We just check for syntax errors.
+func typeCheckGeneratedPackage(t *testing.T, pwd string) {
+	ex, _, err := python.CommandPath()
+	require.NoError(t, err)
+	cmdOptions := integration.ProgramTestOptions{}
+	err = filepath.Walk(pwd, func(path string, info filesystem.FileInfo, err error) error {
+		require.NoError(t, err) // an error in the walk
+		if info.Mode().IsRegular() && strings.HasSuffix(info.Name(), ".py") {
+			path, err = filepath.Abs(path)
+			require.NoError(t, err)
+			err = integration.RunCommand(t, "python syntax check",
+				[]string{ex, "-m", "py_compile", path}, pwd, &cmdOptions)
+			require.NoError(t, err)
+		}
+		return nil
+	})
+	require.NoError(t, err)
 }
 
 func TestGenerateTypeNames(t *testing.T) {

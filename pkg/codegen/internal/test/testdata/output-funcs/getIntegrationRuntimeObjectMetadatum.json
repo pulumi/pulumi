@@ -1,4 +1,6 @@
 {
+  "name": "py_tests",
+  "version": "0.0.1",
   "functions": {
     "azure-native:codegentest:getIntegrationRuntimeObjectMetadatum": {
       "description": "A list of SSIS object metadata.\nAPI Version: 2018-06-01.",

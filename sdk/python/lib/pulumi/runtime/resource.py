@@ -100,7 +100,10 @@ async def prepare_resource(res: 'Resource',
     if typ is not None:
         translate = None
 
-    serialized_props = await rpc.serialize_properties(props, property_dependencies_resources, translate, typ)
+    # To initially scope the use of this new feature, we only keep output values when
+    # remote is true (for multi-lang components).
+    serialized_props = await rpc.serialize_properties(props, property_dependencies_resources, translate, typ,
+        keep_output_values=remote)
 
     # Wait for our parent to resolve
     parent_urn: Optional[str] = ""

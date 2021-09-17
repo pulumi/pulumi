@@ -19,7 +19,7 @@
           "description": "The sizes of trees available"
         }
       },
-      "requiredInputs": [ "varieties"]
+      "requiredInputs": ["varieties"]
     },
     "plant:tree/v1:RubberTree": {
       "inputProperties": {
@@ -32,8 +32,8 @@
         },
         "farm": {
           "oneOf": [
-            {"$ref": "#/types/plant:tree/v1:Farm"},
-            {"type": "string"}
+            { "$ref": "#/types/plant:tree/v1:Farm" },
+            { "type": "string" }
           ],
           "default": "(unknown)"
         },
@@ -50,8 +50,8 @@
         "properties": {
           "farm": {
             "oneOf": [
-              {"$ref": "#/types/plant:tree/v1:Farm"},
-              {"type": "string"}
+              { "$ref": "#/types/plant:tree/v1:Farm" },
+              { "type": "string" }
             ],
             "default": "(unknown)"
           }
@@ -66,8 +66,8 @@
         },
         "farm": {
           "oneOf": [
-            {"$ref": "#/types/plant:tree/v1:Farm"},
-            {"type": "string"}
+            { "$ref": "#/types/plant:tree/v1:Farm" },
+            { "type": "string" }
           ]
         },
         "size": {
@@ -121,8 +121,8 @@
         },
         "color": {
           "oneOf": [
-            {"$ref": "#/types/plant::ContainerColor"},
-            {"type": "string"}
+            { "$ref": "#/types/plant::ContainerColor" },
+            { "type": "string" }
           ]
         },
         "brightness": {
@@ -248,6 +248,9 @@
       "namespaces": {
         "plant": "Plant",
         "tree/v1": "Tree.V1"
+      },
+      "packageReferences": {
+        "Pulumi": "3.12"
       }
     },
     "go": {
@@ -256,7 +259,14 @@
         "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1": "treev1"
       }
     },
-    "nodejs": {},
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
     "python": {
       "moduleNameOverrides": {
         "tree/v1": "tree/v1"

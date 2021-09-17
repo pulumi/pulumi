@@ -61,6 +61,7 @@ type Options struct {
 	TrustDependencies         bool           // whether or not to trust the resource dependency graph.
 	UseLegacyDiff             bool           // whether or not to use legacy diffing behavior.
 	DisableResourceReferences bool           // true to disable resource reference support.
+	DisableOutputValues       bool           // true to disable output value support.
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the

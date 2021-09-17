@@ -13,7 +13,7 @@ import (
 type NoRecursive struct {
 	pulumi.CustomResourceState
 
-	Rec     RecOutput              `pulumi:"rec"`
+	Rec     RecPtrOutput           `pulumi:"rec"`
 	Replace pulumi.StringPtrOutput `pulumi:"replace"`
 }
 

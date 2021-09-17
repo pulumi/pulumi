@@ -1,4 +1,6 @@
 {
+  "name": "good-enum-1",
+  "version": "0.0.1",
   "types": {
     "fake-provider:module1:Color": {
       "type": "string",

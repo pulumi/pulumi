@@ -13,10 +13,10 @@ namespace Pulumi.Example
     public partial class ToyStore : Pulumi.CustomResource
     {
         [Output("chew")]
-        public Output<Pulumi.Example.Chew?> Chew { get; private set; } = null!;
+        public Output<Outputs.Chew?> Chew { get; private set; } = null!;
 
         [Output("laser")]
-        public Output<Pulumi.Example.Laser?> Laser { get; private set; } = null!;
+        public Output<Outputs.Laser?> Laser { get; private set; } = null!;
 
         [Output("stuff")]
         public Output<ImmutableArray<Outputs.Toy>> Stuff { get; private set; } = null!;
@@ -49,6 +49,8 @@ namespace Pulumi.Example
                 Version = Utilities.Version,
                 ReplaceOnChanges =
                 {
+                    "chew.owner",
+                    "laser.batteries",
                     "stuff[*].associated.color",
                     "stuff[*].color",
                     "wanted[*]",

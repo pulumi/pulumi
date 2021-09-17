@@ -152,6 +152,7 @@ func newDestroyCmd() *cobra.Command {
 				UseLegacyDiff:             useLegacyDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
+				DisableOutputValues:       disableOutputValues(),
 			}
 
 			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
