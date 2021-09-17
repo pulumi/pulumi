@@ -2,63 +2,54 @@
 package nodejs
 
 import (
-	// "encoding/json"
-	// "fmt"
-	// "io"
-	// "io/ioutil"
-	// "os/exec"
 	"fmt"
-	"path/filepath"
-	// "sort"
-	// "strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGeneratePackage(t *testing.T) {
-	test.TestSDKCodegen(t, "nodejs", GeneratePackage)
-}
-
-func TestGenerateTypeNames(t *testing.T) {
-	test.TestTypeNameCodegen(t, "nodejs", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
-		modules, info, err := generateModuleContextMap("test", pkg, nil)
-		require.NoError(t, err)
-
-		pkg.Language["nodejs"] = info
-
-		root, ok := modules[""]
-		require.True(t, ok)
-
-		return func(t schema.Type) string {
-			return root.typeString(t, false, nil)
-		}
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
+		Language:   "nodejs",
+		GenPackage: GeneratePackage,
+		Checks: map[string]test.CodegenCheck{
+			"nodejs/compile": typeCheckGeneratedPackage,
+			"nodejs/test":    testGeneratedPackage,
+		},
 	})
 }
 
-// Resolves modules via Yarn and compiles the code with TypeScript
-// linking against in-repo Pulumi Node SDK.
-func compileHook() test.SdkTestHook {
-	return test.SdkTestHook{
-		Name: "compile",
-		RunHook: func(env *test.SdkTestEnv) {
-			env.Command("yarn", "install")
-			env.Command("yarn", "link", "@pulumi/pulumi")
-			env.Command("yarn", "run", "tsc")
-		},
-	}
+func typeCheckGeneratedPackage(t *testing.T, pwd string) {
+	// TODO: previous attempt used npm. It may be more popular and
+	// better target than yarn, however our build uses yarn in
+	// other places at the moment, and yarn does not run into the
+	// ${VERSION} problem; use yarn for now.
+	//
+	// var npm string
+	// npm, err = executable.FindExecutable("npm")
+	// require.NoError(t, err)
+	// // TODO remove when https://github.com/pulumi/pulumi/pull/7938 lands
+	// file := filepath.Join(pwd, "package.json")
+	// oldFile, err := ioutil.ReadFile(file)
+	// require.NoError(t, err)
+	// newFile := strings.ReplaceAll(string(oldFile), "${VERSION}", "0.0.1")
+	// err = ioutil.WriteFile(file, []byte(newFile), 0600)
+	// require.NoError(t, err)
+	// err = integration.RunCommand(t, "npm install", []string{npm, "i"}, pwd, &cmdOptions)
+	// require.NoError(t, err)
+
+	test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
+	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
+	test.RunCommand(t, "tsc", pwd, "yarn", "run", "tsc", "--noEmit")
 }
 
 // Runs unit tests against the generated code.
-func testHook() test.SdkTestHook {
-	return test.SdkTestHook{
-		Name: "test",
-		RunHook: func(env *test.SdkTestEnv) {
-			env.Command("yarn", "run", "mocha", "-r", "ts-node/register", "tests/**/*.spec.ts")
-		},
-	}
+func testGeneratedPackage(t *testing.T, pwd string) {
+	test.RunCommand(t, "mocha", pwd,
+		"yarn", "run", "yarn", "run", "mocha", "-r", "ts-node/register", "tests/**/*.spec.ts")
 }
 
 func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
@@ -89,27 +80,18 @@ func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	})
 }
 
-func TestGenerateOutputFuncsNode(t *testing.T) {
-	testRootDir := filepath.Join("..", "internal", "test", "testdata")
+func TestGenerateTypeNames(t *testing.T) {
+	test.TestTypeNameCodegen(t, "nodejs", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
+		modules, info, err := generateModuleContextMap("test", pkg, nil)
+		require.NoError(t, err)
 
-	test.TestSDKCodegenWithOptions(t, &test.TestSDKCodegenOptions{
-		Language:    "nodejs",
-		GenPackage:  generatePackage,
-		TestRootDir: testRootDir,
-		SDKTests: []test.SdkTest{
-			{
-				Directory:   "output-funcs",
-				Description: "output-funcs",
-				IncludeLanguage: func(lang string) bool {
-					return lang == "nodejs"
-				},
-				HooksByLanguage: map[string][]test.SdkTestHook{
-					"nodejs": {
-						compileHook(),
-						testHook(),
-					},
-				},
-			},
-		},
+		pkg.Language["nodejs"] = info
+
+		root, ok := modules[""]
+		require.True(t, ok)
+
+		return func(t schema.Type) string {
+			return root.typeString(t, false, nil)
+		}
 	})
 }

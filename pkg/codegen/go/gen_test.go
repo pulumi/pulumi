@@ -1,7 +1,6 @@
 package gen
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,7 +17,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
@@ -107,42 +105,18 @@ func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
 		require.NoError(t, err)
 	}
 
-	runCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
+	test.RunCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
 	replacement := fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", sdk)
-	runCommand(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
-	runCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
-	runCommand(t, "go_build", codeDir, goExe, "build", "-v", "all")
+	test.RunCommand(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
+	test.RunCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
+	test.RunCommand(t, "go_build", codeDir, goExe, "build", "-v", "all")
 }
 
 func testGeneratedPackage(t *testing.T, codeDir string) {
 	goExe, err := executable.FindExecutable("go")
 	require.NoError(t, err)
 
-	runCommand(t, "go-test", codeDir, goExe, "test", fmt.Sprintf("%s/...", inferModuleName(codeDir)))
-}
-
-func runCommand(t *testing.T, name string, cwd string, executable string, args ...string) {
-	wd, err := filepath.Abs(cwd)
-	require.NoError(t, err)
-	var stdout, stderr bytes.Buffer
-	cmdOptions := integration.ProgramTestOptions{Stderr: &stderr, Stdout: &stdout, Verbose: true}
-	err = integration.RunCommand(t,
-		name,
-		append([]string{executable}, args...),
-		wd,
-		&cmdOptions)
-	require.NoError(t, err)
-	if err != nil {
-		stdout := stdout.String()
-		stderr := stderr.String()
-		if len(stdout) > 0 {
-			t.Logf("stdout: %s", stdout)
-		}
-		if len(stderr) > 0 {
-			t.Logf("stderr: %s", stderr)
-		}
-		t.FailNow()
-	}
+	test.RunCommand(t, "go-test", codeDir, goExe, "test", fmt.Sprintf("%s/...", inferModuleName(codeDir)))
 }
 
 func TestGenerateTypeNames(t *testing.T) {
