@@ -1470,6 +1470,27 @@ class OutputValueSerializationTests(unittest.TestCase):
                 actual = await rpc.serialize_properties(inputs, {}, keep_output_values=True)
                 self.assertDictEqual(json_format.MessageToDict(expected), json_format.MessageToDict(actual))
 
+    @pulumi_test
+    async def test_serialize_nested_dict(self):
+        settings.SETTINGS.feature_support["outputValues"] = True
+
+        inputs = {
+            "value": {
+                "foo": Output(set(), future("bar"), future(True), future(True)),
+            }
+        }
+        expected = struct_pb2.Struct()
+        expected["value"] = {
+            "foo": {
+                rpc._special_sig_key: rpc._special_output_value_sig,
+                "value": "bar",
+                "secret": True,
+            },
+        }
+        actual = await rpc.serialize_properties(inputs, {}, keep_output_values=True)
+        self.assertDictEqual(json_format.MessageToDict(expected), json_format.MessageToDict(actual))
+
+
 def future(val):
     fut = asyncio.Future()
     fut.set_result(val)
