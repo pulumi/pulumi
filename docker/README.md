@@ -74,3 +74,4 @@ docker run -e PULUMI_ACCESS_TOKEN=<TOKEN> -v "$(pwd)":/pulumi/projects $IMG /bin
 These images _do not_ include additional tools you might want to use when running a pulumi provider. For example, if 
 you're using the [pulumi-kubernetes](https://github.com/pulumi/pulumi-kubernetes) with [Helm](https://helm.sh/), you'll 
 need to use these images as a base image, or install the `helm` command as part of your CI setup.
+
