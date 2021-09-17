@@ -271,6 +271,13 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 		return nil
 	}
 
+	// Allocate storage as necessary.
+	for dest.Kind() == reflect.Ptr {
+		elem := reflect.New(dest.Type().Elem())
+		dest.Set(elem)
+		dest = elem.Elem()
+	}
+
 	switch {
 	case v.IsSecret():
 		known, element := true, v.SecretValue().Element
@@ -369,34 +376,7 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 				dest.Set(reflect.ValueOf(result))
 				return nil
 			case reflect.Struct:
-				if !v.IsObject() {
-					return fmt.Errorf("expected a %v, got a %s", inputType, v.TypeString())
-				}
-				result := reflect.New(inputType).Elem()
-
-				obj := v.ObjectValue()
-				for i := 0; i < inputType.NumField(); i++ {
-					fieldV := result.Field(i)
-					if !fieldV.CanSet() {
-						continue
-					}
-
-					tag := inputType.Field(i).Tag.Get("pulumi")
-					if tag == "" {
-						continue
-					}
-
-					e, ok := obj[resource.PropertyKey(tag)]
-					if !ok {
-						continue
-					}
-
-					if err := copyInputTo(ctx, e, fieldV); err != nil {
-						return err
-					}
-				}
-				dest.Set(result)
-				return nil
+				return copyToStruct(ctx, v, inputType, dest)
 			default:
 				panic(fmt.Sprintf("%v", inputType.Kind()))
 			}
@@ -426,6 +406,11 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 			return nil
 		}
 
+		// For plain structs that implements the Input interface.
+		if dest.Type().Kind() == reflect.Struct {
+			return copyToStruct(ctx, v, dest.Type(), dest)
+		}
+
 		// Otherwise, create an output.
 		result, err := createOutput(ctx, dest.Type(), v, true /*known*/, false /*secret*/, nil)
 		if err != nil {
@@ -440,6 +425,8 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 		return copyToMap(ctx, v, dest.Type(), dest)
 	case reflect.Slice:
 		return copyToSlice(ctx, v, dest.Type(), dest)
+	case reflect.Struct:
+		return copyToStruct(ctx, v, dest.Type(), dest)
 	}
 
 	_, err := unmarshalOutput(ctx, v, dest)
@@ -529,6 +516,37 @@ func copyToMap(ctx *Context, v resource.PropertyValue, typ reflect.Type, dest re
 		key.SetString(string(k))
 
 		result.SetMapIndex(key, elem)
+	}
+	dest.Set(result)
+	return nil
+}
+
+func copyToStruct(ctx *Context, v resource.PropertyValue, typ reflect.Type, dest reflect.Value) error {
+	if !v.IsObject() {
+		return fmt.Errorf("expected a %v, got a %s", typ, v.TypeString())
+	}
+	result := reflect.New(typ).Elem()
+
+	obj := v.ObjectValue()
+	for i := 0; i < typ.NumField(); i++ {
+		fieldV := result.Field(i)
+		if !fieldV.CanSet() {
+			continue
+		}
+
+		tag := typ.Field(i).Tag.Get("pulumi")
+		if tag == "" {
+			continue
+		}
+
+		e, ok := obj[resource.PropertyKey(tag)]
+		if !ok {
+			continue
+		}
+
+		if err := copyInputTo(ctx, e, fieldV); err != nil {
+			return err
+		}
 	}
 	dest.Set(result)
 	return nil

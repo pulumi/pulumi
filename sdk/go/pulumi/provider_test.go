@@ -170,6 +170,32 @@ type AssetOrArchiveInputArgs struct {
 	Value AssetOrArchiveInput `pulumi:"value"`
 }
 
+type NestedInputty struct {
+	Something *string `pulumi:"something"`
+}
+
+// This struct implements the Input interface.
+type NestedInputtyInputArgs struct {
+	Something StringPtrInput `pulumi:"something"`
+}
+
+func (NestedInputtyInputArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*NestedInputty)(nil)).Elem()
+}
+
+type PlainOptionalNestedInputtyInputArgs struct {
+	Value *NestedInputtyInputArgs `pulumi:"value"`
+}
+
+// This struct does not implement the Input interface.
+type NestedInputtyArgs struct {
+	Something StringPtrInput `pulumi:"something"`
+}
+
+type PlainOptionalNestedInputtyArgs struct {
+	Value *NestedInputtyArgs `pulumi:"value"`
+}
+
 func assertOutputEqual(t *testing.T, value interface{}, known bool, secret bool, deps urnSet, output interface{}) {
 	actualValue, actualKnown, actualSecret, actualDeps, err := await(output.(Output))
 	assert.NoError(t, err)
@@ -273,7 +299,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			name:          "string pointer secret no deps",
 			input:         resource.MakeSecret(resource.NewStringProperty("hello")),
 			args:          &StringPtrArgs{},
-			expectedError: "expected destination type to implement pulumi.Input or pulumi.Output, got *string",
+			expectedError: "expected destination type to implement pulumi.Input or pulumi.Output, got string",
 		},
 		{
 			name:  "string pointer null value no deps",
@@ -953,6 +979,196 @@ func TestConstructInputsCopyTo(t *testing.T) {
 				assert.Len(t, v, 2)
 				assertOutputEqual(t, "bar", true, false, urnSet{"fakeURN": struct{}{}}, v["foo"])
 				assertOutputEqual(t, "qux", true, false, urnSet{"fakeURN": struct{}{}}, v["baz"])
+			},
+		},
+
+		// PlainOptionalNestedInputtyInputArgs
+		{
+			name:  "PlainOptionalNestedInputtyInputArgs empty no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{}),
+			args:  &PlainOptionalNestedInputtyInputArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				assert.Equal(t, &NestedInputtyInputArgs{}, actual)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyInputArgs value no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.NewStringProperty("anything"),
+			}),
+			args: &PlainOptionalNestedInputtyInputArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				assert.Equal(t, &NestedInputtyInputArgs{
+					Something: String("anything"),
+				}, actual)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyInputArgs secret no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.MakeSecret(resource.NewStringProperty("anything")),
+			}),
+			args: &PlainOptionalNestedInputtyInputArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				v, ok := actual.(*NestedInputtyInputArgs)
+				assert.True(t, ok)
+				assertOutputEqual(t, "anything", true, true, urnSet{}, v.Something)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyInputArgs computed no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.MakeComputed(resource.NewStringProperty("")),
+			}),
+			args: &PlainOptionalNestedInputtyInputArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				v, ok := actual.(*NestedInputtyInputArgs)
+				assert.True(t, ok)
+				assertOutputEqual(t, nil, false, false, urnSet{}, v.Something)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyInputArgs output value known no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("anything"),
+					Known:   true,
+				}),
+			}),
+			args: &PlainOptionalNestedInputtyInputArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				assert.Equal(t, &NestedInputtyInputArgs{
+					Something: String("anything"),
+				}, actual)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyInputArgs output value known secret no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("anything"),
+					Known:   true,
+					Secret:  true,
+				}),
+			}),
+			args: &PlainOptionalNestedInputtyInputArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				v, ok := actual.(*NestedInputtyInputArgs)
+				assert.True(t, ok)
+				assertOutputEqual(t, "anything", true, true, urnSet{}, v.Something)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyInputArgs output value known secret with deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.NewOutputProperty(resource.Output{
+					Element:      resource.NewStringProperty("anything"),
+					Known:        true,
+					Secret:       true,
+					Dependencies: []resource.URN{"fakeURN"},
+				}),
+			}),
+			deps: urnSet{"fakeURN": struct{}{}},
+			args: &PlainOptionalNestedInputtyInputArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				v, ok := actual.(*NestedInputtyInputArgs)
+				assert.True(t, ok)
+				assertOutputEqual(t, "anything", true, true, urnSet{"fakeURN": struct{}{}}, v.Something)
+			},
+		},
+
+		// PlainOptionalNestedInputtyArgs
+		{
+			name:  "PlainOptionalNestedInputtyArgs empty no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{}),
+			args:  &PlainOptionalNestedInputtyArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				assert.Equal(t, &NestedInputtyArgs{}, actual)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyArgs value no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.NewStringProperty("anything"),
+			}),
+			args: &PlainOptionalNestedInputtyArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				assert.Equal(t, &NestedInputtyArgs{
+					Something: String("anything"),
+				}, actual)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyArgs secret no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.MakeSecret(resource.NewStringProperty("anything")),
+			}),
+			args: &PlainOptionalNestedInputtyArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				v, ok := actual.(*NestedInputtyArgs)
+				assert.True(t, ok)
+				assertOutputEqual(t, "anything", true, true, urnSet{}, v.Something)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyArgs computed no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.MakeComputed(resource.NewStringProperty("")),
+			}),
+			args: &PlainOptionalNestedInputtyArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				v, ok := actual.(*NestedInputtyArgs)
+				assert.True(t, ok)
+				assertOutputEqual(t, nil, false, false, urnSet{}, v.Something)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyArgs output value known no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("anything"),
+					Known:   true,
+				}),
+			}),
+			args: &PlainOptionalNestedInputtyArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				assert.Equal(t, &NestedInputtyArgs{
+					Something: String("anything"),
+				}, actual)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyArgs output value known secret no deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewStringProperty("anything"),
+					Known:   true,
+					Secret:  true,
+				}),
+			}),
+			args: &PlainOptionalNestedInputtyArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				v, ok := actual.(*NestedInputtyArgs)
+				assert.True(t, ok)
+				assertOutputEqual(t, "anything", true, true, urnSet{}, v.Something)
+			},
+		},
+		{
+			name: "PlainOptionalNestedInputtyArgs output value known secret with deps",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"something": resource.NewOutputProperty(resource.Output{
+					Element:      resource.NewStringProperty("anything"),
+					Known:        true,
+					Secret:       true,
+					Dependencies: []resource.URN{"fakeURN"},
+				}),
+			}),
+			deps: urnSet{"fakeURN": struct{}{}},
+			args: &PlainOptionalNestedInputtyArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				v, ok := actual.(*NestedInputtyArgs)
+				assert.True(t, ok)
+				assertOutputEqual(t, "anything", true, true, urnSet{"fakeURN": struct{}{}}, v.Something)
 			},
 		},
 
