@@ -37,6 +37,7 @@ def get_provider(props) -> ResourceProvider:
     byts = base64.b64decode(props[PROVIDER_KEY])
     return dill.loads(byts)
 
+
 class DynamicResourceProviderServicer(ResourceProviderServicer):
     def CheckConfig(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -51,7 +52,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def Invoke(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("Invoke is not implemented by the dynamic provider")
-        raise NotImplementedError("unknown function %s" % request.token)
+        raise NotImplementedError(f"unknown function {request.token}")
 
     def Diff(self, request, context):
         olds = rpc.deserialize_properties(request.olds, True)
@@ -171,6 +172,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def __init__(self):
         pass
 
+
 def main():
     monitor = DynamicResourceProviderServicer()
     server = grpc.server(
@@ -186,5 +188,6 @@ def main():
             time.sleep(_ONE_DAY_IN_SECONDS)
     except KeyboardInterrupt:
         server.stop(0)
+
 
 main()
