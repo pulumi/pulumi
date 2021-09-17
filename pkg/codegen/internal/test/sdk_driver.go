@@ -165,7 +165,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) {
 				require.NoError(t, err)
 
 				if !ValidateFileEquality(t, files, expectedFiles) {
-					return
+					t.Fail()
 				}
 			}
 
