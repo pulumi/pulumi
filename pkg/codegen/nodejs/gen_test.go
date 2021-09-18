@@ -46,8 +46,8 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	require.NoError(t, err)
 
 	// We increase the amount of memory node can use. We get OOM otherwise.
-	node_options := []string{os.Getenv("NODE_OPTIONS"), "--max_old_space_size=4096"}
-	err = os.Setenv("NODE_OPTIONS", strings.Join(node_options, " "))
+	nodeOptions := []string{os.Getenv("NODE_OPTIONS"), "--max_old_space_size=4096"}
+	err = os.Setenv("NODE_OPTIONS", strings.Join(nodeOptions, " "))
 	require.NoError(t, err)
 	err = integration.RunCommand(t, "typecheck ts",
 		[]string{filepath.Join(".", "node_modules", ".bin", "tsc"), "--noEmit"}, pwd, &cmdOptions)
