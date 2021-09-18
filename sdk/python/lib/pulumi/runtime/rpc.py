@@ -327,7 +327,7 @@ async def serialize_property(value: 'Input[Any]',
         types = _types.input_type_types(value_cls)
 
         return {
-            k: await serialize_property(v, deps, input_transformer, types.get(k))
+            k: await serialize_property(v, deps, input_transformer, types.get(k), keep_output_values)
             for k, v in value.items()
         }
 
@@ -373,7 +373,8 @@ async def serialize_property(value: 'Input[Any]',
                 transformed_key = translate(k)
                 if settings.excessive_debug_output:
                     log.debug(f"transforming input property: {k} -> {transformed_key}")
-            obj[transformed_key] = await serialize_property(value[k], deps, input_transformer, get_type(transformed_key))
+            obj[transformed_key] = await serialize_property(value[k], deps, input_transformer,
+                get_type(transformed_key), keep_output_values)
 
         return obj
 
