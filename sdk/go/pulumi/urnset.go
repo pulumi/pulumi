@@ -29,6 +29,15 @@ func (s urnSet) has(v URN) bool {
 	return ok
 }
 
+func (s urnSet) contains(other urnSet) bool {
+	for v := range other {
+		if !s.has(v) {
+			return false
+		}
+	}
+	return true
+}
+
 func (s urnSet) union(other urnSet) {
 	for v := range other {
 		s.add(v)

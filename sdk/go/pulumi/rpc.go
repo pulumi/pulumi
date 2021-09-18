@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 	"sync"
 
 	"github.com/blang/semver"
@@ -697,8 +696,7 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		result := reflect.MakeMap(dest.Type())
 		secret := false
 		for k, e := range v.ObjectValue() {
-			// ignore properties internal to the pulumi engine
-			if strings.HasPrefix(string(k), "__") {
+			if resource.IsInternalPropertyKey(k) {
 				continue
 			}
 			elem := reflect.New(elemType).Elem()
