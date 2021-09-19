@@ -375,9 +375,9 @@ func newUpCmd() *cobra.Command {
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
 			if suppressPermalink == "true" {
-				opts.Display.SuppressPermaLink = true
+				opts.Display.SuppressPermalink = true
 			} else {
-				opts.Display.SuppressPermaLink = false
+				opts.Display.SuppressPermalink = false
 			}
 
 			filestateBackend, err := isFilestateBackend(opts.Display)
@@ -386,9 +386,9 @@ func newUpCmd() *cobra.Command {
 			}
 
 			// by default, we are going to suppress the permalink when using self-managed backends
-			// this can be re-enabled by explicitly passing "false" to the `supppress-permalink` flag
+			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
 			if suppressPermalink != "false" && filestateBackend {
-				opts.Display.SuppressPermaLink = true
+				opts.Display.SuppressPermalink = true
 			}
 
 			if len(args) > 0 {
