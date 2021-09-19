@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -63,6 +64,10 @@ func ShowEvents(
 	}
 }
 
+func cleanColorRenderingChars(s string) string {
+	return colors.Never.Colorize(s)
+}
+
 func startEventLogger(events <-chan engine.Event, done chan<- bool, path string) (<-chan engine.Event, chan<- bool) {
 	// Before moving further, attempt to open the log file.
 	logFile, err := os.Create(path)
@@ -80,6 +85,7 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, path string)
 
 		sequence := 0
 		encoder := json.NewEncoder(logFile)
+		encoder.SetEscapeHTML(false)
 		logEvent := func(e engine.Event) error {
 			apiEvent, err := ConvertEngineEvent(e)
 			if err != nil {
@@ -87,6 +93,13 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, path string)
 			}
 			apiEvent.Sequence, sequence = sequence, sequence+1
 			apiEvent.Timestamp = int(time.Now().Unix())
+
+			// If this is a diagnostic event, clean up the color directives from the emitted log.
+			if apiEvent.DiagnosticEvent != nil {
+				apiEvent.DiagnosticEvent.Message = cleanColorRenderingChars(apiEvent.DiagnosticEvent.Message)
+				apiEvent.DiagnosticEvent.Prefix = cleanColorRenderingChars(apiEvent.DiagnosticEvent.Prefix)
+			}
+
 			return encoder.Encode(apiEvent)
 		}
 
