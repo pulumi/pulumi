@@ -43,9 +43,7 @@ func ShowEvents(
 	}
 
 	if opts.JSONDisplay {
-		// TODO[pulumi/pulumi#2390]: enable JSON display for real deployments.
-		contract.Assertf(isPreview, "JSON display only available in preview mode")
-		ShowJSONEvents(op, action, events, done, opts)
+		ShowJSONEvents(events, done)
 		return
 	}
 
