@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -104,33 +105,6 @@ func loadDirectory(fs map[string][]byte, root, path string, ignore func(path str
 			}
 			name := filepath.ToSlash(relativeEntryPath)
 			fs[name] = contents
-		}
-	}
-
-	return nil
-}
-
-// Removes files from directory recursively unless the are ignored.
-func removeFilesFromDirUnlessIgnored(root, path string, ignore func(path string) bool) error {
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return err
-	}
-
-	for _, e := range entries {
-		entryPath := filepath.Join(path, e.Name())
-		relativeEntryPath := entryPath[len(root)+1:]
-
-		if ignore != nil && ignore(relativeEntryPath) {
-			// pass
-		} else if e.IsDir() {
-			if err = removeFilesFromDirUnlessIgnored(root, entryPath, ignore); err != nil {
-				return err
-			}
-		} else {
-			if err = os.Remove(path); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -266,9 +240,7 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 	_, err := os.ReadDir(baseline)
 	switch {
 	case err == nil:
-		ignore, err := loadIgnoreMap(baseline)
-		require.NoError(t, err)
-		err = removeFilesFromDirUnlessIgnored(baseline, baseline, ignore)
+		err = os.RemoveAll(baseline)
 		require.NoError(t, err)
 	case os.IsNotExist(err):
 		// OK
@@ -280,15 +252,60 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 		relPath := filepath.FromSlash(file)
 		path := filepath.Join(dir, lang, relPath)
 
-		if err = os.MkdirAll(filepath.Dir(path), 0755); err != nil && !os.IsExist(err) {
-			require.NoError(t, err)
-		}
-
-		err = ioutil.WriteFile(path, bytes, 0600)
+		err := writeFileEnsuringDir(path, bytes)
 		require.NoError(t, err)
 	}
 
 	return true
+}
+
+// Useful for populating code-generated destination
+// `codeDir=$dir/$lang` with extra manually written files such as the
+// unit test files. These files are copied from `$dir/$lang-extras`
+// folder if present.
+func CopyExtraFiles(t *testing.T, dir, lang string) {
+	codeDir := filepath.Join(dir, lang)
+	extrasDir := filepath.Join(dir, fmt.Sprintf("%s-extras", lang))
+	gotExtras, err := PathExists(extrasDir)
+
+	if !gotExtras {
+		return
+	}
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	filepath.Walk(extrasDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		relPath, err := filepath.Rel(extrasDir, path)
+		if err != nil {
+			return err
+		}
+		destPath := filepath.Join(codeDir, relPath)
+
+		bytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		writeFileEnsuringDir(destPath, bytes)
+		t.Logf("Copied %s to %s", path, destPath)
+		return nil
+	})
+}
+
+func writeFileEnsuringDir(path string, bytes []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil && !os.IsExist(err) {
+		return err
+	}
+
+	return ioutil.WriteFile(path, bytes, 0600)
 }
 
 // CheckAllFilesGenerated ensures that the set of expected and actual files generated

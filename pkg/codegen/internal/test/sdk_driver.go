@@ -169,6 +169,8 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) {
 				}
 			}
 
+			CopyExtraFiles(t, dirPath, opts.Language)
+
 			// Merge language-specific global and
 			// test-specific checks, with test-specific
 			// having precedence.
