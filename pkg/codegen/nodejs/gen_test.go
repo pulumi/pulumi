@@ -3,9 +3,9 @@ package nodejs
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
