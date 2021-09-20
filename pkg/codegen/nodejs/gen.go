@@ -1945,6 +1945,8 @@ func genTypeScriptProjectFile(info NodePackageInfo, files []string) string {
 			tsFiles = append(tsFiles, f)
 		}
 	}
+
+	tsFiles = append(tsFiles, info.ExtraTypeScriptFiles...)
 	sort.Strings(tsFiles)
 
 	for i, file := range tsFiles {

@@ -58,6 +58,12 @@ type NodePackageInfo struct {
 	PluginName string `json:"pluginName,omitempty"`
 	// The version of the plugin, which might be different from the version of the package..
 	PluginVersion string `json:"pluginVersion,omitempty"`
+	// Additional files to include in TypeScript compilation.
+	// These paths are added to the `files` section of the
+	// generated `tsconfig.json`. A typical use case for this is
+	// compiling hand-authored unit test files that check the
+	// generated code.
+	ExtraTypeScriptFiles []string `json:"extraTypeScriptFiles,omitempty"`
 }
 
 // NodeObjectInfo contains NodeJS-specific information for an object.
