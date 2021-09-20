@@ -300,14 +300,7 @@ jobs:
         node-version: [ 14.x ]
 
         # See scripts/tests_subsets.py when editing
-        test-subset: [ native, etc ]
-
-        exclude:
-          - platform: macos-latest
-
-        include:
-          - platform: macos-latest
-            test-subset: native
+        test-subset: [ integration, auto-and-lifecycletest, native, etc ]
 
     runs-on: ${{ matrix.platform }}
     steps:
