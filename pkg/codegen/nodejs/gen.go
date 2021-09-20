@@ -45,13 +45,14 @@ type typeDetails struct {
 	inputType  bool
 }
 
-// title Capitalizes the first rune in s.
+// title capitalizes the first rune in s.
 //
-// Note: this is expected to work on strings which are not valid identifiers.
-// Example:
-// 	"hello"   => "Hello"
-// 	"hiAlice" => "HiAlice"
-// 	"hi.Bob"  => "Hi.Bob"
+// Examples:
+// "hello"   => "Hello"
+// "hiAlice" => "HiAlice"
+// "hi.Bob"  => "Hi.Bob"
+//
+// Note: This is expected to work on strings which are not valid identifiers.
 func title(s string) string {
 	if s == "" {
 		return ""
@@ -60,6 +61,13 @@ func title(s string) string {
 	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
 }
 
+// camel converts s to camel case.
+//
+// Examples:
+// "helloWorld"    => "helloWorld"
+// "HelloWorld"    => "helloWorld"
+// "JSONObject"    => "jsonobject"
+// "My-FRIEND.Bob" => "my-FRIEND.Bob"
 func camel(s string) string {
 	if s == "" {
 		return ""
@@ -76,7 +84,17 @@ func camel(s string) string {
 	return string(res)
 }
 
-// Turns an identifier into PascalCase.
+// pascal converts s to pascal case. Word breaks are signified by illegal
+// identifier runes (excluding '.'). These are found by use of
+// isLegalIdentifierPart.
+//
+// Examples:
+// "My-Friend.Bob"  => "MyFriend.Bob"
+// "JSONObject"     => "JSONObject"'
+// "a-glad-dayTime" => "AGladDayTime"
+//
+// Note: because camel aggressively down-cases the first continuous sub-string
+// of uppercase characters, we cannot define pascal as title(camel(x)).
 func pascal(s string) string {
 	split := [][]rune{{}}
 	runes := []rune(s)
