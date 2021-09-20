@@ -44,10 +44,12 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "input-collision",
 		Description: "Schema with types that could potentially produce collisions (go).",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:   "dash-named-schema",
 		Description: "Simple schema with a two part name (foo-bar)",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:        "external-resource-schema",
@@ -67,30 +69,37 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "plain-schema-gh6957",
 		Description: "Repro for #6957",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:   "resource-args-python",
 		Description: "Resource args with same named resource and type",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:   "simple-enum-schema",
 		Description: "Simple schema with enum types",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:   "simple-plain-schema",
 		Description: "Simple schema with plain properties",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:   "simple-plain-schema-with-root-package",
 		Description: "Simple schema with root package set",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:   "simple-resource-schema",
 		Description: "Simple schema with local resource properties",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:   "simple-resource-schema-custom-pypackage-name",
 		Description: "Simple schema with local resource properties and custom Python package name",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:        "simple-methods-schema",
@@ -100,11 +109,13 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "simple-yaml-schema",
 		Description: "Simple schema encoded using YAML",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:        "provider-config-schema",
 		Description:      "Simple provider config schema",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:        "replace-on-change",
