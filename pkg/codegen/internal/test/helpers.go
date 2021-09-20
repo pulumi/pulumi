@@ -273,11 +273,11 @@ func CopyExtraFiles(t *testing.T, dir, lang string) {
 	}
 
 	if err != nil {
-		t.Error(err)
+		require.NoError(t, err)
 		return
 	}
 
-	filepath.Walk(extrasDir, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(extrasDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -294,10 +294,15 @@ func CopyExtraFiles(t *testing.T, dir, lang string) {
 		if err != nil {
 			return err
 		}
-		writeFileEnsuringDir(destPath, bytes)
+		err = writeFileEnsuringDir(destPath, bytes)
+		if err != nil {
+			return err
+		}
 		t.Logf("Copied %s to %s", path, destPath)
 		return nil
 	})
+
+	require.NoError(t, err)
 }
 
 func writeFileEnsuringDir(path string, bytes []byte) error {
