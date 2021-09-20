@@ -22,6 +22,7 @@ architecture/resource-registration
 :caption: Resource Providers
 
 providers/implementers-guide
+providers/metaschema
 ```
 
 ```{toctree}
