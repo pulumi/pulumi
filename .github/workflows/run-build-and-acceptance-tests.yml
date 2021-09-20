@@ -115,12 +115,12 @@ jobs:
         # See scripts/tests_subsets.py when editing
         test-subset: [ native, etc ]
 
-        exclude:
-          - platform: macos-latest
+        # exclude:
+        #   - platform: macos-latest
 
-        include:
-          - platform: macos-latest
-            test-subset: native
+        # include:
+        #   - platform: macos-latest
+        #     test-subset: native
 
       fail-fast: false
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
