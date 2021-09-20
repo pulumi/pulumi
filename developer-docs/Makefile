@@ -3,13 +3,13 @@ SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = .
 BUILDDIR      = _build
 
-html: Makefile graphics
+html: Makefile graphics generated_markdown
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-pdf: Makefile graphics
+pdf: Makefile graphics generated_markdown
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.PHONY: graphics clean Makefile
+.PHONY: graphics generated_markdown clean Makefile
 
 SVG_FILES = \
 	providers/resource-lifecycle.svg \
@@ -26,6 +26,14 @@ SVG_FILES = \
 	plantuml -tsvg $<
 
 graphics: Makefile $(SVG_FILES)
+
+MD_FILES = \
+	providers/metaschema.md
+
+generated_markdown: Makefile $(MD_FILES)
+
+providers/metaschema.md: utils/jsonschema2md.go ../pkg/codegen/schema/pulumi.json
+	go run ./utils/jsonschema2md.go < ../pkg/codegen/schema/pulumi.json >providers/metaschema.md
 
 clean:
 	rm -rf $(BUILDDIR)/*

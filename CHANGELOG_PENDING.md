@@ -12,6 +12,10 @@
 - [codegen] - Packages include `Package.Version` when provided.
   [#7938](https://github.com/pulumi/pulumi/pull/7938)
 
+- [schema] The syntactical well-formedness of a package schema is now described
+  and checked by a JSON schema metaschema.
+  [#7952](https://github.com/pulumi/pulumi/pull/7952)
+
 ### Bug Fixes
 
 - [codegen/schema] - Correct validation for Package
