@@ -22,33 +22,12 @@ func TestGeneratePackage(t *testing.T) {
 }
 
 func typeCheckGeneratedPackage(t *testing.T, pwd string) {
-	// TODO: previous attempt used npm. It may be more popular and
-	// better target than yarn, however our build uses yarn in
-	// other places at the moment, and yarn does not run into the
-	// ${VERSION} problem; use yarn for now.
-	//
-	// var npm string
-	// npm, err = executable.FindExecutable("npm")
-	// require.NoError(t, err)
-	// // TODO remove when https://github.com/pulumi/pulumi/pull/7938 lands
-	// file := filepath.Join(pwd, "package.json")
-	// oldFile, err := ioutil.ReadFile(file)
-	// require.NoError(t, err)
-	// newFile := strings.ReplaceAll(string(oldFile), "${VERSION}", "0.0.1")
-	// err = ioutil.WriteFile(file, []byte(newFile), 0600)
-	// require.NoError(t, err)
-	// err = integration.RunCommand(t, "npm install", []string{npm, "i"}, pwd, &cmdOptions)
-	// require.NoError(t, err)
-
-	test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
-	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
-	test.RunCommand(t, "tsc", pwd, "yarn", "run", "tsc", "--noEmit")
+	test.RunCommand(t, "npm_install", pwd, "npm", "install")
+	test.RunCommand(t, "npm_build", pwd, "npm", "run", "build")
 }
 
-// Runs unit tests against the generated code.
 func testGeneratedPackage(t *testing.T, pwd string) {
-	test.RunCommand(t, "mocha", pwd,
-		"yarn", "run", "mocha", "-r", "ts-node/register", "tests/**/*.spec.ts")
+	test.RunCommand(t, "npm_test", pwd, "npm", "run", "test")
 }
 
 func TestGenerateTypeNames(t *testing.T) {

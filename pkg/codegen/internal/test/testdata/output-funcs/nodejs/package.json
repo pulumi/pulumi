@@ -2,17 +2,16 @@
     "name": "@pulumi/mypkg",
     "version": "0.0.1",
     "scripts": {
-        "build": "tsc"
+        "build": "tsc",
+        "test": "mocha -r ts-node/register tests/**/*.spec.ts"
     },
     "devDependencies": {
+        "@pulumi/pulumi": "file:../../../../../../../sdk/nodejs/bin",
         "@types/mocha": "latest",
         "@types/node": "latest",
         "mocha": "latest",
         "ts-node": "latest",
         "typescript": "^4.3.5"
-    },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
     },
     "pulumi": {
         "resource": true

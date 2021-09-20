@@ -577,11 +577,15 @@
         "@types/mocha": "latest",
         "@types/node": "latest",
         "mocha": "latest",
-        "ts-node": "latest"
+        "ts-node": "latest",
+        "@pulumi/pulumi": "file:../../../../../../../sdk/nodejs/bin"
       },
       "extraTypeScriptFiles": [
-          "tests/codegen.spec.ts"
-      ]
+        "tests/codegen.spec.ts"
+      ],
+      "scripts": {
+        "test": "mocha -r ts-node/register tests/**/*.spec.ts"
+      }
     }
   }
 }

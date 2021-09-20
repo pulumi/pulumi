@@ -64,6 +64,10 @@ type NodePackageInfo struct {
 	// compiling hand-authored unit test files that check the
 	// generated code.
 	ExtraTypeScriptFiles []string `json:"extraTypeScriptFiles,omitempty"`
+	// NPM script definitions. These define the `scripts` property
+	// of the generated `package.json`. See also:
+	// https://docs.npmjs.com/cli/v7/using-npm/scripts
+	Scripts map[string]string `json:"scripts,omitempty"`
 }
 
 // NodeObjectInfo contains NodeJS-specific information for an object.
