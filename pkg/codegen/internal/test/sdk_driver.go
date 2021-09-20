@@ -192,28 +192,6 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) {
 
 			// Define check filter.
 			shouldSkipCheck := func(check string) bool {
-				return false
-			}
-
-			codeDir := filepath.Join(testDir, options.Language)
-
-			if hooks, ok := tt.HooksByLanguage[options.Language]; ok {
-				runOne := func(hook SdkTestHook) {
-					t.Run(hook.Name, func(t *testing.T) {
-						hook.RunHook(&SdkTestEnv{
-							T:       t,
-							CodeDir: codeDir,
-						})
-					})
-				}
-
-				for _, hook := range hooks {
-					runOne(hook)
-				}
-			}
-
-			// Define check filter.
-			shouldSkipCheck := func(check string) bool {
 
 				// Only language-specific checks.
 				if !strings.HasPrefix(check, opts.Language+"/") {

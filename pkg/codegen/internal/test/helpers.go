@@ -127,47 +127,6 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-// Removes files from directory recursively unless the are ignored.
-func removeFilesFromDirUnlessIgnored(root, path string, ignore func(path string) bool) error {
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return err
-	}
-
-	for _, e := range entries {
-		entryPath := filepath.Join(path, e.Name())
-		relativeEntryPath := entryPath[len(root)+1:]
-
-		if ignore != nil && ignore(relativeEntryPath) {
-			// pass
-		} else if e.IsDir() {
-			if err = removeFilesFromDirUnlessIgnored(root, entryPath, ignore); err != nil {
-				return err
-			}
-		} else {
-			if err = os.Remove(path); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func PathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-
-	if err == nil {
-		return true, nil
-	}
-
-	return false, err
-}
-
 // Reads `.sdkcodegenignore` file if present to use as loadDirectory ignore func.
 func loadIgnoreMap(dir string) (func(path string) bool, error) {
 
