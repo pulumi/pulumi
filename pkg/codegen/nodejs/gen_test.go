@@ -13,7 +13,7 @@ import (
 func TestGeneratePackage(t *testing.T) {
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "nodejs",
-		GenPackage: generatePackage,
+		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
 			"nodejs/compile": typeCheckGeneratedPackage,
 			"nodejs/test":    testGeneratedPackage,
@@ -49,15 +49,6 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 func testGeneratedPackage(t *testing.T, pwd string) {
 	test.RunCommand(t, "mocha", pwd,
 		"yarn", "run", "mocha", "-r", "ts-node/register", "tests/**/*.spec.ts")
-}
-
-func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	return GeneratePackageWithOptions(&GeneratePackageOptions{
-		Tool:                        tool,
-		Pkg:                         pkg,
-		ExtraFiles:                  extraFiles,
-		ExtraFilesInPackageMetadata: []string{},
-	})
 }
 
 func TestGenerateTypeNames(t *testing.T) {

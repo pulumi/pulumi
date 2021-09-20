@@ -1796,18 +1796,12 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs, extraFiles []string) {
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs) {
 	// The generator already emitted Pulumi.yaml, so that leaves two more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
 	files.add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
-
-	var allFiles []string
-	for f := range files {
-		allFiles = append(allFiles, f)
-	}
-	allFiles = append(allFiles, extraFiles...)
-	files.add("tsconfig.json", []byte(genTypeScriptProjectFile(info, allFiles)))
+	files.add("tsconfig.json", []byte(genTypeScriptProjectFile(info, files)))
 }
 
 type npmPackage struct {
@@ -1919,7 +1913,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	return string(npmjson) + "\n"
 }
 
-func genTypeScriptProjectFile(info NodePackageInfo, files []string) string {
+func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
 	w := &bytes.Buffer{}
 
 	fmt.Fprintf(w, `{
@@ -1940,7 +1934,7 @@ func genTypeScriptProjectFile(info NodePackageInfo, files []string) string {
 `)
 
 	var tsFiles []string
-	for _, f := range files {
+	for f := range files {
 		if path.Ext(f) == ".ts" {
 			tsFiles = append(tsFiles, f)
 		}
@@ -2154,34 +2148,14 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 }
 
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	return GeneratePackageWithOptions(&GeneratePackageOptions{
-		Tool:       tool,
-		Pkg:        pkg,
-		ExtraFiles: extraFiles,
-	})
-}
-
-type GeneratePackageOptions struct {
-	Tool       string
-	Pkg        *schema.Package
-	ExtraFiles map[string][]byte
-
-	// Include files in package metadata for TSC compilation in
-	// that are not generated but expected to be hand-edited, such
-	// as test files.
-	ExtraFilesInPackageMetadata []string
-}
-
-func GeneratePackageWithOptions(opts *GeneratePackageOptions) (map[string][]byte, error) {
-	pkg := opts.Pkg
-	modules, info, err := generateModuleContextMap(opts.Tool, pkg, opts.ExtraFiles)
+	modules, info, err := generateModuleContextMap(tool, pkg, extraFiles)
 	if err != nil {
 		return nil, err
 	}
 	pkg.Language["nodejs"] = info
 
 	files := fs{}
-	for p, f := range opts.ExtraFiles {
+	for p, f := range extraFiles {
 		files.add(p, f)
 	}
 	for _, mod := range modules {
@@ -2190,7 +2164,7 @@ func GeneratePackageWithOptions(opts *GeneratePackageOptions) (map[string][]byte
 		}
 	}
 
-	genPackageMetadata(pkg, info, files, opts.ExtraFilesInPackageMetadata)
+	genPackageMetadata(pkg, info, files)
 	return files, nil
 }
 
