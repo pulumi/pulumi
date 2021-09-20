@@ -302,6 +302,13 @@ jobs:
         # See scripts/tests_subsets.py when editing
         test-subset: [ integration, auto-and-lifecycletest, native, etc ]
 
+        exclude:
+          - platform: macos-latest
+
+        include:
+          - platform: macos-latest
+            test-subset: native
+
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Set PULUMI_TEST_SUBSET env var
