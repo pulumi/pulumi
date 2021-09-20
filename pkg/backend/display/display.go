@@ -43,7 +43,11 @@ func ShowEvents(
 	}
 
 	if opts.JSONDisplay {
-		ShowJSONEvents(events, done)
+		if isPreview {
+			ShowPreviewDigest(op, action, events, done, opts)
+		} else {
+			ShowJSONEvents(events, done)
+		}
 		return
 	}
 
