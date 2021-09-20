@@ -22,7 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -78,39 +78,6 @@ func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 	return result, nil
 }
 
-// Recursively loads files from a directory into the `fs` map. Ignores
-// entries that match `ignore(path)==true`, also skips descending into
-// directories that are ignored. This is useful for example to avoid
-// `node_modules`.
-func loadDirectory(fs map[string][]byte, root, path string, ignore func(path string) bool) error {
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return err
-	}
-
-	for _, e := range entries {
-		entryPath := filepath.Join(path, e.Name())
-		relativeEntryPath := entryPath[len(root)+1:]
-		baseName := filepath.Base(relativeEntryPath)
-		if ignore != nil && (ignore(relativeEntryPath) || ignore(baseName)) {
-			// pass
-		} else if e.IsDir() {
-			if err = loadDirectory(fs, root, entryPath, ignore); err != nil {
-				return err
-			}
-		} else {
-			contents, err := os.ReadFile(entryPath)
-			if err != nil {
-				return err
-			}
-			name := filepath.ToSlash(relativeEntryPath)
-			fs[name] = contents
-		}
-	}
-
-	return nil
-}
-
 func PathExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 
@@ -125,81 +92,51 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-// Reads `.sdkcodegenignore` file if present to use as loadDirectory ignore func.
-func loadIgnoreMap(dir string) (func(path string) bool, error) {
-
-	load1 := func(dir string, ignoredPathSet map[string]bool) error {
-		p := filepath.Join(dir, ".sdkcodegenignore")
-
-		gotIgnore, err := PathExists(p)
-		if err != nil {
-			return err
-		}
-
-		if gotIgnore {
-			contents, err := os.ReadFile(p)
-			if err != nil {
-				return err
-			}
-			for _, s := range strings.Split(string(contents), "\n") {
-				s = strings.Trim(s, " \r\n\t")
-
-				if s != "" {
-					ignoredPathSet[s] = true
-				}
-			}
-		}
-		return nil
-	}
-
-	loadAll := func(dir string, ignoredPathSet map[string]bool) error {
-		for {
-			atTopOfRepo, err := PathExists(filepath.Join(dir, ".git"))
-			if err != nil {
-				return err
-			}
-
-			err = load1(dir, ignoredPathSet)
-			if err != nil {
-				return err
-			}
-
-			if atTopOfRepo || dir == "." {
-				return nil
-			}
-
-			dir = filepath.Dir(dir)
-		}
-	}
-
-	ignoredPathSet := make(map[string]bool)
-	err := loadAll(dir, ignoredPathSet)
+// `LoadBaseline` loads the contents of the given baseline directory,
+// by inspecting its `codegen-manifest.json`.
+func LoadBaseline(dir, lang string) (map[string][]byte, error) {
+	cm := &codegenManifest{}
+	err := cm.load(filepath.Join(dir, lang))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to load codegen-manifest.json: %w", err)
 	}
 
-	return func(path string) bool {
-		path = strings.ReplaceAll(path, "\\", "/")
-		_, ignoredPath := ignoredPathSet[path]
-		return ignoredPath
-	}, nil
+	files := make(map[string][]byte)
+
+	for _, f := range cm.EmittedFiles {
+		bytes, err := ioutil.ReadFile(filepath.Join(dir, lang, f))
+		if err != nil {
+			return nil, fmt.Errorf("Failed to load file %s referenced in codegen-manifest.json: %w", f, err)
+		}
+		files[f] = bytes
+	}
+
+	return files, nil
 }
 
-// LoadBaseline loads the contents of the given baseline directory.
-func LoadBaseline(dir, lang string) (map[string][]byte, error) {
-	dir = filepath.Join(dir, lang)
+type codegenManifest struct {
+	EmittedFiles []string `json:"emittedFiles"`
+}
 
-	fs := map[string][]byte{}
-
-	ignore, err := loadIgnoreMap(dir)
+func (cm *codegenManifest) load(dir string) error {
+	bytes, err := ioutil.ReadFile(filepath.Join(dir, "codegen-manifest.json"))
 	if err != nil {
-		return nil, err
+		return err
 	}
+	return json.Unmarshal(bytes, cm)
+}
 
-	if err := loadDirectory(fs, dir, dir, ignore); err != nil {
-		return nil, err
+func (cm *codegenManifest) save(dir string) error {
+	sort.Strings(cm.EmittedFiles)
+	buf := &bytes.Buffer{}
+	enc := json.NewEncoder(buf)
+	enc.SetIndent("", "  ")
+	err := enc.Encode(cm)
+	if err != nil {
+		return err
 	}
-	return fs, nil
+	data := buf.Bytes()
+	return ioutil.WriteFile(filepath.Join(dir, "codegen-manifest.json"), data, 0600)
 }
 
 // ValidateFileEquality compares maps of files for equality.
@@ -234,6 +171,8 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 		return false
 	}
 
+	cm := &codegenManifest{}
+
 	baseline := filepath.Join(dir, lang)
 
 	// Remove the baseline directory's current contents.
@@ -251,10 +190,13 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 	for file, bytes := range actual {
 		relPath := filepath.FromSlash(file)
 		path := filepath.Join(dir, lang, relPath)
-
+		cm.EmittedFiles = append(cm.EmittedFiles, relPath)
 		err := writeFileEnsuringDir(path, bytes)
 		require.NoError(t, err)
 	}
+
+	err = cm.save(filepath.Join(dir, lang))
+	require.NoError(t, err)
 
 	return true
 }

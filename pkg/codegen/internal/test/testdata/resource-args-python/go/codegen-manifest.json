@@ -1,0 +1,11 @@
+{
+  "emittedFiles": [
+    "example/doc.go",
+    "example/init.go",
+    "example/person.go",
+    "example/pet.go",
+    "example/provider.go",
+    "example/pulumiTypes.go",
+    "example/pulumiUtilities.go"
+  ]
+}
