@@ -121,7 +121,7 @@ func (mod *modContext) tokenToModName(tok string) string {
 
 func (mod *modContext) namingContext(pkg *schema.Package) (namingCtx *modContext, pkgName string, external bool) {
 	namingCtx = mod
-	if pkg != nil && pkg.Name != mod.pkg.Name {
+	if pkg != nil && pkg != mod.pkg {
 		external = true
 		pkgName = pkg.Name + "."
 
@@ -1075,7 +1075,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		return true
 	case *schema.ObjectType:
 		// If it's from another package, add an import for the external package.
-		if t.Package != nil && t.Package.Name != mod.pkg.Name {
+		if t.Package != nil && t.Package != mod.pkg {
 			pkg := t.Package.Name
 			if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
 				externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", fmt.Sprintf("pulumi%s", title(pkg)), imp))
@@ -1091,7 +1091,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		return true
 	case *schema.ResourceType:
 		// If it's from another package, add an import for the external package.
-		if t.Resource != nil && t.Resource.Package.Name != mod.pkg.Name {
+		if t.Resource != nil && t.Resource.Package != mod.pkg {
 			pkg := t.Resource.Package.Name
 			if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
 				externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", fmt.Sprintf("pulumi%s", title(pkg)), imp))

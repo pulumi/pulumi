@@ -52,10 +52,9 @@ func testGeneratedPackage(t *testing.T, pwd string) {
 }
 
 func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	p := *pkg
 	return GeneratePackageWithOptions(&GeneratePackageOptions{
 		Tool:                        tool,
-		Pkg:                         &p,
+		Pkg:                         pkg,
 		ExtraFiles:                  extraFiles,
 		ExtraFilesInPackageMetadata: []string{},
 	})
