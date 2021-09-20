@@ -115,6 +115,10 @@ var sdkTests = []sdkTest{
 		Description:      "A resource with the same name as it's property",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 	},
+	{
+		Directory:   "hyphen-url",
+		Description: "A resource url with a hyphen in it's path",
+	},
 }
 
 type checkPackageSignature = func(t *testing.T, pwd string)

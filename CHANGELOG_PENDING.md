@@ -22,3 +22,6 @@
 
 - [sdk/{go,dotnet}] - Thread replaceOnChanges through Go and .NET
   [#7967](https://github.com/pulumi/pulumi/pull/7967)
+
+- [codegen/nodejs] - Correctly handle hyphenated imports
+  [#7993](https://github.com/pulumi/pulumi/pull/7993)

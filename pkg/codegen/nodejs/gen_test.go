@@ -4,6 +4,7 @@ package nodejs
 import (
 	"bytes"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -43,6 +44,11 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 
 	err = integration.RunCommand(t, "npm install", []string{npm, "i"}, pwd, &cmdOptions)
 	require.NoError(t, err)
+
+	// We increase the amount of memory node can use. We get OOM otherwise.
+	nodeOptions := []string{os.Getenv("NODE_OPTIONS"), "--max_old_space_size=4096"}
+	err = os.Setenv("NODE_OPTIONS", strings.Join(nodeOptions, " "))
+	require.NoError(t, err)
 	err = integration.RunCommand(t, "typecheck ts",
 		[]string{filepath.Join(".", "node_modules", ".bin", "tsc"), "--noEmit"}, pwd, &cmdOptions)
 	if err != nil {
@@ -73,4 +79,28 @@ func TestGenerateTypeNames(t *testing.T) {
 			return root.typeString(t, false, nil)
 		}
 	})
+}
+
+func TestPascalCases(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{
+			input:    "hi",
+			expected: "Hi",
+		},
+		{
+			input:    "NothingChanges",
+			expected: "NothingChanges",
+		},
+		{
+			input:    "everything-changed",
+			expected: "EverythingChanged",
+		},
+	}
+	for _, tt := range tests {
+		result := pascal(tt.input)
+		require.Equal(t, tt.expected, result)
+	}
 }
