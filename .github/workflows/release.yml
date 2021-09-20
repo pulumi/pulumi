@@ -300,7 +300,7 @@ jobs:
         node-version: [ 14.x ]
 
         # See scripts/tests_subsets.py when editing
-        test-subset: [ integration, auto-and-lifecycletest, native, etc ]
+        test-subset: [ native, etc ]
 
         exclude:
           - platform: macos-latest
