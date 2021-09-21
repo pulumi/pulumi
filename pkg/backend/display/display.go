@@ -39,7 +39,7 @@ func ShowEvents(
 	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
 
 	if opts.EventLogPath != "" {
-		events, done = startEventLogger(events, done, opts.EventLogPath)
+		events, done = startEventLogger(events, done, opts)
 	}
 
 	if opts.JSONDisplay {
@@ -64,13 +64,9 @@ func ShowEvents(
 	}
 }
 
-func cleanColorRenderingChars(s string) string {
-	return colors.Never.Colorize(s)
-}
-
-func startEventLogger(events <-chan engine.Event, done chan<- bool, path string) (<-chan engine.Event, chan<- bool) {
+func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options) (<-chan engine.Event, chan<- bool) {
 	// Before moving further, attempt to open the log file.
-	logFile, err := os.Create(path)
+	logFile, err := os.Create(opts.EventLogPath)
 	if err != nil {
 		logging.V(7).Infof("could not create event log: %v", err)
 		return events, done
@@ -94,10 +90,21 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, path string)
 			apiEvent.Sequence, sequence = sequence, sequence+1
 			apiEvent.Timestamp = int(time.Now().Unix())
 
-			// If this is a diagnostic event, clean up the color directives from the emitted log.
-			if apiEvent.DiagnosticEvent != nil {
-				apiEvent.DiagnosticEvent.Message = cleanColorRenderingChars(apiEvent.DiagnosticEvent.Message)
-				apiEvent.DiagnosticEvent.Prefix = cleanColorRenderingChars(apiEvent.DiagnosticEvent.Prefix)
+			// If opts.Color == "never" (i.e. NO_COLOR is specified or --color=never), clean up the color directives
+			// from the emitted logs.
+			if opts.Color == colors.Never {
+				switch {
+				case apiEvent.DiagnosticEvent != nil:
+					apiEvent.DiagnosticEvent.Message = colors.Never.Colorize(apiEvent.DiagnosticEvent.Message)
+					apiEvent.DiagnosticEvent.Prefix = colors.Never.Colorize(apiEvent.DiagnosticEvent.Prefix)
+					apiEvent.DiagnosticEvent.Color = string(colors.Never)
+				case apiEvent.StdoutEvent != nil:
+					apiEvent.StdoutEvent.Message = colors.Never.Colorize(apiEvent.StdoutEvent.Message)
+					apiEvent.StdoutEvent.Color = string(colors.Never)
+				case apiEvent.PolicyEvent != nil:
+					apiEvent.PolicyEvent.Message = colors.Never.Colorize(apiEvent.PolicyEvent.Message)
+					apiEvent.PolicyEvent.Color = string(colors.Never)
+				}
 			}
 
 			return encoder.Encode(apiEvent)
