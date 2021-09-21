@@ -21,10 +21,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	resource_testing "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -434,4 +437,36 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, fmt.Sprintf("resource '%s' has 'custom' false but non-empty ID", urn), err.Error())
+}
+
+func TestSerializePropertyValue(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue)
+		_, err := SerializePropertyValue(v, config.NopEncrypter, false)
+		assert.NoError(t, err)
+	})
+}
+
+func TestRoundTripPropertyValue(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		original := resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue)
+
+		object, err := SerializePropertyValue(original, config.NopEncrypter, false)
+		require.NoError(t, err)
+
+		wire, err := json.Marshal(object)
+		require.NoError(t, err)
+
+		var wireObject interface{}
+		err = json.Unmarshal(wire, &wireObject)
+		require.NoError(t, err)
+
+		deserialized, err := DeserializePropertyValue(wireObject, config.NopDecrypter, config.NopEncrypter)
+		require.NoError(t, err)
+
+		if !assert.True(t, deserialized.DeepEquals(original)) {
+			t.Logf("original: %#v", original)
+			t.Logf("deserialized: %#v", deserialized)
+		}
+	})
 }
