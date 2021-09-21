@@ -357,6 +357,7 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 			return false
 		}
 
+		// Note that the dependencies are assumed to be sorted.
 		if len(vo.Dependencies) != len(oo.Dependencies) {
 			return false
 		}

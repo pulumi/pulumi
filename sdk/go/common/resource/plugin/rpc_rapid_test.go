@@ -71,15 +71,15 @@ func stringValue(s string) *structpb.Value {
 	}
 }
 
-// UnknownGenerator generates the unknown resource.PropertyValue.
-func UnknownGenerator() *rapid.Generator {
+// UnknownValueGenerator generates the unknown *structpb.Value.
+func UnknownValueGenerator() *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		return rapid.Just(stringValue(UnknownStringValue)).Draw(t, "unknowns").(*structpb.Value)
 	})
 }
 
-// NullGenerator generates the null resource.PropertyValue.
-func NullGenerator() *rapid.Generator {
+// NullValueGenerator generates the null *structpb.Value.
+func NullValueGenerator() *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		return rapid.Just(&structpb.Value{
 			Kind: &structpb.Value_NullValue{
@@ -89,8 +89,8 @@ func NullGenerator() *rapid.Generator {
 	})
 }
 
-// BoolGenerator generates boolean resource.PropertyValues.
-func BoolGenerator() *rapid.Generator {
+// BoolValueGenerator generates boolean *structpb.Values.
+func BoolValueGenerator() *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		return &structpb.Value{
 			Kind: &structpb.Value_BoolValue{
@@ -100,8 +100,8 @@ func BoolGenerator() *rapid.Generator {
 	})
 }
 
-// NumberGenerator generates numeric resource.PropertyValues.
-func NumberGenerator() *rapid.Generator {
+// NumberValueGenerator generates numeric *structpb.Values.
+func NumberValueGenerator() *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		return &structpb.Value{
 			Kind: &structpb.Value_NumberValue{
@@ -111,15 +111,15 @@ func NumberGenerator() *rapid.Generator {
 	})
 }
 
-// StringGenerator generates string resource.PropertyValues.
-func StringGenerator() *rapid.Generator {
+// StringValueGenerator generates string *structpb.Values.
+func StringValueGenerator() *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		return stringValue(rapid.String().Draw(t, "strings").(string))
 	})
 }
 
-// TextAssetGenerator generates textual *resource.Asset values.
-func TextAssetGenerator() *rapid.Generator {
+// TextAssetValueGenerator generates textual asset *structpb.Values.
+func TextAssetValueGenerator() *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		return &structpb.Value{
 			Kind: &structpb.Value_StructValue{
@@ -134,17 +134,17 @@ func TextAssetGenerator() *rapid.Generator {
 	})
 }
 
-// AssetGenerator generates *resource.Asset values.
-func AssetGenerator() *rapid.Generator {
-	return TextAssetGenerator()
+// AssetValueGenerator generates *structpb.Values.
+func AssetValueGenerator() *rapid.Generator {
+	return TextAssetValueGenerator()
 }
 
-// LiteralArchiveGenerator generates *resource.Archive values with literal archive contents.
-func LiteralArchiveGenerator(maxDepth int) *rapid.Generator {
+// LiteralArchiveValueGenerator generates *structpb.Values with literal archive contents.
+func LiteralArchiveValueGenerator(maxDepth int) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		var contentsGenerator *rapid.Generator
 		if maxDepth > 0 {
-			contentsGenerator = rapid.MapOfN(rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`), rapid.OneOf(AssetGenerator(), ArchiveGenerator(maxDepth-1)), 0, 16)
+			contentsGenerator = rapid.MapOfN(rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`), rapid.OneOf(AssetValueGenerator(), ArchiveValueGenerator(maxDepth-1)), 0, 16)
 		} else {
 			contentsGenerator = rapid.Just(map[string]*structpb.Value{})
 		}
@@ -168,20 +168,20 @@ func LiteralArchiveGenerator(maxDepth int) *rapid.Generator {
 	})
 }
 
-// ArchiveGenerator generates *resource.Archive values.
-func ArchiveGenerator(maxDepth int) *rapid.Generator {
-	return LiteralArchiveGenerator(maxDepth)
+// ArchiveValueGenerator generates archive *structpb.Values.
+func ArchiveValueGenerator(maxDepth int) *rapid.Generator {
+	return LiteralArchiveValueGenerator(maxDepth)
 }
 
-// ResourceReferenceGenerator generates resource.ResourceReference values.
-func ResourceReferenceGenerator() *rapid.Generator {
+// ResourceReferenceValueGenerator generates resource reference *structpb.Values.
+func ResourceReferenceValueGenerator() *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		fields := map[string]*structpb.Value{
 			resource.SigKey: stringValue(resource.ResourceReferenceSig),
 			"urn":           stringValue(string(resource_testing.URNGenerator().Draw(t, "referenced URN").(resource.URN))),
 		}
 
-		id := rapid.OneOf(UnknownGenerator(), StringGenerator()).Draw(t, "referenced ID").(*structpb.Value)
+		id := rapid.OneOf(UnknownValueGenerator(), StringValueGenerator()).Draw(t, "referenced ID").(*structpb.Value)
 		if id.Kind.(*structpb.Value_StringValue).StringValue != UnknownStringValue {
 			fields["id"] = id
 		}
@@ -201,9 +201,9 @@ func ResourceReferenceGenerator() *rapid.Generator {
 	})
 }
 
-// ArrayGenerator generates array resource.PropertyValues. The maxDepth parameter controls the maximum
+// ArrayValueGenerator generates array *structpb.Values. The maxDepth parameter controls the maximum
 // depth of the elements of the array.
-func ArrayGenerator(maxDepth int) *rapid.Generator {
+func ArrayValueGenerator(maxDepth int) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		return &structpb.Value{
 			Kind: &structpb.Value_ListValue{
@@ -215,9 +215,9 @@ func ArrayGenerator(maxDepth int) *rapid.Generator {
 	})
 }
 
-// ObjectGenerator generates resource.PropertyMap values. The maxDepth parameter controls the maximum
+// ObjectValueGenerator generates *structpb.Values. The maxDepth parameter controls the maximum
 // depth of the elements of the map.
-func ObjectGenerator(maxDepth int) *rapid.Generator {
+func ObjectValueGenerator(maxDepth int) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		return &structpb.Value{
 			Kind: &structpb.Value_StructValue{
@@ -229,9 +229,9 @@ func ObjectGenerator(maxDepth int) *rapid.Generator {
 	})
 }
 
-// OutputGenerator generates output resource.PropertyValues. The maxDepth parameter controls the maximum
+// OutputValueGenerator generates output *structpb.Values. The maxDepth parameter controls the maximum
 // depth of the resolved value of the output, if any.
-func OutputGenerator(maxDepth int) *rapid.Generator {
+func OutputValueGenerator(maxDepth int) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		fields := map[string]*structpb.Value{
 			resource.SigKey: stringValue(resource.OutputValueSig),
@@ -274,9 +274,9 @@ func OutputGenerator(maxDepth int) *rapid.Generator {
 	})
 }
 
-// SecretGenerator generates secret resource.PropertyValues. The maxDepth parameter controls the maximum
+// SecretValueGenerator generates secret *structpb.Values. The maxDepth parameter controls the maximum
 // depth of the plaintext value of the secret, if any.
-func SecretGenerator(maxDepth int) *rapid.Generator {
+func SecretValueGenerator(maxDepth int) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
 		return &structpb.Value{
 			Kind: &structpb.Value_StructValue{
@@ -291,25 +291,25 @@ func SecretGenerator(maxDepth int) *rapid.Generator {
 	})
 }
 
-// ValueGenerator generates arbitrary resource.PropertyValues. The maxDepth parameter controls the maximum
+// ValueGenerator generates arbitrary *structpb.Values. The maxDepth parameter controls the maximum
 // number of times the generator may recur.
 func ValueGenerator(maxDepth int) *rapid.Generator {
 	choices := []*rapid.Generator{
-		UnknownGenerator(),
-		NullGenerator(),
-		BoolGenerator(),
-		NumberGenerator(),
-		StringGenerator(),
-		AssetGenerator(),
-		ResourceReferenceGenerator(),
+		UnknownValueGenerator(),
+		NullValueGenerator(),
+		BoolValueGenerator(),
+		NumberValueGenerator(),
+		StringValueGenerator(),
+		AssetValueGenerator(),
+		ResourceReferenceValueGenerator(),
 	}
 	if maxDepth > 0 {
 		choices = append(choices,
-			ArchiveGenerator(maxDepth),
-			ArrayGenerator(maxDepth),
-			ObjectGenerator(maxDepth),
-			OutputGenerator(maxDepth),
-			SecretGenerator(maxDepth))
+			ArchiveValueGenerator(maxDepth),
+			ArrayValueGenerator(maxDepth),
+			ObjectValueGenerator(maxDepth),
+			OutputValueGenerator(maxDepth),
+			SecretValueGenerator(maxDepth))
 	}
 	return rapid.OneOf(choices...)
 }
