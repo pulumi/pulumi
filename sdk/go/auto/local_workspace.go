@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -518,10 +518,10 @@ func validatePulumiVersion(minVersion semver.Version, currentVersion semver.Vers
 		return nil
 	}
 	if minVersion.Major < currentVersion.Major {
-		return errors.New(fmt.Sprintf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major))
+		return errors.Errorf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major)
 	}
 	if minVersion.GT(currentVersion) {
-		return errors.New(fmt.Sprintf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion))
+		return errors.Errorf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion)
 	}
 	return nil
 }
