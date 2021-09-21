@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +16,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -942,4 +943,39 @@ func TestJSONOutputWithStreamingPreview(t *testing.T) {
 			}
 		},
 	})
+}
+
+// nolint: unused,deadcode
+func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_output_values"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		// TODO[pulumi/pulumi#8155]: Uncomment when unmarshaling output values is enabled in the Node.js provider APIs.
+		// {
+		// 	componentDir: "testcomponent",
+		// },
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          append(test.env, pathEnv),
+				Dir:          filepath.Join(testDir, lang),
+				Dependencies: dependencies,
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+			})
+		})
+	}
 }

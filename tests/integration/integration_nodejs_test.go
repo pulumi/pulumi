@@ -1167,3 +1167,7 @@ func TestAboutNodeJS(t *testing.T) {
 	assert.Containsf(t, stdout, "@types/node",
 		"Did not contain expected output. stderr: \n%q", stderr)
 }
+
+func TestConstructOutputValuesNode(t *testing.T) {
+	testConstructOutputValues(t, "nodejs", "@pulumi/pulumi")
+}

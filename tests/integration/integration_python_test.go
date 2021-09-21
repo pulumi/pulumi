@@ -1111,3 +1111,7 @@ func TestAboutPython(t *testing.T) {
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "pulumi-kubernetes")
 }
+
+func TestConstructOutputValuesPython(t *testing.T) {
+	testConstructOutputValues(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
