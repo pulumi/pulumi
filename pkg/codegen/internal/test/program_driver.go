@@ -16,10 +16,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 type programTest struct {
-	ProgramFile    string
+	Name           string
 	Description    string
 	Skip           codegen.StringSet
 	ExpectNYIDiags codegen.StringSet
@@ -29,68 +32,123 @@ var testdataPath = filepath.Join("..", "internal", "test", "testdata")
 
 var programTests = []programTest{
 	{
-		ProgramFile:    "aws-s3-folder",
+		Name:           "aws-s3-folder",
 		Description:    "AWS S3 Folder",
 		ExpectNYIDiags: codegen.NewStringSet("python", "nodejs", "dotnet"),
 	},
 	{
-		ProgramFile: "aws-eks",
+		Name:        "aws-eks",
 		Description: "AWS EKS",
 	},
 	{
-		ProgramFile: "aws-fargate",
+		Name:        "aws-fargate",
 		Description: "AWS Fargate",
 	},
 	{
-		ProgramFile: "aws-s3-logging",
+		Name:        "aws-s3-logging",
 		Description: "AWS S3 with logging",
 	},
 	{
-		ProgramFile: "aws-webserver",
+		Name:        "aws-webserver",
 		Description: "AWS Webserver",
 	},
 	{
-		ProgramFile: "azure-native",
+		Name:        "azure-native",
 		Description: "Azure Native",
 		Skip:        codegen.NewStringSet("go"),
 	},
 	{
-		ProgramFile: "azure-sa",
+		Name:        "azure-sa",
 		Description: "Azure SA",
 	},
 	{
-		ProgramFile: "kubernetes-operator",
+		Name:        "kubernetes-operator",
 		Description: "K8s Operator",
 	},
 	{
-		ProgramFile: "kubernetes-pod",
+		Name:        "kubernetes-pod",
 		Description: "K8s Pod",
 	},
 	{
-		ProgramFile: "kubernetes-template",
+		Name:        "kubernetes-template",
 		Description: "K8s Template",
 	},
 	{
-		ProgramFile: "random-pet",
+		Name:        "random-pet",
 		Description: "Random Pet",
 	},
 	{
-		ProgramFile: "resource-options",
+		Name:        "resource-options",
 		Description: "Resource Options",
 	},
 	{
-		ProgramFile: "secret",
+		Name:        "secret",
 		Description: "Secret",
 	},
 	{
-		ProgramFile: "functions",
+		Name:        "functions",
 		Description: "Functions",
 	},
 }
 
-type langConfig struct {
+var langConfig = map[string]struct {
 	extension  string
 	outputFile string
+	// Will be called on the generated file
+	check func(*testing.T, string)
+}{
+	"python": {
+		extension:  "py",
+		outputFile: "__main__.py",
+		check: func(t *testing.T, filePath string) {
+			ex, _, err := python.CommandPath()
+
+			assert.NoError(t, err)
+			err = integration.RunCommand(t, "python syntax check",
+				[]string{ex, "-m", "py_compile", filePath}, ".", &integration.ProgramTestOptions{})
+			assert.NoError(t, err)
+		},
+	},
+	"nodejs": {
+		extension:  "ts",
+		outputFile: "index.ts",
+	},
+	"go": {
+		extension:  "go",
+		outputFile: "main.go",
+		check: func(t *testing.T, path string) {
+			dir := filepath.Base(path)
+			ex, err := executable.FindExecutable("go")
+			assert.NoError(t, err)
+			_, err = ioutil.ReadFile("go.mod")
+			if os.IsNotExist(err) {
+				err = integration.RunCommand(t, "generate go.mod",
+					[]string{ex, "mod", "init", "test_mod"},
+					dir, &integration.ProgramTestOptions{})
+				assert.NoError(t, err)
+				err = integration.RunCommand(t, "go tidy",
+					[]string{ex, "mod", "tidy"},
+					dir, &integration.ProgramTestOptions{})
+				assert.NoError(t, err)
+				defer func() {
+					// If we created the module, we also remove the module
+					err = os.Remove(filepath.Join(dir, "go.mod"))
+					assert.NoError(t, err)
+					err = os.Remove(filepath.Join(dir, "go.sum"))
+					assert.NoError(t, err)
+				}()
+			} else {
+				assert.NoError(t, err)
+			}
+			err = integration.RunCommand(t, "test build", []string{ex, "build"},
+				dir, &integration.ProgramTestOptions{})
+			assert.NoError(t, err)
+		},
+	},
+	"dotnet": {
+		extension:  "cs",
+		outputFile: "MyStack.cs",
+	},
 }
 
 // TestProgramCodegen runs the complete set of program code generation tests against a particular
@@ -119,53 +177,28 @@ func TestProgramCodegen(
 				expectNYIDiags = true
 			}
 
-			var cfg langConfig
+			var cfg = langConfig[language]
 
-			switch language {
-			case "python":
-				cfg = langConfig{
-					extension:  "py",
-					outputFile: "__main__.py",
-				}
-			case "nodejs":
-				cfg = langConfig{
-					extension:  "ts",
-					outputFile: "index.ts",
-				}
-			case "go":
-				cfg = langConfig{
-					extension:  "go",
-					outputFile: "main.go",
-				}
-			case "dotnet":
-				cfg = langConfig{
-					extension:  "cs",
-					outputFile: "MyStack.cs",
-				}
-			default:
-				t.Fatalf("language %s not recognized", language)
-			}
-
-			testDir := filepath.Join(testdataPath, tt.ProgramFile+"-pp")
+			testDir := filepath.Join(testdataPath, tt.Name+"-pp")
 			err = os.Mkdir(testDir, 0700)
 			if err != nil && !os.IsExist(err) {
 				t.Fatalf("Failed to create %q: %s", testDir, err)
 			}
 
-			pclFile := filepath.Join(testDir, tt.ProgramFile+".pp")
+			pclFile := filepath.Join(testDir, tt.Name+".pp")
 			contents, err := ioutil.ReadFile(pclFile)
 			if err != nil {
 				t.Fatalf("could not read %v: %v", pclFile, err)
 			}
 
-			expectedFile := filepath.Join(testDir, tt.ProgramFile+"."+cfg.extension)
+			expectedFile := filepath.Join(testDir, tt.Name+"."+cfg.extension)
 			expected, err := ioutil.ReadFile(expectedFile)
 			if err != nil && os.Getenv("PULUMI_ACCEPT") == "" {
 				t.Fatalf("could not read %v: %v", expectedFile, err)
 			}
 
 			parser := syntax.NewParser()
-			err = parser.ParseFile(bytes.NewReader(contents), tt.ProgramFile+".pp")
+			err = parser.ParseFile(bytes.NewReader(contents), tt.Name+".pp")
 			if err != nil {
 				t.Fatalf("could not read %v: %v", pclFile, err)
 			}
@@ -199,10 +232,12 @@ func TestProgramCodegen(
 			if os.Getenv("PULUMI_ACCEPT") != "" {
 				err := ioutil.WriteFile(expectedFile, files[cfg.outputFile], 0600)
 				require.NoError(t, err)
-				return
+			} else {
+				assert.Equal(t, string(expected), string(files[cfg.outputFile]))
 			}
-
-			assert.Equal(t, string(expected), string(files[cfg.outputFile]))
+			if cfg.check != nil {
+				cfg.check(t, expectedFile)
+			}
 		})
 	}
 }
