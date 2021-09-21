@@ -25,25 +25,25 @@ import (
 
 // projectSingleton is a singleton instance of projectLoader, which controls a global map of instances of Project
 // configs (one per path).
-var projectSingleton *projectLoader = &projectLoader{
+var projectSingleton = &projectLoader{
 	internal: map[string]*Project{},
 }
 
 // projectStackSingleton is a singleton instance of projectStackLoader, which controls a global map of instances of
 // ProjectStack configs (one per path).
-var projectStackSingleton *projectStackLoader = &projectStackLoader{
+var projectStackSingleton = &projectStackLoader{
 	internal: map[string]*ProjectStack{},
 }
 
 // pluginProjectSingleton is a singleton instance of pluginProjectLoader, which controls a global map of instances of
 // PluginProject configs (one per path).
-var pluginProjectSingleton *pluginProjectLoader = &pluginProjectLoader{
+var pluginProjectSingleton = &pluginProjectLoader{
 	internal: map[string]*PluginProject{},
 }
 
 // policyPackProjectSingleton is a singleton instance of policyPackProjectLoader, which controls a global map of
 // instances of PolicyPackProject configs (one per path).
-var policyPackProjectSingleton *policyPackProjectLoader = &policyPackProjectLoader{
+var policyPackProjectSingleton = &policyPackProjectLoader{
 	internal: map[string]*PolicyPackProject{},
 }
 

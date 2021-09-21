@@ -928,10 +928,7 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 	if err := genTypes("_inputs.py", true); err != nil {
 		return err
 	}
-	if err := genTypes("outputs.py", false); err != nil {
-		return err
-	}
-	return nil
+	return genTypes("outputs.py", false)
 }
 
 func awaitableTypeNames(tok string) (baseName, awaitableName string) {
