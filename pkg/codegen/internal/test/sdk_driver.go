@@ -188,7 +188,7 @@ type SDKCodegenOptions struct {
 // The system will copy `go-extras/tests/go_test.go` into
 // `go/tests/go_test.go` before performing compilation and unit test
 // checks over the project generated in `go`.
-func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) {
+func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-line
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 
 	for _, tt := range sdkTests {
