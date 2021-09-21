@@ -108,6 +108,7 @@ func TestProgramCodegen(
 ) {
 	for _, tt := range programTests {
 		t.Run(tt.Description, func(t *testing.T) {
+			var err error
 			if tt.Skip.Has(language) {
 				t.Skip()
 				return
@@ -145,13 +146,19 @@ func TestProgramCodegen(
 				t.Fatalf("language %s not recognized", language)
 			}
 
-			pclFile := filepath.Join(testdataPath, tt.ProgramFile+".pp")
+			testDir := filepath.Join(testdataPath, tt.ProgramFile+"-pp")
+			err = os.Mkdir(testDir, 0700)
+			if err != nil && !os.IsExist(err) {
+				t.Fatalf("Failed to create %q: %s", testDir, err)
+			}
+
+			pclFile := filepath.Join(testDir, tt.ProgramFile+".pp")
 			contents, err := ioutil.ReadFile(pclFile)
 			if err != nil {
 				t.Fatalf("could not read %v: %v", pclFile, err)
 			}
 
-			expectedFile := pclFile + "." + cfg.extension
+			expectedFile := filepath.Join(testDir, tt.ProgramFile+"."+cfg.extension)
 			expected, err := ioutil.ReadFile(expectedFile)
 			if err != nil && os.Getenv("PULUMI_ACCEPT") == "" {
 				t.Fatalf("could not read %v: %v", expectedFile, err)
