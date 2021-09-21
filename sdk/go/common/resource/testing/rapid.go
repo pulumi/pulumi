@@ -31,7 +31,7 @@ func URNGenerator() *rapid.Generator {
 // IDGenerator generates legal resource.ID values.
 func IDGenerator() *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) resource.ID {
-		return resource.ID(rapid.String().Draw(t, "ids").(string))
+		return resource.ID(rapid.StringMatching(`..*`).Draw(t, "ids").(string))
 	})
 }
 
@@ -126,9 +126,14 @@ func ArchivePropertyGenerator(maxDepth int) *rapid.Generator {
 // ResourceReferenceGenerator generates resource.ResourceReference values.
 func ResourceReferenceGenerator() *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) resource.ResourceReference {
+		id := rapid.OneOf(UnknownPropertyGenerator(), StringPropertyGenerator()).Draw(t, "referenced ID").(resource.PropertyValue)
+		if id.IsString() && id.StringValue() == "" {
+			id = resource.PropertyValue{}
+		}
+
 		return resource.ResourceReference{
 			URN:            URNGenerator().Draw(t, "referenced URN").(resource.URN),
-			ID:             rapid.OneOf(UnknownPropertyGenerator(), StringPropertyGenerator()).Draw(t, "referenced ID").(resource.PropertyValue),
+			ID:             id,
 			PackageVersion: SemverStringGenerator().Draw(t, "package version").(string),
 		}
 	})

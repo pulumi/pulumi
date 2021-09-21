@@ -182,7 +182,7 @@ func ResourceReferenceValueGenerator() *rapid.Generator {
 		}
 
 		id := rapid.OneOf(UnknownValueGenerator(), StringValueGenerator()).Draw(t, "referenced ID").(*structpb.Value)
-		if id.Kind.(*structpb.Value_StringValue).StringValue != UnknownStringValue {
+		if idstr := id.Kind.(*structpb.Value_StringValue).StringValue; idstr != "" && idstr != UnknownStringValue {
 			fields["id"] = id
 		}
 

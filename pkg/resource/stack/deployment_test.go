@@ -472,7 +472,7 @@ func replaceOutputsWithComputed(v resource.PropertyValue) resource.PropertyValue
 	case v.IsOutput():
 		return resource.MakeComputed(resource.NewStringProperty(""))
 	case v.IsSecret():
-		replaceOutputsWithComputed(v.SecretValue().Element)
+		v.SecretValue().Element = replaceOutputsWithComputed(v.SecretValue().Element)
 	}
 	return v
 }
@@ -573,7 +573,7 @@ func ResourceReferenceObjectGenerator() *rapid.Generator {
 		}
 
 		id := rapid.OneOf(UnknownObjectGenerator(), StringObjectGenerator()).Draw(t, "referenced ID")
-		if id.(string) != computedValuePlaceholder {
+		if idstr := id.(string); idstr != "" && idstr != computedValuePlaceholder {
 			fields["id"] = id
 		}
 
