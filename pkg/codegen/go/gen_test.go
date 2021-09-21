@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -97,19 +96,18 @@ func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
 	goExe, err := executable.FindExecutable("go")
 	require.NoError(t, err)
 
-	// Remove existing `go.mod` first otherise `go mod init` fails.
 	goMod := filepath.Join(codeDir, "go.mod")
 	alreadyHaveGoMod, err := test.PathExists(goMod)
-
 	require.NoError(t, err)
+
 	if alreadyHaveGoMod {
-		err := os.Remove(goMod)
-		require.NoError(t, err)
+		t.Logf("Found an existing go.mod, leaving as is")
+	} else {
+		runCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
+		replacement := fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", sdk)
+		runCommand(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
 	}
 
-	runCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
-	replacement := fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", sdk)
-	runCommand(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
 	runCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
 	runCommand(t, "go_build", codeDir, goExe, "build", "-v", "all")
 }
