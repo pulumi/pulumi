@@ -573,7 +573,7 @@ func TestConfigPaths(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 
-//nolint:golint,deadcode
+//nolint:deadcode
 func pathEnv(t *testing.T, path ...string) string {
 	pathEnv := []string{os.Getenv("PATH")}
 	for _, p := range path {
@@ -591,12 +591,12 @@ func pathEnv(t *testing.T, path ...string) string {
 	return "PATH=" + strings.Join(pathEnv, pathSeparator)
 }
 
-//nolint:golint,deadcode
+//nolint:deadcode
 func testComponentSlowPathEnv(t *testing.T) string {
 	return pathEnv(t, filepath.Join("construct_component_slow", "testcomponent"))
 }
 
-//nolint:golint,deadcode
+//nolint:deadcode
 func testComponentPlainPathEnv(t *testing.T) string {
 	return pathEnv(t, filepath.Join("construct_component_plain", "testcomponent"))
 }
