@@ -630,7 +630,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			// Otherwise, it's just a weakly typed object map.
 			return resource.NewObjectProperty(obj), nil
 		default:
-			contract.Failf("Unrecognized property type: %v", reflect.ValueOf(v))
+			contract.Failf("Unrecognized property type %T: %v", v, reflect.ValueOf(v))
 		}
 	}
 
