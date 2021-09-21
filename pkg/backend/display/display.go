@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -42,8 +43,10 @@ func ShowEvents(
 		events, done = startEventLogger(events, done, opts)
 	}
 
+	streamPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_STREAMING_JSON_PREVIEW"))
+
 	if opts.JSONDisplay {
-		if isPreview {
+		if isPreview && !streamPreview {
 			ShowPreviewDigest(op, action, events, done, opts)
 		} else {
 			ShowJSONEvents(events, done)
