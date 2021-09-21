@@ -37,7 +37,7 @@ func IDGenerator() *rapid.Generator {
 
 // SemverStringGenerator generates legal semver strings.
 func SemverStringGenerator() *rapid.Generator {
-	return rapid.StringMatching(`^v?(?P<major>0|[1-9]\\d*)\\.(?P<minor>0|[1-9]\\d*)\\.(?P<patch>0|[1-9]\\d*)(?:-(?P<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$`)
+	return rapid.StringMatching(`^v?(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
 }
 
 // UnknownPropertyGenerator generates the unknown resource.PropertyValue.
@@ -100,10 +100,10 @@ func AssetPropertyGenerator() *rapid.Generator {
 func LiteralArchiveGenerator(maxDepth int) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *resource.Archive {
 		var contentsGenerator *rapid.Generator
-		if maxDepth == 0 {
-			contentsGenerator = rapid.Just(map[string]interface{}{})
-		} else {
+		if maxDepth > 0 {
 			contentsGenerator = rapid.MapOfN(rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`), rapid.OneOf(AssetGenerator(), ArchiveGenerator(maxDepth-1)), 0, 16)
+		} else {
+			contentsGenerator = rapid.Just(map[string]interface{}{})
 		}
 		archive, err := resource.NewAssetArchive(contentsGenerator.Draw(t, "literal archive contents").(map[string]interface{}))
 		require.NoError(t, err)

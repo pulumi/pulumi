@@ -17,70 +17,38 @@ package plugin
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	resource_testing "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing"
 )
 
-func urnGen() *rapid.Generator {
-	return rapid.StringMatching(`urn:pulumi:a::b::c:d:e::[abcd][123]`).
-		Map(func(x string) resource.URN { return resource.URN(x) })
-}
-
-// Generates PropertyValue values.
-func propertyValueGen() *rapid.Generator {
-	return rapid.Just(resource.NewNullProperty())
-}
-
-// Generates Output values.
-func outputGen() *rapid.Generator {
-	propertyValueG := propertyValueGen()
-	urnsG := rapid.SliceOf(urnGen())
-	return rapid.Custom(func(t *rapid.T) resource.Output {
-		element := propertyValueG.Draw(t, "element").(resource.PropertyValue)
-		known := rapid.Bool().Draw(t, "known").(bool)
-		secret := rapid.Bool().Draw(t, "secret").(bool)
-		deps := urnsG.Draw(t, "dependencies").([]resource.URN)
-		return resource.Output{
-			Element:      element,
-			Known:        known,
-			Secret:       secret,
-			Dependencies: deps,
-		}
-	})
-}
-
-func normOutput(pv *resource.PropertyValue) {
-	if pv.IsOutput() {
-		out := pv.OutputValue()
-		if len(out.Dependencies) == 0 && out.Dependencies != nil {
-			out.Dependencies = nil
-		}
-		pv.V = out
-	}
+var marshalOpts = MarshalOptions{
+	KeepUnknowns:     true,
+	KeepSecrets:      true,
+	KeepResources:    true,
+	KeepOutputValues: true,
 }
 
 func TestOutputValueTurnaround(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		out := outputGen().Draw(t, "output").(resource.Output)
-		v := resource.NewOutputProperty(out)
+		v := resource_testing.OutputPropertyGenerator(1).Draw(t, "output").(resource.PropertyValue)
+		pb, err := MarshalPropertyValue("", v, marshalOpts)
+		require.NoError(t, err)
 
-		opts := MarshalOptions{KeepOutputValues: true}
-		pb, err := MarshalPropertyValue("", v, opts)
-		assert.NoError(t, err)
-		if err != nil {
-			t.FailNow()
-		}
-		v2, err := UnmarshalPropertyValue("", pb, opts)
-		assert.NoError(t, err)
-		if err != nil {
-			t.FailNow()
-		}
-		assert.NotNil(t, v2)
+		v2, err := UnmarshalPropertyValue("", pb, marshalOpts)
+		require.NoError(t, err)
+		require.NotNil(t, v2)
 
-		normOutput(&v)
-		normOutput(v2)
-		assert.Equal(t, v, *v2)
+		resource_testing.AssertEqualPropertyValues(t, v, *v2)
+	})
+}
+
+func TestSerializePropertyValues(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue)
+		_, err := MarshalPropertyValue("", v, marshalOpts)
+		require.NoError(t, err)
 	})
 }

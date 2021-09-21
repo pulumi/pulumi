@@ -342,6 +342,33 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 		return vid.DeepEquals(oid)
 	}
 
+	// Outputs are equal if each of their fields is deeply equal.
+	if v.IsOutput() {
+		if !other.IsOutput() {
+			return false
+		}
+		vo := v.OutputValue()
+		oo := other.OutputValue()
+
+		if vo.Known != oo.Known {
+			return false
+		}
+		if vo.Secret != oo.Secret {
+			return false
+		}
+
+		if len(vo.Dependencies) != len(oo.Dependencies) {
+			return false
+		}
+		for i, dep := range vo.Dependencies {
+			if dep != oo.Dependencies[i] {
+				return false
+			}
+		}
+
+		return vo.Element.DeepEquals(oo.Element)
+	}
+
 	// For all other cases, primitives are equal if their values are equal.
 	return v.V == other.V
 }
