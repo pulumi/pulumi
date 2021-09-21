@@ -209,7 +209,7 @@ jobs:
         node-version: [ 14.x ]
 
         # See scripts/tests_subsets.py when editing
-        test-subset: [ integration, auto-and-lifecycletest, native, etc ]
+        test-subset: [ integration, integration-and-codegen, auto, etc ]
 
     runs-on: ${{ matrix.platform }}
     steps:
