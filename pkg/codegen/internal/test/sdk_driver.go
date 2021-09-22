@@ -74,6 +74,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "resource-args-python-case-insensitive",
 		Description: "Resource args with same named resource and type case insensitive",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:   "resource-args-python",
@@ -135,11 +136,12 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "output-funcs",
 		Description:      "Test generation of $fn_Output helper forms",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, python, golang),
+		SkipCompileCheck: codegen.NewStringSet(dotnet, python),
 	},
 	{
 		Directory:   "hyphen-url",
 		Description: "A resource url with a hyphen in it's path",
+		Skip:        codegen.NewStringSet("nodejs/test"),
 	},
 }
 
