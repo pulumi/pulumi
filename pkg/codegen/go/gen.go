@@ -142,10 +142,8 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
-	modPkg, ok := pkg.packages[mod]
 	name = Title(name)
-
-	if ok {
+	if modPkg, ok := pkg.packages[mod]; ok {
 		newName, renamed := modPkg.renamed[name]
 		if renamed {
 			name = newName
@@ -180,10 +178,8 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
-	modPkg, ok := pkg.packages[mod]
 	name = Title(name)
-
-	if ok {
+	if modPkg, ok := pkg.packages[mod]; ok {
 		newName, renamed := modPkg.renamed[name]
 		if renamed {
 			name = newName
@@ -2592,11 +2588,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// handling any potential collisions via remapping along the way
 	scanType := func(t schema.Type) {
 		getNames := func(name, suffix string) []string {
-			names := []string{}
-			names = append(names, name+suffix)
-			names = append(names, name+suffix+"Input")
-			names = append(names, name+suffix+"Output")
-			return names
+			return []string{name + suffix, name + suffix + "Input", name + suffix + "Output"}
 		}
 
 		switch t := t.(type) {
