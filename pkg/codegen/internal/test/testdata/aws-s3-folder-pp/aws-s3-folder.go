@@ -7,8 +7,8 @@ import (
 	"mime"
 	"path"
 
-	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/iam"
-	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/s3"
+	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/iam"
+	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

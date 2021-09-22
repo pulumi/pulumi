@@ -26,6 +26,7 @@ type programTest struct {
 	Description    string
 	Skip           codegen.StringSet
 	ExpectNYIDiags codegen.StringSet
+	SkipCompile    codegen.StringSet
 }
 
 var testdataPath = filepath.Join("..", "internal", "test", "testdata")
@@ -35,27 +36,61 @@ var programTests = []programTest{
 		Name:           "aws-s3-folder",
 		Description:    "AWS S3 Folder",
 		ExpectNYIDiags: codegen.NewStringSet("python", "nodejs", "dotnet"),
+		SkipCompile:    codegen.NewStringSet("go", "python", "nodejs"),
+		// Blocked on nodejs:
+		// Program is invalid syntactically and semantically. This starts with
+		// Line 3: import * from "fs"; which should be import * as fs from "fs";
 	},
 	{
 		Name:        "aws-eks",
 		Description: "AWS EKS",
+		SkipCompile: codegen.NewStringSet("go", "nodejs"),
+		// Blocked on go:
+		// https://github.com/pulumi/pulumi-aws/issues/1632
+		//
+		// Blocked on nodejs
+		// Starting with:
+		// aws-eks.ts:34:65 - error TS1005: ';' expected.
+		//
+		// 34     for (const range of zones.names.map((k, v) => {key: k, value: v})) {
+		//                                                                    ~
 	},
 	{
 		Name:        "aws-fargate",
 		Description: "AWS Fargate",
+		SkipCompile: codegen.NewStringSet("go"),
+		// Blocked on go:
+		// https://github.com/pulumi/pulumi-aws/issues/1632
 	},
 	{
 		Name:        "aws-s3-logging",
 		Description: "AWS S3 with logging",
+		SkipCompile: codegen.NewStringSet("dotnet", "nodejs"),
+		// Blocked on dotnet:
+		// /codegen/internal/test/testdata/aws-s3-logging-pp/aws-s3-logging.cs(21,71):
+		// error CS0023: Operator '?' cannot be applied to operand of type 'ImmutableArray<BucketLogging>'
+		//
+		// Blocked on nodejs:
+		// It looks like this is being parsed as a ternary expression
+		// aws-s3-logging.ts:8:89 - error TS1005: ':' expected.
+		//
+		// 8: export const targetBucket = bucket.loggings.apply(loggings => loggings?[0]?.targetBucket);
+		//                                                                                            ~
 	},
 	{
 		Name:        "aws-webserver",
 		Description: "AWS Webserver",
+		SkipCompile: codegen.NewStringSet("go"),
+		// Blocked on go:
+		// https://github.com/pulumi/pulumi-aws/issues/1632
 	},
 	{
 		Name:        "azure-native",
 		Description: "Azure Native",
-		Skip:        codegen.NewStringSet("go"),
+		Skip:        codegen.NewStringSet("go", "nodejs"),
+		// Blocked on go:
+		// Blocked on nodjs:
+		// Types do not line up
 	},
 	{
 		Name:        "azure-sa",
@@ -68,6 +103,10 @@ var programTests = []programTest{
 	{
 		Name:        "kubernetes-pod",
 		Description: "K8s Pod",
+		SkipCompile: codegen.NewStringSet("go", "nodejs"),
+		// Blocked on go:
+		// Blocked on nodejs:
+		// Types do not line up
 	},
 	{
 		Name:        "kubernetes-template",
@@ -78,16 +117,37 @@ var programTests = []programTest{
 		Description: "Random Pet",
 	},
 	{
-		Name:        "resource-options",
+		Name:        "aws-resource-options",
 		Description: "Resource Options",
+		SkipCompile: codegen.NewStringSet("go"),
+		// Blocked on go:
+		// generating invalid aws.Provider code
 	},
 	{
-		Name:        "secret",
+		Name:        "aws-secret",
 		Description: "Secret",
 	},
 	{
 		Name:        "functions",
 		Description: "Functions",
+		SkipCompile: codegen.NewStringSet("go", "dotnet"),
+		// Blocked on go:
+		// # main
+		// ./functions.go:12:5: no new variables on left side of :=
+		// ./functions.go:13:5: no new variables on left side of :=
+		//
+		// Blocked on dotnet:
+		// testdata/functions-pp/functions.cs(9,38): error CS1525: Invalid expression term '{' [testdata/functions-pp/functions-pp.csproj]
+		// testdata/functions-pp/functions.cs(9,38): error CS1026: ) expected [testdata/functions-pp/functions-pp.csproj]
+		// testdata/functions-pp/functions.cs(9,38): error CS1002: ; expected [testdata/functions-pp/functions-pp.csproj]
+		// testdata/functions-pp/functions.cs(11,19): error CS1002: ; expected [testdata/functions-pp/functions-pp.csproj]
+		// testdata/functions-pp/functions.cs(11,19): error CS1513: } expected [testdata/functions-pp/functions-pp.csproj]
+		// testdata/functions-pp/functions.cs(12,23): error CS1002: ; expected [testdata/functions-pp/functions-pp.csproj]
+		// testdata/functions-pp/functions.cs(12,23): error CS1513: } expected [testdata/functions-pp/functions-pp.csproj]
+		// testdata/functions-pp/functions.cs(13,10): error CS1513: } expected [testdata/functions-pp/functions-pp.csproj]
+		// 0 Warning(s)
+		// 8 Error(s)
+
 	},
 }
 
@@ -100,36 +160,58 @@ var langConfig = map[string]struct {
 	"python": {
 		extension:  "py",
 		outputFile: "__main__.py",
-		check: func(t *testing.T, filePath string) {
+		check: func(t *testing.T, path string) {
 			ex, _, err := python.CommandPath()
-
 			assert.NoError(t, err)
+			name := filepath.Base(path)
+			dir := filepath.Dir(path)
 			err = integration.RunCommand(t, "python syntax check",
-				[]string{ex, "-m", "py_compile", filePath}, ".", &integration.ProgramTestOptions{})
+				[]string{ex, "-m", "py_compile", name}, dir, &integration.ProgramTestOptions{})
 			assert.NoError(t, err)
 		},
 	},
 	"nodejs": {
 		extension:  "ts",
 		outputFile: "index.ts",
+		check: func(t *testing.T, path string) {
+			ex, err := executable.FindExecutable("yarn")
+			assert.NoError(t, err, "Could not find yarn executable")
+			dir := filepath.Dir(path)
+			name := filepath.Base(dir)
+			pkgName, pkgVersion := packagesFromNameNodejs(name)
+			if pkgName == "" {
+				pkgName = "@pulumi/pulumi"
+				pkgVersion = "3.7.0"
+			}
+			pkg := pkgName + "@" + pkgVersion
+			defer func() {
+				nodeModules := filepath.Join(dir, "node_modules")
+				err = os.RemoveAll(nodeModules)
+				assert.NoError(t, err, "Failed to delete %s", nodeModules)
+				packageJSON := filepath.Join(dir, "package.json")
+				err = os.Remove(packageJSON)
+				assert.NoError(t, err, "Failed to delete %s", packageJSON)
+				yarnLock := filepath.Join(dir, "yarn.lock")
+				err = os.Remove(yarnLock)
+				assert.NoError(t, err, "Failed to delete %s", yarnLock)
+			}()
+			err = integration.RunCommand(t, "yarn add and install",
+				[]string{ex, "add", pkg}, dir, &integration.ProgramTestOptions{})
+			assert.NoError(t, err, "Could not install package: %q", pkg)
+			err = integration.RunCommand(t, "tsc check",
+				[]string{ex, "run", "tsc", "--noEmit", filepath.Base(path)}, dir, &integration.ProgramTestOptions{})
+			assert.NoError(t, err, "Failed to build %q", path)
+		},
 	},
 	"go": {
 		extension:  "go",
 		outputFile: "main.go",
 		check: func(t *testing.T, path string) {
-			dir := filepath.Base(path)
+			dir := filepath.Dir(path)
 			ex, err := executable.FindExecutable("go")
 			assert.NoError(t, err)
 			_, err = ioutil.ReadFile("go.mod")
 			if os.IsNotExist(err) {
-				err = integration.RunCommand(t, "generate go.mod",
-					[]string{ex, "mod", "init", "test_mod"},
-					dir, &integration.ProgramTestOptions{})
-				assert.NoError(t, err)
-				err = integration.RunCommand(t, "go tidy",
-					[]string{ex, "mod", "tidy"},
-					dir, &integration.ProgramTestOptions{})
-				assert.NoError(t, err)
 				defer func() {
 					// If we created the module, we also remove the module
 					err = os.Remove(filepath.Join(dir, "go.mod"))
@@ -137,17 +219,71 @@ var langConfig = map[string]struct {
 					err = os.Remove(filepath.Join(dir, "go.sum"))
 					assert.NoError(t, err)
 				}()
+				err = integration.RunCommand(t, "generate go.mod",
+					[]string{ex, "mod", "init", "main"},
+					dir, &integration.ProgramTestOptions{})
+				assert.NoError(t, err)
+				err = integration.RunCommand(t, "go tidy",
+					[]string{ex, "mod", "tidy"},
+					dir, &integration.ProgramTestOptions{})
+				assert.NoError(t, err)
 			} else {
 				assert.NoError(t, err)
 			}
 			err = integration.RunCommand(t, "test build", []string{ex, "build"},
 				dir, &integration.ProgramTestOptions{})
 			assert.NoError(t, err)
+			os.Remove(filepath.Join(dir, "main"))
+			assert.NoError(t, err)
 		},
 	},
 	"dotnet": {
 		extension:  "cs",
 		outputFile: "MyStack.cs",
+		check: func(t *testing.T, path string) {
+			var err error
+			dir := filepath.Dir(path)
+
+			ex, err := executable.FindExecutable("dotnet")
+			assert.NoError(t, err, "Failed to find dotnet executable")
+
+			projectFile := filepath.Join(dir, filepath.Base(dir)+".csproj")
+			if _, err := ioutil.ReadFile(projectFile); os.IsNotExist(err) {
+				defer func() {
+					err = os.Remove(projectFile)
+					assert.NoError(t, err, "Failed to delete project file")
+					err = os.Remove(filepath.Join(dir, "Program.cs"))
+					assert.NoError(t, err, "Failed to delete C# project main")
+				}()
+				err = integration.RunCommand(t, "create dotnet project",
+					[]string{ex, "new", "console"}, dir, &integration.ProgramTestOptions{})
+				assert.NoError(t, err, "Failed to create C# project")
+			}
+
+			// Add dependencies (based on directory name)
+			if pkg, pkgVersion := packagesFromNameDotNet(filepath.Base(dir)); pkg != "" {
+				err = integration.RunCommand(t, "create dotnet project",
+					[]string{ex, "add", "package", pkg, "--version", pkgVersion},
+					dir, &integration.ProgramTestOptions{})
+				assert.NoError(t, err, "Failed to add dependency %q %q", pkg, pkgVersion)
+			} else {
+				err = integration.RunCommand(t, "add sdk ref",
+					[]string{ex, "add", "reference", "../../../../../../sdk/dotnet/Pulumi"},
+					dir, &integration.ProgramTestOptions{})
+				assert.NoError(t, err, "Failed to dotnet sdk package reference")
+			}
+
+			// Clean up build result
+			defer func() {
+				err = os.RemoveAll(filepath.Join(dir, "bin"))
+				assert.NoError(t, err, "Failed to remove bin result")
+				err = os.RemoveAll(filepath.Join(dir, "obj"))
+				assert.NoError(t, err, "Failed to remove obj result")
+			}()
+			err = integration.RunCommand(t, "dotnet build",
+				[]string{ex, "build", "--nologo"}, dir, &integration.ProgramTestOptions{})
+			assert.NoError(t, err, "Failed to build dotnet project")
+		},
 	},
 }
 
@@ -172,10 +308,7 @@ func TestProgramCodegen(
 				return
 			}
 
-			expectNYIDiags := false
-			if tt.ExpectNYIDiags.Has(language) {
-				expectNYIDiags = true
-			}
+			expectNYIDiags := tt.ExpectNYIDiags.Has(language)
 
 			var cfg = langConfig[language]
 
@@ -213,7 +346,6 @@ func TestProgramCodegen(
 			if diags.HasErrors() {
 				t.Fatalf("failed to bind program: %v", diags)
 			}
-
 			files, diags, err := genProgram(program)
 			assert.NoError(t, err)
 			if expectNYIDiags {
@@ -235,9 +367,51 @@ func TestProgramCodegen(
 			} else {
 				assert.Equal(t, string(expected), string(files[cfg.outputFile]))
 			}
-			if cfg.check != nil {
+			if cfg.check != nil && !tt.SkipCompile.Has(language) {
 				cfg.check(t, expectedFile)
 			}
 		})
 	}
+}
+
+// packagesFromName attempts to figure out what package should be imported from
+// the name of a test.
+//
+// Example:
+// 	"aws-eks-pp" => ("Pulumi.Aws", 4.21.1)
+// 	"azure-sa-pp" => ("Pulumi.Azure", 4.21.1)
+// 	"resource-options-pp" => ("","")
+//
+// Note: While we could instead do this by using the generateMetaData function
+// for each language, we are trying not to expand the functionality under test.
+func packagesFromNameDotNet(name string) (string, string) {
+	if strings.Contains(name, "aws") {
+		return "Pulumi.Aws", "4.21.1"
+	} else if strings.Contains(name, "azure-native") {
+		return "Pulumi.AzureNative", "1.29.0"
+	} else if strings.Contains(name, "azure") {
+		return "Pulumi.Azure", "4.18.0"
+	} else if strings.Contains(name, "kubernetes") {
+		return "Pulumi.Kubernetes", "3.7.2"
+	} else if strings.Contains(name, "random") {
+		return "Pulumi.Random", "4.2.0"
+	}
+	return "", ""
+}
+
+// packagesFromNameNodejs attempts to figure out what package should be imported
+// from the name of the test.
+func packagesFromNameNodejs(name string) (string, string) {
+	if strings.Contains(name, "aws") {
+		return "@pulumi/aws", "4.21.1"
+	} else if strings.Contains(name, "azure-native") {
+		return "@pulumi/azure-native", "1.29.0"
+	} else if strings.Contains(name, "azure") {
+		return "@pulumi/azure", "4.18.0"
+	} else if strings.Contains(name, "kubernetes") {
+		return "@pulumi/kubernetes", "3.7.2"
+	} else if strings.Contains(name, "random") {
+		return "@pulumi/random", "4.2.0"
+	}
+	return "", ""
 }
