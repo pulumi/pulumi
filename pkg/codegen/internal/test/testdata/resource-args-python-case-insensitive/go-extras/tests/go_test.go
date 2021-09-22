@@ -4,11 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-<<<<<<< HEAD:pkg/codegen/internal/test/testdata/resource-args-python/go-extras/tests/go_test.go
-	"resource-args-python/example"
-=======
 	"resource-args-python-case-insensitive/example"
->>>>>>> master:pkg/codegen/internal/test/testdata/resource-args-python-case-insensitive/go-extras/tests/go_test.go
 
 	"github.com/stretchr/testify/assert"
 )
