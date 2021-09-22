@@ -91,38 +91,22 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 }
 
 // ShowJSONEvents renders incremental engine events to stdout.
-func ShowJSONEvents(events <-chan engine.Event, done chan<- bool) {
+func ShowJSONEvents(events <-chan engine.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 
 	sequence := 0
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetEscapeHTML(false)
-	logEvent := func(e engine.Event) error {
-		apiEvent, err := ConvertEngineEvent(e)
-		if err != nil {
-			return err
-		}
-
-		apiEvent.Sequence, sequence = sequence, sequence+1
-		apiEvent.Timestamp = int(time.Now().Unix())
-		// If this is a diagnostic event, clean up the terminal color characters from the emitted log.
-		if apiEvent.DiagnosticEvent != nil {
-			apiEvent.DiagnosticEvent.Message = cleanColorRenderingChars(apiEvent.DiagnosticEvent.Message)
-			apiEvent.DiagnosticEvent.Prefix = cleanColorRenderingChars(apiEvent.DiagnosticEvent.Prefix)
-		}
-
-		return encoder.Encode(apiEvent)
-	}
-
 	for e := range events {
-		// In the event of cancellation, break out of the loop immediately.
+		if err := logJSONEvent(encoder, e, opts, sequence); err != nil {
+			logging.V(7).Infof("failed to log event: %v", err)
+		}
+		sequence += 1
+
+		// In the event of cancellation, break out of the loop.
 		if e.Type == engine.CancelEvent {
 			break
-		}
-
-		if err := logEvent(e); err != nil {
-			logging.V(7).Infof("failed to log event: %v", err)
 		}
 	}
 }

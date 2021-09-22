@@ -49,7 +49,7 @@ func ShowEvents(
 		if isPreview && !streamPreview {
 			ShowPreviewDigest(op, action, events, done, opts)
 		} else {
-			ShowJSONEvents(events, done)
+			ShowJSONEvents(events, done, opts)
 		}
 		return
 	}
@@ -67,6 +67,34 @@ func ShowEvents(
 	default:
 		contract.Failf("Unknown display type %d", opts.Type)
 	}
+}
+
+func logJSONEvent(encoder *json.Encoder, event engine.Event, opts Options, seq int) error {
+	apiEvent, err := ConvertEngineEvent(event)
+	if err != nil {
+		return err
+	}
+
+	apiEvent.Sequence = seq
+	apiEvent.Timestamp = int(time.Now().Unix())
+	// If opts.Color == "never" (i.e. NO_COLOR is specified or --color=never), clean up the color directives
+	// from the emitted events.
+	if opts.Color == colors.Never {
+		switch {
+		case apiEvent.DiagnosticEvent != nil:
+			apiEvent.DiagnosticEvent.Message = colors.Never.Colorize(apiEvent.DiagnosticEvent.Message)
+			apiEvent.DiagnosticEvent.Prefix = colors.Never.Colorize(apiEvent.DiagnosticEvent.Prefix)
+			apiEvent.DiagnosticEvent.Color = string(colors.Never)
+		case apiEvent.StdoutEvent != nil:
+			apiEvent.StdoutEvent.Message = colors.Never.Colorize(apiEvent.StdoutEvent.Message)
+			apiEvent.StdoutEvent.Color = string(colors.Never)
+		case apiEvent.PolicyEvent != nil:
+			apiEvent.PolicyEvent.Message = colors.Never.Colorize(apiEvent.PolicyEvent.Message)
+			apiEvent.PolicyEvent.Color = string(colors.Never)
+		}
+	}
+
+	return encoder.Encode(apiEvent)
 }
 
 func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options) (<-chan engine.Event, chan<- bool) {
@@ -87,38 +115,11 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options
 		sequence := 0
 		encoder := json.NewEncoder(logFile)
 		encoder.SetEscapeHTML(false)
-		logEvent := func(e engine.Event) error {
-			apiEvent, err := ConvertEngineEvent(e)
-			if err != nil {
-				return err
-			}
-			apiEvent.Sequence, sequence = sequence, sequence+1
-			apiEvent.Timestamp = int(time.Now().Unix())
-
-			// If opts.Color == "never" (i.e. NO_COLOR is specified or --color=never), clean up the color directives
-			// from the emitted logs.
-			if opts.Color == colors.Never {
-				switch {
-				case apiEvent.DiagnosticEvent != nil:
-					apiEvent.DiagnosticEvent.Message = colors.Never.Colorize(apiEvent.DiagnosticEvent.Message)
-					apiEvent.DiagnosticEvent.Prefix = colors.Never.Colorize(apiEvent.DiagnosticEvent.Prefix)
-					apiEvent.DiagnosticEvent.Color = string(colors.Never)
-				case apiEvent.StdoutEvent != nil:
-					apiEvent.StdoutEvent.Message = colors.Never.Colorize(apiEvent.StdoutEvent.Message)
-					apiEvent.StdoutEvent.Color = string(colors.Never)
-				case apiEvent.PolicyEvent != nil:
-					apiEvent.PolicyEvent.Message = colors.Never.Colorize(apiEvent.PolicyEvent.Message)
-					apiEvent.PolicyEvent.Color = string(colors.Never)
-				}
-			}
-
-			return encoder.Encode(apiEvent)
-		}
-
 		for e := range events {
-			if err = logEvent(e); err != nil {
+			if err = logJSONEvent(encoder, e, opts, sequence); err != nil {
 				logging.V(7).Infof("failed to log event: %v", err)
 			}
+			sequence += 1
 
 			outEvents <- e
 
