@@ -71,17 +71,6 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "resource-args-python-case-insensitive",
 		Description: "Resource args with same named resource and type case insensitive",
-		Then: map[string]ThenFunc{
-			"go": func(t *testing.T, testDir string) {
-				cmd := exec.Command("go", "test", "./...")
-				cmd.Dir = filepath.Join(testDir, "go-program")
-
-				out, err := cmd.CombinedOutput()
-				if !assert.NoError(t, err) {
-					t.Logf("output: %v", string(out))
-				}
-			},
-		},
 	},
 	{
 		Directory:   "resource-args-python",
