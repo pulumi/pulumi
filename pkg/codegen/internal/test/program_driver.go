@@ -137,7 +137,7 @@ var programTests = []programTest{
 		// ./functions.go:13:5: no new variables on left side of :=
 		//
 		// Blocked on dotnet:
-		// testdata/functions-pp/functions.cs(9,38): error CS1525: Invalid expression term '{' [testdata/functions-pp/functions-pp.csproj]
+		// testdata/functions-pp/functions.cs(9,38): error CS1525: Invalid expression term '{' [functions-pp.csproj]
 		// testdata/functions-pp/functions.cs(9,38): error CS1026: ) expected [testdata/functions-pp/functions-pp.csproj]
 		// testdata/functions-pp/functions.cs(9,38): error CS1002: ; expected [testdata/functions-pp/functions-pp.csproj]
 		// testdata/functions-pp/functions.cs(11,19): error CS1002: ; expected [testdata/functions-pp/functions-pp.csproj]

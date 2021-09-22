@@ -235,8 +235,6 @@ func TestGenerateHCL2Definition(t *testing.T) {
 	if !assert.NoError(t, err) {
 		t.Fatal()
 	}
-	// HACK avoid test
-	return
 
 	for _, s := range cases.Resources {
 		t.Run(string(s.URN), func(t *testing.T) {
@@ -288,7 +286,9 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				ab, err := json.MarshalIndent(actual, "", "    ")
 				contract.IgnoreError(err)
 
-				t.Logf("%v\n\n%v\n\n%v\n", text, string(sb), string(ab))
+				t.Logf("%v", text)
+				// We know this will fail, but we want the diff
+				assert.Equal(t, string(sb), string(ab))
 			}
 		})
 	}

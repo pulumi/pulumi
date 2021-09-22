@@ -680,9 +680,7 @@
 			"inputs": {
 				"name": "foobar",
 				"path": "foobar",
-				"roles": [
-					"foobar"
-				]
+				"role": "foobar"
 			}
 		},
 		{
@@ -1515,7 +1513,6 @@
 				"acl": "foobar",
 				"bucket": "foobar",
 				"forceDestroy": false,
-				"region": "foobar",
 				"versioning": {
 					"enabled": true,
 					"mfaDelete": false
