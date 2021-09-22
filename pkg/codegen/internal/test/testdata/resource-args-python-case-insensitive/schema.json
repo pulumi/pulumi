@@ -44,7 +44,7 @@
         "pets": {
           "type": "array",
           "items": {
-            "$ref": "#/types/example::Pet"
+            "$ref": "#/types/Example::Pet"
           }
         }
       },
