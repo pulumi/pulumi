@@ -1,0 +1,173 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/deployments.json",
+    "title": "Pulumi Deployment States",
+    "description": "A schema for Pulumi deployment states.",
+    "type": "object",
+    "properties": {
+        "version": {
+            "description": "The deployment version.",
+            "type": "integer"
+        },
+        "deployment": {
+            "description": "The deployment object.",
+            "type": "object"
+        }
+    },
+    "required": ["version", "deployment"],
+    "additionalProperties": false,
+    "oneOf": [
+        { "$ref": "#/$defs/deploymentV3" },
+        {
+            "title": "Unknown Version",
+            "description": "Catchall for unknown deployment versions.",
+            "type": "object",
+            "properties": {
+                "version": {
+                    "description": "The deployment version.",
+                    "not": {
+                        "enum": [ 3 ]
+                    }
+                },
+                "deployment": {
+                    "description": "The deployment object.",
+                    "type": "object"
+                }
+            }
+        }
+    ],
+    "$defs": {
+        "deploymentV3": {
+            "$anchor": "v3",
+            "title": "Version 3",
+            "description": "The third version of the deployment state.",
+            "type": "object",
+            "properties": {
+                "version": {
+                    "description": "The deployment version. Must be `3`.",
+                    "const": 3
+                },
+                "deployment": {
+                    "description": "The deployment state.",
+                    "type": "object",
+                    "properties": {
+                        "manifest": {
+                            "description": "Metadata about the deployment.",
+                            "$ref": "#/$defs/manifestV1"
+                        },
+                        "secrets_providers": {
+                            "description": "Configuration for this stack's secrets provider.",
+                            "$ref": "#/$defs/secretsProviderV1"
+                        },
+                        "resources": {
+                            "description": "All resources that are part of the stack.",
+                            "type": "array",
+                            "items": {
+                                "$ref": "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/resources.json#v3"
+                            }
+                        },
+                        "pending_operations": {
+                            "description": "Any operations that were pending at the time the deployment finished.",
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/operationV2"
+                            }
+                        }
+                    },
+                    "required": ["manifest"],
+                    "additionalProperties": false
+                }
+            },
+            "required": ["version", "deployment"],
+            "additionalProperties": false
+        },
+        "manifestV1": {
+            "title": "Deployment Manifest",
+            "description": "Captures meta-information about a deployment, such as versions of binaries, etc.",
+            "type": "object",
+            "properties": {
+                "time": {
+                    "description": "The deployment's start time.",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "magic": {
+                    "description": "A magic number used to validate the manifest's integrity.",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "The version of the Pulumi engine that produced the deployment.",
+                    "type": "string"
+                },
+                "plugins": {
+                    "description": "Information about the plugins used by the deployment.",
+                    "type": "array",
+                    "items": {
+                        "title": "Plugin Info",
+                        "description": "Information about a plugin.",
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "description": "The plugin's name.",
+                                "type": "string"
+                            },
+                            "path": {
+                                "description": "The path of the plugin's binary.",
+                                "type": "string"
+                            },
+                            "type": {
+                                "description": "The plugin's type.",
+                                "enum": [
+                                    "analyzer",
+                                    "language",
+                                    "resource"
+                                ]
+                            },
+                            "version": {
+                                "description": "The plugin's version.",
+                                "type": "string"
+                            }
+                        },
+                        "required": ["name", "path", "type", "version"],
+                        "additionalProperties": false
+                    }
+                }
+            },
+            "required": ["time", "magic", "version"],
+            "additionalProperties": false
+        },
+        "secretsProviderV1": {
+            "title": "Secrets Provider",
+            "description": "Configuration information for a secrets provider.",
+            "type": "object",
+            "properties": {
+                "type": {
+                    "description": "The secrets provider's type.",
+                    "type": "string"
+                },
+                "state": {
+                    "description": "The secrets provider's state, if any."
+                }
+            },
+            "required": ["type"],
+            "additionalProperties": false
+        },
+        "operationV2": {
+            "title": "Resource Operation V2",
+            "description": "Version 2 of a resource operation state",
+            "type": "object",
+            "properties": {
+                "resource": {
+                    "description": "The state of the affected resource as of the start of this operation.",
+                    "$ref": "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/resources.json#v3"
+                },
+                "type": {
+                    "description": "A string representation of the operation.",
+                    "enum": ["creating", "updating", "deleting", "reading"]
+                }
+            },
+            "required": ["resource", "type"],
+            "additionalProperties": false
+        }
+    }
+}

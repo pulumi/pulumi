@@ -1,3 +1,4 @@
+
 # Pulumi Package Metaschema
 
 A description of the schema for a Pulumi Package
@@ -138,7 +139,7 @@ The unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "
 
 `string`
 
-Pattern: `^[^0-9][-a-zA-Z0-9]*$`
+Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*$`
 
 ---
 
@@ -690,7 +691,7 @@ An optional objectTypeSpec that describes additional inputs that mau be necessar
 
 `string`
 
-Pattern: `^[^0-9][-a-zA-Z0-9]*:([^0-9][a-zA-Z0-9._/]*)?:[^0-9][a-zA-Z0-9._/]*$`
+Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/]*)?:[^0-9][a-zA-Z0-9._/]*$`
 
 ## Type Definition
 

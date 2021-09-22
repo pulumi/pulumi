@@ -454,7 +454,41 @@ func TestDeserializePropertyValue(t *testing.T) {
 		_, err := DeserializePropertyValue(v, config.NopDecrypter, config.NopEncrypter)
 		assert.NoError(t, err)
 	})
+}
 
+func wireValue(v resource.PropertyValue) (interface{}, error) {
+	object, err := SerializePropertyValue(v, config.NopEncrypter, false)
+	if err != nil {
+		return nil, err
+	}
+
+	wire, err := json.Marshal(object)
+	if err != nil {
+		return nil, err
+	}
+
+	var wireObject interface{}
+	err = json.Unmarshal(wire, &wireObject)
+	if err != nil {
+		return nil, err
+	}
+	return wireObject, nil
+}
+
+func TestPropertyValueSchema(t *testing.T) {
+	t.Run("serialized", rapid.MakeCheck(func(t *rapid.T) {
+		wireObject, err := wireValue(resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue))
+		require.NoError(t, err)
+
+		err = propertyValueSchema.Validate(wireObject)
+		assert.NoError(t, err)
+	}))
+
+	t.Run("synthetic", rapid.MakeCheck(func(t *rapid.T) {
+		wireObject := ObjectValueGenerator(6).Draw(t, "wire object")
+		err := propertyValueSchema.Validate(wireObject)
+		assert.NoError(t, err)
+	}))
 }
 
 func replaceOutputsWithComputed(v resource.PropertyValue) resource.PropertyValue {
@@ -480,15 +514,7 @@ func replaceOutputsWithComputed(v resource.PropertyValue) resource.PropertyValue
 func TestRoundTripPropertyValue(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		original := resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue)
-
-		object, err := SerializePropertyValue(original, config.NopEncrypter, false)
-		require.NoError(t, err)
-
-		wire, err := json.Marshal(object)
-		require.NoError(t, err)
-
-		var wireObject interface{}
-		err = json.Unmarshal(wire, &wireObject)
+		wireObject, err := wireValue(original)
 		require.NoError(t, err)
 
 		deserialized, err := DeserializePropertyValue(wireObject, config.NopDecrypter, config.NopEncrypter)
