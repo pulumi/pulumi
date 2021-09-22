@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/resource-args-python/go/example"
+	"resource-args-python-case-insensitive/example"
 
 	"github.com/stretchr/testify/assert"
 )
