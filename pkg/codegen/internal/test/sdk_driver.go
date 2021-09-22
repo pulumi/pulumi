@@ -136,6 +136,11 @@ var sdkTests = []sdkTest{
 		Description:      "A resource url with a hyphen in it's path",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
+	{
+		Directory:   "function-only",
+		Description: "A schema with only a function",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+	},
 }
 
 type SDKCodegenOptions struct {
@@ -143,7 +148,7 @@ type SDKCodegenOptions struct {
 	Language string
 
 	// Language-aware code generator; such as `GeneratePackage`.
-	// from `codgen/dotnet`.
+	// from `codegen/dotnet`.
 	GenPackage GenPkgSignature
 
 	// Extra checks for all the tests. They keys of this map are

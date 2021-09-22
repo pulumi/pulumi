@@ -1,0 +1,9 @@
+{
+  "emittedFiles": [
+    "example/doc.go",
+    "example/init.go",
+    "example/myFunction.go",
+    "example/provider.go",
+    "example/pulumiUtilities.go"
+  ]
+}
