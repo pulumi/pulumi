@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,6 +45,14 @@ type typeDetails struct {
 	inputType  bool
 }
 
+// title capitalizes the first rune in s.
+//
+// Examples:
+// "hello"   => "Hello"
+// "hiAlice" => "HiAlice"
+// "hi.Bob"  => "Hi.Bob"
+//
+// Note: This is expected to work on strings which are not valid identifiers.
 func title(s string) string {
 	if s == "" {
 		return ""
@@ -53,6 +61,13 @@ func title(s string) string {
 	return string(append([]rune{unicode.ToUpper(runes[0])}, runes[1:]...))
 }
 
+// camel converts s to camel case.
+//
+// Examples:
+// "helloWorld"    => "helloWorld"
+// "HelloWorld"    => "helloWorld"
+// "JSONObject"    => "jsonobject"
+// "My-FRIEND.Bob" => "my-FRIEND.Bob"
 func camel(s string) string {
 	if s == "" {
 		return ""
@@ -67,6 +82,40 @@ func camel(s string) string {
 		res = append(res, unicode.ToLower(r))
 	}
 	return string(res)
+}
+
+// pascal converts s to pascal case. Word breaks are signified by illegal
+// identifier runes (excluding '.'). These are found by use of
+// isLegalIdentifierPart.
+//
+// Examples:
+// "My-Friend.Bob"  => "MyFriend.Bob"
+// "JSONObject"     => "JSONObject"'
+// "a-glad-dayTime" => "AGladDayTime"
+//
+// Note: because camel aggressively down-cases the first continuous sub-string
+// of uppercase characters, we cannot define pascal as title(camel(x)).
+func pascal(s string) string {
+	split := [][]rune{{}}
+	runes := []rune(s)
+	for _, r := range runes {
+		if !isLegalIdentifierPart(r) && r != '.' {
+			split = append(split, []rune{})
+		} else {
+			split[len(split)-1] = append(split[len(split)-1], r)
+		}
+	}
+	words := make([]string, len(split))
+	for i, v := range split {
+		words[i] = title(string(v))
+	}
+	return strings.Join(words, "")
+}
+
+// externalModuleName Formats the name of package to comply with an external
+// module.
+func externalModuleName(s string) string {
+	return fmt.Sprintf("pulumi%s", pascal(s))
 }
 
 type modContext struct {
@@ -147,7 +196,7 @@ func (mod *modContext) objectType(pkg *schema.Package, tok string, input, args, 
 
 	namingCtx, pkgName, external := mod.namingContext(pkg)
 	if external {
-		pkgName = fmt.Sprintf("pulumi%s", title(pkgName))
+		pkgName = externalModuleName(pkgName)
 		root = "types.output."
 		if input {
 			root = "types.input."
@@ -170,7 +219,7 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	if strings.HasPrefix(r.Token, "pulumi:providers:") {
 		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
 		if pkgName != mod.pkg.Name {
-			pkgName = fmt.Sprintf("pulumi%s", title(pkgName))
+			pkgName = externalModuleName(pkgName)
 		}
 
 		return fmt.Sprintf("%s.Provider", pkgName)
@@ -182,7 +231,7 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	}
 	namingCtx, pkgName, external := mod.namingContext(pkg)
 	if external {
-		pkgName = fmt.Sprintf("pulumi%s", title(pkgName))
+		pkgName = externalModuleName(pkgName)
 	}
 
 	modName, name := namingCtx.tokenToModName(r.Token), tokenToName(r.Token)
@@ -1062,6 +1111,14 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		nodePackageInfo = languageInfo.(NodePackageInfo)
 	}
 
+	writeImports := func(pkg string) {
+		if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
+			externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", externalModuleName(pkg), imp))
+		} else {
+			externalImports.Add(fmt.Sprintf("import * as %s from \"@pulumi/%s\";", externalModuleName(pkg), pkg))
+		}
+	}
+
 	switch t := t.(type) {
 	case *schema.OptionalType:
 		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
@@ -1077,11 +1134,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		// If it's from another package, add an import for the external package.
 		if t.Package != nil && t.Package != mod.pkg {
 			pkg := t.Package.Name
-			if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
-				externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", fmt.Sprintf("pulumi%s", title(pkg)), imp))
-			} else {
-				externalImports.Add(fmt.Sprintf("import * as %s from \"@pulumi/%s\";", fmt.Sprintf("pulumi%s", title(pkg)), pkg))
-			}
+			writeImports(pkg)
 			return false
 		}
 
@@ -1093,11 +1146,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		// If it's from another package, add an import for the external package.
 		if t.Resource != nil && t.Resource.Package != mod.pkg {
 			pkg := t.Resource.Package.Name
-			if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
-				externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", fmt.Sprintf("pulumi%s", title(pkg)), imp))
-			} else {
-				externalImports.Add(fmt.Sprintf("import * as %s from \"@pulumi/%s\";", fmt.Sprintf("pulumi%s", title(pkg)), pkg))
-			}
+			writeImports(pkg)
 			return false
 		}
 

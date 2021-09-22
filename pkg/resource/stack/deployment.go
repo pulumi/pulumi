@@ -17,7 +17,10 @@ package stack
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"reflect"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -29,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
 const (
@@ -54,6 +58,46 @@ var (
 	// untyped deployment being deserialized is too new to understand.
 	ErrDeploymentSchemaVersionTooNew = fmt.Errorf("this stack's deployment version is too new")
 )
+
+var deploymentSchema *jsonschema.Schema
+var resourceSchema *jsonschema.Schema
+var propertyValueSchema *jsonschema.Schema
+
+func init() {
+	compiler := jsonschema.NewCompiler()
+	compiler.LoadURL = func(s string) (io.ReadCloser, error) {
+		var schema string
+		switch s {
+		case apitype.DeploymentSchemaID:
+			schema = apitype.DeploymentSchema()
+		case apitype.ResourceSchemaID:
+			schema = apitype.ResourceSchema()
+		case apitype.PropertyValueSchemaID:
+			schema = apitype.PropertyValueSchema()
+		default:
+			return jsonschema.LoadURL(s)
+		}
+		return ioutil.NopCloser(strings.NewReader(schema)), nil
+	}
+	deploymentSchema = compiler.MustCompile(apitype.DeploymentSchemaID)
+	resourceSchema = compiler.MustCompile(apitype.ResourceSchemaID)
+	propertyValueSchema = compiler.MustCompile(apitype.PropertyValueSchemaID)
+}
+
+// ValidateUntypedDeployment validates a deployment against the Deployment JSON schema.
+func ValidateUntypedDeployment(deployment *apitype.UntypedDeployment) error {
+	bytes, err := json.Marshal(deployment)
+	if err != nil {
+		return err
+	}
+
+	var raw interface{}
+	if err := json.Unmarshal(bytes, &raw); err != nil {
+		return err
+	}
+
+	return deploymentSchema.Validate(raw)
+}
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
 func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets bool) (*apitype.DeploymentV3, error) {
@@ -630,7 +674,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 			// Otherwise, it's just a weakly typed object map.
 			return resource.NewObjectProperty(obj), nil
 		default:
-			contract.Failf("Unrecognized property type: %v", reflect.ValueOf(v))
+			contract.Failf("Unrecognized property type %T: %v", v, reflect.ValueOf(v))
 		}
 	}
 

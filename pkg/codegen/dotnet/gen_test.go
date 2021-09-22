@@ -15,23 +15,11 @@ import (
 func TestGeneratePackage(t *testing.T) {
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "dotnet",
-		GenPackage: generatePackageWithVersion,
+		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
 			"dotnet/compile": typeCheckGeneratedPackage,
 		},
 	})
-}
-
-// TODO replace this with GeneratePackage when https://github.com/pulumi/pulumi/pull/7938 lands.
-func generatePackageWithVersion(
-	tool string,
-	pkg *schema.Package,
-	extraFiles map[string][]byte) (map[string][]byte, error) {
-	if extraFiles == nil {
-		extraFiles = make(map[string][]byte)
-	}
-	extraFiles["version.txt"] = []byte("0.0.0\n")
-	return GeneratePackage(tool, pkg, extraFiles)
 }
 
 func typeCheckGeneratedPackage(t *testing.T, pwd string) {

@@ -1,0 +1,20 @@
+{
+  "emittedFiles": [
+    "README.md",
+    "index.ts",
+    "package.json",
+    "provider.ts",
+    "tree/index.ts",
+    "tree/v1/index.ts",
+    "tree/v1/nursery.ts",
+    "tree/v1/rubberTree.ts",
+    "tsconfig.json",
+    "types/enums/index.ts",
+    "types/enums/tree/index.ts",
+    "types/enums/tree/v1/index.ts",
+    "types/index.ts",
+    "types/input.ts",
+    "types/output.ts",
+    "utilities.ts"
+  ]
+}

@@ -197,13 +197,6 @@
         }
       ]
     },
-    "plant:tree/v1:VarietiesSupported": {
-      "type": "array",
-      "items": {
-        "$ref": "#/types/plant:tree/v1:RubberTreeVariety"
-      },
-      "description": "The rubber tree varieties supported"
-    },
     "plant:tree/v1:Farm": {
       "type": "string",
       "enum": [

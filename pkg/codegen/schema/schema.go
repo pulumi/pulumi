@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,10 @@ package schema
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"net/url"
 	"os"
@@ -29,6 +31,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
+	"github.com/santhosh-tekuri/jsonschema/v5"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -1270,6 +1273,22 @@ func (m *RawMessage) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
+//go:embed pulumi.json
+var metaSchema []byte
+
+var MetaSchema *jsonschema.Schema
+
+func init() {
+	compiler := jsonschema.NewCompiler()
+	compiler.LoadURL = func(u string) (io.ReadCloser, error) {
+		if u == "blob://pulumi.json" {
+			return io.NopCloser(bytes.NewReader(metaSchema)), nil
+		}
+		return jsonschema.LoadURL(u)
+	}
+	MetaSchema = compiler.MustCompile("blob://pulumi.json")
+}
+
 // TypeSpec is the serializable form of a reference to a type.
 type TypeSpec struct {
 	// Type is the primitive or composite type, if any. May be "bool", "integer", "number", "string", "array", or
@@ -1500,6 +1519,39 @@ func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
 	}
 }
 
+func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
+	bytes, err := json.Marshal(spec)
+	if err != nil {
+		return nil, err
+	}
+	var raw interface{}
+	if err = json.Unmarshal(bytes, &raw); err != nil {
+		return nil, err
+	}
+
+	if err = MetaSchema.Validate(raw); err == nil {
+		return nil, nil
+	}
+	validationError, ok := err.(*jsonschema.ValidationError)
+	if !ok {
+		return nil, err
+	}
+
+	var diags hcl.Diagnostics
+	var appendError func(err *jsonschema.ValidationError)
+	appendError = func(err *jsonschema.ValidationError) {
+		if err.InstanceLocation != "" && err.Message != "" {
+			diags = diags.Append(errorf("#"+err.InstanceLocation, "%v", err.Message))
+		}
+		for _, err := range err.Causes {
+			appendError(err)
+		}
+	}
+	appendError(validationError)
+
+	return diags, nil
+}
+
 // bindSpec converts a serializable PackageSpec into a Package. This function includes a loader parameter which
 // works as a singleton -- if it is nil, a new loader is instantiated, else the provided loader is used. This avoids
 // breaking downstream consumers of ImportSpec while allowing us to extend schema support to external packages.
@@ -1519,6 +1571,13 @@ func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
 //
 func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*Package, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
+
+	// Validate the package against the metaschema.
+	validationDiags, err := validateSpec(spec)
+	if err != nil {
+		return nil, nil, fmt.Errorf("validating spec: %w", err)
+	}
+	diags = diags.Extend(validationDiags)
 
 	// Validate that there is a name
 	if spec.Name == "" {

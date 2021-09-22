@@ -66,3 +66,27 @@ func TestGenerateTypeNames(t *testing.T) {
 		}
 	})
 }
+
+func TestPascalCases(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{
+			input:    "hi",
+			expected: "Hi",
+		},
+		{
+			input:    "NothingChanges",
+			expected: "NothingChanges",
+		},
+		{
+			input:    "everything-changed",
+			expected: "EverythingChanged",
+		},
+	}
+	for _, tt := range tests {
+		result := pascal(tt.input)
+		require.Equal(t, tt.expected, result)
+	}
+}

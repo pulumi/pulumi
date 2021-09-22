@@ -74,7 +74,7 @@ func newWatchCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
 				SuppressOutputs:      true,
-				SuppressPermaLink:    true,
+				SuppressPermalink:    true,
 				IsInteractive:        false,
 				Type:                 display.DisplayWatch,
 				Debug:                debug,

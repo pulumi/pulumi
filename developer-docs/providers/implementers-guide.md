@@ -135,12 +135,13 @@ TODO: write this up
 
 ## Schema
 
-TODO: document the Pulumi schema model.
-
-- configuration
-- types
-- resources
-- functions
+Each provider constitutes the implementation of a single Pulumi package. Each Pulumi
+package has an associated schema that describes the package's
+[configuration](#configuration), [resources](#resources), [functions](#functions),
+and data types. The schema is primarily used to facilitate programmatic generation of
+per-language SDKs for the Pulumi package, but is also used for importing resources,
+program code generation, and more. Schemas may be expressed using JSON or YAML, and
+must validate against the [metaschema](metaschema.md).
 
 ## Provider Lifecycle
 

@@ -305,7 +305,6 @@ func save(path string, value interface{}, mkDirAll bool) error {
 		}
 	}
 
-	// Changing the permissions on these file is ~ a breaking change, so disable golint.
 	//nolint: gosec
 	return ioutil.WriteFile(path, b, 0644)
 }
