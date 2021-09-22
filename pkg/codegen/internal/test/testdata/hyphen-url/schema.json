@@ -1,5 +1,6 @@
 {
   "name": "registrygeoreplication",
+  "version": "0.0.1",
   "resources": {
     "registrygeoreplication:index:RegistryGeoReplication": {
       "isComponent": true,

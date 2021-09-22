@@ -24,5 +24,7 @@ menu:
 	<dd><a href=""></a></dd>
 	<dt>License</dt>
 	<dd></dd>
+	<dt>Version</dt>
+	<dd>0.0.1</dd>
 </dl>
 

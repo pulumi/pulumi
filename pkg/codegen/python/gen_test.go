@@ -59,21 +59,27 @@ func TestRelPathToRelImport(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
-	test.TestSDKCodegen(t, "python", GeneratePackage, typeCheckGeneratedPackage)
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
+		Language:   "python",
+		GenPackage: GeneratePackage,
+		Checks: map[string]test.CodegenCheck{
+			"python/py_compile": pyCompileCheck,
+		},
+	})
 }
 
-// We can't type check a python program. We just check for syntax errors.
-func typeCheckGeneratedPackage(t *testing.T, pwd string) {
+// Checks generated code for syntax errors with `python -m compile`.
+func pyCompileCheck(t *testing.T, codeDir string) {
 	ex, _, err := python.CommandPath()
 	require.NoError(t, err)
 	cmdOptions := integration.ProgramTestOptions{}
-	err = filepath.Walk(pwd, func(path string, info filesystem.FileInfo, err error) error {
+	err = filepath.Walk(codeDir, func(path string, info filesystem.FileInfo, err error) error {
 		require.NoError(t, err) // an error in the walk
 		if info.Mode().IsRegular() && strings.HasSuffix(info.Name(), ".py") {
 			path, err = filepath.Abs(path)
 			require.NoError(t, err)
 			err = integration.RunCommand(t, "python syntax check",
-				[]string{ex, "-m", "py_compile", path}, pwd, &cmdOptions)
+				[]string{ex, "-m", "py_compile", path}, codeDir, &cmdOptions)
 			require.NoError(t, err)
 		}
 		return nil

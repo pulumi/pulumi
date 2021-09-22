@@ -10,20 +10,15 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant"
-	tree "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func TestInputUsage(t *testing.T) {
@@ -66,38 +61,75 @@ func TestGoPackageName(t *testing.T) {
 
 func TestGeneratePackage(t *testing.T) {
 	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
+
+		for f := range files {
+			t.Logf("Ignoring extraFile %s", f)
+		}
+
 		return GeneratePackage(tool, pkg)
 	}
-	test.TestSDKCodegen(t, "go", generatePackage, typeCheckGeneratedPackage)
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
+		Language:   "go",
+		GenPackage: generatePackage,
+		Checks: map[string]test.CodegenCheck{
+			"go/compile": typeCheckGeneratedPackage,
+			"go/test":    testGeneratedPackage,
+		},
+	})
 }
 
-func typeCheckGeneratedPackage(t *testing.T, pwd string) {
-	var err error
-	var ex string
-	ex, err = executable.FindExecutable("go")
-	require.NoError(t, err)
-
-	// go SDKs live in their own folder:
-	// typecheck/go/$NAME/$FILES
-	// where FILES contains all the project files (including go.mod)
+func inferModuleName(codeDir string) string {
+	// For example for this path:
 	//
-	// This is not true when `package.language.go.rootPackageName` is set.
-	dir, err := ioutil.ReadDir(pwd)
-	require.NoError(t, err)
-	root := pwd
-	if len(dir) == 1 {
-		require.True(t, dir[0].IsDir())
-		root = filepath.Join(pwd, dir[0].Name())
-	}
-	t.Logf("*** Testing go in dir: %q ***", root)
+	// codeDir = "../internal/test/testdata/external-resource-schema/go/"
+	//
+	// We will generate "$codeDir/go.mod" using
+	// `external-resource-schema` as the module name so that it
+	// can compile independently.
+	return filepath.Base(filepath.Dir(codeDir))
+}
 
+func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
+	sdk, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk"))
+	require.NoError(t, err)
+
+	goExe, err := executable.FindExecutable("go")
+	require.NoError(t, err)
+
+	goMod := filepath.Join(codeDir, "go.mod")
+	alreadyHaveGoMod, err := test.PathExists(goMod)
+	require.NoError(t, err)
+
+	if alreadyHaveGoMod {
+		t.Logf("Found an existing go.mod, leaving as is")
+	} else {
+		runCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
+		replacement := fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", sdk)
+		runCommand(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
+	}
+
+	runCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
+	runCommand(t, "go_build", codeDir, goExe, "build", "-v", "all")
+}
+
+func testGeneratedPackage(t *testing.T, codeDir string) {
+	goExe, err := executable.FindExecutable("go")
+	require.NoError(t, err)
+
+	runCommand(t, "go-test", codeDir, goExe, "test", fmt.Sprintf("%s/...", inferModuleName(codeDir)))
+}
+
+func runCommand(t *testing.T, name string, cwd string, executable string, args ...string) {
+	wd, err := filepath.Abs(cwd)
+	require.NoError(t, err)
 	var stdout, stderr bytes.Buffer
-	cmdOptions := integration.ProgramTestOptions{Stderr: &stderr, Stdout: &stdout}
-	// We don't want to corrupt the global go.mod and go.sum with packages we
-	// don't actually depend on. For this, we need to have each go package be
-	// it's own module.
-	err = integration.RunCommand(t, "mod init",
-		[]string{ex, "mod", "init", "github.com/pulumi/test/internal"}, root, &cmdOptions)
+	cmdOptions := integration.ProgramTestOptions{Stderr: &stderr, Stdout: &stdout, Verbose: true}
+	err = integration.RunCommand(t,
+		name,
+		append([]string{executable}, args...),
+		wd,
+		&cmdOptions)
+	require.NoError(t, err)
 	if err != nil {
 		stdout := stdout.String()
 		stderr := stderr.String()
@@ -109,10 +141,6 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 		}
 		t.FailNow()
 	}
-	err = integration.RunCommand(t, "get", []string{ex, "get"}, root, &cmdOptions)
-	require.NoError(t, err)
-	err = integration.RunCommand(t, "go build", []string{ex, "build"}, root, &cmdOptions)
-	require.NoError(t, err)
 }
 
 func TestGenerateTypeNames(t *testing.T) {
@@ -132,177 +160,6 @@ func TestGenerateTypeNames(t *testing.T) {
 		return func(t schema.Type) string {
 			return root.typeString(t)
 		}
-	})
-}
-
-type mocks int
-
-func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
-	return args.Name + "_id", args.Inputs, nil
-}
-
-func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	return args.Args, nil
-}
-
-func TestEnumUsage(t *testing.T) {
-	t.Run("Success", func(t *testing.T) {
-		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
-			rubberTree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
-				Container: &plant.ContainerArgs{
-					Color:    plant.ContainerColorRed,
-					Material: pulumi.String("ceramic"),
-					Size:     plant.ContainerSizeFourInch,
-				},
-				Farm: tree.Farm_Plants_R_Us,
-				Type: tree.RubberTreeVarietyRuby,
-			})
-			require.NoError(t, err)
-			require.NotNil(t, rubberTree)
-			var wg sync.WaitGroup
-			wg.Add(1)
-			pulumi.All(
-				rubberTree.URN(),
-				rubberTree.Container.Material(),
-				rubberTree.Container.Color(),
-				rubberTree.Container.Size(),
-				rubberTree.Container.Brightness(),
-				rubberTree.Type,
-			).ApplyT(func(all []interface{}) error {
-				urn := all[0].(pulumi.URN)
-				material := all[1].(*string)
-				color := all[2].(*string)
-				size := all[3].(*plant.ContainerSize)
-				brightness := all[4].(*plant.ContainerBrightness)
-				typ := all[5].(tree.RubberTreeVariety)
-				assert.Equal(t, *material, "ceramic", "unexpected material on resource: %v", urn)
-				assert.Equal(t, *color, "red", "unexpected color on resource: %v", urn)
-				assert.Equal(t, *size, plant.ContainerSizeFourInch, "unexpected size on resource: %v", urn)
-				assert.Nil(t, brightness)
-				assert.Equal(t, typ, tree.RubberTreeVarietyRuby, "unexpected type on resource: %v", urn)
-				wg.Done()
-				return nil
-			})
-			wg.Wait()
-			return nil
-		}, pulumi.WithMocks("project", "stack", mocks(0))))
-	})
-
-	t.Run("StringsForRelaxedEnum", func(t *testing.T) {
-		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
-			rubberTree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
-				Container: plant.ContainerArgs{
-					Color:    pulumi.String("Magenta"),
-					Material: pulumi.String("ceramic"),
-					Size:     plant.ContainerSize(22),
-				},
-				Farm: tree.Farm_Plants_R_Us,
-				Type: tree.RubberTreeVarietyRuby,
-			})
-			require.NoError(t, err)
-			require.NotNil(t, rubberTree)
-			var wg sync.WaitGroup
-			wg.Add(1)
-			pulumi.All(
-				rubberTree.URN(),
-				rubberTree.Container.Material(),
-				rubberTree.Container.Color(),
-				rubberTree.Container.Size(),
-				rubberTree.Type,
-			).ApplyT(func(all []interface{}) error {
-				urn := all[0].(pulumi.URN)
-				material := all[1].(*string)
-				color := all[2].(*string)
-				size := all[3].(*plant.ContainerSize)
-				typ := all[4].(tree.RubberTreeVariety)
-				assert.Equal(t, *material, "ceramic", "unexpected material on resource: %v", urn)
-				assert.Equal(t, *color, "Magenta", "unexpected color on resource: %v", urn)
-				assert.Equal(t, *size, plant.ContainerSize(22), "unexpected size on resource: %v", urn)
-				assert.Equal(t, typ, tree.RubberTreeVarietyRuby, "unexpected type on resource: %v", urn)
-				wg.Done()
-				return nil
-			})
-			wg.Wait()
-			return nil
-		}, pulumi.WithMocks("project", "stack", mocks(1))))
-	})
-
-	t.Run("StringsForStrictEnum", func(t *testing.T) {
-		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
-			rubberTree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
-				Container: plant.ContainerArgs{
-					Color:    pulumi.String("Magenta"),
-					Material: pulumi.String("ceramic"),
-					Size:     plant.ContainerSize(22),
-				},
-				Farm: tree.Farm_Plants_R_Us,
-				Type: tree.RubberTreeVarietyBurgundy,
-			})
-			require.NoError(t, err)
-			require.NotNil(t, rubberTree)
-			var wg sync.WaitGroup
-			wg.Add(1)
-			pulumi.All(
-				rubberTree.URN(),
-				rubberTree.Container.Material(),
-				rubberTree.Container.Color(),
-				rubberTree.Container.Size(),
-				rubberTree.Type,
-			).ApplyT(func(all []interface{}) error {
-				urn := all[0].(pulumi.URN)
-				material := all[1].(*string)
-				color := all[2].(*string)
-				size := all[3].(*plant.ContainerSize)
-				typ := all[4].(tree.RubberTreeVariety)
-				assert.Equal(t, *material, "ceramic", "unexpected material on resource: %v", urn)
-				assert.Equal(t, *color, "Magenta", "unexpected color on resource: %v", urn)
-				assert.Equal(t, *size, plant.ContainerSize(22), "unexpected size on resource: %v", urn)
-				assert.Equal(t, typ, tree.RubberTreeVarietyBurgundy, "unexpected type on resource: %v", urn)
-				wg.Done()
-				return nil
-			})
-			wg.Wait()
-			return nil
-		}, pulumi.WithMocks("project", "stack", mocks(1))))
-	})
-
-	t.Run("EnumOutputs", func(t *testing.T) {
-		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
-			rubberTree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
-				Container: plant.ContainerArgs{
-					Color:    plant.ContainerColor("Magenta").ToContainerColorOutput().ToStringOutput(),
-					Material: pulumi.String("ceramic").ToStringOutput(),
-					Size:     plant.ContainerSize(22).ToContainerSizeOutput(),
-				},
-				Farm: tree.Farm_Plants_R_Us.ToFarmPtrOutput().ToStringPtrOutput(),
-				Type: tree.RubberTreeVarietyBurgundy.ToRubberTreeVarietyOutput(),
-			})
-			require.NoError(t, err)
-			require.NotNil(t, rubberTree)
-			var wg sync.WaitGroup
-			wg.Add(1)
-			pulumi.All(
-				rubberTree.URN(),
-				rubberTree.Container.Material(),
-				rubberTree.Container.Color(),
-				rubberTree.Container.Size(),
-				rubberTree.Type,
-			).ApplyT(func(all []interface{}) error {
-				urn := all[0].(pulumi.URN)
-				material := all[1].(*string)
-				color := all[2].(*string)
-				size := all[3].(*plant.ContainerSize)
-				typ := all[4].(tree.RubberTreeVariety)
-				assert.Equal(t, *material, "ceramic", "unexpected material on resource: %v", urn)
-				assert.Equal(t, *color, "Magenta", "unexpected color on resource: %v", urn)
-				assert.Equal(t, *size, plant.ContainerSize(22), "unexpected size on resource: %v", urn)
-				assert.Equal(t, typ, tree.RubberTreeVarietyBurgundy, "unexpected type on resource: %v", urn)
-				wg.Done()
-				return nil
-			})
-			wg.Wait()
-			return nil
-		}, pulumi.WithMocks("project", "stack", mocks(1))))
 	})
 }
 

@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/nested-module/go/foo"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"nested-module/foo"
 )
 
 type module struct {
