@@ -582,6 +582,8 @@
       "extraTypeScriptFiles": [
           "tests/codegen.spec.ts"
       ]
+    },
+    "python": {
     }
   }
 }

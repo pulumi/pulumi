@@ -119,7 +119,7 @@ func TestGenerateOutputFuncsPython(t *testing.T) {
 	var examples []string
 	for _, f := range files {
 		name := f.Name()
-		if strings.HasSuffix(name, ".json") {
+		if strings.HasSuffix(name, ".json") && name != "schema.json" {
 			examples = append(examples, strings.TrimSuffix(name, ".json"))
 		}
 	}
