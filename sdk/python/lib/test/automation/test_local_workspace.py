@@ -327,7 +327,7 @@ class TestLocalWorkspace(unittest.TestCase):
         stack_name = stack_namer(project_name)
         work_dir = test_path("data", project_name)
         stack = create_stack(stack_name, work_dir=work_dir)
-        print(stack)
+        self.assertIsNone(print(stack))
 
         config: ConfigMap = {
             "bar": ConfigValue(value="abc"),
