@@ -16,7 +16,6 @@
     "Resource.cs",
     "TypeUses.cs",
     "Utilities.cs",
-    "logo.png",
-    "version.txt"
+    "logo.png"
   ]
 }

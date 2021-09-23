@@ -6,7 +6,6 @@
     "Resource.cs",
     "ResourceInput.cs",
     "Utilities.cs",
-    "logo.png",
-    "version.txt"
+    "logo.png"
   ]
 }
