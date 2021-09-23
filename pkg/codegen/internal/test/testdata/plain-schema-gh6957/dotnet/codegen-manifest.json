@@ -6,7 +6,6 @@
     "README.md",
     "StaticPage.cs",
     "Utilities.cs",
-    "logo.png",
-    "version.txt"
+    "logo.png"
   ]
 }
