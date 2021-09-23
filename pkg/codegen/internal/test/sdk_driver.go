@@ -147,7 +147,6 @@ var sdkTests = []sdkTest{
 		Directory:        "output-funcs",
 		Description:      "Tests targeting the $fn_output helper code generation feature",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
-		Skip:             codegen.NewStringSet("python/test"),
 	},
 }
 
