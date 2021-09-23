@@ -42,98 +42,122 @@ const (
 
 var sdkTests = []sdkTest{
 	{
-		Directory:        "input-collision",
-		Description:      "Schema with types that could potentially produce collisions (go).",
+		Directory:        "dash-named-schema",
+		Description:      "Simple schema with a two part name (foo-bar)",
+		Skip:             codegen.NewStringSet("python/test"),
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
-		Directory:        "dash-named-schema",
-		Description:      "Simple schema with a two part name (foo-bar)",
+		Directory:        "input-collision",
+		Description:      "Schema with types that could potentially produce collisions (go).",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "external-resource-schema",
 		Description:      "External resource schema",
 		SkipCompileCheck: codegen.NewStringSet(nodejs, golang, dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "nested-module",
 		Description:      "Nested module",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "nested-module-thirdparty",
 		Description:      "Third-party nested module",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "plain-schema-gh6957",
 		Description:      "Repro for #6957",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "resource-args-python-case-insensitive",
 		Description:      "Resource args with same named resource and type case insensitive",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "resource-args-python",
 		Description:      "Resource args with same named resource and type",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "simple-enum-schema",
 		Description:      "Simple schema with enum types",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "simple-plain-schema",
 		Description:      "Simple schema with plain properties",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "simple-plain-schema-with-root-package",
 		Description:      "Simple schema with root package set",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "simple-resource-schema",
 		Description:      "Simple schema with local resource properties",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "simple-resource-schema-custom-pypackage-name",
 		Description:      "Simple schema with local resource properties and custom Python package name",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "simple-methods-schema",
 		Description:      "Simple schema with methods",
 		SkipCompileCheck: codegen.NewStringSet(nodejs, dotnet, golang),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "simple-yaml-schema",
 		Description:      "Simple schema encoded using YAML",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "provider-config-schema",
 		Description:      "Simple provider config schema",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "replace-on-change",
 		Description:      "Simple use of replaceOnChange in schema",
 		SkipCompileCheck: codegen.NewStringSet(golang, dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "resource-property-overlap",
 		Description:      "A resource with the same name as it's property",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "hyphen-url",
 		Description:      "A resource url with a hyphen in it's path",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
+	},
+	{
+		Directory:        "output-funcs",
+		Description:      "Tests targeting the $fn_output helper code generation feature",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 }
@@ -207,8 +231,21 @@ type SDKCodegenOptions struct {
 func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-line
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 
-	for _, tt := range sdkTests {
-		t.Run(tt.Description, func(t *testing.T) {
+	// Motivation for flagging parallelism: not all tests are
+	// parallel-safe yet (for example, codegen/docs tests fail),
+	// and there are concerns about memory utilizaion in CI. It
+	// can be a nice feature for developing though.
+	parallel := os.Getenv("PULUMI_PARALLEL_SDK_CODEGEN_TESTS") != ""
+
+	for _, sdkTest := range sdkTests {
+		tt := sdkTest // avoid capturing loop variable `sdkTest` in the closure
+		t.Run(tt.Directory, func(t *testing.T) {
+			if parallel {
+				t.Parallel()
+			}
+
+			t.Log(tt.Description)
+
 			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
 
 			schemaPath := filepath.Join(dirPath, "schema.json")
