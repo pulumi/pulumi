@@ -42,19 +42,25 @@ const (
 
 var sdkTests = []sdkTest{
 	{
-		Directory:   "input-collision",
-		Description: "Schema with types that could potentially produce collisions (go).",
-		Skip:        codegen.NewStringSet("python/test"),
-	},
-	{
 		Directory:   "dash-named-schema",
 		Description: "Simple schema with a two part name (foo-bar)",
 		Skip:        codegen.NewStringSet("python/test"),
 	},
 	{
+		Directory:        "input-collision",
+		Description:      "Schema with types that could potentially produce collisions (go).",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
+	},
+	{
+		Directory:        "dash-named-schema",
+		Description:      "Simple schema with a two part name (foo-bar)",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+	},
+	{
 		Directory:        "external-resource-schema",
 		Description:      "External resource schema",
-		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
+		SkipCompileCheck: codegen.NewStringSet(nodejs, golang, dotnet),
 		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
@@ -70,44 +76,52 @@ var sdkTests = []sdkTest{
 		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "plain-schema-gh6957",
-		Description: "Repro for #6957",
-		Skip:        codegen.NewStringSet("python/test"),
+		Directory:        "plain-schema-gh6957",
+		Description:      "Repro for #6957",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "resource-args-python-case-insensitive",
-		Description: "Resource args with same named resource and type case insensitive",
-		Skip:        codegen.NewStringSet("python/test"),
+		Directory:        "resource-args-python-case-insensitive",
+		Description:      "Resource args with same named resource and type case insensitive",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "resource-args-python",
-		Description: "Resource args with same named resource and type",
-		Skip:        codegen.NewStringSet("python/test"),
+		Directory:        "resource-args-python",
+		Description:      "Resource args with same named resource and type",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "simple-enum-schema",
-		Description: "Simple schema with enum types",
-		Skip:        codegen.NewStringSet("python/test"),
+		Directory:        "simple-enum-schema",
+		Description:      "Simple schema with enum types",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "simple-plain-schema",
-		Description: "Simple schema with plain properties",
-		Skip:        codegen.NewStringSet("python/test"),
+		Directory:        "simple-plain-schema",
+		Description:      "Simple schema with plain properties",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "simple-plain-schema-with-root-package",
-		Description: "Simple schema with root package set",
-		Skip:        codegen.NewStringSet("python/test"),
+		Directory:        "simple-plain-schema-with-root-package",
+		Description:      "Simple schema with root package set",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "simple-resource-schema",
-		Description: "Simple schema with local resource properties",
-		Skip:        codegen.NewStringSet("python/test"),
+		Directory:        "simple-resource-schema",
+		Description:      "Simple schema with local resource properties",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "simple-resource-schema-custom-pypackage-name",
-		Description: "Simple schema with local resource properties and custom Python package name",
-		Skip:        codegen.NewStringSet("python/test"),
+		Directory:        "simple-resource-schema-custom-pypackage-name",
+		Description:      "Simple schema with local resource properties and custom Python package name",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "simple-methods-schema",
@@ -116,9 +130,10 @@ var sdkTests = []sdkTest{
 		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "simple-yaml-schema",
-		Description: "Simple schema encoded using YAML",
-		Skip:        codegen.NewStringSet("python/test"),
+		Directory:        "simple-yaml-schema",
+		Description:      "Simple schema encoded using YAML",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:        "provider-config-schema",
@@ -129,7 +144,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "replace-on-change",
 		Description:      "Simple use of replaceOnChange in schema",
-		SkipCompileCheck: codegen.NewStringSet(golang),
+		SkipCompileCheck: codegen.NewStringSet(golang, dotnet),
 		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
@@ -139,14 +154,14 @@ var sdkTests = []sdkTest{
 		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "hyphen-url",
-		Description: "A resource url with a hyphen in it's path",
-		Skip:        codegen.NewStringSet("python/test"),
+		Directory:        "hyphen-url",
+		Description:      "A resource url with a hyphen in it's path",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:        "output-funcs",
-		Description:      "Tests targeting the $fn_output helper code generation feature",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "output-funcs",
+		Description: "Tests targeting the $fn_output helper code generation feature",
 	},
 }
 

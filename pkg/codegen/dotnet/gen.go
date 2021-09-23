@@ -1979,13 +1979,6 @@ func genPackageMetadata(pkg *schema.Package, assemblyName string, packageReferen
 
 	files.add(assemblyName+".csproj", projectFile)
 	files.add("logo.png", logo)
-
-	// Generate version.txt
-	versionFile := "version.txt"
-	if _, exists := files[versionFile]; !exists && pkg.Version != nil {
-		files[versionFile] = []byte(pkg.Version.String())
-	}
-
 	return nil
 }
 
@@ -2236,8 +2229,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	files := fs{}
 	for p, f := range extraFiles {
 		files.add(p, f)
-	}
 
+	}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
 			return nil, err

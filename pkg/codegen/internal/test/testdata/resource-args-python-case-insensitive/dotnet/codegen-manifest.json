@@ -8,7 +8,6 @@
     "Pulumi.Example.csproj",
     "README.md",
     "Utilities.cs",
-    "logo.png",
-    "version.txt"
+    "logo.png"
   ]
 }
