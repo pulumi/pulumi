@@ -180,9 +180,9 @@ jobs:
         with:
           ref: ${{ env.PR_COMMIT_SHA }}
       - id: go-cache-paths
-          run: |
-              echo "::set-output name=go-build::$(go env GOCACHE)"
-              echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
       - name: Go Cache
         uses: actions/cache@v2
         with:
