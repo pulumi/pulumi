@@ -155,7 +155,7 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			result := v.OutputValue().Element
 			if !v.OutputValue().Known {
 				// Unknown outputs are marshaled the same as Computed.
-				result = resource.MakeComputed(result)
+				result = resource.MakeComputed(resource.NewStringProperty(""))
 			}
 			if v.OutputValue().Secret {
 				result = resource.MakeSecret(result)

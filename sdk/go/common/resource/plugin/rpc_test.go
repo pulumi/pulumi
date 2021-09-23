@@ -939,7 +939,7 @@ func TestOutputValueMarshaling(t *testing.T) {
 			opts: MarshalOptions{KeepUnknowns: true},
 			raw:  resource.NewOutputProperty(resource.Output{}),
 			expected: &structpb.Value{
-				Kind: &structpb.Value_NullValue{NullValue: 0},
+				Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
 			},
 		},
 		{
