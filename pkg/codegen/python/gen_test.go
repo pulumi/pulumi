@@ -15,16 +15,18 @@
 package python
 
 import (
+	"fmt"
 	filesystem "io/fs"
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
@@ -54,6 +56,15 @@ func TestRelPathToRelImport(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
+	// To speed up these tests, we will generate one common
+	// virtual environment for all of them to run in, rather than
+	// having one per test.
+	err := buildVirtualEnv()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "python",
 		GenPackage: GeneratePackage,
@@ -64,12 +75,74 @@ func TestGeneratePackage(t *testing.T) {
 	})
 }
 
+func absTestsPath() (string, error) {
+	hereDir, err := filepath.Abs(".")
+	if err != nil {
+		return "", err
+	}
+	return hereDir, nil
+}
+
+func virtualEnvPath() (string, error) {
+	hereDir, err := absTestsPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(hereDir, "venv"), nil
+}
+
+// To serialize shared `venv` operations; without the lock running
+// tests with `-parallel` causes sproadic failure.
+var venvMutex *sync.Mutex = &sync.Mutex{}
+
+func buildVirtualEnv() error {
+	hereDir, err := absTestsPath()
+	if err != nil {
+		return err
+	}
+	venvDir, err := virtualEnvPath()
+	if err != nil {
+		return err
+	}
+
+	gotVenv, err := test.PathExists(venvDir)
+	if err != nil {
+		return err
+	}
+
+	if gotVenv {
+		err := os.RemoveAll(venvDir)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = python.InstallDependencies(hereDir, venvDir, false /*showOutput*/)
+	if err != nil {
+		return err
+	}
+
+	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk", "python", "env", "src"))
+	if err != nil {
+		return err
+	}
+
+	gotSdk, err := test.PathExists(sdkDir)
+	if err != nil {
+		return err
+	}
+
+	if !gotSdk {
+		return fmt.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
+	}
+
+	return nil
+}
+
 // Checks generated code for syntax errors with `python -m compile`.
 func pyCompileCheck(t *testing.T, codeDir string) {
-	ex, _, err := python.CommandPath()
-	require.NoError(t, err)
-	cmdOptions := integration.ProgramTestOptions{}
-	err = filepath.Walk(codeDir, func(path string, info filesystem.FileInfo, err error) error {
+	pythonFiles := []string{}
+	err := filepath.Walk(codeDir, func(path string, info filesystem.FileInfo, err error) error {
 		require.NoError(t, err) // an error in the walk
 
 		if info.Mode().IsDir() && info.Name() == "venv" {
@@ -79,61 +152,46 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 		if info.Mode().IsRegular() && strings.HasSuffix(info.Name(), ".py") {
 			path, err = filepath.Abs(path)
 			require.NoError(t, err)
-			err = integration.RunCommand(t, "python syntax check",
-				[]string{ex, "-m", "py_compile", path}, codeDir, &cmdOptions)
-			require.NoError(t, err)
+
+			pythonFiles = append(pythonFiles, path)
 		}
 		return nil
 	})
 	require.NoError(t, err)
+
+	args := append([]string{"-m", "py_compile"}, pythonFiles...)
+	test.RunCommand(t, "python syntax check", codeDir, "python", args...)
 }
 
 func pyTestCheck(t *testing.T, codeDir string) {
-	venvDir, err := filepath.Abs(filepath.Join(codeDir, "venv"))
+	venvDir, err := virtualEnvPath()
 	if err != nil {
 		t.Error(err)
-		t.FailNow()
+		return
 	}
 
-	t.Logf("cd %s && python3 -m venv venv", codeDir)
-	t.Logf("cd %s && ./venv/bin/python -m pip install -r requirements.txt", codeDir)
-	err = python.InstallDependencies(codeDir, venvDir, true /*showOutput*/)
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-
-	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk", "python", "env", "src"))
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-
-	gotSdk, err := test.PathExists(sdkDir)
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-
-	if !gotSdk {
-		t.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
-		t.FailNow()
-	}
-
-	cmd := func(name string, args ...string) {
-		t.Logf("cd %s && ./venv/bin/%s %s", codeDir, name, strings.Join(args, " "))
+	cmd := func(name string, args ...string) error {
+		t.Logf("cd %s && %s %s", codeDir, name, strings.Join(args, " "))
 		cmd := python.VirtualEnvCommand(venvDir, name, args...)
 		cmd.Dir = codeDir
-		err = cmd.Run()
-		if err != nil {
-			t.Error(err)
-			t.FailNow()
-		}
+		return cmd.Run()
 	}
 
-	cmd("python", "-m", "pip", "install", "-e", sdkDir)
-	cmd("python", "-m", "pip", "install", "-e", ".")
-	cmd("pytest", ".")
+	installPackage := func() error {
+		venvMutex.Lock()
+		defer venvMutex.Unlock()
+		return cmd("python", "-m", "pip", "install", "-e", ".")
+	}
+
+	if err = installPackage(); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err = cmd("pytest", "."); err != nil {
+		t.Error(err)
+		return
+	}
 }
 
 func TestGenerateTypeNames(t *testing.T) {
