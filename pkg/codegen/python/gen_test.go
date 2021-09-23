@@ -93,7 +93,7 @@ func virtualEnvPath() (string, error) {
 
 // To serialize shared `venv` operations; without the lock running
 // tests with `-parallel` causes sproadic failure.
-var venvMutex *sync.Mutex = &sync.Mutex{}
+var venvMutex = &sync.Mutex{}
 
 func buildVirtualEnv() error {
 	hereDir, err := absTestsPath()
