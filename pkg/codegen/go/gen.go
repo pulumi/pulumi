@@ -2641,7 +2641,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		case *schema.EnumType:
 			pkg := getPkgFromToken(t.Token)
 			if resSeen[t.Token] {
-				pkg.duplicateTokens[t.Token] = true
+				pkg.duplicateTokens[strings.ToLower(t.Token)] = true
 			}
 			if typeSeen[t.Token] {
 				return
