@@ -15,13 +15,8 @@
 package python
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
 	filesystem "io/fs"
-	"io/ioutil"
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 
@@ -64,6 +59,7 @@ func TestGeneratePackage(t *testing.T) {
 		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
 			"python/py_compile": pyCompileCheck,
+			"python/test":       pyTestCheck,
 		},
 	})
 }
@@ -75,6 +71,11 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 	cmdOptions := integration.ProgramTestOptions{}
 	err = filepath.Walk(codeDir, func(path string, info filesystem.FileInfo, err error) error {
 		require.NoError(t, err) // an error in the walk
+
+		if info.Mode().IsDir() && info.Name() == "venv" {
+			return filepath.SkipDir
+		}
+
 		if info.Mode().IsRegular() && strings.HasSuffix(info.Name(), ".py") {
 			path, err = filepath.Abs(path)
 			require.NoError(t, err)
@@ -85,6 +86,54 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 		return nil
 	})
 	require.NoError(t, err)
+}
+
+func pyTestCheck(t *testing.T, codeDir string) {
+	venvDir, err := filepath.Abs(filepath.Join(codeDir, "venv"))
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	t.Logf("cd %s && python3 -m venv venv", codeDir)
+	t.Logf("cd %s && ./venv/bin/python -m pip install -r requirements.txt", codeDir)
+	err = python.InstallDependencies(codeDir, venvDir, true /*showOutput*/)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk", "python", "env", "src"))
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	gotSdk, err := test.PathExists(sdkDir)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if !gotSdk {
+		t.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
+		t.FailNow()
+	}
+
+	cmd := func(name string, args ...string) {
+		t.Logf("cd %s && ./venv/bin/%s %s", codeDir, name, strings.Join(args, " "))
+		cmd := python.VirtualEnvCommand(venvDir, name, args...)
+		cmd.Dir = codeDir
+		err = cmd.Run()
+		if err != nil {
+			t.Error(err)
+			t.FailNow()
+		}
+	}
+
+	cmd("python", "-m", "pip", "install", "-e", sdkDir)
+	cmd("python", "-m", "pip", "install", "-e", ".")
+	cmd("pytest", ".")
 }
 
 func TestGenerateTypeNames(t *testing.T) {
@@ -103,120 +152,6 @@ func TestGenerateTypeNames(t *testing.T) {
 
 		return func(t schema.Type) string {
 			return root.typeString(t, false, false)
-		}
-	})
-}
-
-func TestGenerateOutputFuncsPython(t *testing.T) {
-	testDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs")
-
-	files, err := ioutil.ReadDir(testDir)
-	if err != nil {
-		require.NoError(t, err)
-		return
-	}
-
-	var examples []string
-	for _, f := range files {
-		name := f.Name()
-		if strings.HasSuffix(name, ".json") {
-			examples = append(examples, strings.TrimSuffix(name, ".json"))
-		}
-	}
-
-	sort.Slice(examples, func(i, j int) bool { return examples[i] < examples[j] })
-
-	gen := func(reader io.Reader, writer io.Writer) error {
-		var pkgSpec schema.PackageSpec
-
-		pkgSpec.Name = "py_tests"
-		err := json.NewDecoder(reader).Decode(&pkgSpec)
-		if err != nil {
-			return err
-		}
-		pkg, err := schema.ImportSpec(pkgSpec, nil)
-		if err != nil {
-			return err
-		}
-		fun := pkg.Functions[0]
-
-		mod := &modContext{}
-		funcCode, err := mod.genFunction(fun)
-		if err != nil {
-			return err
-		}
-
-		_, err = writer.Write([]byte(funcCode))
-		return err
-	}
-
-	outputDir, err := filepath.Abs(filepath.Join(testDir, "py_tests"))
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-
-	// for every example, check that generated code did not change
-	for _, ex := range examples {
-		t.Run(ex, func(t *testing.T) {
-			inputFile := filepath.Join(testDir, fmt.Sprintf("%s.json", ex))
-			expectedOutputFile := filepath.Join(outputDir, fmt.Sprintf("%s.py", ex))
-			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
-		})
-	}
-
-	// re-generate _utilities.py to assist runtime testing
-	err = ioutil.WriteFile(
-		filepath.Join(outputDir, "_utilities.py"),
-		genUtilitiesFile("gen_test.go"),
-		0600)
-
-	require.NoError(t, err)
-
-	// run unit tests against the generated code
-	t.Run("testGeneratedCode", func(t *testing.T) {
-		venvDir := filepath.Join(outputDir, "venv")
-
-		t.Logf("cd %s && python3 -m venv venv", outputDir)
-		t.Logf("cd %s && ./venv/bin/python -m pip install -r requirements.txt", outputDir)
-		err := python.InstallDependencies(outputDir, venvDir, false /*showOutput*/)
-		if err != nil {
-			t.Error(err)
-			t.FailNow()
-		}
-
-		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "..",
-			"sdk", "python", "env", "src"))
-		if err != nil {
-			t.Error(err)
-			t.FailNow()
-		}
-
-		t.Logf("cd %s && ./venv/bin/python -m pip install -e %s", outputDir, sdkDir)
-		cmd := python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", sdkDir)
-		cmd.Dir = outputDir
-		err = cmd.Run()
-		if err != nil {
-			t.Error(err)
-			t.FailNow()
-		}
-
-		t.Logf("cd %s && ./venv/bin/python -m pip install -e .", outputDir)
-		cmd = python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", ".")
-		cmd.Dir = outputDir
-		err = cmd.Run()
-		if err != nil {
-			t.Error(err)
-			t.FailNow()
-		}
-
-		t.Logf("cd %s && ./venv/bin/pytest", outputDir)
-		cmd = python.VirtualEnvCommand(venvDir, "pytest", ".")
-		cmd.Dir = outputDir
-		err = cmd.Run()
-		if err != nil {
-			t.Error(err)
-			t.FailNow()
 		}
 	})
 }

@@ -89,7 +89,7 @@ func makeResourceModuleInfo(pkg, mod, fqn string) resourceModuleInfo {
 }
 
 func allResourceModuleInfos(root *modContext) []resourceModuleInfo {
-	var result []resourceModuleInfo
+	result := []resourceModuleInfo{}
 	for _, mctx := range root.walkSelfWithDescendants() {
 		result = append(result, collectResourceModuleInfos(mctx)...)
 	}
@@ -145,7 +145,7 @@ type resourcePackageInfo struct {
 }
 
 func allResourcePackageInfos(root *modContext) []resourcePackageInfo {
-	var result []resourcePackageInfo
+	result := []resourcePackageInfo{}
 	for _, mctx := range root.walkSelfWithDescendants() {
 		result = append(result, collectResourcePackageInfos(mctx)...)
 	}
