@@ -1982,7 +1982,7 @@ func genPackageMetadata(pkg *schema.Package, assemblyName string, packageReferen
 
 	// Generate version.txt
 	versionFile := "version.txt"
-	// HACK for https://github.com/pulumi/pulumi/issues/8033
+	// Removed because of https://github.com/pulumi/pulumi/issues/8033
 	// version := pkg.Version.String()
 	version := "0.0.0"
 	if _, exists := files[versionFile]; !exists && pkg.Version != nil {

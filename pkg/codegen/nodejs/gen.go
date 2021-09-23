@@ -1842,7 +1842,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 
 	packageVersion := "${VERSION}"
 	if pkg.Version != nil {
-		// HACK for https://github.com/pulumi/pulumi/issues/8033
+		// Removed because https://github.com/pulumi/pulumi/issues/8033
 		// packageVersion = pkg.Version.String()
 	}
 
