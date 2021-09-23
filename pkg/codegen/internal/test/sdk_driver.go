@@ -136,11 +136,6 @@ var sdkTests = []sdkTest{
 		Description:      "A resource url with a hyphen in it's path",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
-	{
-		Directory:   "function-only",
-		Description: "A schema with only a function",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
-	},
 }
 
 type SDKCodegenOptions struct {
