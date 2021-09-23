@@ -1,6 +1,7 @@
 package test
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -134,13 +135,13 @@ var sdkTests = []sdkTest{
 	},
 	{
 		Directory:        "resource-property-overlap",
-		Description:      "A resource with the same name as it's property",
+		Description:      "A resource with the same name as its property",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:   "hyphen-url",
-		Description: "A resource url with a hyphen in it's path",
+		Description: "A resource url with a hyphen in its path",
 		Skip:        codegen.NewStringSet("python/test"),
 	},
 	{
@@ -148,6 +149,19 @@ var sdkTests = []sdkTest{
 		Description:      "Tests targeting the $fn_output helper code generation feature",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
+	{
+		Directory:   "cyclic-types",
+		Description: "Cyclic object types",
+	},
+}
+
+var runSDK string
+var genSDKOnly bool
+
+func init() {
+	flag.StringVar(&runSDK, "sdk.run", "", "when set, specifies a single SDK test to run")
+	flag.BoolVar(&genSDKOnly, "sdk.no-checks", false, "when set, skips all post-SDK-generation checks")
+	// NOTE: the testing package will call flag.Parse.
 }
 
 type SDKCodegenOptions struct {
@@ -228,6 +242,10 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 	for _, sdkTest := range sdkTests {
 		tt := sdkTest // avoid capturing loop variable `sdkTest` in the closure
 		t.Run(tt.Directory, func(t *testing.T) {
+			if runSDK != "" && runSDK != tt.Directory {
+				t.SkipNow()
+			}
+
 			if parallel {
 				t.Parallel()
 			}
@@ -251,6 +269,10 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				if !ValidateFileEquality(t, files, expectedFiles) {
 					t.Fail()
 				}
+			}
+
+			if genSDKOnly {
+				return
 			}
 
 			CopyExtraFiles(t, dirPath, opts.Language)
