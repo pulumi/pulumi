@@ -42,20 +42,16 @@ const (
 
 var sdkTests = []sdkTest{
 	{
-		Directory:   "dash-named-schema",
-		Description: "Simple schema with a two part name (foo-bar)",
-		Skip:        codegen.NewStringSet("python/test"),
+		Directory:        "dash-named-schema",
+		Description:      "Simple schema with a two part name (foo-bar)",
+		Skip:             codegen.NewStringSet("python/test"),
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
 		Directory:        "input-collision",
 		Description:      "Schema with types that could potentially produce collisions (go).",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 		Skip:             codegen.NewStringSet("python/test"),
-	},
-	{
-		Directory:        "dash-named-schema",
-		Description:      "Simple schema with a two part name (foo-bar)",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
 		Directory:        "external-resource-schema",
@@ -234,9 +230,19 @@ type SDKCodegenOptions struct {
 func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-line
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 
-	for _, tt := range sdkTests {
+	// Motivation for flagging parallelism: not all tests are
+	// parallel-safe yet (for example, codegen/docs tests fail),
+	// and there are concerns about memory utilizaion in CI. It
+	// can be a nice feature for developing though.
+	parallel := os.Getenv("PULUMI_PARALLEL_SDK_CODEGEN_TESTS") != ""
+
+	for _, sdkTest := range sdkTests {
+		tt := sdkTest // avoid capturing loop variable `sdkTest` in the closure
 		t.Run(tt.Directory, func(t *testing.T) {
-			t.Parallel()
+			if parallel {
+				t.Parallel()
+			}
+
 			t.Log(tt.Description)
 
 			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
