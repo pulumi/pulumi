@@ -3,8 +3,11 @@ package gen
 import (
 	"bytes"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
@@ -12,13 +15,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
-	"github.com/stretchr/testify/assert"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 var testdataPath = filepath.Join("..", "internal", "test", "testdata")
 
 func TestGenerateProgram(t *testing.T) {
-	test.TestProgramCodegen(t, "go", GenerateProgram)
+	test.TestProgramCodegen(t, test.ProgramLangConfig{
+		Language:   "go",
+		Extension:  "go",
+		OutputFile: "main.go",
+		Check:      goCheck,
+		GenProgram: GenerateProgram,
+	})
 }
 
 func TestCollectImports(t *testing.T) {
@@ -68,4 +78,35 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 	}
 	g.Formatter = format.NewFormatter(g)
 	return g
+}
+
+func goCheck(t *testing.T, path string) {
+	dir := filepath.Dir(path)
+	ex, err := executable.FindExecutable("go")
+	assert.NoError(t, err)
+	_, err = ioutil.ReadFile("go.mod")
+	if os.IsNotExist(err) {
+		defer func() {
+			// If we created the module, we also remove the module
+			err = os.Remove(filepath.Join(dir, "go.mod"))
+			assert.NoError(t, err)
+			err = os.Remove(filepath.Join(dir, "go.sum"))
+			assert.NoError(t, err)
+		}()
+		err = integration.RunCommand(t, "generate go.mod",
+			[]string{ex, "mod", "init", "main"},
+			dir, &integration.ProgramTestOptions{})
+		assert.NoError(t, err)
+		err = integration.RunCommand(t, "go tidy",
+			[]string{ex, "mod", "tidy"},
+			dir, &integration.ProgramTestOptions{})
+		assert.NoError(t, err)
+	} else {
+		assert.NoError(t, err)
+	}
+	err = integration.RunCommand(t, "test build", []string{ex, "build", "-v", "all"},
+		dir, &integration.ProgramTestOptions{})
+	assert.NoError(t, err)
+	os.Remove(filepath.Join(dir, "main"))
+	assert.NoError(t, err)
 }

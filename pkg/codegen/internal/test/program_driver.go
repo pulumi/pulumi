@@ -16,9 +16,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 type programTest struct {
@@ -151,140 +148,18 @@ var programTests = []programTest{
 	},
 }
 
-var langConfig = map[string]struct {
-	extension  string
-	outputFile string
-	// Will be called on the generated file
-	check func(*testing.T, string)
-}{
-	"python": {
-		extension:  "py",
-		outputFile: "__main__.py",
-		check: func(t *testing.T, path string) {
-			ex, _, err := python.CommandPath()
-			assert.NoError(t, err)
-			name := filepath.Base(path)
-			dir := filepath.Dir(path)
-			err = integration.RunCommand(t, "python syntax check",
-				[]string{ex, "-m", "py_compile", name}, dir, &integration.ProgramTestOptions{})
-			assert.NoError(t, err)
-		},
-	},
-	"nodejs": {
-		extension:  "ts",
-		outputFile: "index.ts",
-		check: func(t *testing.T, path string) {
-			ex, err := executable.FindExecutable("yarn")
-			assert.NoError(t, err, "Could not find yarn executable")
-			dir := filepath.Dir(path)
-			name := filepath.Base(dir)
-			pkgName, pkgVersion := packagesFromNameNodejs(name)
-			if pkgName == "" {
-				pkgName = "@pulumi/pulumi"
-				pkgVersion = "3.7.0"
-			}
-			pkg := pkgName + "@" + pkgVersion
-			defer func() {
-				nodeModules := filepath.Join(dir, "node_modules")
-				err = os.RemoveAll(nodeModules)
-				assert.NoError(t, err, "Failed to delete %s", nodeModules)
-				packageJSON := filepath.Join(dir, "package.json")
-				err = os.Remove(packageJSON)
-				assert.NoError(t, err, "Failed to delete %s", packageJSON)
-				yarnLock := filepath.Join(dir, "yarn.lock")
-				err = os.Remove(yarnLock)
-				assert.NoError(t, err, "Failed to delete %s", yarnLock)
-			}()
-			err = integration.RunCommand(t, "yarn add and install",
-				[]string{ex, "add", pkg}, dir, &integration.ProgramTestOptions{})
-			assert.NoError(t, err, "Could not install package: %q", pkg)
-			err = integration.RunCommand(t, "tsc check",
-				[]string{ex, "run", "tsc", "--noEmit", filepath.Base(path)}, dir, &integration.ProgramTestOptions{})
-			assert.NoError(t, err, "Failed to build %q", path)
-		},
-	},
-	"go": {
-		extension:  "go",
-		outputFile: "main.go",
-		check: func(t *testing.T, path string) {
-			dir := filepath.Dir(path)
-			ex, err := executable.FindExecutable("go")
-			assert.NoError(t, err)
-			_, err = ioutil.ReadFile("go.mod")
-			if os.IsNotExist(err) {
-				defer func() {
-					// If we created the module, we also remove the module
-					err = os.Remove(filepath.Join(dir, "go.mod"))
-					assert.NoError(t, err)
-					err = os.Remove(filepath.Join(dir, "go.sum"))
-					assert.NoError(t, err)
-				}()
-				err = integration.RunCommand(t, "generate go.mod",
-					[]string{ex, "mod", "init", "main"},
-					dir, &integration.ProgramTestOptions{})
-				assert.NoError(t, err)
-				err = integration.RunCommand(t, "go tidy",
-					[]string{ex, "mod", "tidy"},
-					dir, &integration.ProgramTestOptions{})
-				assert.NoError(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-			err = integration.RunCommand(t, "test build", []string{ex, "build"},
-				dir, &integration.ProgramTestOptions{})
-			assert.NoError(t, err)
-			os.Remove(filepath.Join(dir, "main"))
-			assert.NoError(t, err)
-		},
-	},
-	"dotnet": {
-		extension:  "cs",
-		outputFile: "MyStack.cs",
-		check: func(t *testing.T, path string) {
-			var err error
-			dir := filepath.Dir(path)
+// Checks that a generated program is correct
+type CheckProgramOutput = func(*testing.T, string)
 
-			ex, err := executable.FindExecutable("dotnet")
-			assert.NoError(t, err, "Failed to find dotnet executable")
+// Generates a program from a hcl2.Program
+type GenProgram = func(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error)
 
-			projectFile := filepath.Join(dir, filepath.Base(dir)+".csproj")
-			if _, err := ioutil.ReadFile(projectFile); os.IsNotExist(err) {
-				defer func() {
-					err = os.Remove(projectFile)
-					assert.NoError(t, err, "Failed to delete project file")
-					err = os.Remove(filepath.Join(dir, "Program.cs"))
-					assert.NoError(t, err, "Failed to delete C# project main")
-				}()
-				err = integration.RunCommand(t, "create dotnet project",
-					[]string{ex, "new", "console"}, dir, &integration.ProgramTestOptions{})
-				assert.NoError(t, err, "Failed to create C# project")
-			}
-
-			// Add dependencies (based on directory name)
-			if pkg, pkgVersion := packagesFromNameDotNet(filepath.Base(dir)); pkg != "" {
-				err = integration.RunCommand(t, "create dotnet project",
-					[]string{ex, "add", "package", pkg, "--version", pkgVersion},
-					dir, &integration.ProgramTestOptions{})
-				assert.NoError(t, err, "Failed to add dependency %q %q", pkg, pkgVersion)
-			} else {
-				err = integration.RunCommand(t, "add sdk ref",
-					[]string{ex, "add", "reference", "../../../../../../sdk/dotnet/Pulumi"},
-					dir, &integration.ProgramTestOptions{})
-				assert.NoError(t, err, "Failed to dotnet sdk package reference")
-			}
-
-			// Clean up build result
-			defer func() {
-				err = os.RemoveAll(filepath.Join(dir, "bin"))
-				assert.NoError(t, err, "Failed to remove bin result")
-				err = os.RemoveAll(filepath.Join(dir, "obj"))
-				assert.NoError(t, err, "Failed to remove obj result")
-			}()
-			err = integration.RunCommand(t, "dotnet build",
-				[]string{ex, "build", "--nologo"}, dir, &integration.ProgramTestOptions{})
-			assert.NoError(t, err, "Failed to build dotnet project")
-		},
-	},
+type ProgramLangConfig struct {
+	Language   string
+	Extension  string
+	OutputFile string
+	Check      CheckProgramOutput
+	GenProgram GenProgram
 }
 
 // TestProgramCodegen runs the complete set of program code generation tests against a particular
@@ -297,20 +172,20 @@ var langConfig = map[string]struct {
 // can be generated by running `PULUMI_ACCEPT=true go test ./..." from the `pkg/codegen` directory.
 func TestProgramCodegen(
 	t *testing.T,
-	language string,
-	genProgram func(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error),
+	// language string,
+	// genProgram func(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error
+	testcase ProgramLangConfig,
+
 ) {
 	for _, tt := range programTests {
 		t.Run(tt.Description, func(t *testing.T) {
 			var err error
-			if tt.Skip.Has(language) {
+			if tt.Skip.Has(testcase.Language) {
 				t.Skip()
 				return
 			}
 
-			expectNYIDiags := tt.ExpectNYIDiags.Has(language)
-
-			var cfg = langConfig[language]
+			expectNYIDiags := tt.ExpectNYIDiags.Has(testcase.Language)
 
 			testDir := filepath.Join(testdataPath, tt.Name+"-pp")
 			err = os.Mkdir(testDir, 0700)
@@ -324,7 +199,7 @@ func TestProgramCodegen(
 				t.Fatalf("could not read %v: %v", pclFile, err)
 			}
 
-			expectedFile := filepath.Join(testDir, tt.Name+"."+cfg.extension)
+			expectedFile := filepath.Join(testDir, tt.Name+"."+testcase.Extension)
 			expected, err := ioutil.ReadFile(expectedFile)
 			if err != nil && os.Getenv("PULUMI_ACCEPT") == "" {
 				t.Fatalf("could not read %v: %v", expectedFile, err)
@@ -346,7 +221,7 @@ func TestProgramCodegen(
 			if diags.HasErrors() {
 				t.Fatalf("failed to bind program: %v", diags)
 			}
-			files, diags, err := genProgram(program)
+			files, diags, err := testcase.GenProgram(program)
 			assert.NoError(t, err)
 			if expectNYIDiags {
 				var tmpDiags hcl.Diagnostics
@@ -362,56 +237,14 @@ func TestProgramCodegen(
 			}
 
 			if os.Getenv("PULUMI_ACCEPT") != "" {
-				err := ioutil.WriteFile(expectedFile, files[cfg.outputFile], 0600)
+				err := ioutil.WriteFile(expectedFile, files[testcase.OutputFile], 0600)
 				require.NoError(t, err)
 			} else {
-				assert.Equal(t, string(expected), string(files[cfg.outputFile]))
+				assert.Equal(t, string(expected), string(files[testcase.OutputFile]))
 			}
-			if cfg.check != nil && !tt.SkipCompile.Has(language) {
-				cfg.check(t, expectedFile)
+			if testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
+				testcase.Check(t, expectedFile)
 			}
 		})
 	}
-}
-
-// packagesFromName attempts to figure out what package should be imported from
-// the name of a test.
-//
-// Example:
-// 	"aws-eks-pp" => ("Pulumi.Aws", 4.21.1)
-// 	"azure-sa-pp" => ("Pulumi.Azure", 4.21.1)
-// 	"resource-options-pp" => ("","")
-//
-// Note: While we could instead do this by using the generateMetaData function
-// for each language, we are trying not to expand the functionality under test.
-func packagesFromNameDotNet(name string) (string, string) {
-	if strings.Contains(name, "aws") {
-		return "Pulumi.Aws", "4.21.1"
-	} else if strings.Contains(name, "azure-native") {
-		return "Pulumi.AzureNative", "1.29.0"
-	} else if strings.Contains(name, "azure") {
-		return "Pulumi.Azure", "4.18.0"
-	} else if strings.Contains(name, "kubernetes") {
-		return "Pulumi.Kubernetes", "3.7.2"
-	} else if strings.Contains(name, "random") {
-		return "Pulumi.Random", "4.2.0"
-	}
-	return "", ""
-}
-
-// packagesFromNameNodejs attempts to figure out what package should be imported
-// from the name of the test.
-func packagesFromNameNodejs(name string) (string, string) {
-	if strings.Contains(name, "aws") {
-		return "@pulumi/aws", "4.21.1"
-	} else if strings.Contains(name, "azure-native") {
-		return "@pulumi/azure-native", "1.29.0"
-	} else if strings.Contains(name, "azure") {
-		return "@pulumi/azure", "4.18.0"
-	} else if strings.Contains(name, "kubernetes") {
-		return "@pulumi/kubernetes", "3.7.2"
-	} else if strings.Contains(name, "random") {
-		return "@pulumi/random", "4.2.0"
-	}
-	return "", ""
 }
