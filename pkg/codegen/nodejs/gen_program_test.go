@@ -18,8 +18,7 @@ func TestGenerateProgram(t *testing.T) {
 		Language:   "nodejs",
 		Extension:  "ts",
 		OutputFile: "index.ts",
-		Check: func(*testing.T, string) {
-		},
+		Check:      nodejsCheck,
 		GenProgram: GenerateProgram,
 	})
 }

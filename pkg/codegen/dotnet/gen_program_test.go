@@ -20,8 +20,7 @@ func TestGenerateProgram(t *testing.T) {
 			Language:   "dotnet",
 			Extension:  "cs",
 			OutputFile: "MyStack.cs",
-			Check: func(*testing.T, string) {
-			},
+			Check:      checkDotnet,
 			GenProgram: GenerateProgram,
 		},
 	)
