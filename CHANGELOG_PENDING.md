@@ -22,3 +22,6 @@
 
 - [codegen/nodejs] - Fix generation of provider enum with environment variables.
   [#8051](https://github.com/pulumi/pulumi/pull/8051)
+
+- [codegen/go] - Fix generation of cyclic struct types.
+  [#8049](https://github.com/pulumi/pulumi/pull/8049)
