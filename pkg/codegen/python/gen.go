@@ -1893,20 +1893,9 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "from subprocess import check_call\n")
 	fmt.Fprintf(w, "\n\n")
 
-	// If `pkg` supplies a version, use that. Otherwise, create a constant for
-	// the version number to replace during build.
-	packageVersion := "0.0.0"
-	if pkg.Version != nil {
-		packageVersion = pythonVersion(pkg.Version)
-	}
-	pluginVersion := "0.0.0"
-	if pkg.Version != nil {
-		// This happens in test builds
-		pluginVersion = pkg.Version.String()
-	}
-
-	fmt.Fprintf(w, "VERSION = %q\n", packageVersion)
-	fmt.Fprintf(w, "PLUGIN_VERSION = %q\n\n", pluginVersion)
+	// Create a constant for the version number to replace during build
+	fmt.Fprintf(w, "VERSION = \"0.0.0\"\n")
+	fmt.Fprintf(w, "PLUGIN_VERSION = \"0.0.0\"\n\n")
 
 	// Create a command that will install the Pulumi plugin for this resource provider.
 	fmt.Fprintf(w, "class InstallPluginCommand(install):\n")
