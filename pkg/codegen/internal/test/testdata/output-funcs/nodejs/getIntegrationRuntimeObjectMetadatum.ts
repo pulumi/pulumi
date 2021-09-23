@@ -57,3 +57,26 @@ export interface GetIntegrationRuntimeObjectMetadatumResult {
      */
     readonly value?: outputs.SsisEnvironmentResponse | outputs.SsisFolderResponse | outputs.SsisPackageResponse | outputs.SsisProjectResponse[];
 }
+
+export function getIntegrationRuntimeObjectMetadatumOutput(args: GetIntegrationRuntimeObjectMetadatumOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetIntegrationRuntimeObjectMetadatumResult> {
+    return pulumi.output(args).apply(a => getIntegrationRuntimeObjectMetadatum(a, opts))
+}
+
+export interface GetIntegrationRuntimeObjectMetadatumOutputArgs {
+    /**
+     * The factory name.
+     */
+    factoryName: pulumi.Input<string>;
+    /**
+     * The integration runtime name.
+     */
+    integrationRuntimeName: pulumi.Input<string>;
+    /**
+     * Metadata path.
+     */
+    metadataPath?: pulumi.Input<string>;
+    /**
+     * The resource group name.
+     */
+    resourceGroupName: pulumi.Input<string>;
+}

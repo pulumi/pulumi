@@ -2,7 +2,6 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import { input as inputs, output as outputs } from "./types";
 import * as utilities from "./utilities";
 
 /**
@@ -36,4 +35,19 @@ export interface FuncWithAllOptionalInputsArgs {
 
 export interface FuncWithAllOptionalInputsResult {
     readonly r: string;
+}
+
+export function funcWithAllOptionalInputsOutput(args?: FuncWithAllOptionalInputsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithAllOptionalInputsResult> {
+    return pulumi.output(args).apply(a => funcWithAllOptionalInputs(a, opts))
+}
+
+export interface FuncWithAllOptionalInputsOutputArgs {
+    /**
+     * Property A
+     */
+    a?: pulumi.Input<string>;
+    /**
+     * Property B
+     */
+    b?: pulumi.Input<string>;
 }

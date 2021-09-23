@@ -2,7 +2,6 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import { input as inputs, output as outputs } from "./types";
 import * as utilities from "./utilities";
 
 /**
@@ -30,4 +29,13 @@ export interface FuncWithDictParamArgs {
 
 export interface FuncWithDictParamResult {
     readonly r: string;
+}
+
+export function funcWithDictParamOutput(args?: FuncWithDictParamOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithDictParamResult> {
+    return pulumi.output(args).apply(a => funcWithDictParam(a, opts))
+}
+
+export interface FuncWithDictParamOutputArgs {
+    a?: pulumi.Input<{[key: string]: pulumi.Input<string>}>;
+    b?: pulumi.Input<string>;
 }

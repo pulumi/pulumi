@@ -919,28 +919,16 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 
 	// Now, emit the function signature.
 	var argsig string
-	argsOptional := true
+	argsOptional := functionArgsOptional(fun)
 	if fun.Inputs != nil {
-		for _, p := range fun.Inputs.Properties {
-			if p.IsRequired() {
-				argsOptional = false
-				break
-			}
-		}
-
 		optFlag := ""
 		if argsOptional {
 			optFlag = "?"
 		}
 		argsig = fmt.Sprintf("args%s: %sArgs, ", optFlag, title(name))
 	}
-	var retty string
-	if fun.Outputs == nil {
-		retty = "void"
-	} else {
-		retty = title(name) + "Result"
-	}
-	fmt.Fprintf(w, "export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {\n", name, argsig, retty)
+	fmt.Fprintf(w, "export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {\n",
+		name, argsig, functionReturnType(fun))
 	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, fun.DeprecationMessage)
 	}
@@ -979,6 +967,67 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 		fmt.Fprintf(w, "\n")
 		mod.genPlainType(w, title(name)+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0)
 	}
+
+	mod.genFunctionOutputVersion(w, fun)
+}
+
+func functionArgsOptional(fun *schema.Function) bool {
+	argsOptional := true
+	if fun.Inputs != nil {
+		for _, p := range fun.Inputs.Properties {
+			if p.IsRequired() {
+				argsOptional = false
+				break
+			}
+		}
+	}
+	return argsOptional
+}
+
+func functionReturnType(fun *schema.Function) string {
+	name := tokenToFunctionName(fun.Token)
+	var retty string
+	if fun.Outputs == nil {
+		retty = "void"
+	} else {
+		retty = title(name) + "Result"
+	}
+	return retty
+}
+
+// Generates `function ${fn}Output(..)` version lifted to work on
+// `Input`-warpped arguments and producing an `Output`-wrapped result.
+func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) {
+	if !fun.NeedsOutputVersion() {
+		return
+	}
+
+	originalName := tokenToFunctionName(fun.Token)
+	fnOutput := fmt.Sprintf("%sOutput", originalName)
+	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
+
+	var argsig string
+	argsOptional := functionArgsOptional(fun)
+	optFlag := ""
+	if argsOptional {
+		optFlag = "?"
+	}
+	argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
+
+	fmt.Fprintf(w, `
+export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
+    return pulumi.output(args).apply(a => %s(a, opts))
+}
+`, fnOutput, argsig, functionReturnType(fun), originalName)
+	fmt.Fprintf(w, "\n")
+
+	mod.genPlainType(w,
+		argTypeName,
+		fun.Inputs.Comment,
+		fun.Inputs.InputShape.Properties,
+		true,  /* input */
+		false, /* readonly */
+		0 /* level */)
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType)) {
@@ -1938,6 +1987,8 @@ func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
 			tsFiles = append(tsFiles, f)
 		}
 	}
+
+	tsFiles = append(tsFiles, info.ExtraTypeScriptFiles...)
 	sort.Strings(tsFiles)
 
 	for i, file := range tsFiles {

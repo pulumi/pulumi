@@ -2,18 +2,12 @@
 package nodejs
 
 import (
-	"bytes"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 func TestGeneratePackage(t *testing.T) {
@@ -22,19 +16,12 @@ func TestGeneratePackage(t *testing.T) {
 		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
 			"nodejs/compile": typeCheckGeneratedPackage,
+			"nodejs/test":    testGeneratedPackage,
 		},
 	})
 }
 
 func typeCheckGeneratedPackage(t *testing.T, pwd string) {
-	var err error
-	var stdout, stderr bytes.Buffer
-	cmdOptions := integration.ProgramTestOptions{
-		Verbose: true,
-		Stderr:  &stderr,
-		Stdout:  &stdout,
-	}
-
 	// TODO: previous attempt used npm. It may be more popular and
 	// better target than yarn, however our build uses yarn in
 	// other places at the moment, and yarn does not run into the
@@ -53,38 +40,15 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	// err = integration.RunCommand(t, "npm install", []string{npm, "i"}, pwd, &cmdOptions)
 	// require.NoError(t, err)
 
-	var yarn string
-	yarn, err = executable.FindExecutable("yarn")
-	require.NoError(t, err)
+	test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
+	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
+	test.RunCommand(t, "tsc", pwd, "yarn", "run", "tsc", "--noEmit")
+}
 
-	err = integration.RunCommand(t, "yarn link @pulumi/pulumi",
-		[]string{yarn, "link", "@pulumi/pulumi"}, pwd, &cmdOptions)
-	require.NoError(t, err)
-
-	err = integration.RunCommand(t, "yarn install",
-		[]string{yarn, "install"}, pwd, &cmdOptions)
-	require.NoError(t, err)
-
-	// We increase the amount of memory node can use. We get OOM otherwise.
-	nodeOptions := []string{os.Getenv("NODE_OPTIONS"), "--max_old_space_size=4096"}
-	err = os.Setenv("NODE_OPTIONS", strings.Join(nodeOptions, " "))
-	require.NoError(t, err)
-
-	err = integration.RunCommand(t, "typecheck ts",
-		[]string{filepath.Join(".", "node_modules", ".bin", "tsc"), "--noEmit"}, pwd, &cmdOptions)
-
-	if err != nil {
-		stderr := stderr.String()
-		if len(stderr) > 0 {
-			t.Logf("stderr: %s", stderr)
-		}
-		stdout := stdout.String()
-		if len(stdout) > 0 {
-			t.Logf("stdout: %s", stdout)
-		}
-
-	}
-	require.NoError(t, err)
+// Runs unit tests against the generated code.
+func testGeneratedPackage(t *testing.T, pwd string) {
+	test.RunCommand(t, "mocha", pwd,
+		"yarn", "run", "mocha", "-r", "ts-node/register", "tests/**/*.spec.ts")
 }
 
 func TestGenerateTypeNames(t *testing.T) {

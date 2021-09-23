@@ -6,3 +6,4 @@ go.mod
 */python/venv
 */python/*.egg-info
 */python/requirements.txt
+*/nodejs/tests
