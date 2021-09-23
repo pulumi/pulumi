@@ -25,10 +25,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// Output helps encode the relationship between resources in a Pulumi application. Specifically an output property
-// holds onto a value and the resource it came from. An output value can then be provided when constructing new
-// resources, allowing that new resource to know both the value as well as the resource the value came from.  This
-// allows for a precise "dependency graph" to be created, which properly tracks the relationship between resources.
+// Output helps encode the relationship between resources in a Pulumi
+// application. Specifically an output property holds onto a value and
+// the resource it came from. An output value can then be provided
+// when constructing new resources, allowing that new resource to know
+// both the value as well as the resource the value came from. This
+// allows for a precise "dependency graph" to be created, which
+// properly tracks the relationship between resources.
 type Output interface {
 	ElementType() reflect.Type
 
