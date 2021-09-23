@@ -101,7 +101,8 @@ class LocalWorkspace(Workspace):
                 self.save_stack_settings(key, stack_settings[key])
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(work_dir={self.work_dir!r}, program={self.program.__name__}, " \
+        return f"{self.__class__.__name__}(work_dir={self.work_dir!r}, " \
+               f"program={self.program.__name__ if self.program else None}, " \
                f"pulumi_home={self.pulumi_home!r}, env_vars={self.env_vars!r}, " \
                f"secrets_provider={self.secrets_provider})"
 
