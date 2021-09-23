@@ -9,6 +9,9 @@ export * from "./provider";
 export * from "./resource";
 export * from "./resourceInput";
 
+// Export enums:
+export * from "./types/enums";
+
 // Export sub-modules:
 import * as types from "./types";
 

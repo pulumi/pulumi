@@ -17,6 +17,35 @@
         }
       },
       "type": "object"
+    },
+    "example::ExampleEnum": {
+      "type": "string",
+      "enum": [
+        {"value": "one"},
+        {"value": "two"}
+      ]
+    },
+    "example::ExampleEnumInput": {
+      "type": "string",
+      "enum": [
+        {"value": "one"},
+        {"value": "two"}
+      ]
+    },
+    "example::Resource": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "example::ResourceType": {
+      "type": "string",
+      "enum": [
+        {"value":  "haha"},
+        {"value":  "business"}
+      ]
     }
   },
   "resources": {

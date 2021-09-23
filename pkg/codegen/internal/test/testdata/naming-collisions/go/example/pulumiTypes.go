@@ -108,7 +108,57 @@ func (o ObjectInputTypeOutput) Bar() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ObjectInputType) *string { return v.Bar }).(pulumi.StringPtrOutput)
 }
 
+type ResourceType struct {
+	Name *string `pulumi:"name"`
+}
+
+// ResourceTypeInput is an input type that accepts ResourceTypeArgs and ResourceTypeOutput values.
+// You can construct a concrete instance of `ResourceTypeInput` via:
+//
+//          ResourceTypeArgs{...}
+type ResourceTypeInput interface {
+	pulumi.Input
+
+	ToResourceTypeOutput() ResourceTypeOutput
+	ToResourceTypeOutputWithContext(context.Context) ResourceTypeOutput
+}
+
+type ResourceTypeArgs struct {
+	Name pulumi.StringPtrInput `pulumi:"name"`
+}
+
+func (ResourceTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*ResourceType)(nil)).Elem()
+}
+
+func (i ResourceTypeArgs) ToResourceTypeOutput() ResourceTypeOutput {
+	return i.ToResourceTypeOutputWithContext(context.Background())
+}
+
+func (i ResourceTypeArgs) ToResourceTypeOutputWithContext(ctx context.Context) ResourceTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ResourceTypeOutput)
+}
+
+type ResourceTypeOutput struct{ *pulumi.OutputState }
+
+func (ResourceTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ResourceType)(nil)).Elem()
+}
+
+func (o ResourceTypeOutput) ToResourceTypeOutput() ResourceTypeOutput {
+	return o
+}
+
+func (o ResourceTypeOutput) ToResourceTypeOutputWithContext(ctx context.Context) ResourceTypeOutput {
+	return o
+}
+
+func (o ResourceTypeOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v ResourceType) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
 func init() {
 	pulumi.RegisterOutputType(ObjectOutput{})
 	pulumi.RegisterOutputType(ObjectInputTypeOutput{})
+	pulumi.RegisterOutputType(ResourceTypeOutput{})
 }

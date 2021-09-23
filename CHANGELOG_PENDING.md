@@ -10,3 +10,6 @@
 
 - [codegen/nodejs] Correctly determine imports for functions.
   [#8038](https://github.com/pulumi/pulumi/pull/8038)
+
+- [codegen/go] - Fix resolution of enum naming collisions
+  [#7985](https://github.com/pulumi/pulumi/pull/7985)
