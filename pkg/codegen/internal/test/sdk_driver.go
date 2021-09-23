@@ -42,19 +42,17 @@ const (
 
 var sdkTests = []sdkTest{
 	{
-		Directory:        "input-collision",
-		Description:      "Schema with types that could potentially produce collisions (go).",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "input-collision",
+		Description: "Schema with types that could potentially produce collisions (go).",
 	},
 	{
-		Directory:        "dash-named-schema",
-		Description:      "Simple schema with a two part name (foo-bar)",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "dash-named-schema",
+		Description: "Simple schema with a two part name (foo-bar)",
 	},
 	{
 		Directory:        "external-resource-schema",
 		Description:      "External resource schema",
-		SkipCompileCheck: codegen.NewStringSet(nodejs, golang, dotnet),
+		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
 	},
 	{
 		Directory:        "nested-module",
@@ -67,44 +65,36 @@ var sdkTests = []sdkTest{
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 	},
 	{
-		Directory:        "plain-schema-gh6957",
-		Description:      "Repro for #6957",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "plain-schema-gh6957",
+		Description: "Repro for #6957",
 	},
 	{
-		Directory:        "resource-args-python-case-insensitive",
-		Description:      "Resource args with same named resource and type case insensitive",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "resource-args-python-case-insensitive",
+		Description: "Resource args with same named resource and type case insensitive",
 	},
 	{
-		Directory:        "resource-args-python",
-		Description:      "Resource args with same named resource and type",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "resource-args-python",
+		Description: "Resource args with same named resource and type",
 	},
 	{
-		Directory:        "simple-enum-schema",
-		Description:      "Simple schema with enum types",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "simple-enum-schema",
+		Description: "Simple schema with enum types",
 	},
 	{
-		Directory:        "simple-plain-schema",
-		Description:      "Simple schema with plain properties",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "simple-plain-schema",
+		Description: "Simple schema with plain properties",
 	},
 	{
-		Directory:        "simple-plain-schema-with-root-package",
-		Description:      "Simple schema with root package set",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "simple-plain-schema-with-root-package",
+		Description: "Simple schema with root package set",
 	},
 	{
-		Directory:        "simple-resource-schema",
-		Description:      "Simple schema with local resource properties",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "simple-resource-schema",
+		Description: "Simple schema with local resource properties",
 	},
 	{
-		Directory:        "simple-resource-schema-custom-pypackage-name",
-		Description:      "Simple schema with local resource properties and custom Python package name",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "simple-resource-schema-custom-pypackage-name",
+		Description: "Simple schema with local resource properties and custom Python package name",
 	},
 	{
 		Directory:        "simple-methods-schema",
@@ -112,9 +102,8 @@ var sdkTests = []sdkTest{
 		SkipCompileCheck: codegen.NewStringSet(nodejs, dotnet, golang),
 	},
 	{
-		Directory:        "simple-yaml-schema",
-		Description:      "Simple schema encoded using YAML",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "simple-yaml-schema",
+		Description: "Simple schema encoded using YAML",
 	},
 	{
 		Directory:        "provider-config-schema",
@@ -124,7 +113,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "replace-on-change",
 		Description:      "Simple use of replaceOnChange in schema",
-		SkipCompileCheck: codegen.NewStringSet(golang, dotnet),
+		SkipCompileCheck: codegen.NewStringSet(golang),
 	},
 	{
 		Directory:        "resource-property-overlap",
@@ -132,9 +121,8 @@ var sdkTests = []sdkTest{
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 	},
 	{
-		Directory:        "hyphen-url",
-		Description:      "A resource url with a hyphen in it's path",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "hyphen-url",
+		Description: "A resource url with a hyphen in it's path",
 	},
 }
 
