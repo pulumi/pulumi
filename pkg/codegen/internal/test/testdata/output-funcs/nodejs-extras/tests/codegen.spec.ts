@@ -12,44 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'mocha';
-import * as assert from 'assert';
+import "mocha";
+import * as assert from "assert";
 
-import * as pulumi from '@pulumi/pulumi';
+import * as pulumi from "@pulumi/pulumi";
 
-import { listStorageAccountKeysOutput, ListStorageAccountKeysResult } from '../listStorageAccountKeys';
-import { funcWithAllOptionalInputsOutput } from '../funcWithAllOptionalInputs';
-import { funcWithDefaultValueOutput } from '../funcWithDefaultValue';
-import { funcWithListParamOutput } from '../funcWithListParam';
-import { funcWithDictParamOutput } from '../funcWithDictParam';
-import * as giro from '../getIntegrationRuntimeObjectMetadatum';
+import { listStorageAccountKeysOutput, ListStorageAccountKeysResult } from "../listStorageAccountKeys";
+import { funcWithAllOptionalInputsOutput } from "../funcWithAllOptionalInputs";
+import { funcWithDefaultValueOutput } from "../funcWithDefaultValue";
+import { funcWithListParamOutput } from "../funcWithListParam";
+import { funcWithDictParamOutput } from "../funcWithDictParam";
+import * as giro from "../getIntegrationRuntimeObjectMetadatum";
 
 pulumi.runtime.setMocks({
     newResource: function(_: pulumi.runtime.MockResourceArgs): {id: string, state: any} {
-        throw new Error('newResource not implemented');
+        throw new Error("newResource not implemented");
     },
     call: function(args: pulumi.runtime.MockCallArgs) {
-        if (args.token == 'mypkg::listStorageAccountKeys') {
+        if (args.token == "mypkg::listStorageAccountKeys") {
             return {
-                'keys': [{
-                    'creationTime': 'my-creation-time',
-                    'keyName': 'my-key-name',
-                    'permissions': 'my-permissions',
-                    'value': JSON.stringify(args.inputs),
+                "keys": [{
+                    "creationTime": "my-creation-time",
+                    "keyName": "my-key-name",
+                    "permissions": "my-permissions",
+                    "value": JSON.stringify(args.inputs),
                 }]
             };
         }
-        if (args.token == 'mypkg::getIntegrationRuntimeObjectMetadatum') {
+        if (args.token == "mypkg::getIntegrationRuntimeObjectMetadatum") {
             return {nextLink: JSON.stringify(args.inputs)};
         }
-        if (args.token == 'mypkg::funcWithAllOptionalInputs' ||
-            args.token == 'mypkg::funcWithDefaultValue' ||
-            args.token == 'mypkg::funcWithListParam' ||
-            args.token == 'mypkg::funcWithDictParam')
+        if (args.token == "mypkg::funcWithAllOptionalInputs" ||
+            args.token == "mypkg::funcWithDefaultValue" ||
+            args.token == "mypkg::funcWithListParam" ||
+            args.token == "mypkg::funcWithDictParam")
         {
             return {r: JSON.stringify(args.inputs)};
         }
-        throw new Error('call not implemented for ' + args.token);
+        throw new Error("call not implemented for " + args.token);
     },
 });
 
@@ -61,110 +61,110 @@ function checkTable(done: any, transform: (res: any) => any, table: {given: pulu
     });
 }
 
-describe('output-funcs', () => {
-    it('funcWithAllOptionalInputsOutput', (done) => {
+describe("output-funcs", () => {
+    it("funcWithAllOptionalInputsOutput", (done) => {
         checkTable(done, res => JSON.parse(res.r), [
             {given: funcWithAllOptionalInputsOutput({}),
              expect: {}},
-            {given: funcWithAllOptionalInputsOutput({a: pulumi.output('my-a')}),
-             expect: {'a': 'my-a'}},
-            {given: funcWithAllOptionalInputsOutput({a: pulumi.output('my-a'),
-                                                     b: pulumi.output('my-b')}),
-             expect: {'a': 'my-a', 'b': 'my-b'}}
+            {given: funcWithAllOptionalInputsOutput({a: pulumi.output("my-a")}),
+             expect: {"a": "my-a"}},
+            {given: funcWithAllOptionalInputsOutput({a: pulumi.output("my-a"),
+                                                     b: pulumi.output("my-b")}),
+             expect: {"a": "my-a", "b": "my-b"}}
         ]);
     });
 
     // TODO[pulumi/pulumi#7973] Node codegen does not respect default
-    // values at the moment, otherwise 'b' parameter would receive the
+    // values at the moment, otherwise "b" parameter would receive the
     // default value from the schema.
-    it('funcWithDefaultValueOutput', (done) => {
+    it("funcWithDefaultValueOutput", (done) => {
         checkTable(done, res => JSON.parse(res.r), [
-            {given: funcWithDefaultValueOutput({'a': pulumi.output('my-a')}),
-             expect: {'a': 'my-a'}},
-            {given: funcWithDefaultValueOutput({'a': pulumi.output('my-a'),
-                                                'b': pulumi.output('my-b')}),
-             expect: {'a': 'my-a', 'b': 'my-b'}}
+            {given: funcWithDefaultValueOutput({"a": pulumi.output("my-a")}),
+             expect: {"a": "my-a"}},
+            {given: funcWithDefaultValueOutput({"a": pulumi.output("my-a"),
+                                                "b": pulumi.output("my-b")}),
+             expect: {"a": "my-a", "b": "my-b"}}
         ]);
     });
 
-    it('funcWithListParamOutput', (done) => {
-        const l = ['a', 'b', 'c'];
+    it("funcWithListParamOutput", (done) => {
+        const l = ["a", "b", "c"];
         checkTable(done, res => JSON.parse(res.r), [
             {given: funcWithListParamOutput({}),
              expect: {}},
-            {given: funcWithListParamOutput({'a': pulumi.output(l)}),
-             expect: {'a': l}},
-            {given: funcWithListParamOutput({'a': pulumi.output(l),
-                                             'b': pulumi.output('my-b')}),
-             expect: {'a': l, 'b': 'my-b'}},
+            {given: funcWithListParamOutput({"a": pulumi.output(l)}),
+             expect: {"a": l}},
+            {given: funcWithListParamOutput({"a": pulumi.output(l),
+                                             "b": pulumi.output("my-b")}),
+             expect: {"a": l, "b": "my-b"}},
         ]);
     });
 
-    it('funcWithDictParamOutput', (done) => {
-        const d = {'key-a': 'value-a', 'key-b': 'value-b'};
+    it("funcWithDictParamOutput", (done) => {
+        const d = {"key-a": "value-a", "key-b": "value-b"};
         checkTable(done, res => JSON.parse(res.r), [
             {given: funcWithDictParamOutput({}),
              expect: {}},
-            {given: funcWithDictParamOutput({'a': pulumi.output(d)}),
-             expect: {'a': d}},
-            {given: funcWithDictParamOutput({'a': pulumi.output(d),
-                                             'b': pulumi.output('my-b')}),
-             expect: {'a': d, 'b': 'my-b'}},
+            {given: funcWithDictParamOutput({"a": pulumi.output(d)}),
+             expect: {"a": d}},
+            {given: funcWithDictParamOutput({"a": pulumi.output(d),
+                                             "b": pulumi.output("my-b")}),
+             expect: {"a": d, "b": "my-b"}},
         ]);
     });
 
-    it('listStorageAccountKeysOutput', (done) => {
+    it("listStorageAccountKeysOutput", (done) => {
         const output = listStorageAccountKeysOutput({
-            accountName: pulumi.output('my-account-name'),
-            resourceGroupName: pulumi.output('my-resource-group-name'),
+            accountName: pulumi.output("my-account-name"),
+            resourceGroupName: pulumi.output("my-resource-group-name"),
         });
         checkOutput(done, output, (res: ListStorageAccountKeysResult) => {
             assert.equal(res.keys.length, 1);
             const k = res.keys[0];
-            assert.equal(k.creationTime, 'my-creation-time');
-            assert.equal(k.keyName, 'my-key-name');
-            assert.equal(k.permissions, 'my-permissions');
+            assert.equal(k.creationTime, "my-creation-time");
+            assert.equal(k.keyName, "my-key-name");
+            assert.equal(k.permissions, "my-permissions");
             assert.deepStrictEqual(JSON.parse(k.value), {
-                'accountName': 'my-account-name',
-                'resourceGroupName': 'my-resource-group-name'
+                "accountName": "my-account-name",
+                "resourceGroupName": "my-resource-group-name"
             });
         });
     });
 
-    it('listStorageAccountKeysOutput with optional arg set', (done) => {
+    it("listStorageAccountKeysOutput with optional arg set", (done) => {
         const output = listStorageAccountKeysOutput({
-            accountName: pulumi.output('my-account-name'),
-            resourceGroupName: pulumi.output('my-resource-group-name'),
-            expand: pulumi.output('my-expand'),
+            accountName: pulumi.output("my-account-name"),
+            resourceGroupName: pulumi.output("my-resource-group-name"),
+            expand: pulumi.output("my-expand"),
         });
         checkOutput(done, output, (res: ListStorageAccountKeysResult) => {
             assert.equal(res.keys.length, 1);
             const k = res.keys[0];
-            assert.equal(k.creationTime, 'my-creation-time');
-            assert.equal(k.keyName, 'my-key-name');
-            assert.equal(k.permissions, 'my-permissions');
+            assert.equal(k.creationTime, "my-creation-time");
+            assert.equal(k.keyName, "my-key-name");
+            assert.equal(k.permissions, "my-permissions");
             assert.deepStrictEqual(JSON.parse(k.value), {
-                'accountName': 'my-account-name',
-                'resourceGroupName': 'my-resource-group-name',
-                'expand': 'my-expand'
+                "accountName": "my-account-name",
+                "resourceGroupName": "my-resource-group-name",
+                "expand": "my-expand"
             });
         });
     });
 
-    it('getIntegrationRuntimeObjectMetadatumOutput', (done) => {
+    it("getIntegrationRuntimeObjectMetadatumOutput", (done) => {
         checkTable(
             done,
             (res: giro.GetIntegrationRuntimeObjectMetadatumResult) =>
                 JSON.parse(res.nextLink || "{}"),
             [{given: giro.getIntegrationRuntimeObjectMetadatumOutput({
-                factoryName: pulumi.output('my-factory-name'),
-                integrationRuntimeName: pulumi.output('my-integration-runtime-name'),
-                metadataPath: pulumi.output('my-metadata-path'),
-                resourceGroupName: pulumi.output('my-resource-group-name')}),
-              expect: {'factoryName': 'my-factory-name',
-                       'integrationRuntimeName': 'my-integration-runtime-name',
-                       'metadataPath': 'my-metadata-path',
-                       'resourceGroupName': 'my-resource-group-name'}}]
+                factoryName: pulumi.output("my-factory-name"),
+                integrationRuntimeName: pulumi.output("my-integration-runtime-name"),
+                metadataPath: pulumi.output("my-metadata-path"),
+                resourceGroupName: pulumi.output("my-resource-group-name")}),
+              expect: {"factoryName": "my-factory-name",
+                       "integrationRuntimeName": "my-integration-runtime-name",
+                       "metadataPath": "my-metadata-path",
+                       "resourceGroupName": "my-resource-group-name"}}]
         );
     });
  });
