@@ -7,3 +7,6 @@
 
 - [codegen/schema] Revert #7938
   [#8035](https://github.com/pulumi/pulumi/pull/8035)
+
+- [codegen/nodejs] Correctly determine imports for functions.
+  [#8038](https://github.com/pulumi/pulumi/pull/8038)
