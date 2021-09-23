@@ -2,3 +2,7 @@ package-lock.json
 go.sum
 go.mod
 */go/tests
+*/python/tests
+*/python/venv
+*/python/*.egg-info
+*/python/requirements.txt

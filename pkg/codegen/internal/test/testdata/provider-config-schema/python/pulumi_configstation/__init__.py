@@ -17,7 +17,7 @@ else:
 
 _utilities.register(
     resource_modules="""
-null
+[]
 """,
     resource_packages="""
 [

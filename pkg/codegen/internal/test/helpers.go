@@ -30,6 +30,8 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 // GenPkgSignature corresponds to the shape of the codegen GeneratePackage functions.
@@ -316,4 +318,33 @@ func ValidateFileTransformer(
 	expected := map[string][]byte{expectedOutputFile: expectedBytes}
 
 	ValidateFileEquality(t, actual, expected)
+}
+
+func RunCommand(t *testing.T, name string, cwd string, exec string, args ...string) {
+	exec, err := executable.FindExecutable(exec)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	wd, err := filepath.Abs(cwd)
+	require.NoError(t, err)
+	var stdout, stderr bytes.Buffer
+	cmdOptions := integration.ProgramTestOptions{Stderr: &stderr, Stdout: &stdout, Verbose: true}
+	err = integration.RunCommand(t,
+		name,
+		append([]string{exec}, args...),
+		wd,
+		&cmdOptions)
+	require.NoError(t, err)
+	if err != nil {
+		stdout := stdout.String()
+		stderr := stderr.String()
+		if len(stdout) > 0 {
+			t.Logf("stdout: %s", stdout)
+		}
+		if len(stderr) > 0 {
+			t.Logf("stderr: %s", stderr)
+		}
+		t.FailNow()
+	}
 }
