@@ -1162,10 +1162,14 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 	case *schema.Function:
 		needsTypes := false
 		if member.Inputs != nil {
-			needsTypes = mod.getTypeImports(member.Inputs, false, externalImports, imports, seen) || needsTypes
+			for _, p := range member.Inputs.Properties {
+				needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
+			}
 		}
 		if member.Outputs != nil {
-			needsTypes = mod.getTypeImports(member.Outputs, false, externalImports, imports, seen) || needsTypes
+			for _, p := range member.Outputs.Properties {
+				needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
+			}
 		}
 		return needsTypes
 	case []*schema.Property:
