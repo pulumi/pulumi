@@ -1896,14 +1896,14 @@ func genPackageMetadata(
 	// If `pkg` supplies a version, use that. Otherwise, create a constant for
 	// the version number to replace during build.
 	packageVersion := "0.0.0"
-	if pkg.Version != nil {
-		packageVersion = pythonVersion(pkg.Version)
-	}
 	pluginVersion := "0.0.0"
-	if pkg.Version != nil {
-		// This happens in test builds
-		pluginVersion = pkg.Version.String()
-	}
+	// if pkg.Version != nil {
+	// 	packageVersion = pythonVersion(pkg.Version)
+	// }
+	// if pkg.Version != nil {
+	// 	// This happens in test builds
+	// 	pluginVersion = pkg.Version.String()
+	// }
 
 	fmt.Fprintf(w, "VERSION = %q\n", packageVersion)
 	fmt.Fprintf(w, "PLUGIN_VERSION = %q\n\n", pluginVersion)

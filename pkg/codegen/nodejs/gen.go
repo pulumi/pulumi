@@ -1842,7 +1842,8 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 
 	packageVersion := "${VERSION}"
 	if pkg.Version != nil {
-		packageVersion = pkg.Version.String()
+		// HACK for https://github.com/pulumi/pulumi/issues/8033
+		// packageVersion = pkg.Version.String()
 	}
 
 	// Create info that will get serialized into an NPM package.json.
