@@ -38,9 +38,6 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 		t.Fatal()
 	}
 
-	// HACK: remove before merge
-	return
-
 	for _, s := range cases.Resources {
 		t.Run(string(s.URN), func(t *testing.T) {
 			state, err := stack.DeserializeResource(s, config.NopDecrypter, config.NopEncrypter)
