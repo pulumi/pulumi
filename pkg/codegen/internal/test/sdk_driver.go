@@ -236,6 +236,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 
 	for _, tt := range sdkTests {
 		t.Run(tt.Directory, func(t *testing.T) {
+			t.Parallel()
 			t.Log(tt.Description)
 
 			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
