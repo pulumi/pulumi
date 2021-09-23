@@ -143,7 +143,7 @@ type SDKCodegenOptions struct {
 	Language string
 
 	// Language-aware code generator; such as `GeneratePackage`.
-	// from `codgen/dotnet`.
+	// from `codegen/dotnet`.
 	GenPackage GenPkgSignature
 
 	// Extra checks for all the tests. They keys of this map are
