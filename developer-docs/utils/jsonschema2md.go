@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -50,6 +49,8 @@ func schemaItems(schema *jsonschema.Schema) *jsonschema.Schema {
 }
 
 type converter struct {
+	multiSchema bool
+
 	w            io.Writer
 	rootLocation string
 
@@ -337,9 +338,14 @@ func (c *converter) convertSchema(schema *jsonschema.Schema, level int) {
 func (c *converter) convertRootSchema(schema *jsonschema.Schema) {
 	c.collectDefs(schema)
 
-	c.printf("# %s\n", c.schemaTitle(schema))
+	level := 1
+	if c.multiSchema {
+		level = 2
+	}
 
-	c.convertSchema(schema, 1)
+	c.printf("%s %s\n", strings.Repeat("#", level), c.schemaTitle(schema))
+
+	c.convertSchema(schema, level)
 
 	defs := make([]*jsonschema.Schema, 0, len(c.defs))
 	for _, def := range c.defs {
@@ -351,34 +357,77 @@ func (c *converter) convertRootSchema(schema *jsonschema.Schema) {
 
 	for _, def := range defs {
 		if !c.inlineDef(def) {
-			c.printf("\n## %s\n", c.schemaTitle(def))
-			c.convertSchema(def, 2)
+			c.printf("\n%s %s\n", strings.Repeat("#", level+1), c.schemaTitle(def))
+			c.convertSchema(def, level+1)
 		}
 	}
 }
 
 func main() {
-	schemaBytes, err := ioutil.ReadAll(os.Stdin)
-	if err != nil {
-		log.Fatal(err)
+	title := flag.String("title", "", "the top-level title for the output, if any")
+	idString := flag.String("ids", "", "a comma-separated list of 'id=path' mappings")
+	flag.Parse()
+
+	const rootID = "blob://stdin"
+	ids := map[string]string{
+		rootID: "-",
+	}
+	if *idString != "" {
+		for _, idm := range strings.Split(*idString, ",") {
+			eq := strings.IndexByte(idm, '=')
+			if eq == -1 {
+				log.Fatalf("invalid 'id=path' mapping '%v'", idm)
+			}
+			id, path := idm[:eq], idm[eq+1:]
+			if id == "" || path == "" {
+				log.Fatalf("invalid 'id=path' mapping '%v'", idm)
+			}
+			ids[id] = path
+
+			if path == "-" {
+				delete(ids, rootID)
+			}
+		}
+		if len(ids) > 1 && *title == "" {
+			log.Fatal("-title is required if more than one ID is mapped")
+		}
 	}
 
 	compiler := jsonschema.NewCompiler()
 	compiler.ExtractAnnotations = true
 	compiler.LoadURL = func(s string) (io.ReadCloser, error) {
-		if s == "blob://stdin" {
-			return ioutil.NopCloser(bytes.NewReader(schemaBytes)), nil
+		if path, ok := ids[s]; ok {
+			if path == "-" {
+				return os.Stdin, nil
+			}
+			return os.Open(path)
 		}
 		return jsonschema.LoadURL(s)
 	}
-	schema, err := compiler.Compile("blob://stdin")
-	if err != nil {
-		log.Fatal(err)
+
+	schemas := make([]*jsonschema.Schema, 0, len(ids))
+	for id := range ids {
+		schema, err := compiler.Compile(id)
+		if err != nil {
+			log.Fatal(err)
+		}
+		schemas = append(schemas, schema)
 	}
-	converter := converter{
-		w:            os.Stdout,
-		rootLocation: schema.Location,
-		defs:         map[string]*jsonschema.Schema{},
+	sort.Slice(schemas, func(i, j int) bool { return schemas[i].Location < schemas[j].Location })
+
+	if *title != "" {
+		fprintf(os.Stdout, "# %v\n", *title)
 	}
-	converter.convertRootSchema(schema)
+
+	for _, schema := range schemas {
+		fprintf(os.Stdout, "\n")
+
+		converter := converter{
+			multiSchema:  len(ids) > 1,
+			w:            os.Stdout,
+			rootLocation: schema.Location,
+			defs:         map[string]*jsonschema.Schema{},
+		}
+		converter.convertRootSchema(schema)
+	}
 }

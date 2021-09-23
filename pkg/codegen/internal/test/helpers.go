@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,12 @@ package test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,6 +30,8 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 // GenPkgSignature corresponds to the shape of the codegen GeneratePackage functions.
@@ -76,55 +80,85 @@ func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 	return result, nil
 }
 
-func loadDirectory(fs map[string][]byte, root, path string) error {
-	entries, err := os.ReadDir(path)
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+
+	if err == nil {
+		return true, nil
+	}
+
+	return false, err
+}
+
+// `LoadBaseline` loads the contents of the given baseline directory,
+// by inspecting its `codegen-manifest.json`.
+func LoadBaseline(dir, lang string) (map[string][]byte, error) {
+	cm := &codegenManifest{}
+	err := cm.load(filepath.Join(dir, lang))
+	if err != nil {
+		return nil, fmt.Errorf("Failed to load codegen-manifest.json: %w", err)
+	}
+
+	files := make(map[string][]byte)
+
+	for _, f := range cm.EmittedFiles {
+		bytes, err := ioutil.ReadFile(filepath.Join(dir, lang, f))
+		if err != nil {
+			return nil, fmt.Errorf("Failed to load file %s referenced in codegen-manifest.json: %w", f, err)
+		}
+		files[f] = bytes
+	}
+
+	return files, nil
+}
+
+type codegenManifest struct {
+	EmittedFiles []string `json:"emittedFiles"`
+}
+
+func (cm *codegenManifest) load(dir string) error {
+	bytes, err := ioutil.ReadFile(filepath.Join(dir, "codegen-manifest.json"))
 	if err != nil {
 		return err
 	}
-
-	for _, e := range entries {
-		entryPath := filepath.Join(path, e.Name())
-		if e.IsDir() {
-			if err = loadDirectory(fs, root, entryPath); err != nil {
-				return err
-			}
-		} else {
-			contents, err := os.ReadFile(entryPath)
-			if err != nil {
-				return err
-			}
-			name := filepath.ToSlash(entryPath[len(root)+1:])
-
-			fs[name] = contents
-		}
-	}
-
-	return nil
+	return json.Unmarshal(bytes, cm)
 }
 
-// LoadBaseline loads the contents of the given baseline directory.
-func LoadBaseline(dir, lang string) (map[string][]byte, error) {
-	dir = filepath.Join(dir, lang)
-
-	fs := map[string][]byte{}
-	if err := loadDirectory(fs, dir, dir); err != nil {
-		return nil, err
+func (cm *codegenManifest) save(dir string) error {
+	sort.Strings(cm.EmittedFiles)
+	buf := &bytes.Buffer{}
+	enc := json.NewEncoder(buf)
+	enc.SetIndent("", "  ")
+	err := enc.Encode(cm)
+	if err != nil {
+		return err
 	}
-	return fs, nil
+	data := buf.Bytes()
+	return ioutil.WriteFile(filepath.Join(dir, "codegen-manifest.json"), data, 0600)
 }
 
 // ValidateFileEquality compares maps of files for equality.
 func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool {
 	ok := true
 	for name, file := range expected {
-		if !assert.Contains(t, actual, name) || !assert.Equal(t, string(file), string(actual[name]), name) {
-			t.Logf("%s did not agree", name)
+		_, inActual := actual[name]
+		if inActual {
+			if !assert.Equal(t, string(file), string(actual[name]), name) {
+				t.Logf("%s did not agree", name)
+				ok = false
+			}
+		} else {
+			t.Logf("File %s was expected but is missing from the actual fileset", name)
 			ok = false
 		}
 	}
 	for name := range actual {
-		if _, has := expected[name]; !has {
-			t.Logf("missing data for %s", name)
+		if _, inExpected := expected[name]; !inExpected {
+			t.Logf("File %s from the actual fileset was not expected", name)
 			ok = false
 		}
 	}
@@ -139,41 +173,88 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 		return false
 	}
 
+	cm := &codegenManifest{}
+
 	baseline := filepath.Join(dir, lang)
 
 	// Remove the baseline directory's current contents.
-	entries, err := os.ReadDir(baseline)
+	_, err := os.ReadDir(baseline)
 	switch {
 	case err == nil:
-		for _, e := range entries {
-			err = os.RemoveAll(filepath.Join(baseline, e.Name()))
-			require.NoError(t, err)
-		}
+		err = os.RemoveAll(baseline)
+		require.NoError(t, err)
 	case os.IsNotExist(err):
 		// OK
 	default:
 		require.NoError(t, err)
 	}
 
-	WriteTestFiles(t, dir, lang, actual)
+	for file, bytes := range actual {
+		relPath := filepath.FromSlash(file)
+		path := filepath.Join(dir, lang, relPath)
+		cm.EmittedFiles = append(cm.EmittedFiles, relPath)
+		err := writeFileEnsuringDir(path, bytes)
+		require.NoError(t, err)
+	}
+
+	err = cm.save(filepath.Join(dir, lang))
+	require.NoError(t, err)
 
 	return true
 }
 
-// WriteTestFiles writes out the files generated by GeneratePackage to a directory.
-func WriteTestFiles(t *testing.T, dir, lang string, files map[string][]byte) {
-	var err error
-	for file, bytes := range files {
-		relPath := filepath.FromSlash(file)
-		path := filepath.Join(dir, lang, relPath)
+// Useful for populating code-generated destination
+// `codeDir=$dir/$lang` with extra manually written files such as the
+// unit test files. These files are copied from `$dir/$lang-extras`
+// folder if present.
+func CopyExtraFiles(t *testing.T, dir, lang string) {
+	codeDir := filepath.Join(dir, lang)
+	extrasDir := filepath.Join(dir, fmt.Sprintf("%s-extras", lang))
+	gotExtras, err := PathExists(extrasDir)
 
-		if err = os.MkdirAll(filepath.Dir(path), 0755); err != nil && !os.IsExist(err) {
-			require.NoError(t, err)
-		}
-
-		err = ioutil.WriteFile(path, bytes, 0600)
-		require.NoError(t, err)
+	if !gotExtras {
+		return
 	}
+
+	if err != nil {
+		require.NoError(t, err)
+		return
+	}
+
+	err = filepath.Walk(extrasDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		relPath, err := filepath.Rel(extrasDir, path)
+		if err != nil {
+			return err
+		}
+		destPath := filepath.Join(codeDir, relPath)
+
+		bytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		err = writeFileEnsuringDir(destPath, bytes)
+		if err != nil {
+			return err
+		}
+		t.Logf("Copied %s to %s", path, destPath)
+		return nil
+	})
+
+	require.NoError(t, err)
+}
+
+func writeFileEnsuringDir(path string, bytes []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil && !os.IsExist(err) {
+		return err
+	}
+
+	return ioutil.WriteFile(path, bytes, 0600)
 }
 
 // CheckAllFilesGenerated ensures that the set of expected and actual files generated
@@ -237,4 +318,33 @@ func ValidateFileTransformer(
 	expected := map[string][]byte{expectedOutputFile: expectedBytes}
 
 	ValidateFileEquality(t, actual, expected)
+}
+
+func RunCommand(t *testing.T, name string, cwd string, exec string, args ...string) {
+	exec, err := executable.FindExecutable(exec)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	wd, err := filepath.Abs(cwd)
+	require.NoError(t, err)
+	var stdout, stderr bytes.Buffer
+	cmdOptions := integration.ProgramTestOptions{Stderr: &stderr, Stdout: &stdout, Verbose: true}
+	err = integration.RunCommand(t,
+		name,
+		append([]string{exec}, args...),
+		wd,
+		&cmdOptions)
+	require.NoError(t, err)
+	if err != nil {
+		stdout := stdout.String()
+		stderr := stderr.String()
+		if len(stdout) > 0 {
+			t.Logf("stdout: %s", stdout)
+		}
+		if len(stderr) > 0 {
+			t.Logf("stderr: %s", stderr)
+		}
+		t.FailNow()
+	}
 }

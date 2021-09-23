@@ -349,6 +349,7 @@ func (g *generator) genObjectConsExpression(
 	// first lower all inner expressions and emit temps
 	for i, item := range expr.Items {
 		// don't treat keys as inputs
+		//nolint: revive
 		k, kTemps := g.lowerExpression(item.Key, item.Key.Type())
 		temps = append(temps, kTemps...)
 		item.Key = k

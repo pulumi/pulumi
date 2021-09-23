@@ -15,6 +15,7 @@ Use the navigation bar to the left to browse the docs.
 
 architecture/overview
 architecture/resource-registration
+architecture/deployment-schema
 ```
 
 ```{toctree}

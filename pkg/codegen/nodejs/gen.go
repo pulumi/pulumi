@@ -1162,10 +1162,14 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 	case *schema.Function:
 		needsTypes := false
 		if member.Inputs != nil {
-			needsTypes = mod.getTypeImports(member.Inputs, false, externalImports, imports, seen) || needsTypes
+			for _, p := range member.Inputs.Properties {
+				needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
+			}
 		}
 		if member.Outputs != nil {
-			needsTypes = mod.getTypeImports(member.Outputs, false, externalImports, imports, seen) || needsTypes
+			for _, p := range member.Outputs.Properties {
+				needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
+			}
 		}
 		return needsTypes
 	case []*schema.Property:
@@ -1840,15 +1844,10 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		devDependencies["typescript"] = "^4.3.5"
 	}
 
-	packageVersion := "${VERSION}"
-	if pkg.Version != nil {
-		packageVersion = pkg.Version.String()
-	}
-
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        packageName,
-		Version:     packageVersion,
+		Version:     "${VERSION}",
 		Description: info.PackageDescription,
 		Keywords:    pkg.Keywords,
 		Homepage:    pkg.Homepage,

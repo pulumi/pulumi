@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-enum-schema/plant"
 )
 
 type module struct {
