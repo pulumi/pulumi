@@ -13,3 +13,6 @@
 
 - [codegen/go] - Fix resolution of enum naming collisions
   [#7985](https://github.com/pulumi/pulumi/pull/7985)
+
+- [sdk/{nodejs,python}] - Fix errors when testing remote components with mocks.
+  [#8053](https://github.com/pulumi/pulumi/pull/8053)
