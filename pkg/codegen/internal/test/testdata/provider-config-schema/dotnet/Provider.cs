@@ -39,8 +39,12 @@ namespace Pulumi.Configstation
 
     public sealed class ProviderArgs : Pulumi.ResourceArgs
     {
+        [Input("favoriteColor", json: true)]
+        public InputUnion<string, Pulumi.Configstation.Color>? FavoriteColor { get; set; }
+
         public ProviderArgs()
         {
+            FavoriteColor = Utilities.GetEnv("FAVE_COLOR");
         }
     }
 }

@@ -1,6 +1,23 @@
 {
   "version": "0.0.1",
   "name": "configstation",
+  "provider": {
+    "inputProperties": {
+      "favoriteColor": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "#/types/configstation:index:color"
+          }
+        ],
+        "defaultInfo": {
+          "environment": ["FAVE_COLOR"]
+        }
+      }
+    }
+  },
   "config": {
     "variables": {
       "name": {
@@ -61,6 +78,13 @@
         }
       },
       "type": "object"
+    },
+    "configstation:index:color": {
+      "enum": [
+        {"value": "blue"},
+        {"value": "red"}
+      ],
+      "type": "string"
     }
   },
   "language": {
