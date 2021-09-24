@@ -436,7 +436,7 @@ func TestMarshalProperties(t *testing.T) {
 		},
 		{
 			name: "empty (KeepOutputValues)",
-			opts: MarshalOptions{KeepOutputValues: true},
+			opts: MarshalOptions{DontSkipOutputs: true, KeepOutputValues: true},
 			props: resource.PropertyMap{
 				"foo": resource.NewOutputProperty(resource.Output{}),
 			},
@@ -458,7 +458,7 @@ func TestMarshalProperties(t *testing.T) {
 		},
 		{
 			name: "unknown (KeepOutputValues)",
-			opts: MarshalOptions{KeepOutputValues: true},
+			opts: MarshalOptions{DontSkipOutputs: true, KeepOutputValues: true},
 			props: resource.PropertyMap{
 				"foo": resource.MakeOutput(resource.NewStringProperty("")),
 			},
@@ -480,7 +480,7 @@ func TestMarshalProperties(t *testing.T) {
 		},
 		{
 			name: "unknown with deps (KeepOutputValues)",
-			opts: MarshalOptions{KeepOutputValues: true},
+			opts: MarshalOptions{DontSkipOutputs: true, KeepOutputValues: true},
 			props: resource.PropertyMap{
 				"foo": resource.NewOutputProperty(resource.Output{
 					Element:      resource.NewStringProperty(""),
@@ -515,7 +515,7 @@ func TestMarshalProperties(t *testing.T) {
 		},
 		{
 			name: "known (KeepOutputValues)",
-			opts: MarshalOptions{KeepOutputValues: true},
+			opts: MarshalOptions{DontSkipOutputs: true, KeepOutputValues: true},
 			props: resource.PropertyMap{
 				"foo": resource.NewOutputProperty(resource.Output{
 					Element: resource.NewStringProperty("hello"),
@@ -543,7 +543,7 @@ func TestMarshalProperties(t *testing.T) {
 		},
 		{
 			name: "known with deps (KeepOutputValues)",
-			opts: MarshalOptions{KeepOutputValues: true},
+			opts: MarshalOptions{DontSkipOutputs: true, KeepOutputValues: true},
 			props: resource.PropertyMap{
 				"foo": resource.NewOutputProperty(resource.Output{
 					Element:      resource.NewStringProperty("hello"),
@@ -582,7 +582,7 @@ func TestMarshalProperties(t *testing.T) {
 		},
 		{
 			name: "secret (KeepOutputValues)",
-			opts: MarshalOptions{KeepOutputValues: true},
+			opts: MarshalOptions{DontSkipOutputs: true, KeepOutputValues: true},
 			props: resource.PropertyMap{
 				"foo": resource.NewOutputProperty(resource.Output{
 					Element: resource.NewStringProperty("shhh"),
@@ -614,7 +614,7 @@ func TestMarshalProperties(t *testing.T) {
 		},
 		{
 			name: "secret with deps (KeepOutputValues)",
-			opts: MarshalOptions{KeepOutputValues: true},
+			opts: MarshalOptions{DontSkipOutputs: true, KeepOutputValues: true},
 			props: resource.PropertyMap{
 				"foo": resource.NewOutputProperty(resource.Output{
 					Element:      resource.NewStringProperty("shhh"),
@@ -657,7 +657,7 @@ func TestMarshalProperties(t *testing.T) {
 		},
 		{
 			name: "unknown secret (KeepOutputValues)",
-			opts: MarshalOptions{KeepOutputValues: true},
+			opts: MarshalOptions{DontSkipOutputs: true, KeepOutputValues: true},
 			props: resource.PropertyMap{
 				"foo": resource.NewOutputProperty(resource.Output{
 					Element: resource.NewStringProperty("shhh"),
@@ -685,7 +685,7 @@ func TestMarshalProperties(t *testing.T) {
 		},
 		{
 			name: "unknown secret with deps (KeepOutputValues)",
-			opts: MarshalOptions{KeepOutputValues: true},
+			opts: MarshalOptions{DontSkipOutputs: true, KeepOutputValues: true},
 			props: resource.PropertyMap{
 				"foo": resource.NewOutputProperty(resource.Output{
 					Element:      resource.NewStringProperty("shhh"),
@@ -939,7 +939,7 @@ func TestOutputValueMarshaling(t *testing.T) {
 			opts: MarshalOptions{KeepUnknowns: true},
 			raw:  resource.NewOutputProperty(resource.Output{}),
 			expected: &structpb.Value{
-				Kind: &structpb.Value_NullValue{NullValue: 0},
+				Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
 			},
 		},
 		{
@@ -1649,4 +1649,165 @@ func walkValueSelfWithDescendants(
 		return fmt.Errorf("Bad *structpb.Value of unknown type at %s: %v", path, v)
 	}
 	return nil
+}
+
+func TestMarshalPropertiesDontSkipOutputs(t *testing.T) {
+	tests := []struct {
+		name     string
+		opts     MarshalOptions
+		props    resource.PropertyMap
+		expected *structpb.Struct
+	}{
+		{
+			name: "Computed (KeepUnknowns)",
+			opts: MarshalOptions{KeepUnknowns: true},
+			props: resource.PropertyMap{
+				"message": resource.MakeComputed(resource.NewStringProperty("")),
+				"nested": resource.NewObjectProperty(resource.PropertyMap{
+					"value": resource.MakeComputed(resource.NewStringProperty("")),
+				}),
+			},
+			expected: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"message": {
+						Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+					},
+					"nested": {
+						Kind: &structpb.Value_StructValue{
+							StructValue: &structpb.Struct{
+								Fields: map[string]*structpb.Value{
+									"value": {
+										Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Output (KeepUnknowns)",
+			opts: MarshalOptions{KeepUnknowns: true},
+			props: resource.PropertyMap{
+				"message": resource.NewOutputProperty(resource.Output{}),
+				"nested": resource.NewObjectProperty(resource.PropertyMap{
+					"value": resource.NewOutputProperty(resource.Output{}),
+				}),
+			},
+			expected: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"nested": {
+						Kind: &structpb.Value_StructValue{
+							StructValue: &structpb.Struct{
+								Fields: map[string]*structpb.Value{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Output (KeepUnknowns, KeepOutputValues)",
+			opts: MarshalOptions{KeepUnknowns: true, KeepOutputValues: true},
+			props: resource.PropertyMap{
+				"message": resource.NewOutputProperty(resource.Output{}),
+				"nested": resource.NewObjectProperty(resource.PropertyMap{
+					"value": resource.NewOutputProperty(resource.Output{}),
+				}),
+			},
+			expected: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"nested": {
+						Kind: &structpb.Value_StructValue{
+							StructValue: &structpb.Struct{
+								Fields: map[string]*structpb.Value{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Output (KeepUnknowns, DontSkipOutputs)",
+			opts: MarshalOptions{KeepUnknowns: true, DontSkipOutputs: true},
+			props: resource.PropertyMap{
+				"message": resource.NewOutputProperty(resource.Output{}),
+				"nested": resource.NewObjectProperty(resource.PropertyMap{
+					"value": resource.NewOutputProperty(resource.Output{}),
+				}),
+			},
+			expected: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"message": {
+						Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+					},
+					"nested": {
+						Kind: &structpb.Value_StructValue{
+							StructValue: &structpb.Struct{
+								Fields: map[string]*structpb.Value{
+									"value": {
+										Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Output (KeepUnknowns, KeepOutputValues, DontSkipOutputs)",
+			opts: MarshalOptions{KeepUnknowns: true, KeepOutputValues: true, DontSkipOutputs: true},
+			props: resource.PropertyMap{
+				"message": resource.NewOutputProperty(resource.Output{}),
+				"nested": resource.NewObjectProperty(resource.PropertyMap{
+					"value": resource.NewOutputProperty(resource.Output{}),
+				}),
+			},
+			expected: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"message": {
+						Kind: &structpb.Value_StructValue{
+							StructValue: &structpb.Struct{
+								Fields: map[string]*structpb.Value{
+									resource.SigKey: {
+										Kind: &structpb.Value_StringValue{StringValue: resource.OutputValueSig},
+									},
+								},
+							},
+						},
+					},
+					"nested": {
+						Kind: &structpb.Value_StructValue{
+							StructValue: &structpb.Struct{
+								Fields: map[string]*structpb.Value{
+									"value": {
+										Kind: &structpb.Value_StructValue{
+											StructValue: &structpb.Struct{
+												Fields: map[string]*structpb.Value{
+													resource.SigKey: {
+														Kind: &structpb.Value_StringValue{
+															StringValue: resource.OutputValueSig,
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := MarshalProperties(tt.props, tt.opts)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
 }

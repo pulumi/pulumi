@@ -1438,6 +1438,16 @@ class TypeMetaDataSerializationTests(unittest.TestCase):
 
 
 class OutputValueSerializationTests(unittest.TestCase):
+    async def assertOutputEqual(self, first: Output[Any], second: Output[Any]):
+        async def urns(res: Set[Resource]) -> Set[str]:
+            return cast(Set[str], {await r.urn.future() for r in res})
+
+        self.assertEqual(await first.future(), await second.future())
+        self.assertEqual(await first.is_known(), await second.is_known())
+        self.assertEqual(await first.is_secret(), await second.is_secret())
+        self.assertEqual(await urns(await first.resources()), await urns(await second.resources()))
+
+
     @pulumi_test
     async def test_serialize(self):
         settings.SETTINGS.feature_support["outputValues"] = True
@@ -1467,8 +1477,15 @@ class OutputValueSerializationTests(unittest.TestCase):
                 expected = struct_pb2.Struct()
                 expected["value"] = obj
 
+                expected_round_trip = Output(resources, future(value if is_known else None), future(is_known),
+                    future(is_secret))
+
                 actual = await rpc.serialize_properties(inputs, {}, keep_output_values=True)
                 self.assertDictEqual(json_format.MessageToDict(expected), json_format.MessageToDict(actual))
+
+                # Roundtrip
+                back = rpc.deserialize_properties(actual)
+                await self.assertOutputEqual(expected_round_trip, back["value"])
 
     @pulumi_test
     async def test_serialize_nested_dict(self):

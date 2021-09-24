@@ -10,6 +10,8 @@
 
   [#7899](https://github.com/pulumi/pulumi/pull/7899)
 
+- [CLI] Enable output values in the engine by default.
+  [#8014](https://github.com/pulumi/pulumi/pull/8014)
 
 ### Bug Fixes
 

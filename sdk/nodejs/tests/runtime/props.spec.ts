@@ -161,12 +161,32 @@ describe("runtime", () => {
                                         ...isSecret && { secret: isSecret },
                                         ...(deps.length > 0) && { dependencies: deps },
                                     },
+                                    expectedRoundTrip: new Output(resources,
+                                        Promise.resolve(isKnown ? tv.expected : undefined), Promise.resolve(isKnown),
+                                        Promise.resolve(isSecret), Promise.resolve([])),
                                 };
                             }
                         }
                     }
                 }
             }
+
+            async function assertOutputsEqual<T>(a: Output<T>, e: Output<T>) {
+                async function urns(res: Set<Resource>): Promise<Set<string>> {
+                    const result = new Set<string>();
+                    for (const r of res) {
+                        result.add(await r.urn.promise());
+                    }
+                    return result;
+                }
+
+                assert.deepStrictEqual(await urns(a.resources()), await urns(e.resources()));
+                assert.deepStrictEqual(await a.isKnown, await e.isKnown);
+                assert.deepStrictEqual(await a.promise(), await e.promise());
+                assert.deepStrictEqual(await a.isSecret, await e.isSecret);
+                assert.deepStrictEqual(await urns(await a.allResources!()), await urns(await e.allResources!()));
+            }
+
             for (const test of generateTests()) {
                 it(`marshals ${test.name} correctly`, asyncTest(async () => {
                     runtime._setTestModeEnabled(true);
@@ -177,6 +197,10 @@ describe("runtime", () => {
 
                     const actual = await runtime.serializeProperties("test", inputs, { keepOutputValues: true });
                     assert.deepStrictEqual(actual, expected);
+
+                    // Roundtrip.
+                    const back = runtime.deserializeProperties(gstruct.Struct.fromJavaScript(actual));
+                    await assertOutputsEqual(back.value, test.expectedRoundTrip);
                 }));
             }
         });

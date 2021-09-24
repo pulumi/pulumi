@@ -422,6 +422,8 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
             return wrap_rpc_secret(deserialize_property(props_struct["value"]))
         if props_struct[_special_sig_key] == _special_resource_sig:
             return deserialize_resource(props_struct, keep_unknowns)
+        if props_struct[_special_sig_key] == _special_output_value_sig:
+            return deserialize_output_value(props_struct)
         raise AssertionError("Unrecognized signature when unmarshalling resource property")
 
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways. Note
@@ -472,6 +474,34 @@ def deserialize_resource(ref_struct: struct_pb2.Struct, keep_unknowns: Optional[
         return deserialize_property(UNKNOWN if ref_id == "" else ref_id, keep_unknowns)
 
     return urn
+
+
+def deserialize_output_value(ref_struct: struct_pb2.Struct) -> 'Output[Any]':
+    is_known = "value" in ref_struct
+    is_known_future: 'asyncio.Future' = asyncio.Future()
+    is_known_future.set_result(is_known)
+
+    value = None
+    if is_known:
+        value = deserialize_property(ref_struct["value"])
+    value_future: 'asyncio.Future' = asyncio.Future()
+    value_future.set_result(value)
+
+    is_secret = False
+    if "secret" in ref_struct:
+        is_secret = deserialize_property(ref_struct["secret"]) is True
+    is_secret_future: 'asyncio.Future' = asyncio.Future()
+    is_secret_future.set_result(is_secret)
+
+    resources: Set['Resource'] = set()
+    if "dependencies" in ref_struct:
+        from ..resource import DependencyResource  # pylint: disable=import-outside-toplevel
+        dependencies = cast(List[str], deserialize_property(ref_struct["dependencies"]))
+        for urn in dependencies:
+            resources.add(DependencyResource(urn))
+
+    from .. import Output  # pylint: disable=import-outside-toplevel
+    return Output(resources, value_future, is_known_future, is_secret_future)
 
 
 def is_rpc_secret(value: Any) -> bool:
