@@ -2,6 +2,10 @@
   "emittedFiles": [
     "example/doc.go",
     "example/init.go",
+    "example/ka/application.go",
+    "example/ka/applicationOutput.go",
+    "example/ka/init.go",
+    "example/ka/pulumiTypes.go",
     "example/provider.go",
     "example/pulumiEnums.go",
     "example/pulumiTypes.go",

@@ -2,6 +2,22 @@
   "name": "example",
   "version": "0.0.1",
   "types": {
+    "example:ka:ApplicationInput": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example:ka:ApplicationOutputOutput": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "example::Object": {
       "properties": {
         "bar": {
@@ -49,6 +65,39 @@
     }
   },
   "resources": {
+    "example:ka:Application": {
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/example:ka:ApplicationInput"
+          }
+        }
+      },
+      "inputProperties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/example:ka:ApplicationInput"
+          }
+        }
+      },
+      "requiredInputs": ["inputs"],
+      "type": "object"
+    },
+    "example:ka:ApplicationOutput": {
+      "properties": {
+        "output": {
+          "$ref": "#/types/example:ka:ApplicationOutputOutput"
+        }
+      },
+      "inputProperties": {
+        "output": {
+          "$ref": "#/types/example:ka:ApplicationOutputOutput"
+        }
+      },
+      "requiredInputs": ["output"]
+    },
     "example::Resource": {
       "properties": {
         "bar": {
@@ -72,7 +121,7 @@
       }
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/input-collision/go/example"
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/naming-collisions/go/example"
     },
     "nodejs": {
       "dependencies": {
