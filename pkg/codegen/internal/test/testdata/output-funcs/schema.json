@@ -584,6 +584,16 @@
       ]
     },
     "python": {
+    },
+    "csharp": {
+      "packageReferences": {
+          "Pulumi": "3.13",
+          "FluentAssertions": "5.10.2",
+          "Microsoft.NET.Test.Sdk": "16.5.0",
+          "Moq": "4.13.1",
+          "NUnit": "3.12.0",
+          "NUnit3TestAdapter": "3.16.1"
+      }
     }
   }
 }

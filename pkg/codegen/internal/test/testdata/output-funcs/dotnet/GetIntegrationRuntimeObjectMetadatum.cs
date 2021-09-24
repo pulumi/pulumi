@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Utilities;
 
 namespace Pulumi.Mypkg
 {
@@ -17,6 +18,28 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Task<GetIntegrationRuntimeObjectMetadatumResult> InvokeAsync(GetIntegrationRuntimeObjectMetadatumArgs args, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<GetIntegrationRuntimeObjectMetadatumResult>("mypkg::getIntegrationRuntimeObjectMetadatum", args ?? new GetIntegrationRuntimeObjectMetadatumArgs(), options.WithVersion());
+
+        /// <summary>
+        /// Another failing example. A list of SSIS object metadata.
+        /// API Version: 2018-06-01.
+        /// </summary>
+        public static Output<GetIntegrationRuntimeObjectMetadatumResult> Invoke(GetIntegrationRuntimeObjectMetadatumInvokeArgs args, InvokeOptions? options = null)
+        {
+            return Pulumi.Output.All(
+                args.FactoryName.Box(),
+                args.IntegrationRuntimeName.Box(),
+                args.MetadataPath.Box(),
+                args.ResourceGroupName.Box()
+            ).Apply(a =>
+            {
+                var args = new GetIntegrationRuntimeObjectMetadatumArgs();
+                a[0].Set(args, nameof(args.FactoryName));
+                a[1].Set(args, nameof(args.IntegrationRuntimeName));
+                a[2].Set(args, nameof(args.MetadataPath));
+                a[3].Set(args, nameof(args.ResourceGroupName));
+                return InvokeAsync(args, options);
+            });
+        }
     }
 
 
@@ -47,6 +70,33 @@ namespace Pulumi.Mypkg
         public string ResourceGroupName { get; set; } = null!;
 
         public GetIntegrationRuntimeObjectMetadatumArgs()
+        {
+        }
+    }
+
+    public sealed class GetIntegrationRuntimeObjectMetadatumInvokeArgs
+    {
+        /// <summary>
+        /// The factory name.
+        /// </summary>
+        public Input<string> FactoryName { get; set; } = null!;
+
+        /// <summary>
+        /// The integration runtime name.
+        /// </summary>
+        public Input<string> IntegrationRuntimeName { get; set; } = null!;
+
+        /// <summary>
+        /// Metadata path.
+        /// </summary>
+        public Input<string>? MetadataPath { get; set; }
+
+        /// <summary>
+        /// The resource group name.
+        /// </summary>
+        public Input<string> ResourceGroupName { get; set; } = null!;
+
+        public GetIntegrationRuntimeObjectMetadatumInvokeArgs()
         {
         }
     }

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -489,12 +489,8 @@ type plainType struct {
 	state                 bool
 }
 
-func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent string) {
+func (pt *plainType) genInputPropertyAttribute(w io.Writer, indent string, prop *schema.Property) {
 	wireName := prop.Name
-	propertyName := pt.mod.propertyName(prop)
-	propertyType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, false)
-
-	// First generate the input attribute.
 	attributeArgs := ""
 	if prop.IsRequired() {
 		attributeArgs = ", required: true"
@@ -511,6 +507,12 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 			attributeArgs += ", json: true"
 		}
 	}
+	fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
+}
+
+func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent string, generateInputAttribute bool) {
+	propertyName := pt.mod.propertyName(prop)
+	propertyType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, false)
 
 	indent = strings.Repeat(indent, 2)
 
@@ -532,7 +534,10 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		requireInitializers := !pt.args || !isInputType(prop.Type)
 		backingFieldType := pt.mod.typeString(codegen.RequiredType(prop), pt.propertyTypeQualifier, true, pt.state, requireInitializers)
 
-		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
+		if generateInputAttribute {
+			pt.genInputPropertyAttribute(w, indent, prop)
+		}
+
 		fmt.Fprintf(w, "%sprivate %s? %s;\n", indent, backingFieldType, backingFieldName)
 
 		if prop.Comment != "" {
@@ -583,7 +588,11 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		}
 
 		printComment(w, prop.Comment, indent)
-		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
+
+		if generateInputAttribute {
+			pt.genInputPropertyAttribute(w, indent, prop)
+		}
+
 		fmt.Fprintf(w, "%spublic %s %s { get; set; }%s\n", indent, propertyType, propertyName, initializer)
 	}
 }
@@ -592,6 +601,10 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 var generatedTypes = codegen.Set{}
 
 func (pt *plainType) genInputType(w io.Writer, level int) error {
+	return pt.genInputTypeWithFlags(w, level, true /* generateInputAttributes */)
+}
+
+func (pt *plainType) genInputTypeWithFlags(w io.Writer, level int, generateInputAttributes bool) error {
 	// The way the legacy codegen for kubernetes is structured, inputs for a resource args type and resource args
 	// subtype could become a single class because of the name + namespace clash. We use a set of generated types
 	// to prevent generating classes with equal full names in multiple files. The check should be removed if we
@@ -615,12 +628,18 @@ func (pt *plainType) genInputType(w io.Writer, level int) error {
 
 	// Open the class.
 	printCommentWithOptions(w, pt.comment, indent, !pt.unescapeComment)
-	fmt.Fprintf(w, "%spublic %sclass %s : Pulumi.%s\n", indent, sealed, pt.name, pt.baseClass)
+
+	var suffix string
+	if pt.baseClass != "" {
+		suffix = fmt.Sprintf(" : Pulumi.%s", pt.baseClass)
+	}
+
+	fmt.Fprintf(w, "%spublic %sclass %s%s\n", indent, sealed, pt.name, suffix)
 	fmt.Fprintf(w, "%s{\n", indent)
 
 	// Declare each input property.
 	for _, p := range pt.properties {
-		pt.genInputProperty(w, p, indent)
+		pt.genInputProperty(w, p, indent, generateInputAttributes)
 		fmt.Fprintf(w, "\n")
 	}
 
@@ -1230,6 +1249,34 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	return nil
 }
 
+func (mod *modContext) genFunctionFileCode(f *schema.Function) (string, error) {
+	imports := map[string]codegen.StringSet{}
+	mod.getImports(f, imports)
+	buffer := &bytes.Buffer{}
+	importStrings := pulumiImports
+	for _, i := range imports {
+		importStrings = append(importStrings, i.SortedValues()...)
+	}
+	if f.NeedsOutputVersion() {
+		importStrings = append(importStrings, "Pulumi.Utilities")
+	}
+	mod.genHeader(buffer, importStrings)
+	if err := mod.genFunction(buffer, f); err != nil {
+		return "", err
+	}
+	return buffer.String(), nil
+}
+
+func allOptionalInputs(fun *schema.Function) bool {
+	allOptional := true
+	if fun.Inputs != nil {
+		for _, prop := range fun.Inputs.Properties {
+			allOptional = allOptional && !prop.IsRequired()
+		}
+	}
+	return allOptional
+}
+
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	className := tokenToFunctionName(fun.Token)
 
@@ -1244,13 +1291,8 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	var argsParamDef string
 	argsParamRef := "InvokeArgs.Empty"
 	if fun.Inputs != nil {
-		allOptionalInputs := true
-		for _, prop := range fun.Inputs.Properties {
-			allOptionalInputs = allOptionalInputs && !prop.IsRequired()
-		}
-
 		var argsDefault, sigil string
-		if allOptionalInputs {
+		if allOptionalInputs(fun) {
 			// If the number of required input properties was zero, we can make the args object optional.
 			argsDefault, sigil = " = null", "?"
 		}
@@ -1275,6 +1317,12 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());\n",
 		typeParameter, fun.Token, argsParamRef)
 
+	// Emit the Output method if needed.
+	err := mod.genFunctionOutputVersion(w, fun)
+	if err != nil {
+		return err
+	}
+
 	// Close the class.
 	fmt.Fprintf(w, "    }\n")
 
@@ -1293,6 +1341,12 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 			return err
 		}
 	}
+
+	err = mod.genFunctionOutputVersionTypes(w, fun)
+	if err != nil {
+		return err
+	}
+
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "\n")
 
@@ -1307,6 +1361,109 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 
 	// Close the namespace.
 	fmt.Fprintf(w, "}\n")
+	return nil
+}
+
+func functionOutputVersionArgsTypeName(fun *schema.Function) string {
+	className := tokenToFunctionName(fun.Token)
+	return fmt.Sprintf("%sInvokeArgs", className)
+}
+
+// Generates `${fn}Output(..)` version lifted to work on
+// `Input`-wrapped arguments and producing an `Output`-wrapped result.
+func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) error {
+	if !fun.NeedsOutputVersion() {
+		return nil
+	}
+	className := tokenToFunctionName(fun.Token)
+
+	var argsDefault, sigil string
+	if allOptionalInputs(fun) {
+		// If the number of required input properties was zero, we can make the args object optional.
+		argsDefault, sigil = " = null", "?"
+	}
+
+	argsTypeName := functionOutputVersionArgsTypeName(fun)
+
+	var outputArgsParamDef string
+	outputArgsParamDef = fmt.Sprintf("%s%s args%s, ", argsTypeName, sigil, argsDefault)
+
+	fmt.Fprintf(w, "\n")
+
+	// Emit the doc comment, if any.
+	printComment(w, fun.Comment, "        ")
+
+	fmt.Fprintf(w, "        public static Output<%sResult> Invoke(%sInvokeOptions? options = null)\n",
+		className, outputArgsParamDef)
+	fmt.Fprintf(w, "        {\n")
+
+	if allOptionalInputs(fun) {
+		fmt.Fprintf(w, "            args = args ?? new %s();\n", argsTypeName)
+	}
+
+	var args []string
+	for _, p := range fun.Inputs.Properties {
+
+		var extraConverter string
+		switch pType := p.Type.(type) {
+		case *schema.OptionalType:
+			switch pType.ElementType.(type) {
+			case *schema.ArrayType:
+				extraConverter = ".ToList()"
+			case *schema.MapType:
+				extraConverter = ".ToDictionary()"
+			}
+		case *schema.ArrayType:
+			extraConverter = ".ToList()"
+		case *schema.MapType:
+			extraConverter = ".ToDictionary()"
+		}
+		args = append(args, fmt.Sprintf("args.%s%s.Box()", mod.propertyName(p), extraConverter))
+	}
+
+	indent := "        "
+	indent2 := indent + "    "
+	indent3 := indent2 + "    "
+
+	var unpackStatements []string
+	for i, p := range fun.Inputs.Properties {
+		fieldName := mod.propertyName(p)
+		stmt := fmt.Sprintf("a[%d].Set(args, nameof(args.%s));", i, fieldName)
+		unpackStatements = append(unpackStatements, stmt)
+	}
+
+	fmt.Fprintf(w, "%sreturn Pulumi.Output.All(\n", indent2)
+	fmt.Fprintf(w, "%s%s\n", indent3, strings.Join(args, ",\n"+indent3))
+
+	fmt.Fprintf(w, "%s).Apply(a =>\n%s{\n", indent2, indent2)
+	fmt.Fprintf(w, "%svar args = new %sArgs();\n", indent3, className)
+	for _, s := range unpackStatements {
+		fmt.Fprintf(w, "%s%s\n", indent3, s)
+	}
+	fmt.Fprintf(w, "%sreturn InvokeAsync(args, options);\n", indent3)
+	fmt.Fprintf(w, "%s});\n", indent2)
+	fmt.Fprintf(w, "%s}\n", indent)
+
+	return nil
+}
+
+// Generate helper type definitions referred to in `genFunctionOutputVersion`.
+func (mod *modContext) genFunctionOutputVersionTypes(w io.Writer, fun *schema.Function) error {
+	if !fun.NeedsOutputVersion() || fun.Inputs == nil {
+		return nil
+	}
+
+	applyArgs := &plainType{
+		mod:                   mod,
+		name:                  functionOutputVersionArgsTypeName(fun),
+		propertyTypeQualifier: "Inputs",
+		properties:            fun.Inputs.InputShape.Properties,
+		args:                  true,
+	}
+
+	if err := applyArgs.genInputTypeWithFlags(w, 1, false /* generateInputAttributes */); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1881,21 +2038,11 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Functions
 	for _, f := range mod.functions {
-		imports := map[string]codegen.StringSet{}
-		mod.getImports(f, imports)
-
-		buffer := &bytes.Buffer{}
-		importStrings := pulumiImports
-		for _, i := range imports {
-			importStrings = append(importStrings, i.SortedValues()...)
-		}
-		mod.genHeader(buffer, importStrings)
-
-		if err := mod.genFunction(buffer, f); err != nil {
+		code, err := mod.genFunctionFileCode(f)
+		if err != nil {
 			return err
 		}
-
-		addFile(tokenToName(f.Token)+".cs", buffer.String())
+		addFile(tokenToName(f.Token)+".cs", code)
 	}
 
 	// Nested types
