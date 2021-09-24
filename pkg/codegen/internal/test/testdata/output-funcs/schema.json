@@ -584,6 +584,11 @@
       ]
     },
     "python": {
+    },
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.13"
+      }
     }
   }
 }
