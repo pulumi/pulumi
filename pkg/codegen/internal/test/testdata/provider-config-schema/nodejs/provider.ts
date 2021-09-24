@@ -32,7 +32,7 @@ export class Provider extends pulumi.ProviderResource {
         let inputs: pulumi.Inputs = {};
         opts = opts || {};
         {
-            inputs["favoriteColor"] = pulumi.output((args ? args.favoriteColor : undefined) ?? <any>utilities.getEnv("FAVE_COLOR")).apply(JSON.stringify);
+            inputs["favoriteColor"] = (args ? args.favoriteColor : undefined) ?? <any>utilities.getEnv("FAVE_COLOR");
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});

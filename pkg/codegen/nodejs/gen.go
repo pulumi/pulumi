@@ -327,8 +327,18 @@ func (mod *modContext) typeString(t schema.Type, input bool, constValue interfac
 func isStringType(t schema.Type) bool {
 	t = codegen.UnwrapType(t)
 
-	for tt, ok := t.(*schema.TokenType); ok; tt, ok = t.(*schema.TokenType) {
-		t = tt.UnderlyingType
+	switch typ := t.(type) {
+	case *schema.TokenType:
+		t = typ.UnderlyingType
+	case *schema.UnionType:
+		for _, tt := range typ.ElementTypes {
+			t = codegen.UnwrapType(tt)
+			if typ, ok := t.(*schema.EnumType); ok {
+				t = typ.ElementType
+			}
+		}
+	case *schema.EnumType:
+		t = typ.ElementType
 	}
 
 	return t == schema.StringType
