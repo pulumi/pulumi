@@ -2,6 +2,7 @@
   "emittedFiles": [
     "pulumi_configstation/README.md",
     "pulumi_configstation/__init__.py",
+    "pulumi_configstation/_enums.py",
     "pulumi_configstation/_utilities.py",
     "pulumi_configstation/config/__init__.py",
     "pulumi_configstation/config/__init__.pyi",

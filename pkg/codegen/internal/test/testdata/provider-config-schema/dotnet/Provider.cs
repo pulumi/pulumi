@@ -39,8 +39,15 @@ namespace Pulumi.Configstation
 
     public sealed class ProviderArgs : Pulumi.ResourceArgs
     {
+        /// <summary>
+        /// this is a relaxed string enum which can also be set via env var
+        /// </summary>
+        [Input("favoriteColor", json: true)]
+        public InputUnion<string, Pulumi.Configstation.Color>? FavoriteColor { get; set; }
+
         public ProviderArgs()
         {
+            FavoriteColor = Utilities.GetEnv("FAVE_COLOR");
         }
     }
 }

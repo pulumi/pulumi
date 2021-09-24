@@ -2,6 +2,7 @@
   "emittedFiles": [
     "Config/Config.cs",
     "Config/README.md",
+    "Enums.cs",
     "Outputs/Child.cs",
     "Provider.cs",
     "Pulumi.Configstation.csproj",
