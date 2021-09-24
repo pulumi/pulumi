@@ -1,5 +1,8 @@
 ### Improvements
 
+- [CLI] Enable output values in the engine by default.
+  [#8014](https://github.com/pulumi/pulumi/pull/8014)
+
 ### Bug Fixes
 
 - [automation/python] Fix a bug in printing `Stack` if no program is provided.
