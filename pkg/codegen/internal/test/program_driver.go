@@ -178,6 +178,7 @@ func TestProgramCodegen(
 	testcase ProgramLangConfig,
 
 ) {
+	ensureValidSchemaVersions(t)
 	for _, tt := range programTests {
 		t.Run(tt.Description, func(t *testing.T) {
 			var err error

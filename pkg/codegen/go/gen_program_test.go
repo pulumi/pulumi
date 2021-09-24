@@ -2,6 +2,7 @@ package gen
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -99,6 +100,13 @@ func goCheck(t *testing.T, path string) {
 		assert.NoError(t, err)
 		err = integration.RunCommand(t, "go tidy",
 			[]string{ex, "mod", "tidy"},
+			dir, &integration.ProgramTestOptions{})
+		assert.NoError(t, err)
+		err = integration.RunCommand(t, "point towards local Go SDK",
+			[]string{ex, "mod", "edit",
+				fmt.Sprintf("--replace=%s=%s",
+					"github.com/pulumi/pulumi/sdk/v3/go/pulumi",
+					"../../../../../../sdk")},
 			dir, &integration.ProgramTestOptions{})
 		assert.NoError(t, err)
 	} else {

@@ -83,15 +83,15 @@ func checkDotnet(t *testing.T, path string) {
 // for each language, we are trying not to expand the functionality under test.
 func packagesFromTestName(name string) (string, string) {
 	if strings.Contains(name, "aws") {
-		return "Pulumi.Aws", "4.21.1"
+		return "Pulumi.Aws", test.AwsSchema
 	} else if strings.Contains(name, "azure-native") {
-		return "Pulumi.AzureNative", "1.29.0"
+		return "Pulumi.AzureNative", test.AzureNativeSchema
 	} else if strings.Contains(name, "azure") {
-		return "Pulumi.Azure", "4.18.0"
+		return "Pulumi.Azure", test.AzureSchema
 	} else if strings.Contains(name, "kubernetes") {
-		return "Pulumi.Kubernetes", "3.7.2"
+		return "Pulumi.Kubernetes", test.KubernetesSchema
 	} else if strings.Contains(name, "random") {
-		return "Pulumi.Random", "4.2.0"
+		return "Pulumi.Random", test.RandomSchema
 	}
 	return "", ""
 }

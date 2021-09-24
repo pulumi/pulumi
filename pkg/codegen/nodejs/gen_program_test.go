@@ -45,6 +45,10 @@ func nodejsCheck(t *testing.T, path string) {
 		err = os.Remove(yarnLock)
 		assert.NoError(t, err, "Failed to delete %s", yarnLock)
 	}()
+	err = integration.RunCommand(t, "link @pulumi/pulumi",
+		[]string{ex, "link", "@pulumi/pulumi"},
+		dir, &integration.ProgramTestOptions{})
+	assert.NoError(t, err, "Failed to link @pulumi/pulumi")
 	err = integration.RunCommand(t, "yarn add and install",
 		[]string{ex, "add", pkg}, dir, &integration.ProgramTestOptions{})
 	assert.NoError(t, err, "Could not install package: %q", pkg)
@@ -57,15 +61,15 @@ func nodejsCheck(t *testing.T, path string) {
 // from the name of the test.
 func packagesFromTestName(name string) (string, string) {
 	if strings.Contains(name, "aws") {
-		return "@pulumi/aws", "4.21.1"
+		return "@pulumi/aws", test.AwsSchema
 	} else if strings.Contains(name, "azure-native") {
-		return "@pulumi/azure-native", "1.29.0"
+		return "@pulumi/azure-native", test.AzureNativeSchema
 	} else if strings.Contains(name, "azure") {
-		return "@pulumi/azure", "4.18.0"
+		return "@pulumi/azure", test.AzureSchema
 	} else if strings.Contains(name, "kubernetes") {
-		return "@pulumi/kubernetes", "3.7.2"
+		return "@pulumi/kubernetes", test.KubernetesSchema
 	} else if strings.Contains(name, "random") {
-		return "@pulumi/random", "4.2.0"
+		return "@pulumi/random", test.RandomSchema
 	}
 	return "", ""
 }
