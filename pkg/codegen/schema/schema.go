@@ -1556,7 +1556,7 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 // works as a singleton -- if it is nil, a new loader is instantiated, else the provided loader is used. This avoids
 // breaking downstream consumers of ImportSpec while allowing us to extend schema support to external packages.
 //
-// A few notes on diagnostsics and errors in spec binding:
+// A few notes on diagnostics and errors in spec binding:
 //
 // - Unless an error is *fatal*--i.e. binding is fundamentally unable to proceed (e.g. because a provider for a package
 //   failed to load)--errors should be communicated as diagnostics. Fatal errors should be communicated as error values.
@@ -1565,7 +1565,7 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 //   allows binding to continue and produce as much information as possible for the end user.
 // - Diagnostics may be rendered to users by downstream tools, and should be written with schema authors in mind.
 // - Diagnostics _must_ contain enough contextual information for a user to be able to understand the source of the
-//   diagnostic. Until we have line/column information, we use JSON pointers to the offending entites. These pointers
+//   diagnostic. Until we have line/column information, we use JSON pointers to the offending entities. These pointers
 //   are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
 //   diagnostic error that is appropriately tagged with a JSON pointer.
 //
@@ -1659,7 +1659,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*
 		typeList = append(typeList, t)
 	}
 	for _, t := range types.objects {
-		// t is a plain shape: add it and its coresponding input shape to the type list.
+		// t is a plain shape: add it and its corresponding input shape to the type list.
 		typeList = append(typeList, t)
 		typeList = append(typeList, t.InputShape)
 	}

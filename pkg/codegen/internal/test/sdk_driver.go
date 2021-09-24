@@ -40,15 +40,18 @@ const (
 	golang = "go"
 )
 
+// TODO[pulumi/pulumi#8054]: remove
+// `codegen.NewStringSet("python/test", "nodejs/test")` workaround for
+// schemas with no unit tests.
 var sdkTests = []sdkTest{
 	{
-		Directory:   "dash-named-schema",
-		Description: "Simple schema with a two part name (foo-bar)",
+		Directory:   "naming-collisions",
+		Description: "Schema with types that could potentially produce collisions (go).",
 		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
-		Directory:   "input-collision",
-		Description: "Schema with types that could potentially produce collisions (go).",
+		Directory:   "dash-named-schema",
+		Description: "Simple schema with a two part name (foo-bar)",
 		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{

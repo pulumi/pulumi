@@ -42,6 +42,14 @@ pulumi.runtime.setMocks({
         case "pkg:index:MyCustom":
             assert.strictEqual(args.custom, true);
             return { id: args.name + "_id", state: args.inputs };
+        case "pkg:index:MyRemoteComponent":
+            return {
+                id: `${args.name}_id`,
+                state: {
+                    ...args.inputs,
+                    outprop: `output: ${args.inputs["inprop"]}`,
+                },
+            };
         default:
             assert.strictEqual(args.custom, false);
             return { id: "", state: {} };
@@ -54,6 +62,13 @@ class MyComponent extends pulumi.ComponentResource {
     constructor(name: string, inprop: pulumi.Input<string>, opts?: pulumi.ComponentResourceOptions) {
         super("pkg:index:MyComponent", name, {}, opts);
         this.outprop = pulumi.output(inprop).apply(x => `output: ${x}`);
+    }
+}
+
+class MyRemoteComponent extends pulumi.ComponentResource {
+    outprop!: pulumi.Output<string>;
+    constructor(name: string, inprop: pulumi.Input<string>, opts?: pulumi.ComponentResourceOptions) {
+        super("pkg:index:MyRemoteComponent", name, { inprop, outprop: undefined }, opts, true);
     }
 }
 
@@ -92,12 +107,22 @@ const mycomponent = new MyComponent("mycomponent", "hello");
 const myinstance = new Instance("instance");
 const mycustom = new MyCustom("mycustom", { instance: myinstance });
 const invokeResult = invoke();
+const myremotecomponent = new MyRemoteComponent("myremotecomponent", pulumi.interpolate`hello: ${myinstance.id}`);
 
 describe("mocks", function() {
     describe("component", function() {
         it("has expected output value", done => {
             mycomponent.outprop.apply(outprop => {
                 assert.strictEqual(outprop, "output: hello");
+                done();
+            });
+        });
+    });
+
+    describe("remote component", function() {
+        it("has expected output value", done => {
+            myremotecomponent.outprop.apply(outprop => {
+                assert.strictEqual(outprop.startsWith("output: hello: "), true);
                 done();
             });
         });
