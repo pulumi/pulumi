@@ -63,13 +63,13 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "nested-module",
 		Description:      "Nested module",
-		SkipCompileCheck: codegen.NewStringSet(nodejs),
+		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:        "nested-module-thirdparty",
 		Description:      "Third-party nested module",
-		SkipCompileCheck: codegen.NewStringSet(nodejs),
+		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
@@ -115,7 +115,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "simple-methods-schema",
 		Description:      "Simple schema with methods",
-		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
+		SkipCompileCheck: codegen.NewStringSet(nodejs, dotnet, golang),
 		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
