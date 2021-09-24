@@ -16,7 +16,7 @@ import * as asset from "../asset";
 import { isGrpcError } from "../errors";
 import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
-import { ComponentResource, CustomResource, ProviderResource, Resource, URN } from "../resource";
+import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource, URN } from "../resource";
 import { debuggablePromise, errorString, promiseDebugString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsOutputValues, monitorSupportsResourceReferences,
     monitorSupportsSecrets } from "./settings";
@@ -640,6 +640,23 @@ export function deserializeProperty(prop: any): any {
                     return deserializeProperty(id === "" ? unknownValue : id);
                 }
                 return urn;
+
+            case specialOutputValueSig:
+                let value = prop["value"];
+                const isKnown = value !== undefined;
+                if (isKnown) {
+                    value = deserializeProperty(value);
+                }
+
+                const isSecret = prop["secret"] === true;
+
+                const dependencies = prop["dependencies"];
+                const resources = Array.isArray(dependencies)
+                    ? dependencies.map(d => new DependencyResource(d))
+                    : [];
+
+                return new Output(resources, Promise.resolve(value), Promise.resolve(isKnown),
+                    Promise.resolve(isSecret), Promise.resolve([]));
 
             default:
                 throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);

@@ -40,6 +40,7 @@ type MarshalOptions struct {
 	KeepResources      bool   // true if we are keeping resoures (otherwise we return raw urn).
 	SkipInternalKeys   bool   // true to skip internal property keys (keys that start with "__") in the resulting map.
 	KeepOutputValues   bool   // true if we are keeping output values.
+	DontSkipOutputs    bool   // true to not skip outputs.
 }
 
 const (
@@ -72,7 +73,7 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 	for _, key := range props.StableKeys() {
 		v := props[key]
 		logging.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
-		if v.IsOutput() && !v.OutputValue().Known && !opts.KeepOutputValues {
+		if !opts.DontSkipOutputs && v.IsOutput() && !v.OutputValue().Known {
 			logging.V(9).Infof("Skipping output property for RPC[%s]: %v", opts.Label, key)
 		} else if opts.SkipNulls && v.IsNull() {
 			logging.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)
@@ -155,7 +156,7 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			result := v.OutputValue().Element
 			if !v.OutputValue().Known {
 				// Unknown outputs are marshaled the same as Computed.
-				result = resource.MakeComputed(result)
+				result = resource.MakeComputed(resource.NewStringProperty(""))
 			}
 			if v.OutputValue().Secret {
 				result = resource.MakeSecret(result)
