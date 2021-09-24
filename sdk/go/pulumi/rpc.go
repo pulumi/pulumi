@@ -226,6 +226,13 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 			}
 			valueType = input.ElementType()
 
+			// Handle cases where the destination is a ptr type whose element type is the same as the value type
+			// (e.g. destType is *FooBar and valueType is FooBar).
+			// This avoids calling the ToOutput method to convert the input to an output in this case.
+			if valueType != destType && destType.Kind() == reflect.Ptr && valueType == destType.Elem() {
+				destType = destType.Elem()
+			}
+
 			// If the element type of the input is not identical to the type of the destination and the destination is
 			// not the any type (i.e. interface{}), attempt to convert the input to an appropriately-typed output.
 			if valueType != destType && destType != anyType {
