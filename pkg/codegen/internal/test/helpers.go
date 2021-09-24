@@ -335,7 +335,6 @@ func RunCommand(t *testing.T, name string, cwd string, exec string, args ...stri
 		append([]string{exec}, args...),
 		wd,
 		&cmdOptions)
-	require.NoError(t, err)
 	if err != nil {
 		stdout := stdout.String()
 		stderr := stderr.String()
@@ -345,6 +344,7 @@ func RunCommand(t *testing.T, name string, cwd string, exec string, args ...stri
 		if len(stderr) > 0 {
 			t.Logf("stderr: %s", stderr)
 		}
+		require.NoError(t, err)
 		t.FailNow()
 	}
 }
