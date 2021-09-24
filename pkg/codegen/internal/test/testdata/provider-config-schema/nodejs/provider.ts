@@ -45,5 +45,8 @@ export class Provider extends pulumi.ProviderResource {
  * The set of arguments for constructing a Provider resource.
  */
 export interface ProviderArgs {
+    /**
+     * this is a relaxed string enum which can also be set via env var
+     */
     favoriteColor?: pulumi.Input<string | enums.Color>;
 }

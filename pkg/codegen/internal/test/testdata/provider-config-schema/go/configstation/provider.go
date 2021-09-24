@@ -33,11 +33,13 @@ func NewProvider(ctx *pulumi.Context,
 }
 
 type providerArgs struct {
+	// this is a relaxed string enum which can also be set via env var
 	FavoriteColor *string `pulumi:"favoriteColor"`
 }
 
 // The set of arguments for constructing a Provider resource.
 type ProviderArgs struct {
+	// this is a relaxed string enum which can also be set via env var
 	FavoriteColor pulumi.StringPtrInput
 }
 

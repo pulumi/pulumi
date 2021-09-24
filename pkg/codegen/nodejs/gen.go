@@ -330,15 +330,17 @@ func isStringType(t schema.Type) bool {
 	switch typ := t.(type) {
 	case *schema.TokenType:
 		t = typ.UnderlyingType
+	case *schema.EnumType:
+		t = typ.ElementType
 	case *schema.UnionType:
+		// The following case detects for relaxed string enums. If it's a Union, check if one ElementType is an EnumType.
+		// If yes, t is the ElementType of the EnumType.
 		for _, tt := range typ.ElementTypes {
 			t = codegen.UnwrapType(tt)
 			if typ, ok := t.(*schema.EnumType); ok {
 				t = typ.ElementType
 			}
 		}
-	case *schema.EnumType:
-		t = typ.ElementType
 	}
 
 	return t == schema.StringType

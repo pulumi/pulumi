@@ -126,3 +126,31 @@ func TestPascalCases(t *testing.T) {
 		require.Equal(t, tt.expected, result)
 	}
 }
+
+func Test_isStringType(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    schema.Type
+		expected bool
+	}{
+		{"string", schema.StringType, true},
+		{"int", schema.IntType, false},
+		{"Input[string]", &schema.InputType{ElementType: schema.StringType}, true},
+		{"Input[int]", &schema.InputType{ElementType: schema.IntType}, false},
+		{"StrictStringEnum", &schema.EnumType{ElementType: schema.StringType}, true},
+		{"StrictIntEnum", &schema.EnumType{ElementType: schema.IntType}, false},
+		{"RelaxedStringEnum", &schema.UnionType{
+			ElementTypes: []schema.Type{&schema.EnumType{ElementType: schema.StringType}, schema.StringType},
+		}, true},
+		{"RelaxedIntEnum", &schema.UnionType{
+			ElementTypes: []schema.Type{&schema.EnumType{ElementType: schema.IntType}, schema.IntType},
+		}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isStringType(tt.input); got != tt.expected {
+				t.Errorf("isStringType() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}

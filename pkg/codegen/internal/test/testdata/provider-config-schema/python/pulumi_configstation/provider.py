@@ -17,6 +17,7 @@ class ProviderArgs:
                  favorite_color: Optional[pulumi.Input[Union[str, 'Color']]] = None):
         """
         The set of arguments for constructing a Provider resource.
+        :param pulumi.Input[Union[str, 'Color']] favorite_color: this is a relaxed string enum which can also be set via env var
         """
         if favorite_color is None:
             favorite_color = _utilities.get_env('FAVE_COLOR')
@@ -26,6 +27,9 @@ class ProviderArgs:
     @property
     @pulumi.getter(name="favoriteColor")
     def favorite_color(self) -> Optional[pulumi.Input[Union[str, 'Color']]]:
+        """
+        this is a relaxed string enum which can also be set via env var
+        """
         return pulumi.get(self, "favorite_color")
 
     @favorite_color.setter
@@ -44,6 +48,7 @@ class Provider(pulumi.ProviderResource):
         Create a Configstation resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
+        :param pulumi.Input[Union[str, 'Color']] favorite_color: this is a relaxed string enum which can also be set via env var
         """
         ...
     @overload

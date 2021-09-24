@@ -4,6 +4,7 @@
   "provider": {
     "inputProperties": {
       "favoriteColor": {
+        "description": "this is a relaxed string enum which can also be set via env var",
         "oneOf": [
           {
             "type": "string"
