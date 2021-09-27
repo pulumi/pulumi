@@ -2307,11 +2307,15 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 			mod.functions = append(mod.functions, f)
 		}
 		if f.Inputs != nil {
-			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType) {
+			visitor := func(t *schema.ObjectType) {
 				details := getModFromToken(t.Token, t.Package).details(t)
 				details.inputType = true
 				details.plainType = true
-			})
+			}
+			visitObjectTypes(f.Inputs.Properties, visitor)
+			if f.NeedsOutputVersion() {
+				visitObjectTypes(f.Inputs.InputShape.Properties, visitor)
+			}
 		}
 		if f.Outputs != nil {
 			visitObjectTypes(f.Outputs.Properties, func(t *schema.ObjectType) {

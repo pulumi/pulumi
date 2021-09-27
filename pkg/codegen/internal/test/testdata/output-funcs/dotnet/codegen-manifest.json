@@ -9,6 +9,7 @@
     "GetClientConfig.cs",
     "GetIntegrationRuntimeObjectMetadatum.cs",
     "Inputs/BastionShareableLink.cs",
+    "Inputs/BastionShareableLinkArgs.cs",
     "ListStorageAccountKeys.cs",
     "Outputs/SsisEnvironmentReferenceResponse.cs",
     "Outputs/SsisEnvironmentResponse.cs",
