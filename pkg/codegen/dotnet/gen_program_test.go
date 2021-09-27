@@ -1,7 +1,6 @@
 package dotnet
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,22 +32,22 @@ func checkDotnet(t *testing.T, path string) {
 	ex, err := executable.FindExecutable("dotnet")
 	assert.NoError(t, err, "Failed to find dotnet executable")
 
+	// We create a new cs-project each time the test is run.
 	projectFile := filepath.Join(dir, filepath.Base(dir)+".csproj")
-	if _, err := ioutil.ReadFile(projectFile); os.IsNotExist(err) {
-		defer func() {
-			err = os.Remove(projectFile)
-			assert.NoError(t, err, "Failed to delete project file")
-			err = os.Remove(filepath.Join(dir, "Program.cs"))
-			assert.NoError(t, err, "Failed to delete C# project main")
-		}()
-		err = integration.RunCommand(t, "create dotnet project",
-			[]string{ex, "new", "console"}, dir, &integration.ProgramTestOptions{})
-		assert.NoError(t, err, "Failed to create C# project")
+	programFile := filepath.Join(dir, "Program.cs")
+	if err = os.Remove(projectFile); !os.IsNotExist(err) {
+		assert.NoError(t, err)
 	}
+	if err = os.Remove(programFile); !os.IsNotExist(err) {
+		assert.NoError(t, err)
+	}
+	err = integration.RunCommand(t, "create dotnet project",
+		[]string{ex, "new", "console"}, dir, &integration.ProgramTestOptions{})
+	assert.NoError(t, err, "Failed to create C# project")
 
 	// Add dependencies (based on directory name)
 	if pkg, pkgVersion := packagesFromTestName(filepath.Base(dir)); pkg != "" {
-		err = integration.RunCommand(t, "create dotnet project",
+		err = integration.RunCommand(t, "Add package",
 			[]string{ex, "add", "package", pkg, "--version", pkgVersion},
 			dir, &integration.ProgramTestOptions{})
 		assert.NoError(t, err, "Failed to add dependency %q %q", pkg, pkgVersion)

@@ -27,7 +27,7 @@ class MyStack : Stack
                 Bucket = siteBucket.Id,
                 Key = range.Value,
                 Source = new FileAsset($"{siteDir}/{range.Value}"),
-                ContentType = "TODO: call mimeType",
+                ContentType = range.Value,
             }));
         }
         // set the MIME type of the file

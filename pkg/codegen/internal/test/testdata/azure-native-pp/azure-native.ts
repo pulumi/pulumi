@@ -62,4 +62,6 @@ const endpoint = new azure_native.cdn.Endpoint("endpoint", {
     isHttpAllowed: true,
     isHttpsAllowed: true,
     location: "WestUs",
+    profileName: "profileName",
+    resourceGroupName: "resourceGroupName",
 });

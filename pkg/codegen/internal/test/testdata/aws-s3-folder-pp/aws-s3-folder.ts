@@ -14,7 +14,7 @@ for (const range of fs.readDirSync(siteDir).map((k, v) => {key: k, value: v})) {
         bucket: siteBucket.id,
         key: range.value,
         source: new pulumi.asset.FileAsset(`${siteDir}/${range.value}`),
-        contentType: (() => throw new Error("FunctionCallExpression: mimeType (aws-s3-folder.pp:19,16-37)"))(),
+        contentType: range.value,
     }));
 }
 // set the MIME type of the file

@@ -34,64 +34,52 @@ var programTests = []programTest{
 		Description:    "AWS S3 Folder",
 		ExpectNYIDiags: codegen.NewStringSet("python", "nodejs", "dotnet"),
 		SkipCompile:    codegen.NewStringSet("go", "python", "nodejs"),
-		// Blocked on nodejs:
-		// Program is invalid syntactically and semantically. This starts with
-		// Line 3: import * from "fs"; which should be import * as fs from "fs";
+		// Blocked on python: TODO[pulumi/pulumi#8062]: Re-enable this test.
+		// Blocked on go:
+		//   TODO[pulumi/pulumi#8064]
+		//   TODO[pulumi/pulumi#8065]
+		// Blocked on nodejs: TODO[pulumi/pulumi#8063]
 	},
 	{
 		Name:        "aws-eks",
 		Description: "AWS EKS",
-		SkipCompile: codegen.NewStringSet("go", "nodejs"),
-		// Blocked on go:
-		// https://github.com/pulumi/pulumi-aws/issues/1632
-		//
-		// Blocked on nodejs
-		// Starting with:
-		// aws-eks.ts:34:65 - error TS1005: ';' expected.
-		//
-		// 34     for (const range of zones.names.map((k, v) => {key: k, value: v})) {
-		//                                                                    ~
+		SkipCompile: codegen.NewStringSet("nodejs"),
+		// Blocked on nodejs: TODO[pulumi/pulumi#8067]
 	},
 	{
 		Name:        "aws-fargate",
 		Description: "AWS Fargate",
 		SkipCompile: codegen.NewStringSet("go"),
-		// Blocked on go:
-		// https://github.com/pulumi/pulumi-aws/issues/1632
 	},
 	{
 		Name:        "aws-s3-logging",
 		Description: "AWS S3 with logging",
 		SkipCompile: codegen.NewStringSet("dotnet", "nodejs"),
-		// Blocked on dotnet:
-		// /codegen/internal/test/testdata/aws-s3-logging-pp/aws-s3-logging.cs(21,71):
-		// error CS0023: Operator '?' cannot be applied to operand of type 'ImmutableArray<BucketLogging>'
-		//
-		// Blocked on nodejs:
-		// It looks like this is being parsed as a ternary expression
-		// aws-s3-logging.ts:8:89 - error TS1005: ':' expected.
-		//
-		// 8: export const targetBucket = bucket.loggings.apply(loggings => loggings?[0]?.targetBucket);
-		//                                                                                            ~
+		// Blocked on dotnet: TODO[pulumi/pulumi#8069]
+		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
 	},
 	{
 		Name:        "aws-webserver",
 		Description: "AWS Webserver",
 		SkipCompile: codegen.NewStringSet("go"),
-		// Blocked on go:
-		// https://github.com/pulumi/pulumi-aws/issues/1632
+		// Blocked on go: TODO[pulumi/pulumi#8070]
 	},
 	{
 		Name:        "azure-native",
 		Description: "Azure Native",
-		Skip:        codegen.NewStringSet("go", "nodejs"),
+		SkipCompile: codegen.NewStringSet("go", "nodejs"),
 		// Blocked on go:
-		// Blocked on nodjs:
-		// Types do not line up
+		//   TODO[pulumi/pulumi#8072]
+		//   TODO[pulumi/pulumi#8073]
+		//   TODO[pulumi/pulumi#8074]
+		// Blocked on nodejs:
+		//   TODO[pulumi/pulumi#8075]
 	},
 	{
 		Name:        "azure-sa",
 		Description: "Azure SA",
+		SkipCompile: codegen.NewStringSet("go"),
+		// Blocked on go: TODO[pulumi/pulumi-azure#954]
 	},
 	{
 		Name:        "kubernetes-operator",
@@ -102,8 +90,10 @@ var programTests = []programTest{
 		Description: "K8s Pod",
 		SkipCompile: codegen.NewStringSet("go", "nodejs"),
 		// Blocked on go:
+		//   TODO[pulumi/pulumi#8073]
+		//   TODO[pulumi/pulumi#8074]
 		// Blocked on nodejs:
-		// Types do not line up
+		//   TODO[pulumi/pulumi#8075]
 	},
 	{
 		Name:        "kubernetes-template",
@@ -117,8 +107,7 @@ var programTests = []programTest{
 		Name:        "aws-resource-options",
 		Description: "Resource Options",
 		SkipCompile: codegen.NewStringSet("go"),
-		// Blocked on go:
-		// generating invalid aws.Provider code
+		// Blocked on go: TODO[pulumi/pulumi#8076]
 	},
 	{
 		Name:        "aws-secret",
@@ -128,23 +117,10 @@ var programTests = []programTest{
 		Name:        "functions",
 		Description: "Functions",
 		SkipCompile: codegen.NewStringSet("go", "dotnet"),
-		// Blocked on go:
-		// # main
-		// ./functions.go:12:5: no new variables on left side of :=
-		// ./functions.go:13:5: no new variables on left side of :=
-		//
+		// Blocked on go: TODO[pulumi/pulumi#8077]
 		// Blocked on dotnet:
-		// testdata/functions-pp/functions.cs(9,38): error CS1525: Invalid expression term '{' [functions-pp.csproj]
-		// testdata/functions-pp/functions.cs(9,38): error CS1026: ) expected [testdata/functions-pp/functions-pp.csproj]
-		// testdata/functions-pp/functions.cs(9,38): error CS1002: ; expected [testdata/functions-pp/functions-pp.csproj]
-		// testdata/functions-pp/functions.cs(11,19): error CS1002: ; expected [testdata/functions-pp/functions-pp.csproj]
-		// testdata/functions-pp/functions.cs(11,19): error CS1513: } expected [testdata/functions-pp/functions-pp.csproj]
-		// testdata/functions-pp/functions.cs(12,23): error CS1002: ; expected [testdata/functions-pp/functions-pp.csproj]
-		// testdata/functions-pp/functions.cs(12,23): error CS1513: } expected [testdata/functions-pp/functions-pp.csproj]
-		// testdata/functions-pp/functions.cs(13,10): error CS1513: } expected [testdata/functions-pp/functions-pp.csproj]
-		// 0 Warning(s)
-		// 8 Error(s)
-
+		//   TODO[pulumi/pulumi#8078]
+		//   TODO[pulumi/pulumi#8079]
 	},
 }
 

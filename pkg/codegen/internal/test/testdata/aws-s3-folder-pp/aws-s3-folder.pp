@@ -17,7 +17,7 @@ resource files "aws:s3:BucketObject" {
 	key = range.value      // Set the key appropriately
 
 	source = fileAsset("${siteDir}/${range.value}") // use fileAsset to point to a file
-	contentType = mimeType(range.value)             // set the MIME type of the file
+	contentType = range.value                       // set the MIME type of the file
 }
 
 // Set the access policy for the bucket so all objects are readable

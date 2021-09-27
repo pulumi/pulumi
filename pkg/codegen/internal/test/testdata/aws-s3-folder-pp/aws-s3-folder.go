@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"mime"
-	"path"
 
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/iam"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
@@ -37,7 +35,7 @@ func main() {
 				Bucket:      siteBucket.ID(),
 				Key:         pulumi.String(val0),
 				Source:      pulumi.NewFileAsset(fmt.Sprintf("%v%v%v", siteDir, "/", val0)),
-				ContentType: mime.TypeByExtension(path.Ext(val0)),
+				ContentType: pulumi.String(val0),
 			})
 			if err != nil {
 				return err

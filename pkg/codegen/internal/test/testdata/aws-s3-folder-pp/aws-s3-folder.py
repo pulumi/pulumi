@@ -15,7 +15,7 @@ for range in [{"key": k, "value": v} for [k, v] in enumerate(os.listdir(site_dir
         bucket=site_bucket.id,
         key=range["value"],
         source=pulumi.FileAsset(f"{site_dir}/{range['value']}"),
-        content_type=(lambda: raise Exception("FunctionCallExpression: mimeType (aws-s3-folder.pp:19,16-37)"))()))
+        content_type=range["value"]))
 # set the MIME type of the file
 # Set the access policy for the bucket so all objects are readable
 bucket_policy = aws.s3.BucketPolicy("bucketPolicy",

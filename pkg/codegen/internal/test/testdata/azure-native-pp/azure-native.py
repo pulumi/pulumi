@@ -61,4 +61,6 @@ endpoint = azure_native.cdn.Endpoint("endpoint",
     is_compression_enabled=True,
     is_http_allowed=True,
     is_https_allowed=True,
-    location="WestUs")
+    location="WestUs",
+    profile_name="profileName",
+    resource_group_name="resourceGroupName")

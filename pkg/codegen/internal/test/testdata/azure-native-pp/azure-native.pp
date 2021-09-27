@@ -62,4 +62,6 @@ resource endpoint "azure-native:cdn:Endpoint" {
     isHttpAllowed = true
     isHttpsAllowed = true
     location = "WestUs"
+    profileName = "profileName"
+    resourceGroupName = "resourceGroupName"
 }

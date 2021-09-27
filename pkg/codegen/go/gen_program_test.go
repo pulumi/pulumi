@@ -85,33 +85,27 @@ func goCheck(t *testing.T, path string) {
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	assert.NoError(t, err)
-	_, err = ioutil.ReadFile("go.mod")
-	if os.IsNotExist(err) {
-		defer func() {
-			// If we created the module, we also remove the module
-			err = os.Remove(filepath.Join(dir, "go.mod"))
-			assert.NoError(t, err)
-			err = os.Remove(filepath.Join(dir, "go.sum"))
-			assert.NoError(t, err)
-		}()
-		err = integration.RunCommand(t, "generate go.mod",
-			[]string{ex, "mod", "init", "main"},
-			dir, &integration.ProgramTestOptions{})
-		assert.NoError(t, err)
-		err = integration.RunCommand(t, "go tidy",
-			[]string{ex, "mod", "tidy"},
-			dir, &integration.ProgramTestOptions{})
-		assert.NoError(t, err)
-		err = integration.RunCommand(t, "point towards local Go SDK",
-			[]string{ex, "mod", "edit",
-				fmt.Sprintf("--replace=%s=%s",
-					"github.com/pulumi/pulumi/sdk/v3/go/pulumi",
-					"../../../../../../sdk")},
-			dir, &integration.ProgramTestOptions{})
-		assert.NoError(t, err)
-	} else {
+
+	// We remove go.mod to ensure tests are reproducible.
+	goMod := filepath.Join(dir, "go.mod")
+	if err = os.Remove(goMod); !os.IsNotExist(err) {
 		assert.NoError(t, err)
 	}
+	err = integration.RunCommand(t, "generate go.mod",
+		[]string{ex, "mod", "init", "main"},
+		dir, &integration.ProgramTestOptions{})
+	assert.NoError(t, err)
+	err = integration.RunCommand(t, "go tidy",
+		[]string{ex, "mod", "tidy"},
+		dir, &integration.ProgramTestOptions{})
+	assert.NoError(t, err)
+	err = integration.RunCommand(t, "point towards local Go SDK",
+		[]string{ex, "mod", "edit",
+			fmt.Sprintf("--replace=%s=%s",
+				"github.com/pulumi/pulumi/sdk/v3/go/pulumi",
+				"../../../../../../sdk")},
+		dir, &integration.ProgramTestOptions{})
+	assert.NoError(t, err)
 	err = integration.RunCommand(t, "test build", []string{ex, "build", "-v", "all"},
 		dir, &integration.ProgramTestOptions{})
 	assert.NoError(t, err)

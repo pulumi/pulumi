@@ -34,17 +34,17 @@ func nodejsCheck(t *testing.T, path string) {
 		pkgVersion = "3.7.0"
 	}
 	pkg := pkgName + "@" + pkgVersion
-	defer func() {
-		nodeModules := filepath.Join(dir, "node_modules")
-		err = os.RemoveAll(nodeModules)
-		assert.NoError(t, err, "Failed to delete %s", nodeModules)
-		packageJSON := filepath.Join(dir, "package.json")
-		err = os.Remove(packageJSON)
+
+	// We delete and regenerate package files for each run.
+	packageJSON := filepath.Join(dir, "package.json")
+	if err := os.Remove(packageJSON); !os.IsNotExist(err) {
 		assert.NoError(t, err, "Failed to delete %s", packageJSON)
-		yarnLock := filepath.Join(dir, "yarn.lock")
-		err = os.Remove(yarnLock)
+	}
+	yarnLock := filepath.Join(dir, "yarn.lock")
+	if err := os.Remove(yarnLock); !os.IsNotExist(err) {
 		assert.NoError(t, err, "Failed to delete %s", yarnLock)
-	}()
+	}
+
 	err = integration.RunCommand(t, "link @pulumi/pulumi",
 		[]string{ex, "link", "@pulumi/pulumi"},
 		dir, &integration.ProgramTestOptions{})

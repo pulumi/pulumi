@@ -94,6 +94,8 @@ class MyStack : Stack
             IsHttpAllowed = true,
             IsHttpsAllowed = true,
             Location = "WestUs",
+            ProfileName = "profileName",
+            ResourceGroupName = "resourceGroupName",
         });
     }
 
