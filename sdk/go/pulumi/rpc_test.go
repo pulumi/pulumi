@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: unused,deadcode
+// nolint: unused,deadcode,lll
 package pulumi
 
 import (
@@ -936,5 +936,356 @@ func TestOutputValueMarshalling(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+type foo struct {
+	TemplateOptions *TemplateOptions `pulumi:"templateOptions"`
+}
+
+type fooArgs struct {
+	TemplateOptions TemplateOptionsPtrInput
+}
+
+func (fooArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*foo)(nil)).Elem()
+}
+
+type TemplateOptions struct {
+	Description       *string                    `pulumi:"description"`
+	TagSpecifications []TemplateTagSpecification `pulumi:"tagSpecifications"`
+}
+
+type TemplateOptionsInput interface {
+	Input
+
+	ToTemplateOptionsOutput() TemplateOptionsOutput
+	ToTemplateOptionsOutputWithContext(context.Context) TemplateOptionsOutput
+}
+
+type TemplateOptionsArgs struct {
+	Description       StringPtrInput
+	TagSpecifications TemplateTagSpecificationArrayInput
+}
+
+func (TemplateOptionsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateOptions)(nil)).Elem()
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsOutput() TemplateOptionsOutput {
+	return i.ToTemplateOptionsOutputWithContext(context.Background())
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsOutputWithContext(ctx context.Context) TemplateOptionsOutput {
+	return ToOutputWithContext(ctx, i).(TemplateOptionsOutput)
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return i.ToTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return ToOutputWithContext(ctx, i).(TemplateOptionsOutput).ToTemplateOptionsPtrOutputWithContext(ctx)
+}
+
+type TemplateOptionsPtrInput interface {
+	Input
+
+	ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput
+	ToTemplateOptionsPtrOutputWithContext(context.Context) TemplateOptionsPtrOutput
+}
+
+type templateOptionsPtrType TemplateOptionsArgs
+
+func TemplateOptionsPtr(v *TemplateOptionsArgs) TemplateOptionsPtrInput {
+	return (*templateOptionsPtrType)(v)
+}
+
+func (*templateOptionsPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TemplateOptions)(nil)).Elem()
+}
+
+func (i *templateOptionsPtrType) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return i.ToTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (i *templateOptionsPtrType) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return ToOutputWithContext(ctx, i).(TemplateOptionsPtrOutput)
+}
+
+type TemplateOptionsOutput struct{ *OutputState }
+
+func (TemplateOptionsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateOptions)(nil)).Elem()
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsOutput() TemplateOptionsOutput {
+	return o
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsOutputWithContext(ctx context.Context) TemplateOptionsOutput {
+	return o
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return o.ToTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TemplateOptions) *TemplateOptions {
+		return &v
+	}).(TemplateOptionsPtrOutput)
+}
+
+type TemplateOptionsPtrOutput struct{ *OutputState }
+
+func (TemplateOptionsPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TemplateOptions)(nil)).Elem()
+}
+
+func (o TemplateOptionsPtrOutput) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return o
+}
+
+func (o TemplateOptionsPtrOutput) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return o
+}
+
+type TemplateTagSpecification struct {
+	Name *string           `pulumi:"name"`
+	Tags map[string]string `pulumi:"tags"`
+}
+
+type TemplateTagSpecificationInput interface {
+	Input
+
+	ToTemplateTagSpecificationOutput() TemplateTagSpecificationOutput
+	ToTemplateTagSpecificationOutputWithContext(context.Context) TemplateTagSpecificationOutput
+}
+
+type TemplateTagSpecificationArgs struct {
+	Name StringPtrInput `pulumi:"name"`
+	Tags StringMapInput `pulumi:"tags"`
+}
+
+func (TemplateTagSpecificationArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateTagSpecification)(nil)).Elem()
+}
+
+func (i TemplateTagSpecificationArgs) ToTemplateTagSpecificationOutput() TemplateTagSpecificationOutput {
+	return i.ToTemplateTagSpecificationOutputWithContext(context.Background())
+}
+
+func (i TemplateTagSpecificationArgs) ToTemplateTagSpecificationOutputWithContext(ctx context.Context) TemplateTagSpecificationOutput {
+	return ToOutputWithContext(ctx, i).(TemplateTagSpecificationOutput)
+}
+
+type TemplateTagSpecificationArrayInput interface {
+	Input
+
+	ToTemplateTagSpecificationArrayOutput() TemplateTagSpecificationArrayOutput
+	ToTemplateTagSpecificationArrayOutputWithContext(context.Context) TemplateTagSpecificationArrayOutput
+}
+
+type TemplateTagSpecificationArray []TemplateTagSpecificationInput
+
+func (TemplateTagSpecificationArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TemplateTagSpecification)(nil)).Elem()
+}
+
+func (i TemplateTagSpecificationArray) ToTemplateTagSpecificationArrayOutput() TemplateTagSpecificationArrayOutput {
+	return i.ToTemplateTagSpecificationArrayOutputWithContext(context.Background())
+}
+
+func (i TemplateTagSpecificationArray) ToTemplateTagSpecificationArrayOutputWithContext(ctx context.Context) TemplateTagSpecificationArrayOutput {
+	return ToOutputWithContext(ctx, i).(TemplateTagSpecificationArrayOutput)
+}
+
+type TemplateTagSpecificationOutput struct{ *OutputState }
+
+func (TemplateTagSpecificationOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateTagSpecification)(nil)).Elem()
+}
+
+func (o TemplateTagSpecificationOutput) ToTemplateTagSpecificationOutput() TemplateTagSpecificationOutput {
+	return o
+}
+
+func (o TemplateTagSpecificationOutput) ToTemplateTagSpecificationOutputWithContext(ctx context.Context) TemplateTagSpecificationOutput {
+	return o
+}
+
+type TemplateTagSpecificationArrayOutput struct{ *OutputState }
+
+func (TemplateTagSpecificationArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TemplateTagSpecification)(nil)).Elem()
+}
+
+func (o TemplateTagSpecificationArrayOutput) ToTemplateTagSpecificationArrayOutput() TemplateTagSpecificationArrayOutput {
+	return o
+}
+
+func (o TemplateTagSpecificationArrayOutput) ToTemplateTagSpecificationArrayOutputWithContext(ctx context.Context) TemplateTagSpecificationArrayOutput {
+	return o
+}
+
+func TestOutputValueMarshallingNested(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	RegisterOutputType(TemplateOptionsOutput{})
+	RegisterOutputType(TemplateOptionsPtrOutput{})
+	RegisterOutputType(TemplateTagSpecificationOutput{})
+	RegisterOutputType(TemplateTagSpecificationArrayOutput{})
+
+	templateOptionsPtrOutputType := reflect.TypeOf((*TemplateOptionsPtrOutput)(nil)).Elem()
+	unknownTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
+	unknownTemplateOptionsPtrOutput.getState().resolve(nil, false /*known*/, false /*secret*/, nil)
+
+	unknownSecretTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
+	unknownSecretTemplateOptionsPtrOutput.getState().resolve(nil, false /*known*/, true /*secret*/, nil)
+
+	stringOutputType := reflect.TypeOf((*StringOutput)(nil)).Elem()
+	unknownStringOutput := ctx.newOutput(stringOutputType).(StringOutput)
+	unknownStringOutput.getState().resolve("", false /*known*/, false /*secret*/, nil)
+
+	tests := []struct {
+		name     string
+		input    Input
+		expected resource.PropertyValue
+	}{
+		{
+			name:     "empty",
+			input:    fooArgs{},
+			expected: resource.NewObjectProperty(resource.PropertyMap{}),
+		},
+		{
+			name: "options empty",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{}),
+			}),
+		},
+		{
+			name: "options unknown",
+			input: fooArgs{
+				TemplateOptions: unknownTemplateOptionsPtrOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewOutputProperty(resource.Output{}),
+			}),
+		},
+		{
+			name: "options unknown secret",
+			input: fooArgs{
+				TemplateOptions: unknownSecretTemplateOptionsPtrOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewOutputProperty(resource.Output{
+					Secret: true,
+				}),
+			}),
+		},
+		{
+			name: "options plain known description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: String("hello"),
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"description": resource.NewStringProperty("hello"),
+				}),
+			}),
+		},
+		{
+			name: "options plain known secret description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: ToSecret(String("hello")).(StringOutput),
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"description": resource.NewOutputProperty(resource.Output{
+						Element: resource.NewStringProperty("hello"),
+						Known:   true,
+						Secret:  true,
+					}),
+				}),
+			}),
+		},
+		{
+			name: "options output known secret description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: ToSecret(String("hello")).(StringOutput),
+				}.ToTemplateOptionsOutput(),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewObjectProperty(resource.PropertyMap{
+						"description": resource.NewStringProperty("hello"),
+					}),
+					Known:  true,
+					Secret: true,
+				}),
+			}),
+		},
+		{
+			name: "options plain unknown description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: unknownStringOutput,
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"description": resource.NewOutputProperty(resource.Output{}),
+				}),
+			}),
+		},
+		{
+			name: "options tag specifications nested unknown",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					TagSpecifications: TemplateTagSpecificationArray{
+						TemplateTagSpecificationArgs{
+							Name: String("hello"),
+							Tags: StringMap{
+								"first": String("second"),
+								"third": unknownStringOutput,
+							},
+						},
+					},
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"tagSpecifications": resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewObjectProperty(resource.PropertyMap{
+							"name": resource.NewStringProperty("hello"),
+							"tags": resource.NewObjectProperty(resource.PropertyMap{
+								"first": resource.NewStringProperty("second"),
+								"third": resource.NewOutputProperty(resource.Output{}),
+							}),
+						}),
+					}),
+				}),
+			}),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inputs := Map{"value": tt.input}
+			expected := resource.PropertyMap{"value": tt.expected}
+
+			actual, _, _, err := marshalInputs(inputs)
+			assert.NoError(t, err)
+			assert.Equal(t, expected, actual)
+		})
 	}
 }
