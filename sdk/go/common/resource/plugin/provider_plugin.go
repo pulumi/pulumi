@@ -1108,7 +1108,6 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: p.acceptOutputs,
-		DontSkipOutputs:  true,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1363,7 +1362,6 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: p.acceptOutputs,
-		DontSkipOutputs:  true,
 	})
 	if err != nil {
 		return CallResult{}, err
