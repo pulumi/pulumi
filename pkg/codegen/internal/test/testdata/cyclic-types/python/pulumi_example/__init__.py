@@ -8,7 +8,7 @@ import typing
 from .provider import *
 _utilities.register(
     resource_modules="""
-null
+[]
 """,
     resource_packages="""
 [

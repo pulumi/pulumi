@@ -56,13 +56,15 @@ func TestRelPathToRelImport(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
-	// To speed up these tests, we will generate one common
-	// virtual environment for all of them to run in, rather than
-	// having one per test.
-	err := buildVirtualEnv()
-	if err != nil {
-		t.Error(err)
-		return
+	if !test.NoSDKCodegenChecks() {
+		// To speed up these tests, we will generate one common
+		// virtual environment for all of them to run in, rather than
+		// having one per test.
+		err := buildVirtualEnv()
+		if err != nil {
+			t.Error(err)
+			return
+		}
 	}
 
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{

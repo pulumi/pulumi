@@ -157,6 +157,10 @@ var sdkTests = []sdkTest{
 
 var genSDKOnly bool
 
+func NoSDKCodegenChecks() bool {
+	return genSDKOnly
+}
+
 func init() {
 	flag.BoolVar(&genSDKOnly, "sdk.no-checks", false, "when set, skips all post-SDK-generation checks")
 	// NOTE: the testing package will call flag.Parse.
