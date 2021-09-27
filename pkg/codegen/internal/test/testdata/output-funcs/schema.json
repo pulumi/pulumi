@@ -269,9 +269,60 @@
           "keys"
         ]
       }
+    },
+    "mypkg::getBastionShareableLink": {
+      "description": "Response for all the Bastion Shareable Link endpoints.\nAPI Version: 2020-11-01.",
+      "inputs": {
+        "properties": {
+          "bastionHostName": {
+            "type": "string",
+            "description": "The name of the Bastion Host."
+          },
+          "resourceGroupName": {
+            "type": "string",
+            "description": "The name of the resource group."
+          },
+          "vms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "$ref": "#/types/mypkg::BastionShareableLink"
+            },
+            "description": "List of VM references."
+          }
+        },
+        "type": "object",
+        "required": [
+          "bastionHostName",
+          "resourceGroupName"
+        ]
+      },
+      "outputs": {
+        "description": "Response for all the Bastion Shareable Link endpoints.",
+        "properties": {
+          "nextLink": {
+            "type": "string",
+            "description": "The URL to get the next set of results."
+          }
+        },
+        "type": "object"
+      }
     }
   },
   "types": {
+    "mypkg::BastionShareableLink": {
+      "description": "Bastion Shareable Link.",
+      "properties": {
+        "vm": {
+          "type": "string",
+          "description": "Reference of the virtual machine resource."
+        }
+      },
+      "type": "object",
+      "required": [
+        "vm"
+      ]
+    },
     "mypkg::SsisEnvironmentResponse": {
       "description": "Ssis environment.",
       "properties": {
@@ -580,19 +631,18 @@
         "ts-node": "latest"
       },
       "extraTypeScriptFiles": [
-          "tests/codegen.spec.ts"
+        "tests/codegen.spec.ts"
       ]
     },
-    "python": {
-    },
+    "python": {},
     "csharp": {
       "packageReferences": {
-          "Pulumi": "3.13",
-          "FluentAssertions": "5.10.2",
-          "Microsoft.NET.Test.Sdk": "16.5.0",
-          "Moq": "4.13.1",
-          "NUnit": "3.12.0",
-          "NUnit3TestAdapter": "3.16.1"
+        "Pulumi": "3.13",
+        "FluentAssertions": "5.10.2",
+        "Microsoft.NET.Test.Sdk": "16.5.0",
+        "Moq": "4.13.1",
+        "NUnit": "3.12.0",
+        "NUnit3TestAdapter": "3.16.1"
       }
     }
   }
