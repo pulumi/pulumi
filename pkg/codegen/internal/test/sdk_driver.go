@@ -112,7 +112,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "simple-methods-schema",
 		Description:      "Simple schema with methods",
-		SkipCompileCheck: codegen.NewStringSet(nodejs, dotnet, golang),
+		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
 		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
