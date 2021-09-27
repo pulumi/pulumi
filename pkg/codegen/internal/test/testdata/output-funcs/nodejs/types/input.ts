@@ -4,3 +4,13 @@
 import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "../types";
 
+/**
+ * Bastion Shareable Link.
+ */
+export interface BastionShareableLink {
+    /**
+     * Reference of the virtual machine resource.
+     */
+    vm: string;
+}
+
