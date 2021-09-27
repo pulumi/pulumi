@@ -641,6 +641,11 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		}
 		dest.Set(resV)
 		return secret, nil
+	case v.IsOutput():
+		if _, err := unmarshalOutput(ctx, v.OutputValue().Element, dest); err != nil {
+			return false, err
+		}
+		return v.OutputValue().Secret, nil
 	}
 
 	// Unmarshal based on the desired type.
