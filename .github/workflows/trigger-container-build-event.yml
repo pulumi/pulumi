@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build Pulumi Image
-        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
+        uses: pulumi/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi
           username: "pulumibot"
@@ -55,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Build base image
-        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
+        uses: pulumi/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-base
           buildkit: true
@@ -79,11 +79,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ "ubi", "debian" ]
+        os: ["ubi", "debian"]
     steps:
       - uses: actions/checkout@master
       - name: Build base image
-        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
+        uses: pulumi/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-base
           buildkit: true
@@ -100,11 +100,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [ "nodejs", "python", "dotnet", "go" ]
+        sdk: ["nodejs", "python", "dotnet", "go"]
     steps:
       - uses: actions/checkout@master
       - name: Build image
-        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
+        uses: pulumi/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-${{matrix.sdk}}
           buildkit: true
@@ -152,12 +152,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [ "nodejs", "python", "dotnet", "go" ]
-        os: [ "ubi", "debian" ]
+        sdk: ["nodejs", "python", "dotnet", "go"]
+        os: ["ubi", "debian"]
     steps:
       - uses: actions/checkout@master
       - name: Build image
-        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
+        uses: pulumi/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-${{matrix.sdk}}
           buildkit: true
@@ -194,8 +194,8 @@ jobs:
     continue-on-error: true
     strategy:
       matrix:
-        image: [ "base", "nodejs", "python", "go" ]
-        os: [ "ubi" ]
+        image: ["base", "nodejs", "python", "go"]
+        os: ["ubi"]
     steps:
       - uses: actions/checkout@master
       - name: Run Snyk to check Docker images for vulnerabilities
