@@ -155,11 +155,9 @@ var sdkTests = []sdkTest{
 	},
 }
 
-var runSDK string
 var genSDKOnly bool
 
 func init() {
-	flag.StringVar(&runSDK, "sdk.run", "", "when set, specifies a single SDK test to run")
 	flag.BoolVar(&genSDKOnly, "sdk.no-checks", false, "when set, skips all post-SDK-generation checks")
 	// NOTE: the testing package will call flag.Parse.
 }
@@ -242,10 +240,6 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 	for _, sdkTest := range sdkTests {
 		tt := sdkTest // avoid capturing loop variable `sdkTest` in the closure
 		t.Run(tt.Directory, func(t *testing.T) {
-			if runSDK != "" && runSDK != tt.Directory {
-				t.SkipNow()
-			}
-
 			if parallel {
 				t.Parallel()
 			}
