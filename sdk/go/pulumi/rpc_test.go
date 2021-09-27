@@ -1289,3 +1289,251 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 		})
 	}
 }
+
+type rubberTreeArgs struct {
+	Size *TreeSize `pulumi:"size"`
+}
+type RubberTreeArgs struct {
+	Size TreeSizePtrInput
+}
+
+func (RubberTreeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*rubberTreeArgs)(nil)).Elem()
+}
+
+type TreeSize string
+
+const (
+	TreeSizeSmall  = TreeSize("small")
+	TreeSizeMedium = TreeSize("medium")
+	TreeSizeLarge  = TreeSize("large")
+)
+
+func (TreeSize) ElementType() reflect.Type {
+	return reflect.TypeOf((*TreeSize)(nil)).Elem()
+}
+
+func (e TreeSize) ToTreeSizeOutput() TreeSizeOutput {
+	return ToOutput(e).(TreeSizeOutput)
+}
+
+func (e TreeSize) ToTreeSizeOutputWithContext(ctx context.Context) TreeSizeOutput {
+	return ToOutputWithContext(ctx, e).(TreeSizeOutput)
+}
+
+func (e TreeSize) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return e.ToTreeSizePtrOutputWithContext(context.Background())
+}
+
+func (e TreeSize) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return e.ToTreeSizeOutputWithContext(ctx).ToTreeSizePtrOutputWithContext(ctx)
+}
+
+func (e TreeSize) ToStringOutput() StringOutput {
+	return ToOutput(String(e)).(StringOutput)
+}
+
+func (e TreeSize) ToStringOutputWithContext(ctx context.Context) StringOutput {
+	return ToOutputWithContext(ctx, String(e)).(StringOutput)
+}
+
+func (e TreeSize) ToStringPtrOutput() StringPtrOutput {
+	return String(e).ToStringPtrOutputWithContext(context.Background())
+}
+
+func (e TreeSize) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
+type TreeSizeOutput struct{ *OutputState }
+
+func (TreeSizeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TreeSize)(nil)).Elem()
+}
+
+func (o TreeSizeOutput) ToTreeSizeOutput() TreeSizeOutput {
+	return o
+}
+
+func (o TreeSizeOutput) ToTreeSizeOutputWithContext(ctx context.Context) TreeSizeOutput {
+	return o
+}
+
+func (o TreeSizeOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return o.ToTreeSizePtrOutputWithContext(context.Background())
+}
+
+func (o TreeSizeOutput) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TreeSize) *TreeSize {
+		return &v
+	}).(TreeSizePtrOutput)
+}
+
+func (o TreeSizeOutput) ToStringOutput() StringOutput {
+	return o.ToStringOutputWithContext(context.Background())
+}
+
+func (o TreeSizeOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e TreeSize) string {
+		return string(e)
+	}).(StringOutput)
+}
+
+func (o TreeSizeOutput) ToStringPtrOutput() StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o TreeSizeOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e TreeSize) *string {
+		v := string(e)
+		return &v
+	}).(StringPtrOutput)
+}
+
+type TreeSizePtrOutput struct{ *OutputState }
+
+func (TreeSizePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TreeSize)(nil)).Elem()
+}
+
+func (o TreeSizePtrOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return o
+}
+
+func (o TreeSizePtrOutput) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return o
+}
+
+func (o TreeSizePtrOutput) Elem() TreeSizeOutput {
+	return o.ApplyT(func(v *TreeSize) TreeSize {
+		if v != nil {
+			return *v
+		}
+		var ret TreeSize
+		return ret
+	}).(TreeSizeOutput)
+}
+
+func (o TreeSizePtrOutput) ToStringPtrOutput() StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o TreeSizePtrOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e *TreeSize) *string {
+		if e == nil {
+			return nil
+		}
+		v := string(*e)
+		return &v
+	}).(StringPtrOutput)
+}
+
+type TreeSizeInput interface {
+	Input
+
+	ToTreeSizeOutput() TreeSizeOutput
+	ToTreeSizeOutputWithContext(context.Context) TreeSizeOutput
+}
+
+var treeSizePtrType = reflect.TypeOf((**TreeSize)(nil)).Elem()
+
+type TreeSizePtrInput interface {
+	Input
+
+	ToTreeSizePtrOutput() TreeSizePtrOutput
+	ToTreeSizePtrOutputWithContext(context.Context) TreeSizePtrOutput
+}
+
+type treeSizePtr string
+
+func TreeSizePtr(v string) TreeSizePtrInput {
+	return (*treeSizePtr)(&v)
+}
+
+func (*treeSizePtr) ElementType() reflect.Type {
+	return treeSizePtrType
+}
+
+func (in *treeSizePtr) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return ToOutput(in).(TreeSizePtrOutput)
+}
+
+func (in *treeSizePtr) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return ToOutputWithContext(ctx, in).(TreeSizePtrOutput)
+}
+
+type TreeSizeMapInput interface {
+	Input
+
+	ToTreeSizeMapOutput() TreeSizeMapOutput
+	ToTreeSizeMapOutputWithContext(context.Context) TreeSizeMapOutput
+}
+
+type TreeSizeMap map[string]TreeSize
+
+func (TreeSizeMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+}
+
+func (i TreeSizeMap) ToTreeSizeMapOutput() TreeSizeMapOutput {
+	return i.ToTreeSizeMapOutputWithContext(context.Background())
+}
+
+func (i TreeSizeMap) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSizeMapOutput {
+	return ToOutputWithContext(ctx, i).(TreeSizeMapOutput)
+}
+
+type TreeSizeMapOutput struct{ *OutputState }
+
+func (TreeSizeMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+}
+
+func (o TreeSizeMapOutput) ToTreeSizeMapOutput() TreeSizeMapOutput {
+	return o
+}
+
+func (o TreeSizeMapOutput) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSizeMapOutput {
+	return o
+}
+
+func (o TreeSizeMapOutput) MapIndex(k StringInput) TreeSizeOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) TreeSize {
+		return vs[0].(map[string]TreeSize)[vs[1].(string)]
+	}).(TreeSizeOutput)
+}
+
+func TestOutputValueMarshallingEnums(t *testing.T) {
+	_, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	RegisterOutputType(TreeSizeOutput{})
+	RegisterOutputType(TreeSizePtrOutput{})
+	RegisterOutputType(TreeSizeMapOutput{})
+
+	tests := []struct {
+		name     string
+		input    Input
+		expected resource.PropertyValue
+	}{
+		{
+			name: "empty",
+			input: &RubberTreeArgs{
+				Size: TreeSize("medium"),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"size": resource.NewStringProperty("medium"),
+			}),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inputs := Map{"value": tt.input}
+			expected := resource.PropertyMap{"value": tt.expected}
+
+			actual, _, _, err := marshalInputs(inputs)
+			assert.NoError(t, err)
+			assert.Equal(t, expected, actual)
+		})
+	}
+}
