@@ -1268,13 +1268,14 @@ func (mod *modContext) genFunctionFileCode(f *schema.Function) (string, error) {
 }
 
 func allOptionalInputs(fun *schema.Function) bool {
-	allOptional := true
 	if fun.Inputs != nil {
 		for _, prop := range fun.Inputs.Properties {
-			allOptional = allOptional && !prop.IsRequired()
+			if prop.IsRequired() {
+				return false
+			}
 		}
 	}
-	return allOptional
+	return true
 }
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
