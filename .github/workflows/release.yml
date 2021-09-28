@@ -186,7 +186,7 @@ jobs:
   publish-binaries:
     name: Publish Binaries
     runs-on: macos-latest
-    needs: [build-and-test, windows-build]
+    needs: [check-clean-worktree, lint, build-and-test, windows-build]
     strategy:
       matrix:
         go-version: [ 1.16.x ]
@@ -289,6 +289,17 @@ jobs:
       - name: Lint .NET
         run: |
           cd sdk/dotnet && make lint
+  check-clean-worktree:
+    name: Check git worktree is clean
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Scripts Repo
+        uses: actions/checkout@v2
+        with:
+          path: ci-scripts
+          repository: pulumi/scripts
+      - name: Check worktree clean
+        run: ./ci-scripts/ci/check-worktree-is-clean
   build-and-test:
     name: Build & Test
     strategy:
