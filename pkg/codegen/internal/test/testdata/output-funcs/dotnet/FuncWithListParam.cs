@@ -22,19 +22,7 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with a List parameter.
         /// </summary>
         public static Output<FuncWithListParamResult> Invoke(FuncWithListParamInvokeArgs? args = null, InvokeOptions? options = null)
-        {
-            args = args ?? new FuncWithListParamInvokeArgs();
-            return Pulumi.Output.All(
-                args.A.ToList().Box(),
-                args.B.Box()
-            ).Apply(a =>
-            {
-                var args = new FuncWithListParamArgs();
-                a[0].Set(args, nameof(args.A));
-                a[1].Set(args, nameof(args.B));
-                return InvokeAsync(args, options);
-            });
-        }
+            => Pulumi.Deployment.Instance.Invoke<FuncWithListParamResult>("mypkg::funcWithListParam", args ?? new FuncWithListParamInvokeArgs(), options.WithVersion());
     }
 
 
@@ -56,8 +44,9 @@ namespace Pulumi.Mypkg
         }
     }
 
-    public sealed class FuncWithListParamInvokeArgs
+    public sealed class FuncWithListParamInvokeArgs : Pulumi.InvokeArgs
     {
+        [Input("a")]
         private InputList<string>? _a;
         public InputList<string> A
         {
@@ -65,6 +54,7 @@ namespace Pulumi.Mypkg
             set => _a = value;
         }
 
+        [Input("b")]
         public Input<string>? B { get; set; }
 
         public FuncWithListParamInvokeArgs()

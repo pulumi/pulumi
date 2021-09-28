@@ -33,10 +33,11 @@ namespace Pulumi.Mypkg
                 {
                     var a = (ImmutableDictionary<string,object>)args.Args["a"];
                     aString = string.Join(", ", a.Keys.OrderBy(k => k).Select(k => $"{k}: {a[k]}"));
+                    aString = $"[{aString}]";
                 }
                 var b = args.Args.GetValueOrDefault("b", "null");
                 var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
-                dictBuilder.Add("r", $"a=[{aString}] b={b}");
+                dictBuilder.Add("r", $"a={aString} b={b}");
                 var result = dictBuilder.ToImmutableDictionary();
                 return Task.FromResult((Object)result);
             }
@@ -48,10 +49,11 @@ namespace Pulumi.Mypkg
                 {
                     var a = (ImmutableArray<object>)args.Args["a"];
                     aString = string.Join(", ", a.OrderBy(k => k).Select(e => $"{e}"));
+                    aString = $"[{aString}]";
                 }
                 var b = args.Args.GetValueOrDefault("b", "null");
                 var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
-                dictBuilder.Add("r", $"a=[{aString}] b={b}");
+                dictBuilder.Add("r", $"a={aString} b={b}");
                 var result = dictBuilder.ToImmutableDictionary();
                 return Task.FromResult((Object)result);
             }

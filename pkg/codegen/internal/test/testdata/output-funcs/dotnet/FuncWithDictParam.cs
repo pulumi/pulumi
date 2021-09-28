@@ -22,19 +22,7 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with a Dict&lt;str,str&gt; parameter.
         /// </summary>
         public static Output<FuncWithDictParamResult> Invoke(FuncWithDictParamInvokeArgs? args = null, InvokeOptions? options = null)
-        {
-            args = args ?? new FuncWithDictParamInvokeArgs();
-            return Pulumi.Output.All(
-                args.A.ToDictionary().Box(),
-                args.B.Box()
-            ).Apply(a =>
-            {
-                var args = new FuncWithDictParamArgs();
-                a[0].Set(args, nameof(args.A));
-                a[1].Set(args, nameof(args.B));
-                return InvokeAsync(args, options);
-            });
-        }
+            => Pulumi.Deployment.Instance.Invoke<FuncWithDictParamResult>("mypkg::funcWithDictParam", args ?? new FuncWithDictParamInvokeArgs(), options.WithVersion());
     }
 
 
@@ -56,8 +44,9 @@ namespace Pulumi.Mypkg
         }
     }
 
-    public sealed class FuncWithDictParamInvokeArgs
+    public sealed class FuncWithDictParamInvokeArgs : Pulumi.InvokeArgs
     {
+        [Input("a")]
         private InputMap<string>? _a;
         public InputMap<string> A
         {
@@ -65,6 +54,7 @@ namespace Pulumi.Mypkg
             set => _a = value;
         }
 
+        [Input("b")]
         public Input<string>? B { get; set; }
 
         public FuncWithDictParamInvokeArgs()

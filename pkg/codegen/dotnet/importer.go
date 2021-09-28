@@ -31,6 +31,7 @@ type CSharpPackageInfo struct {
 	Namespaces             map[string]string `json:"namespaces,omitempty"`
 	Compatibility          string            `json:"compatibility,omitempty"`
 	DictionaryConstructors bool              `json:"dictionaryConstructors,omitempty"`
+	ProjectReferences      []string          `json:"projectReferences,omitempty"`
 }
 
 // Importer implements schema.Language for .NET.

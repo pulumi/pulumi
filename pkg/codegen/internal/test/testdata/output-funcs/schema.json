@@ -636,8 +636,10 @@
     },
     "python": {},
     "csharp": {
+      "projectReferences": [
+         "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ],
       "packageReferences": {
-        "Pulumi": "3.13",
         "FluentAssertions": "5.10.2",
         "Microsoft.NET.Test.Sdk": "16.5.0",
         "Moq": "4.13.1",

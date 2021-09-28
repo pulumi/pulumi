@@ -22,19 +22,7 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with all optional inputs.
         /// </summary>
         public static Output<FuncWithAllOptionalInputsResult> Invoke(FuncWithAllOptionalInputsInvokeArgs? args = null, InvokeOptions? options = null)
-        {
-            args = args ?? new FuncWithAllOptionalInputsInvokeArgs();
-            return Pulumi.Output.All(
-                args.A.Box(),
-                args.B.Box()
-            ).Apply(a =>
-            {
-                var args = new FuncWithAllOptionalInputsArgs();
-                a[0].Set(args, nameof(args.A));
-                a[1].Set(args, nameof(args.B));
-                return InvokeAsync(args, options);
-            });
-        }
+            => Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithVersion());
     }
 
 
@@ -57,16 +45,18 @@ namespace Pulumi.Mypkg
         }
     }
 
-    public sealed class FuncWithAllOptionalInputsInvokeArgs
+    public sealed class FuncWithAllOptionalInputsInvokeArgs : Pulumi.InvokeArgs
     {
         /// <summary>
         /// Property A
         /// </summary>
+        [Input("a")]
         public Input<string>? A { get; set; }
 
         /// <summary>
         /// Property B
         /// </summary>
+        [Input("b")]
         public Input<string>? B { get; set; }
 
         public FuncWithAllOptionalInputsInvokeArgs()

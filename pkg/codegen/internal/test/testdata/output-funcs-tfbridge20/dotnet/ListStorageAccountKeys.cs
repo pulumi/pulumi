@@ -85,10 +85,10 @@ namespace Pulumi.Mypkg
         /// <summary>
         /// Gets the list of storage account keys and their properties for the specified storage account.
         /// </summary>
-        public readonly ImmutableArray<Outputs.StorageAccountKeyResponse> Keys;
+        public readonly ImmutableArray<Outputs.StorageAccountKeyResponseResult> Keys;
 
         [OutputConstructor]
-        private ListStorageAccountKeysResult(ImmutableArray<Outputs.StorageAccountKeyResponse> keys)
+        private ListStorageAccountKeysResult(ImmutableArray<Outputs.StorageAccountKeyResponseResult> keys)
         {
             Keys = keys;
         }

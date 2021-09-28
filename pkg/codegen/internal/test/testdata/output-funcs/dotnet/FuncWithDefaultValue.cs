@@ -22,18 +22,7 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with default values.
         /// </summary>
         public static Output<FuncWithDefaultValueResult> Invoke(FuncWithDefaultValueInvokeArgs args, InvokeOptions? options = null)
-        {
-            return Pulumi.Output.All(
-                args.A.Box(),
-                args.B.Box()
-            ).Apply(a =>
-            {
-                var args = new FuncWithDefaultValueArgs();
-                a[0].Set(args, nameof(args.A));
-                a[1].Set(args, nameof(args.B));
-                return InvokeAsync(args, options);
-            });
-        }
+            => Pulumi.Deployment.Instance.Invoke<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueInvokeArgs(), options.WithVersion());
     }
 
 
@@ -51,10 +40,12 @@ namespace Pulumi.Mypkg
         }
     }
 
-    public sealed class FuncWithDefaultValueInvokeArgs
+    public sealed class FuncWithDefaultValueInvokeArgs : Pulumi.InvokeArgs
     {
+        [Input("a", required: true)]
         public Input<string> A { get; set; } = null!;
 
+        [Input("b")]
         public Input<string>? B { get; set; }
 
         public FuncWithDefaultValueInvokeArgs()

@@ -24,20 +24,7 @@ namespace Pulumi.Mypkg
         /// API Version: 2020-11-01.
         /// </summary>
         public static Output<GetBastionShareableLinkResult> Invoke(GetBastionShareableLinkInvokeArgs args, InvokeOptions? options = null)
-        {
-            return Pulumi.Output.All(
-                args.BastionHostName.Box(),
-                args.ResourceGroupName.Box(),
-                args.Vms.ToList().Box()
-            ).Apply(a =>
-            {
-                var args = new GetBastionShareableLinkArgs();
-                a[0].Set(args, nameof(args.BastionHostName));
-                a[1].Set(args, nameof(args.ResourceGroupName));
-                a[2].Set(args, nameof(args.Vms));
-                return InvokeAsync(args, options);
-            });
-        }
+            => Pulumi.Deployment.Instance.Invoke<GetBastionShareableLinkResult>("mypkg::getBastionShareableLink", args ?? new GetBastionShareableLinkInvokeArgs(), options.WithVersion());
     }
 
 
@@ -72,18 +59,21 @@ namespace Pulumi.Mypkg
         }
     }
 
-    public sealed class GetBastionShareableLinkInvokeArgs
+    public sealed class GetBastionShareableLinkInvokeArgs : Pulumi.InvokeArgs
     {
         /// <summary>
         /// The name of the Bastion Host.
         /// </summary>
+        [Input("bastionHostName", required: true)]
         public Input<string> BastionHostName { get; set; } = null!;
 
         /// <summary>
         /// The name of the resource group.
         /// </summary>
+        [Input("resourceGroupName", required: true)]
         public Input<string> ResourceGroupName { get; set; } = null!;
 
+        [Input("vms")]
         private InputList<Inputs.BastionShareableLinkArgs>? _vms;
 
         /// <summary>

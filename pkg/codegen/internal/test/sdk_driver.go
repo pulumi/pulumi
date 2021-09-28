@@ -147,6 +147,10 @@ var sdkTests = []sdkTest{
 		Directory:   "output-funcs",
 		Description: "Tests targeting the $fn_output helper code generation feature",
 	},
+	{
+		Directory:   "output-funcs-tfbridge20",
+		Description: "Similar to output-funcs, but with compatibility: tfbridge20, to simulate pulumi-aws use case",
+	},
 }
 
 type SDKCodegenOptions struct {

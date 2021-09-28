@@ -52,10 +52,11 @@ func (ss stringSet) has(s string) bool {
 }
 
 type typeDetails struct {
-	outputType bool
-	inputType  bool
-	stateType  bool
-	plainType  bool
+	outputType                        bool
+	inputType                         bool
+	stateType                         bool
+	plainType                         bool
+	usedInFunctionOutputVersionInputs bool
 }
 
 // Title converts the input string to a title case
@@ -226,6 +227,8 @@ func (mod *modContext) typeName(t *schema.ObjectType, state, input, args bool) s
 	}
 
 	switch {
+	case input && args && mod.details(t).usedInFunctionOutputVersionInputs:
+		return name + "InputArgs"
 	case input:
 		return name + "Args"
 	case mod.details(t).plainType:
@@ -1385,66 +1388,17 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	}
 
 	argsTypeName := functionOutputVersionArgsTypeName(fun)
-
-	var outputArgsParamDef string
-	outputArgsParamDef = fmt.Sprintf("%s%s args%s, ", argsTypeName, sigil, argsDefault)
+	outputArgsParamDef := fmt.Sprintf("%s%s args%s, ", argsTypeName, sigil, argsDefault)
+	outputArgsParamRef := fmt.Sprintf("args ?? new %s()", argsTypeName)
 
 	fmt.Fprintf(w, "\n")
 
 	// Emit the doc comment, if any.
 	printComment(w, fun.Comment, "        ")
-
 	fmt.Fprintf(w, "        public static Output<%sResult> Invoke(%sInvokeOptions? options = null)\n",
 		className, outputArgsParamDef)
-	fmt.Fprintf(w, "        {\n")
-
-	if allOptionalInputs(fun) {
-		fmt.Fprintf(w, "            args = args ?? new %s();\n", argsTypeName)
-	}
-
-	var args []string
-	for _, p := range fun.Inputs.Properties {
-
-		var extraConverter string
-		switch pType := p.Type.(type) {
-		case *schema.OptionalType:
-			switch pType.ElementType.(type) {
-			case *schema.ArrayType:
-				extraConverter = ".ToList()"
-			case *schema.MapType:
-				extraConverter = ".ToDictionary()"
-			}
-		case *schema.ArrayType:
-			extraConverter = ".ToList()"
-		case *schema.MapType:
-			extraConverter = ".ToDictionary()"
-		}
-		args = append(args, fmt.Sprintf("args.%s%s.Box()", mod.propertyName(p), extraConverter))
-	}
-
-	indent := "        "
-	indent2 := indent + "    "
-	indent3 := indent2 + "    "
-
-	var unpackStatements []string
-	for i, p := range fun.Inputs.Properties {
-		fieldName := mod.propertyName(p)
-		stmt := fmt.Sprintf("a[%d].Set(args, nameof(args.%s));", i, fieldName)
-		unpackStatements = append(unpackStatements, stmt)
-	}
-
-	fmt.Fprintf(w, "%sreturn Pulumi.Output.All(\n", indent2)
-	fmt.Fprintf(w, "%s%s\n", indent3, strings.Join(args, ",\n"+indent3))
-
-	fmt.Fprintf(w, "%s).Apply(a =>\n%s{\n", indent2, indent2)
-	fmt.Fprintf(w, "%svar args = new %sArgs();\n", indent3, className)
-	for _, s := range unpackStatements {
-		fmt.Fprintf(w, "%s%s\n", indent3, s)
-	}
-	fmt.Fprintf(w, "%sreturn InvokeAsync(args, options);\n", indent3)
-	fmt.Fprintf(w, "%s});\n", indent2)
-	fmt.Fprintf(w, "%s}\n", indent)
-
+	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.Invoke<%sResult>(\"%s\", %s, options.WithVersion());\n",
+		className, fun.Token, outputArgsParamRef)
 	return nil
 }
 
@@ -1458,11 +1412,12 @@ func (mod *modContext) genFunctionOutputVersionTypes(w io.Writer, fun *schema.Fu
 		mod:                   mod,
 		name:                  functionOutputVersionArgsTypeName(fun),
 		propertyTypeQualifier: "Inputs",
+		baseClass:             "InvokeArgs",
 		properties:            fun.Inputs.InputShape.Properties,
 		args:                  true,
 	}
 
-	if err := applyArgs.genInputTypeWithFlags(w, 1, false /* generateInputAttributes */); err != nil {
+	if err := applyArgs.genInputTypeWithFlags(w, 1, true /* generateInputAttributes */); err != nil {
 		return err
 	}
 	return nil
@@ -2077,7 +2032,6 @@ func (mod *modContext) gen(fs fs) error {
 				return err
 			}
 			fmt.Fprintf(buffer, "}\n")
-
 			addFile(path.Join("Inputs", tokenToName(t.Token)+"GetArgs.cs"), buffer.String())
 		}
 		if mod.details(t).outputType {
@@ -2095,7 +2049,6 @@ func (mod *modContext) gen(fs fs) error {
 			if (mod.isTFCompatMode() || mod.isK8sCompatMode()) && mod.details(t).plainType {
 				suffix = "Result"
 			}
-
 			addFile(path.Join("Outputs", tokenToName(t.Token)+suffix+".cs"), buffer.String())
 		}
 	}
@@ -2115,8 +2068,13 @@ func (mod *modContext) gen(fs fs) error {
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, assemblyName string, packageReferences map[string]string, files fs) error {
-	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences)
+func genPackageMetadata(pkg *schema.Package,
+	assemblyName string,
+	packageReferences map[string]string,
+	projectReferences []string,
+	files fs) error {
+
+	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences)
 	if err != nil {
 		return err
 	}
@@ -2131,12 +2089,17 @@ func genPackageMetadata(pkg *schema.Package, assemblyName string, packageReferen
 }
 
 // genProjectFile emits a C# project file into the configured output directory.
-func genProjectFile(pkg *schema.Package, assemblyName string, packageReferences map[string]string) ([]byte, error) {
+func genProjectFile(pkg *schema.Package,
+	assemblyName string,
+	packageReferences map[string]string,
+	projectReferences []string) ([]byte, error) {
+
 	w := &bytes.Buffer{}
 	err := csharpProjectFileTemplate.Execute(w, csharpProjectFileTemplateContext{
 		XMLDoc:            fmt.Sprintf(`.\%s.xml`, assemblyName),
 		Package:           pkg,
 		PackageReferences: packageReferences,
+		ProjectReferences: projectReferences,
 	})
 	if err != nil {
 		return nil, err
@@ -2307,14 +2270,17 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 			mod.functions = append(mod.functions, f)
 		}
 		if f.Inputs != nil {
-			visitor := func(t *schema.ObjectType) {
+			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType) {
 				details := getModFromToken(t.Token, t.Package).details(t)
 				details.inputType = true
 				details.plainType = true
-			}
-			visitObjectTypes(f.Inputs.Properties, visitor)
+			})
 			if f.NeedsOutputVersion() {
-				visitObjectTypes(f.Inputs.InputShape.Properties, visitor)
+				visitObjectTypes(f.Inputs.InputShape.Properties, func(t *schema.ObjectType) {
+					details := getModFromToken(t.Token, t.Package).details(t)
+					details.inputType = true
+					details.usedInFunctionOutputVersionInputs = true
+				})
 			}
 		}
 		if f.Outputs != nil {
@@ -2390,7 +2356,12 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	// Finally emit the package metadata.
-	if err := genPackageMetadata(pkg, assemblyName, info.PackageReferences, files); err != nil {
+	if err := genPackageMetadata(pkg,
+		assemblyName,
+		info.PackageReferences,
+		info.ProjectReferences,
+		files); err != nil {
+
 		return nil, err
 	}
 	return files, nil

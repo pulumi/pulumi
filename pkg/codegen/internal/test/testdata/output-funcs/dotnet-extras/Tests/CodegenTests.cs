@@ -92,8 +92,8 @@ namespace Pulumi.Mypkg
             map.Add("K1", Out("my-k1"));
             map.Add("K2", Out("my-k2"));
 
-            // Omitted value defaults to empty dict and not null.
-            await check("a=[] b=null", () => new FuncWithDictParamInvokeArgs());
+            // Omitted value defaults to null.
+            await check("a=null b=null", () => new FuncWithDictParamInvokeArgs());
 
             await check("a=[K1: my-k1, K2: my-k2] b=null", () => new FuncWithDictParamInvokeArgs()
             {
@@ -121,8 +121,8 @@ namespace Pulumi.Mypkg
             lst.Add("e2");
             lst.Add("e3");
 
-            // Similarly to dicts, omitted value defaults to empty list and not null.
-            await check("a=[] b=null", () => new FuncWithListParamInvokeArgs());
+            // Similarly to dicts, omitted value defaults to null, not empty list.
+            await check("a=null b=null", () => new FuncWithListParamInvokeArgs());
 
             await check("a=[e1, e2, e3] b=null", () => new FuncWithListParamInvokeArgs()
             {
