@@ -2,6 +2,8 @@
 title: "{{ .Title }}"
 title_tag: "{{ .TitleTag }}"
 meta_desc: "{{ .PackageDescription }}"
+aliases:
+    - "docs/reference/pkg/{{ .TitleTag }}/"
 {{- if .Menu }}
 menu:
     reference:
