@@ -276,7 +276,7 @@ func TestGetRefreshOption(t *testing.T) {
 	}{
 		{
 			"No options specified means no refresh",
-			"no",
+			"",
 			workspace.Project{},
 			false,
 		},
@@ -294,7 +294,7 @@ func TestGetRefreshOption(t *testing.T) {
 		},
 		{
 			"Setting Refresh at a project level via Pulumi.yaml and no CLI args",
-			"no",
+			"",
 			workspace.Project{
 				Name:    "auto-refresh",
 				Runtime: workspace.ProjectRuntimeInfo{},

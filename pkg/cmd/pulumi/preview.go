@@ -262,7 +262,7 @@ func newPreviewCmd() *cobra.Command {
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
 	cmd.PersistentFlags().StringVarP(
-		&refresh, "refresh", "r", "no",
+		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(

@@ -842,10 +842,10 @@ func checkDeploymentVersionError(err error, stackName string) error {
 
 func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	// we want to check for an explicit --refresh or a --refresh=true or --refresh=false
-	// no is the default we assign to the refresh default to be able to understand
-	// the difference between when the user actually interacted with the cli argument
+	// refresh is assigned the empty string by default to distinguish the difference between
+	// when the user actually interacted with the cli argument (`NoOptDefVal`)
 	// and the default functionality today
-	if refresh != "" && refresh != "no" {
+	if refresh != "" {
 		refreshDetails, boolErr := strconv.ParseBool(refresh)
 		if boolErr != nil {
 			// the user has passed a --refresh but with a random value that we don't support
