@@ -3,7 +3,7 @@ CHANGELOG
 
 ## 3.13.2 (2021-09-27)
 
-**Please Note:** The v3.13.1 failed in our build pipeline and was re-released as v3.13.2.
+**Please Note:** The v3.13.1 release failed in our build pipeline and was re-released as v3.13.2.
 
 ### Improvements
 
