@@ -200,7 +200,7 @@ var (
 	Underline = command("underline")
 )
 
-// Basic
+// Basic colors.
 var (
 	Red           = command("fg 1")
 	Green         = command("fg 2")

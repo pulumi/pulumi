@@ -106,7 +106,6 @@ func NewPulumiCmd() *cobra.Command {
 					return err
 				}
 			}
-			cmdFlag = cmd.Flag("color-level")
 
 			if cwd != "" {
 				if err := os.Chdir(cwd); err != nil {

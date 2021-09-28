@@ -1391,7 +1391,7 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.
 }
 
 func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata, done bool) string {
-	return display.getStepOp(step).Prefix(done /* color done */) + colors.Reset
+	return display.getStepOp(step).Prefix(done) + colors.Reset
 }
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {

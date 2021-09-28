@@ -480,7 +480,7 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 
 func writePropertyKeys(b io.StringWriter, keys []string, op deploy.StepOp) {
 	if len(keys) > 0 {
-		writeString(b, strings.Trim(op.Prefix(true /* color done */), " "))
+		writeString(b, strings.Trim(op.Prefix(true /*done*/), " "))
 
 		sort.Strings(keys)
 

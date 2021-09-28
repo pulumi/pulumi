@@ -1,6 +1,6 @@
 ### Improvements
 
-- [cli/diffs] - Add color to indicate if a action is in progress. 
+- [cli] - Differentiate in-progress actions by bolding output.
   [#7918](https://github.com/pulumi/pulumi/pull/7918)
 
 ### Bug Fixes
