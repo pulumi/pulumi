@@ -126,7 +126,7 @@ func writeDirective(w io.StringWriter, c Colorization, directive Color) {
 		writeCodes(w, "48", "5", "3")
 	case BlueBackground: // command("bg 4")
 		writeCodes(w, "48", "5", "4")
-	case Black: // command("fg 0") // Only use with background
+	case Black: // command("fg 0") // Only use with background colors.
 		writeCodes(w, "38", "5", "0")
 	default:
 		contract.Failf("Unrecognized color code: %q", directive)
@@ -222,7 +222,7 @@ var (
 	// We explicitly do not expose blacks/whites.  They're problematic given that we don't know what
 	// terminal settings the user has.  Best to avoid them and not run into contrast problems.
 
-	Black = command("fg 0") // Only use with background
+	Black = command("fg 0") // Only use with background colors.
 	// White         = command("fg 7")
 	// BrightBlack   = command("fg 8")
 	// BrightYellow  = command("fg 11")
