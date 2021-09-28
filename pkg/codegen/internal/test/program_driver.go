@@ -166,12 +166,13 @@ func TestProgramCodegen(
 			expectNYIDiags := tt.ExpectNYIDiags.Has(testcase.Language)
 
 			testDir := filepath.Join(testdataPath, tt.Name+"-pp")
-			err = os.Mkdir(testDir, 0700)
+			pclFile := filepath.Join(testDir, tt.Name+".pp")
+			testDir = filepath.Join(testDir, testcase.Language)
+			err = os.MkdirAll(testDir, 0700)
 			if err != nil && !os.IsExist(err) {
 				t.Fatalf("Failed to create %q: %s", testDir, err)
 			}
 
-			pclFile := filepath.Join(testDir, tt.Name+".pp")
 			contents, err := ioutil.ReadFile(pclFile)
 			if err != nil {
 				t.Fatalf("could not read %v: %v", pclFile, err)

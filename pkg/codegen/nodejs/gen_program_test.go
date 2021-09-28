@@ -27,8 +27,7 @@ func nodejsCheck(t *testing.T, path string) {
 	ex, err := executable.FindExecutable("yarn")
 	assert.NoError(t, err, "Could not find yarn executable")
 	dir := filepath.Dir(path)
-	name := filepath.Base(dir)
-	pkgName, pkgVersion := packagesFromTestName(name)
+	pkgName, pkgVersion := packagesFromTestName(dir)
 	if pkgName == "" {
 		pkgName = "@pulumi/pulumi"
 		pkgVersion = "3.7.0"

@@ -46,14 +46,14 @@ func checkDotnet(t *testing.T, path string) {
 	assert.NoError(t, err, "Failed to create C# project")
 
 	// Add dependencies (based on directory name)
-	if pkg, pkgVersion := packagesFromTestName(filepath.Base(dir)); pkg != "" {
+	if pkg, pkgVersion := packagesFromTestName(dir); pkg != "" {
 		err = integration.RunCommand(t, "Add package",
 			[]string{ex, "add", "package", pkg, "--version", pkgVersion},
 			dir, &integration.ProgramTestOptions{})
 		assert.NoError(t, err, "Failed to add dependency %q %q", pkg, pkgVersion)
 	} else {
 		err = integration.RunCommand(t, "add sdk ref",
-			[]string{ex, "add", "reference", "../../../../../../sdk/dotnet/Pulumi"},
+			[]string{ex, "add", "reference", "../../../../../../../sdk/dotnet/Pulumi"},
 			dir, &integration.ProgramTestOptions{})
 		assert.NoError(t, err, "Failed to dotnet sdk package reference")
 	}
