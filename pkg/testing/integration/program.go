@@ -1984,7 +1984,11 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 
 	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
 	if localNuget == "" {
-		localNuget = filepath.Join(os.TempDir(), "nuget")
+		current, err := os.Getwd()
+		if err != nil {
+			panic("We couldn't find the nuget packages")
+		}
+		localNuget = filepath.Join(current, "..", "..", "..", "sdk", "dotnet", ".nuget")
 	}
 
 	for _, dep := range pt.opts.Dependencies {

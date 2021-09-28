@@ -90,8 +90,6 @@ SHELL       := /bin/bash
 
 STEP_MESSAGE = @echo -e "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):\033[0m"
 
-TMP_DIR := $(shell go run ${PROJECT_ROOT}/build/tmp_dir.go)/pulumi-build
-
 ifeq ($(GOPATH),)
 	GOPATH := $$(go env GOPATH)
 endif
@@ -106,7 +104,7 @@ PYTHON ?= python3
 PIP ?= pip3
 
 ifeq ($(PULUMI_LOCAL_NUGET),)
-	PULUMI_LOCAL_NUGET        := $(TMP_DIR)/nuget
+	PULUMI_LOCAL_NUGET        := ${PROJECT_ROOT}/sdk/dotnet/.nuget
 endif
 
 RUN_TESTSUITE = python3 ${PROJECT_ROOT}/scripts/run-testsuite.py
