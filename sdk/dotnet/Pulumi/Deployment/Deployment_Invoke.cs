@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Threading.Tasks;
@@ -16,11 +16,17 @@ namespace Pulumi
         Task<T> IDeployment.InvokeAsync<T>(string token, InvokeArgs args, InvokeOptions? options)
             => InvokeAsync<T>(token, args, options, convertResult: true);
 
+        // TODO: Output.Create does not propagate dependencies,
+        // knowness and secretness from args into the output but this
+        // is desired.
+        Output<T> IDeployment.Invoke<T>(string token, InvokeArgs args, InvokeOptions? options)
+            => Output.Create(InvokeAsync<T>(token, args, options, convertResult: true));
+
         private async Task<T> InvokeAsync<T>(
             string token, InvokeArgs args, InvokeOptions? options, bool convertResult)
         {
             var result = await InvokeRawAsync(token, args, options).ConfigureAwait(false);
-            
+
             if (!convertResult)
             {
                 return default!;

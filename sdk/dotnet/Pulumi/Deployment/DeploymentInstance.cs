@@ -33,6 +33,22 @@ namespace Pulumi
         /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
         /// provider plugin.
         /// <para/>
+        /// The result of <see cref="Invoke"/> will be a <see cref="Output"/> resolved to the
+        /// result value of the provider plugin.
+        /// <para/>
+        /// Similar to the earlier <see cref="InvokeAsync"/>, but supports passing input values
+        /// and returns an Output value.
+        /// <para/>
+        /// The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
+        /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
+        /// </summary>
+        public Output<T> Invoke<T>(string token, InvokeArgs args, InvokeOptions? options = null)
+            => _deployment.Invoke<T>(token, args, options);
+
+        /// <summary>
+        /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
+        /// provider plugin.
+        /// <para/>
         /// The result of <see cref="InvokeAsync"/> will be a <see cref="Task"/> resolved to the
         /// result value of the provider plugin.
         /// <para/>
