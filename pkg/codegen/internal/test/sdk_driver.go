@@ -152,6 +152,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "cyclic-types",
 		Description: "Cyclic object types",
+		Skip:        codegen.NewStringSet("python/test"),
 	},
 }
 
