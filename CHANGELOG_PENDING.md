@@ -1,17 +1,17 @@
 ### Improvements
 
-- [CLI] Enable output values in the engine by default.
+- [CLI] - Enable output values in the engine by default.
   [#8014](https://github.com/pulumi/pulumi/pull/8014)
 
 ### Bug Fixes
 
-- [automation/python] Fix a bug in printing `Stack` if no program is provided.
+- [automation/python] - Fix a bug in printing `Stack` if no program is provided.
   [#8032](https://github.com/pulumi/pulumi/pull/8032)
 
-- [codegen/schema] Revert #7938
+- [codegen/schema] - Revert #7938.
   [#8035](https://github.com/pulumi/pulumi/pull/8035)
 
-- [codegen/nodejs] Correctly determine imports for functions.
+- [codegen/nodejs] - Correctly determine imports for functions.
   [#8038](https://github.com/pulumi/pulumi/pull/8038)
 
 - [codegen/go] - Fix resolution of enum naming collisions.
