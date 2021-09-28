@@ -82,7 +82,7 @@ func newCancelCmd() *cobra.Command {
 
 			msg := fmt.Sprintf(
 				"%sThe currently running update for '%s' has been canceled!%s",
-				colors.SpecAttention(), stackName, colors.Reset)
+				colors.SpecAttention, stackName, colors.Reset)
 			fmt.Println(opts.Color.Colorize(msg))
 
 			return nil

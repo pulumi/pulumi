@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1059,63 +1059,37 @@ var StepOps = []StepOp{
 func (op StepOp) Color() string {
 	switch op {
 	case OpSame:
-		return colors.SpecUnimportant()
+		return colors.SpecUnimportant
 	case OpCreate, OpImport:
-		return colors.SpecCreate()
+		return colors.SpecCreate
 	case OpDelete:
-		return colors.SpecDelete()
+		return colors.SpecDelete
 	case OpUpdate:
-		return colors.SpecUpdate()
+		return colors.SpecUpdate
 	case OpReplace:
-		return colors.SpecReplace()
+		return colors.SpecReplace
 	case OpCreateReplacement:
-		return colors.SpecCreateReplacement()
+		return colors.SpecCreateReplacement
 	case OpDeleteReplaced:
-		return colors.SpecDeleteReplaced()
+		return colors.SpecDeleteReplaced
 	case OpRead:
-		return colors.SpecRead()
+		return colors.SpecRead
 	case OpReadReplacement, OpImportReplacement:
-		return colors.SpecReplace()
+		return colors.SpecReplace
 	case OpRefresh:
-		return colors.SpecUpdate()
+		return colors.SpecUpdate
 	case OpReadDiscard, OpDiscardReplaced:
-		return colors.SpecDelete()
+		return colors.SpecDelete
 	default:
 		contract.Failf("Unrecognized resource step op: '%v'", op)
 		return ""
 	}
 }
 
-// ColorProgress returns a suggested color for lines of this of type which are
-// progressing. It defaults to Color.
+// ColorProgress returns a suggested coloring for lines of this of type which
+// are progressing.
 func (op StepOp) ColorProgress() string {
-	switch op {
-	case OpSame:
-		return colors.SpecUnimportant()
-	case OpCreate, OpImport:
-		return colors.SpecCreateProgress()
-	case OpDelete:
-		return colors.SpecDeleteProgress()
-	case OpUpdate:
-		return colors.SpecUpdateProgress()
-	case OpReplace:
-		return colors.SpecReplaceProgress()
-	case OpCreateReplacement:
-		return colors.SpecCreateReplacementProgress()
-	case OpDeleteReplaced:
-		return colors.SpecDeleteReplacedProgress()
-	case OpRead:
-		return colors.SpecReadProgress()
-	case OpReadReplacement, OpImportReplacement:
-		return colors.SpecReplaceProgress()
-	case OpRefresh:
-		return colors.SpecUpdateProgress()
-	case OpReadDiscard, OpDiscardReplaced:
-		return colors.SpecDeleteProgress()
-	default:
-		contract.Failf("Unrecognized resource step op: '%v'", op)
-		return ""
-	}
+	return colors.Bold + op.Color()
 }
 
 // Prefix returns a suggested prefix for lines of this op type.

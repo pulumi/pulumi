@@ -89,11 +89,11 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 	defer notify.Stop(events)
 
 	fmt.Printf(op.Opts.Display.Color.Colorize(
-		colors.SpecHeadline()+"Watching (%s):"+colors.Reset+"\n"), stack.Ref())
+		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stack.Ref())
 
 	for range events {
 		display.PrintfWithWatchPrefix(time.Now(), "",
-			op.Opts.Display.Color.Colorize(colors.SpecImportant()+"Updating..."+colors.Reset+"\n"))
+			op.Opts.Display.Color.Colorize(colors.SpecImportant+"Updating..."+colors.Reset+"\n"))
 
 		// Perform the update operation
 		_, res := apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
@@ -103,10 +103,10 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 				return res
 			}
 			display.PrintfWithWatchPrefix(time.Now(), "",
-				op.Opts.Display.Color.Colorize(colors.SpecImportant()+"Update failed."+colors.Reset+"\n"))
+				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update failed."+colors.Reset+"\n"))
 		} else {
 			display.PrintfWithWatchPrefix(time.Now(), "",
-				op.Opts.Display.Color.Colorize(colors.SpecImportant()+"Update complete."+colors.Reset+"\n"))
+				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update complete."+colors.Reset+"\n"))
 		}
 
 	}

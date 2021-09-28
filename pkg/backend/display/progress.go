@@ -785,7 +785,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 				if !wroteDiagnosticHeader {
 					wroteDiagnosticHeader = true
 					display.writeSimpleMessage(
-						display.opts.Color.Colorize(colors.SpecHeadline() + "Diagnostics:" + colors.Reset))
+						display.opts.Color.Colorize(colors.SpecHeadline + "Diagnostics:" + colors.Reset))
 				}
 				// If we haven't printed the header for the resource, do so now.
 				if !wroteResourceHeader {
@@ -859,13 +859,13 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 	})
 
 	// Print every policy violation, printing a new header when necessary.
-	display.writeSimpleMessage(display.opts.Color.Colorize(colors.SpecHeadline() + "Policy Violations:" + colors.Reset))
+	display.writeSimpleMessage(display.opts.Color.Colorize(colors.SpecHeadline + "Policy Violations:" + colors.Reset))
 
 	for _, policyEvent := range policyEvents {
 		// Print the individual policy event.
-		c := colors.SpecImportant()
+		c := colors.SpecImportant
 		if policyEvent.EnforcementLevel == apitype.Mandatory {
-			c = colors.SpecError()
+			c = colors.SpecError
 		}
 
 		policyNameLine := fmt.Sprintf("    %s[%s]  %s v%s %s %s (%s: %s)",
@@ -902,7 +902,7 @@ func (display *ProgressDisplay) printOutputs() {
 		stackStep, 1, display.isPreview, display.opts.Debug,
 		false /* refresh */, display.opts.ShowSameResources)
 	if props != "" {
-		display.writeSimpleMessage(colors.SpecHeadline() + "Outputs:" + colors.Reset)
+		display.writeSimpleMessage(colors.SpecHeadline + "Outputs:" + colors.Reset)
 		display.writeSimpleMessage(props)
 	}
 }
@@ -1220,7 +1220,7 @@ func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEvent
 
 func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {
 	makeError := func(v string) string {
-		return colors.SpecError() + "**" + v + "**" + colors.Reset
+		return colors.SpecError + "**" + v + "**" + colors.Reset
 	}
 
 	op := display.getStepOp(step)

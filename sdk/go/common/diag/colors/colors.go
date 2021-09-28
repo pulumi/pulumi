@@ -118,20 +118,6 @@ func writeDirective(w io.StringWriter, c Colorization, directive Color) {
 		writeCodes(w, "38", "5", "13")
 	case BrightCyan: // command("fg 14")
 		writeCodes(w, "38", "5", "14")
-	case DarkGreen: // command("fg 15")
-		writeCodes(w, "38", "5", "70")
-	case DarkerGreen: // command("fg 16")
-		writeCodes(w, "38", "5", "64")
-	case DarkRed: // command("fg 17")
-		writeCodes(w, "38", "5", "196")
-	case DarkerRed: // command("fg 18")
-		writeCodes(w, "38", "5", "160")
-	case DarkYellow: // command("fg 19")
-		writeCodes(w, "38", "5", "220")
-	case DarkMagenta: // command("fg 20")
-		writeCodes(w, "38", "5", "126")
-	case DarkCyan: // command("fg 21")
-		writeCodes(w, "35", "5", "75")
 	case RedBackground: // command("bg 1")
 		writeCodes(w, "48", "5", "1")
 	case GreenBackground: // command("bg 2")
@@ -228,14 +214,6 @@ var (
 	BrightMagenta = command("fg 13")
 	BrightCyan    = command("fg 14")
 
-	DarkGreen   = command("fg 15")
-	DarkerGreen = command("fg 16")
-	DarkRed     = command("fg 17")
-	DarkerRed   = command("fg 18")
-	DarkYellow  = command("fg 19")
-	DarkMagenta = command("fg 20")
-	DarkCyan    = command("fg 21")
-
 	RedBackground    = command("bg 1")
 	GreenBackground  = command("bg 2")
 	YellowBackground = command("bg 3")
@@ -252,114 +230,31 @@ var (
 )
 
 // Special predefined colors for logical conditions.
+var (
+	SpecImportant = Yellow // for particularly noteworthy messages.
 
-// for particularly noteworthy messages.
-func SpecImportant() Color { return Yellow }
+	// for notes that can be skimmed or aren't very important.  Just use the standard terminal text
+	// color.
+	SpecUnimportant = Reset
 
-// for notes that can be skimmed or aren't very important. Just use the standard
-// terminal text color.
-func SpecUnimportant() Color { return Reset }
+	SpecDebug   = SpecUnimportant // for debugging.
+	SpecInfo    = Magenta         // for information.
+	SpecError   = Red             // for errors.
+	SpecWarning = Yellow          // for warnings.
 
-// for debugging.
-func SpecDebug() Color { return SpecUnimportant() }
+	SpecHeadline    = BrightMagenta + Bold // for headings in the CLI.
+	SpecSubHeadline = Bold                 // for subheadings in the CLI.
+	SpecPrompt      = Cyan + Bold          // for prompting the user.
+	SpecAttention   = BrightRed            // for messages that are meant to grab attention.
 
-// for information.
-func SpecInfo() Color { return Magenta }
+	// for simple notes.  Just use the standard terminal text color.
+	SpecNote = Reset
 
-// for errors.
-func SpecError() Color { return Red }
-
-// for warnings.
-func SpecWarning() Color { return Yellow }
-
-// for headings in the CLI.
-func SpecHeadline() Color { return BrightMagenta + Bold }
-
-// for subheadings in the CLI.
-func SpecSubHeadline() Color { return Bold }
-
-// for prompting the user.
-func SpecPrompt() Color { return Cyan + Bold }
-
-// for messages that are meant to grab attention.
-func SpecAttention() Color { return BrightRed }
-
-// for simple notes.  Just use the standard terminal text color.
-func SpecNote() Color { return Reset }
-
-// for adds (in the diff sense).
-func SpecCreate() Color { return Green }
-
-// for adds in progress (in the diff sense).
-func SpecCreateProgress() Color {
-	if GetGlobalColorLevel() == Full {
-		return DarkerGreen
-	}
-	return SpecNote()
-}
-
-// for changes (in the diff sense).
-func SpecUpdate() Color { return Yellow }
-
-// for changes in progress (in the diff sense).
-func SpecUpdateProgress() Color {
-	if GetGlobalColorLevel() == Full {
-		return DarkYellow
-	}
-	return SpecNote()
-}
-
-// for replacements (in the diff sense).
-func SpecReplace() Color { return BrightMagenta }
-
-// for replacements in progress (in the diff sense).
-func SpecReplaceProgress() Color {
-	if GetGlobalColorLevel() == Full {
-		return DarkMagenta
-	}
-	return SpecNote()
-}
-
-// for deletes (in the diff sense).
-func SpecDelete() Color { return Red }
-
-// for deletes in progress (in the diff sense).
-func SpecDeleteProgress() Color {
-	if GetGlobalColorLevel() == Full {
-		return DarkerRed
-	}
-	return SpecNote()
-}
-
-// for replacement creates (in the diff sense).
-func SpecCreateReplacement() Color { return BrightGreen }
-
-// for replacement creates (in the diff sense).
-func SpecCreateReplacementProgress() Color {
-	if GetGlobalColorLevel() == Full {
-		return DarkGreen
-	}
-	return SpecNote()
-}
-
-// for replacement deletes (in the diff sense).
-func SpecDeleteReplaced() Color { return BrightRed }
-
-// for replacement deletes (in the diff sense).
-func SpecDeleteReplacedProgress() Color {
-	if GetGlobalColorLevel() == Full {
-		return DarkRed
-	}
-	return SpecNote()
-}
-
-// for reads
-func SpecRead() Color { return BrightCyan }
-
-// for reads in progress
-func SpecReadProgress() Color {
-	if GetGlobalColorLevel() == Full {
-		return DarkCyan
-	}
-	return SpecNote()
-}
+	SpecCreate            = Green         // for adds (in the diff sense).
+	SpecUpdate            = Yellow        // for changes (in the diff sense).
+	SpecReplace           = BrightMagenta // for replacements (in the diff sense).
+	SpecDelete            = Red           // for deletes (in the diff sense).
+	SpecCreateReplacement = BrightGreen   // for replacement creates (in the diff sense).
+	SpecDeleteReplaced    = BrightRed     // for replacement deletes (in the diff sense).
+	SpecRead              = BrightCyan    // for reads
+)

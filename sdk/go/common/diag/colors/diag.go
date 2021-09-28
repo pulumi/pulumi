@@ -15,7 +15,6 @@
 package colors
 
 import (
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -31,36 +30,6 @@ const (
 	// Raw returns text with the raw control sequences, rather than colorizing them.
 	Raw Colorization = "raw"
 )
-
-type ColorLevel string
-
-const (
-	// Display as much color as desired.
-	Full ColorLevel = "full"
-	// Limit the amount of color displayed.
-	Partial ColorLevel = "partial"
-)
-
-var globalColorLevel = Full
-
-// GetGlobalColorLevel gets the global setting for how much color should be used.
-func GetGlobalColorLevel() ColorLevel {
-	return globalColorLevel
-}
-
-// SetGlobalColorLevel sets the global state for how much color should be used.
-func SetGlobalColorLevel(value string) error {
-	switch value {
-	case "full":
-		globalColorLevel = Full
-	case "partial":
-		globalColorLevel = Partial
-	default:
-		return errors.Errorf("unsuported color-level option: '%s'.  Supported values are: full, partial", value)
-	}
-
-	return nil
-}
 
 // Colorize conditionally colorizes the given string based on the kind of colorization selected.
 func (c Colorization) Colorize(v string) string {

@@ -60,7 +60,6 @@ func NewPulumiCmd() *cobra.Command {
 	var profiling string
 	var verbose int
 	var color string
-	var colorLevel string
 
 	updateCheckResult := make(chan *diag.Diag)
 
@@ -108,12 +107,6 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 			cmdFlag = cmd.Flag("color-level")
-			if cmdFlag != nil {
-				err := colors.SetGlobalColorLevel(cmdFlag.Value.String())
-				if err != nil {
-					return err
-				}
-			}
 
 			if cwd != "" {
 				if err := os.Chdir(cwd); err != nil {
@@ -188,8 +181,6 @@ func NewPulumiCmd() *cobra.Command {
 		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 	cmd.PersistentFlags().StringVar(
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
-	cmd.PersistentFlags().StringVar(
-		&colorLevel, "color-level", "full", "Color level. Choices are: full, partial")
 
 	// Common commands:
 	//     - Getting Started Commands:
@@ -518,13 +509,13 @@ func confirmPrompt(prompt string, name string, opts display.Options) bool {
 	if prompt != "" {
 		fmt.Print(
 			opts.Color.Colorize(
-				fmt.Sprintf("%s%s%s\n", colors.SpecAttention(), prompt, colors.Reset)))
+				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
 	}
 
 	fmt.Print(
 		opts.Color.Colorize(
 			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
-				colors.SpecAttention(), colors.SpecPrompt(), name, colors.SpecAttention(), colors.Reset)))
+				colors.SpecAttention, colors.SpecPrompt, name, colors.SpecAttention, colors.Reset)))
 
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')

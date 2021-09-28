@@ -362,8 +362,8 @@ func WelcomeUser(opts display.Options) {
 
 
 `,
-		opts.Color.Colorize(colors.SpecHeadline()+"Welcome to Pulumi!"+colors.Reset),
-		opts.Color.Colorize(colors.SpecSubHeadline()+"Tip of the day:"+colors.Reset))
+		opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset),
+		opts.Color.Colorize(colors.SpecSubHeadline+"Tip of the day:"+colors.Reset))
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
@@ -934,7 +934,7 @@ func (b *cloudBackend) apply(
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline()+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())
+			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())
 	}
 
 	// Create an update object to persist results.
@@ -965,7 +965,7 @@ func (b *cloudBackend) printLink(
 	}
 	if link != "" {
 		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline()+"View Live: "+
+			colors.SpecHeadline+"View Live: "+
 				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n\n"), link)
 	}
 }

@@ -170,11 +170,11 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (
 		// Unless it's an ordinary stdout message, prepend the message category's prefix (error/warning).
 		switch sev {
 		case Debug:
-			prefix.WriteString(colors.SpecDebug())
+			prefix.WriteString(colors.SpecDebug)
 		case Error:
-			prefix.WriteString(colors.SpecError())
+			prefix.WriteString(colors.SpecError)
 		case Warning:
-			prefix.WriteString(colors.SpecWarning())
+			prefix.WriteString(colors.SpecWarning)
 		default:
 			contract.Failf("Unrecognized diagnostic severity: %v", sev)
 		}
@@ -186,7 +186,7 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (
 
 	// Finally, actually print the message itself.
 	var buffer bytes.Buffer
-	buffer.WriteString(colors.SpecNote())
+	buffer.WriteString(colors.SpecNote)
 
 	if diag.Raw {
 		buffer.WriteString(diag.Message)
@@ -196,9 +196,6 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (
 
 	buffer.WriteString(colors.Reset)
 	buffer.WriteRune('\n')
-
-	// TODO[pulumi/pulumi#15]: support Clang-style expressive diagnostics.  This would entail, for example, using
-	//     the buffer within the target document, to demonstrate the offending line/column range of code.
 
 	// Ensure that any sensitive data we know about is filtered out preemptively.
 	filtered := logging.FilterString(buffer.String())

@@ -555,7 +555,7 @@ func (b *localBackend) apply(
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
 		// Print a banner so it's clear this is a local deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline()+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
+			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
 	}
 
 	// Start the update.
@@ -698,7 +698,7 @@ func (b *localBackend) apply(
 
 		if link != "" {
 			fmt.Printf(op.Opts.Display.Color.Colorize(
-				colors.SpecHeadline()+"Permalink: "+
+				colors.SpecHeadline+"Permalink: "+
 					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
 		}
 	}

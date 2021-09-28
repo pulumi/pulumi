@@ -369,7 +369,7 @@ func chooseStack(
 	} else {
 		message += ":"
 	}
-	message = opts.Color.Colorize(colors.SpecPrompt() + message + colors.Reset)
+	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 	cmdutil.EndKeypadTransmitMode()
 
