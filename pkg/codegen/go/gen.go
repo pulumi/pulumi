@@ -94,10 +94,12 @@ type pkgContext struct {
 	types           []*schema.ObjectType
 	resources       []*schema.Resource
 	functions       []*schema.Function
+
 	// schemaNames tracks the names of types/resources as specified in the schema
 	schemaNames codegen.StringSet
 	names       codegen.StringSet
 	renamed     map[string]string
+
 	// duplicateTokens tracks tokens that exist for both types and resources
 	duplicateTokens map[string]bool
 	functionNames   map[*schema.Function]string
@@ -142,16 +144,14 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
-	modPkg, ok := pkg.packages[mod]
 	name = Title(name)
-
-	if ok {
+	if modPkg, ok := pkg.packages[mod]; ok {
 		newName, renamed := modPkg.renamed[name]
 		if renamed {
 			name = newName
-		} else if modPkg.duplicateTokens[tok] {
+		} else if modPkg.duplicateTokens[strings.ToLower(tok)] {
 			// maintain support for duplicate tokens for types and resources in Kubernetes
-			name = name + "Type"
+			name += "Type"
 		}
 	}
 
@@ -163,6 +163,42 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	}
 	mod = strings.Replace(mod, "/", "", -1) + "." + name
 	return strings.Replace(mod, "-provider", "", -1)
+}
+
+func (pkg *pkgContext) tokenToEnum(tok string) string {
+	// token := pkg : module : member
+	// module := path/to/module
+
+	components := strings.Split(tok, ":")
+	contract.Assert(len(components) == 3)
+	if pkg == nil {
+		panic(fmt.Errorf("pkg is nil. token %s", tok))
+	}
+	if pkg.pkg == nil {
+		panic(fmt.Errorf("pkg.pkg is nil. token %s", tok))
+	}
+
+	mod, name := pkg.tokenToPackage(tok), components[2]
+
+	name = Title(name)
+	if modPkg, ok := pkg.packages[mod]; ok {
+		newName, renamed := modPkg.renamed[name]
+		if renamed {
+			name = newName
+		} else if modPkg.duplicateTokens[tok] {
+			// If the package containing the enum's token already has a resource or type with the
+			// same name, add an `Enum` suffix.
+			name += "Enum"
+		}
+	}
+
+	if mod == pkg.mod {
+		return name
+	}
+	if mod == "" {
+		mod = components[0]
+	}
+	return strings.Replace(mod, "/", "", -1) + "." + name
 }
 
 func (pkg *pkgContext) tokenToResource(tok string) string {
@@ -1844,6 +1880,111 @@ func init() {
 	fmt.Fprintf(w, initCode)
 }
 
+type objectProperty struct {
+	object   *schema.ObjectType
+	property *schema.Property
+}
+
+// When computing the type name for a field of an object type, we must ensure that we do not generate invalid recursive
+// struct types. A struct type T contains invalid recursion if the closure of its fields and its struct-typed fields'
+// fields includes a field of type T. A few examples:
+//
+// Directly invalid:
+//
+//     type T struct {
+//         Invalid T
+//     }
+//
+// Indirectly invalid:
+//
+//     type T struct {
+//         Invalid S
+//     }
+//
+//     type S struct {
+//         Invalid T
+//     }
+//
+// In order to avoid generating invalid struct types, we replace all references to types involved in a cyclical
+// definition with *T. The examples above therefore become:
+//
+// (1)
+//     type T struct {
+//         Valid *T
+//     }
+//
+// (2)
+//     type T struct {
+//         Valid *S
+//     }
+//
+//     type S struct {
+//         Valid *T
+//     }
+//
+// We do this using a rewriter that turns all fields involved in reference cycles into optional fields.
+func rewriteCyclicField(rewritten codegen.Set, path []objectProperty, op objectProperty) {
+	// If this property refers to an Input<> type, unwrap the type. This ensures that the plain and input shapes of an
+	// object type remain identical.
+	t := op.property.Type
+	if inputType, isInputType := op.property.Type.(*schema.InputType); isInputType {
+		t = inputType.ElementType
+	}
+
+	// If this property does not refer to an object type, it cannot be involved in a cycle. Skip it.
+	objectType, isObjectType := t.(*schema.ObjectType)
+	if !isObjectType {
+		return
+	}
+
+	path = append(path, op)
+
+	// Check the current path for cycles by crawling backwards until reaching the start of the path
+	// or finding a property that is a member of the current object type.
+	var cycle []objectProperty
+	for i := len(path) - 1; i > 0; i-- {
+		if path[i].object == objectType {
+			cycle = path[i:]
+			break
+		}
+	}
+
+	// If the current path does not involve a cycle, recur into the current object type.
+	if len(cycle) == 0 {
+		rewriteCyclicFields(rewritten, path, objectType)
+		return
+	}
+
+	// If we've found a cycle, mark each property involved in the cycle as optional.
+	//
+	// NOTE: this overestimates the set of properties that must be marked as optional. For example, in case (2) above,
+	// only one of T.Invalid or S.Invalid needs to be marked as optional in order to break the cycle. However, choosing
+	// a minimal set of properties that is also deterministic and resilient to changes in visit order is difficult and
+	// seems to add little value.
+	for _, p := range cycle {
+		p.property.Type = codegen.OptionalType(p.property)
+	}
+}
+
+func rewriteCyclicFields(rewritten codegen.Set, path []objectProperty, obj *schema.ObjectType) {
+	if !rewritten.Has(obj) {
+		rewritten.Add(obj)
+		for _, property := range obj.Properties {
+			rewriteCyclicField(rewritten, path, objectProperty{obj, property})
+		}
+	}
+}
+
+func rewriteCyclicObjectFields(pkg *schema.Package) {
+	rewritten := codegen.Set{}
+	for _, t := range pkg.Types {
+		if obj, ok := t.(*schema.ObjectType); ok && !obj.IsInputShape() {
+			rewriteCyclicFields(rewritten, nil, obj)
+			rewriteCyclicFields(rewritten, nil, obj.InputShape)
+		}
+	}
+}
+
 func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType) {
 	contract.Assert(!obj.IsInputShape())
 
@@ -1949,47 +2090,6 @@ func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
 		return pkg.resolveObjectType(t)
 	}
 	return strings.TrimSuffix(pkg.tokenToType(typ.String()), "Args")
-}
-
-func (pkg *pkgContext) tokenToEnum(tok string) string {
-	// token := pkg : module : member
-	// module := path/to/module
-
-	components := strings.Split(tok, ":")
-	contract.Assert(len(components) == 3)
-	if pkg == nil {
-		panic(fmt.Errorf("pkg is nil. token %s", tok))
-	}
-	if pkg.pkg == nil {
-		panic(fmt.Errorf("pkg.pkg is nil. token %s", tok))
-	}
-
-	mod, name := pkg.tokenToPackage(tok), components[2]
-
-	modPkg, ok := pkg.packages[mod]
-	name = Title(name)
-
-	if ok {
-		newName, renamed := modPkg.renamed[name]
-		if renamed {
-			name = newName
-		} else if modPkg.names.Has(name) {
-			// If the package containing the enum's token already has a resource with the
-			// same name, add a `Enum` suffix.
-			newName := name + "Enum"
-			modPkg.renamed[name] = newName
-			modPkg.names.Add(newName)
-			name = newName
-		}
-	}
-
-	if mod == pkg.mod {
-		return name
-	}
-	if mod == "" {
-		mod = components[0]
-	}
-	return strings.Replace(mod, "/", "", -1) + "." + name
 }
 
 func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.ObjectType, types ...string) {
@@ -2486,6 +2586,9 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		}
 	}
 
+	// Rewrite cyclic types. See the docs on rewriteCyclicFields for the motivation.
+	rewriteCyclicObjectFields(pkg)
+
 	// Use a string set to track object types that have already been processed.
 	// This avoids recursively processing the same type. For example, in the
 	// Kubernetes package, JSONSchemaProps have properties whose type is itself.
@@ -2514,10 +2617,10 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// compute set of names generated by a resource
 	// handling any potential collisions via remapping along the way
 	scanResource := func(r *schema.Resource) {
-		if resSeen[r.Token] {
+		if resSeen[strings.ToLower(r.Token)] {
 			return
 		}
-		resSeen[r.Token] = true
+		resSeen[strings.ToLower(r.Token)] = true
 		pkg := getPkgFromToken(r.Token)
 		pkg.resources = append(pkg.resources, r)
 		pkg.schemaNames.Add(tokenToName(r.Token))
@@ -2594,27 +2697,23 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// compute set of names generated by a type
 	// handling any potential collisions via remapping along the way
 	scanType := func(t schema.Type) {
+		getNames := func(name, suffix string) []string {
+			return []string{name + suffix, name + suffix + "Input", name + suffix + "Output"}
+		}
+
 		switch t := t.(type) {
 		case *schema.ObjectType:
 			pkg := getPkgFromToken(t.Token)
 			// maintain support for duplicate tokens for types and resources in Kubernetes
-			if resSeen[t.Token] {
-				pkg.duplicateTokens[t.Token] = true
+			if resSeen[strings.ToLower(t.Token)] {
+				pkg.duplicateTokens[strings.ToLower(t.Token)] = true
+			}
+			if typeSeen[strings.ToLower(t.Token)] {
 				return
 			}
-			if typeSeen[t.Token] {
-				return
-			}
-			typeSeen[t.Token] = true
+			typeSeen[strings.ToLower(t.Token)] = true
 
 			name := pkg.tokenToType(t.Token)
-			getNames := func(suffix string) []string {
-				names := []string{}
-				names = append(names, name+suffix)
-				names = append(names, name+suffix+"Input")
-				names = append(names, name+suffix+"Output")
-				return names
-			}
 			suffixes := []string{"", "Type", "Typ"}
 			suffix := ""
 			suffixIndex := 0
@@ -2622,7 +2721,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 
 			for !canGenerate && suffixIndex <= len(suffixes) {
 				suffix = suffixes[suffixIndex]
-				candidates := getNames(suffix)
+				candidates := getNames(name, suffix)
 				conflict := false
 				for _, c := range candidates {
 					if pkg.names.Has(c) {
@@ -2641,8 +2740,53 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping type: %s", name))
 			}
 
-			names := getNames(suffix)
-			originalNames := getNames("")
+			names := getNames(name, suffix)
+			originalNames := getNames(name, "")
+			for i, n := range names {
+				pkg.names.Add(n)
+				if suffix != "" {
+					pkg.renamed[originalNames[i]] = names[i]
+				}
+			}
+		case *schema.EnumType:
+			pkg := getPkgFromToken(t.Token)
+			if resSeen[t.Token] {
+				pkg.duplicateTokens[strings.ToLower(t.Token)] = true
+			}
+			if typeSeen[t.Token] {
+				return
+			}
+			typeSeen[t.Token] = true
+
+			name := pkg.tokenToEnum(t.Token)
+			suffixes := []string{"", "Enum"}
+			suffix := ""
+			suffixIndex := 0
+			canGenerate := false
+
+			for !canGenerate && suffixIndex <= len(suffixes) {
+				suffix = suffixes[suffixIndex]
+				candidates := getNames(name, suffix)
+				conflict := false
+				for _, c := range candidates {
+					if pkg.names.Has(c) {
+						conflict = true
+					}
+				}
+				if !conflict {
+					canGenerate = true
+					break
+				}
+
+				suffixIndex++
+			}
+
+			if !canGenerate {
+				panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping type: %s", name))
+			}
+
+			names := getNames(name, suffix)
+			originalNames := getNames(name, "")
 			for i, n := range names {
 				pkg.names.Add(n)
 				if suffix != "" {

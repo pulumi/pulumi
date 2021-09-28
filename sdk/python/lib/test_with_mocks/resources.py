@@ -26,6 +26,17 @@ class MyComponent(pulumi.ComponentResource):
         self.outprop = pulumi.Output.from_input(inprop).apply(lambda x: f"output: {x}")
 
 
+class MyRemoteComponent(pulumi.ComponentResource):
+    outprop: pulumi.Output[str]
+    def __init__(self, name, inprop: pulumi.Input[str] = None, opts = None):
+        if inprop is None:
+            raise TypeError("Missing required property 'inprop'")
+        __props__: dict = dict()
+        __props__["inprop"] = inprop
+        __props__["outprop"] = None
+        super().__init__("pkg:index:MyRemoteComponent", name, __props__, opts, True)
+
+
 class Instance(pulumi.CustomResource):
     public_ip: pulumi.Output[str]
     def __init__(self, resource_name, name: pulumi.Input[str] = None, value: pulumi.Input[str] = None, opts = None):
@@ -69,6 +80,7 @@ def define_resources():
                           value=pulumi.Output.secret("secret_value"))
     mycustom = MyCustom("mycustom", {"instance": myinstance})
     invoke_result = do_invoke()
+    myremotecomponent = MyRemoteComponent("myremotecomponent", inprop=myinstance.id.apply(lambda v: f"hello: {v}"))
 
     # Pass myinstance several more times to ensure deserialization of the resource reference
     # works on other asyncio threads.
@@ -86,7 +98,8 @@ def define_resources():
         'myinstance': myinstance,
         'mycustom': mycustom,
         'dns_ref': dns_ref,
-        'invoke_result': invoke_result
+        'invoke_result': invoke_result,
+        'myremotecomponent': myremotecomponent,
     }
 
 

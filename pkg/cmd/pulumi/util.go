@@ -76,7 +76,7 @@ func disableResourceReferences() bool {
 }
 
 func disableOutputValues() bool {
-	return !cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_OUTPUT_VALUES"))
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_OUTPUT_VALUES"))
 }
 
 // skipConfirmations returns whether or not confirmation prompts should

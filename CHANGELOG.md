@@ -1,6 +1,79 @@
 CHANGELOG
 =========
 
+## 3.13.2 (2021-09-27)
+
+**Please Note:** The v3.13.1 release failed in our build pipeline and was re-released as v3.13.2.
+
+### Improvements
+
+- [CLI] - Enable output values in the engine by default.
+  [#8014](https://github.com/pulumi/pulumi/pull/8014)
+
+### Bug Fixes
+
+- [automation/python] - Fix a bug in printing `Stack` if no program is provided.
+  [#8032](https://github.com/pulumi/pulumi/pull/8032)
+
+- [codegen/schema] - Revert #7938.
+  [#8035](https://github.com/pulumi/pulumi/pull/8035)
+
+- [codegen/nodejs] - Correctly determine imports for functions.
+  [#8038](https://github.com/pulumi/pulumi/pull/8038)
+
+- [codegen/go] - Fix resolution of enum naming collisions.
+  [#7985](https://github.com/pulumi/pulumi/pull/7985)
+
+- [sdk/{nodejs,python}] - Fix errors when testing remote components with mocks.
+  [#8053](https://github.com/pulumi/pulumi/pull/8053)
+
+- [codegen/nodejs] - Fix generation of provider enum with environment variables.
+  [#8051](https://github.com/pulumi/pulumi/pull/8051)
+
+## 3.13.0 (2021-09-22)
+
+### Improvements
+
+- [sdk/go] - Improve error messages for (un)marshalling properties.
+  [#7936](https://github.com/pulumi/pulumi/pull/7936)
+
+- [sdk/go] - Initial support for (un)marshalling output values.
+  [#7861](https://github.com/pulumi/pulumi/pull/7861)
+
+- [sdk/go] - Add `RegisterInputType` and register built-in types.
+  [#7928](https://github.com/pulumi/pulumi/pull/7928)
+
+- [codegen] - Packages include `Package.Version` when provided.
+  [#7938](https://github.com/pulumi/pulumi/pull/7938)
+
+- [auto/*] - Fix escaped HTML characters from color directives in event stream.
+
+  E.g. `"\u003c{%reset%}\u003edebug: \u003c{%reset%}\u003e"` -> `"<{%reset%}>debug: <{%reset%}>"`
+  [#7998](https://github.com/pulumi/pulumi/pull/7998)
+
+- [auto/*] - Allow eliding color directives from event logs by passing `NO_COLOR` env var.
+
+  E.g. `"<{%reset%}>debug: <{%reset%}>"` -> `"debug: "`
+  [#7998](https://github.com/pulumi/pulumi/pull/7998)
+
+- [schema] The syntactical well-formedness of a package schema is now described
+  and checked by a JSON schema metaschema.
+  [#7952](https://github.com/pulumi/pulumi/pull/7952)
+
+### Bug Fixes
+
+- [codegen/schema] - Correct validation for Package
+  [#7896](https://github.com/pulumi/pulumi/pull/7896)
+
+- [cli] Use json.Unmarshal instead of custom parser
+  [#7954](https://github.com/pulumi/pulumi/pull/7954)
+
+- [sdk/{go,dotnet}] - Thread replaceOnChanges through Go and .NET
+  [#7967](https://github.com/pulumi/pulumi/pull/7967)
+
+- [codegen/nodejs] - Correctly handle hyphenated imports
+  [#7993](https://github.com/pulumi/pulumi/pull/7993)
+
 ## 3.12.0 (2021-09-08)
 
 ### Improvements

@@ -1,0 +1,10 @@
+{
+  "emittedFiles": [
+    "Provider.cs",
+    "Pulumi.Registrygeoreplication.csproj",
+    "README.md",
+    "RegistryGeoReplication.cs",
+    "Utilities.cs",
+    "logo.png"
+  ]
+}

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,10 @@ package schema
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"net/url"
 	"os"
@@ -29,6 +31,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
+	"github.com/santhosh-tekuri/jsonschema/v5"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -1270,6 +1273,22 @@ func (m *RawMessage) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
+//go:embed pulumi.json
+var metaSchema []byte
+
+var MetaSchema *jsonschema.Schema
+
+func init() {
+	compiler := jsonschema.NewCompiler()
+	compiler.LoadURL = func(u string) (io.ReadCloser, error) {
+		if u == "blob://pulumi.json" {
+			return io.NopCloser(bytes.NewReader(metaSchema)), nil
+		}
+		return jsonschema.LoadURL(u)
+	}
+	MetaSchema = compiler.MustCompile("blob://pulumi.json")
+}
+
 // TypeSpec is the serializable form of a reference to a type.
 type TypeSpec struct {
 	// Type is the primitive or composite type, if any. May be "bool", "integer", "number", "string", "array", or
@@ -1500,11 +1519,44 @@ func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
 	}
 }
 
+func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
+	bytes, err := json.Marshal(spec)
+	if err != nil {
+		return nil, err
+	}
+	var raw interface{}
+	if err = json.Unmarshal(bytes, &raw); err != nil {
+		return nil, err
+	}
+
+	if err = MetaSchema.Validate(raw); err == nil {
+		return nil, nil
+	}
+	validationError, ok := err.(*jsonschema.ValidationError)
+	if !ok {
+		return nil, err
+	}
+
+	var diags hcl.Diagnostics
+	var appendError func(err *jsonschema.ValidationError)
+	appendError = func(err *jsonschema.ValidationError) {
+		if err.InstanceLocation != "" && err.Message != "" {
+			diags = diags.Append(errorf("#"+err.InstanceLocation, "%v", err.Message))
+		}
+		for _, err := range err.Causes {
+			appendError(err)
+		}
+	}
+	appendError(validationError)
+
+	return diags, nil
+}
+
 // bindSpec converts a serializable PackageSpec into a Package. This function includes a loader parameter which
 // works as a singleton -- if it is nil, a new loader is instantiated, else the provided loader is used. This avoids
 // breaking downstream consumers of ImportSpec while allowing us to extend schema support to external packages.
 //
-// A few notes on diagnostsics and errors in spec binding:
+// A few notes on diagnostics and errors in spec binding:
 //
 // - Unless an error is *fatal*--i.e. binding is fundamentally unable to proceed (e.g. because a provider for a package
 //   failed to load)--errors should be communicated as diagnostics. Fatal errors should be communicated as error values.
@@ -1513,12 +1565,24 @@ func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
 //   allows binding to continue and produce as much information as possible for the end user.
 // - Diagnostics may be rendered to users by downstream tools, and should be written with schema authors in mind.
 // - Diagnostics _must_ contain enough contextual information for a user to be able to understand the source of the
-//   diagnostic. Until we have line/column information, we use JSON pointers to the offending entites. These pointers
+//   diagnostic. Until we have line/column information, we use JSON pointers to the offending entities. These pointers
 //   are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
 //   diagnostic error that is appropriately tagged with a JSON pointer.
 //
 func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*Package, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
+
+	// Validate the package against the metaschema.
+	validationDiags, err := validateSpec(spec)
+	if err != nil {
+		return nil, nil, fmt.Errorf("validating spec: %w", err)
+	}
+	diags = diags.Extend(validationDiags)
+
+	// Validate that there is a name
+	if spec.Name == "" {
+		diags = diags.Append(errorf("#/name", "no name provided"))
+	}
 
 	// Parse the version, if any.
 	var version *semver.Version
@@ -1595,7 +1659,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*
 		typeList = append(typeList, t)
 	}
 	for _, t := range types.objects {
-		// t is a plain shape: add it and its coresponding input shape to the type list.
+		// t is a plain shape: add it and its corresponding input shape to the type list.
 		typeList = append(typeList, t)
 		typeList = append(typeList, t.InputShape)
 	}
@@ -1990,6 +2054,9 @@ func (t *types) bindType(path string, spec TypeSpec, inputShape bool) (result Ty
 		var discriminator string
 		var mapping map[string]string
 		if spec.Discriminator != nil {
+			if spec.Discriminator.PropertyName == "" {
+				diags = diags.Append(errorf(path, "discriminator must provide a property name"))
+			}
 			discriminator = spec.Discriminator.PropertyName
 			mapping = spec.Discriminator.Mapping
 		}
@@ -2134,6 +2201,9 @@ func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Typ
 		language := make(map[string]interface{})
 		for name, raw := range spec.Language {
 			language[name] = json.RawMessage(raw)
+		}
+		if len(spec.Environment) == 0 {
+			diags = diags.Append(errorf(path, "Default must specify an environment"))
 		}
 
 		dv.Environment, dv.Language = spec.Environment, language

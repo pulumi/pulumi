@@ -72,7 +72,7 @@ def get_config_env_key(k: str) -> str:
             env_key += c.upper()
         else:
             env_key += '_'
-    return 'PULUMI_CONFIG_%s' % env_key
+    return f'PULUMI_CONFIG_{env_key}'
 
 
 def get_config_secret_keys_env() -> List[str]:

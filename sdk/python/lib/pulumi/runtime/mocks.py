@@ -226,8 +226,10 @@ class MockMonitor:
         return empty_pb2.Empty()
 
     def SupportsFeature(self, request):
-        # pylint: disable=unused-argument
-        return type('SupportsFeatureResponse', (object,), {'hasSupport' : True})
+        # Support for "outputValues" is deliberately disabled for the mock monitor so
+        # instances of `Output` don't show up in `MockResourceArgs` inputs.
+        has_support = request.id in {"secrets", "resourceReferences"}
+        return type('SupportsFeatureResponse', (object,), {'hasSupport' : has_support})
 
 
 class MockEngine:

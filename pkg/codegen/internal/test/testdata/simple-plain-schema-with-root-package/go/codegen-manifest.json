@@ -1,0 +1,10 @@
+{
+  "emittedFiles": [
+    "component.go",
+    "doc.go",
+    "init.go",
+    "provider.go",
+    "pulumiTypes.go",
+    "pulumiUtilities.go"
+  ]
+}

@@ -1,18 +1,32 @@
-### Improvements
+**Please Note:** The v3.13.1 release failed in our build pipeline and was re-released as v3.13.2.
 
-- [sdk/go] - Improve error messages for (un)marshalling properties.
-  [#7936](https://github.com/pulumi/pulumi/pull/7936)
+### Improvements
 
 - [cli/diffs] - Add color to indicate if a action is in progress. 
   [#7918](https://github.com/pulumi/pulumi/pull/7918)
 
-- [sdk/go] - Initial support for (un)marshalling output values.
-  [#7861](https://github.com/pulumi/pulumi/pull/7861)
+- [CLI] - Enable output values in the engine by default.
+  [#8014](https://github.com/pulumi/pulumi/pull/8014)
 
 ### Bug Fixes
 
-- [cli] Use json.Unmarshal instead of custom parser
-  [#7954](https://github.com/pulumi/pulumi/pull/7954)
+- [automation/python] - Fix a bug in printing `Stack` if no program is provided.
+  [#8032](https://github.com/pulumi/pulumi/pull/8032)
 
-- [sdk/{go,dotnet}] - Thread replaceOnChanges through Go and .NET
-  [#7967](https://github.com/pulumi/pulumi/pull/7967)
+- [codegen/schema] - Revert #7938.
+  [#8035](https://github.com/pulumi/pulumi/pull/8035)
+
+- [codegen/nodejs] - Correctly determine imports for functions.
+  [#8038](https://github.com/pulumi/pulumi/pull/8038)
+
+- [codegen/go] - Fix resolution of enum naming collisions.
+  [#7985](https://github.com/pulumi/pulumi/pull/7985)
+
+- [sdk/{nodejs,python}] - Fix errors when testing remote components with mocks.
+  [#8053](https://github.com/pulumi/pulumi/pull/8053)
+
+- [codegen/nodejs] - Fix generation of provider enum with environment variables.
+  [#8051](https://github.com/pulumi/pulumi/pull/8051)
+
+- [codegen/go] - Fix generation of cyclic struct types.
+  [#8049](https://github.com/pulumi/pulumi/pull/8049)

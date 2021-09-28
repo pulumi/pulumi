@@ -88,6 +88,10 @@ func (s Set) Add(v interface{}) {
 	s[v] = struct{}{}
 }
 
+func (s Set) Delete(v interface{}) {
+	delete(s, v)
+}
+
 func (s Set) Has(v interface{}) bool {
 	_, ok := s[v]
 	return ok

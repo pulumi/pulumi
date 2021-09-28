@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -177,9 +176,9 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 			imp := &opts.imports[i]
 			_, err := tokens.ParseTypeToken(imp.Type.String())
 			if err != nil {
-				return nil, errors.New(fmt.Sprintf("import type %q is not a valid resource type token. "+
+				return nil, errors.Errorf("import type %q is not a valid resource type token. "+
 					"Type tokens must be of the format <package>:<module>:<type> - "+
-					"refer to the import section of the provider resource documentation.", imp.Type.String()))
+					"refer to the import section of the provider resource documentation.", imp.Type.String())
 			}
 			if imp.Provider == "" && imp.Version == nil {
 				imp.Version = defaultProviderVersions[imp.Type.Package()]

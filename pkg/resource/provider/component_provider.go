@@ -103,6 +103,7 @@ func (p *componentProvider) Configure(ctx context.Context,
 		AcceptSecrets:   true,
 		SupportsPreview: true,
 		AcceptResources: true,
+		AcceptOutputs:   true,
 	}, nil
 }
 
