@@ -78,8 +78,6 @@ var programTests = []programTest{
 	{
 		Name:        "azure-sa",
 		Description: "Azure SA",
-		SkipCompile: codegen.NewStringSet("go"),
-		// Blocked on go: TODO[pulumi/pulumi-azure#954]
 	},
 	{
 		Name:        "kubernetes-operator",
