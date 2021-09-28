@@ -16,9 +16,6 @@
 - [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
   [#7865](https://github.com/pulumi/pulumi/pull/7865)
 
-- [build] - Remove the need for `/opt/pulumi` when building.
-  [#7838](https://github.com/pulumi/pulumi/pull/7838)
-
 ### Bug Fixes
 - [automation/go] Fix loading of stack settings/configs from yaml files.
   [#pulumi-kubernetes-operator/183](https://github.com/pulumi/pulumi-kubernetes-operator/issues/183)
