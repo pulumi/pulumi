@@ -24,6 +24,7 @@ menu:
     <li><a href="funcwithdefaultvalue" title="FuncWithDefaultValue"><span class="symbol function"></span>FuncWithDefaultValue</a></li>
     <li><a href="funcwithdictparam" title="FuncWithDictParam"><span class="symbol function"></span>FuncWithDictParam</a></li>
     <li><a href="funcwithlistparam" title="FuncWithListParam"><span class="symbol function"></span>FuncWithListParam</a></li>
+    <li><a href="getbastionshareablelink" title="GetBastionShareableLink"><span class="symbol function"></span>GetBastionShareableLink</a></li>
     <li><a href="getclientconfig" title="GetClientConfig"><span class="symbol function"></span>GetClientConfig</a></li>
     <li><a href="getintegrationruntimeobjectmetadatum" title="GetIntegrationRuntimeObjectMetadatum"><span class="symbol function"></span>GetIntegrationRuntimeObjectMetadatum</a></li>
     <li><a href="liststorageaccountkeys" title="ListStorageAccountKeys"><span class="symbol function"></span>ListStorageAccountKeys</a></li>
