@@ -34,19 +34,6 @@ def my_mocks():
 
 class MyMocks(pulumi.runtime.Mocks):
     def call(self, args):
-        if args.token in ['mypkg::funcWithAllOptionalInputs',
-                          'mypkg::funcWithDefaultValue']:
-            a = args.args.get('a', None)
-            b = args.args.get('b', None)
-            return {'r': f'a={a} b={b}'}
-
-        if args.token in ['mypkg::funcWithDictParam',
-                          'mypkg::funcWithListParam']:
-            return {'r': jstr(args.args)}
-
-        if args.token == 'mypkg::getIntegrationRuntimeObjectMetadatum':
-            return {'nextLink': 'my-next-link',
-                    'value': [args.args]}
 
         if args.token == 'mypkg::listStorageAccountKeys':
             return {'keys': [
@@ -89,78 +76,6 @@ def assert_function_matches_table(fn, table):
                 unpack_entry(entry) for entry in table
         )
     ])
-
-
-@pulumi.runtime.test
-def test_func_with_all_optional_inputs(my_mocks):
-    return assert_function_matches_table(func_with_all_optional_inputs_output,
-        [
-            ({}, 'a=None b=None', r),
-            ({'a': out('my-a')}, 'a=my-a b=None', r),
-            ({'a': out('my-a'), 'b': out('my-b')}, 'a=my-a b=my-b', r),
-            # check positional arguments
-            ([out('my-a')], {}, 'a=my-a b=None', r),
-            ([out('my-a'), out('my-b')], {}, 'a=my-a b=my-b', r),
-        ])
-
-
-@pulumi.runtime.test
-def test_func_with_default_value(my_mocks):
-    # TODO defaults from schema not recognized
-    # https://github.com/pulumi/pulumi/issues/7815
-    return assert_function_matches_table(func_with_default_value_output,
-        [
-            ({}, 'a=None b=None', r),
-            ({'a': out('my-a')}, 'a=my-a b=None', r),
-            ({'a': out('my-a'), 'b': out('my-b')}, 'a=my-a b=my-b', r),
-        ])
-
-
-@pulumi.runtime.test
-def test_func_with_dict_param(my_mocks):
-    d = {'key-a': 'value-a', 'key-b': 'value-b'}
-    return assert_function_matches_table(func_with_dict_param_output,
-        [
-            ({}, '{}', r),
-            ({'a': out(d)}, jstr({'a': d}), r),
-            ({'a': out(d), 'b': out('my-b')}, jstr({'a': d, 'b': 'my-b'}), r),
-        ])
-
-
-@pulumi.runtime.test
-def test_func_with_list_param(my_mocks):
-    l = ['a', 'b', 'c']
-    return assert_function_matches_table(func_with_list_param_output,
-        [
-            ({}, '{}', r),
-            ({'a': out(l)}, jstr({'a': l}), r),
-            ({'a': out(l), 'b': out('my-b')}, jstr({'a': l, 'b': 'my-b'}), r),
-        ])
-
-
-@pulumi.runtime.test
-def test_get_integration_runtime_object_metadatum(my_mocks):
-    return assert_function_matches_table(get_integration_runtime_object_metadatum_output,
-        [(
-            {
-                'factory_name': out('my-factory-name'),
-                'integration_runtime_name': out('my-integration-runtime-name'),
-                'metadata_path': out('metadata-path'),
-                'resource_group_name': out('resource-group-name')
-            },
-
-            {
-                'next_link': 'my-next-link',
-                'value': [{
-                    'factoryName': 'my-factory-name',
-                    'integrationRuntimeName': 'my-integration-runtime-name',
-                    'metadataPath': 'metadata-path',
-                    'resourceGroupName': 'resource-group-name'
-                }],
-            },
-
-            lambda r: {'next_link': r.next_link, 'value': r.value}
-        )])
 
 
 @pulumi.runtime.test
