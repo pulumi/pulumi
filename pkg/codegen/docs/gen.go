@@ -42,6 +42,12 @@ import (
 )
 
 var (
+	// modules is a map of a module name and information
+	// about it. This is crux of all API docs generation
+	// as the modContext carries information about the resources,
+	// functions, as well other modules within each module.
+	modules map[string]*modContext
+
 	supportedLanguages = []string{"csharp", "go", "nodejs", "python"}
 	snippetLanguages   = []string{"csharp", "go", "python", "typescript"}
 	templates          *template.Template
@@ -1617,11 +1623,10 @@ func (mod *modContext) genIndex() indexData {
 	// If there are submodules, list them.
 	for _, mod := range mod.children {
 		modName := mod.getModuleFileName()
-		parts := strings.Split(modName, "/")
-		modName = parts[len(parts)-1]
+		displayName := modFilenameToDisplayName(modName)
 		modules = append(modules, indexEntry{
-			Link:        strings.ToLower(modName) + "/",
-			DisplayName: modName,
+			Link:        getModuleLink(displayName),
+			DisplayName: displayName,
 		})
 	}
 	sortIndexEntries(modules)
@@ -1630,7 +1635,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, r := range mod.resources {
 		name := resourceName(r)
 		resources = append(resources, indexEntry{
-			Link:        strings.ToLower(name),
+			Link:        getResourceLink(name),
 			DisplayName: name,
 		})
 	}
@@ -1640,7 +1645,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, f := range mod.functions {
 		name := tokenToName(f.Token)
 		functions = append(functions, indexEntry{
-			Link:        strings.ToLower(name),
+			Link:        getFunctionLink(name),
 			DisplayName: strings.Title(name),
 		})
 	}
@@ -1821,9 +1826,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	return modules
 }
 
-// GeneratePackage generates the docs package with docs for each resource given the Pulumi
-// schema.
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+func Initialize(tool string, pkg *schema.Package) {
 	templates = template.New("").Funcs(template.FuncMap{
 		"htmlSafe": func(html string) template.HTML {
 			// Markdown fragments in the templates need to be rendered as-is,
@@ -1842,8 +1845,20 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 	// Generate the modules from the schema, and for every module
 	// run the generator functions to generate markdown files.
-	modules := generateModulesFromSchemaPackage(tool, pkg)
-	glog.V(3).Infoln("generating package now...")
+	modules = generateModulesFromSchemaPackage(tool, pkg)
+}
+
+// GeneratePackage generates docs for each resource given the Pulumi
+// schema. The returned map contains the filename with path as the key
+// and the contents as its value.
+func GeneratePackage() (map[string][]byte, error) {
+	if modules == nil {
+		return nil, errors.New("must call Initialize before generating the docs package")
+	}
+
+	defer glog.Flush()
+
+	glog.V(3).Infoln("generating package docs now...")
 	files := fs{}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
@@ -1851,15 +1866,31 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		}
 	}
 
-	if rootMod, ok := modules[":index:"]; ok {
-		if err := generatePackageTree(*rootMod); err != nil {
-			glog.Errorf("Error generating the package tree for package %s: %v", pkg.Name, err)
-		}
-	} else {
-		glog.Errorf("A root module entry was not found for the package %s. Cannot generate the package tree...", pkg.Name)
+	return files, nil
+}
+
+// GeneratePackageTree returns a navigable structure starting from the top-most module.
+func GeneratePackageTree() ([]PackageTreeItem, error) {
+	if modules == nil {
+		return nil, errors.New("must call Initialize before generating the docs package")
 	}
 
-	return files, nil
+	defer glog.Flush()
+
+	var packageTree []PackageTreeItem
+	// "" indicates the top-most module.
+	if rootMod, ok := modules[""]; ok {
+		tree, err := generatePackageTree(*rootMod)
+		if err != nil {
+			glog.Errorf("Error generating the package tree for package: %v", err)
+		}
+
+		packageTree = tree
+	} else {
+		glog.Error("A root module entry was not found for the package. Cannot generate the package tree...")
+	}
+
+	return packageTree, nil
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(t schema.Type)) {

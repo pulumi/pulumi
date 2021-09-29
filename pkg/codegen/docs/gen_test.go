@@ -409,7 +409,8 @@ func TestExamplesProcessing(t *testing.T) {
 }
 
 func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	return GeneratePackage(tool, pkg)
+	Initialize(tool, pkg)
+	return GeneratePackage()
 }
 
 func TestGeneratePackage(t *testing.T) {

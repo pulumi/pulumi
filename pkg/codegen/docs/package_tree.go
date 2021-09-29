@@ -1,6 +1,8 @@
 package docs
 
-import "strings"
+import (
+	"github.com/pkg/errors"
+)
 
 type entryType string
 
@@ -10,39 +12,37 @@ const (
 	entryTypeFunction entryType = "function"
 )
 
-type modTreeItem struct {
-	Name     string        `json:"name"`
-	Type     entryType     `json:"type"`
-	Link     string        `json:"link"`
-	Children []modTreeItem `json:"children,omitempty"`
+// PackageTreeItem is a type for representing a package in a
+// navigable tree format starting from the top-level/index/root
+// of a package.
+type PackageTreeItem struct {
+	Name     string            `json:"name"`
+	Type     entryType         `json:"type"`
+	Link     string            `json:"link"`
+	Children []PackageTreeItem `json:"children,omitempty"`
 }
 
-func (i *modTreeItem) AddItem(newItem modTreeItem) {
-	if i.Children == nil {
-		i.Children = make([]modTreeItem, 0)
-	}
-	i.Children = append(i.Children, newItem)
-}
-
-func (i *modTreeItem) AddChildItem(newItem modTreeItem) {
-	if i.Children == nil {
-		i.Children = make([]modTreeItem, 0)
-	}
-	i.Children = append(i.Children, newItem)
-}
-
-var packageTree []modTreeItem
-
-func generatePackageTree(rootMod modContext) error {
-	packageTree = make([]modTreeItem, 0)
+func generatePackageTree(rootMod modContext) ([]PackageTreeItem, error) {
+	numResources := len(rootMod.resources)
+	numFunctions := len(rootMod.functions)
+	// +1 to add the module itself as an entry.
+	size := numResources + numFunctions + 1
+	packageTree := make([]PackageTreeItem, 0, size)
 
 	for _, m := range rootMod.children {
-		name := m.mod
-		ti := modTreeItem{
-			Name:     name,
+		modName := m.getModuleFileName()
+		displayName := modFilenameToDisplayName(modName)
+
+		children, err := generatePackageTree(*m)
+		if err != nil {
+			return nil, errors.Wrapf(err, "generating children for module %s (mod token: %s)", displayName, m.mod)
+		}
+
+		ti := PackageTreeItem{
+			Name:     displayName,
 			Type:     entryTypeModule,
-			Link:     strings.ToLower(name),
-			Children: nil,
+			Link:     getModuleLink(displayName),
+			Children: children,
 		}
 
 		packageTree = append(packageTree, ti)
@@ -50,10 +50,10 @@ func generatePackageTree(rootMod modContext) error {
 
 	for _, r := range rootMod.resources {
 		name := resourceName(r)
-		ti := modTreeItem{
+		ti := PackageTreeItem{
 			Name:     name,
 			Type:     entryTypeResource,
-			Link:     strings.ToLower(name),
+			Link:     getResourceLink(name),
 			Children: nil,
 		}
 
@@ -62,14 +62,14 @@ func generatePackageTree(rootMod modContext) error {
 
 	for _, f := range rootMod.functions {
 		name := tokenToName(f.Token)
-		ti := modTreeItem{
+		ti := PackageTreeItem{
 			Name:     name,
 			Type:     entryTypeFunction,
-			Link:     strings.ToLower(name),
+			Link:     getFunctionLink(name),
 			Children: nil,
 		}
 
 		packageTree = append(packageTree, ti)
 	}
-	return nil
+	return packageTree, nil
 }
