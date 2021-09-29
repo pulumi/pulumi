@@ -49,7 +49,7 @@ func TestCollectImports(t *testing.T) {
 func newTestGenerator(t *testing.T, testFile string) *generator {
 	path := filepath.Join(testdataPath, testFile)
 	contents, err := ioutil.ReadFile(path)
-	assert.NoErrorf(t, err, "could not read %v: %v", path, err)
+	require.NoErrorf(t, err, "could not read %v: %v", path, err)
 
 	parser := syntax.NewParser()
 	err = parser.ParseFile(bytes.NewReader(contents), filepath.Base(path))
