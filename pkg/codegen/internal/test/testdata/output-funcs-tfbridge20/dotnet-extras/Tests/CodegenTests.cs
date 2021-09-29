@@ -13,6 +13,7 @@ using NUnit.Framework;
 using Moq;
 
 using Pulumi;
+using Pulumi.Serialization;
 using Pulumi.Testing;
 
 using Pulumi.Mypkg.Outputs;
@@ -61,12 +62,33 @@ namespace Pulumi.Mypkg
             owners.Add(Out("owner-1"));
             owners.Add(Out("owner-2"));
 
-            await check("Id=my-id [owners: owner-1, owner-2] NameRegex=[a-z] SortAscending=True",
+            Func<int, Inputs.GetAmiIdsFilterInputArgs> makeFilter = (int i) =>
+            {
+                var values = new InputList<string>();
+                values.Add($"value-{i}-1");
+                values.Add($"value-{i}-2");
+                var f = new Inputs.GetAmiIdsFilterInputArgs() {
+                    Name = Out($"filter-{i}-name"),
+                    Values = values
+                };
+                return f;
+            };
+
+            var filters = new InputList<Inputs.GetAmiIdsFilterInputArgs>();
+            filters.Add(makeFilter(1));
+            filters.Add(makeFilter(2));
+
+            var expectOwners = "[owners: owner-1, owner-2]";
+            var expectFilters = "[name=filter-1-name values=[value-1-1, value-1-2], name=filter-2-name values=[value-2-1, value-2-2]]";
+            var expect = $"Id=my-id {expectOwners} [filters: {expectFilters}] NameRegex=[a-z] SortAscending=True";
+
+            await check(expect,
                         () => new GetAmiIdsInvokeArgs()
                         {
                             NameRegex = Out("[a-z]"),
                             SortAscending = Out(true),
-                            Owners = owners
+                            Owners = owners,
+                            Filters = filters
                         });
         }
     }

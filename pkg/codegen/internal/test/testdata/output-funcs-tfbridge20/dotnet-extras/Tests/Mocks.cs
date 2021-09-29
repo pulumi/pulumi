@@ -34,13 +34,24 @@ namespace Pulumi.Mypkg
             if (args.Token == "mypkg::getAmiIds")
             {
                 // NOTE: only subset of possible fields are tested here in the smoke-test.
+                var filters = (ImmutableArray<object>)args.Args["filters"];
+                var filterString = string.Join(
+                    ", ",
+                    filters
+                    .Select(f => (ImmutableDictionary<string,object>)f)
+                    .Select(d =>
+                    {
+                        var name = (string)d["name"];
+                        var values = string.Join(", ", ((ImmutableArray<object>)d["values"]).Select(x => (string)x));
+                        return $"name={name} values=[{values}]";
+                    }));
+                filterString = $"[{filterString}]";
                 var owners = (ImmutableArray<object>)args.Args["owners"];
                 var ownersString = string.Join(", ", owners.Select(x => (string)x));
                 var sortAscending = (bool)args.Args["sortAscending"];
                 var nameRegex = (string)args.Args["nameRegex"];
-                //var argsString = string.Join(", ", args.Args.Keys.OrderBy(k => k).Select(k => $"{k}: {args.Args[k]}"));
                 var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
-                dictBuilder.Add("id", $"my-id [owners: {ownersString}]");
+                dictBuilder.Add("id", $"my-id [owners: {ownersString}] [filters: {filterString}]");
                 dictBuilder.Add("nameRegex", nameRegex);
                 dictBuilder.Add("sortAscending", sortAscending);
                 var result = dictBuilder.ToImmutableDictionary();
