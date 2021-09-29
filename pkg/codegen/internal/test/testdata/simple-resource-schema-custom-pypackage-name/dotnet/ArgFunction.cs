@@ -16,17 +16,7 @@ namespace Pulumi.Example
             => Pulumi.Deployment.Instance.InvokeAsync<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionArgs(), options.WithVersion());
 
         public static Output<ArgFunctionResult> Invoke(ArgFunctionInvokeArgs? args = null, InvokeOptions? options = null)
-        {
-            args = args ?? new ArgFunctionInvokeArgs();
-            return Pulumi.Output.All(
-                args.Arg1.Box()
-            ).Apply(a =>
-            {
-                var args = new ArgFunctionArgs();
-                a[0].Set(args, nameof(args.Arg1));
-                return InvokeAsync(args, options);
-            });
-        }
+            => Pulumi.Deployment.Instance.Invoke<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionInvokeArgs(), options.WithVersion());
     }
 
 
@@ -40,8 +30,9 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class ArgFunctionInvokeArgs
+    public sealed class ArgFunctionInvokeArgs : Pulumi.InvokeArgs
     {
+        [Input("arg1")]
         public Input<Pulumi.Example.Resource>? Arg1 { get; set; }
 
         public ArgFunctionInvokeArgs()

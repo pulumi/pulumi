@@ -142,6 +142,9 @@
   },
   "language": {
     "csharp": {
+      "projectReferences": [
+         "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ],
       "packageReferences": {
         "Pulumi": "3.13",
         "Pulumi.Aws": "4.20",
