@@ -32,6 +32,7 @@ type TupleType struct {
 
 	elementUnion Type
 	s            string
+	h            uint32
 }
 
 // NewTupleType creates a new tuple type with the given element types.
@@ -67,6 +68,18 @@ func (t *TupleType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnost
 		return DynamicType, hcl.Diagnostics{tupleIndexOutOfRange(len(t.ElementTypes), traverser.SourceRange())}
 	}
 	return t.ElementTypes[int(elementIndex)], nil
+}
+
+func (t *TupleType) hash(stack objTypeSet) uint32 {
+	if t.h == 0 {
+		fnv := newFNV()
+		fnv.addUint32(hashKindTuple)
+		for _, t := range t.ElementTypes {
+			fnv.addUint32(t.hash(stack))
+		}
+		t.h = fnv.sum()
+	}
+	return t.h
 }
 
 // Equals returns true if this type has the same identity as the given type.

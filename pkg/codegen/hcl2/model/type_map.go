@@ -50,6 +50,10 @@ func (*MapType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
+func (t *MapType) hash(stack objTypeSet) uint32 {
+	return hashCombine(hashKindMap, t.ElementType.hash(stack))
+}
+
 // Equals returns true if this type has the same identity as the given type.
 func (t *MapType) Equals(other Type) bool {
 	return t.equals(other, nil)
