@@ -86,9 +86,9 @@ that depends on its concrete value also depends on `R`.
 ### Unknowns 
 
 An `Output<T>` may be unknown if it depends on the result of a resource operation that
-will not be run because it is part of a `pulumi preview`. Previews typically produce for
-properties with values that cannot be determined until the resource is actually created or
-updated.
+will not be run because it is part of a `pulumi preview`. Previews typically produce
+unknowns for properties with values that cannot be determined until the resource is
+actually created or updated.
 
 If a value of type `Output<T>` is unknown, any computation that depends on its concrete
 value must not run, and must instead produce an unknown `Output<T>`.
@@ -230,8 +230,7 @@ metadata from the arguments is combined as per the `Output<T>` rules for [depend
 
 - the result of `all` depends on the union of the dependencies of its `Output<>` arguments
 - if any of the `Output<>` arguments is unknown, the result is unknown
-- if any of the `Output<>` arguments is secret, the callback is not run and the result is
-  unknown
+- if any of the `Output<>` arguments is secret, the result is secret
 
 For example, here is a simplified version of the signature for the Typescript
 implementation of `all`:
