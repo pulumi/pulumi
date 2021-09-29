@@ -59,8 +59,9 @@ property names are not allowed, and each property name maps to a single type.
 
 ## `Promise<T>`
 
-Like promises in other systems, a value of type `Promise<T>` represents the result of an
-asynchronous computation or its failure.
+A value of type `Promise<T>` represents the result of an asynchronous computation. Note
+that although computations may fail, failures cannot be handled at runtime, and cause a
+hard stop when attempting to access a `Promise<T>`'s concrete value.
 
 ## `Output<T>`
 
@@ -86,7 +87,7 @@ properties with values that cannot be determined until the resource is actually 
 updated.
 
 If a value of type `Output<T>` is unknown, any computation that depends on its concrete
-value must not run, and may produce an unknown `Output<T>`.
+value must not run, and must instead produce an unknown `Output<T>`.
 
 ### Secrets
 
@@ -109,24 +110,78 @@ often the case that we want to construct _composite_ values out of multiple `Inp
 For example, consider `Input<Array<string>>`: a value of this type accepts either a
 `Array<string>` or an `Output<Array<string>>`, but does not accept a value of type
 `Array<Output<string>>`. In order to accept all three of these types, we need the type
-`Union<Input<Array<string>>>, Array<Input<string>>>`. The `inputShape` type constructor
-defines an algorithm for producing these sorts of values.
+`Input<Array<Input<string>>>>`. The `inputShape` type constructor defines an algorithm
+for producing these sorts of values.
 
 ```rust
 fn inputShape(T) {
 	match T {
 		_ => Input<T>,
-		Array<T> => Union<Input<Array<T>>, Array<inputShape(T)>>,
-		Map<T> => Union<Input<Map<T>>, Map<inputShape(T)>>,
-		Union<...T> => Union<map(...T, t => inputShape(t))>,
-		Promise<T> => Input<T>,
-		Output<T> => Input<T>,
-		Object<...P> => Object<map(...P, (name, t) => (name, inputShape(t)))>
+		Array<U> => Input<Array<inputShape(U)>>,
+		Map<U> => Input<Map<inputShape(U)>>,
+		Union<...U> => Union<map(...U, u => inputShape(u))>,
+		Promise<U> => Input<U>,
+		Output<U> => Input<U>,
+		Object<...P> => Input<Object<map(...P, (name, u) => (name, inputShape(u)))>>
+	}
+}
+```
+
+If we expand `Input<T>` into its underlying type, `Union<T, Output<T>>`, the types may be
+clearer:
+
+```rust
+fn inputShape(T) {
+	match T {
+		_ => Union<T, Output<T>>,
+		Array<U> => Union<Array<inputShape(U)>, Output<Array<inputShape(U)>>>,
+		Map<U> => Union<Map<inputShape(U)>, Output<Map<inputShape(U)>>>,
+		Union<...U> => Union<map(...U, u => inputShape(u))>,
+		Promise<U> => Union<U, Output<U>>,
+		Output<U> => Union<U, Output<U>>,
+		Object<...P> => Union<Object<map(...P, (name, u) => (name, inputShape(u)))>, Output<Object<map(...P, (name, u) => (name, inputShape(u)))>>>
 	}
 }
 ```
 
 Resource input properties often use input-shaped types.
+
+## `outputShape(T)`
+
+Because the `Output<T>` metadata ([dependencies], [unknowns], and [secrets]) only applies
+to a single value, it is necessary to represent composite metadata using nested `Output<T>`
+types. Consider a variant of the `Array<string>` example from [`inputShape(T)`](#inputshapet):
+in order to produce an array where each element may be an output, we need to use the type
+`Output<Array<Output<string>>>`.
+
+The `outputShape` type constructor defines an algorithm for producing these sorts of values.
+
+```rust
+fn outputShape(T) {
+	match T {
+		_ => Output<T>,
+		Array<U> => Output<Array<outputShape(U)>>,
+		Map<U> => Output<Map<outputShape(U)>>,
+		Union<...U> => Union<map(...U, u => outputShape(u))>,
+		Promise<U> => Output<U>,
+		Output<U> => Output<U>,
+		Object<...P> => Output<Object<map(...P, (name, u) => (name, outputShape(u)))>>
+	}
+}
+```
+
+Resource output properties often use output-shaped types.
+
+Projecting output-shaped is a bit unwieldy, as values of these types often require a great
+deal of unwrapping as nesting depth increases.
+
+Instead of projecting these types in their fully-elaborated form, the various language SDKs
+tend to opt to project them as a simple `Output<T>` while using an internal representation
+for the concrete value that includes distinguished unknown values. This approach lets the
+SDKs to allow e.g. lifted property and element access into partially-known composite
+values. For example, the Node SDK will allow the user to access an element of an
+`Output<[]string>` via a proxied index operator even if some elements of the array are
+unknown, though it will not allow the user to access the entire value via `apply`.
 
 ## `Output<T>` Combinators
 
@@ -145,7 +200,7 @@ the context of a caller-supplied callback.
 
 - the dependencies of the `Output<T>` argument are propagated to the result
 - if the `Output<T>` argument is unknown, the callback is not run and the result is unknown
-- if the `Output<T>` argument is secret, the result is secret.
+- if the `Output<T>` argument is secret, the result is secret
 
 Note that the argument for `U` may itself be an `Output<V>`, in which case the return type
 of `apply` will be `Output<Output<V>>`. The result can be unwrapped using the
