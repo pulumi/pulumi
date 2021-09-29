@@ -3,6 +3,7 @@ package gen
 import (
 	"bytes"
 	"io"
+	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -200,7 +201,7 @@ func testGenerateExpression(
 ) {
 	t.Run(hcl2Expr, func(t *testing.T) {
 		// test program is only for schema info
-		g := newTestGenerator(t, "aws-s3-logging.pp")
+		g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
 		var index bytes.Buffer
 		expr, _ := model.BindExpressionText(hcl2Expr, scope, hcl.Pos{})
 		if gen != nil {
