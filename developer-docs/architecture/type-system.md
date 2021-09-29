@@ -7,10 +7,17 @@ semantics. The _Pulumi type system_ specifies these semantics. It is the respons
 each language SDK and interchange format to ensure that these semantics are faithfully
 implemented, ideally in as idiomatic a fashion as possible.
 
+Note that this document describes the abstract type system rather than describing its
+implementations. As long as implementations faithfully implement the semantics described by
+this document, they may choose to provide simpler APIs/shorthands/etc. for the various
+types and combinators. For example, the SDK for a language that natively supports
+operations on [`Output<T>`](#outputt) values may not expose [`Output<T>`](#outputt) types
+and combinators to the user at all.
+
 ## Primitive Types
 
-The core primitives of the Pulumi type system form a superset of the JSON type system, and supports the
-following types:
+The core primitives of the Pulumi type system form a superset of the JSON type system, and
+supports the following types:
 
 - `Null`, which represents the lack of a value
 - `Bool`, which represents a boolean value
@@ -20,6 +27,8 @@ following types:
 - [`Archive`](#assets-and-archives), which represents a map from strings to `Asset`s or
   `Archive`s
 - [`ResourceReference`](#resource-references), which represents a reference to a resource
+- `Tuple<T0, T1, ... TN>`, which represents a tuple of heterogenously-typed values. Note
+  that this type mainly exists for the purpose of writing the signature for [`all`].
 - `Array<T>`, which represents a numbered sequence of values of a particular type
 - `Map<T>`, which represents an unordered mapping from strings to values of a particular
   type
@@ -121,6 +130,7 @@ for producing these sorts of values.
 fn inputShape(T) {
 	match T {
 		_ => Input<T>,
+		Tuple<...U> => Input<Tuple<map(...U, u => inputShape(u))>>,
 		Array<U> => Input<Array<inputShape(U)>>,
 		Map<U> => Input<Map<inputShape(U)>>,
 		Union<...U> => Union<map(...U, u => inputShape(u))>,
@@ -138,6 +148,7 @@ clearer:
 fn inputShape(T) {
 	match T {
 		_ => Union<T, Output<T>>,
+		Tuple<...U> => Union<Tuple<map(...U, u => inputShape(u))>, Output<Tuple<map(...U, u => inputShape(u))>>>,
 		Array<U> => Union<Array<inputShape(U)>, Output<Array<inputShape(U)>>>,
 		Map<U> => Union<Map<inputShape(U)>, Output<Map<inputShape(U)>>>,
 		Union<...U> => Union<map(...U, u => inputShape(u))>,
@@ -164,6 +175,7 @@ The `outputShape` type constructor defines an algorithm for producing these sort
 fn outputShape(T) {
 	match T {
 		_ => Output<T>,
+		Tuple<...U> => Output<Tuple<map(...U, u => outputShape(u))>>,
 		Array<U> => Output<Array<outputShape(U)>>,
 		Map<U> => Output<Map<outputShape(U)>>,
 		Union<...U> => Union<map(...U, u => outputShape(u))>,
@@ -187,14 +199,35 @@ values. For example, the Node SDK will allow the user to access an element of an
 `Output<[]string>` via a proxied index operator even if some elements of the array are
 unknown, though it will not allow the user to access the entire value via `apply`.
 
+## `plainShape(T)`
+
+The final type constructor, `plainShape(T)`, replaces `Output<T>` types with their type
+argument:
+
+```rust
+fn plainShape(T) {
+	match T {
+		_ => T,
+		Tuple<...U> => Tuple<map(...U, u => plainShape(u))>,
+		Array<U> => Array<plainShape(U)>,
+		Map<U> => Map<plainShape(U)>,
+		Union<...U> => Union<map(...U, u => plainShape(u)),
+		Promise<U> => U,
+		Output<U> => U,
+		Object<...P> => Object<map(...P, (name, u) => (name, plainShape(u))>,
+	}
+}
+```
+
+This constructor is primarily useful for describing the signature of the [`all`] combinator.
+
 ## `Output<T>` Combinators
 
 The rules described for working with `Output<T>` metadata--[dependencies], [unknowns], and
 [secrets]--require special bookkeeping on the part of the consumer. There are three
-primitive combinators that aid in this bookkeeping: [`apply`](#applyt-u), [`all`](#allt),
-and [`unwrap`](#unwrapt).
+primitive combinators that aid in this bookkeeping: [`apply`], [`all`], and [`unwrap`].
 
-### `apply<T, U>`
+### `apply<T, U>(v: Output<T>, f: (T) => U): Output<U>`
 
 The `apply` API allows its caller to access the concrete value of an `Output<T>` within
 the context of a caller-supplied callback.
@@ -207,8 +240,8 @@ the context of a caller-supplied callback.
 - if the `Output<T>` argument is secret, the result is secret
 
 Note that the argument for `U` may itself be an `Output<V>`, in which case the return type
-of `apply` will be `Output<Output<V>>`. The result can be unwrapped using the
-[`unwrap`](#unwrapt) combinator. A language SDK may opt to automatically unwrap such values
+of `apply` will be `Output<Output<V>>`. The result can be unwrapped using the [`unwrap`]
+combinator. A language SDK may opt to automatically unwrap such values
 if its type system is flexible enough to express the unwrapping.
 
 This API is morally equivalent to Javascript's `Promise.then` API, but with `Output<>`s in
@@ -222,27 +255,7 @@ class Output<T> {
 }
 ```
 
-### `all<T...>`
-
-The `all` API combines multiple heterogenous outputs into a single array output. The
-metadata from the arguments is combined as per the `Output<T>` rules for [dependencies],
-[unknowns], and [secrets]:
-
-- the result of `all` depends on the union of the dependencies of its `Output<>` arguments
-- if any of the `Output<>` arguments is unknown, the result is unknown
-- if any of the `Output<>` arguments is secret, the result is secret
-
-For example, here is a simplified version of the signature for the Typescript
-implementation of `all`:
-
-```typescript
-export function all<T1, T2>(values: [Output<T1>, Output<T2>]): Output<[T1, T2]>;
-```
-
-As in [`apply`](#applyt-u), nested outputs must be unwrapped prior to use, though SDKs may
-choose to automatically unwrap if their type system can accommodate the typing.
-
-### `unwrap<T>`
+### `unwrap<T>(v: Output<Output<T>>): Output<T>`
 
 The `unwrap` API transforms an `Output<Output<T>>` into an `Output<T>` according to the
 `Output<T>` rules for [dependencies], [unknowns], and [secrets]:
@@ -254,6 +267,35 @@ The `unwrap` API transforms an `Output<Output<T>>` into an `Output<T>` according
 If its type system is flexible enough, a language SDK may choose to omit a public-facing
 `unwrap` API in favor of automatically unwrapping nested `Output<>`s.
 
+### `all<T0 ... TN>(t0: Output<T0>, ... tn: Output<TN>): Output<plainShape(Tuple<T0 ... TN>)>`
+
+The `all` API combines multiple heterogenous outputs into a single unwrapped tuple output.
+The metadata from the arguments is combined as per the `Output<T>` rules for [dependencies],
+[unknowns], and [secrets]:
+
+- the result of `all` depends on the union of the dependencies of its `Output<>` arguments
+- if any of the `Output<>` arguments is unknown, the result is unknown
+- if any of the `Output<>` arguments is secret, the result is secret
+
+For example, here is a simplified version of the signature for the Typescript
+implementation of `all`:
+
+```typescript
+export function all<T1, T2>(values: [Output<T1>, Output<T2>]): Output<[Unwrap<T1>, Unwrap<T2>]>;
+```
+
+As in [`apply`], nested outputs must be unwrapped prior to use, though SDKs may choose to
+automatically unwrap if their type system can accommodate the typing.
+
+A variant of `all` for `Object`s is also possible:
+
+`all<Object<...P>>(v: Object<...P>): Output<plainShape(Object<...P>)>`
+
+This variant treats the object as a tuple of key/value pairs.
+
 [dependencies]: #dependencies
 [unknowns]: #unknowns
 [secrets]: #secrets
+[`apply`]: #applyt-uv-outputt-f-t--u-outputu
+[`all`]: #allt0--tnt0-outputt0--tn-outputtn-outputplainshapetuplet0--tn
+[`unwrap`]: #unwraptv-outputoutputt-outputt
