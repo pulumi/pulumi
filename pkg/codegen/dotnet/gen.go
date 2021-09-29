@@ -1977,6 +1977,12 @@ func genPackageMetadata(pkg *schema.Package, assemblyName string, packageReferen
 		return err
 	}
 
+	if pkg.Version != nil {
+		// NuGet uses semver 2.0.0, so we don't need to translate between
+		// versioning schemes.
+		files.add("version.txt", []byte(pkg.Version.String()))
+	}
+
 	files.add(assemblyName+".csproj", projectFile)
 	files.add("logo.png", logo)
 	return nil

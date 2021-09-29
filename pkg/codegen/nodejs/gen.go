@@ -1856,10 +1856,17 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		devDependencies["typescript"] = "^4.3.5"
 	}
 
+	packageVersion := "${VERSION}"
+	if pkg.Version != nil {
+		// Our semver library and node-semver (which npm uses) implement semver
+		// 2.0. We don't need to translate between them.
+		packageVersion = pkg.Version.String()
+	}
+
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        packageName,
-		Version:     "${VERSION}",
+		Version:     packageVersion,
 		Description: info.PackageDescription,
 		Keywords:    pkg.Keywords,
 		Homepage:    pkg.Homepage,

@@ -1894,8 +1894,16 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "\n\n")
 
 	// Create a constant for the version number to replace during build
-	fmt.Fprintf(w, "VERSION = \"0.0.0\"\n")
-	fmt.Fprintf(w, "PLUGIN_VERSION = \"0.0.0\"\n\n")
+	packageVersion := "0.0.0"
+	pluginVersion := "0.0.0"
+	if pkg.Version != nil {
+		packageVersion = pypiVersion(pkg.Version)
+		// This is for downloading the associated Pulumi executor program. It
+		// uses semver 2.0 (as Pulumi does in general).
+		pluginVersion = pkg.Version.String()
+	}
+	fmt.Fprintf(w, "VERSION = \"%s\"\n", packageVersion)
+	fmt.Fprintf(w, "PLUGIN_VERSION = \"%s\"\n\n", pluginVersion)
 
 	// Create a command that will install the Pulumi plugin for this resource provider.
 	fmt.Fprintf(w, "class InstallPluginCommand(install):\n")
