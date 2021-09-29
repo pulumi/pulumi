@@ -1853,7 +1853,7 @@ func Initialize(tool string, pkg *schema.Package) {
 // GeneratePackage generates docs for each resource given the Pulumi
 // schema. The returned map contains the filename with path as the key
 // and the contents as its value.
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+func GeneratePackage() (map[string][]byte, error) {
 	if modules == nil {
 		return nil, errors.New("must call Initialize before generating the docs package")
 	}
