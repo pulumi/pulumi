@@ -63,6 +63,8 @@ var (
 	// langModuleNameLookup is a map of module name to its language-specific
 	// name.
 	langModuleNameLookup map[string]string
+	// TODO[pulumi/pulumi#7813]: Remove this lookup once display name is available in
+	// the Pulumi schema.
 	// titleLookup is a map to map module package name to the desired display name
 	// for display in the TOC menu under API Reference.
 	titleLookup = map[string]string{
@@ -1851,7 +1853,7 @@ func Initialize(tool string, pkg *schema.Package) {
 // GeneratePackage generates docs for each resource given the Pulumi
 // schema. The returned map contains the filename with path as the key
 // and the contents as its value.
-func GeneratePackage() (map[string][]byte, error) {
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
 	if modules == nil {
 		return nil, errors.New("must call Initialize before generating the docs package")
 	}
