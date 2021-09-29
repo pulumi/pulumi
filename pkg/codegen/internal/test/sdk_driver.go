@@ -1,6 +1,7 @@
 package test
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -134,13 +135,13 @@ var sdkTests = []sdkTest{
 	},
 	{
 		Directory:        "resource-property-overlap",
-		Description:      "A resource with the same name as it's property",
+		Description:      "A resource with the same name as its property",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:   "hyphen-url",
-		Description: "A resource url with a hyphen in it's path",
+		Description: "A resource url with a hyphen in its path",
 		Skip:        codegen.NewStringSet("python/test"),
 	},
 	{
@@ -151,6 +152,22 @@ var sdkTests = []sdkTest{
 		Directory:   "output-funcs-tfbridge20",
 		Description: "Similar to output-funcs, but with compatibility: tfbridge20, to simulate pulumi-aws use case",
 	},
+	{
+		Directory:   "cyclic-types",
+		Description: "Cyclic object types",
+		Skip:        codegen.NewStringSet("python/test"),
+	},
+}
+
+var genSDKOnly bool
+
+func NoSDKCodegenChecks() bool {
+	return genSDKOnly
+}
+
+func init() {
+	flag.BoolVar(&genSDKOnly, "sdk.no-checks", false, "when set, skips all post-SDK-generation checks")
+	// NOTE: the testing package will call flag.Parse.
 }
 
 type SDKCodegenOptions struct {
@@ -254,6 +271,10 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				if !ValidateFileEquality(t, files, expectedFiles) {
 					t.Fail()
 				}
+			}
+
+			if genSDKOnly {
+				return
 			}
 
 			CopyExtraFiles(t, dirPath, opts.Language)

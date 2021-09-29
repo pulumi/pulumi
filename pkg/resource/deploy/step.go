@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1086,9 +1086,21 @@ func (op StepOp) Color() string {
 	}
 }
 
+// ColorProgress returns a suggested coloring for lines of this of type which
+// are progressing.
+func (op StepOp) ColorProgress() string {
+	return colors.Bold + op.Color()
+}
+
 // Prefix returns a suggested prefix for lines of this op type.
-func (op StepOp) Prefix() string {
-	return op.Color() + op.RawPrefix()
+func (op StepOp) Prefix(done bool) string {
+	var color string
+	if done {
+		color = op.Color()
+	} else {
+		color = op.ColorProgress()
+	}
+	return color + op.RawPrefix()
 }
 
 // RawPrefix returns the uncolorized prefix text.

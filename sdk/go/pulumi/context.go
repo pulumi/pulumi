@@ -51,7 +51,8 @@ type Context struct {
 	engine      pulumirpc.EngineClient
 	engineConn  *grpc.ClientConn
 
-	keepResources bool // true if resources should be marshaled as strongly-typed references.
+	keepResources    bool // true if resources should be marshaled as strongly-typed references.
+	keepOutputValues bool // true if outputs should be marshaled as strongly-type output values.
 
 	rpcs     int        // the number of outstanding RPC requests.
 	rpcsDone *sync.Cond // an event signaling completion of RPCs.
@@ -104,26 +105,37 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		engine = &mockEngine{}
 	}
 
-	var keepResources bool
-	if monitor != nil {
-		supportsFeatureResp, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{
-			Id: "resourceReferences",
-		})
-		if err != nil {
-			return nil, fmt.Errorf("checking monitor features: %w", err)
+	supportsFeature := func(id string) (bool, error) {
+		if monitor != nil {
+			resp, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: id})
+			if err != nil {
+				return false, fmt.Errorf("checking monitor features: %w", err)
+			}
+			return resp.GetHasSupport(), nil
 		}
-		keepResources = supportsFeatureResp.GetHasSupport()
+		return false, nil
+	}
+
+	keepResources, err := supportsFeature("resourceReferences")
+	if err != nil {
+		return nil, err
+	}
+
+	keepOutputValues, err := supportsFeature("outputValues")
+	if err != nil {
+		return nil, err
 	}
 
 	context := &Context{
-		ctx:           ctx,
-		info:          info,
-		exports:       make(map[string]Input),
-		monitorConn:   monitorConn,
-		monitor:       monitor,
-		engineConn:    engineConn,
-		engine:        engine,
-		keepResources: keepResources,
+		ctx:              ctx,
+		info:             info,
+		exports:          make(map[string]Input),
+		monitorConn:      monitorConn,
+		monitor:          monitor,
+		engineConn:       engineConn,
+		engine:           engine,
+		keepResources:    keepResources,
+		keepOutputValues: keepOutputValues,
 	}
 	context.rpcsDone = sync.NewCond(&context.rpcsLock)
 	context.Log = &logState{
@@ -383,8 +395,9 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		rpcArgs, err := plugin.MarshalProperties(
 			resolvedArgs,
 			ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
-				KeepSecrets:   true,
-				KeepResources: ctx.keepResources,
+				KeepSecrets:      true,
+				KeepResources:    ctx.keepResources,
+				KeepOutputValues: ctx.keepOutputValues,
 			}))
 		if err != nil {
 			return nil, fmt.Errorf("marshaling args: %w", err)
@@ -1175,6 +1188,9 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
 			KeepSecrets:   true,
 			KeepResources: ctx.keepResources,
+			// To initially scope the use of this new feature, we only keep output values when
+			// remote is true (for multi-lang components).
+			KeepOutputValues: remote && ctx.keepOutputValues,
 		}))
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)

@@ -10,25 +10,14 @@
 
   [#7899](https://github.com/pulumi/pulumi/pull/7899)
 
-- [CLI] Enable output values in the engine by default.
-  [#8014](https://github.com/pulumi/pulumi/pull/8014)
+- [cli] - Differentiate in-progress actions by bolding output.
+  [#7918](https://github.com/pulumi/pulumi/pull/7918)
+
+- [CLI] Adding the ability to set `refresh: always` in an options object at a Pulumi.yaml level
+  to allow a user to be able to always refresh their derivative stacks by default
+  [#8071](https://github.com/pulumi/pulumi/pull/8071)
 
 ### Bug Fixes
 
-- [automation/python] Fix a bug in printing `Stack` if no program is provided.
-  [#8032](https://github.com/pulumi/pulumi/pull/8032)
-
-- [codegen/schema] Revert #7938
-  [#8035](https://github.com/pulumi/pulumi/pull/8035)
-
-- [codegen/nodejs] Correctly determine imports for functions.
-  [#8038](https://github.com/pulumi/pulumi/pull/8038)
-
-- [codegen/go] - Fix resolution of enum naming collisions.
-  [#7985](https://github.com/pulumi/pulumi/pull/7985)
-
-- [sdk/{nodejs,python}] - Fix errors when testing remote components with mocks.
-  [#8053](https://github.com/pulumi/pulumi/pull/8053)
-
-- [codegen/nodejs] - Fix generation of provider enum with environment variables.
-  [#8051](https://github.com/pulumi/pulumi/pull/8051)
+- [codegen/go] - Fix generation of cyclic struct types.
+  [#8049](https://github.com/pulumi/pulumi/pull/8049)

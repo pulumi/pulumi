@@ -41,7 +41,7 @@ func newDestroyCmd() *cobra.Command {
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
-	var refresh bool
+	var refresh string
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -143,10 +143,14 @@ func newDestroyCmd() *cobra.Command {
 				targetUrns = append(targetUrns, resource.URN(t))
 			}
 
+			refreshOption, err := getRefreshOption(proj, refresh)
+			if err != nil {
+				return result.FromError(err)
+			}
 			opts.Engine = engine.UpdateOptions{
 				Parallel:                  parallel,
 				Debug:                     debug,
-				Refresh:                   refresh,
+				Refresh:                   refreshOption,
 				DestroyTargets:            targetUrns,
 				TargetDependents:          targetDependents,
 				UseLegacyDiff:             useLegacyDiff(),
@@ -204,9 +208,10 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
-	cmd.PersistentFlags().BoolVarP(
-		&refresh, "refresh", "r", false,
+	cmd.PersistentFlags().StringVarP(
+		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
+	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

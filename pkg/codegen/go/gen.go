@@ -94,10 +94,12 @@ type pkgContext struct {
 	types           []*schema.ObjectType
 	resources       []*schema.Resource
 	functions       []*schema.Function
+
 	// schemaNames tracks the names of types/resources as specified in the schema
 	schemaNames codegen.StringSet
 	names       codegen.StringSet
 	renamed     map[string]string
+
 	// duplicateTokens tracks tokens that exist for both types and resources
 	duplicateTokens map[string]bool
 	functionNames   map[*schema.Function]string
@@ -1878,6 +1880,111 @@ func init() {
 	fmt.Fprintf(w, initCode)
 }
 
+type objectProperty struct {
+	object   *schema.ObjectType
+	property *schema.Property
+}
+
+// When computing the type name for a field of an object type, we must ensure that we do not generate invalid recursive
+// struct types. A struct type T contains invalid recursion if the closure of its fields and its struct-typed fields'
+// fields includes a field of type T. A few examples:
+//
+// Directly invalid:
+//
+//     type T struct {
+//         Invalid T
+//     }
+//
+// Indirectly invalid:
+//
+//     type T struct {
+//         Invalid S
+//     }
+//
+//     type S struct {
+//         Invalid T
+//     }
+//
+// In order to avoid generating invalid struct types, we replace all references to types involved in a cyclical
+// definition with *T. The examples above therefore become:
+//
+// (1)
+//     type T struct {
+//         Valid *T
+//     }
+//
+// (2)
+//     type T struct {
+//         Valid *S
+//     }
+//
+//     type S struct {
+//         Valid *T
+//     }
+//
+// We do this using a rewriter that turns all fields involved in reference cycles into optional fields.
+func rewriteCyclicField(rewritten codegen.Set, path []objectProperty, op objectProperty) {
+	// If this property refers to an Input<> type, unwrap the type. This ensures that the plain and input shapes of an
+	// object type remain identical.
+	t := op.property.Type
+	if inputType, isInputType := op.property.Type.(*schema.InputType); isInputType {
+		t = inputType.ElementType
+	}
+
+	// If this property does not refer to an object type, it cannot be involved in a cycle. Skip it.
+	objectType, isObjectType := t.(*schema.ObjectType)
+	if !isObjectType {
+		return
+	}
+
+	path = append(path, op)
+
+	// Check the current path for cycles by crawling backwards until reaching the start of the path
+	// or finding a property that is a member of the current object type.
+	var cycle []objectProperty
+	for i := len(path) - 1; i > 0; i-- {
+		if path[i].object == objectType {
+			cycle = path[i:]
+			break
+		}
+	}
+
+	// If the current path does not involve a cycle, recur into the current object type.
+	if len(cycle) == 0 {
+		rewriteCyclicFields(rewritten, path, objectType)
+		return
+	}
+
+	// If we've found a cycle, mark each property involved in the cycle as optional.
+	//
+	// NOTE: this overestimates the set of properties that must be marked as optional. For example, in case (2) above,
+	// only one of T.Invalid or S.Invalid needs to be marked as optional in order to break the cycle. However, choosing
+	// a minimal set of properties that is also deterministic and resilient to changes in visit order is difficult and
+	// seems to add little value.
+	for _, p := range cycle {
+		p.property.Type = codegen.OptionalType(p.property)
+	}
+}
+
+func rewriteCyclicFields(rewritten codegen.Set, path []objectProperty, obj *schema.ObjectType) {
+	if !rewritten.Has(obj) {
+		rewritten.Add(obj)
+		for _, property := range obj.Properties {
+			rewriteCyclicField(rewritten, path, objectProperty{obj, property})
+		}
+	}
+}
+
+func rewriteCyclicObjectFields(pkg *schema.Package) {
+	rewritten := codegen.Set{}
+	for _, t := range pkg.Types {
+		if obj, ok := t.(*schema.ObjectType); ok && !obj.IsInputShape() {
+			rewriteCyclicFields(rewritten, nil, obj)
+			rewriteCyclicFields(rewritten, nil, obj.InputShape)
+		}
+	}
+}
+
 func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType) {
 	contract.Assert(!obj.IsInputShape())
 
@@ -2478,6 +2585,9 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			populateDetailsForTypes(seen, typ.ElementType, true, false)
 		}
 	}
+
+	// Rewrite cyclic types. See the docs on rewriteCyclicFields for the motivation.
+	rewriteCyclicObjectFields(pkg)
 
 	// Use a string set to track object types that have already been processed.
 	// This avoids recursively processing the same type. For example, in the
