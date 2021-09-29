@@ -39,9 +39,9 @@ contents).
 
 ### Resource References
 
-A `ResourceReference` represents a reference to a resource . Although
+A `ResourceReference` represents a reference to a resource. Although
 all that is necessary to uniquely identify a resource within the context of a stack is its
-URN, a `ResourceReference` also carries the resource's ID (if it is not a component)) and
+URN, a `ResourceReference` also carries the resource's ID (if it is not a component) and
 the version of the provider that manages the resource. If the contents of the referenced
 resource must be inspected, the reference must be resolved by invoking the `getResource`
 function of the engine's builtin provider. Note that this is only possible if there is a 
