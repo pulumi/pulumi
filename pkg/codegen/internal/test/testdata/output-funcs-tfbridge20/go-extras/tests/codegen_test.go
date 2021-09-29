@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 
-	"output-funcs/mypkg"
+	"output-funcs-tfbridge20/mypkg"
 )
 
 type mocks int
@@ -74,47 +74,6 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 		return resource.NewPropertyMapFromMap(outputs), nil
 	}
 
-	if args.Token == "mypkg::funcWithDefaultValue" ||
-		args.Token == "mypkg::funcWithAllOptionalInputs" ||
-		args.Token == "mypkg::funcWithListParam" ||
-		args.Token == "mypkg::funcWithDictParam" {
-		result := mypkg.FuncWithDefaultValueResult{
-			R: fmt.Sprintf("%v", args.Args),
-		}
-		outputs := map[string]interface{}{
-			"r": result.R,
-		}
-		return resource.NewPropertyMapFromMap(outputs), nil
-	}
-
-	if args.Token == "mypkg::getIntegrationRuntimeObjectMetadatum" {
-		targs := mypkg.GetIntegrationRuntimeObjectMetadatumArgs{}
-		for k, v := range args.Args {
-			switch k {
-			case "factoryName":
-				targs.FactoryName = v.V.(string)
-			case "integrationRuntimeName":
-				targs.IntegrationRuntimeName = v.V.(string)
-			case "metadataPath":
-				metadataPath := v.V.(string)
-				targs.MetadataPath = &metadataPath
-			case "resourceGroupName":
-				targs.ResourceGroupName = v.V.(string)
-			}
-		}
-		nextLink := "my-next-link"
-		result := mypkg.GetIntegrationRuntimeObjectMetadatumResult{
-			NextLink: &nextLink,
-			Value:    []interface{}{targs},
-		}
-		outputs := map[string]interface{}{
-			"nextLink": result.NextLink,
-			"value":    []interface{}{fmt.Sprintf("factoryName=%s", targs.FactoryName)},
-		}
-
-		return resource.NewPropertyMapFromMap(outputs), nil
-	}
-
 	panic(fmt.Errorf("Unknown token: %s", args.Token))
 }
 
@@ -147,77 +106,6 @@ func TestListStorageAccountKeysOutput(t *testing.T) {
 		assert.Equal(t, "accountName=my-account-name, resourceGroupName=my-resource-group-name, expand=my-expand",
 			keys[0].Value)
 
-		return nil
-	})
-}
-
-// TODO[pulumi/pulumi#7811]: it seems that default values are not
-// supported by Go codegen yet, hence we do not observe "B" populated
-// to default at all here.
-func TestFuncWithDefaultValueOutput(t *testing.T) {
-	pulumiTest(t, func(ctx *pulumi.Context) error {
-		output := mypkg.FuncWithDefaultValueOutput(ctx, mypkg.FuncWithDefaultValueOutputArgs{
-			A: pulumi.String("my-a"),
-		})
-		r := waitOut(t, output.R())
-		assert.Equal(t, "map[a:{my-a}]", r)
-		return nil
-	})
-}
-
-func TestFuncWithAllOptionalInputsOutput(t *testing.T) {
-	pulumiTest(t, func(ctx *pulumi.Context) error {
-		output := mypkg.FuncWithAllOptionalInputsOutput(ctx, mypkg.FuncWithAllOptionalInputsOutputArgs{
-			A: pulumi.String("my-a"),
-		})
-		r := waitOut(t, output.R())
-		assert.Equal(t, "map[a:{my-a}]", r)
-		return nil
-	})
-}
-
-func TestFuncWithListParamOutput(t *testing.T) {
-	pulumiTest(t, func(ctx *pulumi.Context) error {
-		output := mypkg.FuncWithListParamOutput(ctx, mypkg.FuncWithListParamOutputArgs{
-			A: pulumi.StringArray{
-				pulumi.String("my-a1"),
-				pulumi.String("my-a2"),
-				pulumi.String("my-a3"),
-			},
-		})
-		r := waitOut(t, output.R())
-		assert.Equal(t, "map[a:{[{my-a1} {my-a2} {my-a3}]}]", r)
-		return nil
-	})
-}
-
-func TestFuncWithDictParamOutput(t *testing.T) {
-	pulumiTest(t, func(ctx *pulumi.Context) error {
-		output := mypkg.FuncWithDictParamOutput(ctx, mypkg.FuncWithDictParamOutputArgs{
-			A: pulumi.StringMap{
-				"one": pulumi.String("1"),
-				"two": pulumi.String("2"),
-			},
-		})
-		r := waitOut(t, output.R())
-		assert.Equal(t, "map[a:{map[one:{1} two:{2}]}]", r)
-		return nil
-	})
-}
-
-func TestGetIntegrationRuntimeObjectMetadatumOutput(t *testing.T) {
-	pulumiTest(t, func(ctx *pulumi.Context) error {
-		output := mypkg.GetIntegrationRuntimeObjectMetadatumOutput(ctx, mypkg.GetIntegrationRuntimeObjectMetadatumOutputArgs{
-			FactoryName:            pulumi.String("my-factory-name"),
-			IntegrationRuntimeName: pulumi.String("my-integration-runtime-name"),
-			MetadataPath:           pulumi.String("my-metadata-path"),
-			ResourceGroupName:      pulumi.String("my-resource-group-name"),
-		})
-		nextLink := waitOut(t, output.NextLink())
-		assert.Equal(t, "my-next-link", *(nextLink.(*string)))
-
-		value := waitOut(t, output.Value())
-		assert.Equal(t, []interface{}{"factoryName=my-factory-name"}, value)
 		return nil
 	})
 }
