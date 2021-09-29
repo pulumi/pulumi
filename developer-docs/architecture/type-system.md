@@ -90,7 +90,7 @@ value must not run, and may produce an unknown `Output<T>`.
 
 ### Secrets
 
-An `Output<T>` may be makred as secret if its concrete value contains sensitive
+An `Output<T>` may be marked as secret if its concrete value contains sensitive
 information.
 
 If a value of type `Output<T>` is secret, the result of any computation that depends on
