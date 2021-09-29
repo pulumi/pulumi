@@ -24,6 +24,20 @@ namespace Pulumi.Mypkg
     public class UnitTests
     {
         [Test]
+        public async Task DependenciesPropagate()
+        {
+            await Assert.Output(() =>
+            {
+                var dep = new MockDep("res1");
+                var args = new FuncWithAllOptionalInputsInvokeArgs
+                {
+                    A = dep.MockDepOutput,
+                };
+                return FuncWithAllOptionalInputs.Invoke(args).Apply(x => x.R);
+            }).DependsOn("mockdep::res1");
+        }
+
+        [Test]
         public async Task FuncWithAllOptionalInputsOutputWorks()
         {
             Func<string,Func<FuncWithAllOptionalInputsInvokeArgs?>,Task> check = (

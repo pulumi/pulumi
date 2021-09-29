@@ -91,7 +91,14 @@ namespace Pulumi.Mypkg
 
         public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
         {
-            throw new Exception("NewResourceAsync not implemented..");
+            if (args.Type == "mypkg::mockdep")
+            {
+                var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
+                dictBuilder.Add("mockDepOutput", "mock-dep-output-value");
+                var result = (object)(dictBuilder.ToImmutableDictionary());
+                return Task.FromResult<(string? id, object state)>((id: "mockDep#1", state: result));
+            }
+            throw new Exception($"NewResourceAsync not implemented for {args.Type}..");
         }
     }
 }

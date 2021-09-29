@@ -2,17 +2,21 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
 using Pulumi;
 using Pulumi.Testing;
+using static Pulumi.Utilities.OutputUtilities;
 
 namespace Pulumi.Mypkg
 {
     public static class TestHelpers
     {
-        public static async Task<T> Run<T>(IMocks mocks, Func<Output<T>> outputGenerator, TestOptions? options = null)
+        public static async Task<(T Result, IEnumerable<string> Deps)> Run<T>(
+            IMocks mocks, Func<Output<T>> outputGenerator, TestOptions? options = null)
         {
             options = options ?? new TestOptions();
             options.ProjectName = HelperStack.RegisterBuilderAsProjectName(outputGenerator);
@@ -20,10 +24,17 @@ namespace Pulumi.Mypkg
             var stack = resources.Where(x => x is HelperStack).First() as HelperStack;
             if (stack != null)
             {
-                var result = await AwaitOutput(stack.Result);
+                var result = await GetValueAsync(stack.Result);
                 if (result is T)
                 {
-                    return (T)result;
+                    var deps = await GetDependenciesAsync(stack.Result);
+                    var urns = new List<string>();
+                    foreach (var dep in deps)
+                    {
+                        var urn = await GetValueAsync(dep.Urn);
+                        urns.Add(urn);
+                    }
+                    return (Result: (T)result, Deps: urns);
                 }
                 else
                 {
@@ -41,20 +52,6 @@ namespace Pulumi.Mypkg
             return Output.Create<T>(x);
         }
 
-        public static Task<T> AwaitOutput<T>(Output<T> output)
-        {
-            var tcs = new TaskCompletionSource<T>();
-            Task.Delay(1000).ContinueWith(_ =>
-            {
-                tcs.TrySetException(new Exception("Output resolution has timed out"));
-            });
-            output.Apply(v =>
-            {
-                tcs.TrySetResult(v);
-                return v;
-            });
-            return tcs.Task;
-        }
 
         public class HelperStack : Stack
         {

@@ -42,11 +42,12 @@ namespace Pulumi
             if (options.Urn != null)
             {
                 // This is a resource that already exists. Read its state from the engine.
-                var result = await InvokeRawAsync(
+                var invokeResult = await InvokeRawAsync(
                     "pulumi:pulumi:getResource",
                     new GetResourceInvokeArgs {Urn = options.Urn},
                     new InvokeOptions()).ConfigureAwait(false);
 
+                var result = invokeResult.Serialized;
                 var urn = result.Fields["urn"].StringValue;
                 var id = result.Fields["id"].StringValue;
                 var state = result.Fields["state"].StructValue;
