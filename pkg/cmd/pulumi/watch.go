@@ -74,7 +74,7 @@ func newWatchCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
 				SuppressOutputs:      true,
-				SuppressPermaLink:    true,
+				SuppressPermalink:    true,
 				IsInteractive:        false,
 				Type:                 display.DisplayWatch,
 				Debug:                debug,
@@ -122,6 +122,7 @@ func newWatchCmd() *cobra.Command {
 				UseLegacyDiff:             useLegacyDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
+				DisableOutputValues:       disableOutputValues(),
 			}
 
 			res := s.Watch(commandContext(), backend.UpdateOperation{

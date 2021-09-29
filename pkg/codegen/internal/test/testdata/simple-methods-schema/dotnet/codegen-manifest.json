@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "Foo.cs",
+    "Nested/Inputs/Baz.cs",
+    "Nested/README.md",
+    "Provider.cs",
+    "Pulumi.Example.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png"
+  ]
+}

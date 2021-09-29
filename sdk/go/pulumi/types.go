@@ -53,6 +53,27 @@ func RegisterOutputType(output Output) {
 	}
 }
 
+var inputInterfaceTypeToConcreteType sync.Map // map[reflect.Type]reflect.Type
+
+// RegisterInputType registers an Input type with the Pulumi runtime. This allows the input type to be instantiated
+// for a given input interface.
+func RegisterInputType(interfaceType reflect.Type, input Input) {
+	if interfaceType.Kind() != reflect.Interface {
+		panic(fmt.Errorf("expected %v to be an interface", interfaceType))
+	}
+	if !interfaceType.Implements(inputType) {
+		panic(fmt.Errorf("expected %v to implement %v", interfaceType, inputType))
+	}
+	concreteType := reflect.TypeOf(input)
+	if !concreteType.Implements(interfaceType) {
+		panic(fmt.Errorf("expected %v to implement interface %v", concreteType, interfaceType))
+	}
+	existing, hasExisting := inputInterfaceTypeToConcreteType.LoadOrStore(interfaceType, concreteType)
+	if hasExisting {
+		panic(fmt.Errorf("an input type for %v is already registered: %v", interfaceType, existing))
+	}
+}
+
 type workGroups []*workGroup
 
 func (wgs workGroups) add() {
@@ -1127,6 +1148,7 @@ func NewResourceArrayOutput(in ...ResourceOutput) ResourceArrayOutput {
 }
 
 func init() {
+	RegisterInputType(reflect.TypeOf((*ResourceArrayInput)(nil)).Elem(), ResourceArray{})
 	RegisterOutputType(ResourceOutput{})
 	RegisterOutputType(ResourceArrayOutput{})
 }

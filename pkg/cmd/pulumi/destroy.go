@@ -41,13 +41,13 @@ func newDestroyCmd() *cobra.Command {
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
-	var refresh bool
+	var refresh string
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
 	var skipPreview bool
 	var suppressOutputs bool
-	var suppressPermaLink string
+	var suppressPermalink string
 	var yes bool
 	var targets *[]string
 	var targetDependents bool
@@ -96,10 +96,10 @@ func newDestroyCmd() *cobra.Command {
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
 			//nolint:goconst
-			if suppressPermaLink == "true" {
-				opts.Display.SuppressPermaLink = true
+			if suppressPermalink == "true" {
+				opts.Display.SuppressPermalink = true
 			} else {
-				opts.Display.SuppressPermaLink = false
+				opts.Display.SuppressPermalink = false
 			}
 
 			filestateBackend, err := isFilestateBackend(opts.Display)
@@ -108,10 +108,10 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			// by default, we are going to suppress the permalink when using self-managed backends
-			// this can be re-enabled by explicitly passing "false" to the `supppress-permalink` flag
+			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
 			//nolint:goconst
-			if suppressPermaLink != "false" && filestateBackend {
-				opts.Display.SuppressPermaLink = true
+			if suppressPermalink != "false" && filestateBackend {
+				opts.Display.SuppressPermalink = true
 			}
 
 			s, err := requireStack(stack, false, opts.Display, false /*setCurrent*/)
@@ -143,15 +143,20 @@ func newDestroyCmd() *cobra.Command {
 				targetUrns = append(targetUrns, resource.URN(t))
 			}
 
+			refreshOption, err := getRefreshOption(proj, refresh)
+			if err != nil {
+				return result.FromError(err)
+			}
 			opts.Engine = engine.UpdateOptions{
 				Parallel:                  parallel,
 				Debug:                     debug,
-				Refresh:                   refresh,
+				Refresh:                   refreshOption,
 				DestroyTargets:            targetUrns,
 				TargetDependents:          targetDependents,
 				UseLegacyDiff:             useLegacyDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
+				DisableOutputValues:       disableOutputValues(),
 			}
 
 			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
@@ -203,9 +208,10 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
-	cmd.PersistentFlags().BoolVarP(
-		&refresh, "refresh", "r", false,
+	cmd.PersistentFlags().StringVarP(
+		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
+	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -222,7 +228,7 @@ func newDestroyCmd() *cobra.Command {
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().StringVar(
-		&suppressPermaLink, "suppress-permalink", "",
+		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 

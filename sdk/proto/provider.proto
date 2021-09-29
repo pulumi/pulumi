@@ -90,6 +90,7 @@ message ConfigureResponse {
     bool acceptSecrets = 1;   // when true, the engine should pass secrets as strongly typed values to the provider.
     bool supportsPreview = 2; // when true, the engine should invoke create and update with preview=true during previews.
     bool acceptResources = 3; // when true, the engine should pass resources as strongly typed values to the provider.
+    bool acceptOutputs = 4;   // when true, the engine should pass output values to the provider.
 }
 
 // ConfigureErrorMissingKeys is sent as a Detail on an error returned from `ResourceProvider.Configure`.

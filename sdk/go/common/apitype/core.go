@@ -29,6 +29,7 @@
 package apitype
 
 import (
+	_ "embed" // for embedded schemas
 	"encoding/json"
 	"time"
 
@@ -37,6 +38,40 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+//go:embed deployments.json
+var deploymentSchema string
+
+// DeploymentSchemaID is the $id for the deployment schema.
+const DeploymentSchemaID = "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/deployments.json"
+
+// DeploymentSchema returns a JSON schema that can be used to validate serialized deployments (i.e. `UntypedDeployment`
+// objects).
+func DeploymentSchema() string {
+	return deploymentSchema
+}
+
+//go:embed resources.json
+var resourceSchema string
+
+// ResourceSchemaID is the $id for the deployment schema.
+const ResourceSchemaID = "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/resources.json"
+
+// ResourceSchema returns a JSON schema that can be used to validate serialized resource values (e.g. `ResourceV3`).
+func ResourceSchema() string {
+	return resourceSchema
+}
+
+//go:embed property-values.json
+var propertyValueSchema string
+
+// PropertyValueSchemaID is the $id for the property value schema.
+const PropertyValueSchemaID = "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/property-values.json"
+
+// PropertyValueSchema returns a JSON schema that can be used to validate serialized property values.
+func PropertyValueSchema() string {
+	return propertyValueSchema
+}
 
 const (
 	// DeploymentSchemaVersionCurrent is the current version of the `Deployment` schema.

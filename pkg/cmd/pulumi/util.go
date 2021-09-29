@@ -75,6 +75,10 @@ func disableResourceReferences() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOURCE_REFERENCES"))
 }
 
+func disableOutputValues() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_OUTPUT_VALUES"))
+}
+
 // skipConfirmations returns whether or not confirmation prompts should
 // be skipped. This should be used by pass any requirement that a --yes
 // parameter has been set for non-interactive scenarios.
@@ -834,4 +838,27 @@ func checkDeploymentVersionError(err error, stackName string) error {
 			"Please update your version of the Pulumi CLI", stackName)
 	}
 	return errors.Wrap(err, "could not deserialize deployment")
+}
+
+func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
+	// we want to check for an explicit --refresh or a --refresh=true or --refresh=false
+	// refresh is assigned the empty string by default to distinguish the difference between
+	// when the user actually interacted with the cli argument (`NoOptDefVal`)
+	// and the default functionality today
+	if refresh != "" {
+		refreshDetails, boolErr := strconv.ParseBool(refresh)
+		if boolErr != nil {
+			// the user has passed a --refresh but with a random value that we don't support
+			return false, errors.New("unable to determine value for --refresh")
+		}
+		return refreshDetails, nil
+	}
+
+	// the user has not specifically passed an argument on the cli to refresh but has set a Project option to refresh
+	if proj.Options != nil && proj.Options.Refresh == "always" {
+		return true, nil
+	}
+
+	// the default functionality right now is to always skip a refresh
+	return false, nil
 }

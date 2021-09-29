@@ -1,6 +1,118 @@
 CHANGELOG
 =========
 
+## 3.13.2 (2021-09-27)
+
+**Please Note:** The v3.13.1 release failed in our build pipeline and was re-released as v3.13.2.
+
+### Improvements
+
+- [CLI] - Enable output values in the engine by default.
+  [#8014](https://github.com/pulumi/pulumi/pull/8014)
+
+### Bug Fixes
+
+- [automation/python] - Fix a bug in printing `Stack` if no program is provided.
+  [#8032](https://github.com/pulumi/pulumi/pull/8032)
+
+- [codegen/schema] - Revert #7938.
+  [#8035](https://github.com/pulumi/pulumi/pull/8035)
+
+- [codegen/nodejs] - Correctly determine imports for functions.
+  [#8038](https://github.com/pulumi/pulumi/pull/8038)
+
+- [codegen/go] - Fix resolution of enum naming collisions.
+  [#7985](https://github.com/pulumi/pulumi/pull/7985)
+
+- [sdk/{nodejs,python}] - Fix errors when testing remote components with mocks.
+  [#8053](https://github.com/pulumi/pulumi/pull/8053)
+
+- [codegen/nodejs] - Fix generation of provider enum with environment variables.
+  [#8051](https://github.com/pulumi/pulumi/pull/8051)
+
+## 3.13.0 (2021-09-22)
+
+### Improvements
+
+- [sdk/go] - Improve error messages for (un)marshalling properties.
+  [#7936](https://github.com/pulumi/pulumi/pull/7936)
+
+- [sdk/go] - Initial support for (un)marshalling output values.
+  [#7861](https://github.com/pulumi/pulumi/pull/7861)
+
+- [sdk/go] - Add `RegisterInputType` and register built-in types.
+  [#7928](https://github.com/pulumi/pulumi/pull/7928)
+
+- [codegen] - Packages include `Package.Version` when provided.
+  [#7938](https://github.com/pulumi/pulumi/pull/7938)
+
+- [auto/*] - Fix escaped HTML characters from color directives in event stream.
+
+  E.g. `"\u003c{%reset%}\u003edebug: \u003c{%reset%}\u003e"` -> `"<{%reset%}>debug: <{%reset%}>"`
+  [#7998](https://github.com/pulumi/pulumi/pull/7998)
+
+- [auto/*] - Allow eliding color directives from event logs by passing `NO_COLOR` env var.
+
+  E.g. `"<{%reset%}>debug: <{%reset%}>"` -> `"debug: "`
+  [#7998](https://github.com/pulumi/pulumi/pull/7998)
+
+- [schema] The syntactical well-formedness of a package schema is now described
+  and checked by a JSON schema metaschema.
+  [#7952](https://github.com/pulumi/pulumi/pull/7952)
+
+### Bug Fixes
+
+- [codegen/schema] - Correct validation for Package
+  [#7896](https://github.com/pulumi/pulumi/pull/7896)
+
+- [cli] Use json.Unmarshal instead of custom parser
+  [#7954](https://github.com/pulumi/pulumi/pull/7954)
+
+- [sdk/{go,dotnet}] - Thread replaceOnChanges through Go and .NET
+  [#7967](https://github.com/pulumi/pulumi/pull/7967)
+
+- [codegen/nodejs] - Correctly handle hyphenated imports
+  [#7993](https://github.com/pulumi/pulumi/pull/7993)
+
+## 3.12.0 (2021-09-08)
+
+### Improvements
+
+- [build] - make lint returns an accurate status code
+  [#7844](https://github.com/pulumi/pulumi/pull/7844)
+
+- [codegen/python] - Add helper function forms `$fn_output` that
+  accept `Input`s, return an `Output`, and wrap the underlying `$fn`
+  call. This change addresses
+  [#5758](https://github.com/pulumi/pulumi/issues/) for Python,
+  making it easier to compose functions/datasources with Pulumi
+  resources. [#7784](https://github.com/pulumi/pulumi/pull/7784)
+
+- [codegen] - Add `replaceOnChange` to schema.
+  [#7874](https://github.com/pulumi/pulumi/pull/7874)
+
+- [cli/about] - Add command for debug information
+  [#7817](https://github.com/pulumi/pulumi/pull/7817)
+
+- [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
+  [#7865](https://github.com/pulumi/pulumi/pull/7865)
+
+### Bug Fixes
+
+- [sdk/python] - Fix Pulumi programs hanging when dependency graph
+  forms a cycle, as when `eks.NodeGroup` declaring `eks.Cluster` as a
+  parent while also depending on it indirectly via properties
+  [#7887](https://github.com/pulumi/pulumi/pull/7887)
+
+- [sdk/python] Fix a regression in Python dynamic providers introduced in #7755.
+
+- [automation/go] Fix loading of stack settings/configs from yaml files.
+  [#pulumi-kubernetes-operator/183](https://github.com/pulumi/pulumi-kubernetes-operator/issues/183)
+
+- [codegen/python] - Fix invalid Python docstring generation for enums
+  that contain doc comments with double quotes
+  [#7914](https://github.com/pulumi/pulumi/pull/7914)
+
 ## 3.11.0 (2021-08-25)
 
 ### Improvements
@@ -31,6 +143,7 @@ CHANGELOG
   [#7824](https://github.com/pulumi/pulumi/pull/7824)
 
 ## 3.10.3 (2021-08-19)
+
 ### Improvements
 
 - [sdk/python] - Add support for custom naming of dynamic provider resource.
@@ -50,6 +163,7 @@ CHANGELOG
 
 
 ## 3.10.2 (2021-08-16)
+
 ### Improvements
 
 - [cli] Stop printing secret value on `pulumi config set` if it looks like a secret.
@@ -74,6 +188,7 @@ CHANGELOG
   [#7755](https://github.com/pulumi/pulumi/pull/7755)
 
 ## 3.10.1 (2021-08-12)
+
 ### Improvements
 
 - [sdk/go] - Depending on a component now depends on the transitive closure of its

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -382,6 +383,69 @@ func TestRegisterResourceWithResourceReferences(t *testing.T) {
 		_, _, secret, _, err := await(mycustom.Instance)
 		assert.NoError(t, err)
 		assert.False(t, secret)
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+}
+
+type testMyRemoteComponentArgs struct {
+	Inprop string `pulumi:"inprop"`
+}
+
+type testMyRemoteComponentInputs struct {
+	Inprop StringInput
+}
+
+func (testMyRemoteComponentInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*testMyRemoteComponentArgs)(nil)).Elem()
+}
+
+type testMyRemoteComponent struct {
+	ResourceState
+
+	Outprop StringOutput `pulumi:"outprop"`
+}
+
+func TestRemoteComponent(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+
+			switch args.TypeToken {
+			case "pkg:index:Instance":
+				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
+			case "pkg:index:MyRemoteComponent":
+				outprop := resource.NewStringProperty(fmt.Sprintf("output: %s", args.Inputs["inprop"].StringValue()))
+				return args.Name + "_id", resource.PropertyMap{
+					"inprop":  args.Inputs["inprop"],
+					"outprop": outprop,
+				}, nil
+			default:
+				return "", nil, errors.Errorf("unknown resource %s", args.TypeToken)
+			}
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var instance testInstanceResource
+		err := ctx.RegisterResource("pkg:index:Instance", "instance", &testInstanceResourceInputs{}, &instance)
+		assert.NoError(t, err)
+
+		var myremotecomponent testMyRemoteComponent
+		err = ctx.RegisterRemoteComponentResource(
+			"pkg:index:MyRemoteComponent", "myremotecomponent", &testMyRemoteComponentInputs{
+				Inprop: Sprintf("hello: %v", instance.id),
+			}, &myremotecomponent)
+		assert.NoError(t, err)
+
+		val, known, secret, deps, err := await(myremotecomponent.Outprop)
+		assert.NoError(t, err)
+		stringVal, ok := val.(string)
+		assert.True(t, ok)
+		assert.True(t, strings.HasPrefix(stringVal, "output: hello: "))
+		assert.True(t, known)
+		assert.False(t, secret)
+		assert.Equal(t, []Resource{&myremotecomponent}, deps)
 
 		return nil
 	}, WithMocks("project", "stack", mocks))

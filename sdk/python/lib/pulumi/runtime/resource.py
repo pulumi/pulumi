@@ -24,6 +24,7 @@ from .. import log
 from ..runtime.proto import provider_pb2, resource_pb2
 from .rpc_manager import RPC_MANAGER
 from .settings import handle_grpc_error
+from .resource_cycle_breaker import declare_dependency
 from ..output import Output
 from .. import _types
 from .. import urn as urn_util
@@ -88,7 +89,7 @@ async def prepare_resource(res: 'Resource',
     # Before we can proceed, all our dependencies must be finished.
     explicit_urn_dependencies: Set[str] = set()
     if opts is not None and opts.depends_on is not None:
-        explicit_urn_dependencies = await _resolve_depends_on_urns(opts)
+        explicit_urn_dependencies = await _resolve_depends_on_urns(opts, from_resource=res)
 
     # Serialize out all our props to their final values.  In doing so, we'll also collect all
     # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
@@ -99,7 +100,10 @@ async def prepare_resource(res: 'Resource',
     if typ is not None:
         translate = None
 
-    serialized_props = await rpc.serialize_properties(props, property_dependencies_resources, translate, typ)
+    # To initially scope the use of this new feature, we only keep output values when
+    # remote is true (for multi-lang components).
+    serialized_props = await rpc.serialize_properties(props, property_dependencies_resources, translate, typ,
+        keep_output_values=remote)
 
     # Wait for our parent to resolve
     parent_urn: Optional[str] = ""
@@ -139,7 +143,7 @@ async def prepare_resource(res: 'Resource',
     dependencies: Set[str] = set(explicit_urn_dependencies)
     property_dependencies: Dict[str, List[Optional[str]]] = {}
     for key, deps in property_dependencies_resources.items():
-        urns = await _expand_dependencies(deps)
+        urns = await _expand_dependencies(deps, from_resource=res)
         dependencies |= urns
         property_dependencies[key] = list(urns)
 
@@ -656,7 +660,8 @@ def convert_providers(
 
     return result
 
-async def _add_dependency(deps: Set[str], res: 'Resource'):
+
+async def _add_dependency(deps: Set[str], res: 'Resource', from_resource: 'Resource'):
     """
     _add_dependency adds a dependency on the given resource to the set of deps.
 
@@ -691,27 +696,30 @@ async def _add_dependency(deps: Set[str], res: 'Resource'):
 
     if isinstance(res, ComponentResource):
         for child in res._childResources:
-            await _add_dependency(deps, child)
+            await _add_dependency(deps, child, from_resource)
         if not res._remote:
             return
 
-    urn = await res.urn.future()
-    if urn:
-        deps.add(urn)
+    no_cycles = declare_dependency(from_resource, res)
+    if no_cycles:
+        urn = await res.urn.future()
+        if urn:
+            deps.add(urn)
 
 
-async def _expand_dependencies(deps: Iterable['Resource']) -> Set[str]:
+async def _expand_dependencies(deps: Iterable['Resource'], from_resource: 'Resource') -> Set[str]:
     """
     _expand_dependencies expands the given iterable of Resources into a set of URNs.
     """
 
     urns: Set[str] = set()
     for d in deps:
-        await _add_dependency(urns, d)
+        await _add_dependency(urns, d, from_resource)
+
     return urns
 
 
-async def _resolve_depends_on_urns(options: 'ResourceOptions') -> Set[str]:
+async def _resolve_depends_on_urns(options: 'ResourceOptions', from_resource: 'Resource') -> Set[str]:
     """
     Resolves the set of all dependent resources implied by
     `depends_on`, either directly listed or implied in the Input
@@ -733,4 +741,4 @@ async def _resolve_depends_on_urns(options: 'ResourceOptions') -> Set[str]:
         if direct_dep is not None:
             all_deps.add(direct_dep)
 
-    return await _expand_dependencies(all_deps)
+    return await _expand_dependencies(all_deps, from_resource)

@@ -35,12 +35,25 @@
     "csharp": {
       "namespaces": {
         "foo-bar": "FooBar"
+      },
+      "packageReferences": {
+        "Pulumi": "3.12",
+        "Pulumi.Aws": "4.20",
+        "Pulumi.Kubernetes": "3.7",
+        "Pulumi.Random": "4.2"
       }
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/dash-named-schema/go/foo"
+      "importBasePath": "dash-named-schema/foo"
     },
-    "nodejs": {},
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
     "python": {}
   }
 }

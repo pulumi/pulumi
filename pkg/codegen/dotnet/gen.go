@@ -35,6 +35,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -1013,6 +1015,21 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			fmt.Fprintf(w, "                    ")
 			fmt.Fprintf(w, "%q", sp)
 			fmt.Fprintf(w, ",\n")
+		}
+		fmt.Fprintf(w, "                },\n")
+	}
+
+	replaceOnChangesProps, errList := r.ReplaceOnChanges()
+	for _, err := range errList {
+		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
+	}
+	if len(replaceOnChangesProps) > 0 {
+		fmt.Fprint(w, "                ReplaceOnChanges =\n")
+		fmt.Fprintf(w, "                {\n")
+		for _, n := range schema.PropertyListJoinToString(replaceOnChangesProps,
+			func(s string) string { return s }) {
+			fmt.Fprintf(w, "                    ")
+			fmt.Fprintf(w, "%q,\n", n)
 		}
 		fmt.Fprintf(w, "                },\n")
 	}

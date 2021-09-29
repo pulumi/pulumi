@@ -24,6 +24,14 @@
       "requires": {
         "pulumi": ">=3.0.0,<4.0.0"
       }
+    },
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.12"
+      }
+    },
+    "go": {
+      "importBasePath": "nested-module-thirdparty/foo"
     }
   }
 }

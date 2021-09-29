@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -555,6 +555,15 @@ export function monitorSupportsSecrets(): Promise<boolean> {
  */
 export async function monitorSupportsResourceReferences(): Promise<boolean> {
     return monitorSupportsFeature("resourceReferences");
+}
+
+/**
+ * monitorSupportsOutputValues returns a promise that when resolved tells you if the resource monitor we are
+ * connected to is able to support output values across its RPC interface. When it does, we marshal outputs
+ * in a special way.
+ */
+export async function monitorSupportsOutputValues(): Promise<boolean> {
+    return monitorSupportsFeature("outputValues");
 }
 
 // sxsRandomIdentifier is a module level global that is transfered to process.env.

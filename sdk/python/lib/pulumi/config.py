@@ -390,7 +390,7 @@ class Config:
         :return: The name of the configuration key, prefixed with the bag's name.
         :rtype: str
         """
-        return '%s:%s' % (self.name, key)
+        return f'{self.name}:{key}'
 
 
 class ConfigTypeError(errors.RunError):
@@ -418,7 +418,7 @@ class ConfigTypeError(errors.RunError):
         self.value = value
         self.expect_type = expect_type
         super().__init__(
-            "Configuration '%s' value '%s' is not a valid '%s'" % (key, value, expect_type))
+            f"Configuration '{key}' value '{value}' is not a valid '{expect_type}'")
 
 
 class ConfigMissingError(errors.RunError):
@@ -434,5 +434,5 @@ class ConfigMissingError(errors.RunError):
     def __init__(self, key: str) -> None:
         self.key = key
         super().__init__(
-            "Missing required configuration variable '%s'\n" % key +
-            "    please set a value using the command `pulumi config set %s <value>`" % key)
+            f"Missing required configuration variable '{key}'\n" +
+            f"    please set a value using the command `pulumi config set {key} <value>`")

@@ -60,7 +60,7 @@ func newUpCmd() *cobra.Command {
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
-	var refresh bool
+	var refresh string
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
@@ -122,16 +122,21 @@ func newUpCmd() *cobra.Command {
 			replaceURNs = append(replaceURNs, resource.URN(tr))
 		}
 
+		refreshOption, err := getRefreshOption(proj, refresh)
+		if err != nil {
+			return result.FromError(err)
+		}
 		opts.Engine = engine.UpdateOptions{
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:                  parallel,
 			Debug:                     debug,
-			Refresh:                   refresh,
+			Refresh:                   refreshOption,
 			RefreshTargets:            targetURNs,
 			ReplaceTargets:            replaceURNs,
 			UseLegacyDiff:             useLegacyDiff(),
 			DisableProviderPreview:    disableProviderPreview(),
 			DisableResourceReferences: disableResourceReferences(),
+			DisableOutputValues:       disableOutputValues(),
 			UpdateTargets:             targetURNs,
 			TargetDependents:          targetDependents,
 		}
@@ -286,11 +291,16 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(errors.Wrap(err, "getting stack configuration"))
 		}
 
+		refreshOption, err := getRefreshOption(proj, refresh)
+		if err != nil {
+			return result.FromError(err)
+		}
+
 		opts.Engine = engine.UpdateOptions{
 			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:         parallel,
 			Debug:            debug,
-			Refresh:          refresh,
+			Refresh:          refreshOption,
 		}
 
 		// TODO for the URL case:
@@ -374,9 +384,9 @@ func newUpCmd() *cobra.Command {
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
 			if suppressPermalink == "true" {
-				opts.Display.SuppressPermaLink = true
+				opts.Display.SuppressPermalink = true
 			} else {
-				opts.Display.SuppressPermaLink = false
+				opts.Display.SuppressPermalink = false
 			}
 
 			filestateBackend, err := isFilestateBackend(opts.Display)
@@ -385,9 +395,9 @@ func newUpCmd() *cobra.Command {
 			}
 
 			// by default, we are going to suppress the permalink when using self-managed backends
-			// this can be re-enabled by explicitly passing "false" to the `supppress-permalink` flag
+			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
 			if suppressPermalink != "false" && filestateBackend {
-				opts.Display.SuppressPermaLink = true
+				opts.Display.SuppressPermalink = true
 			}
 
 			if len(args) > 0 {
@@ -457,9 +467,10 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
-	cmd.PersistentFlags().BoolVarP(
-		&refresh, "refresh", "r", false,
+	cmd.PersistentFlags().StringVarP(
+		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
+	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

@@ -124,7 +124,7 @@ func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
 	writeString(&b, getIndentationString(indent, op, false))
 
 	// First, print out the operation's prefix.
-	writeString(&b, op.Prefix())
+	writeString(&b, op.Prefix(true /*done*/))
 
 	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
 	printStepHeader(&b, step)

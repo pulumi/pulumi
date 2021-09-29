@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "ArgFunction.cs",
+    "OtherResource.cs",
+    "Provider.cs",
+    "Pulumi.Example.csproj",
+    "README.md",
+    "Resource.cs",
+    "Utilities.cs",
+    "logo.png"
+  ]
+}

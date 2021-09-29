@@ -7,7 +7,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/dash-named-schema/go/foo"
+	"dash-named-schema/foo"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

@@ -1,21 +1,13 @@
 ### Improvements
 
-- [build] - make lint returns an accurate status code
-  [#7844](https://github.com/pulumi/pulumi/pull/7844)
+- [cli] - Differentiate in-progress actions by bolding output.
+  [#7918](https://github.com/pulumi/pulumi/pull/7918)
 
-- [codegen/python] - Add helper function forms `$fn_output` that
-  accept `Input`s, return an `Output`, and wrap the underlying `$fn`
-  call. This change addreses
-  [#5758](https://github.com/pulumi/pulumi/issues/) for Python,
-  making it easier to compose functions/datasources with Pulumi
-  resources. [#7784](https://github.com/pulumi/pulumi/pull/7784)
-
-- [cli/about] - Add comand for debug information
-  [#7817](https://github.com/pulumi/pulumi/pull/7817)
-
-- [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
-  [#7865](https://github.com/pulumi/pulumi/pull/7865)
+- [CLI] Adding the ability to set `refresh: always` in an options object at a Pulumi.yaml level
+  to allow a user to be able to always refresh their derivative stacks by default
+  [#8071](https://github.com/pulumi/pulumi/pull/8071)
 
 ### Bug Fixes
-- [automation/go] Fix loading of stack settings/configs from yaml files.
-  [#pulumi-kubernetes-operator/183](https://github.com/pulumi/pulumi-kubernetes-operator/issues/183)
+
+- [codegen/go] - Fix generation of cyclic struct types.
+  [#8049](https://github.com/pulumi/pulumi/pull/8049)

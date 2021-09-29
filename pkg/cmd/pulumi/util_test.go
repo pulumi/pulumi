@@ -17,10 +17,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	pul_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // assertEnvValue assert the update metadata's Environment map contains the given value.
@@ -260,6 +262,69 @@ func Test_makeJSONString(t *testing.T) {
 			}
 			if got != tt.expected {
 				t.Errorf("makeJSONString() got = %v, expected %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetRefreshOption(t *testing.T) {
+	tests := []struct {
+		name                 string
+		refresh              string
+		project              workspace.Project
+		expectedRefreshState bool
+	}{
+		{
+			"No options specified means no refresh",
+			"",
+			workspace.Project{},
+			false,
+		},
+		{
+			"Passing --refresh=true causes a refresh",
+			"true",
+			workspace.Project{},
+			true,
+		},
+		{
+			"Passing --refresh=false causes no refresh",
+			"false",
+			workspace.Project{},
+			false,
+		},
+		{
+			"Setting Refresh at a project level via Pulumi.yaml and no CLI args",
+			"",
+			workspace.Project{
+				Name:    "auto-refresh",
+				Runtime: workspace.ProjectRuntimeInfo{},
+				Options: &workspace.ProjectOptions{
+					Refresh: "always",
+				},
+			},
+			true,
+		},
+		{
+			"Setting Refresh at a project level via Pulumi.yaml and --refresh=false",
+			"false",
+			workspace.Project{
+				Name:    "auto-refresh",
+				Runtime: workspace.ProjectRuntimeInfo{},
+				Options: &workspace.ProjectOptions{
+					Refresh: "always",
+				},
+			},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shouldRefresh, err := getRefreshOption(&tt.project, tt.refresh)
+			if err != nil {
+				t.Errorf("getRefreshOption() error = %v", err)
+			}
+			if shouldRefresh != tt.expectedRefreshState {
+				t.Errorf("getRefreshOption got = %t, expected %t", shouldRefresh, tt.expectedRefreshState)
 			}
 		})
 	}
