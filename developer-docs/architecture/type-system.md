@@ -28,10 +28,14 @@ following types:
 
 ### Assets and Archives
 
-An `Asset` or `Archive` may contain either literal data or a reference to a file or URL.
-In the former case, the literal data is a textual string or a map from strings to `Asset`s
-or `Archive`s, respectively. In the latter case, the referenced file or URL is an opaque
-blob or a TAR, gzipped TAR, or ZIP archive, respectively.
+An `Asset` or `Archive` may contain either literal data or a reference to a local file
+located via its path or a local or remote file located via its URL.
+
+In the case of `Asset`s, the literal data is a textual string, and the referenced file
+is an opaque blob.
+
+In the case of `Archive`s, the literal data is a map from strings to `Asset`s or `Archive`s,
+and the referenced file is a TAR archive, gzipped TAR archive, or ZIP archive.
 
 Each `Asset` or `Archive` also carries the SHA-256 hash of its contents. This hash can be
 used to uniquely identify the asset (e.g. for locally caching `Asset` or `Archive`
