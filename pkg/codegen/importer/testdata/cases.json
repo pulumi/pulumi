@@ -588,20 +588,20 @@
 						"targetGroupArn": "foobar",
 						"type": "foobar"
 					}
-                ],
-                "conditions": [
-                    {
-                        "queryStrings": [
-                            {
-                                "key": "foobar",
-                                "value": "foobar"
-                            },
-                            {
-                                "key": "foobar",
-                                "value": "foobar"
-                            }           
-                        ]
-                    }
+				],
+				"conditions": [
+					{
+						"queryStrings": [
+							{
+								"key": "foobar",
+								"value": "foobar"
+							},
+							{
+								"key": "foobar",
+								"value": "foobar"
+							}
+						]
+					}
 				],
 				"listenerArn": "foobar",
 				"priority": 42

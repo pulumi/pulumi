@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -25,10 +25,10 @@ func TestGenerateProgram(t *testing.T) {
 
 func pythonCheck(t *testing.T, path string) {
 	ex, _, err := python.CommandPath()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	name := filepath.Base(path)
 	dir := filepath.Dir(path)
 	err = integration.RunCommand(t, "python syntax check",
 		[]string{ex, "-m", "py_compile", name}, dir, &integration.ProgramTestOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

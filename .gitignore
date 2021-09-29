@@ -25,7 +25,6 @@ coverage.cov
 pkg/codegen/internal/test/testdata/*/typecheck/**
 
 # We don't need to keep testing python __pycache__ either either
-pkg/codegen/internal/**/__pycache__
 pkg/codegen/internal/test/testdata/*-pp/*/*.csproj
 pkg/codegen/internal/test/testdata/*-pp/*/go.mod
 pkg/codegen/internal/test/testdata/*-pp/*/go.sum

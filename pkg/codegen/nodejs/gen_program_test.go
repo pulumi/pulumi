@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -25,7 +26,7 @@ func TestGenerateProgram(t *testing.T) {
 
 func nodejsCheck(t *testing.T, path string) {
 	ex, err := executable.FindExecutable("yarn")
-	assert.NoError(t, err, "Could not find yarn executable")
+	require.NoError(t, err, "Could not find yarn executable")
 	dir := filepath.Dir(path)
 	pkgName, pkgVersion := packagesFromTestName(dir)
 	if pkgName == "" {
@@ -37,25 +38,26 @@ func nodejsCheck(t *testing.T, path string) {
 	// We delete and regenerate package files for each run.
 	packageJSON := filepath.Join(dir, "package.json")
 	if err := os.Remove(packageJSON); !os.IsNotExist(err) {
-		assert.NoError(t, err, "Failed to delete %s", packageJSON)
+		require.NoError(t, err, "Failed to delete %s", packageJSON)
 	}
 	yarnLock := filepath.Join(dir, "yarn.lock")
 	if err := os.Remove(yarnLock); !os.IsNotExist(err) {
-		assert.NoError(t, err, "Failed to delete %s", yarnLock)
+		require.NoError(t, err, "Failed to delete %s", yarnLock)
 	}
 
 	err = integration.RunCommand(t, "link @pulumi/pulumi",
 		[]string{ex, "link", "@pulumi/pulumi"},
 		dir, &integration.ProgramTestOptions{})
-	assert.NoError(t, err, "Failed to link @pulumi/pulumi")
+	require.NoError(t, err, "Failed to link @pulumi/pulumi")
 	err = integration.RunCommand(t, "yarn add and install",
 		[]string{ex, "add", pkg}, dir, &integration.ProgramTestOptions{})
-	assert.NoError(t, err, "Could not install package: %q", pkg)
+	require.NoError(t, err, "Could not install package: %q", pkg)
 	err = integration.RunCommand(t, "tsc check",
 		[]string{ex, "run", "tsc", "--noEmit", filepath.Base(path)}, dir, &integration.ProgramTestOptions{})
-	assert.NoError(t, err, "Failed to build %q", path)
+	require.NoError(t, err, "Failed to build %q", path)
 }
 
+// TODO[pulumi/pulumi#8080]
 // packagesFromTestName attempts to figure out what package should be imported
 // from the name of the test.
 func packagesFromTestName(name string) (string, string) {

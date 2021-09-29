@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -30,32 +31,32 @@ func checkDotnet(t *testing.T, path string) {
 	dir := filepath.Dir(path)
 
 	ex, err := executable.FindExecutable("dotnet")
-	assert.NoError(t, err, "Failed to find dotnet executable")
+	require.NoError(t, err, "Failed to find dotnet executable")
 
 	// We create a new cs-project each time the test is run.
 	projectFile := filepath.Join(dir, filepath.Base(dir)+".csproj")
 	programFile := filepath.Join(dir, "Program.cs")
 	if err = os.Remove(projectFile); !os.IsNotExist(err) {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	if err = os.Remove(programFile); !os.IsNotExist(err) {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	err = integration.RunCommand(t, "create dotnet project",
 		[]string{ex, "new", "console"}, dir, &integration.ProgramTestOptions{})
-	assert.NoError(t, err, "Failed to create C# project")
+	require.NoError(t, err, "Failed to create C# project")
 
 	// Add dependencies (based on directory name)
 	if pkg, pkgVersion := packagesFromTestName(dir); pkg != "" {
 		err = integration.RunCommand(t, "Add package",
 			[]string{ex, "add", "package", pkg, "--version", pkgVersion},
 			dir, &integration.ProgramTestOptions{})
-		assert.NoError(t, err, "Failed to add dependency %q %q", pkg, pkgVersion)
+		require.NoError(t, err, "Failed to add dependency %q %q", pkg, pkgVersion)
 	} else {
 		err = integration.RunCommand(t, "add sdk ref",
 			[]string{ex, "add", "reference", "../../../../../../../sdk/dotnet/Pulumi"},
 			dir, &integration.ProgramTestOptions{})
-		assert.NoError(t, err, "Failed to dotnet sdk package reference")
+		require.NoError(t, err, "Failed to dotnet sdk package reference")
 	}
 
 	// Clean up build result
@@ -67,7 +68,7 @@ func checkDotnet(t *testing.T, path string) {
 	}()
 	err = integration.RunCommand(t, "dotnet build",
 		[]string{ex, "build", "--nologo"}, dir, &integration.ProgramTestOptions{})
-	assert.NoError(t, err, "Failed to build dotnet project")
+	require.NoError(t, err, "Failed to build dotnet project")
 }
 
 // packagesFromName attempts to figure out what package should be imported from
@@ -78,6 +79,7 @@ func checkDotnet(t *testing.T, path string) {
 // 	"azure-sa-pp" => ("Pulumi.Azure", 4.21.1)
 // 	"resource-options-pp" => ("","")
 //
+// TODO[pulumi/pulumi#8080]
 // Note: While we could instead do this by using the generateMetaData function
 // for each language, we are trying not to expand the functionality under test.
 func packagesFromTestName(name string) (string, string) {

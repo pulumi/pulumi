@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
@@ -84,31 +85,31 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 func goCheck(t *testing.T, path string) {
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We remove go.mod to ensure tests are reproducible.
 	goMod := filepath.Join(dir, "go.mod")
 	if err = os.Remove(goMod); !os.IsNotExist(err) {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	err = integration.RunCommand(t, "generate go.mod",
 		[]string{ex, "mod", "init", "main"},
 		dir, &integration.ProgramTestOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = integration.RunCommand(t, "go tidy",
 		[]string{ex, "mod", "tidy"},
 		dir, &integration.ProgramTestOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = integration.RunCommand(t, "point towards local Go SDK",
 		[]string{ex, "mod", "edit",
 			fmt.Sprintf("--replace=%s=%s",
 				"github.com/pulumi/pulumi/sdk/v3/go/pulumi",
 				"../../../../../../sdk")},
 		dir, &integration.ProgramTestOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = integration.RunCommand(t, "test build", []string{ex, "build", "-v", "all"},
 		dir, &integration.ProgramTestOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	os.Remove(filepath.Join(dir, "main"))
 	assert.NoError(t, err)
 }
