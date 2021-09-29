@@ -28,7 +28,7 @@ func main() {
 		opt0 := true
 		ami, err := aws.GetAmi(ctx, &GetAmiArgs{
 			Filters: []GetAmiFilter{
-				GetAmiFilter{
+				{
 					Name: "name",
 					Values: []string{
 						"amzn-ami-hvm-*-x86_64-ebs",

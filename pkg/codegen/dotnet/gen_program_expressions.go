@@ -22,8 +22,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -37,10 +37,10 @@ func (nameInfo) Format(name string) string {
 
 // lowerExpression amends the expression with intrinsics for C# generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model.Expression {
-	expr = hcl2.RewritePropertyReferences(expr)
-	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), !g.asyncInit)
+	expr = pcl.RewritePropertyReferences(expr)
+	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), !g.asyncInit)
 	contract.Assert(len(diags) == 0)
-	expr = hcl2.RewriteConversions(expr, typ)
+	expr = pcl.RewriteConversions(expr, typ)
 	if g.asyncInit {
 		expr = g.awaitInvokes(expr)
 	} else {
@@ -59,7 +59,7 @@ func (g *generator) outputInvokes(x model.Expression) model.Expression {
 	rewriter := func(x model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to invoke.
 		call, ok := x.(*model.FunctionCallExpression)
-		if !ok || call.Name != hcl2.Invoke {
+		if !ok || call.Name != pcl.Invoke {
 			return x, nil
 		}
 
@@ -89,7 +89,7 @@ func (g *generator) awaitInvokes(x model.Expression) model.Expression {
 	rewriter := func(x model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to invoke.
 		call, ok := x.(*model.FunctionCallExpression)
-		if !ok || call.Name != hcl2.Invoke {
+		if !ok || call.Name != pcl.Invoke {
 			return x, nil
 		}
 
@@ -214,7 +214,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
-	applyArgs, then := hcl2.ParseApplyCall(expr)
+	applyArgs, then := pcl.ParseApplyCall(expr)
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.Apply`
@@ -247,7 +247,7 @@ var functionNamespaces = map[string][]string{
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
-	if x.Name != hcl2.Invoke {
+	if x.Name != pcl.Invoke {
 		return functionNamespaces[x.Name]
 	}
 
@@ -257,14 +257,14 @@ func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string 
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
-	case hcl2.IntrinsicConvert:
+	case pcl.IntrinsicConvert:
 		switch arg := expr.Args[0].(type) {
 		case *model.ObjectConsExpression:
 			g.genObjectConsExpression(w, arg, expr.Type())
 		default:
 			g.Fgenf(w, "%.v", expr.Args[0]) // <- probably wrong w.r.t. precedence
 		}
-	case hcl2.IntrinsicApply:
+	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
 	case intrinsicAwait:
 		g.Fgenf(w, "await %.17v", expr.Args[0])
@@ -291,7 +291,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "filebase64":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "ReadFileBase64(%v)", expr.Args[0])
-	case hcl2.Invoke:
+	case pcl.Invoke:
 		_, name := g.functionName(expr.Args[0])
 
 		g.Fprintf(w, "%s.InvokeAsync(", name)
@@ -521,8 +521,8 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 	g.Fgen(w, rootName)
 
 	var objType *schema.ObjectType
-	if resource, ok := expr.Parts[0].(*hcl2.Resource); ok {
-		if schemaType, ok := hcl2.GetSchemaForType(resource.InputType); ok {
+	if resource, ok := expr.Parts[0].(*pcl.Resource); ok {
+		if schemaType, ok := pcl.GetSchemaForType(resource.InputType); ok {
 			objType, _ = schemaType.(*schema.ObjectType)
 		}
 	}

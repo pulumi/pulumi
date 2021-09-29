@@ -1,4 +1,4 @@
-package hcl2
+package pcl
 
 import (
 	"fmt"

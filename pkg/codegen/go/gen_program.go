@@ -11,10 +11,10 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -22,7 +22,7 @@ import (
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
-	program             *hcl2.Program
+	program             *pcl.Program
 	packages            map[string]*schema.Package
 	contexts            map[string]map[string]*pkgContext
 	diagnostics         hcl.Diagnostics
@@ -38,9 +38,9 @@ type generator struct {
 	configCreated       bool
 }
 
-func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	// Linearize the nodes into an order appropriate for procedural code generation.
-	nodes := hcl2.Linearize(program)
+	nodes := pcl.Linearize(program)
 
 	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
 	for _, pkg := range program.Packages() {
@@ -122,7 +122,7 @@ func getPackages(tool string, pkg *schema.Package) map[string]*pkgContext {
 	return v
 }
 
-func (g *generator) collectScopeRoots(n hcl2.Node) {
+func (g *generator) collectScopeRoots(n pcl.Node) {
 	diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 		if st, ok := n.(*model.ScopeTraversalExpression); ok {
 			g.scopeTraversalRoots.Add(st.RootName)
@@ -133,7 +133,7 @@ func (g *generator) collectScopeRoots(n hcl2.Node) {
 }
 
 // genPreamble generates package decl, imports, and opens the main func
-func (g *generator) genPreamble(w io.Writer, program *hcl2.Program, stdImports, pulumiImports,
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, stdImports, pulumiImports,
 	preambleHelperMethods codegen.StringSet) {
 	g.Fprint(w, "package main\n\n")
 	g.Fprintf(w, "import (\n")
@@ -161,7 +161,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program, stdImports, 
 	g.Fprintf(w, "pulumi.Run(func(ctx *pulumi.Context) error {\n")
 }
 
-func (g *generator) collectTypeImports(program *hcl2.Program, t schema.Type, imports codegen.StringSet) {
+func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type, imports codegen.StringSet) {
 	var token string
 	switch t := t.(type) {
 	case *schema.InputType:
@@ -195,7 +195,7 @@ func (g *generator) collectTypeImports(program *hcl2.Program, t schema.Type, imp
 	}
 
 	var tokenRange hcl.Range
-	pkg, mod, _, _ := hcl2.DecomposeToken(token, tokenRange)
+	pkg, mod, _, _ := pcl.DecomposeToken(token, tokenRange)
 	vPath, err := g.getVersionPath(program, pkg)
 	if err != nil {
 		panic(err)
@@ -205,13 +205,13 @@ func (g *generator) collectTypeImports(program *hcl2.Program, t schema.Type, imp
 
 // collect Imports returns two sets of packages imported by the program, std lib packages and pulumi packages
 func (g *generator) collectImports(
-	program *hcl2.Program,
+	program *pcl.Program,
 	stdImports,
 	pulumiImports,
 	preambleHelperMethods codegen.StringSet) (codegen.StringSet, codegen.StringSet, codegen.StringSet) {
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
-		if r, isResource := n.(*hcl2.Resource); isResource {
+		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, mod, name, _ := r.DecomposeToken()
 			if pkg == "pulumi" && mod == "providers" {
 				pkg = name
@@ -224,17 +224,17 @@ func (g *generator) collectImports(
 
 			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
 		}
-		if _, isConfigVar := n.(*hcl2.ConfigVariable); isConfigVar {
+		if _, isConfigVar := n.(*pcl.ConfigVariable); isConfigVar {
 			pulumiImports.Add("\"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config\"")
 		}
 
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
-				if call.Name == hcl2.Invoke {
+				if call.Name == pcl.Invoke {
 					tokenArg := call.Args[0]
 					token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 					tokenRange := tokenArg.SyntaxNode().Range()
-					pkg, mod, _, diagnostics := hcl2.DecomposeToken(token, tokenRange)
+					pkg, mod, _, diagnostics := pcl.DecomposeToken(token, tokenRange)
 
 					contract.Assert(len(diagnostics) == 0)
 
@@ -243,8 +243,8 @@ func (g *generator) collectImports(
 						panic(err)
 					}
 					pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
-				} else if call.Name == hcl2.IntrinsicConvert {
-					if schemaType, ok := hcl2.GetSchemaForType(call.Type()); ok {
+				} else if call.Name == pcl.IntrinsicConvert {
+					if schemaType, ok := pcl.GetSchemaForType(call.Type()); ok {
 						g.collectTypeImports(program, schemaType, pulumiImports)
 					}
 				}
@@ -277,7 +277,7 @@ func (g *generator) collectImports(
 	return stdImports, pulumiImports, preambleHelperMethods
 }
 
-func (g *generator) getVersionPath(program *hcl2.Program, pkg string) (string, error) {
+func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, error) {
 	for _, p := range program.Packages() {
 		if p.Name == pkg {
 			if p.Version != nil && p.Version.Major > 1 {
@@ -344,7 +344,7 @@ func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
 }
 
 // genPostamble closes the method
-func (g *generator) genPostamble(w io.Writer, nodes []hcl2.Node) {
+func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 
 	g.Fprint(w, "return nil\n")
 	g.Fprintf(w, "})\n")
@@ -359,22 +359,22 @@ func (g *generator) genHelpers(w io.Writer) {
 	}
 }
 
-func (g *generator) genNode(w io.Writer, n hcl2.Node) {
+func (g *generator) genNode(w io.Writer, n pcl.Node) {
 	switch n := n.(type) {
-	case *hcl2.Resource:
+	case *pcl.Resource:
 		g.genResource(w, n)
-	case *hcl2.OutputVariable:
+	case *pcl.OutputVariable:
 		g.genOutputAssignment(w, n)
-	case *hcl2.ConfigVariable:
+	case *pcl.ConfigVariable:
 		g.genConfigVariable(w, n)
-	case *hcl2.LocalVariable:
+	case *pcl.LocalVariable:
 		g.genLocalVariable(w, n)
 	}
 }
 
 var resourceType = model.MustNewOpaqueType("pulumi.Resource")
 
-func (g *generator) lowerResourceOptions(opts *hcl2.ResourceOptions) (*model.Block, []interface{}) {
+func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Block, []interface{}) {
 	if opts == nil {
 		return nil, nil
 	}
@@ -429,7 +429,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 	}
 }
 
-func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
+func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	resName := makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
@@ -511,7 +511,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 }
 
-func (g *generator) genOutputAssignment(w io.Writer, v *hcl2.OutputVariable) {
+func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	expr, temps := g.lowerExpression(v.Value, v.Type())
 	g.genTemps(w, temps)
 	g.Fgenf(w, "ctx.Export(\"%s\", %.3v)\n", v.Name(), expr)
@@ -599,7 +599,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 	}
 }
 
-func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
+func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	expr, temps := g.lowerExpression(v.Definition.Value, v.Type())
 	g.genTemps(w, temps)
 	name := makeValidIdentifier(v.Name())
@@ -613,7 +613,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	switch expr := expr.(type) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
-		case hcl2.Invoke:
+		case pcl.Invoke:
 			g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr)
 			g.isErrAssigned = true
 			g.Fgenf(w, "if err != nil {\n")
@@ -628,7 +628,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 	}
 }
 
-func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
+func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if !g.configCreated {
 		g.Fprint(w, "cfg := config.New(ctx, \"\")\n")
 		g.configCreated = true
@@ -660,7 +660,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 		switch expr := expr.(type) {
 		case *model.FunctionCallExpression:
 			switch expr.Name {
-			case hcl2.Invoke:
+			case pcl.Invoke:
 				g.Fgenf(w, "%s, err := %.3v;\n", v.Name(), expr)
 				g.isErrAssigned = true
 				g.Fgenf(w, "if err != nil {\n")
@@ -695,7 +695,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 // LookupVPC function: https://github.com/pulumi/pulumi-aws/blob/7835df354694e2f9f23371602a9febebc6b45be8/sdk/go/aws/ec2/getVpc.go#L15
 // Given that the naming here is not consisten, we must reverse the process from gen.go.
 func (g *generator) useLookupInvokeForm(token string) bool {
-	pkg, module, member, _ := hcl2.DecomposeToken(token, *new(hcl.Range))
+	pkg, module, member, _ := pcl.DecomposeToken(token, *new(hcl.Range))
 	modSplit := strings.Split(module, "/")
 	mod := modSplit[0]
 	fn := Title(member)

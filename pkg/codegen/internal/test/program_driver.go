@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 )
 
 type programTest struct {
@@ -125,8 +125,8 @@ var programTests = []programTest{
 // Checks that a generated program is correct
 type CheckProgramOutput = func(*testing.T, string)
 
-// Generates a program from a hcl2.Program
-type GenProgram = func(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error)
+// Generates a program from a pcl.Program
+type GenProgram = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
 type ProgramLangConfig struct {
 	Language   string
@@ -148,7 +148,7 @@ type ProgramLangConfig struct {
 func TestProgramCodegen(
 	t *testing.T,
 	// language string,
-	// genProgram func(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error
+	// genProgram func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error
 	testcase ProgramLangConfig,
 
 ) {
@@ -191,7 +191,7 @@ func TestProgramCodegen(
 				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 			}
 
-			program, diags, err := hcl2.BindProgram(parser.Files, hcl2.PluginHost(utils.NewHost(testdataPath)))
+			program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath)))
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}

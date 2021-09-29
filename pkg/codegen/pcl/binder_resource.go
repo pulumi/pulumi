@@ -13,7 +13,7 @@
 // limitations under the License.
 
 //nolint: goconst
-package hcl2
+package pcl
 
 import (
 	"github.com/hashicorp/hcl/v2"
