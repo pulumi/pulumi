@@ -1495,20 +1495,9 @@ func (mod *modContext) getModuleFileName() string {
 
 func (mod *modContext) gen(fs fs) error {
 	modName := mod.getModuleFileName()
-	var files []string
-	for p := range fs {
-		d := path.Dir(p)
-		if d == "." {
-			d = ""
-		}
-		if d == modName {
-			files = append(files, p)
-		}
-	}
 
 	addFile := func(name, contents string) {
 		p := path.Join(modName, name, "_index.md")
-		files = append(files, p)
 		fs.add(p, []byte(contents))
 	}
 
@@ -1860,6 +1849,14 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		if err := mod.gen(files); err != nil {
 			return nil, err
 		}
+	}
+
+	if rootMod, ok := modules[":index:"]; ok {
+		if err := generatePackageTree(*rootMod); err != nil {
+			glog.Errorf("Error generating the package tree for package %s: %v", pkg.Name, err)
+		}
+	} else {
+		glog.Errorf("A root module entry was not found for the package %s. Cannot generate the package tree...", pkg.Name)
 	}
 
 	return files, nil
