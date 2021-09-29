@@ -19,6 +19,7 @@
 package docs
 
 import (
+	"github.com/pulumi/pulumi/pkg/v3/codegen/docs/bundler"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
@@ -412,7 +413,10 @@ func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 }
 
 func TestGeneratePackage(t *testing.T) {
-	// TODO: do we have a compile step on templates?
+	if err := bundler.GenerateTemplatesBundleFile(); err != nil {
+		t.Fatalf("Error generating the templates bundle: %v", err)
+	}
+
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "docs",
 		GenPackage: generatePackage,
