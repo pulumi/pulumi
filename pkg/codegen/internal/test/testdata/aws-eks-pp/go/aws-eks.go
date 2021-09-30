@@ -71,7 +71,7 @@ func main() {
 			vpcSubnet = append(vpcSubnet, __res)
 		}
 		var rta []*ec2.RouteTableAssociation
-		for key0 := range zones.Names {
+		for key0, _ := range zones.Names {
 			__res, err := ec2.NewRouteTableAssociation(ctx, fmt.Sprintf("rta-%v", key0), &ec2.RouteTableAssociationArgs{
 				RouteTableId: eksRouteTable.ID(),
 				SubnetId:     vpcSubnet[key0].ID(),
@@ -119,7 +119,7 @@ func main() {
 		tmpJSON0, err := json.Marshal(map[string]interface{}{
 			"Version": "2012-10-17",
 			"Statement": []map[string]interface{}{
-				{
+				map[string]interface{}{
 					"Action": "sts:AssumeRole",
 					"Principal": map[string]interface{}{
 						"Service": "eks.amazonaws.com",
@@ -156,7 +156,7 @@ func main() {
 		tmpJSON1, err := json.Marshal(map[string]interface{}{
 			"Version": "2012-10-17",
 			"Statement": []map[string]interface{}{
-				{
+				map[string]interface{}{
 					"Action": "sts:AssumeRole",
 					"Principal": map[string]interface{}{
 						"Service": "ec2.amazonaws.com",
@@ -241,7 +241,7 @@ func main() {
 			tmpJSON2, err := json.Marshal(map[string]interface{}{
 				"apiVersion": "v1",
 				"clusters": []map[string]interface{}{
-					{
+					map[string]interface{}{
 						"cluster": map[string]interface{}{
 							"server":                     endpoint,
 							"certificate-authority-data": certificateAuthority.Data,
@@ -250,7 +250,7 @@ func main() {
 					},
 				},
 				"contexts": []map[string]interface{}{
-					{
+					map[string]interface{}{
 						"contest": map[string]interface{}{
 							"cluster": "kubernetes",
 							"user":    "aws",
@@ -260,7 +260,7 @@ func main() {
 				"current-context": "aws",
 				"kind":            "Config",
 				"users": []map[string]interface{}{
-					{
+					map[string]interface{}{
 						"name": "aws",
 						"user": map[string]interface{}{
 							"exec": map[string]interface{}{
