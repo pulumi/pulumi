@@ -1843,11 +1843,15 @@ func Initialize(tool string, pkg *schema.Package) {
 		},
 	})
 
+	defer glog.Flush()
+
+	if len(packagedTemplates) == 0 {
+		glog.Fatal(`packagedTemplates is empty. Did you run "make generate" first?`)
+	}
+
 	for name, b := range packagedTemplates {
 		template.Must(templates.New(name).Parse(string(b)))
 	}
-
-	defer glog.Flush()
 
 	// Generate the modules from the schema, and for every module
 	// run the generator functions to generate markdown files.
@@ -1857,7 +1861,7 @@ func Initialize(tool string, pkg *schema.Package) {
 // GeneratePackage generates docs for each resource given the Pulumi
 // schema. The returned map contains the filename with path as the key
 // and the contents as its value.
-func GeneratePackage() (map[string][]byte, error) {
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
 	if modules == nil {
 		return nil, errors.New("must call Initialize before generating the docs package")
 	}

@@ -19,12 +19,10 @@
 package docs
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/codegen/docs/bundler"
-	"testing"
-
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 const (
@@ -410,14 +408,14 @@ func TestExamplesProcessing(t *testing.T) {
 
 func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
 	Initialize(tool, pkg)
-	return GeneratePackage()
+	return GeneratePackage(tool, pkg)
 }
 
 func TestGeneratePackage(t *testing.T) {
-	if err := bundler.GenerateTemplatesBundleFile(); err != nil {
-		t.Fatalf("Error generating the templates bundle: %v", err)
-	}
-
+	// When running this test locally, be sure to run
+	// `make generate` first. That will regenerate the
+	// compiled templates file packaged.go. See README.md
+	// in this package for more info.
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "docs",
 		GenPackage: generatePackage,

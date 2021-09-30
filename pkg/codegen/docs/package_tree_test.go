@@ -29,7 +29,6 @@ func TestGeneratePackageTree(t *testing.T) {
 	assert.NoError(t, err, "importing spec")
 
 	Initialize(unitTestTool, schemaPkg)
-
 	pkgTree, err := GeneratePackageTree()
 	if err != nil {
 		t.Errorf("Error generating the package tree for package %s: %v", schemaPkg.Name, err)
