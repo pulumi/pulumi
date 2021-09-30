@@ -1734,13 +1734,30 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	return nil
 }
 
+func (pkg *pkgContext) needsGoOutputVersion(f *schema.Function) bool {
+	fPkg := f.Package
+
+	var goInfo GoPackageInfo
+
+	contract.AssertNoError(fPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
+	if info, ok := fPkg.Language["go"].(GoPackageInfo); ok {
+		goInfo = info
+	}
+
+	if goInfo.DisableFunctionOutputVersions {
+		return false
+	}
+
+	return f.NeedsOutputVersion()
+}
+
 func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) string {
 	importsAndAliases := map[string]string{}
 	pkg.getImports(f, importsAndAliases)
 	buffer := &bytes.Buffer{}
 
 	var imports []string
-	if f.NeedsOutputVersion() {
+	if pkg.needsGoOutputVersion(f) {
 		imports = []string{"context", "reflect"}
 	}
 
@@ -1831,7 +1848,7 @@ func (pkg *pkgContext) functionResultTypeName(f *schema.Function) string {
 }
 
 func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function) {
-	if !f.NeedsOutputVersion() {
+	if !pkg.needsGoOutputVersion(f) {
 		return
 	}
 
