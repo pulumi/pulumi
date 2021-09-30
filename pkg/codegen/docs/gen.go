@@ -65,6 +65,7 @@ var (
 		"alicloud":      "AliCloud",
 		"auth0":         "Auth0",
 		"aws":           "AWS",
+		"aws-native":    "AWS Native (preview)",
 		"azure":         "Azure Classic",
 		"azure-native":  "Azure Native",
 		"azuread":       "Azure AD",

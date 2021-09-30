@@ -161,9 +161,9 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 	})
 	require.NoError(t, err)
 
-	args := append([]string{"-m", "py_compile"}, pythonFiles...)
 	ex, _, err := python.CommandPath()
-	require.NoError(t, err, "Did not find python command")
+	require.NoError(t, err)
+	args := append([]string{"-m", "py_compile"}, pythonFiles...)
 	test.RunCommand(t, "python syntax check", codeDir, ex, args...)
 }
 
