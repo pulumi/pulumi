@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package hcl2
+package pcl
 
 import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
