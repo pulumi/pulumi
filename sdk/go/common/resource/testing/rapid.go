@@ -263,6 +263,7 @@ func resourceReferenceGenerator(ctx *StackContext) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) resource.ResourceReference {
 		r := resourceGenerator.Draw(t, "referenced resource").(*resource.State)
 
+		// Only pull the resource's ID if it is a custom resource. Component resources do not have IDs.
 		var id resource.PropertyValue
 		if r.Custom {
 			id = rapid.OneOf(UnknownPropertyGenerator(), rapid.Just(resource.NewStringProperty(string(r.ID)))).Draw(t, "referenced ID").(resource.PropertyValue)
