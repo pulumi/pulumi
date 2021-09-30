@@ -65,18 +65,22 @@ var (
 	langModuleNameLookup map[string]string
 	// TODO[pulumi/pulumi#7813]: Remove this lookup once display name is available in
 	// the Pulumi schema.
-	// titleLookup is a map to map module package name to the desired display name
+	//
+	// NOTE: For the time being this lookup map and the one used by the resourcedocsgen
+	// tool in `pulumi/docs` must be kept up-to-date.
+	//
+	// titleLookup is a map of package name to the desired display name
 	// for display in the TOC menu under API Reference.
 	titleLookup = map[string]string{
 		"aiven":         "Aiven",
 		"akamai":        "Akamai",
-		"alicloud":      "AliCloud",
+		"alicloud":      "Alibaba Cloud",
 		"auth0":         "Auth0",
 		"aws":           "AWS",
 		"aws-native":    "AWS Native (preview)",
 		"azure":         "Azure Classic",
 		"azure-native":  "Azure Native",
-		"azuread":       "Azure AD",
+		"azuread":       "Azure Active Directory",
 		"azuredevops":   "Azure DevOps",
 		"azuresel":      "Azure",
 		"civo":          "Civo",
@@ -91,8 +95,8 @@ var (
 		"eks":           "EKS",
 		"f5bigip":       "f5 BIG-IP",
 		"fastly":        "Fastly",
-		"gcp":           "GCP",
-		"google-native": "Google Native (preview)",
+		"gcp":           "Google Cloud Classic",
+		"google-native": "Google Cloud Native (preview)",
 		"github":        "GitHub",
 		"gitlab":        "GitLab",
 		"hcloud":        "Hetzner Cloud",
@@ -107,7 +111,7 @@ var (
 		"newrelic":      "New Relic",
 		"ns1":           "NS1",
 		"okta":          "Okta",
-		"openstack":     "Open Stack",
+		"openstack":     "OpenStack",
 		"opsgenie":      "Opsgenie",
 		"packet":        "Packet",
 		"pagerduty":     "PagerDuty",
