@@ -45,6 +45,15 @@ def test_component(my_resources):
 
 
 @pulumi.runtime.test
+def test_remote_component(my_resources):
+
+    def check_outprop(outprop):
+        assert outprop.startswith("output: hello: ")
+
+    return my_resources['myremotecomponent'].outprop.apply(check_outprop)
+
+
+@pulumi.runtime.test
 def test_custom(my_resources):
 
     def check_ip(ip):
@@ -152,6 +161,11 @@ class MyMocks(pulumi.runtime.Mocks):
             return [args.name + '_id', args.inputs]
         elif args.typ == 'pulumi:pulumi:StackReference' and 'dns' in args.name:
             return [args.name, {'outputs': {'haha': 'business'}}]
+        elif args.typ == 'pkg:index:MyRemoteComponent':
+            state = {
+                'outprop': f"output: {args.inputs['inprop']}",
+            }
+            return [args.name + '_id', dict(args.inputs, **state)]
         else:
             return ['', {}]
 

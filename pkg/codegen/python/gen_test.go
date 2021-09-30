@@ -56,13 +56,15 @@ func TestRelPathToRelImport(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
-	// To speed up these tests, we will generate one common
-	// virtual environment for all of them to run in, rather than
-	// having one per test.
-	err := buildVirtualEnv()
-	if err != nil {
-		t.Error(err)
-		return
+	if !test.NoSDKCodegenChecks() {
+		// To speed up these tests, we will generate one common
+		// virtual environment for all of them to run in, rather than
+		// having one per test.
+		err := buildVirtualEnv()
+		if err != nil {
+			t.Error(err)
+			return
+		}
 	}
 
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
@@ -159,8 +161,10 @@ func pyCompileCheck(t *testing.T, codeDir string) {
 	})
 	require.NoError(t, err)
 
+	ex, _, err := python.CommandPath()
+	require.NoError(t, err)
 	args := append([]string{"-m", "py_compile"}, pythonFiles...)
-	test.RunCommand(t, "python syntax check", codeDir, "python", args...)
+	test.RunCommand(t, "python syntax check", codeDir, ex, args...)
 }
 
 func pyTestCheck(t *testing.T, codeDir string) {

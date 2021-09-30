@@ -24,7 +24,8 @@ meta_desc: "Documentation for the configstation.Provider resource with examples,
 {{% choosable language python %}}
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
+             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
+             <span class="nx">favorite_color</span><span class="p">:</span> <span class="nx">Optional[Union[str, Color]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ProviderArgs]</a></span> = None<span class="p">,</span>
@@ -152,19 +153,51 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 
 
 {{% choosable language csharp %}}
-<dl class="resources-properties"></dl>
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="favoritecolor_csharp">
+<a href="#favoritecolor_csharp" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string | <a href="#color">Pulumi.<wbr>Configstation.<wbr>Color</a></span>
+    </dt>
+    <dd>{{% md %}}this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: `FAVE_COLOR`{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
-<dl class="resources-properties"></dl>
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="favoritecolor_go">
+<a href="#favoritecolor_go" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string | <a href="#color">Color</a></span>
+    </dt>
+    <dd>{{% md %}}this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: `FAVE_COLOR`{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
-<dl class="resources-properties"></dl>
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="favoritecolor_nodejs">
+<a href="#favoritecolor_nodejs" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string | <a href="#color">Color</a></span>
+    </dt>
+    <dd>{{% md %}}this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: `FAVE_COLOR`{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
-<dl class="resources-properties"></dl>
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="favorite_color_python">
+<a href="#favorite_color_python" style="color: inherit; text-decoration: inherit;">favorite_<wbr>color</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">str | <a href="#color">Color</a></span>
+    </dt>
+    <dd>{{% md %}}this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: `FAVE_COLOR`{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 
@@ -227,6 +260,36 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
+
+## Supporting Types
+
+
+
+<h4 id="color">Color</h4>
+
+{{% choosable language csharp %}}
+<dl class="tabular"><dt>Blue</dt>
+    <dd>blue</dd><dt>Red</dt>
+    <dd>red</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language go %}}
+<dl class="tabular"><dt>Color<wbr>Blue</dt>
+    <dd>blue</dd><dt>Color<wbr>Red</dt>
+    <dd>red</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language nodejs %}}
+<dl class="tabular"><dt>Blue</dt>
+    <dd>blue</dd><dt>Red</dt>
+    <dd>red</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language python %}}
+<dl class="tabular"><dt>BLUE</dt>
+    <dd>blue</dd><dt>RED</dt>
+    <dd>red</dd></dl>
+{{% /choosable %}}
 
 
 <h2 id="package-details">Package Details</h2>

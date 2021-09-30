@@ -47,13 +47,9 @@ jobs:
         node-version: [ 14.x ]
     steps:
       - name: Install Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
-      - name: Add GOBIN to PATH
-        run: |
-          mkdir -p "$(go env GOPATH)/bin"
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:

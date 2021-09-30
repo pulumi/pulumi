@@ -6,6 +6,7 @@
     "configstation/doc.go",
     "configstation/init.go",
     "configstation/provider.go",
+    "configstation/pulumiEnums.go",
     "configstation/pulumiTypes.go",
     "configstation/pulumiUtilities.go"
   ]

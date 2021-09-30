@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: unused,deadcode
+// nolint: unused,deadcode,lll
 package pulumi
 
 import (
@@ -623,7 +623,7 @@ func (UntypedArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*map[string]interface{})(nil)).Elem()
 }
 
-func TestMapInputMarhsalling(t *testing.T) {
+func TestMapInputMarshalling(t *testing.T) {
 	var theResource simpleCustomResource
 	out := newOutput(nil, reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
 	out.getState().resolve("outputty", true, false, nil)
@@ -645,17 +645,22 @@ func TestMapInputMarhsalling(t *testing.T) {
 	})
 
 	cases := []struct {
-		inputs  Input
-		depUrns []string
+		inputs            Input
+		depUrns           []string
+		expectOutputValue bool
 	}{
-		{inputs: inputs1, depUrns: []string{""}},
+		{inputs: inputs1, depUrns: []string{""}, expectOutputValue: true},
 		{inputs: inputs2, depUrns: nil},
 	}
 
 	for _, c := range cases {
 		resolved, _, depUrns, err := marshalInputs(c.inputs)
 		assert.NoError(t, err)
-		assert.Equal(t, "outputty", resolved["prop"].StringValue())
+		if c.expectOutputValue {
+			assert.Equal(t, "outputty", resolved["prop"].OutputValue().Element.StringValue())
+		} else {
+			assert.Equal(t, "outputty", resolved["prop"].StringValue())
+		}
 		assert.Equal(t, "foo", resolved["nested"].ObjectValue()["foo"].StringValue())
 		assert.Equal(t, 42.0, resolved["nested"].ObjectValue()["bar"].NumberValue())
 		assert.Equal(t, len(c.depUrns), len(depUrns))
@@ -879,4 +884,656 @@ func TestDependsOnComponent(t *testing.T) {
 
 	_, deps = newResource("resI", DependsOn([]Resource{resG}))
 	assert.Equal(t, []string{"resG"}, deps)
+}
+
+func TestOutputValueMarshalling(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	values := []struct {
+		value    interface{}
+		expected resource.PropertyValue
+	}{
+		{value: nil, expected: resource.NewNullProperty()},
+		{value: 0, expected: resource.NewNumberProperty(0)},
+		{value: 1, expected: resource.NewNumberProperty(1)},
+		{value: "", expected: resource.NewStringProperty("")},
+		{value: "hi", expected: resource.NewStringProperty("hi")},
+		{value: map[string]string{}, expected: resource.NewObjectProperty(resource.PropertyMap{})},
+		{value: []string{}, expected: resource.NewArrayProperty(nil)},
+	}
+	for _, value := range values {
+		for _, deps := range [][]resource.URN{nil, {"fakeURN1", "fakeURN2"}} {
+			for _, known := range []bool{true, false} {
+				for _, secret := range []bool{true, false} {
+					var resources []Resource
+					if len(deps) > 0 {
+						for _, dep := range deps {
+							resources = append(resources, ctx.newDependencyResource(URN(dep)))
+						}
+					}
+
+					out := ctx.newOutput(anyOutputType, resources...)
+					out.getState().resolve(value.value, known, secret, nil)
+
+					expected := resource.Output{
+						Known:        known,
+						Secret:       secret,
+						Dependencies: deps,
+					}
+					if known {
+						expected.Element = value.expected
+					}
+
+					name := fmt.Sprintf("value=%v, known=%v, secret=%v, deps=%v", value, known, secret, deps)
+					t.Run(name, func(t *testing.T) {
+						inputs := Map{"value": out}
+						expected := resource.PropertyMap{"value": resource.NewOutputProperty(expected)}
+						actual, _, _, err := marshalInputs(inputs)
+						assert.NoError(t, err)
+						assert.Equal(t, expected, actual)
+					})
+				}
+			}
+		}
+	}
+}
+
+type foo struct {
+	TemplateOptions *TemplateOptions `pulumi:"templateOptions"`
+}
+
+type fooArgs struct {
+	TemplateOptions TemplateOptionsPtrInput
+}
+
+func (fooArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*foo)(nil)).Elem()
+}
+
+type TemplateOptions struct {
+	Description       *string                    `pulumi:"description"`
+	TagSpecifications []TemplateTagSpecification `pulumi:"tagSpecifications"`
+}
+
+type TemplateOptionsInput interface {
+	Input
+
+	ToTemplateOptionsOutput() TemplateOptionsOutput
+	ToTemplateOptionsOutputWithContext(context.Context) TemplateOptionsOutput
+}
+
+type TemplateOptionsArgs struct {
+	Description       StringPtrInput
+	TagSpecifications TemplateTagSpecificationArrayInput
+}
+
+func (TemplateOptionsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateOptions)(nil)).Elem()
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsOutput() TemplateOptionsOutput {
+	return i.ToTemplateOptionsOutputWithContext(context.Background())
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsOutputWithContext(ctx context.Context) TemplateOptionsOutput {
+	return ToOutputWithContext(ctx, i).(TemplateOptionsOutput)
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return i.ToTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (i TemplateOptionsArgs) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return ToOutputWithContext(ctx, i).(TemplateOptionsOutput).ToTemplateOptionsPtrOutputWithContext(ctx)
+}
+
+type TemplateOptionsPtrInput interface {
+	Input
+
+	ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput
+	ToTemplateOptionsPtrOutputWithContext(context.Context) TemplateOptionsPtrOutput
+}
+
+type templateOptionsPtrType TemplateOptionsArgs
+
+func TemplateOptionsPtr(v *TemplateOptionsArgs) TemplateOptionsPtrInput {
+	return (*templateOptionsPtrType)(v)
+}
+
+func (*templateOptionsPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TemplateOptions)(nil)).Elem()
+}
+
+func (i *templateOptionsPtrType) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return i.ToTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (i *templateOptionsPtrType) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return ToOutputWithContext(ctx, i).(TemplateOptionsPtrOutput)
+}
+
+type TemplateOptionsOutput struct{ *OutputState }
+
+func (TemplateOptionsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateOptions)(nil)).Elem()
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsOutput() TemplateOptionsOutput {
+	return o
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsOutputWithContext(ctx context.Context) TemplateOptionsOutput {
+	return o
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return o.ToTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (o TemplateOptionsOutput) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TemplateOptions) *TemplateOptions {
+		return &v
+	}).(TemplateOptionsPtrOutput)
+}
+
+type TemplateOptionsPtrOutput struct{ *OutputState }
+
+func (TemplateOptionsPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TemplateOptions)(nil)).Elem()
+}
+
+func (o TemplateOptionsPtrOutput) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
+	return o
+}
+
+func (o TemplateOptionsPtrOutput) ToTemplateOptionsPtrOutputWithContext(ctx context.Context) TemplateOptionsPtrOutput {
+	return o
+}
+
+type TemplateTagSpecification struct {
+	Name *string           `pulumi:"name"`
+	Tags map[string]string `pulumi:"tags"`
+}
+
+type TemplateTagSpecificationInput interface {
+	Input
+
+	ToTemplateTagSpecificationOutput() TemplateTagSpecificationOutput
+	ToTemplateTagSpecificationOutputWithContext(context.Context) TemplateTagSpecificationOutput
+}
+
+type TemplateTagSpecificationArgs struct {
+	Name StringPtrInput `pulumi:"name"`
+	Tags StringMapInput `pulumi:"tags"`
+}
+
+func (TemplateTagSpecificationArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateTagSpecification)(nil)).Elem()
+}
+
+func (i TemplateTagSpecificationArgs) ToTemplateTagSpecificationOutput() TemplateTagSpecificationOutput {
+	return i.ToTemplateTagSpecificationOutputWithContext(context.Background())
+}
+
+func (i TemplateTagSpecificationArgs) ToTemplateTagSpecificationOutputWithContext(ctx context.Context) TemplateTagSpecificationOutput {
+	return ToOutputWithContext(ctx, i).(TemplateTagSpecificationOutput)
+}
+
+type TemplateTagSpecificationArrayInput interface {
+	Input
+
+	ToTemplateTagSpecificationArrayOutput() TemplateTagSpecificationArrayOutput
+	ToTemplateTagSpecificationArrayOutputWithContext(context.Context) TemplateTagSpecificationArrayOutput
+}
+
+type TemplateTagSpecificationArray []TemplateTagSpecificationInput
+
+func (TemplateTagSpecificationArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TemplateTagSpecification)(nil)).Elem()
+}
+
+func (i TemplateTagSpecificationArray) ToTemplateTagSpecificationArrayOutput() TemplateTagSpecificationArrayOutput {
+	return i.ToTemplateTagSpecificationArrayOutputWithContext(context.Background())
+}
+
+func (i TemplateTagSpecificationArray) ToTemplateTagSpecificationArrayOutputWithContext(ctx context.Context) TemplateTagSpecificationArrayOutput {
+	return ToOutputWithContext(ctx, i).(TemplateTagSpecificationArrayOutput)
+}
+
+type TemplateTagSpecificationOutput struct{ *OutputState }
+
+func (TemplateTagSpecificationOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TemplateTagSpecification)(nil)).Elem()
+}
+
+func (o TemplateTagSpecificationOutput) ToTemplateTagSpecificationOutput() TemplateTagSpecificationOutput {
+	return o
+}
+
+func (o TemplateTagSpecificationOutput) ToTemplateTagSpecificationOutputWithContext(ctx context.Context) TemplateTagSpecificationOutput {
+	return o
+}
+
+type TemplateTagSpecificationArrayOutput struct{ *OutputState }
+
+func (TemplateTagSpecificationArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TemplateTagSpecification)(nil)).Elem()
+}
+
+func (o TemplateTagSpecificationArrayOutput) ToTemplateTagSpecificationArrayOutput() TemplateTagSpecificationArrayOutput {
+	return o
+}
+
+func (o TemplateTagSpecificationArrayOutput) ToTemplateTagSpecificationArrayOutputWithContext(ctx context.Context) TemplateTagSpecificationArrayOutput {
+	return o
+}
+
+func TestOutputValueMarshallingNested(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	RegisterOutputType(TemplateOptionsOutput{})
+	RegisterOutputType(TemplateOptionsPtrOutput{})
+	RegisterOutputType(TemplateTagSpecificationOutput{})
+	RegisterOutputType(TemplateTagSpecificationArrayOutput{})
+
+	templateOptionsPtrOutputType := reflect.TypeOf((*TemplateOptionsPtrOutput)(nil)).Elem()
+	unknownTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
+	unknownTemplateOptionsPtrOutput.getState().resolve(nil, false /*known*/, false /*secret*/, nil)
+
+	unknownSecretTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
+	unknownSecretTemplateOptionsPtrOutput.getState().resolve(nil, false /*known*/, true /*secret*/, nil)
+
+	stringOutputType := reflect.TypeOf((*StringOutput)(nil)).Elem()
+	unknownStringOutput := ctx.newOutput(stringOutputType).(StringOutput)
+	unknownStringOutput.getState().resolve("", false /*known*/, false /*secret*/, nil)
+
+	tests := []struct {
+		name     string
+		input    Input
+		expected resource.PropertyValue
+	}{
+		{
+			name:     "empty",
+			input:    fooArgs{},
+			expected: resource.NewObjectProperty(resource.PropertyMap{}),
+		},
+		{
+			name: "options empty",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{}),
+			}),
+		},
+		{
+			name: "options unknown",
+			input: fooArgs{
+				TemplateOptions: unknownTemplateOptionsPtrOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewOutputProperty(resource.Output{}),
+			}),
+		},
+		{
+			name: "options unknown secret",
+			input: fooArgs{
+				TemplateOptions: unknownSecretTemplateOptionsPtrOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewOutputProperty(resource.Output{
+					Secret: true,
+				}),
+			}),
+		},
+		{
+			name: "options plain known description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: String("hello"),
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"description": resource.NewStringProperty("hello"),
+				}),
+			}),
+		},
+		{
+			name: "options plain known secret description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: ToSecret(String("hello")).(StringOutput),
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"description": resource.NewOutputProperty(resource.Output{
+						Element: resource.NewStringProperty("hello"),
+						Known:   true,
+						Secret:  true,
+					}),
+				}),
+			}),
+		},
+		{
+			name: "options output known secret description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: ToSecret(String("hello")).(StringOutput),
+				}.ToTemplateOptionsOutput(),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewObjectProperty(resource.PropertyMap{
+						"description": resource.NewStringProperty("hello"),
+					}),
+					Known:  true,
+					Secret: true,
+				}),
+			}),
+		},
+		{
+			name: "options plain unknown description",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					Description: unknownStringOutput,
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"description": resource.NewOutputProperty(resource.Output{}),
+				}),
+			}),
+		},
+		{
+			name: "options tag specifications nested unknown",
+			input: fooArgs{
+				TemplateOptions: TemplateOptionsArgs{
+					TagSpecifications: TemplateTagSpecificationArray{
+						TemplateTagSpecificationArgs{
+							Name: String("hello"),
+							Tags: StringMap{
+								"first": String("second"),
+								"third": unknownStringOutput,
+							},
+						},
+					},
+				},
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"templateOptions": resource.NewObjectProperty(resource.PropertyMap{
+					"tagSpecifications": resource.NewArrayProperty([]resource.PropertyValue{
+						resource.NewObjectProperty(resource.PropertyMap{
+							"name": resource.NewStringProperty("hello"),
+							"tags": resource.NewObjectProperty(resource.PropertyMap{
+								"first": resource.NewStringProperty("second"),
+								"third": resource.NewOutputProperty(resource.Output{}),
+							}),
+						}),
+					}),
+				}),
+			}),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inputs := Map{"value": tt.input}
+			expected := resource.PropertyMap{"value": tt.expected}
+
+			actual, _, _, err := marshalInputs(inputs)
+			assert.NoError(t, err)
+			assert.Equal(t, expected, actual)
+		})
+	}
+}
+
+type rubberTreeArgs struct {
+	Size *TreeSize `pulumi:"size"`
+}
+type RubberTreeArgs struct {
+	Size TreeSizePtrInput
+}
+
+func (RubberTreeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*rubberTreeArgs)(nil)).Elem()
+}
+
+type TreeSize string
+
+const (
+	TreeSizeSmall  = TreeSize("small")
+	TreeSizeMedium = TreeSize("medium")
+	TreeSizeLarge  = TreeSize("large")
+)
+
+func (TreeSize) ElementType() reflect.Type {
+	return reflect.TypeOf((*TreeSize)(nil)).Elem()
+}
+
+func (e TreeSize) ToTreeSizeOutput() TreeSizeOutput {
+	return ToOutput(e).(TreeSizeOutput)
+}
+
+func (e TreeSize) ToTreeSizeOutputWithContext(ctx context.Context) TreeSizeOutput {
+	return ToOutputWithContext(ctx, e).(TreeSizeOutput)
+}
+
+func (e TreeSize) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return e.ToTreeSizePtrOutputWithContext(context.Background())
+}
+
+func (e TreeSize) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return e.ToTreeSizeOutputWithContext(ctx).ToTreeSizePtrOutputWithContext(ctx)
+}
+
+func (e TreeSize) ToStringOutput() StringOutput {
+	return ToOutput(String(e)).(StringOutput)
+}
+
+func (e TreeSize) ToStringOutputWithContext(ctx context.Context) StringOutput {
+	return ToOutputWithContext(ctx, String(e)).(StringOutput)
+}
+
+func (e TreeSize) ToStringPtrOutput() StringPtrOutput {
+	return String(e).ToStringPtrOutputWithContext(context.Background())
+}
+
+func (e TreeSize) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
+type TreeSizeOutput struct{ *OutputState }
+
+func (TreeSizeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TreeSize)(nil)).Elem()
+}
+
+func (o TreeSizeOutput) ToTreeSizeOutput() TreeSizeOutput {
+	return o
+}
+
+func (o TreeSizeOutput) ToTreeSizeOutputWithContext(ctx context.Context) TreeSizeOutput {
+	return o
+}
+
+func (o TreeSizeOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return o.ToTreeSizePtrOutputWithContext(context.Background())
+}
+
+func (o TreeSizeOutput) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TreeSize) *TreeSize {
+		return &v
+	}).(TreeSizePtrOutput)
+}
+
+func (o TreeSizeOutput) ToStringOutput() StringOutput {
+	return o.ToStringOutputWithContext(context.Background())
+}
+
+func (o TreeSizeOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e TreeSize) string {
+		return string(e)
+	}).(StringOutput)
+}
+
+func (o TreeSizeOutput) ToStringPtrOutput() StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o TreeSizeOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e TreeSize) *string {
+		v := string(e)
+		return &v
+	}).(StringPtrOutput)
+}
+
+type TreeSizePtrOutput struct{ *OutputState }
+
+func (TreeSizePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TreeSize)(nil)).Elem()
+}
+
+func (o TreeSizePtrOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return o
+}
+
+func (o TreeSizePtrOutput) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return o
+}
+
+func (o TreeSizePtrOutput) Elem() TreeSizeOutput {
+	return o.ApplyT(func(v *TreeSize) TreeSize {
+		if v != nil {
+			return *v
+		}
+		var ret TreeSize
+		return ret
+	}).(TreeSizeOutput)
+}
+
+func (o TreeSizePtrOutput) ToStringPtrOutput() StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o TreeSizePtrOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e *TreeSize) *string {
+		if e == nil {
+			return nil
+		}
+		v := string(*e)
+		return &v
+	}).(StringPtrOutput)
+}
+
+type TreeSizeInput interface {
+	Input
+
+	ToTreeSizeOutput() TreeSizeOutput
+	ToTreeSizeOutputWithContext(context.Context) TreeSizeOutput
+}
+
+var treeSizePtrType = reflect.TypeOf((**TreeSize)(nil)).Elem()
+
+type TreeSizePtrInput interface {
+	Input
+
+	ToTreeSizePtrOutput() TreeSizePtrOutput
+	ToTreeSizePtrOutputWithContext(context.Context) TreeSizePtrOutput
+}
+
+type treeSizePtr string
+
+func TreeSizePtr(v string) TreeSizePtrInput {
+	return (*treeSizePtr)(&v)
+}
+
+func (*treeSizePtr) ElementType() reflect.Type {
+	return treeSizePtrType
+}
+
+func (in *treeSizePtr) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return ToOutput(in).(TreeSizePtrOutput)
+}
+
+func (in *treeSizePtr) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return ToOutputWithContext(ctx, in).(TreeSizePtrOutput)
+}
+
+type TreeSizeMapInput interface {
+	Input
+
+	ToTreeSizeMapOutput() TreeSizeMapOutput
+	ToTreeSizeMapOutputWithContext(context.Context) TreeSizeMapOutput
+}
+
+type TreeSizeMap map[string]TreeSize
+
+func (TreeSizeMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+}
+
+func (i TreeSizeMap) ToTreeSizeMapOutput() TreeSizeMapOutput {
+	return i.ToTreeSizeMapOutputWithContext(context.Background())
+}
+
+func (i TreeSizeMap) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSizeMapOutput {
+	return ToOutputWithContext(ctx, i).(TreeSizeMapOutput)
+}
+
+type TreeSizeMapOutput struct{ *OutputState }
+
+func (TreeSizeMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+}
+
+func (o TreeSizeMapOutput) ToTreeSizeMapOutput() TreeSizeMapOutput {
+	return o
+}
+
+func (o TreeSizeMapOutput) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSizeMapOutput {
+	return o
+}
+
+func (o TreeSizeMapOutput) MapIndex(k StringInput) TreeSizeOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) TreeSize {
+		return vs[0].(map[string]TreeSize)[vs[1].(string)]
+	}).(TreeSizeOutput)
+}
+
+func TestOutputValueMarshallingEnums(t *testing.T) {
+	_, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	RegisterOutputType(TreeSizeOutput{})
+	RegisterOutputType(TreeSizePtrOutput{})
+	RegisterOutputType(TreeSizeMapOutput{})
+
+	tests := []struct {
+		name     string
+		input    Input
+		expected resource.PropertyValue
+	}{
+		{
+			name: "empty",
+			input: &RubberTreeArgs{
+				Size: TreeSize("medium"),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"size": resource.NewStringProperty("medium"),
+			}),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inputs := Map{"value": tt.input}
+			expected := resource.PropertyMap{"value": tt.expected}
+
+			actual, _, _, err := marshalInputs(inputs)
+			assert.NoError(t, err)
+			assert.Equal(t, expected, actual)
+		})
+	}
 }

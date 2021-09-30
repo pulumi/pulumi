@@ -1,4 +1,5 @@
-//+build ignore
+//go:build ignore
+// +build ignore
 
 // Copyright 2016-2020, Pulumi Corporation.
 //

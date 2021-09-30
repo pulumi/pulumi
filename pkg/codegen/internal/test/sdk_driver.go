@@ -1,6 +1,7 @@
 package test
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,13 +43,13 @@ const (
 
 var sdkTests = []sdkTest{
 	{
-		Directory:   "dash-named-schema",
-		Description: "Simple schema with a two part name (foo-bar)",
+		Directory:   "naming-collisions",
+		Description: "Schema with types that could potentially produce collisions (go).",
 		Skip:        codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "input-collision",
-		Description: "Schema with types that could potentially produce collisions (go).",
+		Directory:   "dash-named-schema",
+		Description: "Simple schema with a two part name (foo-bar)",
 		Skip:        codegen.NewStringSet("python/test"),
 	},
 	{
@@ -134,13 +135,13 @@ var sdkTests = []sdkTest{
 	},
 	{
 		Directory:        "resource-property-overlap",
-		Description:      "A resource with the same name as it's property",
+		Description:      "A resource with the same name as its property",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
 		Directory:   "hyphen-url",
-		Description: "A resource url with a hyphen in it's path",
+		Description: "A resource url with a hyphen in its path",
 		Skip:        codegen.NewStringSet("python/test"),
 	},
 	{
@@ -148,6 +149,22 @@ var sdkTests = []sdkTest{
 		Description:      "Tests targeting the $fn_output helper code generation feature",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
+	{
+		Directory:   "cyclic-types",
+		Description: "Cyclic object types",
+		Skip:        codegen.NewStringSet("python/test"),
+	},
+}
+
+var genSDKOnly bool
+
+func NoSDKCodegenChecks() bool {
+	return genSDKOnly
+}
+
+func init() {
+	flag.BoolVar(&genSDKOnly, "sdk.no-checks", false, "when set, skips all post-SDK-generation checks")
+	// NOTE: the testing package will call flag.Parse.
 }
 
 type SDKCodegenOptions struct {
@@ -251,6 +268,10 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				if !ValidateFileEquality(t, files, expectedFiles) {
 					t.Fail()
 				}
+			}
+
+			if genSDKOnly {
+				return
 			}
 
 			CopyExtraFiles(t, dirPath, opts.Language)

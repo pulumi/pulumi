@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint: lll
 package pulumi
 
 import (
@@ -194,6 +195,200 @@ type NestedInputtyArgs struct {
 
 type PlainOptionalNestedInputtyArgs struct {
 	Value *NestedInputtyArgs `pulumi:"value"`
+}
+
+type LaunchTemplateOptions struct {
+	TagSpecifications []LaunchTemplateTagSpecification `pulumi:"tagSpecifications"`
+}
+
+type LaunchTemplateOptionsInput interface {
+	Input
+
+	ToLaunchTemplateOptionsOutput() LaunchTemplateOptionsOutput
+	ToLaunchTemplateOptionsOutputWithContext(context.Context) LaunchTemplateOptionsOutput
+}
+
+type LaunchTemplateOptionsArgs struct {
+	TagSpecifications LaunchTemplateTagSpecificationArrayInput `pulumi:"tagSpecifications"`
+}
+
+func (LaunchTemplateOptionsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*LaunchTemplateOptions)(nil)).Elem()
+}
+
+func (i LaunchTemplateOptionsArgs) ToLaunchTemplateOptionsOutput() LaunchTemplateOptionsOutput {
+	return i.ToLaunchTemplateOptionsOutputWithContext(context.Background())
+}
+
+func (i LaunchTemplateOptionsArgs) ToLaunchTemplateOptionsOutputWithContext(ctx context.Context) LaunchTemplateOptionsOutput {
+	return ToOutputWithContext(ctx, i).(LaunchTemplateOptionsOutput)
+}
+
+func (i LaunchTemplateOptionsArgs) ToLaunchTemplateOptionsPtrOutput() LaunchTemplateOptionsPtrOutput {
+	return i.ToLaunchTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (i LaunchTemplateOptionsArgs) ToLaunchTemplateOptionsPtrOutputWithContext(ctx context.Context) LaunchTemplateOptionsPtrOutput {
+	return ToOutputWithContext(ctx, i).(LaunchTemplateOptionsOutput).ToLaunchTemplateOptionsPtrOutputWithContext(ctx)
+}
+
+type LaunchTemplateOptionsPtrInput interface {
+	Input
+
+	ToLaunchTemplateOptionsPtrOutput() LaunchTemplateOptionsPtrOutput
+	ToLaunchTemplateOptionsPtrOutputWithContext(context.Context) LaunchTemplateOptionsPtrOutput
+}
+
+type launchTemplateOptionsPtrType LaunchTemplateOptionsArgs
+
+func LaunchTemplateOptionsPtr(v *LaunchTemplateOptionsArgs) LaunchTemplateOptionsPtrInput {
+	return (*launchTemplateOptionsPtrType)(v)
+}
+
+func (*launchTemplateOptionsPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**LaunchTemplateOptions)(nil)).Elem()
+}
+
+func (i *launchTemplateOptionsPtrType) ToLaunchTemplateOptionsPtrOutput() LaunchTemplateOptionsPtrOutput {
+	return i.ToLaunchTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (i *launchTemplateOptionsPtrType) ToLaunchTemplateOptionsPtrOutputWithContext(ctx context.Context) LaunchTemplateOptionsPtrOutput {
+	return ToOutputWithContext(ctx, i).(LaunchTemplateOptionsPtrOutput)
+}
+
+type LaunchTemplateOptionsOutput struct{ *OutputState }
+
+func (LaunchTemplateOptionsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*LaunchTemplateOptions)(nil)).Elem()
+}
+
+func (o LaunchTemplateOptionsOutput) ToLaunchTemplateOptionsOutput() LaunchTemplateOptionsOutput {
+	return o
+}
+
+func (o LaunchTemplateOptionsOutput) ToLaunchTemplateOptionsOutputWithContext(ctx context.Context) LaunchTemplateOptionsOutput {
+	return o
+}
+
+func (o LaunchTemplateOptionsOutput) ToLaunchTemplateOptionsPtrOutput() LaunchTemplateOptionsPtrOutput {
+	return o.ToLaunchTemplateOptionsPtrOutputWithContext(context.Background())
+}
+
+func (o LaunchTemplateOptionsOutput) ToLaunchTemplateOptionsPtrOutputWithContext(ctx context.Context) LaunchTemplateOptionsPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v LaunchTemplateOptions) *LaunchTemplateOptions {
+		return &v
+	}).(LaunchTemplateOptionsPtrOutput)
+}
+
+type LaunchTemplateOptionsPtrOutput struct{ *OutputState }
+
+func (LaunchTemplateOptionsPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**LaunchTemplateOptions)(nil)).Elem()
+}
+
+func (o LaunchTemplateOptionsPtrOutput) ToLaunchTemplateOptionsPtrOutput() LaunchTemplateOptionsPtrOutput {
+	return o
+}
+
+func (o LaunchTemplateOptionsPtrOutput) ToLaunchTemplateOptionsPtrOutputWithContext(ctx context.Context) LaunchTemplateOptionsPtrOutput {
+	return o
+}
+
+func (o LaunchTemplateOptionsPtrOutput) Elem() LaunchTemplateOptionsOutput {
+	return o.ApplyT(func(v *LaunchTemplateOptions) LaunchTemplateOptions {
+		if v != nil {
+			return *v
+		}
+		var ret LaunchTemplateOptions
+		return ret
+	}).(LaunchTemplateOptionsOutput)
+}
+
+type LaunchTemplateTagSpecification struct {
+	Tags map[string]string `pulumi:"tags"`
+}
+
+type LaunchTemplateTagSpecificationInput interface {
+	Input
+
+	ToLaunchTemplateTagSpecificationOutput() LaunchTemplateTagSpecificationOutput
+	ToLaunchTemplateTagSpecificationOutputWithContext(context.Context) LaunchTemplateTagSpecificationOutput
+}
+
+type LaunchTemplateTagSpecificationArgs struct {
+	Tags StringMapInput `pulumi:"tags"`
+}
+
+func (LaunchTemplateTagSpecificationArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*LaunchTemplateTagSpecification)(nil)).Elem()
+}
+
+func (i LaunchTemplateTagSpecificationArgs) ToLaunchTemplateTagSpecificationOutput() LaunchTemplateTagSpecificationOutput {
+	return i.ToLaunchTemplateTagSpecificationOutputWithContext(context.Background())
+}
+
+func (i LaunchTemplateTagSpecificationArgs) ToLaunchTemplateTagSpecificationOutputWithContext(ctx context.Context) LaunchTemplateTagSpecificationOutput {
+	return ToOutputWithContext(ctx, i).(LaunchTemplateTagSpecificationOutput)
+}
+
+type LaunchTemplateTagSpecificationArrayInput interface {
+	Input
+
+	ToLaunchTemplateTagSpecificationArrayOutput() LaunchTemplateTagSpecificationArrayOutput
+	ToLaunchTemplateTagSpecificationArrayOutputWithContext(context.Context) LaunchTemplateTagSpecificationArrayOutput
+}
+
+type LaunchTemplateTagSpecificationArray []LaunchTemplateTagSpecificationInput
+
+func (LaunchTemplateTagSpecificationArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]LaunchTemplateTagSpecification)(nil)).Elem()
+}
+
+func (i LaunchTemplateTagSpecificationArray) ToLaunchTemplateTagSpecificationArrayOutput() LaunchTemplateTagSpecificationArrayOutput {
+	return i.ToLaunchTemplateTagSpecificationArrayOutputWithContext(context.Background())
+}
+
+func (i LaunchTemplateTagSpecificationArray) ToLaunchTemplateTagSpecificationArrayOutputWithContext(ctx context.Context) LaunchTemplateTagSpecificationArrayOutput {
+	return ToOutputWithContext(ctx, i).(LaunchTemplateTagSpecificationArrayOutput)
+}
+
+type LaunchTemplateTagSpecificationOutput struct{ *OutputState }
+
+func (LaunchTemplateTagSpecificationOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*LaunchTemplateTagSpecification)(nil)).Elem()
+}
+
+func (o LaunchTemplateTagSpecificationOutput) ToLaunchTemplateTagSpecificationOutput() LaunchTemplateTagSpecificationOutput {
+	return o
+}
+
+func (o LaunchTemplateTagSpecificationOutput) ToLaunchTemplateTagSpecificationOutputWithContext(ctx context.Context) LaunchTemplateTagSpecificationOutput {
+	return o
+}
+
+type LaunchTemplateTagSpecificationArrayOutput struct{ *OutputState }
+
+func (LaunchTemplateTagSpecificationArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]LaunchTemplateTagSpecification)(nil)).Elem()
+}
+
+func (o LaunchTemplateTagSpecificationArrayOutput) ToLaunchTemplateTagSpecificationArrayOutput() LaunchTemplateTagSpecificationArrayOutput {
+	return o
+}
+
+func (o LaunchTemplateTagSpecificationArrayOutput) ToLaunchTemplateTagSpecificationArrayOutputWithContext(ctx context.Context) LaunchTemplateTagSpecificationArrayOutput {
+	return o
+}
+
+func (o LaunchTemplateTagSpecificationArrayOutput) Index(i IntInput) LaunchTemplateTagSpecificationOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) LaunchTemplateTagSpecification {
+		return vs[0].([]LaunchTemplateTagSpecification)[vs[1].(int)]
+	}).(LaunchTemplateTagSpecificationOutput)
+}
+
+type LaunchTemplateArgs struct {
+	Value LaunchTemplateOptionsPtrInput `pulumi:"value"`
 }
 
 func assertOutputEqual(t *testing.T, value interface{}, known bool, secret bool, deps urnSet, output interface{}) {
@@ -1231,6 +1426,37 @@ func TestConstructInputsCopyTo(t *testing.T) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
 			},
 		},
+
+		// LaunchTemplateArgs
+		{
+			name: "LaunchTemplateArgs input types not registered nested known output value",
+			input: resource.NewObjectProperty(resource.PropertyMap{
+				"tagSpecifications": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"tags": resource.NewObjectProperty(resource.PropertyMap{
+							"Name": resource.NewOutputProperty(resource.Output{
+								Element: resource.NewStringProperty("Worker Node"),
+								Known:   true,
+							}),
+							"Test Name": resource.NewStringProperty("test name"),
+						}),
+					}),
+				}),
+			}),
+			args: &LaunchTemplateArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				assertOutputEqual(t, &LaunchTemplateOptions{
+					TagSpecifications: []LaunchTemplateTagSpecification{
+						{
+							Tags: map[string]string{
+								"Name":      "Worker Node",
+								"Test Name": "test name",
+							},
+						},
+					},
+				}, true, false, urnSet{}, actual)
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1277,8 +1503,14 @@ func TestConstructResult(t *testing.T) {
 	resolvedProps, _, _, err := marshalInputs(state)
 	assert.NoError(t, err)
 
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"foo":       "hi",
-		"someValue": "something",
-	}), resolvedProps)
+	assert.Equal(t, resource.PropertyMap{
+		"foo": resource.NewOutputProperty(resource.Output{
+			Element: resource.NewStringProperty("hi"),
+			Known:   true,
+		}),
+		"someValue": resource.NewOutputProperty(resource.Output{
+			Element: resource.NewStringProperty("something"),
+			Known:   true,
+		}),
+	}, resolvedProps)
 }

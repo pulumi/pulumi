@@ -1,6 +1,24 @@
 {
   "version": "0.0.1",
   "name": "configstation",
+  "provider": {
+    "inputProperties": {
+      "favoriteColor": {
+        "description": "this is a relaxed string enum which can also be set via env var",
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "#/types/configstation:index:color"
+          }
+        ],
+        "defaultInfo": {
+          "environment": ["FAVE_COLOR"]
+        }
+      }
+    }
+  },
   "config": {
     "variables": {
       "name": {
@@ -61,6 +79,13 @@
         }
       },
       "type": "object"
+    },
+    "configstation:index:color": {
+      "enum": [
+        {"value": "blue"},
+        {"value": "red"}
+      ],
+      "type": "string"
     }
   },
   "language": {
