@@ -368,6 +368,8 @@ func findRepositoryRoot() (string, error) {
 }
 
 func TestArchiveTarFiles(t *testing.T) {
+	t.Skip("Disabled due to flakiness. See #7976.")
+
 	repoRoot, err := findRepositoryRoot()
 	assert.Nil(t, err)
 
