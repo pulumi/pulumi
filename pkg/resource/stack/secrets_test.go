@@ -43,6 +43,21 @@ func (t *testSecretsManager) DecryptValue(ciphertext string) (string, error) {
 	return ciphertext[i+1:], nil
 }
 
+func (t *testSecretsManager) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	secretMap := map[string]string{}
+	for _, cip := range ciphertexts {
+		if _, ok := secretMap[cip]; ok {
+			continue
+		}
+		v, err := t.DecryptValue(cip)
+		if err != nil {
+			return nil, err
+		}
+		secretMap[cip] = v
+	}
+	return secretMap, nil
+}
+
 func deserializeProperty(v interface{}, dec config.Decrypter) (resource.PropertyValue, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
@@ -51,7 +66,7 @@ func deserializeProperty(v interface{}, dec config.Decrypter) (resource.Property
 	if err := json.Unmarshal(b, &v); err != nil {
 		return resource.PropertyValue{}, err
 	}
-	return DeserializePropertyValue(v, dec, config.NewPanicCrypter())
+	return DeserializePropertyValue(v, dec, config.NewPanicCrypter(), SecretsCache{})
 }
 
 func TestCachingCrypter(t *testing.T) {

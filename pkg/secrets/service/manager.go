@@ -33,7 +33,7 @@ import (
 
 const Type = "service"
 
-// serviceCrypter is an encrypter/decrypter that uses the Pulumi servce to encrypt/decrypt a stack's secrets.
+// serviceCrypter is an encrypter/decrypter that uses the Pulumi service to encrypt/decrypt a stack's secrets.
 type serviceCrypter struct {
 	client *client.Client
 	stack  client.StackIdentifier
@@ -61,6 +61,21 @@ func (c *serviceCrypter) DecryptValue(cipherstring string) (string, error) {
 		return "", err
 	}
 	return string(plaintext), nil
+}
+
+func (c *serviceCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	secretMap := map[string]string{}
+	for _, cip := range ciphertexts {
+		if _, ok := secretMap[cip]; ok {
+			continue
+		}
+		v, err := c.DecryptValue(cip)
+		if err != nil {
+			return nil, err
+		}
+		secretMap[cip] = v
+	}
+	return secretMap, nil
 }
 
 type serviceSecretsManagerState struct {
