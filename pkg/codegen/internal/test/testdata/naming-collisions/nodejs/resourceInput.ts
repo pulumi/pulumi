@@ -31,7 +31,7 @@ export class ResourceInput extends pulumi.CustomResource {
         return obj['__pulumiType'] === ResourceInput.__pulumiType;
     }
 
-    public /*out*/ readonly bar!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly bar!: pulumi.Output<(string | undefined)>;
 
     /**
      * Create a ResourceInput resource with the given unique name, arguments, and options.

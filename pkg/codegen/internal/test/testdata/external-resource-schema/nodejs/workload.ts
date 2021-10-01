@@ -33,7 +33,7 @@ export class Workload extends pulumi.CustomResource {
         return obj['__pulumiType'] === Workload.__pulumiType;
     }
 
-    public /*out*/ readonly pod!: pulumi.Output<pulumiKubernetes.types.output.core.v1.Pod | undefined>;
+    public /*out*/ readonly pod!: pulumi.Output<(pulumiKubernetes.types.output.core.v1.Pod | undefined)>;
 
     /**
      * Create a Workload resource with the given unique name, arguments, and options.

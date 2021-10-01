@@ -32,8 +32,8 @@ export class NoRecursive extends pulumi.CustomResource {
         return obj['__pulumiType'] === NoRecursive.__pulumiType;
     }
 
-    public /*out*/ readonly rec!: pulumi.Output<outputs.Rec | undefined>;
-    public /*out*/ readonly replace!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly rec!: pulumi.Output<(outputs.Rec | undefined)>;
+    public /*out*/ readonly replace!: pulumi.Output<(string | undefined)>;
 
     /**
      * Create a NoRecursive resource with the given unique name, arguments, and options.

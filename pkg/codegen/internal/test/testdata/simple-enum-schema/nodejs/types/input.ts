@@ -6,7 +6,7 @@ import { input as inputs, output as outputs, enums } from "../types";
 
 export interface ContainerArgs {
     brightness?: pulumi.Input<enums.ContainerBrightness>;
-    color?: pulumi.Input<enums.ContainerColor | string>;
+    color?: pulumi.Input<(enums.ContainerColor | string)>;
     material?: pulumi.Input<string>;
     size: pulumi.Input<enums.ContainerSize>;
 }

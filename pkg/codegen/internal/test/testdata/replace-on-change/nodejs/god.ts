@@ -33,7 +33,7 @@ export class God extends pulumi.CustomResource {
         return obj['__pulumiType'] === God.__pulumiType;
     }
 
-    public /*out*/ readonly backwards!: pulumi.Output<Dog | undefined>;
+    public /*out*/ readonly backwards!: pulumi.Output<(Dog | undefined)>;
 
     /**
      * Create a God resource with the given unique name, arguments, and options.

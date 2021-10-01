@@ -34,10 +34,10 @@ export class ToyStore extends pulumi.CustomResource {
         return obj['__pulumiType'] === ToyStore.__pulumiType;
     }
 
-    public /*out*/ readonly chew!: pulumi.Output<outputs.Chew | undefined>;
-    public /*out*/ readonly laser!: pulumi.Output<outputs.Laser | undefined>;
-    public /*out*/ readonly stuff!: pulumi.Output<outputs.Toy[] | undefined>;
-    public /*out*/ readonly wanted!: pulumi.Output<outputs.Toy[] | undefined>;
+    public /*out*/ readonly chew!: pulumi.Output<(outputs.Chew | undefined)>;
+    public /*out*/ readonly laser!: pulumi.Output<(outputs.Laser | undefined)>;
+    public /*out*/ readonly stuff!: pulumi.Output<(outputs.Toy[] | undefined)>;
+    public /*out*/ readonly wanted!: pulumi.Output<(outputs.Toy[] | undefined)>;
 
     /**
      * Create a ToyStore resource with the given unique name, arguments, and options.

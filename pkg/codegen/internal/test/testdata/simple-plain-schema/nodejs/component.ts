@@ -21,14 +21,14 @@ export class Component extends pulumi.ComponentResource {
     }
 
     public readonly a!: pulumi.Output<boolean>;
-    public readonly b!: pulumi.Output<boolean | undefined>;
-    public readonly bar!: pulumi.Output<outputs.Foo | undefined>;
-    public readonly baz!: pulumi.Output<outputs.Foo[] | undefined>;
+    public readonly b!: pulumi.Output<(boolean | undefined)>;
+    public readonly bar!: pulumi.Output<(outputs.Foo | undefined)>;
+    public readonly baz!: pulumi.Output<(outputs.Foo[] | undefined)>;
     public readonly c!: pulumi.Output<number>;
-    public readonly d!: pulumi.Output<number | undefined>;
+    public readonly d!: pulumi.Output<(number | undefined)>;
     public readonly e!: pulumi.Output<string>;
-    public readonly f!: pulumi.Output<string | undefined>;
-    public readonly foo!: pulumi.Output<outputs.Foo | undefined>;
+    public readonly f!: pulumi.Output<(string | undefined)>;
+    public readonly foo!: pulumi.Output<(outputs.Foo | undefined)>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.
