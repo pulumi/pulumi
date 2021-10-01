@@ -139,7 +139,21 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return Title(m.Name)
 }
 
-func (d DocLanguageHelper) GetMethodResultName(r *schema.Resource, m *schema.Method) string {
+func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
+	m *schema.Method) string {
+
+	if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
+		if info.LiftSingleValueMethodReturns && m.Function.Outputs != nil && len(m.Function.Outputs.Properties) == 1 {
+			t := m.Function.Outputs.Properties[0].Type
+			modPkg, ok := d.packages[modName]
+			if !ok {
+				glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q",
+					t.String(), modName)
+				os.Exit(1)
+			}
+			return modPkg.outputType(t)
+		}
+	}
 	return fmt.Sprintf("%s%sResultOutput", rawResourceName(r), d.GetMethodName(m))
 }
 

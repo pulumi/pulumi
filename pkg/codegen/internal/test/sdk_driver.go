@@ -117,6 +117,11 @@ var sdkTests = []sdkTest{
 		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
+		Directory:   "simple-methods-schema-single-value-returns",
+		Description: "Simple schema with methods that return single values",
+		Skip:        codegen.NewStringSet("python/test"),
+	},
+	{
 		Directory:   "simple-yaml-schema",
 		Description: "Simple schema encoded using YAML",
 		Skip:        codegen.NewStringSet("python/test"),

@@ -49,6 +49,8 @@ type PackageInfo struct {
 	UsesIOClasses bool `json:"usesIOClasses,omitempty"`
 	// Indicates whether the pulumiplugin.json file should be generated.
 	EmitPulumiPluginFile bool `json:"emitPulumiPluginFile,omitempty"`
+	// Determines whether to make single-return-value methods return an output object or the single value.
+	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
 }
 
 // Importer implements schema.Language for Python.

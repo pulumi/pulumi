@@ -64,6 +64,8 @@ type NodePackageInfo struct {
 	// compiling hand-authored unit test files that check the
 	// generated code.
 	ExtraTypeScriptFiles []string `json:"extraTypeScriptFiles,omitempty"`
+	// Determines whether to make single-return-value methods return an output object or the single value.
+	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
 }
 
 // NodeObjectInfo contains NodeJS-specific information for an object.
