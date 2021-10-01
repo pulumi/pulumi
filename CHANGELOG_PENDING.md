@@ -11,3 +11,6 @@
 
 - [codegen/go] - Fix generation of cyclic struct types.
   [#8049](https://github.com/pulumi/pulumi/pull/8049)
+
+- [sdk/go] - Fix --target / --replace args
+  [#8109](https://github.com/pulumi/pulumi/pull/8109)
