@@ -35,7 +35,7 @@ type sdkTest struct {
 }
 
 const (
-	python = "python"
+	// python = "python"
 	nodejs = "nodejs"
 	dotnet = "dotnet"
 	golang = "go"
