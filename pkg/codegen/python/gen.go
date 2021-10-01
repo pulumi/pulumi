@@ -108,6 +108,9 @@ type modContext struct {
 	// Name overrides set in PackageInfo
 	modNameOverrides map[string]string // Optional overrides for Pulumi module names
 	compatibility    string            // Toggle compatibility mode for a specified target.
+
+	// Determine whether to lift single-value method return values
+	liftSingleValueMethodReturns bool
 }
 
 func (mod *modContext) isTopLevel() bool {
@@ -1442,12 +1445,20 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		methodName := PyName(method.Name)
 		fun := method.Function
 
+		shouldLiftReturn := mod.liftSingleValueMethodReturns && method.Function.Outputs != nil && len(method.Function.Outputs.Properties) == 1
+
 		// If there is a return type, emit it.
-		var retTypeName, retTypeNameQualified, retTypeNameQualifiedOutput string
+		var retTypeName, retTypeNameQualified, retTypeNameQualifiedOutput, methodRetType string
 		if fun.Outputs != nil {
 			retTypeName = genReturnType(method)
 			retTypeNameQualified = fmt.Sprintf("%s.%s", resourceName(res), retTypeName)
 			retTypeNameQualifiedOutput = fmt.Sprintf("pulumi.Output['%s']", retTypeNameQualified)
+
+			if shouldLiftReturn {
+				methodRetType = fmt.Sprintf("pulumi.Output['%s']", mod.pyType(fun.Outputs.Properties[0].Type))
+			} else {
+				methodRetType = retTypeNameQualifiedOutput
+			}
 		}
 
 		var args []*schema.Property
@@ -1493,7 +1504,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 			fmt.Fprintf(w, ",\n%s%s: %s%s", indent, pname, ty, defaultValue)
 		}
 		if retTypeNameQualifiedOutput != "" {
-			fmt.Fprintf(w, ") -> %s:\n", retTypeNameQualifiedOutput)
+			fmt.Fprintf(w, ") -> %s:\n", methodRetType)
 		} else {
 			fmt.Fprintf(w, ") -> None:\n")
 		}
@@ -1525,14 +1536,24 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		}
 
 		// Now simply call the function with the arguments.
-		var typ, ret string
+		var typ string
 		if retTypeNameQualified != "" {
 			// Pass along the private output_type we generated, so any nested output classes are instantiated by
 			// the call.
 			typ = fmt.Sprintf(", typ=%s", retTypeNameQualified)
-			ret = "return "
 		}
-		fmt.Fprintf(w, "        %spulumi.runtime.call('%s', __args__, res=__self__%s)\n", ret, fun.Token, typ)
+
+		if method.Function.Outputs == nil {
+			fmt.Fprintf(w, "        pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
+		} else if shouldLiftReturn {
+			// Store the return in a variable and return the property output
+			fmt.Fprintf(w, "        __result__ = pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
+			fmt.Fprintf(w, "        return __result__.%s\n", PyName(fun.Outputs.Properties[0].Name))
+		} else {
+			// Otherwise return the call directly
+			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
+		}
+
 		fmt.Fprintf(w, "\n")
 	}
 
@@ -2532,12 +2553,13 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:              p,
-				pyPkgName:        pyPkgName,
-				mod:              modName,
-				tool:             tool,
-				modNameOverrides: info.ModuleNameOverrides,
-				compatibility:    info.Compatibility,
+				pkg:                          p,
+				pyPkgName:                    pyPkgName,
+				mod:                          modName,
+				tool:                         tool,
+				modNameOverrides:             info.ModuleNameOverrides,
+				compatibility:                info.Compatibility,
+				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
 			}
 
 			if modName != "" && p == pkg {

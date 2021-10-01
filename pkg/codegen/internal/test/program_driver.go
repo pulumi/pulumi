@@ -13,84 +13,127 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 )
 
 type programTest struct {
-	ProgramFile    string
+	Name           string
 	Description    string
 	Skip           codegen.StringSet
 	ExpectNYIDiags codegen.StringSet
+	SkipCompile    codegen.StringSet
 }
 
 var testdataPath = filepath.Join("..", "internal", "test", "testdata")
 
 var programTests = []programTest{
 	{
-		ProgramFile:    "aws-s3-folder",
+		Name:           "aws-s3-folder",
 		Description:    "AWS S3 Folder",
 		ExpectNYIDiags: codegen.NewStringSet("python", "nodejs", "dotnet"),
+		SkipCompile:    codegen.NewStringSet("go", "python", "nodejs"),
+		// Blocked on python: TODO[pulumi/pulumi#8062]: Re-enable this test.
+		// Blocked on go:
+		//   TODO[pulumi/pulumi#8064]
+		//   TODO[pulumi/pulumi#8065]
+		// Blocked on nodejs: TODO[pulumi/pulumi#8063]
 	},
 	{
-		ProgramFile: "aws-eks",
+		Name:        "aws-eks",
 		Description: "AWS EKS",
+		SkipCompile: codegen.NewStringSet("nodejs"),
+		// Blocked on nodejs: TODO[pulumi/pulumi#8067]
 	},
 	{
-		ProgramFile: "aws-fargate",
+		Name:        "aws-fargate",
 		Description: "AWS Fargate",
+		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
-		ProgramFile: "aws-s3-logging",
+		Name:        "aws-s3-logging",
 		Description: "AWS S3 with logging",
+		SkipCompile: codegen.NewStringSet("dotnet", "nodejs"),
+		// Blocked on dotnet: TODO[pulumi/pulumi#8069]
+		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
 	},
 	{
-		ProgramFile: "aws-webserver",
+		Name:        "aws-webserver",
 		Description: "AWS Webserver",
+		SkipCompile: codegen.NewStringSet("go"),
+		// Blocked on go: TODO[pulumi/pulumi#8070]
 	},
 	{
-		ProgramFile: "azure-native",
+		Name:        "azure-native",
 		Description: "Azure Native",
-		Skip:        codegen.NewStringSet("go"),
+		SkipCompile: codegen.NewStringSet("go", "nodejs"),
+		// Blocked on go:
+		//   TODO[pulumi/pulumi#8072]
+		//   TODO[pulumi/pulumi#8073]
+		//   TODO[pulumi/pulumi#8074]
+		// Blocked on nodejs:
+		//   TODO[pulumi/pulumi#8075]
 	},
 	{
-		ProgramFile: "azure-sa",
+		Name:        "azure-sa",
 		Description: "Azure SA",
 	},
 	{
-		ProgramFile: "kubernetes-operator",
+		Name:        "kubernetes-operator",
 		Description: "K8s Operator",
 	},
 	{
-		ProgramFile: "kubernetes-pod",
+		Name:        "kubernetes-pod",
 		Description: "K8s Pod",
+		SkipCompile: codegen.NewStringSet("go", "nodejs"),
+		// Blocked on go:
+		//   TODO[pulumi/pulumi#8073]
+		//   TODO[pulumi/pulumi#8074]
+		// Blocked on nodejs:
+		//   TODO[pulumi/pulumi#8075]
 	},
 	{
-		ProgramFile: "kubernetes-template",
+		Name:        "kubernetes-template",
 		Description: "K8s Template",
 	},
 	{
-		ProgramFile: "random-pet",
+		Name:        "random-pet",
 		Description: "Random Pet",
 	},
 	{
-		ProgramFile: "resource-options",
+		Name:        "aws-resource-options",
 		Description: "Resource Options",
+		SkipCompile: codegen.NewStringSet("go"),
+		// Blocked on go: TODO[pulumi/pulumi#8076]
 	},
 	{
-		ProgramFile: "secret",
+		Name:        "aws-secret",
 		Description: "Secret",
 	},
 	{
-		ProgramFile: "functions",
+		Name:        "functions",
 		Description: "Functions",
+		SkipCompile: codegen.NewStringSet("go", "dotnet"),
+		// Blocked on go: TODO[pulumi/pulumi#8077]
+		// Blocked on dotnet:
+		//   TODO[pulumi/pulumi#8078]
+		//   TODO[pulumi/pulumi#8079]
 	},
 }
 
-type langConfig struct {
-	extension  string
-	outputFile string
+// Checks that a generated program is correct
+type CheckProgramOutput = func(*testing.T, string)
+
+// Generates a program from a pcl.Program
+type GenProgram = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
+
+type ProgramLangConfig struct {
+	Language   string
+	Extension  string
+	OutputFile string
+	Check      CheckProgramOutput
+	GenProgram GenProgram
 }
 
 // TestProgramCodegen runs the complete set of program code generation tests against a particular
@@ -104,62 +147,43 @@ type langConfig struct {
 //nolint: revive
 func TestProgramCodegen(
 	t *testing.T,
-	language string,
-	genProgram func(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error),
+	// language string,
+	// genProgram func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error
+	testcase ProgramLangConfig,
+
 ) {
+	ensureValidSchemaVersions(t)
 	for _, tt := range programTests {
 		t.Run(tt.Description, func(t *testing.T) {
-			if tt.Skip.Has(language) {
+			var err error
+			if tt.Skip.Has(testcase.Language) {
 				t.Skip()
 				return
 			}
 
-			expectNYIDiags := false
-			if tt.ExpectNYIDiags.Has(language) {
-				expectNYIDiags = true
+			expectNYIDiags := tt.ExpectNYIDiags.Has(testcase.Language)
+
+			testDir := filepath.Join(testdataPath, tt.Name+"-pp")
+			pclFile := filepath.Join(testDir, tt.Name+".pp")
+			testDir = filepath.Join(testDir, testcase.Language)
+			err = os.MkdirAll(testDir, 0700)
+			if err != nil && !os.IsExist(err) {
+				t.Fatalf("Failed to create %q: %s", testDir, err)
 			}
 
-			var cfg langConfig
-
-			switch language {
-			case "python":
-				cfg = langConfig{
-					extension:  "py",
-					outputFile: "__main__.py",
-				}
-			case "nodejs":
-				cfg = langConfig{
-					extension:  "ts",
-					outputFile: "index.ts",
-				}
-			case "go":
-				cfg = langConfig{
-					extension:  "go",
-					outputFile: "main.go",
-				}
-			case "dotnet":
-				cfg = langConfig{
-					extension:  "cs",
-					outputFile: "MyStack.cs",
-				}
-			default:
-				t.Fatalf("language %s not recognized", language)
-			}
-
-			pclFile := filepath.Join(testdataPath, tt.ProgramFile+".pp")
 			contents, err := ioutil.ReadFile(pclFile)
 			if err != nil {
 				t.Fatalf("could not read %v: %v", pclFile, err)
 			}
 
-			expectedFile := pclFile + "." + cfg.extension
+			expectedFile := filepath.Join(testDir, tt.Name+"."+testcase.Extension)
 			expected, err := ioutil.ReadFile(expectedFile)
 			if err != nil && os.Getenv("PULUMI_ACCEPT") == "" {
 				t.Fatalf("could not read %v: %v", expectedFile, err)
 			}
 
 			parser := syntax.NewParser()
-			err = parser.ParseFile(bytes.NewReader(contents), tt.ProgramFile+".pp")
+			err = parser.ParseFile(bytes.NewReader(contents), tt.Name+".pp")
 			if err != nil {
 				t.Fatalf("could not read %v: %v", pclFile, err)
 			}
@@ -167,15 +191,14 @@ func TestProgramCodegen(
 				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 			}
 
-			program, diags, err := hcl2.BindProgram(parser.Files, hcl2.PluginHost(utils.NewHost(testdataPath)))
+			program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath)))
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}
 			if diags.HasErrors() {
 				t.Fatalf("failed to bind program: %v", diags)
 			}
-
-			files, diags, err := genProgram(program)
+			files, diags, err := testcase.GenProgram(program)
 			assert.NoError(t, err)
 			if expectNYIDiags {
 				var tmpDiags hcl.Diagnostics
@@ -191,12 +214,14 @@ func TestProgramCodegen(
 			}
 
 			if os.Getenv("PULUMI_ACCEPT") != "" {
-				err := ioutil.WriteFile(expectedFile, files[cfg.outputFile], 0600)
+				err := ioutil.WriteFile(expectedFile, files[testcase.OutputFile], 0600)
 				require.NoError(t, err)
-				return
+			} else {
+				assert.Equal(t, string(expected), string(files[testcase.OutputFile]))
 			}
-
-			assert.Equal(t, string(expected), string(files[cfg.outputFile]))
+			if testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
+				testcase.Check(t, expectedFile)
+			}
 		})
 	}
 }

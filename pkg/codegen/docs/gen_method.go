@@ -317,7 +317,7 @@ func (mod *modContext) getMethodResult(r *schema.Resource, m *schema.Method) map
 	var resultTypeName string
 	for _, lang := range supportedLanguages {
 		if m.Function.Outputs != nil && len(m.Function.Outputs.Properties) > 0 {
-			resultTypeName = getLanguageDocHelper(lang).GetMethodResultName(r, m)
+			resultTypeName = getLanguageDocHelper(lang).GetMethodResultName(mod.pkg, mod.mod, r, m)
 		}
 		resourceMap[lang] = propertyType{
 			Name: resultTypeName,

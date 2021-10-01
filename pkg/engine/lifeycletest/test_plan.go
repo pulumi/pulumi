@@ -251,9 +251,10 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				_ []Event, res result.Result) result.Result {
 
-				// Should see only creates.
+				// Should see only creates or reads.
 				for _, entry := range entries {
-					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
+					op := entry.Step.Op()
+					assert.True(t, op == deploy.OpCreate || op == deploy.OpRead)
 				}
 				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
 				return res
@@ -282,7 +283,8 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 
 				// Should see only sames.
 				for _, entry := range entries {
-					assert.Equal(t, deploy.OpSame, entry.Step.Op())
+					op := entry.Step.Op()
+					assert.True(t, op == deploy.OpSame || op == deploy.OpRead)
 				}
 				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
 				return res
