@@ -1744,7 +1744,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
 	for _, method := range r.Methods {
 		if method.Function.Outputs != nil {
-			if len(method.Function.Outputs.Properties) == 1 {
+			if pkg.liftSingleValueMethodReturns && len(method.Function.Outputs.Properties) == 1 {
 				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", camel(name), Title(method.Name))
 			} else {
 				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", name, Title(method.Name))
