@@ -145,6 +145,9 @@ type modContext struct {
 	namespaces             map[string]string
 	compatibility          string
 	dictionaryConstructors bool
+
+	// Determine whether to lift single-value method return values
+	liftSingleValueMethodReturns bool
 }
 
 func (mod *modContext) propertyName(p *schema.Property) string {
@@ -487,6 +490,7 @@ type plainType struct {
 	properties            []*schema.Property
 	args                  bool
 	state                 bool
+	internal              bool
 }
 
 func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent string) {
@@ -653,7 +657,13 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 	// Open the class and attribute it appropriately.
 	printCommentWithOptions(w, pt.comment, indent, !pt.unescapeComment)
 	fmt.Fprintf(w, "%s[OutputType]\n", indent)
-	fmt.Fprintf(w, "%spublic sealed class %s\n", indent, pt.name)
+
+	visibility := "public"
+	if pt.internal {
+		visibility = "internal"
+	}
+
+	fmt.Fprintf(w, "%s%s sealed class %s\n", indent, visibility, pt.name)
 	fmt.Fprintf(w, "%s{\n", indent)
 
 	// Generate each output field.
@@ -1069,12 +1079,22 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		methodName := Title(method.Name)
 		fun := method.Function
 
+		shouldLiftReturn := mod.liftSingleValueMethodReturns && fun.Outputs != nil && len(fun.Outputs.Properties) == 1
+
 		fmt.Fprintf(w, "\n")
 
-		returnType, typeParameter := "void", ""
+		returnType, typeParameter, lift := "void", "", ""
 		if fun.Outputs != nil {
 			typeParameter = fmt.Sprintf("<%s%sResult>", className, methodName)
-			returnType = fmt.Sprintf("Pulumi.Output%s", typeParameter)
+			if shouldLiftReturn {
+				returnType = fmt.Sprintf("Pulumi.Output<%s>",
+					mod.typeString(fun.Outputs.Properties[0].Type, "", false, false, false))
+
+				fieldName := mod.propertyName(fun.Outputs.Properties[0])
+				lift = fmt.Sprintf(".Apply(v => v.%s)", fieldName)
+			} else {
+				returnType = fmt.Sprintf("Pulumi.Output%s", typeParameter)
+			}
 		}
 
 		var argsParamDef string
@@ -1109,8 +1129,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 
 		fmt.Fprintf(w, "        public %s %s(%s)\n", returnType, methodName, argsParamDef)
-		fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.Call%s(\"%s\", %s, this);\n",
-			typeParameter, fun.Token, argsParamRef)
+		fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.Call%s(\"%s\", %s, this)%s;\n",
+			typeParameter, fun.Token, argsParamRef, lift)
 	}
 	for _, method := range r.Methods {
 		genMethod(method)
@@ -1200,6 +1220,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 		// Generate result type.
 		if fun.Outputs != nil {
+			shouldLiftReturn := mod.liftSingleValueMethodReturns && len(fun.Outputs.Properties) == 1
+
 			comment, escape := fun.Inputs.Comment, true
 			if comment == "" {
 				comment, escape = fmt.Sprintf(
@@ -1212,6 +1234,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				name:                  fmt.Sprintf("%s%sResult", className, methodName),
 				propertyTypeQualifier: "Outputs",
 				properties:            fun.Outputs.Properties,
+				internal:              shouldLiftReturn,
 			}
 			resultType.genOutputType(w, 1)
 		}
@@ -2086,15 +2109,16 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 				ns += "." + namespaceName(info.Namespaces, modName)
 			}
 			mod = &modContext{
-				pkg:                    p,
-				mod:                    modName,
-				tool:                   tool,
-				namespaceName:          ns,
-				namespaces:             info.Namespaces,
-				typeDetails:            details,
-				propertyNames:          propertyNames,
-				compatibility:          info.Compatibility,
-				dictionaryConstructors: info.DictionaryConstructors,
+				pkg:                          p,
+				mod:                          modName,
+				tool:                         tool,
+				namespaceName:                ns,
+				namespaces:                   info.Namespaces,
+				typeDetails:                  details,
+				propertyNames:                propertyNames,
+				compatibility:                info.Compatibility,
+				dictionaryConstructors:       info.DictionaryConstructors,
+				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
 			}
 
 			if modName != "" {
