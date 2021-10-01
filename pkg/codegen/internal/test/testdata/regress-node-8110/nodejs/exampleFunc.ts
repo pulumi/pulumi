@@ -20,5 +20,5 @@ export function exampleFunc(args?: ExampleFuncArgs, opts?: pulumi.InvokeOptions)
 }
 
 export interface ExampleFuncArgs {
-    enums?: string | enums.MyEnum[];
+    enums?: (string | enums.MyEnum)[];
 }

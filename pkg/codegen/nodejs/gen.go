@@ -267,7 +267,7 @@ func tokenToFunctionName(tok string) string {
 func (mod *modContext) typeString(t schema.Type, input bool, constValue interface{}) string {
 	switch t := t.(type) {
 	case *schema.OptionalType:
-		return mod.typeString(t.ElementType, input, constValue) + " | undefined"
+		return fmt.Sprintf("(%s | undefined)", mod.typeString(t.ElementType, input, constValue))
 	case *schema.InputType:
 		typ := mod.typeString(codegen.SimplifyInputUnion(t.ElementType), input, constValue)
 		if typ == "any" {
@@ -298,7 +298,7 @@ func (mod *modContext) typeString(t schema.Type, input bool, constValue interfac
 		for i, e := range t.ElementTypes {
 			elements[i] = mod.typeString(e, input, constValue)
 		}
-		return strings.Join(elements, " | ")
+		return fmt.Sprintf("(%s)", strings.Join(elements, " | "))
 	default:
 		switch t {
 		case schema.BoolType:
@@ -313,7 +313,7 @@ func (mod *modContext) typeString(t schema.Type, input bool, constValue interfac
 		case schema.ArchiveType:
 			return "pulumi.asset.Archive"
 		case schema.AssetType:
-			return "pulumi.asset.Asset | pulumi.asset.Archive"
+			return "(pulumi.asset.Asset | pulumi.asset.Archive)"
 		case schema.JSONType:
 			fallthrough
 		case schema.AnyType:
