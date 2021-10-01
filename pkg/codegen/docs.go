@@ -37,7 +37,7 @@ type DocLanguageHelper interface {
 	GetResourceFunctionResultName(modName string, f *schema.Function) string
 
 	GetMethodName(m *schema.Method) string
-	GetMethodResultName(r *schema.Resource, m *schema.Method) string
+	GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource, m *schema.Method) string
 
 	// GetModuleDocLink returns the display name and the link for a module (including root modules) in a given package.
 	GetModuleDocLink(pkg *schema.Package, modName string) (string, string)

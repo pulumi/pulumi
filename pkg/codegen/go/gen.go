@@ -110,6 +110,9 @@ type pkgContext struct {
 	// Name overrides set in GoPackageInfo
 	modToPkg         map[string]string // Module name -> package name
 	pkgImportAliases map[string]string // Package name -> import alias
+
+	// Determines whether to make single-return-value methods return an output struct or the value
+	liftSingleValueMethodReturns bool
 }
 
 func (pkg *pkgContext) detailsForType(t schema.Type) *typeDetails {
@@ -1565,6 +1568,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		methodName := Title(method.Name)
 		f := method.Function
 
+		shouldLiftReturn := pkg.liftSingleValueMethodReturns && f.Outputs != nil && len(f.Outputs.Properties) == 1
+
 		var args []*schema.Property
 		if f.Inputs != nil {
 			for _, arg := range f.Inputs.InputShape.Properties {
@@ -1583,6 +1588,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		var retty string
 		if f.Outputs == nil {
 			retty = "error"
+		} else if shouldLiftReturn {
+			retty = fmt.Sprintf("(%s, error)", pkg.outputType(f.Outputs.Properties[0].Type))
 		} else {
 			retty = fmt.Sprintf("(%s%sResultOutput, error)", name, methodName)
 		}
@@ -1604,11 +1611,23 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		// Now simply invoke the runtime function with the arguments.
 		outputsType := "pulumi.AnyOutput"
 		if f.Outputs != nil {
-			outputsType = fmt.Sprintf("%s%sResultOutput", name, methodName)
+			if shouldLiftReturn {
+				outputsType = fmt.Sprintf("%s%sResultOutput", camel(name), methodName)
+			} else {
+				outputsType = fmt.Sprintf("%s%sResultOutput", name, methodName)
+			}
 		}
 		fmt.Fprintf(w, "\t%s, err := ctx.Call(%q, %s, %s{}, r)\n", resultVar, f.Token, inputsVar, outputsType)
 		if f.Outputs == nil {
 			fmt.Fprintf(w, "\treturn err\n")
+		} else if shouldLiftReturn {
+			// Check the error before proceeding.
+			fmt.Fprintf(w, "\tif err != nil {\n")
+			fmt.Fprintf(w, "\t\treturn %s{}, err\n", pkg.outputType(f.Outputs.Properties[0].Type))
+			fmt.Fprintf(w, "\t}\n")
+
+			// Get the name of the method to return the output
+			fmt.Fprintf(w, "\treturn %s.(%s).%s(), nil\n", resultVar, camel(outputsType), Title(f.Outputs.Properties[0].Name))
 		} else {
 			// Check the error before proceeding.
 			fmt.Fprintf(w, "\tif err != nil {\n")
@@ -1644,23 +1663,30 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "}\n\n")
 		}
 		if f.Outputs != nil {
+			outputStructName := name
+
+			// Don't export the result struct if we're lifting the value
+			if shouldLiftReturn {
+				outputStructName = camel(name)
+			}
+
 			fmt.Fprintf(w, "\n")
-			pkg.genPlainType(w, fmt.Sprintf("%s%sResult", name, methodName), f.Outputs.Comment, "",
+			pkg.genPlainType(w, fmt.Sprintf("%s%sResult", outputStructName, methodName), f.Outputs.Comment, "",
 				f.Outputs.Properties)
 
 			fmt.Fprintf(w, "\n")
-			fmt.Fprintf(w, "type %s%sResultOutput struct{ *pulumi.OutputState }\n\n", name, methodName)
+			fmt.Fprintf(w, "type %s%sResultOutput struct{ *pulumi.OutputState }\n\n", outputStructName, methodName)
 
-			fmt.Fprintf(w, "func (%s%sResultOutput) ElementType() reflect.Type {\n", name, methodName)
-			fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sResult)(nil)).Elem()\n", name, methodName)
+			fmt.Fprintf(w, "func (%s%sResultOutput) ElementType() reflect.Type {\n", outputStructName, methodName)
+			fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sResult)(nil)).Elem()\n", outputStructName, methodName)
 			fmt.Fprintf(w, "}\n")
 
 			for _, p := range f.Outputs.Properties {
 				fmt.Fprintf(w, "\n")
 				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
-				fmt.Fprintf(w, "func (o %s%sResultOutput) %s() %s {\n", name, methodName, Title(p.Name),
+				fmt.Fprintf(w, "func (o %s%sResultOutput) %s() %s {\n", outputStructName, methodName, Title(p.Name),
 					pkg.outputType(p.Type))
-				fmt.Fprintf(w, "\treturn o.ApplyT(func(v %s%sResult) %s { return v.%s }).(%s)\n", name, methodName,
+				fmt.Fprintf(w, "\treturn o.ApplyT(func(v %s%sResult) %s { return v.%s }).(%s)\n", outputStructName, methodName,
 					pkg.typeString(codegen.ResolvedType(p.Type)), Title(p.Name), pkg.outputType(p.Type))
 				fmt.Fprintf(w, "}\n")
 			}
@@ -1718,7 +1744,11 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
 	for _, method := range r.Methods {
 		if method.Function.Outputs != nil {
-			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", name, Title(method.Name))
+			if pkg.liftSingleValueMethodReturns && len(method.Function.Outputs.Properties) == 1 {
+				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", camel(name), Title(method.Name))
+			} else {
+				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", name, Title(method.Name))
+			}
 		}
 	}
 
@@ -2506,20 +2536,21 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		pack, ok := packages[mod]
 		if !ok {
 			pack = &pkgContext{
-				pkg:              pkg,
-				mod:              mod,
-				importBasePath:   goInfo.ImportBasePath,
-				rootPackageName:  goInfo.RootPackageName,
-				typeDetails:      map[schema.Type]*typeDetails{},
-				names:            codegen.NewStringSet(),
-				schemaNames:      codegen.NewStringSet(),
-				renamed:          map[string]string{},
-				duplicateTokens:  map[string]bool{},
-				functionNames:    map[*schema.Function]string{},
-				tool:             tool,
-				modToPkg:         goInfo.ModuleToPackage,
-				pkgImportAliases: goInfo.PackageImportAliases,
-				packages:         packages,
+				pkg:                          pkg,
+				mod:                          mod,
+				importBasePath:               goInfo.ImportBasePath,
+				rootPackageName:              goInfo.RootPackageName,
+				typeDetails:                  map[schema.Type]*typeDetails{},
+				names:                        codegen.NewStringSet(),
+				schemaNames:                  codegen.NewStringSet(),
+				renamed:                      map[string]string{},
+				duplicateTokens:              map[string]bool{},
+				functionNames:                map[*schema.Function]string{},
+				tool:                         tool,
+				modToPkg:                     goInfo.ModuleToPackage,
+				pkgImportAliases:             goInfo.PackageImportAliases,
+				packages:                     packages,
+				liftSingleValueMethodReturns: goInfo.LiftSingleValueMethodReturns,
 			}
 			packages[mod] = pack
 		}

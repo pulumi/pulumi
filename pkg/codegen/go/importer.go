@@ -53,6 +53,9 @@ type GoPackageInfo struct {
 	// Feature flag to disable generating `$fnOutput` invoke
 	// function versions to save space.
 	DisableFunctionOutputVersions bool `json:"disableFunctionOutputVersions,omitempty"`
+
+	// Determines whether to make single-return-value methods return an output struct or the value.
+	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
 }
 
 // Importer implements schema.Language for Go.
