@@ -32,9 +32,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/importer"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -192,7 +192,7 @@ func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
 	return snap, err
 }
 
-type programGeneratorFunc func(p *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error)
+type programGeneratorFunc func(p *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
 func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
@@ -248,7 +248,7 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectN
 		return false, err
 	}
 	loader := schema.NewPluginLoader(ctx.Host)
-	return true, importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *hcl2.Program) error {
+	return true, importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *pcl.Program) error {
 		files, _, err := programGenerator(p)
 		if err != nil {
 			return err

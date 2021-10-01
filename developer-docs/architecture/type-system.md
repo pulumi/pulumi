@@ -81,8 +81,7 @@ hard stop when attempting to access a `Promise<T>`'s concrete value.
 Perhaps the most important type in the Pulumi type system is `Output<T>`. A value of type
 `Output<T>` represents a node in a Pulumi program graph, and behaves like a `Promise<T>`
 that carries additional metadata that describes the resources on which the value depends,
-whether the value is known or unknown, and whether or not the value is secret. Readers
-familiar with functional programming will recognize `Output<T>` as a monad.
+whether the value is known or unknown, and whether or not the value is secret.
 
 ### Dependencies
 
@@ -123,8 +122,8 @@ often the case that we want to construct _composite_ values out of multiple `Inp
 For example, consider `Input<Array<string>>`: a value of this type accepts either a
 `Array<string>` or an `Output<Array<string>>`, but does not accept a value of type
 `Array<Output<string>>`. In order to accept all three of these types, we need the type
-`Input<Array<Input<string>>>>`. The `inputShape` type constructor defines an algorithm
-for producing these sorts of values.
+`Input<Array<Input<string>>>>`. The `inputShape` type function defines an algorithm
+for producing these sorts of types.
 
 ```rust
 fn inputShape(T) {
@@ -169,7 +168,7 @@ types. Consider a variant of the `Array<string>` example from [`inputShape(T)`](
 in order to produce an array where each element may be an output, we need to use the type
 `Output<Array<Output<string>>>`.
 
-The `outputShape` type constructor defines an algorithm for producing these sorts of values.
+The `outputShape` type function defines an algorithm for producing these sorts of values.
 
 ```rust
 fn outputShape(T) {
@@ -201,7 +200,7 @@ unknown, though it will not allow the user to access the entire value via `apply
 
 ## `plainShape(T)`
 
-The final type constructor, `plainShape(T)`, replaces `Output<T>` types with their type
+The final type function, `plainShape(T)`, replaces `Output<T>` types with their type
 argument:
 
 ```rust
@@ -219,7 +218,7 @@ fn plainShape(T) {
 }
 ```
 
-This constructor is primarily useful for describing the signature of the [`all`] combinator.
+This function is primarily useful for describing the signature of the [`all`] combinator.
 
 ## `Output<T>` Combinators
 

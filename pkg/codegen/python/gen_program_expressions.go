@@ -11,8 +11,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -26,10 +26,10 @@ func (nameInfo) Format(name string) string {
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (model.Expression, []*quoteTemp) {
 	// TODO(pdg): diagnostics
 
-	expr = hcl2.RewritePropertyReferences(expr)
-	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), false)
+	expr = pcl.RewritePropertyReferences(expr)
+	expr, _ = pcl.RewriteApplies(expr, nameInfo(0), false)
 	expr, _ = g.lowerProxyApplies(expr)
-	expr = hcl2.RewriteConversions(expr, typ)
+	expr = pcl.RewriteConversions(expr, typ)
 	expr, quotes, _ := g.rewriteQuotes(expr)
 
 	return expr, quotes
@@ -153,7 +153,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
-	applyArgs, then := hcl2.ParseApplyCall(expr)
+	applyArgs, then := pcl.ParseApplyCall(expr)
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.apply`.
@@ -177,7 +177,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	tokenRange := tokenArg.SyntaxNode().Range()
 
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
+	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
 }
 
@@ -192,7 +192,7 @@ var functionImports = map[string]string{
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
-	if x.Name != hcl2.Invoke {
+	if x.Name != pcl.Invoke {
 		return functionImports[x.Name]
 	}
 
@@ -203,14 +203,14 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
-	case hcl2.IntrinsicConvert:
+	case pcl.IntrinsicConvert:
 		switch arg := expr.Args[0].(type) {
 		case *model.ObjectConsExpression:
 			g.genObjectConsExpression(w, arg, expr.Type())
 		default:
 			g.Fgenf(w, "%.v", expr.Args[0])
 		}
-	case hcl2.IntrinsicApply:
+	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
 	case "element":
 		g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
@@ -222,7 +222,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.FileAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		g.Fgenf(w, "(lambda path: base64.b64encode(open(path).read().encode()).decode())(%.v)", expr.Args[0])
-	case hcl2.Invoke:
+	case pcl.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module != "" {
