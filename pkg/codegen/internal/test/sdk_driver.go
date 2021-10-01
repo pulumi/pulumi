@@ -155,10 +155,9 @@ var sdkTests = []sdkTest{
 		Skip:        codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:        "regress-node-8110",
-		Description:      "Test the fix for pulumi/pulumi#8110 nodejs compilation error",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, golang, python),
-		Skip:             codegen.NewStringSet("nodejs/test"),
+		Directory:   "regress-node-8110",
+		Description: "Test the fix for pulumi/pulumi#8110 nodejs compilation error",
+		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
 	},
 }
 
