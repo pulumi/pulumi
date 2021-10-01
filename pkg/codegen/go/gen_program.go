@@ -5,6 +5,7 @@ import (
 	"fmt"
 	gofmt "go/format"
 	"io"
+	"path"
 	"strings"
 	"sync"
 
@@ -321,10 +322,14 @@ func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
 		imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
 	}
 
-	// All providers don't follow the sdk/go/<package> scheme. Allow ImportBasePath as
-	// a means to override this assumption.
-	if info.ImportBasePath != "" && mod != "" {
-		imp = fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
+	// All providers don't follow the sdk/go/<package> scheme. Allow
+	// ImportBasePath as a means to override this assumption.
+	//
+	//NOTE: This used to have && mod != "" as a condition. Removing this was
+	// reported to causes invalid codegen. It doesn't seem to anymore.
+
+	if info.ImportBasePath != "" {
+		imp = path.Join(info.ImportBasePath, mod)
 	}
 
 	if alias, ok := info.PackageImportAliases[imp]; ok {
