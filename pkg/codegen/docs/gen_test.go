@@ -19,11 +19,10 @@
 package docs
 
 import (
-	"testing"
-
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 const (
@@ -408,11 +407,15 @@ func TestExamplesProcessing(t *testing.T) {
 }
 
 func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	Initialize(tool, pkg)
 	return GeneratePackage(tool, pkg)
 }
 
 func TestGeneratePackage(t *testing.T) {
-	// TODO: do we have a compile step on templates?
+	// When running this test locally, be sure to run
+	// `make generate` first. That will regenerate the
+	// compiled templates file packaged.go. See README.md
+	// in this package for more info.
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "docs",
 		GenPackage: generatePackage,

@@ -72,3 +72,20 @@ func title(s, lang string) string {
 		return strings.Title(s)
 	}
 }
+
+func modFilenameToDisplayName(name string) string {
+	parts := strings.Split(name, "/")
+	return parts[len(parts)-1]
+}
+
+func getModuleLink(name string) string {
+	return strings.ToLower(name) + "/"
+}
+
+func getResourceLink(name string) string {
+	return strings.ToLower(name)
+}
+
+func getFunctionLink(name string) string {
+	return strings.ToLower(name)
+}
