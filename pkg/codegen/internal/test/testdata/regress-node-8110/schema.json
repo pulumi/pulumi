@@ -45,6 +45,11 @@
     }
   },
   "language": {
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.12"
+      }
+    },
     "nodejs": {
       "devDependencies": {
         "@types/node": "latest",
