@@ -1547,8 +1547,8 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 			fmt.Fprintf(w, "        pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
 		} else if shouldLiftReturn {
 			// Store the return in a variable and return the property output
-			fmt.Fprintf(w, "        res = pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
-			fmt.Fprintf(w, "        return res.%s\n", PyName(fun.Outputs.Properties[0].Name))
+			fmt.Fprintf(w, "        __result__ = pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
+			fmt.Fprintf(w, "        return __result__.%s\n", PyName(fun.Outputs.Properties[0].Name))
 		} else {
 			// Otherwise return the call directly
 			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
