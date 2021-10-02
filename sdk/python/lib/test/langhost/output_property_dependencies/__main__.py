@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import functools
 import pulumi
 from typing import Optional
 
@@ -24,7 +23,7 @@ class MyResourceArgs:
     @property
     @pulumi.getter(name="inProp")
     def in_prop(self) -> Optional[pulumi.Input[str]]:
-        return pulumi.get(self, "inProp")
+        return pulumi.get(self, "in_prop")
 
     @in_prop.setter
     def in_prop(self, value: pulumi.Input[str]):
