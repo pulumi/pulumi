@@ -34,7 +34,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/tstypes"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -267,64 +269,73 @@ func tokenToFunctionName(tok string) string {
 	return camel(tokenToName(tok))
 }
 
-func (mod *modContext) typeString(t schema.Type, input bool, constValue interface{}) string {
+func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}) tstypes.TypeAst {
 	switch t := t.(type) {
 	case *schema.OptionalType:
-		return fmt.Sprintf("(%s | undefined)", mod.typeString(t.ElementType, input, constValue))
+		return tstypes.Union(
+			mod.typeAst(t.ElementType, input, constValue),
+			tstypes.Identifier("undefined"),
+		)
 	case *schema.InputType:
 		typ := mod.typeString(codegen.SimplifyInputUnion(t.ElementType), input, constValue)
 		if typ == "any" {
-			return typ
+			return tstypes.Identifier("any")
 		}
-		return fmt.Sprintf("pulumi.Input<%s>", typ)
+		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typ))
 	case *schema.EnumType:
-		return mod.objectType(nil, t.Token, input, false, true)
+		return tstypes.Identifier(mod.objectType(nil, t.Token, input, false, true))
 	case *schema.ArrayType:
-		return mod.typeString(t.ElementType, input, constValue) + "[]"
+		return tstypes.Array(mod.typeAst(t.ElementType, input, constValue))
 	case *schema.MapType:
-		return fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, constValue))
+		return tstypes.StringMap(mod.typeAst(t.ElementType, input, constValue))
 	case *schema.ObjectType:
-		return mod.objectType(t.Package, t.Token, input, t.IsInputShape(), false)
+		return tstypes.Identifier(mod.objectType(t.Package, t.Token, input, t.IsInputShape(), false))
 	case *schema.ResourceType:
-		return mod.resourceType(t)
+		return tstypes.Identifier(mod.resourceType(t))
 	case *schema.TokenType:
-		return tokenToName(t.Token)
+		return tstypes.Identifier(tokenToName(t.Token))
 	case *schema.UnionType:
 		if !input && mod.disableUnionOutputTypes {
 			if t.DefaultType != nil {
-				return mod.typeString(t.DefaultType, input, constValue)
+				return mod.typeAst(t.DefaultType, input, constValue)
 			}
-			return "any"
+			return tstypes.Identifier("any")
 		}
 
-		elements := make([]string, len(t.ElementTypes))
+		elements := make([]tstypes.TypeAst, len(t.ElementTypes))
 		for i, e := range t.ElementTypes {
-			elements[i] = mod.typeString(e, input, constValue)
+			elements[i] = mod.typeAst(e, input, constValue)
 		}
-		return fmt.Sprintf("(%s)", strings.Join(elements, " | "))
+		return tstypes.Union(elements...)
 	default:
 		switch t {
 		case schema.BoolType:
-			return "boolean"
+			return tstypes.Identifier("boolean")
 		case schema.IntType, schema.NumberType:
-			return "number"
+			return tstypes.Identifier("number")
 		case schema.StringType:
 			if constValue != nil {
-				return fmt.Sprintf("%q", constValue.(string))
+				return tstypes.Identifier(fmt.Sprintf("%q", constValue.(string)))
 			}
-			return "string"
+			return tstypes.Identifier("string")
 		case schema.ArchiveType:
-			return "pulumi.asset.Archive"
+			return tstypes.Identifier("pulumi.asset.Archive")
 		case schema.AssetType:
-			return "(pulumi.asset.Asset | pulumi.asset.Archive)"
+			return tstypes.Union(
+				tstypes.Identifier("pulumi.asset.Asset"),
+				tstypes.Identifier("pulumi.asset.Archive"),
+			)
 		case schema.JSONType:
 			fallthrough
 		case schema.AnyType:
-			return "any"
+			return tstypes.Identifier("any")
 		}
 	}
-
 	panic(fmt.Errorf("unexpected type %T", t))
+}
+
+func (mod *modContext) typeString(t schema.Type, input bool, constValue interface{}) string {
+	return tstypes.TypeLiteral(mod.typeAst(t, input, constValue))
 }
 
 func isStringType(t schema.Type) bool {

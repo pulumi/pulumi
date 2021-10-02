@@ -21,7 +21,7 @@ export class OtherResource extends pulumi.ComponentResource {
         return obj['__pulumiType'] === OtherResource.__pulumiType;
     }
 
-    public readonly foo!: pulumi.Output<(Resource | undefined)>;
+    public readonly foo!: pulumi.Output<Resource | undefined>;
 
     /**
      * Create a OtherResource resource with the given unique name, arguments, and options.

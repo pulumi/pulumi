@@ -32,7 +32,7 @@ export class ModuleResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === ModuleResource.__pulumiType;
     }
 
-    public readonly thing!: pulumi.Output<(outputs.TopLevel | undefined)>;
+    public readonly thing!: pulumi.Output<outputs.TopLevel | undefined>;
 
     /**
      * Create a ModuleResource resource with the given unique name, arguments, and options.

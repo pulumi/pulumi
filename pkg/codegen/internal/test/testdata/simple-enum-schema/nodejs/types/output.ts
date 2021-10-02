@@ -6,7 +6,7 @@ import { input as inputs, output as outputs, enums } from "../types";
 
 export interface Container {
     brightness?: enums.ContainerBrightness;
-    color?: (enums.ContainerColor | string);
+    color?: enums.ContainerColor | string;
     material?: string;
     size: enums.ContainerSize;
 }

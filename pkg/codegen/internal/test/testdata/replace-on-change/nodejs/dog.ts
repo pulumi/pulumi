@@ -31,7 +31,7 @@ export class Dog extends pulumi.CustomResource {
         return obj['__pulumiType'] === Dog.__pulumiType;
     }
 
-    public /*out*/ readonly bone!: pulumi.Output<(string | undefined)>;
+    public /*out*/ readonly bone!: pulumi.Output<string | undefined>;
 
     /**
      * Create a Dog resource with the given unique name, arguments, and options.

@@ -31,7 +31,7 @@ export class Pet extends pulumi.CustomResource {
         return obj['__pulumiType'] === Pet.__pulumiType;
     }
 
-    public readonly name!: pulumi.Output<(string | undefined)>;
+    public readonly name!: pulumi.Output<string | undefined>;
 
     /**
      * Create a Pet resource with the given unique name, arguments, and options.
