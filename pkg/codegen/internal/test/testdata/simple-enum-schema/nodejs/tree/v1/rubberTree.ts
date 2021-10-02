@@ -35,7 +35,7 @@ export class RubberTree extends pulumi.CustomResource {
 
     public readonly container!: pulumi.Output<outputs.Container | undefined>;
     public readonly diameter!: pulumi.Output<enums.tree.v1.Diameter>;
-    public readonly farm!: pulumi.Output<(enums.tree.v1.Farm | string) | undefined>;
+    public readonly farm!: pulumi.Output<enums.tree.v1.Farm | string | undefined>;
     public readonly size!: pulumi.Output<enums.tree.v1.TreeSize | undefined>;
     public readonly type!: pulumi.Output<enums.tree.v1.RubberTreeVariety>;
 

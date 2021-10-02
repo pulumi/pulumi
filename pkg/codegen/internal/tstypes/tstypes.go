@@ -60,6 +60,44 @@ func Union(t ...TypeAst) TypeAst {
 	return &unionType{t[0], t[1], t[2:]}
 }
 
+// Normalizes by unnesting unions `A | (B | C) => A | B | C`.
+func Normalize(ast TypeAst) TypeAst {
+	return transform(ast, func(t TypeAst) TypeAst {
+		switch v := t.(type) {
+		case *unionType:
+			var all []TypeAst
+			for _, e := range v.all() {
+				switch ev := e.(type) {
+				case *unionType:
+					all = append(all, ev.all()...)
+				default:
+					all = append(all, ev)
+				}
+			}
+			return Union(all...)
+		default:
+			return t
+		}
+	})
+}
+
+func transform(t TypeAst, f func(x TypeAst) TypeAst) TypeAst {
+	switch v := t.(type) {
+	case *unionType:
+		var ts []TypeAst
+		for _, x := range v.all() {
+			ts = append(ts, transform(x, f))
+		}
+		return f(Union(ts...))
+	case *arrayType:
+		return f(&arrayType{transform(v.arrayElement, f)})
+	case *mapType:
+		return f(&mapType{transform(v.mapElement, f)})
+	default:
+		return f(t)
+	}
+}
+
 type idType struct {
 	id string
 }
@@ -96,9 +134,13 @@ type unionType struct {
 	tRest []TypeAst
 }
 
+func (t *unionType) all() []TypeAst {
+	return append([]TypeAst{t.t1, t.t2}, t.tRest...)
+}
+
 func (t *unionType) depth() int {
 	var maxDepth = 0
-	for _, t := range append(t.tRest, t.t1, t.t2) {
+	for _, t := range t.all() {
 		d := t.depth()
 		if d > maxDepth {
 			maxDepth = d
@@ -138,7 +180,7 @@ func (u *typeScriptTypeUnparser) unparse(ast TypeAst) []typeToken {
 		return append([]typeToken{{openMap, ""}}, append(u.unparse(v.mapElement), typeToken{closeMap, ""})...)
 	case *unionType:
 		var tokens []typeToken
-		for i, t := range append([]TypeAst{v.t1, v.t2}, v.tRest...) {
+		for i, t := range v.all() {
 			if i > 0 {
 				tokens = append(tokens, typeToken{union, ""})
 			}

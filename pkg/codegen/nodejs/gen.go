@@ -335,7 +335,7 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}
 }
 
 func (mod *modContext) typeString(t schema.Type, input bool, constValue interface{}) string {
-	return tstypes.TypeLiteral(mod.typeAst(t, input, constValue))
+	return tstypes.TypeLiteral(tstypes.Normalize(mod.typeAst(t, input, constValue)))
 }
 
 func isStringType(t schema.Type) bool {
