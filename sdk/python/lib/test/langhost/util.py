@@ -142,8 +142,6 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
             for key, urns in outs["propertyDependencies"].items():
                 output_property_dependencies[key] = proto.RegisterResourceResponse.PropertyDependencies(urns=urns)
 
-        print(f"{output_property_dependencies}")
-
         return proto.RegisterResourceResponse(
             urn=outs.get("urn"), id=outs.get("id"), object=obj_proto, propertyDependencies=output_property_dependencies)
 
