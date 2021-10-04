@@ -68,7 +68,11 @@ if __name__ == "__main__":
         os.chdir(args.pwd)
 
     successful = False
-    loop = asyncio.get_event_loop()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
     # We are (unfortunately) suppressing the log output of asyncio to avoid showing to users some of the bad things we
     # do in our programming model.

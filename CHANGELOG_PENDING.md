@@ -23,5 +23,8 @@
 
   [#8116](https://github.com/pulumi/pulumi/pull/8116)
 
-- [sdk/go] - Fix --target / --replace args
+- [auto/go] - Fix --target / --replace args
   [#8109](https://github.com/pulumi/pulumi/pull/8109)
+  
+- [sdk/python] - Fix deprecation warning when using python 3.10
+  [#8129](https://github.com/pulumi/pulumi/pull/8129)
