@@ -113,6 +113,7 @@ var (
 		"mongodbatlas":  "MongoDB Atlas",
 		"mysql":         "MySQL",
 		"newrelic":      "New Relic",
+		"nomad":         "Nomad",
 		"ns1":           "NS1",
 		"okta":          "Okta",
 		"openstack":     "OpenStack",
