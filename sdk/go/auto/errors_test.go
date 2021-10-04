@@ -28,6 +28,9 @@ import (
 )
 
 func TestConcurrentUpdateError(t *testing.T) {
+	// TODO[pulumi/pulumi#8122] - investigate underlying sporadic 404 error
+	t.Skip("disabled as flaky and resource-intensive")
+
 	n := 50
 	ctx := context.Background()
 	pName := "conflict_error"
