@@ -170,7 +170,7 @@ type typeToken struct {
 
 type typeScriptTypeUnparser struct{}
 
-func (u *typeScriptTypeUnparser) unparse(ast TypeAst) []typeToken {
+func (u typeScriptTypeUnparser) unparse(ast TypeAst) []typeToken {
 	switch v := ast.(type) {
 	case *idType:
 		return []typeToken{{identifier, v.id}}
@@ -192,7 +192,7 @@ func (u *typeScriptTypeUnparser) unparse(ast TypeAst) []typeToken {
 	}
 }
 
-func (u *typeScriptTypeUnparser) unparseWithUnionParens(ast TypeAst) []typeToken {
+func (u typeScriptTypeUnparser) unparseWithUnionParens(ast TypeAst) []typeToken {
 	var parens bool
 	switch ast.(type) {
 	case *unionType:
@@ -205,7 +205,7 @@ func (u *typeScriptTypeUnparser) unparseWithUnionParens(ast TypeAst) []typeToken
 	return tokens
 }
 
-func (u *typeScriptTypeUnparser) parenthesize(tokens []typeToken) []typeToken {
+func (u typeScriptTypeUnparser) parenthesize(tokens []typeToken) []typeToken {
 	return append([]typeToken{{openParen, ""}}, append(tokens, typeToken{closeParen, ""})...)
 }
 
