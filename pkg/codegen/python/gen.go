@@ -37,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -386,14 +385,6 @@ func relPathToRelImport(relPath string) string {
 	return relImport
 }
 
-type fs map[string][]byte
-
-func (fs fs) add(path string, contents []byte) {
-	_, has := fs[path]
-	contract.Assertf(!has, "duplicate file: %s", path)
-	fs[path] = contents
-}
-
 func genUtilitiesFile(tool string) []byte {
 	buffer := &bytes.Buffer{}
 	genStandardHeader(buffer, tool)
@@ -401,7 +392,7 @@ func genUtilitiesFile(tool string) []byte {
 	return buffer.Bytes()
 }
 
-func (mod *modContext) gen(fs fs) error {
+func (mod *modContext) gen(fs codegen.Fs) error {
 	dir := path.Join(mod.pyPkgName, mod.mod)
 
 	var exports []string
@@ -420,14 +411,14 @@ func (mod *modContext) gen(fs fs) error {
 		if !strings.HasSuffix(name, ".pyi") {
 			exports = append(exports, name[:len(name)-len(".py")])
 		}
-		fs.add(p, []byte(contents))
+		fs.Add(p, []byte(contents))
 	}
 
 	// Utilities, config, readme
 	switch mod.mod {
 	case "":
-		fs.add(filepath.Join(dir, "_utilities.py"), genUtilitiesFile(mod.tool))
-		fs.add(filepath.Join(dir, "py.typed"), []byte{})
+		fs.Add(filepath.Join(dir, "_utilities.py"), genUtilitiesFile(mod.tool))
+		fs.Add(filepath.Join(dir, "py.typed"), []byte{})
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
 		readme := mod.pkg.Language["python"].(PackageInfo).Readme
@@ -446,7 +437,7 @@ func (mod *modContext) gen(fs fs) error {
 				readme += "\n"
 			}
 		}
-		fs.add(filepath.Join(dir, "README.md"), []byte(readme))
+		fs.Add(filepath.Join(dir, "README.md"), []byte(readme))
 
 	case "config":
 		if len(mod.pkg.Config) > 0 {
@@ -509,7 +500,7 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Index
 	if !mod.isEmpty() {
-		fs.add(path.Join(dir, "__init__.py"), []byte(mod.genInit(exports)))
+		fs.Add(path.Join(dir, "__init__.py"), []byte(mod.genInit(exports)))
 	}
 
 	return nil
@@ -868,7 +859,7 @@ func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, err
 	return w.String(), nil
 }
 
-func (mod *modContext) genTypes(dir string, fs fs) error {
+func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 	genTypes := func(file string, input bool) error {
 		w := &bytes.Buffer{}
 
@@ -924,7 +915,7 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 			}
 		}
 		if hasTypes {
-			fs.add(path.Join(dir, file), w.Bytes())
+			fs.Add(path.Join(dir, file), w.Bytes())
 		}
 		return nil
 	}
@@ -1890,16 +1881,6 @@ func sanitizePackageDescription(description string) string {
 	return ""
 }
 
-func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
-	plugin := &plugin.PulumiPluginJSON{
-		Resource: true,
-		Name:     pkg.Name,
-		Version:  "${PLUGIN_VERSION}",
-		Server:   pkg.PluginDownloadURL,
-	}
-	return plugin.JSON()
-}
-
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func genPackageMetadata(
 	tool string, pkg *schema.Package, pyPkgName string, emitPulumiPluginFile bool, requires map[string]string) (string, error) {
@@ -2755,9 +2736,9 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		pkgName = pyPack(pkg.Name)
 	}
 
-	files := fs{}
+	files := codegen.NewFs()
 	for p, f := range extraFiles {
-		files.add(filepath.Join(pkgName, p), f)
+		files.Add(filepath.Join(pkgName, p), f)
 	}
 
 	for _, mod := range modules {
@@ -2768,11 +2749,11 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 	// Generate pulumiplugin.json, if requested.
 	if info.EmitPulumiPluginFile {
-		plugin, err := genPulumiPluginFile(pkg)
+		plugin, err := codegen.GenPulumiPluginFile(pkg)
 		if err != nil {
 			return nil, err
 		}
-		files.add(filepath.Join(pkgName, "pulumiplugin.json"), plugin)
+		files.Add(filepath.Join(pkgName, "pulumiplugin.json"), plugin)
 	}
 
 	// Finally emit the package metadata (setup.py).
@@ -2780,7 +2761,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	if err != nil {
 		return nil, err
 	}
-	files.add("setup.py", []byte(setup))
+	files.Add("setup.py", []byte(setup))
 
 	return files, nil
 }

@@ -1801,14 +1801,6 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	return w.String(), nil
 }
 
-type fs map[string][]byte
-
-func (fs fs) add(path string, contents []byte) {
-	_, has := fs[path]
-	contract.Assertf(!has, "duplicate file: %s", path)
-	fs[path] = contents
-}
-
 func (mod *modContext) genUtilities() (string, error) {
 	// Strip any 'v' off of the version.
 	w := &bytes.Buffer{}
@@ -1825,7 +1817,7 @@ func (mod *modContext) genUtilities() (string, error) {
 	return w.String(), nil
 }
 
-func (mod *modContext) gen(fs fs) error {
+func (mod *modContext) gen(fs codegen.Fs) error {
 	nsComponents := strings.Split(mod.namespaceName, ".")
 	if len(nsComponents) > 0 {
 		// Trim off "Pulumi.Pkg"
@@ -1851,7 +1843,7 @@ func (mod *modContext) gen(fs fs) error {
 	addFile := func(name, contents string) {
 		p := path.Join(dir, name)
 		files = append(files, p)
-		fs.add(p, []byte(contents))
+		fs.Add(p, []byte(contents))
 	}
 
 	// Ensure that the target module directory contains a README.md file.
@@ -1859,7 +1851,7 @@ func (mod *modContext) gen(fs fs) error {
 	if readme != "" && readme[len(readme)-1] != '\n' {
 		readme += "\n"
 	}
-	fs.add(filepath.Join(dir, "README.md"), []byte(readme))
+	fs.Add(filepath.Join(dir, "README.md"), []byte(readme))
 
 	// Utilities, config
 	switch mod.mod {
@@ -1868,7 +1860,7 @@ func (mod *modContext) gen(fs fs) error {
 		if err != nil {
 			return err
 		}
-		fs.add("Utilities.cs", []byte(utilities))
+		fs.Add("Utilities.cs", []byte(utilities))
 	case "config":
 		if len(mod.pkg.Config) > 0 {
 			config, err := mod.genConfig(mod.pkg.Config)
@@ -1990,7 +1982,7 @@ func (mod *modContext) gen(fs fs) error {
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, assemblyName string, packageReferences map[string]string, files fs) error {
+func genPackageMetadata(pkg *schema.Package, assemblyName string, packageReferences map[string]string, files codegen.Fs) error {
 	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences)
 	if err != nil {
 		return err
@@ -2000,8 +1992,17 @@ func genPackageMetadata(pkg *schema.Package, assemblyName string, packageReferen
 		return err
 	}
 
-	files.add(assemblyName+".csproj", projectFile)
-	files.add("logo.png", logo)
+	// TODO: is there a reason why we should not generate this file? Doing it
+	// unconditionally seems to remove complexity with no downside. This is in
+	// contrast to python, which has a flag for it.
+	plugin, err := codegen.GenPulumiPluginFile(pkg)
+	if err != nil {
+		return err
+	}
+	files.Add("pulumiplugin.json", plugin)
+
+	files.Add(assemblyName+".csproj", projectFile)
+	files.Add("logo.png", logo)
 	return nil
 }
 
@@ -2250,9 +2251,9 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	assemblyName := "Pulumi." + namespaceName(info.Namespaces, pkg.Name)
 
 	// Generate each module.
-	files := fs{}
+	files := codegen.NewFs()
 	for p, f := range extraFiles {
-		files.add(p, f)
+		files.Add(p, f)
 
 	}
 	for _, mod := range modules {

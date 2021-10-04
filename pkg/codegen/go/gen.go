@@ -2952,6 +2952,19 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	return resources, nil
 }
 
+// genPackageMetadata adds metadata files.
+//
+// NOTE: This does not include go.mod and go.sum. They exist outside of the
+// package tree.
+func genPackageMetadata(pkg *schema.Package, files codegen.Fs) error {
+	plugin, err := codegen.GenPulumiPluginFile(pkg)
+	if err != nil {
+		return err
+	}
+	files.Add("pulumiplugin.json", plugin)
+	return nil
+}
+
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
 	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 		return nil, err
@@ -2975,13 +2988,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		name = goPackage(pkg.Name)
 	}
 
-	files := map[string][]byte{}
+	files := codegen.NewFs()
 	setFile := func(relPath, contents string) {
 		if goPkgInfo.RootPackageName == "" {
 			relPath = path.Join(goPackage(name), relPath)
-		}
-		if _, ok := files[relPath]; ok {
-			panic(errors.Errorf("duplicate file: %s", relPath))
 		}
 
 		// Run Go formatter on the code before saving to disk
@@ -2990,8 +3000,12 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			fmt.Fprintf(os.Stderr, "Invalid content:\n%s\n%s\n", relPath, contents)
 			panic(errors.Wrapf(err, "invalid Go source code:\n\n%s\n", relPath))
 		}
+		files.Add(relPath, formattedSource)
+	}
 
-		files[relPath] = formattedSource
+	err := genPackageMetadata(pkg, files)
+	if err != nil {
+		return nil, err
 	}
 
 	for _, mod := range pkgMods {

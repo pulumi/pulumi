@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -156,4 +158,32 @@ func ExpandShortEnumName(name string) string {
 		return replacement
 	}
 	return name
+}
+
+// GenPulumiPluginFile generates pulumiplugin.json for Python, Go and .NET
+// packages.
+func GenPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
+	plugin := &plugin.PulumiPluginJSON{
+		Resource: true,
+		Name:     pkg.Name,
+		// TODO[pulumi/pulumi#8105] - Put in the correct versions
+		Version: "${PLUGIN_VERSION}",
+		Server:  pkg.PluginDownloadURL,
+	}
+	return plugin.JSON()
+}
+
+// Fs represents a folder hierarchy used for code generation. A path is
+// represented as relative to the package root.
+type Fs map[string][]byte
+
+// Add a new file to Fs. The file path must be unique.
+func (fs Fs) Add(path string, contents []byte) {
+	_, has := fs[path]
+	contract.Assertf(!has, "duplicate file: %q", path)
+	fs[path] = contents
+}
+
+func NewFs() Fs {
+	return map[string][]byte{}
 }

@@ -1461,14 +1461,6 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	return nil
 }
 
-type fs map[string][]byte
-
-func (fs fs) add(path string, contents []byte) {
-	_, has := fs[path]
-	contract.Assertf(!has, "duplicate file: %s", path)
-	fs[path] = contents
-}
-
 func (mod *modContext) isReservedSourceFileName(name string) bool {
 	switch name {
 	case "index.ts":
@@ -1484,7 +1476,7 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 	}
 }
 
-func (mod *modContext) gen(fs fs) error {
+func (mod *modContext) gen(fs codegen.Fs) error {
 	files := append([]string(nil), mod.extraSourceFiles...)
 
 	modDir := strings.ToLower(mod.mod)
@@ -1492,7 +1484,7 @@ func (mod *modContext) gen(fs fs) error {
 	addFile := func(name, contents string) {
 		p := path.Join(modDir, name)
 		files = append(files, p)
-		fs.add(p, []byte(contents))
+		fs.Add(p, []byte(contents))
 	}
 
 	// Utilities, config, readme
@@ -1501,7 +1493,7 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, nil, nil, nil)
 		fmt.Fprintf(buffer, "%s", utilitiesFile)
-		fs.add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
+		fs.Add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
 		readme := mod.pkg.Language["nodejs"].(NodePackageInfo).Readme
@@ -1520,7 +1512,7 @@ func (mod *modContext) gen(fs fs) error {
 		if readme != "" && readme[len(readme)-1] != '\n' {
 			readme += "\n"
 		}
-		fs.add(path.Join(modDir, "README.md"), []byte(readme))
+		fs.Add(path.Join(modDir, "README.md"), []byte(readme))
 	case "config":
 		if len(mod.pkg.Config) > 0 {
 			buffer := &bytes.Buffer{}
@@ -1580,18 +1572,18 @@ func (mod *modContext) gen(fs fs) error {
 			fileName = path.Join(modDir, "index.ts")
 		}
 		fileName = path.Join("types", "enums", fileName)
-		fs.add(fileName, buffer.Bytes())
+		fs.Add(fileName, buffer.Bytes())
 	}
 
 	// Nested types
 	if len(mod.types) > 0 {
 		input, output := mod.genTypes()
-		fs.add(path.Join(modDir, "input.ts"), []byte(input))
-		fs.add(path.Join(modDir, "output.ts"), []byte(output))
+		fs.Add(path.Join(modDir, "input.ts"), []byte(input))
+		fs.Add(path.Join(modDir, "output.ts"), []byte(output))
 	}
 
 	// Index
-	fs.add(path.Join(modDir, "index.ts"), []byte(mod.genIndex(files)))
+	fs.Add(path.Join(modDir, "index.ts"), []byte(mod.genIndex(files)))
 	return nil
 }
 
@@ -1826,12 +1818,12 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs) {
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files codegen.Fs) {
 	// The generator already emitted Pulumi.yaml, so that leaves two more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
-	files.add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
-	files.add("tsconfig.json", []byte(genTypeScriptProjectFile(info, files)))
+	files.Add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
+	files.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, files)))
 }
 
 type npmPackage struct {
@@ -1938,7 +1930,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	return string(npmjson) + "\n"
 }
 
-func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
+func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
 	w := &bytes.Buffer{}
 
 	fmt.Fprintf(w, `{
@@ -2178,9 +2170,9 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 	pkg.Language["nodejs"] = info
 
-	files := fs{}
+	files := codegen.NewFs()
 	for p, f := range extraFiles {
-		files.add(p, f)
+		files.Add(p, f)
 	}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {

@@ -38,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var (
@@ -1487,14 +1486,6 @@ func (mod *modContext) getTypes(member interface{}, types nestedTypeUsageInfo) {
 	}
 }
 
-type fs map[string][]byte
-
-func (fs fs) add(path string, contents []byte) {
-	_, has := fs[path]
-	contract.Assertf(!has, "duplicate file: %s", path)
-	fs[path] = contents
-}
-
 // getModuleFileName returns the file name to use for a module.
 func (mod *modContext) getModuleFileName() string {
 	if !isKubernetesPackage(mod.pkg) {
@@ -1509,12 +1500,12 @@ func (mod *modContext) getModuleFileName() string {
 	return mod.mod
 }
 
-func (mod *modContext) gen(fs fs) error {
+func (mod *modContext) gen(fs codegen.Fs) error {
 	modName := mod.getModuleFileName()
 
 	addFile := func(name, contents string) {
 		p := path.Join(modName, name, "_index.md")
-		fs.add(p, []byte(contents))
+		fs.Add(p, []byte(contents))
 	}
 
 	// Resources
@@ -1553,7 +1544,7 @@ func (mod *modContext) gen(fs fs) error {
 		return err
 	}
 
-	fs.add(path.Join(modName, "_index.md"), []byte(buffer.String()))
+	fs.Add(path.Join(modName, "_index.md"), []byte(buffer.String()))
 	return nil
 }
 
@@ -1873,7 +1864,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	defer glog.Flush()
 
 	glog.V(3).Infoln("generating package docs now...")
-	files := fs{}
+	files := codegen.NewFs()
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
 			return nil, err
