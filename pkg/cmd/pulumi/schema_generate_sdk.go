@@ -121,7 +121,7 @@ func newSchemaGenerateSDKCommand() *cobra.Command {
 	return cmd
 }
 
-const toolName = "'pulumi schema generate'"
+const toolName = "'pulumi schema generate-sdk'"
 
 func genAllSDKs(pkg *schema.Package) (map[string][]byte, error) {
 	files := map[string][]byte{}
