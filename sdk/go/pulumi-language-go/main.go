@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 
@@ -139,18 +140,28 @@ type modInfo struct {
 	Version string
 }
 
-func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
-	if !strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") {
-		return nil, errors.New("module is not a pulumi provider")
+// A valid component of an url
+var urlComponentRegexp = "[a-zA-Z0-9.-]+"
+
+// Parses a plugin name from an url.
+var pluginNameFromUrl = regexp.MustCompile(
+	fmt.Sprintf("^%s/%s/pulumi-(?P<name>%s)(/.*)?$",
+		urlComponentRegexp, urlComponentRegexp, urlComponentRegexp))
+
+// We want to the name of only pulumi plugins.
+func (m *modInfo) getPluginName() (string, error) {
+	matches := pluginNameFromUrl.FindStringSubmatch(m.Path)
+	if len(matches) == 0 {
+		return "", errors.Errorf("Could not find a pulumi package in %q", m.Path)
 	}
+	name := matches[pluginNameFromUrl.SubexpIndex("name")]
+	return name, nil
+}
 
-	// github.com/pulumi/pulumi-aws/sdk/... => aws
-	pluginPart := strings.Split(m.Path, "/")[2]
-	name := strings.SplitN(pluginPart, "-", 2)[1]
-
+func (m *modInfo) getPluginVersion() (string, error) {
 	v, err := semver.ParseTolerant(m.Version)
 	if err != nil {
-		return nil, errors.New("module does not have semver compatible version")
+		return "", errors.New("module does not have semver compatible version")
 	}
 	version := m.Version
 
@@ -160,7 +171,7 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 	if buildutil.IsPseudoVersion(version) {
 		// no prior tag means there was never a release build
 		if v.Major == 0 && v.Minor == 0 && v.Patch == 0 {
-			return nil, errors.New("invalid pseduoversion with no prior tag")
+			return "", errors.New("invalid pseduoversion with no prior tag")
 		}
 		// patch is typically bumped from the previous tag when using pseudo version
 		// downgrade the patch by 1 to make sure we match a release that exists
@@ -170,14 +181,25 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 		}
 		version = fmt.Sprintf("v%v.%v.%v", v.Major, v.Minor, patch)
 	}
+	return version, nil
+}
 
-	plugin := &pulumirpc.PluginDependency{
+func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
+	name, err := m.getPluginName()
+	if err != nil {
+		return nil, err
+	}
+
+	version, err := m.getPluginVersion()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.PluginDependency{
 		Name:    name,
 		Version: version,
 		Kind:    "resource",
-	}
-
-	return plugin, nil
+	}, nil
 }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
