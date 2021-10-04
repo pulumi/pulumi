@@ -227,10 +227,10 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, "--diff")
 	}
 	for _, rURN := range preOpts.Replace {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--replace %s", rURN))
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--replace=%s", rURN))
 	}
 	for _, tURN := range preOpts.Target {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--target %s", tURN))
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--target=%s", tURN))
 	}
 	if preOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
@@ -322,10 +322,10 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		sharedArgs = append(sharedArgs, "--diff")
 	}
 	for _, rURN := range upOpts.Replace {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--replace %s", rURN))
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--replace=%s", rURN))
 	}
 	for _, tURN := range upOpts.Target {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--target %s", tURN))
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--target=%s", tURN))
 	}
 	if upOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
@@ -409,7 +409,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		args = append(args, "--expect-no-changes")
 	}
 	for _, tURN := range refreshOpts.Target {
-		args = append(args, fmt.Sprintf("--target %s", tURN))
+		args = append(args, fmt.Sprintf("--target=%s", tURN))
 	}
 	if refreshOpts.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", refreshOpts.Parallel))
@@ -474,7 +474,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
 	}
 	for _, tURN := range destroyOpts.Target {
-		args = append(args, fmt.Sprintf("--target %s", tURN))
+		args = append(args, fmt.Sprintf("--target=%s", tURN))
 	}
 	if destroyOpts.TargetDependents {
 		args = append(args, "--target-dependents")
