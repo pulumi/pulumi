@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,59 +20,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestParseLocation(t *testing.T) {
-	tests := []struct {
-		pipShowOutput string
-		expected      string
-		err           error
-	}{
-		{
-			pipShowOutput: "Location: /plugin/location",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Location:/plugin/location",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Location:   /plugin/location",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Foo: bar\nLocation: /plugin/location\n",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Foo: bar\nLocation: /plugin/location\nBlah: baz",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Foo: bar\r\nLocation: /plugin/location\r\nBlah: baz",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "",
-			err:           errors.New("determining location of package foo"),
-		},
-		{
-			pipShowOutput: "Foo: bar\nBlah: baz",
-			err:           errors.New("determining location of package foo"),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.pipShowOutput, func(t *testing.T) {
-			result, err := parseLocation("foo", tt.pipShowOutput)
-			if tt.err != nil {
-				assert.Error(t, err)
-				assert.EqualError(t, err, tt.err.Error())
-				return
-			}
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
 
 func TestDeterminePluginVersion(t *testing.T) {
 	tests := []struct {
