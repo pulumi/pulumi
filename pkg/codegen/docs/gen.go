@@ -41,37 +41,23 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-var (
-	// modules is a map of a module name and information
-	// about it. This is crux of all API docs generation
-	// as the modContext carries information about the resources,
-	// functions, as well other modules within each module.
-	modules map[string]*modContext
+// Populated in auto-generated `packaged.go`
+var packagedTemplates map[string][]byte
 
-	supportedLanguages = []string{"csharp", "go", "nodejs", "python"}
-	snippetLanguages   = []string{"csharp", "go", "python", "typescript"}
-	templates          *template.Template
-	packagedTemplates  map[string][]byte
-	docHelpers         map[string]codegen.DocLanguageHelper
+func init() {
+	packagedTemplates = map[string][]byte{}
+}
 
-	// The language-specific info objects for a certain package (provider).
-	goPkgInfo     go_gen.GoPackageInfo
-	csharpPkgInfo dotnet.CSharpPackageInfo
-	nodePkgInfo   nodejs.NodePackageInfo
-	pythonPkgInfo python.PackageInfo
-
-	// langModuleNameLookup is a map of module name to its language-specific
-	// name.
-	langModuleNameLookup map[string]string
-	// TODO[pulumi/pulumi#7813]: Remove this lookup once display name is available in
-	// the Pulumi schema.
-	//
-	// NOTE: For the time being this lookup map and the one used by the resourcedocsgen
-	// tool in `pulumi/docs` must be kept up-to-date.
-	//
-	// titleLookup is a map of package name to the desired display name
-	// for display in the TOC menu under API Reference.
-	titleLookup = map[string]string{
+// TODO[pulumi/pulumi#7813]: Remove this lookup once display name is available in
+// the Pulumi schema.
+//
+// NOTE: For the time being this lookup map and the one used by the resourcedocsgen
+// tool in `pulumi/docs` must be kept up-to-date.
+//
+// titleLookup is a map of package name to the desired display name
+// for display in the TOC menu under API Reference.
+func titleLookup(shortName string) (string, bool) {
+	v, ok := map[string]string{
 		"aiven":         "Aiven",
 		"akamai":        "Akamai",
 		"alicloud":      "Alibaba Cloud",
@@ -136,14 +122,40 @@ var (
 		"vsphere":       "vSphere",
 		"wavefront":     "Wavefront",
 		"yandex":        "Yandex",
-	}
-	// Property anchor tag separator, used in a property anchor tag id to separate the
-	// property and language (e.g. property~lang).
-	propertyLangSeparator = "_"
-)
+	}[shortName]
+	return v, ok
+}
 
-func init() {
-	docHelpers = make(map[string]codegen.DocLanguageHelper)
+// Property anchor tag separator, used in a property anchor tag id to separate the
+// property and language (e.g. property~lang).
+const propertyLangSeparator = "_"
+
+type docGenContext struct {
+	// modules is a map of a module name and information
+	// about it. This is crux of all API docs generation
+	// as the modContext carries information about the resources,
+	// functions, as well other modules within each module.
+	modules map[string]*modContext
+
+	supportedLanguages []string
+	snippetLanguages   []string
+	templates          *template.Template
+	docHelpers         map[string]codegen.DocLanguageHelper
+
+	// The language-specific info objects for a certain package (provider).
+	goPkgInfo     go_gen.GoPackageInfo
+	csharpPkgInfo dotnet.CSharpPackageInfo
+	nodePkgInfo   nodejs.NodePackageInfo
+	pythonPkgInfo python.PackageInfo
+
+	// langModuleNameLookup is a map of module name to its language-specific
+	// name.
+	langModuleNameLookup map[string]string
+}
+
+func newDocGenContext() *docGenContext {
+	supportedLanguages := []string{"csharp", "go", "nodejs", "python"}
+	docHelpers := make(map[string]codegen.DocLanguageHelper)
 	for _, lang := range supportedLanguages {
 		switch lang {
 		case "csharp":
@@ -157,7 +169,14 @@ func init() {
 		}
 	}
 
-	langModuleNameLookup = map[string]string{}
+	return &docGenContext{
+		modules:            map[string]*modContext{},
+		supportedLanguages: supportedLanguages,
+		snippetLanguages:   []string{"csharp", "go", "python", "typescript"},
+		//templates: *template.Template,
+		langModuleNameLookup: map[string]string{},
+		docHelpers:           docHelpers,
+	}
 }
 
 type typeDetails struct {
@@ -346,14 +365,15 @@ func (ss nestedTypeUsageInfo) contains(token string, input bool) bool {
 }
 
 type modContext struct {
-	pkg         *schema.Package
-	mod         string
-	inputTypes  []*schema.ObjectType
-	resources   []*schema.Resource
-	functions   []*schema.Function
-	typeDetails map[*schema.ObjectType]*typeDetails
-	children    []*modContext
-	tool        string
+	pkg           *schema.Package
+	mod           string
+	inputTypes    []*schema.ObjectType
+	resources     []*schema.Resource
+	functions     []*schema.Function
+	typeDetails   map[*schema.ObjectType]*typeDetails
+	children      []*modContext
+	tool          string
+	docGenContext *docGenContext
 }
 
 func resourceName(r *schema.Resource) string {
@@ -363,8 +383,8 @@ func resourceName(r *schema.Resource) string {
 	return strings.Title(tokenToName(r.Token))
 }
 
-func getLanguageDocHelper(lang string) codegen.DocLanguageHelper {
-	if h, ok := docHelpers[lang]; ok {
+func getLanguageDocHelper(dctx *docGenContext, lang string) codegen.DocLanguageHelper {
+	if h, ok := dctx.docHelpers[lang]; ok {
 		return h
 	}
 	panic(errors.Errorf("could not find a doc lang helper for %s", lang))
@@ -391,9 +411,10 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 // language-specific name using the language info, if any, for the
 // current package.
 func (mod *modContext) getLanguageModuleName(lang string) string {
+	dctx := mod.docGenContext
 	modName := mod.mod
 	lookupKey := lang + "_" + modName
-	if v, ok := langModuleNameLookup[lookupKey]; ok {
+	if v, ok := mod.docGenContext.langModuleNameLookup[lookupKey]; ok {
 		return v
 	}
 
@@ -401,24 +422,24 @@ func (mod *modContext) getLanguageModuleName(lang string) string {
 	case "go":
 		// Go module names use lowercase.
 		modName = strings.ToLower(modName)
-		if override, ok := goPkgInfo.ModuleToPackage[modName]; ok {
+		if override, ok := dctx.goPkgInfo.ModuleToPackage[modName]; ok {
 			modName = override
 		}
 	case "csharp":
-		if override, ok := csharpPkgInfo.Namespaces[modName]; ok {
+		if override, ok := dctx.csharpPkgInfo.Namespaces[modName]; ok {
 			modName = override
 		}
 	case "nodejs":
-		if override, ok := nodePkgInfo.ModuleToPackage[modName]; ok {
+		if override, ok := dctx.nodePkgInfo.ModuleToPackage[modName]; ok {
 			modName = override
 		}
 	case "python":
-		if override, ok := pythonPkgInfo.ModuleNameOverrides[modName]; ok {
+		if override, ok := dctx.pythonPkgInfo.ModuleNameOverrides[modName]; ok {
 			modName = override
 		}
 	}
 
-	langModuleNameLookup[lookupKey] = modName
+	mod.docGenContext.langModuleNameLookup[lookupKey] = modName
 	return modName
 }
 
@@ -499,7 +520,7 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 func (mod *modContext) typeString(t schema.Type, lang string, characteristics propertyCharacteristics, insertWordBreaks bool) propertyType {
 	t = codegen.PlainType(t)
 
-	docLanguageHelper := getLanguageDocHelper(lang)
+	docLanguageHelper := getLanguageDocHelper(mod.docGenContext, lang)
 	modName := mod.getLanguageModuleName(lang)
 	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, modName, t, characteristics.input)
 
@@ -587,7 +608,7 @@ const (
 
 func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []formalParam {
 	name := resourceName(r)
-	docLangHelper := getLanguageDocHelper("nodejs")
+	docLangHelper := getLanguageDocHelper(mod.docGenContext, "nodejs")
 
 	var argsType string
 	optsType := "CustomResourceOptions"
@@ -654,7 +675,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 		argsFlag = "*"
 	}
 
-	docLangHelper := getLanguageDocHelper("go")
+	docLangHelper := getLanguageDocHelper(mod.docGenContext, "go")
 
 	return []formalParam{
 		{
@@ -710,7 +731,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 		argsFlag = "?"
 	}
 
-	docLangHelper := getLanguageDocHelper("csharp")
+	docLangHelper := getLanguageDocHelper(mod.docGenContext, "csharp")
 
 	return []formalParam{
 		{
@@ -744,7 +765,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 }
 
 func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, argsOverload bool) []formalParam {
-	docLanguageHelper := getLanguageDocHelper("python")
+	docLanguageHelper := getLanguageDocHelper(mod.docGenContext, "python")
 	isK8sOverlayMod := mod.isKubernetesOverlayModule()
 	isDockerImageResource := mod.pkg.Name == "docker" && resourceName(r) == "Image"
 
@@ -831,6 +852,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 }
 
 func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []docNestedType {
+	dctx := mod.docGenContext
 	tokens := nestedTypeUsageInfo{}
 	// Collect all of the types for this "member" as a map of resource names
 	// and if it appears in an input object and/or output object.
@@ -847,7 +869,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 
 				// Create a map to hold the per-language properties of this object.
 				props := make(map[string][]property)
-				for _, lang := range supportedLanguages {
+				for _, lang := range dctx.supportedLanguages {
 					props[lang] = mod.getProperties(typ.Properties, lang, true, true, false)
 				}
 
@@ -864,8 +886,8 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				name := strings.Title(tokenToName(typ.Token))
 
 				enums := make(map[string][]enum)
-				for _, lang := range supportedLanguages {
-					docLangHelper := getLanguageDocHelper(lang)
+				for _, lang := range dctx.supportedLanguages {
+					docLangHelper := getLanguageDocHelper(dctx, lang)
 
 					var langEnumValues []enum
 					for _, e := range typ.Elements {
@@ -911,6 +933,8 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 
 func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.Property, lang string, input, nested,
 	isProvider bool, idPrefix string, exclude func(name string) bool) []property {
+
+	dctx := mod.docGenContext
 	if len(properties) == 0 {
 		return nil
 	}
@@ -933,7 +957,7 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 
 		characteristics := propertyCharacteristics{input: input}
 
-		langDocHelper := getLanguageDocHelper(lang)
+		langDocHelper := getLanguageDocHelper(dctx, lang)
 		name, err := langDocHelper.GetPropertyName(prop)
 		if err != nil {
 			panic(err)
@@ -1023,11 +1047,12 @@ func getDockerImagePythonFormalParams() []formalParam {
 
 // Returns the rendered HTML for the resource's constructor, as well as the specific arguments.
 func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs bool) (map[string]string, map[string][]formalParam) {
+	dctx := mod.docGenContext
 	renderedParams := make(map[string]string)
 	formalParams := make(map[string][]formalParam)
 
 	// Add an extra language for Python's ResourceArg __init__ overload.
-	langs := append(supportedLanguages, "pythonargs")
+	langs := append(dctx.supportedLanguages, "pythonargs")
 
 	for _, lang := range langs {
 		var (
@@ -1061,11 +1086,11 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 
 		for i, p := range params {
 			if i != 0 {
-				if err := templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
+				if err := dctx.templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
 					panic(err)
 				}
 			}
-			if err := templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
+			if err := dctx.templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
 				panic(err)
 			}
 		}
@@ -1079,10 +1104,12 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 // getConstructorResourceInfo returns a map of per-language information about
 // the resource being constructed.
 func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[string]propertyType {
+
+	dctx := mod.docGenContext
 	resourceMap := make(map[string]propertyType)
 	resourceDisplayName := resourceTypeName
 
-	for _, lang := range supportedLanguages {
+	for _, lang := range dctx.supportedLanguages {
 		// Use the module to package lookup to transform the module name to its normalized package name.
 		modName := mod.getLanguageModuleName(lang)
 		// Reset the type name back to the display name.
@@ -1093,7 +1120,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 			// Intentionally left blank.
 		case "csharp":
 			namespace := title(mod.pkg.Name, lang)
-			if ns, ok := csharpPkgInfo.Namespaces[mod.pkg.Name]; ok {
+			if ns, ok := dctx.csharpPkgInfo.Namespaces[mod.pkg.Name]; ok {
 				namespace = ns
 			}
 			if mod.mod == "" {
@@ -1119,7 +1146,8 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 }
 
 func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) []formalParam {
-	docLangHelper := getLanguageDocHelper("nodejs")
+	dctx := mod.docGenContext
+	docLangHelper := getLanguageDocHelper(dctx, "nodejs")
 
 	return []formalParam{
 		{
@@ -1155,7 +1183,8 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 }
 
 func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) []formalParam {
-	docLangHelper := getLanguageDocHelper("go")
+	dctx := mod.docGenContext
+	docLangHelper := getLanguageDocHelper(dctx, "go")
 
 	return []formalParam{
 		{
@@ -1198,7 +1227,8 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 }
 
 func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) []formalParam {
-	docLangHelper := getLanguageDocHelper("csharp")
+	dctx := mod.docGenContext
+	docLangHelper := getLanguageDocHelper(dctx, "csharp")
 
 	return []formalParam{
 		{
@@ -1234,9 +1264,10 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 }
 
 func (mod *modContext) getPythonLookupParams(r *schema.Resource, stateParam string) []formalParam {
+	dctx := mod.docGenContext
 	// The input properties for a resource needs to be exploded as
 	// individual constructor params.
-	docLanguageHelper := getLanguageDocHelper("python")
+	docLanguageHelper := getLanguageDocHelper(dctx, "python")
 	params := make([]formalParam, 0, len(r.StateInputs.Properties))
 	for _, p := range r.StateInputs.Properties {
 		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, codegen.PlainType(codegen.OptionalType(p)), true /*input*/)
@@ -1254,12 +1285,13 @@ func (mod *modContext) getPythonLookupParams(r *schema.Resource, stateParam stri
 // genLookupParams generates a map of per-language way of rendering the formal parameters of the lookup function
 // used to lookup an existing resource.
 func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) map[string]string {
+	dctx := mod.docGenContext
 	lookupParams := make(map[string]string)
 	if r.StateInputs == nil {
 		return lookupParams
 	}
 
-	for _, lang := range supportedLanguages {
+	for _, lang := range dctx.supportedLanguages {
 		var (
 			paramTemplate string
 			params        []formalParam
@@ -1288,11 +1320,11 @@ func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) ma
 
 		n := len(params)
 		for i, p := range params {
-			if err := templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
+			if err := dctx.templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
 				panic(err)
 			}
 			if i != n-1 {
-				if err := templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
+				if err := dctx.templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
 					panic(err)
 				}
 			}
@@ -1344,6 +1376,7 @@ func (mod *modContext) genResourceHeader(r *schema.Resource) header {
 // genResource is the entrypoint for generating a doc for a resource
 // from its Pulumi schema.
 func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
+	dctx := mod.docGenContext
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(r)
 
@@ -1364,7 +1397,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		Type:    schema.StringType,
 	})
 
-	for _, lang := range supportedLanguages {
+	for _, lang := range dctx.supportedLanguages {
 		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false, r.IsProvider)
 		outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false, r.IsProvider)
 		if r.IsProvider {
@@ -1400,7 +1433,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 	stateParam := name + "State"
 
-	docInfo := decomposeDocstring(r.Comment)
+	docInfo := decomposeDocstring(dctx, r.Comment)
 	data := resourceDocArgs{
 		Header: mod.genResourceHeader(r),
 
@@ -1498,19 +1531,21 @@ func (fs fs) add(path string, contents []byte) {
 
 // getModuleFileName returns the file name to use for a module.
 func (mod *modContext) getModuleFileName() string {
+	dctx := mod.docGenContext
 	if !isKubernetesPackage(mod.pkg) {
 		return mod.mod
 	}
 
 	// For k8s packages, use the Go-language info to get the file name
 	// for the module.
-	if override, ok := goPkgInfo.ModuleToPackage[mod.mod]; ok {
+	if override, ok := dctx.goPkgInfo.ModuleToPackage[mod.mod]; ok {
 		return override
 	}
 	return mod.mod
 }
 
 func (mod *modContext) gen(fs fs) error {
+	dctx := mod.docGenContext
 	modName := mod.getModuleFileName()
 
 	addFile := func(name, contents string) {
@@ -1525,7 +1560,7 @@ func (mod *modContext) gen(fs fs) error {
 		title := resourceName(r)
 		buffer := &bytes.Buffer{}
 
-		err := templates.ExecuteTemplate(buffer, "resource.tmpl", data)
+		err := dctx.templates.ExecuteTemplate(buffer, "resource.tmpl", data)
 		if err != nil {
 			return err
 		}
@@ -1538,7 +1573,7 @@ func (mod *modContext) gen(fs fs) error {
 		data := mod.genFunction(f)
 
 		buffer := &bytes.Buffer{}
-		err := templates.ExecuteTemplate(buffer, "function.tmpl", data)
+		err := dctx.templates.ExecuteTemplate(buffer, "function.tmpl", data)
 		if err != nil {
 			return err
 		}
@@ -1549,7 +1584,7 @@ func (mod *modContext) gen(fs fs) error {
 	// Generate the index files.
 	idxData := mod.genIndex()
 	buffer := &bytes.Buffer{}
-	err := templates.ExecuteTemplate(buffer, "index.tmpl", idxData)
+	err := dctx.templates.ExecuteTemplate(buffer, "index.tmpl", idxData)
 	if err != nil {
 		return err
 	}
@@ -1708,20 +1743,28 @@ func (mod *modContext) genIndex() indexData {
 
 func formatTitleText(title string) string {
 	// If title not found in titleLookup map, default back to title given.
-	if val, ok := titleLookup[title]; ok {
+	if val, ok := titleLookup(title); ok {
 		return val
 	}
 	return title
 }
 
-func getMod(pkg *schema.Package, token string, tokenPkg *schema.Package, modules map[string]*modContext, tool string, add bool) *modContext {
+func getMod(dctx *docGenContext,
+	pkg *schema.Package,
+	token string,
+	tokenPkg *schema.Package,
+	modules map[string]*modContext,
+	tool string,
+	add bool) *modContext {
+
 	modName := pkg.TokenToModule(token)
 	mod, ok := modules[modName]
 	if !ok {
 		mod = &modContext{
-			pkg:  pkg,
-			mod:  modName,
-			tool: tool,
+			pkg:           pkg,
+			mod:           modName,
+			tool:          tool,
+			docGenContext: dctx,
 		}
 
 		if modName != "" && tokenPkg == pkg {
@@ -1732,7 +1775,7 @@ func getMod(pkg *schema.Package, token string, tokenPkg *schema.Package, modules
 			} else {
 				parentName = ":" + parentName + ":"
 			}
-			parent := getMod(pkg, parentName, tokenPkg, modules, tool, add)
+			parent := getMod(dctx, pkg, parentName, tokenPkg, modules, tool, add)
 			if add {
 				parent.children = append(parent.children, mod)
 			}
@@ -1747,7 +1790,7 @@ func getMod(pkg *schema.Package, token string, tokenPkg *schema.Package, modules
 	return mod
 }
 
-func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[string]*modContext {
+func generateModulesFromSchemaPackage(dctx *docGenContext, tool string, pkg *schema.Package) map[string]*modContext {
 	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
 
@@ -1760,38 +1803,38 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	}); err != nil {
 		panic(err)
 	}
-	goPkgInfo, _ = pkg.Language["go"].(go_gen.GoPackageInfo)
-	csharpPkgInfo, _ = pkg.Language["csharp"].(dotnet.CSharpPackageInfo)
-	nodePkgInfo, _ = pkg.Language["nodejs"].(nodejs.NodePackageInfo)
-	pythonPkgInfo, _ = pkg.Language["python"].(python.PackageInfo)
+	dctx.goPkgInfo, _ = pkg.Language["go"].(go_gen.GoPackageInfo)
+	dctx.csharpPkgInfo, _ = pkg.Language["csharp"].(dotnet.CSharpPackageInfo)
+	dctx.nodePkgInfo, _ = pkg.Language["nodejs"].(nodejs.NodePackageInfo)
+	dctx.pythonPkgInfo, _ = pkg.Language["python"].(python.PackageInfo)
 
-	goLangHelper := getLanguageDocHelper("go").(*go_gen.DocLanguageHelper)
+	goLangHelper := getLanguageDocHelper(dctx, "go").(*go_gen.DocLanguageHelper)
 	// Generate the Go package map info now, so we can use that to get the type string
 	// names later.
-	goLangHelper.GeneratePackagesMap(pkg, tool, goPkgInfo)
+	goLangHelper.GeneratePackagesMap(pkg, tool, dctx.goPkgInfo)
 
-	csharpLangHelper := getLanguageDocHelper("csharp").(*dotnet.DocLanguageHelper)
-	csharpLangHelper.Namespaces = csharpPkgInfo.Namespaces
+	csharpLangHelper := getLanguageDocHelper(dctx, "csharp").(*dotnet.DocLanguageHelper)
+	csharpLangHelper.Namespaces = dctx.csharpPkgInfo.Namespaces
 
 	visitObjects := func(r *schema.Resource) {
 		visitObjectTypes(r.InputProperties, func(t schema.Type) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				getMod(pkg, T.Token, T.Package, modules, tool, true).details(T).inputType = true
+				getMod(dctx, pkg, T.Token, T.Package, modules, tool, true).details(T).inputType = true
 			}
 		})
 		if r.StateInputs != nil {
 			visitObjectTypes(r.StateInputs.Properties, func(t schema.Type) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
-					getMod(pkg, T.Token, T.Package, modules, tool, true).details(T).inputType = true
+					getMod(dctx, pkg, T.Token, T.Package, modules, tool, true).details(T).inputType = true
 				}
 			})
 		}
 	}
 
 	scanResource := func(r *schema.Resource) {
-		mod := getMod(pkg, r.Token, r.Package, modules, tool, true)
+		mod := getMod(dctx, pkg, r.Token, r.Package, modules, tool, true)
 		mod.resources = append(mod.resources, r)
 		visitObjects(r)
 	}
@@ -1818,7 +1861,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 
 	for _, f := range pkg.Functions {
 		if !f.IsMethod {
-			mod := getMod(pkg, f.Token, f.Package, modules, tool, true)
+			mod := getMod(dctx, pkg, f.Token, f.Package, modules, tool, true)
 			mod.functions = append(mod.functions, f)
 		}
 	}
@@ -1827,7 +1870,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ObjectType:
-			mod := getMod(pkg, typ.Token, typ.Package, modules, tool, false)
+			mod := getMod(dctx, pkg, typ.Token, typ.Package, modules, tool, false)
 			if mod.details(typ).inputType {
 				mod.inputTypes = append(mod.inputTypes, typ)
 			}
@@ -1837,8 +1880,8 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	return modules
 }
 
-func Initialize(tool string, pkg *schema.Package) {
-	templates = template.New("").Funcs(template.FuncMap{
+func Initialize(dctx *docGenContext, tool string, pkg *schema.Package) {
+	dctx.templates = template.New("").Funcs(template.FuncMap{
 		"htmlSafe": func(html string) template.HTML {
 			// Markdown fragments in the templates need to be rendered as-is,
 			// so that html/template package doesn't try to inject data into it,
@@ -1855,19 +1898,19 @@ func Initialize(tool string, pkg *schema.Package) {
 	}
 
 	for name, b := range packagedTemplates {
-		template.Must(templates.New(name).Parse(string(b)))
+		template.Must(dctx.templates.New(name).Parse(string(b)))
 	}
 
 	// Generate the modules from the schema, and for every module
 	// run the generator functions to generate markdown files.
-	modules = generateModulesFromSchemaPackage(tool, pkg)
+	dctx.modules = generateModulesFromSchemaPackage(dctx, tool, pkg)
 }
 
 // GeneratePackage generates docs for each resource given the Pulumi
 // schema. The returned map contains the filename with path as the key
 // and the contents as its value.
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	if modules == nil {
+func GeneratePackage(dctx *docGenContext, tool string, pkg *schema.Package) (map[string][]byte, error) {
+	if dctx.modules == nil {
 		return nil, errors.New("must call Initialize before generating the docs package")
 	}
 
@@ -1875,7 +1918,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 	glog.V(3).Infoln("generating package docs now...")
 	files := fs{}
-	for _, mod := range modules {
+	for _, mod := range dctx.modules {
 		if err := mod.gen(files); err != nil {
 			return nil, err
 		}
@@ -1885,8 +1928,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 }
 
 // GeneratePackageTree returns a navigable structure starting from the top-most module.
-func GeneratePackageTree() ([]PackageTreeItem, error) {
-	if modules == nil {
+func GeneratePackageTree(dctx *docGenContext) ([]PackageTreeItem, error) {
+	if dctx.modules == nil {
 		return nil, errors.New("must call Initialize before generating the docs package")
 	}
 
@@ -1894,7 +1937,7 @@ func GeneratePackageTree() ([]PackageTreeItem, error) {
 
 	var packageTree []PackageTreeItem
 	// "" indicates the top-most module.
-	if rootMod, ok := modules[""]; ok {
+	if rootMod, ok := dctx.modules[""]; ok {
 		tree, err := generatePackageTree(*rootMod)
 		if err != nil {
 			glog.Errorf("Error generating the package tree for package: %v", err)

@@ -23,13 +23,14 @@ import (
 )
 
 func TestGeneratePackageTree(t *testing.T) {
+	dctx := newDocGenContext()
 	initTestPackageSpec(t)
 
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
 	assert.NoError(t, err, "importing spec")
 
-	Initialize(unitTestTool, schemaPkg)
-	pkgTree, err := GeneratePackageTree()
+	Initialize(dctx, unitTestTool, schemaPkg)
+	pkgTree, err := GeneratePackageTree(dctx)
 	if err != nil {
 		t.Errorf("Error generating the package tree for package %s: %v", schemaPkg.Name, err)
 	}
