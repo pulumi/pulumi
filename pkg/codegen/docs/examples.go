@@ -43,7 +43,7 @@ type docInfo struct {
 	importDetails string
 }
 
-func decomposeDocstring(dctx *docGenContext, docstring string) docInfo {
+func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 	if docstring == "" {
 		return docInfo{}
 	}

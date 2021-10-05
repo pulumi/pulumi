@@ -70,7 +70,7 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 
 	var resultTypeName string
 	for _, lang := range dctx.supportedLanguages {
-		docLangHelper := getLanguageDocHelper(dctx, lang)
+		docLangHelper := dctx.getLanguageDocHelper(lang)
 		switch lang {
 		case "nodejs":
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
@@ -109,7 +109,7 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []formalParam {
 	dctx := mod.docGenContext
 	argsType := title(funcName+"Args", "nodejs")
-	docLangHelper := getLanguageDocHelper(dctx, "nodejs")
+	docLangHelper := dctx.getLanguageDocHelper("nodejs")
 	var params []formalParam
 	if f.Inputs != nil {
 		params = append(params, formalParam{
@@ -170,7 +170,7 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []formalParam {
 	dctx := mod.docGenContext
 	argsType := funcName + "Args"
-	docLangHelper := getLanguageDocHelper(dctx, "csharp")
+	docLangHelper := dctx.getLanguageDocHelper("csharp")
 	var params []formalParam
 	if f.Inputs != nil {
 		params = append(params, formalParam{
@@ -197,7 +197,7 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []form
 
 func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string) []formalParam {
 	dctx := mod.docGenContext
-	docLanguageHelper := getLanguageDocHelper(dctx, "python")
+	docLanguageHelper := dctx.getLanguageDocHelper("python")
 	var params []formalParam
 
 	// Some functions don't have any inputs other than the InvokeOptions.
@@ -261,7 +261,7 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 			paramTemplate = "py_formal_param"
 			paramSeparatorTemplate = "py_param_separator"
 
-			docHelper := getLanguageDocHelper(dctx, lang)
+			docHelper := dctx.getLanguageDocHelper(lang)
 			funcName := docHelper.GetFunctionName(mod.mod, f)
 			ps = paramSeparator{Indent: strings.Repeat(" ", len("def (")+len(funcName))}
 		}
@@ -329,7 +329,7 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 	// Generate the per-language map for the function name.
 	funcNameMap := map[string]string{}
 	for _, lang := range dctx.supportedLanguages {
-		docHelper := getLanguageDocHelper(dctx, lang)
+		docHelper := dctx.getLanguageDocHelper(lang)
 		funcNameMap[lang] = docHelper.GetFunctionName(mod.mod, f)
 	}
 
@@ -339,7 +339,7 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		Notes:      mod.pkg.Attribution,
 	}
 
-	docInfo := decomposeDocstring(dctx, f.Comment)
+	docInfo := dctx.decomposeDocstring(f.Comment)
 	args := functionDocArgs{
 		Header: mod.genFunctionHeader(f),
 
