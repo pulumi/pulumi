@@ -16,6 +16,7 @@
 package dotnet
 
 import (
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -161,6 +162,10 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <EmbeddedResource Include="version.txt" />
     <None Include="version.txt" Pack="True" PackagePath="content" />
+    {{if includepulumipackagejson $pulumipackagejson}}
+    <EmbeddedResource Include="pulumipackage.json"/>
+    <None Include="pulumipackage.json" Pack="True" PackagePath="content" />
+    {{end}}
   </ItemGroup>
 
   <ItemGroup>
@@ -188,6 +193,13 @@ var csharpProjectFileTemplate = template.Must(template.New("CSharpProject").Func
 	"ispulumipkg": func(s string) bool {
 		return strings.HasPrefix(s, "Pulumi.")
 	},
+	"includepulumipackagejson": func(s string) bool {
+		b, err := strconv.ParseBool(s)
+		if err != nil {
+			panic("Failed to reserialize a boolean")
+		}
+		return b
+	},
 }).Parse(csharpProjectFileTemplateText))
 
 type csharpProjectFileTemplateContext struct {
@@ -195,4 +207,5 @@ type csharpProjectFileTemplateContext struct {
 	Package           *schema.Package
 	PackageReferences map[string]string
 	Version           string
+	PulumiPackageJSON bool
 }

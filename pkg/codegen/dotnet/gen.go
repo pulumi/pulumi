@@ -1999,6 +1999,8 @@ func genPackageMetadata(pkg *schema.Package, assemblyName string, packageReferen
 	if err != nil {
 		return err
 	}
+
+	// We use `path` so this construct is not OS dependent.
 	files.Add("pulumiplugin.json", plugin)
 
 	files.Add(assemblyName+".csproj", projectFile)
@@ -2013,6 +2015,7 @@ func genProjectFile(pkg *schema.Package, assemblyName string, packageReferences 
 		XMLDoc:            fmt.Sprintf(`.\%s.xml`, assemblyName),
 		Package:           pkg,
 		PackageReferences: packageReferences,
+		PulumiPackageJSON: true,
 	})
 	if err != nil {
 		return nil, err
