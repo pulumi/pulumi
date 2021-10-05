@@ -28,6 +28,7 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -40,6 +41,7 @@ var (
 	// need for us to print any additional error messages since the user already got a a good
 	// one they can handle.
 	dotnetProcessExitedAfterShowingUserActionableMessage = 32
+	pulumiNamespace                                      = "Pulumi"
 )
 
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the
@@ -176,18 +178,15 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 
 	plugins := []*pulumirpc.PluginDependency{}
 	packageToVersion := make(map[string]string)
-	for _, parts := range pulumiPackages {
-		packageName := parts[0]
-		packageVersion := parts[1]
-
-		if existingVersion := packageToVersion[packageName]; existingVersion == packageVersion {
+	for _, pkg := range pulumiPackages {
+		if existingVersion := packageToVersion[pkg.Name]; existingVersion == pkg.Version {
 			// only include distinct dependencies.
 			continue
 		}
 
-		packageToVersion[packageName] = packageVersion
+		packageToVersion[pkg.Name] = pkg.Version
 
-		plugin, err := host.DeterminePluginDependency(ctx, packageDir, packageName, packageVersion)
+		plugin, err := host.DeterminePluginDependency(ctx, packageDir, pkg)
 		if err != nil {
 			return nil, err
 		}
@@ -200,8 +199,36 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
 }
 
+// A package as described by a line in `dotnet list package
+// --include-transitive`.
+type pkgInfo struct {
+	Name    string
+	Version string
+}
+
+// A pulumi package has "Pulumi" as it's first or second name component.
+func (pkg pkgInfo) isPulumiPackage() bool {
+	parts := strings.Split(pkg.Name, ".")
+	return parts[0] == pulumiNamespace || (len(parts) >= 2 && parts[1] == pulumiNamespace)
+}
+
+func (pkg pkgInfo) pluginName() string {
+	parts := strings.Split(pkg.Name, ".")
+	if parts[0] == pulumiNamespace {
+		return strings.ToLower(pkg.Name)
+	}
+
+	// We know Name must be of the form User.Pulumi.Package. We thus omit the
+	// Pulumi in the middle.
+	contract.Assertf(len(parts) > 2,
+		"If name is not in the pulumi namespace, it must have at least 3 segments. It has %d",
+		len(parts))
+
+	return strings.ToLower(strings.Join(append([]string{parts[0]}, parts[2:]...), "."))
+}
+
 func (host *dotnetLanguageHost) DeterminePulumiPackages(
-	ctx context.Context, engineClient pulumirpc.EngineClient) ([][]string, error) {
+	ctx context.Context, engineClient pulumirpc.EngineClient) ([]pkgInfo, error) {
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
 
@@ -229,7 +256,7 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(
 	outputLines := strings.Split(strings.Replace(commandOutput, "\r\n", "\n", -1), "\n")
 
 	sawPulumi := false
-	pulumiPackages := [][]string{}
+	pulumiPackages := []pkgInfo{}
 	for _, line := range outputLines {
 		fields := strings.Fields(line)
 		if len(fields) < 3 {
@@ -243,19 +270,18 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(
 			continue
 		}
 
-		// We only care about `Pulumi.` packages
-		packageName := fields[1]
-		if packageName == "Pulumi" {
+		// We only care about `Pulumi.` or `*.Pulumi.*` packages
+		name := fields[1]
+		if name == pulumiNamespace {
 			sawPulumi = true
 			continue
 		}
 
-		if !strings.HasPrefix(packageName, "Pulumi.") {
-			continue
-		}
-
 		version := fields[len(fields)-1]
-		pulumiPackages = append(pulumiPackages, []string{packageName, version})
+		pkg := pkgInfo{name, version}
+		if pkg.isPulumiPackage() {
+			pulumiPackages = append(pulumiPackages, pkg)
+		}
 	}
 
 	if !sawPulumi && len(pulumiPackages) == 0 {
@@ -299,14 +325,15 @@ func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(
 }
 
 func (host *dotnetLanguageHost) DeterminePluginDependency(
-	ctx context.Context, packageDir, packageName, packageVersion string) (*pulumirpc.PluginDependency, error) {
+	ctx context.Context, packageDir string, pkg pkgInfo) (*pulumirpc.PluginDependency, error) {
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v, %v",
-		packageDir, packageName, packageVersion)
+		packageDir, pkg.Name, pkg.Version)
 
 	// Check for a `~/.nuget/packages/package_name/package_version/content/version.txt` file.
 
-	versionFilePath := path.Join(packageDir, strings.ToLower(packageName), packageVersion, "content", "version.txt")
+	// TODO we need to look for a pulumipackage.json here as well.
+	versionFilePath := path.Join(packageDir, strings.ToLower(pkg.Name), pkg.Version, "content", "version.txt")
 	logging.V(5).Infof("GetRequiredPlugins: version file path: %v", versionFilePath)
 
 	if _, err := os.Stat(versionFilePath); err != nil {
@@ -329,7 +356,7 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 	}
 
 	// Given a package name like "Pulumi.Azure" lowercase the part after Pulumi. to get the plugin name "azure".
-	name := strings.ToLower(packageName[len("Pulumi."):])
+	name := pkg.pluginName()
 
 	version := strings.TrimSpace(bytes.NewBuffer(b).String())
 	parts := strings.SplitN(version, "\n", 2)

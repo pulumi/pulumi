@@ -34,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
@@ -144,17 +145,17 @@ type modInfo struct {
 var urlComponentRegexp = "[a-zA-Z0-9.-]+"
 
 // Parses a plugin name from an url.
-var pluginNameFromUrl = regexp.MustCompile(
+var pluginNameFromURL = regexp.MustCompile(
 	fmt.Sprintf("^%s/%s/pulumi-(?P<name>%s)(/.*)?$",
 		urlComponentRegexp, urlComponentRegexp, urlComponentRegexp))
 
 // We want to the name of only pulumi plugins.
 func (m *modInfo) getPluginName() (string, error) {
-	matches := pluginNameFromUrl.FindStringSubmatch(m.Path)
+	matches := pluginNameFromURL.FindStringSubmatch(m.Path)
 	if len(matches) == 0 {
 		return "", errors.Errorf("Could not find a pulumi package in %q", m.Path)
 	}
-	name := matches[pluginNameFromUrl.SubexpIndex("name")]
+	name := matches[pluginNameFromURL.SubexpIndex("name")]
 	return name, nil
 }
 
@@ -195,10 +196,21 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 		return nil, err
 	}
 
+	var server string
+	// TODO: this is where we need to use pulumipackage.json
+	if plugin, err := plugin.LoadPulumiPluginJSON("some path"); err == nil {
+		if !plugin.Resource {
+			logging.V(5).Infof("GetRequiredPlugins: Ignoreing package %s with resource set to false", name)
+			return nil, nil
+		}
+		name, version, server = plugin.Name, plugin.Version, plugin.Server
+	}
+
 	return &pulumirpc.PluginDependency{
 		Name:    name,
 		Version: version,
 		Kind:    "resource",
+		Server:  server,
 	}, nil
 }
 
