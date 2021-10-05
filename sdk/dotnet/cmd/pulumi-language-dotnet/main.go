@@ -21,14 +21,14 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -206,27 +206,91 @@ type pkgInfo struct {
 	Version string
 }
 
-// A pulumi package has "Pulumi" as it's first or second name component.
+// A Pulumi package has "Pulumi" as it's first or second name component.
 func (pkg pkgInfo) isPulumiPackage() bool {
 	parts := strings.Split(pkg.Name, ".")
 	return parts[0] == pulumiNamespace || (len(parts) >= 2 && parts[1] == pulumiNamespace)
 }
 
 func (pkg pkgInfo) pluginName() string {
-	parts := strings.Split(pkg.Name, ".")
-	if parts[0] == pulumiNamespace {
-		return strings.ToLower(pkg.Name)
-	}
+	return strings.ToLower(pkg.Name)
 
-	// We know Name must be of the form User.Pulumi.Package. We thus omit the
-	// Pulumi in the middle.
-	contract.Assertf(len(parts) > 2,
-		"If name is not in the pulumi namespace, it must have at least 3 segments. It has %d",
-		len(parts))
-
-	return strings.ToLower(strings.Join(append([]string{parts[0]}, parts[2:]...), "."))
 }
 
+func (pkg pkgInfo) contentDir(packageDir string) string {
+	return filepath.Join(packageDir, pkg.pluginName(), pkg.Version, "content")
+}
+
+func (pkg pkgInfo) readPluginJSON(packageDir string) (*pulumirpc.PluginDependency, error) {
+	var pluginJSON *plugin.PulumiPluginJSON
+	var result *pulumirpc.PluginDependency
+	var err error
+	pluginPath := filepath.Join(pkg.contentDir(packageDir), "pulumiplugin.json")
+	logging.V(5).Infof("readPluginJSON: plugin file path: %v", pluginPath)
+	if pluginJSON, err = plugin.LoadPulumiPluginJSON(pluginPath); err != nil {
+		result = &pulumirpc.PluginDependency{
+			Name:    pluginJSON.Name,
+			Version: pluginJSON.Version,
+			Server:  pluginJSON.Server,
+		}
+	}
+
+	// If we didn't find anything, its not an error.
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	return result, err
+}
+
+// We read the version.txt file in a pulumi package.
+func (pkg pkgInfo) readVersionFile(packageDir string) (*pulumirpc.PluginDependency, error) {
+	versionFilePath := filepath.Join(pkg.contentDir(packageDir), "version.txt")
+	logging.V(5).Infof("readVersionFile: version file path: %v", versionFilePath)
+
+	if _, err := os.Stat(versionFilePath); err != nil {
+		if os.IsNotExist(err) {
+			// Pulumi package doesn't contain a version.txt file.  This is not a resource-plugin.
+			// just ignore it.
+			logging.V(5).Infof("readVersionFile: No such file")
+			return nil, nil
+		}
+
+		// some other error.  report it as it means we can't read this important file.
+		logging.V(5).Infof("readVersionFile: err: %v", err)
+		return nil, err
+	}
+
+	b, err := ioutil.ReadFile(versionFilePath)
+	if err != nil {
+		logging.V(5).Infof("readVersionFile: err: %v", err)
+		return nil, err
+	}
+
+	// Given a package name like "Pulumi.Azure" lowercase the part after Pulumi. to get the plugin name "azure".
+	name := pkg.pluginName()
+
+	version := strings.TrimSpace(bytes.NewBuffer(b).String())
+	parts := strings.SplitN(version, "\n", 2)
+	if len(parts) == 2 {
+		// version.txt may contain two lines, in which case it's "plugin name\nversion"
+		name = strings.TrimSpace(parts[0])
+		version = strings.TrimSpace(parts[1])
+	} else if len(parts) > 2 {
+		logging.V(5).Infof("Version file %q contained an unexpected number of line", versionFilePath)
+	}
+
+	if !strings.HasPrefix(version, "v") {
+		// Version file has stripped off the "v" that we need. So add it back here.
+		version = fmt.Sprintf("v%v", version)
+	}
+	plugin := &pulumirpc.PluginDependency{
+		Name:    name,
+		Kind:    "resource",
+		Version: version,
+		Server:  "",
+	}
+	return plugin, nil
+}
 func (host *dotnetLanguageHost) DeterminePulumiPackages(
 	ctx context.Context, engineClient pulumirpc.EngineClient) ([]pkgInfo, error) {
 
@@ -270,8 +334,10 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(
 			continue
 		}
 
-		// We only care about `Pulumi.` or `*.Pulumi.*` packages
 		name := fields[1]
+
+		// We ensure we found the "Pulumi" (.NET SDK) package. It isn't a plugin
+		// though.
 		if name == pulumiNamespace {
 			sawPulumi = true
 			continue
@@ -279,9 +345,13 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(
 
 		version := fields[len(fields)-1]
 		pkg := pkgInfo{name, version}
-		if pkg.isPulumiPackage() {
-			pulumiPackages = append(pulumiPackages, pkg)
+
+		// NOTE remove this check to support all version names
+		if !pkg.isPulumiPackage() {
+			continue
 		}
+		// ENDNOTE
+		pulumiPackages = append(pulumiPackages, pkg)
 	}
 
 	if !sawPulumi && len(pulumiPackages) == 0 {
@@ -330,55 +400,19 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v, %v",
 		packageDir, pkg.Name, pkg.Version)
 
-	// Check for a `~/.nuget/packages/package_name/package_version/content/version.txt` file.
-
-	// TODO we need to look for a pulumipackage.json here as well.
-	versionFilePath := path.Join(packageDir, strings.ToLower(pkg.Name), pkg.Version, "content", "version.txt")
-	logging.V(5).Infof("GetRequiredPlugins: version file path: %v", versionFilePath)
-
-	if _, err := os.Stat(versionFilePath); err != nil {
-		if os.IsNotExist(err) {
-			// Pulumi package doesn't contain a version.txt file.  This is not a resource-plugin.
-			// just ignore it.
-			logging.V(5).Infof("GetRequiredPlugins: No such file")
-			return nil, nil
-		}
-
-		// some other error.  report it as it means we can't read this important file.
-		logging.V(5).Infof("GetRequiredPlugins: err: %v", err)
-		return nil, err
+	var result *pulumirpc.PluginDependency
+	var err error
+	// Check for a `~/.nuget/packages/package_name/package_version/content/pulumipackage.json` file.
+	result, err = pkg.readPluginJSON(packageDir)
+	if result == nil && err == nil {
+		// We fall back on `~/.nuget/packages/package_name/package_version/content/version.txt`
+		result, err = pkg.readVersionFile(packageDir)
 	}
-
-	b, err := ioutil.ReadFile(versionFilePath)
 	if err != nil {
-		logging.V(5).Infof("GetRequiredPlugins: err: %v", err)
 		return nil, err
 	}
-
-	// Given a package name like "Pulumi.Azure" lowercase the part after Pulumi. to get the plugin name "azure".
-	name := pkg.pluginName()
-
-	version := strings.TrimSpace(bytes.NewBuffer(b).String())
-	parts := strings.SplitN(version, "\n", 2)
-	if len(parts) == 2 {
-		// version.txt may contain two lines, in which case it's "plugin name\nversion"
-		name = strings.TrimSpace(parts[0])
-		version = strings.TrimSpace(parts[1])
-	}
-
-	if !strings.HasPrefix(version, "v") {
-		// Version file has stripped off the "v" that we need. So add it back here.
-		version = fmt.Sprintf("v%v", version)
-	}
-
-	result := pulumirpc.PluginDependency{
-		Name:    name,
-		Version: version,
-		Kind:    "resource",
-	}
-
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
-	return &result, nil
+	return result, nil
 }
 
 func (host *dotnetLanguageHost) DotnetBuild(

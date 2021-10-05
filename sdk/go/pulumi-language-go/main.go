@@ -139,6 +139,7 @@ func newLanguageHost(engineAddress, tracing, binary string) pulumirpc.LanguageRu
 type modInfo struct {
 	Path    string
 	Version string
+	Dir     string
 }
 
 // A valid component of an url
@@ -186,6 +187,7 @@ func (m *modInfo) getPluginVersion() (string, error) {
 }
 
 func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
+	// NOTE remove this section to allow packages to have arbitrary names.
 	name, err := m.getPluginName()
 	if err != nil {
 		return nil, err
@@ -195,15 +197,21 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 	if err != nil {
 		return nil, err
 	}
+	// ENDNOTE
 
+	pluginPath := filepath.Join(m.Dir, "pulumiplugin.json")
 	var server string
-	// TODO: this is where we need to use pulumipackage.json
-	if plugin, err := plugin.LoadPulumiPluginJSON("some path"); err == nil {
-		if !plugin.Resource {
-			logging.V(5).Infof("GetRequiredPlugins: Ignoreing package %s with resource set to false", name)
+	var pluginJSON *plugin.PulumiPluginJSON
+	if pluginJSON, err = plugin.LoadPulumiPluginJSON(pluginPath); err == nil {
+		if !pluginJSON.Resource {
+			logging.V(5).Infof("getPlugin: Ignoreing package %s with resource set to false", name)
 			return nil, nil
 		}
-		name, version, server = plugin.Name, plugin.Version, plugin.Server
+		name, version, server = pluginJSON.Name, pluginJSON.Version, pluginJSON.Server
+	} else if !os.IsNotExist(err) {
+		logging.V(3).Infof("getPlugin: Failed to open %q: %s", pluginPath, err)
+	} else {
+		logging.V(5).Infof("getPlugin: %q does not exist", pluginPath)
 	}
 
 	return &pulumirpc.PluginDependency{
