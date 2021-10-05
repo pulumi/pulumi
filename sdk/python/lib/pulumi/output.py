@@ -129,7 +129,7 @@ class Output(Generic[T_co]):
 
     def apply(self, func: Callable[[T_co], Input[U]], run_with_unknowns: Optional[bool] = None) -> 'Output[U]':
         """
-        Transforms the data of the output with the provided func.  The result remains a
+        Transforms the data of the output with the provided func.  The result remains an
         Output so that dependent resources can be properly tracked.
 
         'func' is not allowed to make resources.

@@ -159,6 +159,11 @@ var sdkTests = []sdkTest{
 		Description: "Cyclic object types",
 		Skip:        codegen.NewStringSet("python/test"),
 	},
+	{
+		Directory:   "regress-node-8110",
+		Description: "Test the fix for pulumi/pulumi#8110 nodejs compilation error",
+		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
+	},
 }
 
 var genSDKOnly bool
