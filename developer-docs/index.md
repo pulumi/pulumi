@@ -17,6 +17,7 @@ architecture/overview
 architecture/resource-registration
 architecture/deployment-schema
 architecture/type-system
+architecture/import
 ```
 
 ```{toctree}
