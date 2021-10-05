@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    "pulumiplugin.json",
     "registrygeoreplication/doc.go",
     "registrygeoreplication/init.go",
     "registrygeoreplication/provider.go",

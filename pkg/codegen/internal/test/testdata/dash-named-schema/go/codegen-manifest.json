@@ -6,6 +6,7 @@
     "foo/pulumiTypes.go",
     "foo/pulumiUtilities.go",
     "foo/submodule1/init.go",
-    "foo/submodule1/moduleResource.go"
+    "foo/submodule1/moduleResource.go",
+    "pulumiplugin.json"
   ]
 }

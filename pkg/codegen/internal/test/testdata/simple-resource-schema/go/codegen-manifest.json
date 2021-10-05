@@ -8,6 +8,7 @@
     "example/pulumiTypes.go",
     "example/pulumiUtilities.go",
     "example/resource.go",
-    "example/typeUses.go"
+    "example/typeUses.go",
+    "pulumiplugin.json"
   ]
 }

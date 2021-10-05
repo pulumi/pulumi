@@ -7,6 +7,7 @@
     "example/pulumiTypes.go",
     "example/pulumiUtilities.go",
     "example/resource.go",
-    "example/resourceInput.go"
+    "example/resourceInput.go",
+    "pulumiplugin.json"
   ]
 }

@@ -2012,10 +2012,10 @@ func genPackageMetadata(pkg *schema.Package, assemblyName string, packageReferen
 func genProjectFile(pkg *schema.Package, assemblyName string, packageReferences map[string]string) ([]byte, error) {
 	w := &bytes.Buffer{}
 	err := csharpProjectFileTemplate.Execute(w, csharpProjectFileTemplateContext{
-		XMLDoc:            fmt.Sprintf(`.\%s.xml`, assemblyName),
-		Package:           pkg,
-		PackageReferences: packageReferences,
-		PulumiPackageJSON: true,
+		XMLDoc:                  fmt.Sprintf(`.\%s.xml`, assemblyName),
+		Package:                 pkg,
+		PackageReferences:       packageReferences,
+		IncludePulumiPluginJSON: true,
 	})
 	if err != nil {
 		return nil, err

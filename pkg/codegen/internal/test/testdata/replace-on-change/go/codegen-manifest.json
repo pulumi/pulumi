@@ -9,6 +9,7 @@
     "example/provider.go",
     "example/pulumiTypes.go",
     "example/pulumiUtilities.go",
-    "example/toyStore.go"
+    "example/toyStore.go",
+    "pulumiplugin.json"
   ]
 }

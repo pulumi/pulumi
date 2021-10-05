@@ -1,0 +1,5 @@
+{
+  "resource": true,
+  "name": "plant",
+  "version": "${PLUGIN_VERSION}"
+}

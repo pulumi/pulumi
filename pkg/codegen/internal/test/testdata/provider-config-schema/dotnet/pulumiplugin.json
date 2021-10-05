@@ -1,0 +1,5 @@
+{
+  "resource": true,
+  "name": "configstation",
+  "version": "${PLUGIN_VERSION}"
+}

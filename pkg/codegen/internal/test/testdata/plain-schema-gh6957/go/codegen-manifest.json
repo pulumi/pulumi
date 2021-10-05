@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    "pulumiplugin.json",
     "xyz/doc.go",
     "xyz/init.go",
     "xyz/provider.go",

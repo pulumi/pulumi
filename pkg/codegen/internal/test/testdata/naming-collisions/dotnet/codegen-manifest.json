@@ -7,6 +7,7 @@
     "Resource.cs",
     "ResourceInput.cs",
     "Utilities.cs",
-    "logo.png"
+    "logo.png",
+    "pulumiplugin.json"
   ]
 }

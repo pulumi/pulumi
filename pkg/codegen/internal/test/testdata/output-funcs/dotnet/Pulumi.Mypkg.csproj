@@ -37,6 +37,10 @@
   <ItemGroup>
     <EmbeddedResource Include="version.txt" />
     <None Include="version.txt" Pack="True" PackagePath="content" />
+    
+    <EmbeddedResource Include="pulumiplugin.json"/>
+    <None Include="pulumiplugin.json" Pack="True" PackagePath="content" />
+    
   </ItemGroup>
 
   <ItemGroup>

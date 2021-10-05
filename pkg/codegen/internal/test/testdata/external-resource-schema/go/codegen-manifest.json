@@ -8,6 +8,7 @@
     "example/provider.go",
     "example/pulumiTypes.go",
     "example/pulumiUtilities.go",
-    "example/workload.go"
+    "example/workload.go",
+    "pulumiplugin.json"
   ]
 }
