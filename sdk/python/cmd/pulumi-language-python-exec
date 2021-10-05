@@ -76,6 +76,10 @@ if __name__ == "__main__":
         loop = asyncio.get_event_loop()
     else:
         try:
+            # The docs for get_running_loop are somewhat misleading because they state:
+            # This function can only be called from a coroutine or a callback. However, if the function is
+            # called from outside a coroutine or callback (the standard case when running `pulumi up`), the function
+            # raises a RuntimeError as expected and falls through to the exception clause below.
             loop = asyncio.get_running_loop()
         except RuntimeError:
             loop = asyncio.new_event_loop()
