@@ -1880,7 +1880,7 @@ func generateModulesFromSchemaPackage(dctx *docGenContext, tool string, pkg *sch
 	return modules
 }
 
-func Initialize(dctx *docGenContext, tool string, pkg *schema.Package) {
+func initializeWithContext(dctx *docGenContext, tool string, pkg *schema.Package) {
 	dctx.templates = template.New("").Funcs(template.FuncMap{
 		"htmlSafe": func(html string) template.HTML {
 			// Markdown fragments in the templates need to be rendered as-is,
@@ -1906,10 +1906,7 @@ func Initialize(dctx *docGenContext, tool string, pkg *schema.Package) {
 	dctx.modules = generateModulesFromSchemaPackage(dctx, tool, pkg)
 }
 
-// GeneratePackage generates docs for each resource given the Pulumi
-// schema. The returned map contains the filename with path as the key
-// and the contents as its value.
-func GeneratePackage(dctx *docGenContext, tool string, pkg *schema.Package) (map[string][]byte, error) {
+func generatePackageWithContext(dctx *docGenContext, tool string, pkg *schema.Package) (map[string][]byte, error) {
 	if dctx.modules == nil {
 		return nil, errors.New("must call Initialize before generating the docs package")
 	}
@@ -1928,7 +1925,7 @@ func GeneratePackage(dctx *docGenContext, tool string, pkg *schema.Package) (map
 }
 
 // GeneratePackageTree returns a navigable structure starting from the top-most module.
-func GeneratePackageTree(dctx *docGenContext) ([]PackageTreeItem, error) {
+func generatePackageTreeWithContext(dctx *docGenContext) ([]PackageTreeItem, error) {
 	if dctx.modules == nil {
 		return nil, errors.New("must call Initialize before generating the docs package")
 	}
@@ -1958,4 +1955,25 @@ func visitObjectTypes(properties []*schema.Property, visitor func(t schema.Type)
 			visitor(st)
 		}
 	})
+}
+
+// Export a default static context so as not to break external
+// consumers of this API; prefer *WithContext API internally to ensure
+// tests can run in parallel.
+var defaultContext = newDocGenContext()
+
+func Initialize(tool string, pkg *schema.Package) {
+	initializeWithContext(defaultContext, tool, pkg)
+}
+
+// GeneratePackage generates docs for each resource given the Pulumi
+// schema. The returned map contains the filename with path as the key
+// and the contents as its value.
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	return generatePackageWithContext(defaultContext, tool, pkg)
+}
+
+// GeneratePackageTree returns a navigable structure starting from the top-most module.
+func GeneratePackageTree() ([]PackageTreeItem, error) {
+	return generatePackageTreeWithContext(defaultContext)
 }

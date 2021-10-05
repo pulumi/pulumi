@@ -411,8 +411,8 @@ func TestExamplesProcessing(t *testing.T) {
 
 func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
 	dctx := newDocGenContext()
-	Initialize(dctx, tool, pkg)
-	return GeneratePackage(dctx, tool, pkg)
+	initializeWithContext(dctx, tool, pkg)
+	return generatePackageWithContext(dctx, tool, pkg)
 }
 
 func TestGeneratePackage(t *testing.T) {
