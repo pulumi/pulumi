@@ -246,10 +246,8 @@ type SDKCodegenOptions struct {
 func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-line
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 
-	// Motivation for flagging parallelism: not all tests are
-	// parallel-safe yet (for example, codegen/docs tests fail),
-	// and there are concerns about memory utilizaion in CI. It
-	// can be a nice feature for developing though.
+	// Motivation for flagging: concerns about memory utilizaion
+	// in CI. It can be a nice feature for developing though.
 	parallel := os.Getenv("PULUMI_PARALLEL_SDK_CODEGEN_TESTS") != ""
 
 	for _, sdkTest := range sdkTests {
