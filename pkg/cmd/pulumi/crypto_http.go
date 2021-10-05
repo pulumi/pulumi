@@ -15,6 +15,8 @@
 package main
 
 import (
+	"encoding/base64"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
@@ -23,7 +25,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName, configFile string) (secrets.Manager, error) {
+func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName,
+	configFile, secretsProvider string) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
@@ -42,6 +45,25 @@ func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName, configF
 	client := s.Backend().(httpstate.Backend).Client()
 	id := s.StackIdentifier()
 
+	// if there is no key OR the secrets provider is changing
+	// then we need to generate the new key based on the new secrets provider
+	if info.EncryptedKey == "" || info.SecretsProvider != secretsProvider {
+		dataKey, err := service.GenerateNewDataKey(id, client)
+		if err != nil {
+			return nil, err
+		}
+		info.EncryptedKey = base64.StdEncoding.EncodeToString(dataKey)
+	}
+	info.SecretsProvider = secretsProvider
+	if err = info.Save(configFile); err != nil {
+		return nil, err
+	}
+
+	dataKey, err := base64.StdEncoding.DecodeString(info.EncryptedKey)
+	if err != nil {
+		return nil, err
+	}
+
 	// We should only save the ProjectStack at this point IF we have changed the
 	// secrets provider. To change the secrets provider to a serviceSecretsManager
 	// we would need to ensure that there are no remnants of the old secret manager
@@ -56,7 +78,7 @@ func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName, configF
 		}
 	}
 
-	return service.NewServiceSecretsManager(client, id)
+	return service.NewServiceSecretsManager(client, id, dataKey)
 }
 
 // A passphrase secrets provider has an encryption salt, therefore, changing
@@ -64,7 +86,7 @@ func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName, configF
 // to be removed.
 // A cloud secrets manager has an encryption key and a secrets provider,
 // therefore, changing from cloud to serviceSecretsManager requires the
-// encryption key and secrets provider to be removed.
+// secrets provider to be removed.
 // Regardless of what the current secrets provider is, all of these values
 // need to be empty otherwise `getStackSecretsManager` in crypto.go can
 // potentially return the incorrect secret type for the stack.
@@ -72,10 +94,6 @@ func changeProjectStackSecretDetails(info *workspace.ProjectStack) bool {
 	var requiresSave bool
 	if info.SecretsProvider != "" {
 		info.SecretsProvider = ""
-		requiresSave = true
-	}
-	if info.EncryptedKey != "" {
-		info.EncryptedKey = ""
 		requiresSave = true
 	}
 	if info.EncryptionSalt != "" {

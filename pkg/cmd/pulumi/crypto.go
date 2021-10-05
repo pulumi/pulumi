@@ -67,7 +67,7 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
 				false /* rotatePassphraseSecretsProvider */)
 		case httpstate.Stack:
-			return newServiceSecretsManager(s.(httpstate.Stack), s.Ref().Name(), stackConfigFile)
+			return newServiceSecretsManager(s.(httpstate.Stack), s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
 		}
 
 		return nil, errors.Errorf("unknown stack type %s", reflect.TypeOf(s))

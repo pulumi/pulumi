@@ -17,7 +17,7 @@ package service
 
 import (
 	"context"
-	"encoding/base64"
+	"crypto/rand"
 	"encoding/json"
 	"io/ioutil"
 
@@ -33,41 +33,12 @@ import (
 
 const Type = "service"
 
-// serviceCrypter is an encrypter/decrypter that uses the Pulumi servce to encrypt/decrypt a stack's secrets.
-type serviceCrypter struct {
-	client *client.Client
-	stack  client.StackIdentifier
-}
-
-func newServiceCrypter(client *client.Client, stack client.StackIdentifier) config.Crypter {
-	return &serviceCrypter{client: client, stack: stack}
-}
-
-func (c *serviceCrypter) EncryptValue(plaintext string) (string, error) {
-	ciphertext, err := c.client.EncryptValue(context.Background(), c.stack, []byte(plaintext))
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
-
-func (c *serviceCrypter) DecryptValue(cipherstring string) (string, error) {
-	ciphertext, err := base64.StdEncoding.DecodeString(cipherstring)
-	if err != nil {
-		return "", err
-	}
-	plaintext, err := c.client.DecryptValue(context.Background(), c.stack, ciphertext)
-	if err != nil {
-		return "", err
-	}
-	return string(plaintext), nil
-}
-
 type serviceSecretsManagerState struct {
-	URL     string `json:"url,omitempty"`
-	Owner   string `json:"owner"`
-	Project string `json:"project"`
-	Stack   string `json:"stack"`
+	URL          string `json:"url,omitempty"`
+	Owner        string `json:"owner"`
+	Project      string `json:"project"`
+	Stack        string `json:"stack"`
+	EncryptedKey []byte `json:"encryptedkey"`
 }
 
 var _ secrets.Manager = &serviceSecretsManager{}
@@ -95,15 +66,22 @@ func (sm *serviceSecretsManager) Encrypter() (config.Encrypter, error) {
 	return sm.crypter, nil
 }
 
-func NewServiceSecretsManager(c *client.Client, id client.StackIdentifier) (secrets.Manager, error) {
+func NewServiceSecretsManager(c *client.Client, id client.StackIdentifier,
+	encryptedDataKey []byte) (secrets.Manager, error) {
+	plaintextDataKey, err := c.DecryptValue(context.Background(), id, encryptedDataKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decrypt data key")
+	}
+	crypter := config.NewSymmetricCrypter(plaintextDataKey)
 	return &serviceSecretsManager{
 		state: serviceSecretsManagerState{
-			URL:     c.URL(),
-			Owner:   id.Owner,
-			Project: id.Project,
-			Stack:   id.Stack,
+			URL:          c.URL(),
+			Owner:        id.Owner,
+			Project:      id.Project,
+			Stack:        id.Stack,
+			EncryptedKey: encryptedDataKey,
 		},
-		crypter: newServiceCrypter(c, id),
+		crypter: crypter,
 	}, nil
 }
 
@@ -131,9 +109,16 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		Stack:   s.Stack,
 	}
 	c := client.NewClient(s.URL, token, diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{}))
+	return NewServiceSecretsManager(c, id, s.EncryptedKey)
+}
 
-	return &serviceSecretsManager{
-		state:   s,
-		crypter: newServiceCrypter(c, id),
-	}, nil
+// GenerateNewDataKey generates a new DataKey seeded by a fresh random 32-byte key and encrypted
+// using the target cloud key management service.
+func GenerateNewDataKey(stack client.StackIdentifier, c *client.Client) ([]byte, error) {
+	plaintextDataKey := make([]byte, 32)
+	_, err := rand.Read(plaintextDataKey)
+	if err != nil {
+		return nil, err
+	}
+	return c.EncryptValue(context.Background(), stack, plaintextDataKey)
 }

@@ -97,12 +97,12 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 		return false, nil
 	}
 
-	url, err := workspace.GetCurrentCloudURL()
+	u, err := workspace.GetCurrentCloudURL()
 	if err != nil {
 		return false, errors.Wrapf(err, "could not get cloud url")
 	}
 
-	return filestate.IsFileStateBackendURL(url), nil
+	return filestate.IsFileStateBackendURL(u), nil
 }
 
 func currentBackend(opts display.Options) (backend.Backend, error) {
@@ -110,15 +110,15 @@ func currentBackend(opts display.Options) (backend.Backend, error) {
 		return backendInstance, nil
 	}
 
-	url, err := workspace.GetCurrentCloudURL()
+	u, err := workspace.GetCurrentCloudURL()
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get cloud url")
 	}
 
-	if filestate.IsFileStateBackendURL(url) {
-		return filestate.New(cmdutil.Diag(), url)
+	if filestate.IsFileStateBackendURL(u) {
+		return filestate.New(cmdutil.Diag(), u)
 	}
-	return httpstate.Login(commandContext(), cmdutil.Diag(), url, opts)
+	return httpstate.Login(commandContext(), cmdutil.Diag(), u, opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -154,18 +154,18 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 	}
 
 	if _, ok := b.(httpstate.Backend); ok && isDefaultSecretsProvider {
-		stack, err := state.CurrentStack(commandContext(), b)
+		s, err := state.CurrentStack(commandContext(), b)
 		if err != nil {
 			return err
 		}
-		if stack == nil {
+		if s == nil {
 			// This means this is the first time we are initiating a stack
 			// there is no way a stack will exist here so we need to just return nil
 			// this will mean the "old" default behaviour will work for us
 			return nil
 		}
-		if _, serviceSecretsErr := newServiceSecretsManager(stack.(httpstate.Stack),
-			stackRef.Name(), stackConfigFile); serviceSecretsErr != nil {
+		if _, serviceSecretsErr := newServiceSecretsManager(s.(httpstate.Stack),
+			stackRef.Name(), stackConfigFile, secretsProvider); serviceSecretsErr != nil {
 			return serviceSecretsErr
 		}
 	}
@@ -206,7 +206,7 @@ func createStack(
 	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
 	secretsProvider string) (backend.Stack, error) {
 
-	stack, err := b.CreateStack(commandContext(), stackRef, opts)
+	s, err := b.CreateStack(commandContext(), stackRef, opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
@@ -224,12 +224,12 @@ func createStack(
 	}
 
 	if setCurrent {
-		if err = state.SetCurrentStack(stack.Ref().String()); err != nil {
+		if err = state.SetCurrentStack(s.Ref().String()); err != nil {
 			return nil, err
 		}
 	}
 
-	return stack, nil
+	return s, nil
 }
 
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
@@ -251,12 +251,12 @@ func requireStack(
 		return nil, err
 	}
 
-	stack, err := b.GetStack(commandContext(), stackRef)
+	s, err := b.GetStack(commandContext(), stackRef)
 	if err != nil {
 		return nil, err
 	}
-	if stack != nil {
-		return stack, err
+	if s != nil {
+		return s, err
 	}
 
 	// No stack was found.  If we're in a terminal, prompt to create one.
@@ -281,11 +281,11 @@ func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (
 	if err != nil {
 		return nil, err
 	}
-	stack, err := state.CurrentStack(commandContext(), b)
+	s, err := state.CurrentStack(commandContext(), b)
 	if err != nil {
 		return nil, err
-	} else if stack != nil {
-		return stack, nil
+	} else if s != nil {
+		return s, nil
 	}
 
 	// If no current stack exists, and we are interactive, prompt to select or create one.
@@ -407,11 +407,11 @@ func chooseStack(
 		return nil, errors.Wrap(err, "parsing selected stack")
 	}
 	// GetStack may return (nil, nil) if the stack isn't found.
-	stack, err := b.GetStack(ctx, stackRef)
+	s, err := b.GetStack(ctx, stackRef)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting selected stack")
 	}
-	if stack == nil {
+	if s == nil {
 		return nil, errors.Errorf("no stack named '%s' found", stackRef)
 	}
 
@@ -422,7 +422,7 @@ func chooseStack(
 		}
 	}
 
-	return stack, nil
+	return s, nil
 }
 
 // parseAndSaveConfigArray parses the config array and saves it as a config for
@@ -565,7 +565,7 @@ func getUpdateMetadata(msg, root, execKind, execAgent string) (*backend.UpdateMe
 	return m, nil
 }
 
-// addGitMetadata populate's the environment metadata bag with Git-related values.
+// addGitMetadata populates the environment metadata bag with Git-related values.
 func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 	var allErrors *multierror.Error
 
