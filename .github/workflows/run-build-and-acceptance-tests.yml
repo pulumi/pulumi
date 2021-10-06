@@ -62,7 +62,7 @@ jobs:
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
-      - name: debug ref vs head_ref
+      - name: debug ref vs head_ref 2
         run: |
           echo "github.ref      = ${{ github.ref }}"
           echo "github.head_ref = ${{ github.head_ref }}"
