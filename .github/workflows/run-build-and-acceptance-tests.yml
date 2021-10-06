@@ -21,7 +21,7 @@ env:
 #
 # See also: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency
 concurrency:
-  group: run-build-acceptance-tests-${{(fromJSON(format('[{0},{1}]',toJSON(github.run_id),toJSON(github.head_ref))))[github.head_ref=='']}}
+  group: run-build-acceptance-tests-${{(fromJSON(format('[{0},{1}]',toJSON(github.head_ref),toJSON(github.run_id))))[github.head_ref=='']}}
   cancel-in-progress: true
 
 jobs:
@@ -66,7 +66,7 @@ jobs:
         run: |
           echo "github.run_id   = ${{ github.run_id }}"
           echo "github.head_ref = ${{ github.head_ref }}"
-          echo "concurrent_id   = ${{(fromJSON(format('[{0},{1}]',toJSON(github.run_id),toJSON(github.head_ref))))[github.head_ref=='']}}"
+          echo "concurrent_id   = ${{(fromJSON(format('[{0},{1}]',toJSON(github.head_ref),toJSON(github.run_id))))[github.head_ref=='']}}"
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
