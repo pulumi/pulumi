@@ -18,6 +18,7 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 
@@ -39,6 +40,36 @@ type serviceSecretsManagerState struct {
 	Project      string `json:"project"`
 	Stack        string `json:"stack"`
 	EncryptedKey []byte `json:"encryptedkey"`
+}
+
+// serviceCrypter is an encrypter/decrypter that uses the Pulumi service to encrypt/decrypt a stack's secrets.
+type serviceCrypter struct {
+	client *client.Client
+	stack  client.StackIdentifier
+}
+
+func newServiceCrypter(client *client.Client, stack client.StackIdentifier) config.Crypter {
+	return &serviceCrypter{client: client, stack: stack}
+}
+
+func (c *serviceCrypter) EncryptValue(plaintext string) (string, error) {
+	ciphertext, err := c.client.EncryptValue(context.Background(), c.stack, []byte(plaintext))
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+func (c *serviceCrypter) DecryptValue(cipherstring string) (string, error) {
+	ciphertext, err := base64.StdEncoding.DecodeString(cipherstring)
+	if err != nil {
+		return "", err
+	}
+	plaintext, err := c.client.DecryptValue(context.Background(), c.stack, ciphertext)
+	if err != nil {
+		return "", err
+	}
+	return string(plaintext), nil
 }
 
 var _ secrets.Manager = &serviceSecretsManager{}
@@ -68,11 +99,16 @@ func (sm *serviceSecretsManager) Encrypter() (config.Encrypter, error) {
 
 func NewServiceSecretsManager(c *client.Client, id client.StackIdentifier,
 	encryptedDataKey []byte) (secrets.Manager, error) {
-	plaintextDataKey, err := c.DecryptValue(context.Background(), id, encryptedDataKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to decrypt data key")
+	crypter := newServiceCrypter(c, id)
+
+	if encryptedDataKey != nil {
+		plaintextDataKey, err := c.DecryptValue(context.Background(), id, encryptedDataKey)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to decrypt data key")
+		}
+		crypter = config.NewSymmetricCrypter(plaintextDataKey)
 	}
-	crypter := config.NewSymmetricCrypter(plaintextDataKey)
+
 	return &serviceSecretsManager{
 		state: serviceSecretsManagerState{
 			URL:          c.URL(),
