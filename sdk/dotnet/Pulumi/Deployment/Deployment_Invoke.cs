@@ -1,6 +1,8 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
+using System.Collections.Immutable;
+using System.Linq;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
 using Pulumi.Serialization;
@@ -16,21 +18,70 @@ namespace Pulumi
         Task<T> IDeployment.InvokeAsync<T>(string token, InvokeArgs args, InvokeOptions? options)
             => InvokeAsync<T>(token, args, options, convertResult: true);
 
+        Output<T> IDeployment.Invoke<T>(string token, InvokeArgs args, InvokeOptions? options)
+            => new Output<T>(RawInvoke<T>(token, args, options));
+
+        private async Task<OutputData<T>> RawInvoke<T>(string token, InvokeArgs args, InvokeOptions? options)
+        {
+            // This method backs all `Fn.Invoke()` calls that generate
+            // `Output<T>` and may include `Input<T>` values in the
+            // `args`. It needs to decide which control-flow tracking
+            // features are supported in the SDK and which ones in the
+            // provider implementing the invoke logic.
+            //
+            // Current choices are:
+            //
+            // - any resource dependency found by a recursive
+            //   traversal of `args` that awaits and inspects every
+            //   `Input<T>` will always be propagated into the
+            //   `Output<T>`; the provider cannot "swallow"
+            //   dependencies
+            //
+            // - the provider is responsible for deciding whether the
+            //   `Output<T>` is secret and known, and may add
+            //   additional dependencies
+            //
+            // This means that presence of secrets or unknowns in the
+            // `args` does not guarantee the result is secret or
+            // unknown, which differs from Pulumi SDKs that choose to
+            // implement these invokes via `Apply` (currently Go and
+            // Python).
+            //
+            // Differences from `Call`: the `Invoke` gRPC protocol
+            // does not yet support passing or returning out-of-band
+            // dependencies to the provider, and in-band `Resource`
+            // value support is subject to feature negotiation (see
+            // `MonitorSupportsResourceReferences`). So `Call` makes
+            // the provider fully responsible for depdendency
+            // tracking, which is a good future direction also for
+            // `Invoke`.
+            var result = await InvokeRawAsync(token, args, options).ConfigureAwait(false);
+            var data = Converter.ConvertValue<T>($"{token} result",
+                                                 new Value { StructValue = result.Serialized });
+            var resources = ImmutableHashSet.CreateRange(
+                result.PropertyToDependentResources.Values.SelectMany(r => r)
+                .Union(data.Resources));
+            return new OutputData<T>(resources: resources,
+                                     value: data.Value,
+                                     isKnown: data.IsKnown,
+                                     isSecret: data.IsSecret);
+        }
+
         private async Task<T> InvokeAsync<T>(
             string token, InvokeArgs args, InvokeOptions? options, bool convertResult)
         {
             var result = await InvokeRawAsync(token, args, options).ConfigureAwait(false);
-            
+
             if (!convertResult)
             {
                 return default!;
             }
 
-            var data = Converter.ConvertValue<T>($"{token} result", new Value { StructValue = result });
+            var data = Converter.ConvertValue<T>($"{token} result", new Value { StructValue = result.Serialized });
             return data.Value;
         }
 
-        private async Task<Struct> InvokeRawAsync(string token, InvokeArgs args, InvokeOptions? options)
+        private async Task<SerializationResult> InvokeRawAsync(string token, InvokeArgs args, InvokeOptions? options)
         {
             var label = $"Invoking function: token={token} asynchronously";
             Log.Debug(label);
@@ -41,9 +92,18 @@ namespace Pulumi
 
             // Wait for all values to be available, and then perform the RPC.
             var argsDict = await args.ToDictionaryAsync().ConfigureAwait(false);
-            var serialized = await SerializeAllPropertiesAsync(
-    				$"invoke:{token}",
-    				argsDict, await this.MonitorSupportsResourceReferences().ConfigureAwait(false)).ConfigureAwait(false);
+
+            var keepResources = await this.MonitorSupportsResourceReferences().ConfigureAwait(false);
+
+            var argsSerializationResult  = await SerializeFilteredPropertiesAsync(
+                label: $"invoke:{token}",
+                args: argsDict,
+                acceptKey: key => true,
+                keepResources: keepResources
+            ).ConfigureAwait(false);
+
+            var serialized = argsSerializationResult.Serialized;
+
             Log.Debug($"Invoke RPC prepared: token={token}" +
                 (_excessiveDebugOutput ? $", obj={serialized}" : ""));
 
@@ -74,7 +134,7 @@ namespace Pulumi
                 throw new InvokeException($"Invoke of '{token}' failed: {reasons}");
             }
 
-            return result.Return;
+            return new SerializationResult(result.Return, argsSerializationResult.PropertyToDependentResources);
         }
 
         private static ProviderResource? GetProvider(string token, InvokeOptions? options)
