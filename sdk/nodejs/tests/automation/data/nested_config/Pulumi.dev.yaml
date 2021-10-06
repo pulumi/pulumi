@@ -1,12 +1,13 @@
+encryptedkey: AAABALRPLGE1VvUNvXhcbpgkbbOIVtizBVZhf6a+mPmSAK1Fv3y1flXeI79GrfzLn+21NwmmLoE67PbOgUKCJg==
 config:
   aws:region: us-west-2
-  nested_config:bar: 1234
+  nested_config:bar: "1234"
   nested_config:foo: aha
   nested_config:myList:
-    - one
-    - two
-    - three
+  - one
+  - two
+  - three
   nested_config:outer:
     inner:
-      secure: AAABADOd8UPayqGlunla+Lo6kSSYA4LffCNBe84ElLwv0kyz7oIcYAw=
+      secure: v1:pHhiGv8ALQbJKP26:FRja7BaRaE4i9252QMxWUZkIcd3E/f1N+Q==
     other: something_else
