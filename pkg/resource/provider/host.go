@@ -15,6 +15,8 @@
 package provider
 
 import (
+	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -24,6 +26,7 @@ import (
 	lumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 )
 
 // HostClient is a client interface into the host's engine RPC interface.
@@ -34,6 +37,9 @@ type HostClient struct {
 
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
+	// Provider client is sensitive to GRPC info logging to stdout, so ensure they are dropped.
+	// See https://github.com/pulumi/pulumi/issues/7156
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
 	conn, err := grpc.Dial(
 		addr,
 		grpc.WithInsecure(),
