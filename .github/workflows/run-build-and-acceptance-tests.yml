@@ -21,7 +21,7 @@ env:
 #
 # See also: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency
 concurrency:
-  group: run-build-acceptance-tests-${{ github.ref }}-${{ github.head_ref }}
+  group: run-build-acceptance-tests-${{(fromJSON(format('[{0},{1}]',to_json(github.run_id),to_json(github.head_ref))))[github.head_ref=='']}}
   cancel-in-progress: true
 
 jobs:
@@ -62,10 +62,11 @@ jobs:
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
-      - name: debug ref vs head_ref 2
+      - name: debug concurrent_id
         run: |
-          echo "github.ref      = ${{ github.ref }}"
+          echo "github.run_id   = ${{ github.run_id }}"
           echo "github.head_ref = ${{ github.head_ref }}"
+          echo "concurrent_id   = ${{(fromJSON(format('[{0},{1}]',to_json(github.run_id),to_json(github.head_ref))))[github.head_ref=='']}}"
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
