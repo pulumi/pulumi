@@ -13,6 +13,7 @@ require (
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/aws/aws-sdk-go v1.38.35
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/djherbis/times v1.2.0
 	github.com/docker/docker v1.4.2-0.20200319182547-c7ad2b866182
 	github.com/dustin/go-humanize v1.0.0

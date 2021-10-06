@@ -24,10 +24,10 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -37,16 +37,16 @@ type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
 
-	program     *hcl2.Program
+	program     *pcl.Program
 	diagnostics hcl.Diagnostics
 
 	asyncMain     bool
 	configCreated bool
 }
 
-func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	// Linearize the nodes into an order appropriate for procedural code generation.
-	nodes := hcl2.Linearize(program)
+	nodes := pcl.Linearize(program)
 
 	g := &generator{
 		program: program,
@@ -62,7 +62,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	var index bytes.Buffer
 	g.genPreamble(&index, program)
 	for _, n := range nodes {
-		if r, ok := n.(*hcl2.Resource); ok && requiresAsyncMain(r) {
+		if r, ok := n.(*pcl.Resource); ok && requiresAsyncMain(r) {
 			g.asyncMain = true
 			break
 		}
@@ -82,7 +82,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		if g.asyncMain {
 			var result *model.ObjectConsExpression
 			for _, n := range nodes {
-				if o, ok := n.(*hcl2.OutputVariable); ok {
+				if o, ok := n.(*pcl.OutputVariable); ok {
 					if result == nil {
 						result = &model.ObjectConsExpression{}
 					}
@@ -150,7 +150,7 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 	}
 }
 
-func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 	// Print the @pulumi/pulumi import at the top.
 	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
 
@@ -158,7 +158,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	// later on.
 	importSet := codegen.NewStringSet("@pulumi/pulumi")
 	for _, n := range program.Nodes {
-		if r, isResource := n.(*hcl2.Resource); isResource {
+		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
 			importSet.Add("@pulumi/" + pkg)
 		}
@@ -194,20 +194,20 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	g.Fprint(w, "\n")
 }
 
-func (g *generator) genNode(w io.Writer, n hcl2.Node) {
+func (g *generator) genNode(w io.Writer, n pcl.Node) {
 	switch n := n.(type) {
-	case *hcl2.Resource:
+	case *pcl.Resource:
 		g.genResource(w, n)
-	case *hcl2.ConfigVariable:
+	case *pcl.ConfigVariable:
 		g.genConfigVariable(w, n)
-	case *hcl2.LocalVariable:
+	case *pcl.LocalVariable:
 		g.genLocalVariable(w, n)
-	case *hcl2.OutputVariable:
+	case *pcl.OutputVariable:
 		g.genOutputVariable(w, n)
 	}
 }
 
-func requiresAsyncMain(r *hcl2.Resource) bool {
+func requiresAsyncMain(r *pcl.Resource) bool {
 	if r.Options == nil || r.Options.Range == nil {
 		return false
 	}
@@ -216,7 +216,7 @@ func requiresAsyncMain(r *hcl2.Resource) bool {
 }
 
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.
-func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics) {
+func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
 	if pkg == "pulumi" && module == "providers" {
@@ -247,7 +247,7 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf("`%s-${%s}`", baseName, count)
 }
 
-func (g *generator) genResourceOptions(opts *hcl2.ResourceOptions) string {
+func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts == nil {
 		return ""
 	}
@@ -293,7 +293,7 @@ func (g *generator) genResourceOptions(opts *hcl2.ResourceOptions) string {
 }
 
 // genResource handles the generation of instantiations of non-builtin resources.
-func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
+func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
 
@@ -385,7 +385,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
 }
 
-func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
+func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	// TODO(pdg): trivia
 
 	if !g.configCreated {
@@ -415,12 +415,12 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 	g.Fgenf(w, ";\n")
 }
 
-func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
+func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	// TODO(pdg): trivia
 	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Definition.Value))
 }
 
-func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
+func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 	// TODO(pdg): trivia
 	export := "export "
 	if g.asyncMain {

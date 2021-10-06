@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -148,7 +148,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) { /
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	//nolint:goconst
 	switch expr.Name {
-	case hcl2.IntrinsicConvert:
+	case pcl.IntrinsicConvert:
 		switch arg := expr.Args[0].(type) {
 		case *model.TupleConsExpression:
 			g.genTupleConsExpression(w, arg, expr.Type())
@@ -164,7 +164,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		default:
 			g.Fgenf(w, "%.v", expr.Args[0])
 		}
-	case hcl2.IntrinsicApply:
+	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
 	case "element":
 		g.genNYI(w, "element")
@@ -189,7 +189,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "filebase64":
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "filebase64OrPanic(%v)", expr.Args[0])
-	case hcl2.Invoke:
+	case pcl.Invoke:
 		pkg, module, fn, diags := g.functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module == "" {
@@ -326,7 +326,7 @@ func (g *generator) genObjectConsExpression(
 	var temps []interface{}
 	isInput = isInput || isInputty(destType)
 	typeName := g.argumentTypeName(expr, destType, isInput)
-	if schemaType, ok := hcl2.GetSchemaForType(destType); ok {
+	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok {
 			if g.useLookupInvokeForm(obj.Token) {
 				typeName = strings.Replace(typeName, ".Get", ".Lookup", 1)
@@ -390,7 +390,7 @@ func (g *generator) genRelativeTraversalExpression(
 	if _, ok := expr.Parts[0].(*model.PromiseType); ok {
 		isInput = false
 	}
-	if _, ok := expr.Parts[0].(*hcl2.Resource); ok {
+	if _, ok := expr.Parts[0].(*pcl.Resource); ok {
 		isInput = false
 	}
 	if isInput {
@@ -407,7 +407,7 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 	isRootResource := false
 	if ie, ok := expr.Source.(*model.IndexExpression); ok {
 		if se, ok := ie.Collection.(*model.ScopeTraversalExpression); ok {
-			if _, ok := se.Parts[0].(*hcl2.Resource); ok {
+			if _, ok := se.Parts[0].(*pcl.Resource); ok {
 				isRootResource = true
 			}
 		}
@@ -430,13 +430,13 @@ func (g *generator) genScopeTraversalExpression(
 	genIDCall := false
 
 	isInput := false
-	if schemaType, ok := hcl2.GetSchemaForType(destType); ok {
+	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		_, isInput = schemaType.(*schema.InputType)
 	}
 
-	if resource, ok := expr.Parts[0].(*hcl2.Resource); ok {
+	if resource, ok := expr.Parts[0].(*pcl.Resource); ok {
 		isInput = false
-		if _, ok := hcl2.GetSchemaForType(resource.InputType); ok {
+		if _, ok := pcl.GetSchemaForType(resource.InputType); ok {
 			// convert .id into .ID()
 			last := expr.Traversal[len(expr.Traversal)-1]
 			if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
@@ -579,7 +579,7 @@ var typeNameID = 0
 // argumentTypeName computes the go type for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type, isInput bool) (result string) {
 	//	defer func(id int, t model.Type) {
-	//		schemaType, _ := hcl2.GetSchemaForType(destType)
+	//		schemaType, _ := pcl.GetSchemaForType(destType)
 	//		log.Printf("%v: argumentTypeName(%v, %v, %v) = %v", id, t, isInput, schemaType, result)
 	//	}(typeNameID, destType)
 	typeNameID++
@@ -593,7 +593,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 		return ""
 	}
 
-	if schemaType, ok := hcl2.GetSchemaForType(destType); ok {
+	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		pkg := &pkgContext{pkg: &schema.Package{Name: "main"}}
 		return pkg.argsType(schemaType)
 	}
@@ -764,9 +764,9 @@ func (nameInfo) Format(name string) string {
 // lowerExpression amends the expression with intrinsics for Go generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	model.Expression, []interface{}) {
-	expr = hcl2.RewritePropertyReferences(expr)
-	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
-	expr = hcl2.RewriteConversions(expr, typ)
+	expr = pcl.RewritePropertyReferences(expr)
+	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
+	expr = pcl.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr)
 	expr, rTemps, readDirDiags := g.rewriteReadDir(expr, g.readDirTempSpiller)
@@ -810,7 +810,7 @@ func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
-	applyArgs, then := hcl2.ParseApplyCall(expr)
+	applyArgs, then := pcl.ParseApplyCall(expr)
 	isInput := false
 	retType := g.argumentTypeName(nil, then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
@@ -942,7 +942,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 	tokenRange := tokenArg.SyntaxNode().Range()
 
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
+	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	if strings.HasPrefix(member, "get") {
 		if g.useLookupInvokeForm(token) {
 			member = strings.Replace(member, "get", "lookup", 1)

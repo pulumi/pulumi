@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 )
 
-func parseAndBindProgram(t *testing.T, text, name string, options ...hcl2.BindOption) (*hcl2.Program, hcl.Diagnostics) {
+func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {
 	parser := syntax.NewParser()
 	err := parser.ParseFile(strings.NewReader(text), name)
 	if err != nil {
@@ -20,9 +20,9 @@ func parseAndBindProgram(t *testing.T, text, name string, options ...hcl2.BindOp
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, hcl2.PluginHost(utils.NewHost(testdataPath)))
+	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
 
-	program, diags, err := hcl2.BindProgram(parser.Files, options...)
+	program, diags, err := pcl.BindProgram(parser.Files, options...)
 	if err != nil {
 		t.Fatalf("could not bind program: %v", err)
 	}

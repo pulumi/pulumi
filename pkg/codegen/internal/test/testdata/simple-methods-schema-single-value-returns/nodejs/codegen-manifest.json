@@ -1,0 +1,11 @@
+{
+  "emittedFiles": [
+    "README.md",
+    "foo.ts",
+    "index.ts",
+    "package.json",
+    "provider.ts",
+    "tsconfig.json",
+    "utilities.ts"
+  ]
+}

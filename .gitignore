@@ -24,6 +24,14 @@ coverage.cov
 # Likewise, we don't want to keep the typechecked version of our codegen tests.
 pkg/codegen/internal/test/testdata/*/typecheck/**
 
+# We don't need to keep testing python __pycache__ either either
+pkg/codegen/internal/test/testdata/*-pp/*/*.csproj
+pkg/codegen/internal/test/testdata/*-pp/*/go.mod
+pkg/codegen/internal/test/testdata/*-pp/*/go.sum
+pkg/codegen/internal/test/testdata/*-pp/*/Program.cs
+pkg/codegen/internal/test/testdata/*-pp/*/package.json
+pkg/codegen/internal/test/testdata/*-pp/*/go.sum
+
 # By default, we don't check in yarn.lock files
 **/yarn.lock
 

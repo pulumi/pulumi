@@ -42,6 +42,12 @@ import (
 )
 
 var (
+	// modules is a map of a module name and information
+	// about it. This is crux of all API docs generation
+	// as the modContext carries information about the resources,
+	// functions, as well other modules within each module.
+	modules map[string]*modContext
+
 	supportedLanguages = []string{"csharp", "go", "nodejs", "python"}
 	snippetLanguages   = []string{"csharp", "go", "python", "typescript"}
 	templates          *template.Template
@@ -57,33 +63,42 @@ var (
 	// langModuleNameLookup is a map of module name to its language-specific
 	// name.
 	langModuleNameLookup map[string]string
-	// titleLookup is a map to map module package name to the desired display name
+	// TODO[pulumi/pulumi#7813]: Remove this lookup once display name is available in
+	// the Pulumi schema.
+	//
+	// NOTE: For the time being this lookup map and the one used by the resourcedocsgen
+	// tool in `pulumi/docs` must be kept up-to-date.
+	//
+	// titleLookup is a map of package name to the desired display name
 	// for display in the TOC menu under API Reference.
 	titleLookup = map[string]string{
 		"aiven":         "Aiven",
 		"akamai":        "Akamai",
-		"alicloud":      "AliCloud",
+		"alicloud":      "Alibaba Cloud",
 		"auth0":         "Auth0",
-		"aws":           "AWS",
+		"aws":           "AWS Classic",
+		"aws-native":    "AWS Native",
 		"azure":         "Azure Classic",
 		"azure-native":  "Azure Native",
-		"azuread":       "Azure AD",
+		"azuread":       "Azure Active Directory",
 		"azuredevops":   "Azure DevOps",
 		"azuresel":      "Azure",
 		"civo":          "Civo",
 		"cloudamqp":     "CloudAMQP",
 		"cloudflare":    "Cloudflare",
 		"cloudinit":     "cloud-init",
+		"confluent":     "Confluent Cloud",
 		"consul":        "Consul",
 		"datadog":       "Datadog",
 		"digitalocean":  "DigitalOcean",
 		"dnsimple":      "DNSimple",
 		"docker":        "Docker",
-		"eks":           "EKS",
+		"eks":           "Amazon EKS",
+		"equinix-metal": "Equinix Metal",
 		"f5bigip":       "f5 BIG-IP",
 		"fastly":        "Fastly",
-		"gcp":           "GCP",
-		"google-native": "Google Native (preview)",
+		"gcp":           "Google Cloud Classic",
+		"google-native": "Google Cloud Native",
 		"github":        "GitHub",
 		"gitlab":        "GitLab",
 		"hcloud":        "Hetzner Cloud",
@@ -91,33 +106,36 @@ var (
 		"keycloak":      "Keycloak",
 		"kong":          "Kong",
 		"kubernetes":    "Kubernetes",
+		"libvirt":       "libvirt",
 		"linode":        "Linode",
 		"mailgun":       "Mailgun",
+		"minio":         "MinIO",
 		"mongodbatlas":  "MongoDB Atlas",
 		"mysql":         "MySQL",
 		"newrelic":      "New Relic",
+		"nomad":         "Nomad",
 		"ns1":           "NS1",
 		"okta":          "Okta",
-		"openstack":     "Open Stack",
+		"openstack":     "OpenStack",
 		"opsgenie":      "Opsgenie",
 		"packet":        "Packet",
 		"pagerduty":     "PagerDuty",
 		"postgresql":    "PostgreSQL",
 		"rabbitmq":      "RabbitMQ",
 		"rancher2":      "Rancher 2",
-		"random":        "Random",
+		"random":        "random",
+		"rke":           "Rancher RKE",
 		"signalfx":      "SignalFx",
+		"snowflake":     "Snowflake",
+		"splunk":        "Splunk",
 		"spotinst":      "Spotinst",
+		"sumologic":     "Sumo Logic",
 		"tls":           "TLS",
 		"vault":         "Vault",
 		"venafi":        "Venafi",
 		"vsphere":       "vSphere",
 		"wavefront":     "Wavefront",
-		"equinix-metal": "Equinix Metal",
-		"splunk":        "Splunk",
 		"yandex":        "Yandex",
-		"rke":           "Rancher RKE",
-		"sumologic":     "SumoLogic",
 	}
 	// Property anchor tag separator, used in a property anchor tag id to separate the
 	// property and language (e.g. property~lang).
@@ -1494,20 +1512,9 @@ func (mod *modContext) getModuleFileName() string {
 
 func (mod *modContext) gen(fs fs) error {
 	modName := mod.getModuleFileName()
-	var files []string
-	for p := range fs {
-		d := path.Dir(p)
-		if d == "." {
-			d = ""
-		}
-		if d == modName {
-			files = append(files, p)
-		}
-	}
 
 	addFile := func(name, contents string) {
 		p := path.Join(modName, name, "_index.md")
-		files = append(files, p)
 		fs.add(p, []byte(contents))
 	}
 
@@ -1627,11 +1634,10 @@ func (mod *modContext) genIndex() indexData {
 	// If there are submodules, list them.
 	for _, mod := range mod.children {
 		modName := mod.getModuleFileName()
-		parts := strings.Split(modName, "/")
-		modName = parts[len(parts)-1]
+		displayName := modFilenameToDisplayName(modName)
 		modules = append(modules, indexEntry{
-			Link:        strings.ToLower(modName) + "/",
-			DisplayName: modName,
+			Link:        getModuleLink(displayName),
+			DisplayName: displayName,
 		})
 	}
 	sortIndexEntries(modules)
@@ -1640,7 +1646,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, r := range mod.resources {
 		name := resourceName(r)
 		resources = append(resources, indexEntry{
-			Link:        strings.ToLower(name),
+			Link:        getResourceLink(name),
 			DisplayName: name,
 		})
 	}
@@ -1650,7 +1656,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, f := range mod.functions {
 		name := tokenToName(f.Token)
 		functions = append(functions, indexEntry{
-			Link:        strings.ToLower(name),
+			Link:        getFunctionLink(name),
 			DisplayName: strings.Title(name),
 		})
 	}
@@ -1831,9 +1837,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	return modules
 }
 
-// GeneratePackage generates the docs package with docs for each resource given the Pulumi
-// schema.
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+func Initialize(tool string, pkg *schema.Package) {
 	templates = template.New("").Funcs(template.FuncMap{
 		"htmlSafe": func(html string) template.HTML {
 			// Markdown fragments in the templates need to be rendered as-is,
@@ -1844,16 +1848,32 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		},
 	})
 
+	defer glog.Flush()
+
+	if len(packagedTemplates) == 0 {
+		glog.Fatal(`packagedTemplates is empty. Did you run "make generate" first?`)
+	}
+
 	for name, b := range packagedTemplates {
 		template.Must(templates.New(name).Parse(string(b)))
 	}
 
-	defer glog.Flush()
-
 	// Generate the modules from the schema, and for every module
 	// run the generator functions to generate markdown files.
-	modules := generateModulesFromSchemaPackage(tool, pkg)
-	glog.V(3).Infoln("generating package now...")
+	modules = generateModulesFromSchemaPackage(tool, pkg)
+}
+
+// GeneratePackage generates docs for each resource given the Pulumi
+// schema. The returned map contains the filename with path as the key
+// and the contents as its value.
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	if modules == nil {
+		return nil, errors.New("must call Initialize before generating the docs package")
+	}
+
+	defer glog.Flush()
+
+	glog.V(3).Infoln("generating package docs now...")
 	files := fs{}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
@@ -1862,6 +1882,30 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 
 	return files, nil
+}
+
+// GeneratePackageTree returns a navigable structure starting from the top-most module.
+func GeneratePackageTree() ([]PackageTreeItem, error) {
+	if modules == nil {
+		return nil, errors.New("must call Initialize before generating the docs package")
+	}
+
+	defer glog.Flush()
+
+	var packageTree []PackageTreeItem
+	// "" indicates the top-most module.
+	if rootMod, ok := modules[""]; ok {
+		tree, err := generatePackageTree(*rootMod)
+		if err != nil {
+			glog.Errorf("Error generating the package tree for package: %v", err)
+		}
+
+		packageTree = tree
+	} else {
+		glog.Error("A root module entry was not found for the package. Cannot generate the package tree...")
+	}
+
+	return packageTree, nil
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(t schema.Type)) {

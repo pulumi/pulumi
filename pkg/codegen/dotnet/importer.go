@@ -32,6 +32,8 @@ type CSharpPackageInfo struct {
 	Compatibility          string            `json:"compatibility,omitempty"`
 	DictionaryConstructors bool              `json:"dictionaryConstructors,omitempty"`
 	ProjectReferences      []string          `json:"projectReferences,omitempty"`
+	// Determines whether to make single-return-value methods return an output object or the single value.
+	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
 }
 
 // Importer implements schema.Language for .NET.

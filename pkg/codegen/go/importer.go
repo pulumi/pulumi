@@ -49,6 +49,13 @@ type GoPackageInfo struct {
 	// The version of the Pulumi SDK used with this provider, e.g. 3.
 	// Used to generate doc links for pulumi builtin types. If omitted, the latest SDK version is used.
 	PulumiSDKVersion int `json:"pulumiSDKVersion,omitempty"`
+
+	// Feature flag to disable generating `$fnOutput` invoke
+	// function versions to save space.
+	DisableFunctionOutputVersions bool `json:"disableFunctionOutputVersions,omitempty"`
+
+	// Determines whether to make single-return-value methods return an output struct or the value.
+	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
 }
 
 // Importer implements schema.Language for Go.

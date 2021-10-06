@@ -2452,3 +2452,139 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 	}
 	p.Run(t, nil)
 }
+
+// This tests a scenario involving two remote components with interdependencies that are only represented in the
+// user program.
+func TestComponentDeleteDependencies(t *testing.T) {
+
+	var (
+		firstURN  resource.URN
+		nestedURN resource.URN
+		sgURN     resource.URN
+		secondURN resource.URN
+		ruleURN   resource.URN
+
+		err error
+	)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
+					inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+					switch typ {
+					case "pkgB:m:first":
+						firstURN, _, _, err = monitor.RegisterResource("pkgB:m:first", name, false)
+						require.NoError(t, err)
+
+						nestedURN, _, _, err = monitor.RegisterResource("nested", "nested", false,
+							deploytest.ResourceOptions{
+								Parent: firstURN,
+							})
+						require.NoError(t, err)
+
+						sgURN, _, _, err = monitor.RegisterResource("pkgA:m:sg", "sg", true, deploytest.ResourceOptions{
+							Parent: nestedURN,
+						})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(nestedURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(firstURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						return plugin.ConstructResult{URN: firstURN}, nil
+					case "pkgB:m:second":
+						secondURN, _, _, err = monitor.RegisterResource("pkgB:m:second", name, false,
+							deploytest.ResourceOptions{
+								Dependencies: options.Dependencies,
+							})
+						require.NoError(t, err)
+
+						ruleURN, _, _, err = monitor.RegisterResource("pkgA:m:rule", "rule", true,
+							deploytest.ResourceOptions{
+								Parent:       secondURN,
+								Dependencies: options.PropertyDependencies["sgID"],
+							})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(secondURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						return plugin.ConstructResult{URN: secondURN}, nil
+					default:
+						return plugin.ConstructResult{}, fmt.Errorf("unexpected type %v", typ)
+					}
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err = monitor.RegisterResource("pkgB:m:first", "first", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgB:m:second", "second", false, deploytest.ResourceOptions{
+			Remote: true,
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"sgID": {sgURN},
+			},
+			Dependencies: []resource.URN{firstURN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				firstIndex, nestedIndex, sgIndex, secondIndex, ruleIndex := -1, -1, -1, -1, -1
+
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case firstURN:
+						firstIndex = i
+					case nestedURN:
+						nestedIndex = i
+					case sgURN:
+						sgIndex = i
+					case secondURN:
+						secondIndex = i
+					case ruleURN:
+						ruleIndex = i
+					}
+				}
+
+				assert.Less(t, ruleIndex, sgIndex)
+				assert.Less(t, ruleIndex, secondIndex)
+				assert.Less(t, secondIndex, firstIndex)
+				assert.Less(t, secondIndex, sgIndex)
+				assert.Less(t, sgIndex, nestedIndex)
+				assert.Less(t, nestedIndex, firstIndex)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, nil)
+}

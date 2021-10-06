@@ -117,6 +117,11 @@ var sdkTests = []sdkTest{
 		Skip:             codegen.NewStringSet("python/test"),
 	},
 	{
+		Directory:   "simple-methods-schema-single-value-returns",
+		Description: "Simple schema with methods that return single values",
+		Skip:        codegen.NewStringSet("python/test"),
+	},
+	{
 		Directory:   "simple-yaml-schema",
 		Description: "Simple schema encoded using YAML",
 		Skip:        codegen.NewStringSet("python/test"),
@@ -156,6 +161,11 @@ var sdkTests = []sdkTest{
 		Directory:   "cyclic-types",
 		Description: "Cyclic object types",
 		Skip:        codegen.NewStringSet("python/test"),
+	},
+	{
+		Directory:   "regress-node-8110",
+		Description: "Test the fix for pulumi/pulumi#8110 nodejs compilation error",
+		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
 	},
 }
 
