@@ -20,6 +20,14 @@ env:
 # to change.
 #
 # See also: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency
+#
+# Note on the the `group` computed expression: it is compiling
+# `github.head_ref == '' ? github.run_id : github.head_ref` expression
+# to the primitives available in GitHub Actions. The idea to use
+# `head_ref` on `pull_request` triggers, but use unique
+# `github.run_id` on `run-acceptance-tests-command` triggers. This
+# effectively disables `concurrency` checks for
+# `run-acceptance-tests-command` triggers.
 concurrency:
   group: run-build-acceptance-tests-${{(fromJSON(format('[{0},{1}]',toJSON(github.head_ref),toJSON(github.run_id))))[github.head_ref=='']}}
   cancel-in-progress: true
@@ -62,11 +70,6 @@ jobs:
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
-      - name: debug concurrent_id
-        run: |
-          echo "github.run_id   = ${{ github.run_id }}"
-          echo "github.head_ref = ${{ github.head_ref }}"
-          echo "concurrent_id   = ${{(fromJSON(format('[{0},{1}]',toJSON(github.head_ref),toJSON(github.run_id))))[github.head_ref=='']}}"
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
