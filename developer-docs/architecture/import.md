@@ -65,7 +65,7 @@ program and the statefile of the updated stack that do not differ.
 
 Although the "no diffs" requirement is intended to prevent surprise, it also accommodates
 a technical limitation of the Pulumi engine. In order to actually perform the diff--an
-operation that is required whether or not the user is permitted to desctribe a desired
+operation that is required whether or not the user is permitted to describe a desired
 state for the imported resource that differs from its actual state--the engine must fetch
 the resource's current imports and state from its provider. In order for this state to
 affect the steps the engine issues for the resources, the state would need to be fetched
