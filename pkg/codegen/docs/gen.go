@@ -386,11 +386,11 @@ type modContext struct {
 	docGenContext *docGenContext
 }
 
-func (mctx *modContext) withDocGenContext(dctx *docGenContext) *modContext {
-	if mctx == nil {
+func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
+	if mod == nil {
 		return nil
 	}
-	copy := *mctx
+	copy := *mod
 	copy.docGenContext = dctx
 	var children []*modContext
 	for _, c := range copy.children {
