@@ -21,7 +21,7 @@ env:
 #
 # See also: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency
 concurrency:
-  group: run-build-acceptance-tests-${{(fromJSON(format('[{0},{1}]',to_json(github.run_id),to_json(github.head_ref))))[github.head_ref=='']}}
+  group: run-build-acceptance-tests-${{(fromJSON(format('[{0},{1}]',toJSON(github.run_id),toJSON(github.head_ref))))[github.head_ref=='']}}
   cancel-in-progress: true
 
 jobs:
