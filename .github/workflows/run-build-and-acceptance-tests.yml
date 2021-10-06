@@ -66,7 +66,7 @@ jobs:
         run: |
           echo "github.run_id   = ${{ github.run_id }}"
           echo "github.head_ref = ${{ github.head_ref }}"
-          echo "concurrent_id   = ${{(fromJSON(format('[{0},{1}]',to_json(github.run_id),to_json(github.head_ref))))[github.head_ref=='']}}"
+          echo "concurrent_id   = ${{(fromJSON(format('[{0},{1}]',toJSON(github.run_id),toJSON(github.head_ref))))[github.head_ref=='']}}"
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
