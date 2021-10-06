@@ -131,11 +131,7 @@ func titleLookup(shortName string) (string, bool) {
 const propertyLangSeparator = "_"
 
 type docGenContext struct {
-	// modules is a map of a module name and information
-	// about it. This is crux of all API docs generation
-	// as the modContext carries information about the resources,
-	// functions, as well other modules within each module.
-	modules map[string]*modContext
+	internalModMap map[string]*modContext
 
 	supportedLanguages []string
 	snippetLanguages   []string
@@ -151,6 +147,22 @@ type docGenContext struct {
 	// langModuleNameLookup is a map of module name to its language-specific
 	// name.
 	langModuleNameLookup map[string]string
+}
+
+// modules is a map of a module name and information
+// about it. This is crux of all API docs generation
+// as the modContext carries information about the resources,
+// functions, as well other modules within each module.
+func (dctx *docGenContext) modules() map[string]*modContext {
+	return dctx.internalModMap
+}
+
+func (dctx *docGenContext) setModules(modules map[string]*modContext) {
+	m := map[string]*modContext{}
+	for k, v := range modules {
+		m[k] = v.withDocGenContext(dctx)
+	}
+	dctx.internalModMap = m
 }
 
 func newDocGenContext() *docGenContext {
@@ -170,10 +182,8 @@ func newDocGenContext() *docGenContext {
 	}
 
 	return &docGenContext{
-		modules:            map[string]*modContext{},
-		supportedLanguages: supportedLanguages,
-		snippetLanguages:   []string{"csharp", "go", "python", "typescript"},
-		//templates: *template.Template,
+		supportedLanguages:   supportedLanguages,
+		snippetLanguages:     []string{"csharp", "go", "python", "typescript"},
 		langModuleNameLookup: map[string]string{},
 		docHelpers:           docHelpers,
 	}
@@ -374,6 +384,20 @@ type modContext struct {
 	children      []*modContext
 	tool          string
 	docGenContext *docGenContext
+}
+
+func (mctx *modContext) withDocGenContext(dctx *docGenContext) *modContext {
+	if mctx == nil {
+		return nil
+	}
+	copy := *mctx
+	copy.docGenContext = dctx
+	var children []*modContext
+	for _, c := range copy.children {
+		children = append(children, c.withDocGenContext(dctx))
+	}
+	copy.children = children
+	return &copy
 }
 
 func resourceName(r *schema.Resource) string {
@@ -1903,11 +1927,11 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 
 	// Generate the modules from the schema, and for every module
 	// run the generator functions to generate markdown files.
-	dctx.modules = dctx.generateModulesFromSchemaPackage(tool, pkg)
+	dctx.setModules(dctx.generateModulesFromSchemaPackage(tool, pkg))
 }
 
 func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	if dctx.modules == nil {
+	if dctx.modules() == nil {
 		return nil, errors.New("must call Initialize before generating the docs package")
 	}
 
@@ -1915,7 +1939,7 @@ func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (ma
 
 	glog.V(3).Infoln("generating package docs now...")
 	files := fs{}
-	for _, mod := range dctx.modules {
+	for _, mod := range dctx.modules() {
 		if err := mod.gen(files); err != nil {
 			return nil, err
 		}
@@ -1926,7 +1950,7 @@ func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (ma
 
 // GeneratePackageTree returns a navigable structure starting from the top-most module.
 func (dctx *docGenContext) generatePackageTree() ([]PackageTreeItem, error) {
-	if dctx.modules == nil {
+	if dctx.modules() == nil {
 		return nil, errors.New("must call Initialize before generating the docs package")
 	}
 
@@ -1934,7 +1958,7 @@ func (dctx *docGenContext) generatePackageTree() ([]PackageTreeItem, error) {
 
 	var packageTree []PackageTreeItem
 	// "" indicates the top-most module.
-	if rootMod, ok := dctx.modules[""]; ok {
+	if rootMod, ok := dctx.modules()[""]; ok {
 		tree, err := generatePackageTree(*rootMod)
 		if err != nil {
 			glog.Errorf("Error generating the package tree for package: %v", err)
