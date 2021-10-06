@@ -740,17 +740,17 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 		return err
 	}
 
-	cfg := ps.Config
-
 	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
 	decrypter := config.NewBlindingDecrypter()
-	if cfg.HasSecureValue() && showSecrets {
+	if ps.Config.HasSecureValue() && showSecrets {
 		dec, decerr := getStackDecrypter(stack)
 		if decerr != nil {
 			return decerr
 		}
 		decrypter = dec
 	}
+
+	cfg := ps.Config
 
 	var keys config.KeyArray
 	for key := range cfg {

@@ -53,6 +53,31 @@ func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName,
 			return nil, err
 		}
 		info.EncryptedKey = base64.StdEncoding.EncodeToString(dataKey)
+
+		currentConfig := info.Config
+		if currentConfig.HasSecureValue() {
+			legacyCrypter, err := service.NewServiceSecretsManager(client, id, nil)
+			if err != nil {
+				return nil, err
+			}
+			legDecrypter, err := legacyCrypter.Decrypter()
+			if err != nil {
+				return nil, err
+			}
+			manager, err := service.NewServiceSecretsManager(client, id, dataKey)
+			if err != nil {
+				return nil, err
+			}
+			newEncrypter, err := manager.Encrypter()
+			if err != nil {
+				return nil, err
+			}
+			newProjectConfig, err := currentConfig.Copy(legDecrypter, newEncrypter)
+			if err != nil {
+				return nil, err
+			}
+			info.Config = newProjectConfig
+		}
 	}
 	info.SecretsProvider = secretsProvider
 	if err = info.Save(configFile); err != nil {
