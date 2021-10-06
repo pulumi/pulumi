@@ -166,11 +166,9 @@ type typeDetails struct {
 
 // header represents the header of each resource markdown file.
 type header struct {
-	Title        string
-	TitleTag     string
-	MetaDesc     string
-	PackageName  string
-	ResourceName string
+	Title    string
+	TitleTag string
+	MetaDesc string
 }
 
 // property represents an input or an output property.
@@ -1337,11 +1335,9 @@ func (mod *modContext) genResourceHeader(r *schema.Resource) header {
 	}
 
 	return header{
-		Title:        resourceName,
-		TitleTag:     titleTag,
-		MetaDesc:     metaDescription,
-		PackageName:  mod.pkg.Name,
-		ResourceName: tokenToName(r.Token),
+		Title:    resourceName,
+		TitleTag: titleTag,
+		MetaDesc: metaDescription,
 	}
 }
 
@@ -1574,7 +1570,6 @@ type indexData struct {
 
 	Title              string
 	TitleTag           string
-	PackageName        string
 	PackageDescription string
 	// Menu indicates if an index page should be part of the TOC menu.
 	Menu bool
@@ -1694,7 +1689,6 @@ func (mod *modContext) genIndex() indexData {
 	data := indexData{
 		Tool:               mod.tool,
 		PackageDescription: packageDescription,
-		PackageName:        mod.pkg.Name,
 		Title:              title,
 		TitleTag:           titleTag,
 		Menu:               menu,
