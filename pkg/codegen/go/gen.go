@@ -2980,7 +2980,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			pathPrefix = path.Base(goPkgInfo.ImportBasePath)
 		} else {
 			pathPrefix = goPackage(pkg.Name)
-			fmt.Printf("found prefix from name: %s\n", pathPrefix)
 		}
 	}
 	files := map[string][]byte{}

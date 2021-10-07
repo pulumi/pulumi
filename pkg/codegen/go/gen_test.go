@@ -153,6 +153,7 @@ func readSchemaFile(file string) *schema.Package {
 	return pkg
 }
 
+// We test the naming/module structure of generated packages.
 func TestPackageNaming(t *testing.T) {
 	testCases := []struct {
 		importBasePath  string
@@ -176,6 +177,9 @@ func TestPackageNaming(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		t.Run(tt.expectedRoot, func(t *testing.T) {
+			// This schema is arbitrary. We just needed a filled out schema. All
+			// path decisions should be made based off of the Name and
+			// Language[go] fields (which we set after import).
 			schema := readSchemaFile(filepath.Join("schema", "good-enum-1.json"))
 			if tt.name != "" {
 				// We want there to be a name, so if one isn't provided we
