@@ -3,6 +3,8 @@
 title: "getClientConfig"
 title_tag: "mypkg.getClientConfig"
 meta_desc: "Documentation for the mypkg.getClientConfig function with examples, input properties, output properties, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 

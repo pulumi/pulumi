@@ -3,6 +3,8 @@
 title: "funcWithConstInput"
 title_tag: "mypkg.funcWithConstInput"
 meta_desc: "Documentation for the mypkg.funcWithConstInput function with examples, input properties, output properties, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 
