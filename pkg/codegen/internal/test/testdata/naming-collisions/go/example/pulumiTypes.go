@@ -158,6 +158,9 @@ func (o ResourceTypeOutput) Name() pulumi.StringPtrOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ObjectInput)(nil)).Elem(), ObjectArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ObjectInputTypeInput)(nil)).Elem(), ObjectInputTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ResourceTypeInput)(nil)).Elem(), ResourceTypeArgs{})
 	pulumi.RegisterOutputType(ObjectOutput{})
 	pulumi.RegisterOutputType(ObjectInputTypeOutput{})
 	pulumi.RegisterOutputType(ResourceTypeOutput{})

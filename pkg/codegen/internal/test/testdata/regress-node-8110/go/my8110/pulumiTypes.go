@@ -60,5 +60,6 @@ func (o MyObjOutput) A() pulumi.StringPtrOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*MyObjInput)(nil)).Elem(), MyObjArgs{})
 	pulumi.RegisterOutputType(MyObjOutput{})
 }

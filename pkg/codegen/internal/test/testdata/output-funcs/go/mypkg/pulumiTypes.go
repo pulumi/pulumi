@@ -1048,6 +1048,18 @@ func (o StorageAccountKeyResponseArrayOutput) Index(i pulumi.IntInput) StorageAc
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*SsisEnvironmentReferenceResponseInput)(nil)).Elem(), SsisEnvironmentReferenceResponseArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SsisEnvironmentReferenceResponseArrayInput)(nil)).Elem(), SsisEnvironmentReferenceResponseArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SsisEnvironmentResponseInput)(nil)).Elem(), SsisEnvironmentResponseArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SsisFolderResponseInput)(nil)).Elem(), SsisFolderResponseArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SsisPackageResponseInput)(nil)).Elem(), SsisPackageResponseArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SsisParameterResponseInput)(nil)).Elem(), SsisParameterResponseArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SsisParameterResponseArrayInput)(nil)).Elem(), SsisParameterResponseArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SsisProjectResponseInput)(nil)).Elem(), SsisProjectResponseArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SsisVariableResponseInput)(nil)).Elem(), SsisVariableResponseArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SsisVariableResponseArrayInput)(nil)).Elem(), SsisVariableResponseArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*StorageAccountKeyResponseInput)(nil)).Elem(), StorageAccountKeyResponseArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*StorageAccountKeyResponseArrayInput)(nil)).Elem(), StorageAccountKeyResponseArray{})
 	pulumi.RegisterOutputType(SsisEnvironmentReferenceResponseOutput{})
 	pulumi.RegisterOutputType(SsisEnvironmentReferenceResponseArrayOutput{})
 	pulumi.RegisterOutputType(SsisEnvironmentResponseOutput{})

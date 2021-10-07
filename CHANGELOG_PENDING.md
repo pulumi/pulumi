@@ -3,7 +3,7 @@
 - [codegen/nodejs] - Add helper function forms `$fnOutput` that accept
   `Input`s, return an `Output`, and wrap the underlying `$fn` call.
   This change addreses
-  [#5758](https://github.com/pulumi/pulumi/issues/) for Node JS,
+  [#5758](https://github.com/pulumi/pulumi/issues/5758) for NodeJS,
   making it easier to compose functions/datasources with Pulumi
   resources.
   [#8047](https://github.com/pulumi/pulumi/pull/8047)
@@ -14,6 +14,9 @@
   add `Pulumi.DeploymentInstance.Invoke` and remove the now redundant
   `Pulumi.Utilities.CodegenUtilities`.
   [#8142](https://github.com/pulumi/pulumi/pull/8142)
+
+- [codegen/go] Register input types for schema object types.
+  [#7959](https://github.com/pulumi/pulumi/pull/7959)
 
 ### Bug Fixes
 

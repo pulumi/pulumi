@@ -159,6 +159,8 @@ func (o BazPtrOutput) World() pulumi.StringPtrOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*BazInput)(nil)).Elem(), BazArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BazPtrInput)(nil)).Elem(), BazArgs{})
 	pulumi.RegisterOutputType(BazOutput{})
 	pulumi.RegisterOutputType(BazPtrOutput{})
 }
