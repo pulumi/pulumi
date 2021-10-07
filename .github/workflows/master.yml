@@ -380,3 +380,5 @@ jobs:
           git fetch --quiet --prune --unshallow --tags
       - name: Run Container Tests
         run: pulumictl dispatch -r pulumi/pulumi-docker-containers -c ci-build $(pulumictl get version --language generic -o)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
