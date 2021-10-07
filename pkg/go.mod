@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/pkg/v3
 
-go 1.16
+go 1.17
 
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
