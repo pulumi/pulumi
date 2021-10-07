@@ -34,7 +34,6 @@ from typing import (
 from . import _types
 from . import runtime
 from .runtime import rpc
-from .runtime.task_manager import TASK_MANAGER
 
 if TYPE_CHECKING:
     from .resource import Resource
@@ -114,8 +113,8 @@ class Output(Generic[T_co]):
         return self._resources
 
     def future(self, with_unknowns: Optional[bool] = None) -> Awaitable[Optional[T_co]]:
-        # If the caller did not explicitly ask to see unknown values and the value of this output contains unknowns,
-        # return None. This preserves compatibility with earlier versions of the Pulumi SDK.
+        # If the caller did not explicitly ask to see unknown values and the value of this output contains unnkowns,
+        # return None. This preserves compatibility with earlier versios of the Pulumi SDK.
         async def get_value() -> Optional[T_co]:
             val = await self._future
             return None if not with_unknowns and contains_unknowns(val) else val
@@ -141,7 +140,6 @@ class Output(Generic[T_co]):
         This function will be called during execution of a 'pulumi up' request.  It may not run
         during 'pulumi preview' (as the values of resources are of course may not be known then).
 
-        :param Optional[bool] run_with_unknowns:
         :param Callable[[T_co],Input[U]] func: A function that will, given this Output's value, transform the value to
                an Input of some kind, where an Input is either a prompt value, a Future, or another Output of the given
                type.
@@ -217,7 +215,7 @@ class Output(Generic[T_co]):
                     except RuntimeError:
                         pass
 
-        run_fut = TASK_MANAGER.create_task(run(), "output:apply")
+        run_fut = asyncio.ensure_future(run())
         return Output(result_resources, run_fut, result_is_known, result_is_secret)
 
     def __getattr__(self, item: str) -> 'Output[Any]': # type: ignore
@@ -479,7 +477,7 @@ def contains_unknowns(val: Any) -> bool:
 
 
 def _is_prompt(value: Input[T]) -> bool:
-    """Checks if the value is promptly available."""
+    """Checks if the value is prompty available."""
 
     return not isawaitable(value) and not isinstance(value, Output)
 
@@ -497,7 +495,7 @@ def _map_output(o: Output[T], transform: Callable[[T],U]) -> Output[U]:
                   is_secret=o.is_secret())
 
 
-def _map2_output(o1: Output[T1], o2: Output[T2], transform: Callable[[T1, T2], U]) -> Output[U]:
+def _map2_output(o1: Output[T1], o2: Output[T2], transform: Callable[[T1,T2],U]) -> Output[U]:
     """
     Joins two outputs and transforms their result with a pure function.
     Similar to `all` but does not deeply await.
@@ -519,7 +517,7 @@ def _map2_output(o1: Output[T1], o2: Output[T2], transform: Callable[[T1, T2], U
                   is_secret=o2.is_secret() or o2.is_secret())
 
 
-def _map_input(i: Input[T], transform: Callable[[T], U]) -> Input[U]:
+def _map_input(i: Input[T], transform: Callable[[T],U]) -> Input[U]:
     """Transforms an input's result value with a pure function."""
 
     if _is_prompt(i):

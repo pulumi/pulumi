@@ -94,7 +94,10 @@ class ProviderServicer(ResourceProviderServicer):
         # Wait for outstanding RPCs such as more provider Construct
         # calls. This can happen if i.e. provider creates child
         # resources but does not await their URN promises.
-        await wait_for_rpcs()
+        #
+        # Do not await all tasks as that starts hanging waiting for
+        # indefinite grpc.aio servier tasks.
+        await wait_for_rpcs(await_all_outstanding_tasks=False)
 
         return response
 
@@ -199,7 +202,10 @@ class ProviderServicer(ResourceProviderServicer):
         # Wait for outstanding RPCs such as more provider Construct
         # calls. This can happen if i.e. provider creates child
         # resources but does not await their URN promises.
-        await wait_for_rpcs()
+        #
+        # Do not await all tasks as that starts hanging waiting for
+        # indefinite grpc.aio servier tasks.
+        await wait_for_rpcs(await_all_outstanding_tasks=False)
 
         return response
 
