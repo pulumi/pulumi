@@ -1135,6 +1135,15 @@
             stack's state (such as recovery from failed deployments).
             </summary>
         </member>
+        <member name="M:Pulumi.Automation.Workspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
+            <summary>
+            Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
+            </summary>
+            <param name="name">The name of the plugin.</param>
+            <param name="version">The version of the plugin e.g. "v1.0.0".</param>
+            <param name="kind">The kind of plugin e.g. "resource".</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
         <member name="M:Pulumi.Automation.Workspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,Pulumi.Automation.PluginInstallOptions,System.Threading.CancellationToken)">
             <summary>
             Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
