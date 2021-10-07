@@ -629,7 +629,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		allOptionalInputs = true
 	}
 
-	// Writef out callable constructor: We only emit a single public constructor, even though we use a private signature
+	// Write out callable constructor: We only emit a single public constructor, even though we use a private signature
 	// as well as part of the implementation of `.get`. This is complicated slightly by the fact that, if there is no
 	// args type, we will emit a constructor lacking that parameter.
 	var argsFlags string
