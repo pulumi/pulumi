@@ -196,7 +196,7 @@ func TestPackageNaming(t *testing.T) {
 			require.NoError(t, err)
 			ordering := make([]string, len(files))
 			var i int
-			for k, _ := range files {
+			for k := range files {
 				ordering[i] = k
 				i++
 			}
