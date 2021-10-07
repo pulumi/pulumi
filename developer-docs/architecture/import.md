@@ -106,7 +106,12 @@ set of input properties `Iₚ`, the engine performs the following sequence of op
    `Iₖ` be the checked inputs; these inputs form the resource's desired state.
 5. Check for differences between `Iₖ` and `Sₐ` by calling the provider's [`Diff` method](providers/implementers-guide.md#diff).
    If the provider reports any differences, the values of the differing properties are
-   copied from `Sₐ` to `Iₚ`.
+   copied from `Sₐ` to `Iₚ`. This is intended to produce the smallest valid set of inputs
+   necessary to avoid diffs. This does not use a fixed-point algorithm because there is no
+   guarantee that the values copied from `Sₐ` are in fact valid (state and inputs with the
+   same property paths may have different types and validation rules) and there is no
+   guarantee that such an algorithm would terminate (TF bridge providers have had bugs that
+   cause persistent diffs, which can only be worked around with `ignoreChanges`).
 
 If all of these steps succeed, the user is left with a definition for `R` in the statefile
 of the updated stack that do not differ. The Pulumi CLI then passes the inputs `Iₚ` stored
