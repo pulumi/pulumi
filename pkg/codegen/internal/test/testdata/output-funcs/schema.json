@@ -578,9 +578,17 @@
         "@types/node": "latest",
         "mocha": "latest",
         "ts-node": "latest"
-      }
+      },
+      "extraTypeScriptFiles": [
+        "tests/codegen.spec.ts"
+      ]
     },
     "python": {
+    },
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.13"
+      }
     }
   }
 }
