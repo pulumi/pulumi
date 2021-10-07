@@ -3,6 +3,8 @@
 title: "NoRecursive"
 title_tag: "example.NoRecursive"
 meta_desc: "Documentation for the example.NoRecursive resource with examples, input properties, output properties, lookup functions, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 
