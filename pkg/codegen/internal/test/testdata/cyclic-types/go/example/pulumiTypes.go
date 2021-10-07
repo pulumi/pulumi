@@ -569,6 +569,15 @@ func (o IndirectCycleTPtrOutput) Foo3() IndirectCycleSPtrOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*AcyclicReferentInput)(nil)).Elem(), AcyclicReferentArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AcyclicSInput)(nil)).Elem(), AcyclicSArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*AcyclicTInput)(nil)).Elem(), AcyclicTArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DirectCycleInput)(nil)).Elem(), DirectCycleArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DirectCyclePtrInput)(nil)).Elem(), DirectCycleArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*IndirectCycleSInput)(nil)).Elem(), IndirectCycleSArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*IndirectCycleSPtrInput)(nil)).Elem(), IndirectCycleSArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*IndirectCycleTInput)(nil)).Elem(), IndirectCycleTArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*IndirectCycleTPtrInput)(nil)).Elem(), IndirectCycleTArgs{})
 	pulumi.RegisterOutputType(AcyclicReferentOutput{})
 	pulumi.RegisterOutputType(AcyclicSOutput{})
 	pulumi.RegisterOutputType(AcyclicTOutput{})

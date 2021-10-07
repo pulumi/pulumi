@@ -9,9 +9,11 @@ export * from "./foo";
 export * from "./provider";
 
 // Export sub-modules:
+import * as nested from "./nested";
 import * as types from "./types";
 
 export {
+    nested,
     types,
 };
 

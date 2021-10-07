@@ -10,4 +10,8 @@ export namespace nested {
         world?: string;
     }
 
+    export interface BazArgs {
+        hello?: pulumi.Input<string>;
+        world?: pulumi.Input<string>;
+    }
 }

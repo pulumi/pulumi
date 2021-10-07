@@ -45,6 +45,8 @@ import (
 type typeDetails struct {
 	outputType bool
 	inputType  bool
+
+	usedInFunctionOutputVersionInputs bool // helps decide naming under the tfbridge20 flag
 }
 
 // title capitalizes the first rune in s.
@@ -193,7 +195,8 @@ func (mod *modContext) namingContext(pkg *schema.Package) (namingCtx *modContext
 	return
 }
 
-func (mod *modContext) objectType(pkg *schema.Package, tok string, input, args, enum bool) string {
+func (mod *modContext) objectType(pkg *schema.Package, details *typeDetails, tok string, input, args, enum bool) string {
+
 	root := "outputs."
 	if input {
 		root = "inputs."
@@ -214,9 +217,12 @@ func (mod *modContext) objectType(pkg *schema.Package, tok string, input, args, 
 		return "enums." + modName + title(name)
 	}
 
-	if args && mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
+	if args && input && details != nil && details.usedInFunctionOutputVersionInputs {
+		name += "Args"
+	} else if args && mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
 		name += "Args"
 	}
+
 	return pkgName + root + modName + title(name)
 }
 
@@ -283,13 +289,14 @@ func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}
 		}
 		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typ))
 	case *schema.EnumType:
-		return tstypes.Identifier(mod.objectType(nil, t.Token, input, false, true))
+		return tstypes.Identifier(mod.objectType(nil, nil, t.Token, input, false, true))
 	case *schema.ArrayType:
 		return tstypes.Array(mod.typeAst(t.ElementType, input, constValue))
 	case *schema.MapType:
 		return tstypes.StringMap(mod.typeAst(t.ElementType, input, constValue))
 	case *schema.ObjectType:
-		return tstypes.Identifier(mod.objectType(t.Package, t.Token, input, t.IsInputShape(), false))
+		details := mod.details(t)
+		return tstypes.Identifier(mod.objectType(t.Package, details, t.Token, input, t.IsInputShape(), false))
 	case *schema.ResourceType:
 		return tstypes.Identifier(mod.resourceType(t))
 	case *schema.TokenType:
@@ -956,28 +963,16 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 
 	// Now, emit the function signature.
 	var argsig string
-	argsOptional := true
+	argsOptional := functionArgsOptional(fun)
 	if fun.Inputs != nil {
-		for _, p := range fun.Inputs.Properties {
-			if p.IsRequired() {
-				argsOptional = false
-				break
-			}
-		}
-
 		optFlag := ""
 		if argsOptional {
 			optFlag = "?"
 		}
 		argsig = fmt.Sprintf("args%s: %sArgs, ", optFlag, title(name))
 	}
-	var retty string
-	if fun.Outputs == nil {
-		retty = "void"
-	} else {
-		retty = title(name) + "Result"
-	}
-	fmt.Fprintf(w, "export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {\n", name, argsig, retty)
+	fmt.Fprintf(w, "export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {\n",
+		name, argsig, functionReturnType(fun))
 	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, fun.DeprecationMessage)
 	}
@@ -1016,6 +1011,61 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 		fmt.Fprintf(w, "\n")
 		mod.genPlainType(w, title(name)+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0)
 	}
+
+	mod.genFunctionOutputVersion(w, fun)
+}
+
+func functionArgsOptional(fun *schema.Function) bool {
+	if fun.Inputs != nil {
+		for _, p := range fun.Inputs.Properties {
+			if p.IsRequired() {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func functionReturnType(fun *schema.Function) string {
+	if fun.Outputs == nil {
+		return "void"
+	}
+	return title(tokenToFunctionName(fun.Token)) + "Result"
+}
+
+// Generates `function ${fn}Output(..)` version lifted to work on
+// `Input`-warpped arguments and producing an `Output`-wrapped result.
+func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) {
+	if !fun.NeedsOutputVersion() {
+		return
+	}
+
+	originalName := tokenToFunctionName(fun.Token)
+	fnOutput := fmt.Sprintf("%sOutput", originalName)
+	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
+
+	var argsig string
+	argsOptional := functionArgsOptional(fun)
+	optFlag := ""
+	if argsOptional {
+		optFlag = "?"
+	}
+	argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
+
+	fmt.Fprintf(w, `
+export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
+    return pulumi.output(args).apply(a => %s(a, opts))
+}
+`, fnOutput, argsig, functionReturnType(fun), originalName)
+	fmt.Fprintf(w, "\n")
+
+	mod.genPlainType(w,
+		argTypeName,
+		fun.Inputs.Comment,
+		fun.Inputs.InputShape.Properties,
+		true,  /* input */
+		false, /* readonly */
+		0 /* level */)
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType)) {
@@ -1057,7 +1107,12 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 	}
 
 	name := tokenToName(obj.Token)
-	if obj.IsInputShape() && mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
+
+	details := mod.details(obj)
+
+	if obj.IsInputShape() && input && details != nil && details.usedInFunctionOutputVersionInputs {
+		name += "Args"
+	} else if obj.IsInputShape() && mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
 		name += "Args"
 	}
 
@@ -2083,6 +2138,16 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType) {
 				types.details(t).inputType = true
 			})
+
+			if f.NeedsOutputVersion() {
+				visitObjectTypes(f.Inputs.InputShape.Properties, func(t *schema.ObjectType) {
+					for _, mod := range []*modContext{types, getModFromToken(t.Token)} {
+						det := mod.details(t)
+						det.inputType = true
+						det.usedInFunctionOutputVersionInputs = true
+					}
+				})
+			}
 		}
 		if f.Outputs != nil {
 			visitObjectTypes(f.Outputs.Properties, func(t *schema.ObjectType) {

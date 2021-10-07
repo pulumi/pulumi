@@ -105,6 +105,8 @@ func (o PetTypeArrayOutput) Index(i pulumi.IntInput) PetTypeOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*PetTypeInput)(nil)).Elem(), PetTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*PetTypeArrayInput)(nil)).Elem(), PetTypeArray{})
 	pulumi.RegisterOutputType(PetTypeOutput{})
 	pulumi.RegisterOutputType(PetTypeArrayOutput{})
 }

@@ -2141,6 +2141,29 @@ func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
 
 func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.ObjectType, types ...string) {
 	fmt.Fprintf(w, "func init() {\n")
+
+	// Input types.
+	for _, obj := range objTypes {
+		name, details := pkg.tokenToType(obj.Token), pkg.detailsForType(obj)
+		fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]sArgs{})\n", name)
+		if details.ptrElement {
+			fmt.Fprintf(w,
+				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]sArgs{})\n", name)
+		}
+		if details.arrayElement {
+			fmt.Fprintf(w,
+				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n", name)
+		}
+		if details.mapElement {
+			fmt.Fprintf(w,
+				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n", name)
+		}
+	}
+	for _, t := range types {
+		fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]s{})\n", t)
+	}
+
+	// Output types.
 	for _, obj := range objTypes {
 		name, details := pkg.tokenToType(obj.Token), pkg.detailsForType(obj)
 		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
@@ -2154,10 +2177,10 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.Obje
 			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
 		}
 	}
-
 	for _, t := range types {
 		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", t)
 	}
+
 	fmt.Fprintf(w, "}\n")
 }
 
@@ -2974,12 +2997,17 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	if name == "" {
 		name = goPackage(pkg.Name)
 	}
-
+	var pathPrefix string
+	if goPkgInfo.RootPackageName == "" {
+		if goPkgInfo.ImportBasePath != "" {
+			pathPrefix = path.Base(goPkgInfo.ImportBasePath)
+		} else {
+			pathPrefix = goPackage(pkg.Name)
+		}
+	}
 	files := map[string][]byte{}
 	setFile := func(relPath, contents string) {
-		if goPkgInfo.RootPackageName == "" {
-			relPath = path.Join(goPackage(name), relPath)
-		}
+		relPath = path.Join(pathPrefix, relPath)
 		if _, ok := files[relPath]; ok {
 			panic(errors.Errorf("duplicate file: %s", relPath))
 		}

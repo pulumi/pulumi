@@ -323,6 +323,14 @@ func ValidateFileTransformer(
 }
 
 func RunCommand(t *testing.T, name string, cwd string, exec string, args ...string) {
+	RunCommandWithOptions(t, &integration.ProgramTestOptions{}, name, cwd, exec, args...)
+}
+
+func RunCommandWithOptions(
+	t *testing.T,
+	opts *integration.ProgramTestOptions,
+	name string, cwd string, exec string, args ...string) {
+
 	exec, err := executable.FindExecutable(exec)
 	if err != nil {
 		t.Error(err)
@@ -331,12 +339,14 @@ func RunCommand(t *testing.T, name string, cwd string, exec string, args ...stri
 	wd, err := filepath.Abs(cwd)
 	require.NoError(t, err)
 	var stdout, stderr bytes.Buffer
-	cmdOptions := integration.ProgramTestOptions{Stderr: &stderr, Stdout: &stdout, Verbose: true}
+	opts.Stdout = &stdout
+	opts.Stderr = &stderr
+	opts.Verbose = true
 	err = integration.RunCommand(t,
 		name,
 		append([]string{exec}, args...),
 		wd,
-		&cmdOptions)
+		opts)
 	if !assert.NoError(t, err) {
 		stdout := stdout.String()
 		stderr := stderr.String()
