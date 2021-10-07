@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // Defines an extra check logic that accepts the directory with the
@@ -246,11 +247,9 @@ type SDKCodegenOptions struct {
 func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-line
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 
-	// Motivation for flagging parallelism: not all tests are
-	// parallel-safe yet (for example, codegen/docs tests fail),
-	// and there are concerns about memory utilizaion in CI. It
-	// can be a nice feature for developing though.
-	parallel := os.Getenv("PULUMI_PARALLEL_SDK_CODEGEN_TESTS") != ""
+	// Motivation for flagging: concerns about memory utilizaion
+	// in CI. It can be a nice feature for developing though.
+	parallel := cmdutil.IsTruthy(os.Getenv("PULUMI_PARALLEL_SDK_CODEGEN_TESTS"))
 
 	for _, sdkTest := range sdkTests {
 		tt := sdkTest // avoid capturing loop variable `sdkTest` in the closure

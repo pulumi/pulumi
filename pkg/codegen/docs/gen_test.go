@@ -283,6 +283,7 @@ func getFunctionFromModule(function string, mod *modContext) *schema.Function {
 }
 
 func TestFunctionHeaders(t *testing.T) {
+	dctx := newDocGenContext()
 	initTestPackageSpec(t)
 
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
@@ -309,7 +310,7 @@ func TestFunctionHeaders(t *testing.T) {
 		},
 	}
 
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	modules := dctx.generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
 	for _, test := range tests {
 		t.Run(test.FunctionName, func(t *testing.T) {
 			mod, ok := modules[test.ModuleName]
@@ -329,6 +330,7 @@ func TestFunctionHeaders(t *testing.T) {
 }
 
 func TestResourceDocHeader(t *testing.T) {
+	dctx := newDocGenContext()
 	initTestPackageSpec(t)
 
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
@@ -358,7 +360,7 @@ func TestResourceDocHeader(t *testing.T) {
 		},
 	}
 
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	modules := dctx.generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			mod, ok := modules[test.ModuleName]
@@ -379,9 +381,10 @@ func TestResourceDocHeader(t *testing.T) {
 
 func TestExamplesProcessing(t *testing.T) {
 	initTestPackageSpec(t)
+	dctx := newDocGenContext()
 
 	description := testPackageSpec.Resources["prov:module/resource:Resource"].Description
-	docInfo := decomposeDocstring(description)
+	docInfo := dctx.decomposeDocstring(description)
 	examplesSection := docInfo.examples
 	importSection := docInfo.importDetails
 
@@ -407,8 +410,9 @@ func TestExamplesProcessing(t *testing.T) {
 }
 
 func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	Initialize(tool, pkg)
-	return GeneratePackage(tool, pkg)
+	dctx := newDocGenContext()
+	dctx.initialize(tool, pkg)
+	return dctx.generatePackage(tool, pkg)
 }
 
 func TestGeneratePackage(t *testing.T) {
