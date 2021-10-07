@@ -2974,16 +2974,18 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	if name == "" {
 		name = goPackage(pkg.Name)
 	}
-
+	var pathPrefix string
+	if goPkgInfo.RootPackageName == "" {
+		if goPkgInfo.ImportBasePath != "" {
+			pathPrefix = path.Base(goPkgInfo.ImportBasePath)
+		} else {
+			pathPrefix = goPackage(pkg.Name)
+			fmt.Printf("found prefix from name: %s\n", pathPrefix)
+		}
+	}
 	files := map[string][]byte{}
 	setFile := func(relPath, contents string) {
-		if goPkgInfo.RootPackageName == "" {
-			if goPkgInfo.ImportBasePath != "" {
-				relPath = path.Join(path.Base(goPkgInfo.ImportBasePath), relPath)
-			} else {
-				relPath = path.Join(goPackage(name), relPath)
-			}
-		}
+		relPath = path.Join(pathPrefix, relPath)
 		if _, ok := files[relPath]; ok {
 			panic(errors.Errorf("duplicate file: %s", relPath))
 		}
