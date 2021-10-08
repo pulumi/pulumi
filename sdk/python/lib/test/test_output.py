@@ -17,20 +17,8 @@ from typing import Mapping, Optional, Sequence, cast
 
 from pulumi.runtime import rpc, rpc_manager, settings
 from pulumi import Output
+from .test_next_serialize import pulumi_test
 import pulumi
-
-
-def pulumi_test(coro):
-    wrapped = pulumi.runtime.test(coro)
-    def wrapper(*args, **kwargs):
-        settings.configure(settings.Settings())
-        rpc._RESOURCE_PACKAGES.clear()
-        rpc._RESOURCE_MODULES.clear()
-        rpc_manager.RPC_MANAGER = rpc_manager.RPCManager()
-
-        wrapped(*args, **kwargs)
-
-    return wrapper
 
 
 class OutputSecretTests(unittest.TestCase):

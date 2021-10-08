@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, NamedTuple, Optional, Tuple, TYPE_CHECKING
 
 from google.protobuf import empty_pb2
-from . import rpc, rpc_manager
+from . import rpc, rpc_manager, task_manager
 from .settings import Settings, configure, get_stack, get_project, get_root_resource
 from .sync_await import _ensure_event_loop, _sync_await
 from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
@@ -45,6 +45,7 @@ def test(fn):
             _sync_await(run_pulumi_func(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
         finally:
             rpc_manager.RPC_MANAGER.clear()
+            task_manager.TASK_MANAGER.clear()
 
     return wrapper
 

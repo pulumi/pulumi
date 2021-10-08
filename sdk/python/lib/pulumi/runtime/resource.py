@@ -22,7 +22,7 @@ import grpc
 from . import rpc, settings, known_types
 from .. import log
 from ..runtime.proto import provider_pb2, resource_pb2
-from .rpc_manager import RPC_MANAGER
+from .task_manager import TASK_MANAGER
 from .settings import handle_grpc_error
 from .resource_cycle_breaker import declare_dependency
 from ..output import Output
@@ -257,7 +257,7 @@ def get_resource(res: 'Resource',
 
         rpc.resolve_outputs(res, resolver.serialized_props, resp["state"], {}, resolvers, transform_using_type_metadata)
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc("get resource", do_get)())
+    TASK_MANAGER.do_rpc("get resource", do_get)
 
 
 def _translate_ignore_changes(res: 'Resource',
@@ -400,7 +400,7 @@ def read_resource(res: 'CustomResource',
         rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, {}, resolvers,
                             transform_using_type_metadata)
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
+    TASK_MANAGER.do_rpc("read resource", do_read)
 
 
 def register_resource(res: 'Resource',
@@ -582,8 +582,7 @@ def register_resource(res: 'Resource',
 
             raise
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc(
-        "register resource", do_register)())
+    TASK_MANAGER.do_rpc("register resource", do_register)
 
 
 def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Output[Inputs]]'):
@@ -611,8 +610,7 @@ def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Output[In
         log.debug(
             f"resource registration successful: urn={urn}, props={serialized_props}")
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc(
-        "register resource outputs", do_register_resource_outputs)())
+    TASK_MANAGER.do_rpc("register resource outputs", do_register_resource_outputs)
 
 
 class PropertyDependencies:

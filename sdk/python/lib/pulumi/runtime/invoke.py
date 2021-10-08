@@ -24,6 +24,7 @@ from ..invoke import InvokeOptions
 from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
+from .task_manager import TASK_MANAGER
 from .settings import get_monitor, grpc_error_to_exception, handle_grpc_error
 from .sync_await import _sync_await
 
@@ -257,6 +258,6 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
             resolve_deps.set_result(set())
             raise
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc("call", do_call)())
+    TASK_MANAGER.do_rpc("call", do_call)
 
     return out

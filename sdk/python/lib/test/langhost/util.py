@@ -19,7 +19,6 @@ import asyncio
 import unittest
 from collections import namedtuple
 from concurrent import futures
-from inspect import signature
 import logging
 import subprocess
 from os import path
@@ -288,7 +287,7 @@ class LanghostTest(unittest.TestCase):
                                   _resource, _outputs):
         """
         Method corresponding to the `RegisterResourceOutputs` resource monitor RPC call.
-        Override for custom behavior or assertirons.
+        Override for custom behavior or assertions.
 
         Returns None.
         """

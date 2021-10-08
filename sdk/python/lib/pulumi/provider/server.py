@@ -94,10 +94,7 @@ class ProviderServicer(ResourceProviderServicer):
         # Wait for outstanding RPCs such as more provider Construct
         # calls. This can happen if i.e. provider creates child
         # resources but does not await their URN promises.
-        #
-        # Do not await all tasks as that starts hanging waiting for
-        # indefinite grpc.aio servier tasks.
-        await wait_for_rpcs(await_all_outstanding_tasks=False)
+        await wait_for_rpcs()
 
         return response
 
@@ -168,7 +165,6 @@ class ProviderServicer(ResourceProviderServicer):
                                        state=state,
                                        stateDependencies=deps)
 
-
     async def Call(self, request: proto.CallRequest, context):  # pylint: disable=invalid-overridden-method
         # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
         # avoid modifying globals, we can remove the locking.
@@ -202,10 +198,7 @@ class ProviderServicer(ResourceProviderServicer):
         # Wait for outstanding RPCs such as more provider Construct
         # calls. This can happen if i.e. provider creates child
         # resources but does not await their URN promises.
-        #
-        # Do not await all tasks as that starts hanging waiting for
-        # indefinite grpc.aio servier tasks.
-        await wait_for_rpcs(await_all_outstanding_tasks=False)
+        await wait_for_rpcs()
 
         return response
 
@@ -273,8 +266,7 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
     implementation into a Pulumi-compatible gRPC server.
 
     :param provider: an instance of a Provider subclass
-
-    :args: command line arguiments such as os.argv[1:]
+    :param args: command line arguments such as os.argv[1:]
 
     """
 
@@ -327,8 +319,8 @@ async def _is_resource_reference(the_input: Any, deps: Set[str]) -> bool:
     Returns True if `the_input` is a Resource and only depends on itself.
     """
     return (known_types.is_resource(the_input)
-        and len(deps) == 1
-        and next(iter(deps)) == await cast(Resource, the_input).urn.future())
+            and len(deps) == 1
+            and next(iter(deps)) == await cast(Resource, the_input).urn.future())
 
 
 def _create_provider_resource(ref: str) -> ProviderResource:

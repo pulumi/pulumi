@@ -19,7 +19,9 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, cast
 from google.protobuf import struct_pb2
 from google.protobuf import json_format
 from pulumi.resource import ComponentResource, CustomResource, DependencyResource, Resource, ResourceOptions
-from pulumi.runtime import Mocks, MockCallArgs, MockResourceArgs, ResourceModule, rpc, rpc_manager, set_mocks, settings
+from pulumi.runtime import (
+    Mocks, MockCallArgs, MockResourceArgs, ResourceModule, rpc, rpc_manager, set_mocks, settings, task_manager
+)
 from pulumi import Input, Output, UNKNOWN, input_type
 from pulumi.asset import (
     FileAsset,
@@ -117,6 +119,7 @@ def pulumi_test(coro):
         rpc._RESOURCE_PACKAGES.clear()
         rpc._RESOURCE_MODULES.clear()
         rpc_manager.RPC_MANAGER = rpc_manager.RPCManager()
+        task_manager.TASK_MANAGER = task_manager.TaskManager()
 
         wrapped(*args, **kwargs)
 
