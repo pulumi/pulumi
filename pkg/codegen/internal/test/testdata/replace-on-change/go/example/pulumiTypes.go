@@ -702,6 +702,16 @@ func (o ToyMapOutput) MapIndex(k pulumi.StringInput) ToyOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ChewInput)(nil)).Elem(), ChewArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ChewPtrInput)(nil)).Elem(), ChewArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaserInput)(nil)).Elem(), LaserArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LaserPtrInput)(nil)).Elem(), LaserArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*RecInput)(nil)).Elem(), RecArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*RecPtrInput)(nil)).Elem(), RecArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ToyInput)(nil)).Elem(), ToyArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ToyPtrInput)(nil)).Elem(), ToyArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ToyArrayInput)(nil)).Elem(), ToyArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ToyMapInput)(nil)).Elem(), ToyMap{})
 	pulumi.RegisterOutputType(ChewOutput{})
 	pulumi.RegisterOutputType(ChewPtrOutput{})
 	pulumi.RegisterOutputType(LaserOutput{})

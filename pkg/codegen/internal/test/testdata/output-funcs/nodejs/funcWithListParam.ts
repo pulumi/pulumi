@@ -30,3 +30,12 @@ export interface FuncWithListParamArgs {
 export interface FuncWithListParamResult {
     readonly r: string;
 }
+
+export function funcWithListParamOutput(args?: FuncWithListParamOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithListParamResult> {
+    return pulumi.output(args).apply(a => funcWithListParam(a, opts))
+}
+
+export interface FuncWithListParamOutputArgs {
+    a?: pulumi.Input<pulumi.Input<string>[]>;
+    b?: pulumi.Input<string>;
+}
