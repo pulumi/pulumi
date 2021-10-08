@@ -22,3 +22,6 @@
 
 - [codegen/go] - Use `importBasePath` before `name` if specified
   [#8159](https://github.com/pulumi/pulumi/pull/8159)
+
+- [auto/go] - Mark entire exported map as secret if key in map is secret.
+  [#8179](https://github.com/pulumi/pulumi/pull/8179)

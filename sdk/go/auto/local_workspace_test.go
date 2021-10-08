@@ -1405,9 +1405,15 @@ func TestSupportsStackOutputs(t *testing.T) {
 	// initialize
 	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
 		c := config.New(ctx, "")
+
+		nestedObj := pulumi.Map{
+			"not_a_secret": pulumi.String("foo"),
+			"is_a_secret":  pulumi.ToSecret("iamsecret"),
+		}
 		ctx.Export("exp_static", pulumi.String("foo"))
 		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
 		ctx.Export("exp_secret", c.GetSecret("buzz"))
+		ctx.Export("nested_obj", nestedObj)
 		return nil
 	})
 	if err != nil {
@@ -1428,13 +1434,18 @@ func TestSupportsStackOutputs(t *testing.T) {
 	}
 
 	assertOutputs := func(t *testing.T, outputs OutputMap) {
-		assert.Equal(t, 3, len(outputs), "expected three outputs")
+		assert.Equal(t, 4, len(outputs), "expected four outputs")
 		assert.Equal(t, "foo", outputs["exp_static"].Value)
 		assert.False(t, outputs["exp_static"].Secret)
 		assert.Equal(t, "abc", outputs["exp_cfg"].Value)
 		assert.False(t, outputs["exp_cfg"].Secret)
 		assert.Equal(t, "secret", outputs["exp_secret"].Value)
 		assert.True(t, outputs["exp_secret"].Secret)
+		assert.Equal(t, map[string]interface{}{
+			"is_a_secret":  "iamsecret",
+			"not_a_secret": "foo",
+		}, outputs["nested_obj"].Value)
+		assert.True(t, outputs["nested_obj"].Secret)
 	}
 
 	initialOutputs, err := s.Outputs(ctx)
