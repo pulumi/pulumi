@@ -13,7 +13,9 @@
 # limitations under the License.
 import asyncio
 from typing import Awaitable, Optional, List, Callable, Tuple, Any
+
 from .rpc_manager import RPC_MANAGER
+from .. import log
 
 
 class TaskManager:
@@ -42,6 +44,7 @@ class TaskManager:
         :param name: The name of this task, to be used for logging
         :return: The task
         """
+        log.debug(f"creating task {name}")
         fut = asyncio.ensure_future(coro)
         self.tasks.append(fut)
         return fut
@@ -49,7 +52,7 @@ class TaskManager:
     def do_rpc(self, name: str,
                rpc_function: Callable[..., Awaitable[Tuple[Any, Exception]]]
                ) -> asyncio.Future:
-        return self.create_task(RPC_MANAGER.do_rpc(name, rpc_function)())
+        return self.create_task(RPC_MANAGER.do_rpc(name, rpc_function)(), name)
 
     def clear(self) -> None:
         """Clears any tracked state. For use in testing to ensure test isolation."""
