@@ -1441,6 +1441,10 @@ func TestSupportsStackOutputs(t *testing.T) {
 		assert.False(t, outputs["exp_cfg"].Secret)
 		assert.Equal(t, "secret", outputs["exp_secret"].Value)
 		assert.True(t, outputs["exp_secret"].Secret)
+		assert.Equal(t, map[string]interface{}{
+			"is_a_secret":  "iamsecret",
+			"not_a_secret": "foo",
+		}, outputs["nested_obj"].Value)
 		assert.True(t, outputs["nested_obj"].Secret)
 	}
 
