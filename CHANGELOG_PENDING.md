@@ -20,8 +20,10 @@
 
 ### Bug Fixes
 
-- [codegen/go] - Use `importBasePath` before `name` if specified
+- [codegen/go] - Use `importBasePath` before `name` if specified for name 
+  and path.
   [#8159](https://github.com/pulumi/pulumi/pull/8159)
+  [#8187](https://github.com/pulumi/pulumi/pull/8187)
 
 - [auto/go] - Mark entire exported map as secret if key in map is secret.
   [#8179](https://github.com/pulumi/pulumi/pull/8179)
