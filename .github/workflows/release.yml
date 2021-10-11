@@ -485,3 +485,5 @@ jobs:
           git fetch --quiet --prune --unshallow --tags
       - name: Run Container Tests
         run: make test_containers VERSION=v$(pulumictl get version --language generic -o)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
