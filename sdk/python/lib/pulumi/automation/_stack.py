@@ -20,7 +20,7 @@ import threading
 from concurrent import futures
 from enum import Enum
 from datetime import datetime
-from typing import List, Any, Mapping, MutableMapping, Optional, Callable, Tuple
+from typing import List, Any, Mapping, Optional, Callable, Tuple
 import grpc
 
 from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
@@ -154,10 +154,11 @@ class Stack:
         """
         return Stack(stack_name, workspace, StackInitMode.CREATE_OR_SELECT)
 
-    def __init__(self, name: str, workspace: Workspace, mode: StackInitMode) -> None:
+    def __init__(self, name: str, workspace: Workspace, mode: StackInitMode, set_current: bool = True) -> None:
         """
         Stack is an isolated, independently configurable instance of a Pulumi program.
-        Stack exposes methods for the full pulumi lifecycle (up/preview/refresh/destroy), as well as managing configuration.
+        Stack exposes methods for the full pulumi lifecycle (up/preview/refresh/destroy), as well as
+        managing configuration.
         Multiple Stacks are commonly used to denote different phases of development
         (such as development, staging and production) or feature branches (such as feature-x-dev, jane-feature-x-dev).
         """
@@ -173,14 +174,14 @@ class Stack:
             raise TypeError("mode must be of type 'StackInitMode'")
 
         if mode is StackInitMode.CREATE:
-            workspace.create_stack(name)
+            workspace.create_stack(name, set_current)
         elif mode is StackInitMode.SELECT:
-            workspace.select_stack(name)
+            workspace.select_stack(name, set_current)
         elif mode is StackInitMode.CREATE_OR_SELECT:
             try:
-                workspace.create_stack(name)
+                workspace.create_stack(name, set_current)
             except StackAlreadyExistsError:
-                workspace.select_stack(name)
+                workspace.select_stack(name, set_current)
 
     def __repr__(self):
         return f"Stack(stack_name={self.name!r}, workspace={self.workspace!r}, mode={self._mode!r})"
@@ -530,7 +531,8 @@ class Stack:
                                     end_time=datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT),
                                     version=summary_json["version"] if "version" in summary_json else None,
                                     deployment=summary_json["Deployment"] if "Deployment" in summary_json else None,
-                                    resource_changes=summary_json["resourceChanges"] if "resourceChanges" in summary_json else None)
+                                    resource_changes=summary_json["resourceChanges"]
+                                    if "resourceChanges" in summary_json else None)
             summaries.append(summary)
         return summaries
 

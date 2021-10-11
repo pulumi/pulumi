@@ -28,7 +28,7 @@ from ._stack import _DATETIME_FORMAT, Stack
 from ._output import OutputMap, OutputValue
 from ._cmd import _run_pulumi_cmd, CommandResult, OnOutput
 from ._minimum_version import _MINIMUM_VERSION
-from .errors import InvalidVersionError
+from .errors import InvalidVersionError, StackNotFoundError
 
 _setting_extensions = [".yaml", ".yml", ".json"]
 
@@ -117,7 +117,8 @@ class LocalWorkspace(Workspace):
                 found_ext = ext
                 break
         path = os.path.join(self.work_dir, f"Pulumi{found_ext}")
-        writable_settings = {key: settings.__dict__[key] for key in settings.__dict__ if settings.__dict__[key] is not None}
+        writable_settings = {key: settings.__dict__[key] for key in settings.__dict__
+                             if settings.__dict__[key] is not None}
         with open(path, "w", encoding="utf-8") as file:
             if found_ext == ".json":
                 json.dump(writable_settings, file, indent=4)
@@ -208,14 +209,31 @@ class LocalWorkspace(Workspace):
                 return stack
         return None
 
-    def create_stack(self, stack_name: str) -> None:
+    def set_current_stack(self, stack_name: str):
+        """
+        Set the specified stack as current.
+
+        :param str stack_name: The name of the stack.
+        """
+        self._run_pulumi_cmd_sync(["stack", "select", stack_name])
+
+    def create_stack(self, stack_name: str, set_current: bool = True) -> None:
         args = ["stack", "init", stack_name]
+        if not set_current:
+            args.append("--set-current=False")
         if self.secrets_provider:
             args.extend(["--secrets-provider", self.secrets_provider])
         self._run_pulumi_cmd_sync(args)
 
-    def select_stack(self, stack_name: str) -> None:
-        self._run_pulumi_cmd_sync(["stack", "select", stack_name])
+    def select_stack(self, stack_name: str, set_current: bool = True) -> None:
+        if set_current:
+            self.set_current_stack(stack_name)
+            return
+        stacks = self.list_stacks()
+        for stack in stacks:
+            if stack.name == stack_name:
+                return
+        raise StackNotFoundError(CommandResult(stderr=f"no stack named {stack_name} found", code=1))
 
     def remove_stack(self, stack_name: str) -> None:
         self._run_pulumi_cmd_sync(["stack", "rm", "--yes", stack_name])
@@ -229,7 +247,8 @@ class LocalWorkspace(Workspace):
                 name=stack_json["name"],
                 current=stack_json["current"],
                 update_in_progress=stack_json["updateInProgress"],
-                last_update=datetime.strptime(stack_json["lastUpdate"], _DATETIME_FORMAT) if "lastUpdate" in stack_json else None,
+                last_update=datetime.strptime(stack_json["lastUpdate"], _DATETIME_FORMAT)
+                if "lastUpdate" in stack_json else None,
                 resource_count=stack_json["resourceCount"] if "resourceCount" in stack_json else None,
                 url=stack_json["url"] if "url" in stack_json else None)
             stack_list.append(stack)
@@ -260,7 +279,8 @@ class LocalWorkspace(Workspace):
                 kind=plugin_json["kind"],
                 size=plugin_json["size"],
                 last_used_time=datetime.strptime(plugin_json["lastUsedTime"], _DATETIME_FORMAT),
-                install_time=datetime.strptime(plugin_json["installTime"], _DATETIME_FORMAT) if "installTime" in plugin_json else None,
+                install_time=datetime.strptime(plugin_json["installTime"], _DATETIME_FORMAT)
+                if "installTime" in plugin_json else None,
                 version=plugin_json["version"] if "version" in plugin_json else None
             )
             plugin_list.append(plugin)
@@ -279,7 +299,8 @@ class LocalWorkspace(Workspace):
 
     def stack_outputs(self, stack_name: str) -> OutputMap:
         masked_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--stack", stack_name])
-        plaintext_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--show-secrets", "--stack", stack_name])
+        plaintext_result = self._run_pulumi_cmd_sync(
+            ["stack", "output", "--json", "--show-secrets", "--stack", stack_name])
         masked_outputs = json.loads(masked_result.stdout)
         plaintext_outputs = json.loads(plaintext_result.stdout)
         outputs: OutputMap = {}
@@ -420,7 +441,8 @@ def create_or_select_stack(stack_name: str,
     """
     args = locals()
     if _is_inline_program(**args):
-        return _inline_source_stack_helper(stack_name, program, project_name, Stack.create_or_select, opts)  # type: ignore
+        return _inline_source_stack_helper(
+            stack_name, program, project_name, Stack.create_or_select, opts)  # type: ignore
     if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.create_or_select, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")

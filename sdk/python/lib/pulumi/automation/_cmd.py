@@ -23,7 +23,7 @@ OnOutput = Callable[[str], Any]
 
 
 class CommandResult:
-    def __init__(self, stdout: str, stderr: str, code: int) -> None:
+    def __init__(self, stdout: str = "", stderr: str = "", code: int = 0) -> None:
         self.stdout = stdout
         self.stderr = stderr
         self.code = code

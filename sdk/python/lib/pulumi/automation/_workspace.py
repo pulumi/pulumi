@@ -274,21 +274,23 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def create_stack(self, stack_name: str) -> None:
+    def create_stack(self, stack_name: str, set_current: bool = True) -> None:
         """
         Creates and sets a new stack with the stack name, failing if one already exists.
 
         :param str stack_name: The name of the stack to create
+        :param bool set_current: Whether to set the stack as current
         :returns: None
         :raises CommandError Raised if a stack with the same name exists.
         """
 
     @abstractmethod
-    def select_stack(self, stack_name: str) -> None:
+    def select_stack(self, stack_name: str, set_current: bool = True) -> None:
         """
         Selects and sets an existing stack matching the stack stack_name, failing if none exists.
 
         :param stack_name: The name of the stack to select
+        :param bool set_current: Whether to set the stack as current
         :returns: None
         :raises CommandError Raised if no matching stack exists.
         """
