@@ -1,5 +1,7 @@
 ### Improvements
 
+- [automation/python] - Use `rstrip` rather than `strip` for the sake of indentation
+  [#8160](https://github.com/pulumi/pulumi/pull/8160)
 - [codegen/nodejs] - Add helper function forms `$fnOutput` that accept
   `Input`s, return an `Output`, and wrap the underlying `$fn` call.
   This change addreses
