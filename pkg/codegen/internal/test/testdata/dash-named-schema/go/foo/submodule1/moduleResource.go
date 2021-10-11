@@ -14,7 +14,7 @@ import (
 type ModuleResource struct {
 	pulumi.CustomResourceState
 
-	Thing foo.TopLevelPtrOutput `pulumi:"thing"`
+	Thing foobar.TopLevelPtrOutput `pulumi:"thing"`
 }
 
 // NewModuleResource registers a new resource with the given unique name, arguments, and options.
@@ -56,12 +56,12 @@ func (ModuleResourceState) ElementType() reflect.Type {
 }
 
 type moduleResourceArgs struct {
-	Thing *foo.TopLevel `pulumi:"thing"`
+	Thing *foobar.TopLevel `pulumi:"thing"`
 }
 
 // The set of arguments for constructing a ModuleResource resource.
 type ModuleResourceArgs struct {
-	Thing foo.TopLevelPtrInput
+	Thing foobar.TopLevelPtrInput
 }
 
 func (ModuleResourceArgs) ElementType() reflect.Type {

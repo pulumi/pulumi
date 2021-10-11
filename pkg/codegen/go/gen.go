@@ -2993,18 +2993,21 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 	sort.Strings(pkgMods)
 
-	name := goPkgInfo.RootPackageName
-	if name == "" {
-		name = goPackage(pkg.Name)
-	}
+	var name string
 	var pathPrefix string
-	if goPkgInfo.RootPackageName == "" {
+	if goPkgInfo.RootPackageName != "" {
+		// package structure is flat
+		name = goPkgInfo.RootPackageName
+	} else {
 		if goPkgInfo.ImportBasePath != "" {
 			pathPrefix = path.Base(goPkgInfo.ImportBasePath)
 		} else {
 			pathPrefix = goPackage(pkg.Name)
 		}
+		// Name is derived from path
+		name = goPackage(pathPrefix)
 	}
+
 	files := map[string][]byte{}
 	setFile := func(relPath, contents string) {
 		relPath = path.Join(pathPrefix, relPath)
@@ -3186,7 +3189,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 // goPackage returns the suggested package name for the given string.
 func goPackage(name string) string {
-	return strings.Split(name, "-")[0]
+	return strings.ReplaceAll(name, "-", "")
 }
 
 const utilitiesFile = `
