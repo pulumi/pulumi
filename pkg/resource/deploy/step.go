@@ -341,7 +341,8 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		return resource.StatusOK, nil,
 			errors.Errorf("unable to delete resource %q\n"+
 				"as it is currently marked for protection. To unprotect the resource, "+
-				"either remove the `protect` flag from the resource in your Pulumi program or use the command:\n"+
+				"either remove the `protect` flag from the resource in your Pulumi"+
+				"program and run `pulumi up` or use the command:\n"+
 				"`pulumi state unprotect %s`", s.old.URN, s.old.URN)
 	}
 
