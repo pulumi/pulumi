@@ -258,6 +258,9 @@ func (o PersonMapOutput) MapIndex(k pulumi.StringInput) PersonOutput {
 
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*PersonInput)(nil)).Elem(), &Person{})
+	pulumi.RegisterInputType(reflect.TypeOf((*PersonPtrInput)(nil)).Elem(), &Person{})
+	pulumi.RegisterInputType(reflect.TypeOf((*PersonArrayInput)(nil)).Elem(), &PersonArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*PersonMapInput)(nil)).Elem(), &PersonMap{})
 	pulumi.RegisterOutputType(PersonOutput{})
 	pulumi.RegisterOutputType(PersonPtrOutput{})
 	pulumi.RegisterOutputType(PersonArrayOutput{})

@@ -253,6 +253,9 @@ func (o RecMapOutput) MapIndex(k pulumi.StringInput) RecOutput {
 
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*RecInput)(nil)).Elem(), &Rec{})
+	pulumi.RegisterInputType(reflect.TypeOf((*RecPtrInput)(nil)).Elem(), &Rec{})
+	pulumi.RegisterInputType(reflect.TypeOf((*RecArrayInput)(nil)).Elem(), &RecArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*RecMapInput)(nil)).Elem(), &RecMap{})
 	pulumi.RegisterOutputType(RecOutput{})
 	pulumi.RegisterOutputType(RecPtrOutput{})
 	pulumi.RegisterOutputType(RecArrayOutput{})
