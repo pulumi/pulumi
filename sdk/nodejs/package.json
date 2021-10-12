@@ -21,8 +21,6 @@
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
         "source-map-support": "^0.4.16",
-        "ts-node": "^7.0.1",
-        "typescript": "~3.7.3",
         "upath": "^1.1.0"
     },
     "devDependencies": {
@@ -41,6 +39,10 @@
         "eslint-plugin-import": "^2.23.4",
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0"
+    },
+    "peerDependencies": {
+        "ts-node": ">7.0.1",
+        "typescript": ">3.7.3"
     },
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
