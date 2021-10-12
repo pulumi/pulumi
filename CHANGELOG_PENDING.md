@@ -10,6 +10,9 @@
 - [sdk/dotnet] - Marshal output values.
   [#8316](https://github.com/pulumi/pulumi/pull/8316)
 
+- [sdk/nodejs] - Unmarshal output values in component provider.
+  [#8205](https://github.com/pulumi/pulumi/pull/8205)
+
 ### Bug Fixes
 
 - [engine] - Compute dependents correctly during targeted deletes.
