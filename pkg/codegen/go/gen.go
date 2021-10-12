@@ -1743,27 +1743,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		}
 	}
 
-	// Register all output types
-	fmt.Fprintf(w, "func init() {\n")
-	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
-	for _, method := range r.Methods {
-		if method.Function.Outputs != nil {
-			if pkg.liftSingleValueMethodReturns && len(method.Function.Outputs.Properties) == 1 {
-				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", camel(name), Title(method.Name))
-			} else {
-				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", name, Title(method.Name))
-			}
-		}
-	}
-
-	if generateResourceContainerTypes {
-		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
-		if !r.IsProvider {
-			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
-			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
-		}
-	}
-	fmt.Fprintf(w, "}\n\n")
+	pkg.genResourceRegistrations(w, r, generateResourceContainerTypes)
 
 	return nil
 }
@@ -2188,6 +2168,72 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.Obje
 	}
 
 	fmt.Fprintf(w, "}\n")
+}
+
+func (pkg *pkgContext) genEnumRegistrations(w io.Writer) {
+	fmt.Fprintf(w, "func init() {\n")
+	// Register all input types
+	if !pkg.disableInputTypeRegistrations {
+		for _, e := range pkg.enums {
+			name, details := pkg.tokenToEnum(e.Token), pkg.detailsForType(e)
+			// We can only do this if we can instantiate the enum.
+			if len(e.Elements) > 0 {
+				instance := e.Elements[0].Name
+				fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[2]s)\n", name, instance)
+				fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]sPtrOutput{})\n", name)
+				if details.arrayElement {
+					fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArrayOutput{})\n", name)
+				}
+				if details.mapElement {
+					fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMapOutput{})\n", name)
+				}
+			}
+		}
+	}
+	// Register all output types
+	for _, e := range pkg.enums {
+		name, details := pkg.tokenToEnum(e.Token), pkg.detailsForType(e)
+		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
+		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
+		if details.arrayElement {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
+		}
+		if details.mapElement {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
+		}
+	}
+	fmt.Fprintf(w, "}\n\n")
+}
+
+func (pkg *pkgContext) genResourceRegistrations(w io.Writer, r *schema.Resource, generateResourceContainerTypes bool) {
+	name := disambiguatedResourceName(r, pkg)
+	fmt.Fprintf(w, "func init() {\n")
+	// Register input type
+	if !pkg.disableInputTypeRegistrations {
+		fmt.Fprintf(w,
+			"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), &%[1]s{})\n",
+			name)
+	}
+	// Register all output types
+	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
+	for _, method := range r.Methods {
+		if method.Function.Outputs != nil {
+			if pkg.liftSingleValueMethodReturns && len(method.Function.Outputs.Properties) == 1 {
+				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", camel(name), Title(method.Name))
+			} else {
+				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", name, Title(method.Name))
+			}
+		}
+	}
+
+	if generateResourceContainerTypes {
+		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
+		if !r.IsProvider {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
+		}
+	}
+	fmt.Fprintf(w, "}\n\n")
 }
 
 func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAliases map[string]string, seen map[schema.Type]struct{}) {
@@ -3115,21 +3161,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				}
 				delete(knownTypes, e)
 			}
-			// Register all output types
-			fmt.Fprintf(buffer, "func init() {\n")
-			for _, e := range pkg.enums {
-				name := pkg.tokenToEnum(e.Token)
-				fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
-				fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
-				details := pkg.detailsForType(e)
-				if details.arrayElement {
-					fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
-				}
-				if details.mapElement {
-					fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
-				}
-			}
-			fmt.Fprintf(buffer, "}\n\n")
+			pkg.genEnumRegistrations(buffer)
 			setFile(path.Join(mod, "pulumiEnums.go"), buffer.String())
 		}
 
