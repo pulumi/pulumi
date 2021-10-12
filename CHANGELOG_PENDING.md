@@ -1,5 +1,8 @@
 ### Improvements
 
+- [auto/dotnet] - Add `pulumi state delete` and `pulumi state unprotect` functionality
+  [#8202](https://github.com/pulumi/pulumi/pull/8202)
+
 - [automation/python] - Use `rstrip` rather than `strip` for the sake of indentation
   [#8160](https://github.com/pulumi/pulumi/pull/8160)
 - [codegen/nodejs] - Add helper function forms `$fnOutput` that accept
