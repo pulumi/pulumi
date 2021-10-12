@@ -175,8 +175,8 @@ func (in *colorPtr) ToColorPtrOutputWithContext(ctx context.Context) ColorPtrOut
 }
 
 func init() {
-	pulumi.RegisterInputType(reflect.TypeOf((*ColorInput)(nil)).Elem(), ColorBlue)
-	pulumi.RegisterInputType(reflect.TypeOf((*ColorPtrInput)(nil)).Elem(), ColorPtrOutput{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ColorInput)(nil)).Elem(), Color("blue"))
+	pulumi.RegisterInputType(reflect.TypeOf((*ColorPtrInput)(nil)).Elem(), Color("blue"))
 	pulumi.RegisterOutputType(ColorOutput{})
 	pulumi.RegisterOutputType(ColorPtrOutput{})
 }

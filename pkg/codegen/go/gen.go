@@ -2175,18 +2175,32 @@ func (pkg *pkgContext) genEnumRegistrations(w io.Writer) {
 	// Register all input types
 	if !pkg.disableInputTypeRegistrations {
 		for _, e := range pkg.enums {
+			// We don't need to bother emitting registrations for enums with no
+			// values because they cannot be constructed.
+			if len(e.Elements) == 0 {
+				continue
+			}
 			name, details := pkg.tokenToEnum(e.Token), pkg.detailsForType(e)
-			// We can only do this if we can instantiate the enum.
-			if len(e.Elements) > 0 {
-				instance := e.Elements[0].Name
-				fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[2]s)\n", name, instance)
-				fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]sPtrOutput{})\n", name)
-				if details.arrayElement {
-					fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArrayOutput{})\n", name)
-				}
-				if details.mapElement {
-					fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMapOutput{})\n", name)
-				}
+			instanceGenerator := "%v"
+			if reflect.TypeOf(e.Elements[0].Value).Kind() == reflect.String {
+				instanceGenerator = "%q"
+			}
+			instance := fmt.Sprintf(instanceGenerator, e.Elements[0].Value)
+			fmt.Fprintf(w,
+				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]s(%[2]s))\n",
+				name, instance)
+			fmt.Fprintf(w,
+				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]s(%[2]s))\n",
+				name, instance)
+			if details.arrayElement {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n",
+					name)
+			}
+			if details.mapElement {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n",
+					name)
 			}
 		}
 	}

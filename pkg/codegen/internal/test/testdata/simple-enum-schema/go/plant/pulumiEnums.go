@@ -679,14 +679,14 @@ func (in *containerSizePtr) ToContainerSizePtrOutputWithContext(ctx context.Cont
 }
 
 func init() {
-	pulumi.RegisterInputType(reflect.TypeOf((*CloudAuditOptionsLogNameInput)(nil)).Elem(), CloudAuditOptionsLogNameUnspecifiedLogName)
-	pulumi.RegisterInputType(reflect.TypeOf((*CloudAuditOptionsLogNamePtrInput)(nil)).Elem(), CloudAuditOptionsLogNamePtrOutput{})
-	pulumi.RegisterInputType(reflect.TypeOf((*ContainerBrightnessInput)(nil)).Elem(), ContainerBrightnessZeroPointOne)
-	pulumi.RegisterInputType(reflect.TypeOf((*ContainerBrightnessPtrInput)(nil)).Elem(), ContainerBrightnessPtrOutput{})
-	pulumi.RegisterInputType(reflect.TypeOf((*ContainerColorInput)(nil)).Elem(), ContainerColorRed)
-	pulumi.RegisterInputType(reflect.TypeOf((*ContainerColorPtrInput)(nil)).Elem(), ContainerColorPtrOutput{})
-	pulumi.RegisterInputType(reflect.TypeOf((*ContainerSizeInput)(nil)).Elem(), ContainerSizeFourInch)
-	pulumi.RegisterInputType(reflect.TypeOf((*ContainerSizePtrInput)(nil)).Elem(), ContainerSizePtrOutput{})
+	pulumi.RegisterInputType(reflect.TypeOf((*CloudAuditOptionsLogNameInput)(nil)).Elem(), CloudAuditOptionsLogName("UNSPECIFIED_LOG_NAME"))
+	pulumi.RegisterInputType(reflect.TypeOf((*CloudAuditOptionsLogNamePtrInput)(nil)).Elem(), CloudAuditOptionsLogName("UNSPECIFIED_LOG_NAME"))
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerBrightnessInput)(nil)).Elem(), ContainerBrightness(0.1))
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerBrightnessPtrInput)(nil)).Elem(), ContainerBrightness(0.1))
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerColorInput)(nil)).Elem(), ContainerColor("red"))
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerColorPtrInput)(nil)).Elem(), ContainerColor("red"))
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerSizeInput)(nil)).Elem(), ContainerSize(4))
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerSizePtrInput)(nil)).Elem(), ContainerSize(4))
 	pulumi.RegisterOutputType(CloudAuditOptionsLogNameOutput{})
 	pulumi.RegisterOutputType(CloudAuditOptionsLogNamePtrOutput{})
 	pulumi.RegisterOutputType(ContainerBrightnessOutput{})
