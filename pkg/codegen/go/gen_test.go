@@ -50,8 +50,8 @@ func TestInputUsage(t *testing.T) {
 
 func TestGoPackageName(t *testing.T) {
 	assert.Equal(t, "aws", goPackage("aws"))
-	assert.Equal(t, "azure", goPackage("azure-nextgen"))
-	assert.Equal(t, "plant", goPackage("plant-provider"))
+	assert.Equal(t, "azurenextgen", goPackage("azure-nextgen"))
+	assert.Equal(t, "plantprovider", goPackage("plant-provider"))
 	assert.Equal(t, "", goPackage(""))
 }
 
@@ -172,7 +172,7 @@ func TestPackageNaming(t *testing.T) {
 		},
 		{
 			name:         "named-package",
-			expectedRoot: "named",
+			expectedRoot: "namedpackage",
 		},
 	}
 	for _, tt := range testCases {

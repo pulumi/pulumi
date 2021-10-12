@@ -60,7 +60,7 @@ def _run_pulumi_cmd(args: List[str],
                 if output == "" and process.poll() is not None:
                     break
                 if output:
-                    text = output.strip()
+                    text = output.rstrip()
                     if on_output:
                         on_output(text)
                     stdout_chunks.append(text)
