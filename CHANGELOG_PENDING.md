@@ -1,5 +1,6 @@
 ### Improvements
 
+- [sdk/nodejs] - Updates SDK to allow using any newer version of ts-node and typescript
 - [automation/python] - Use `rstrip` rather than `strip` for the sake of indentation
   [#8160](https://github.com/pulumi/pulumi/pull/8160)
 - [codegen/nodejs] - Add helper function forms `$fnOutput` that accept
