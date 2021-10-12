@@ -2,9 +2,6 @@
 title: "registrygeoreplication"
 title_tag: "registrygeoreplication.registrygeoreplication"
 meta_desc: ""
-menu:
-    reference:
-        parent: API Reference
 layout: api
 no_edit_this_page: true
 ---
