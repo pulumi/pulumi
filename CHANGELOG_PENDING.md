@@ -22,6 +22,9 @@
 
 - [codegen/go] Register input types for schema object types.
   [#7959](https://github.com/pulumi/pulumi/pull/7959)
+  
+- [codegen/go] Register input types for schema resource and enum types.
+  [#8204]((https://github.com/pulumi/pulumi/pull/8204))
 
 - [codegen/go] Add schema flag to disable registering input types.
   [#8198](https://github.com/pulumi/pulumi/pull/8198)
