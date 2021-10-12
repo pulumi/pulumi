@@ -178,6 +178,11 @@ var sdkTests = []sdkTest{
 		Description: "Test the fix for pulumi/pulumi#8110 nodejs compilation error",
 		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
 	},
+	{
+		Directory:   "dashed-import-schema",
+		Description: "Ensure that we handle all valid go import paths",
+		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
+	},
 }
 
 var genSDKOnly bool
