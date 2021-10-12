@@ -23,6 +23,9 @@
 - [codegen/go] Register input types for schema object types.
   [#7959](https://github.com/pulumi/pulumi/pull/7959)
 
+- [codegen/go] Add schema flag to disable registering input types.
+  [#8198](https://github.com/pulumi/pulumi/pull/8198)
+
 ### Bug Fixes
 
 - [codegen/go] - Use `importBasePath` before `name` if specified for name 
