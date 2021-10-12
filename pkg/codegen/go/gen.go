@@ -113,6 +113,9 @@ type pkgContext struct {
 
 	// Determines whether to make single-return-value methods return an output struct or the value
 	liftSingleValueMethodReturns bool
+
+	// Determines if we should emit type registration code
+	disableInputTypeRegistrations bool
 }
 
 func (pkg *pkgContext) detailsForType(t schema.Type) *typeDetails {
@@ -2143,24 +2146,26 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.Obje
 	fmt.Fprintf(w, "func init() {\n")
 
 	// Input types.
-	for _, obj := range objTypes {
-		name, details := pkg.tokenToType(obj.Token), pkg.detailsForType(obj)
-		fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]sArgs{})\n", name)
-		if details.ptrElement {
-			fmt.Fprintf(w,
-				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]sArgs{})\n", name)
+	if !pkg.disableInputTypeRegistrations {
+		for _, obj := range objTypes {
+			name, details := pkg.tokenToType(obj.Token), pkg.detailsForType(obj)
+			fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]sArgs{})\n", name)
+			if details.ptrElement {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]sArgs{})\n", name)
+			}
+			if details.arrayElement {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n", name)
+			}
+			if details.mapElement {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n", name)
+			}
 		}
-		if details.arrayElement {
-			fmt.Fprintf(w,
-				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n", name)
+		for _, t := range types {
+			fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]s{})\n", t)
 		}
-		if details.mapElement {
-			fmt.Fprintf(w,
-				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n", name)
-		}
-	}
-	for _, t := range types {
-		fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]s{})\n", t)
 	}
 
 	// Output types.
@@ -2550,21 +2555,22 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		pack, ok := packages[mod]
 		if !ok {
 			pack = &pkgContext{
-				pkg:                          pkg,
-				mod:                          mod,
-				importBasePath:               goInfo.ImportBasePath,
-				rootPackageName:              goInfo.RootPackageName,
-				typeDetails:                  map[schema.Type]*typeDetails{},
-				names:                        codegen.NewStringSet(),
-				schemaNames:                  codegen.NewStringSet(),
-				renamed:                      map[string]string{},
-				duplicateTokens:              map[string]bool{},
-				functionNames:                map[*schema.Function]string{},
-				tool:                         tool,
-				modToPkg:                     goInfo.ModuleToPackage,
-				pkgImportAliases:             goInfo.PackageImportAliases,
-				packages:                     packages,
-				liftSingleValueMethodReturns: goInfo.LiftSingleValueMethodReturns,
+				pkg:                           pkg,
+				mod:                           mod,
+				importBasePath:                goInfo.ImportBasePath,
+				rootPackageName:               goInfo.RootPackageName,
+				typeDetails:                   map[schema.Type]*typeDetails{},
+				names:                         codegen.NewStringSet(),
+				schemaNames:                   codegen.NewStringSet(),
+				renamed:                       map[string]string{},
+				duplicateTokens:               map[string]bool{},
+				functionNames:                 map[*schema.Function]string{},
+				tool:                          tool,
+				modToPkg:                      goInfo.ModuleToPackage,
+				pkgImportAliases:              goInfo.PackageImportAliases,
+				packages:                      packages,
+				liftSingleValueMethodReturns:  goInfo.LiftSingleValueMethodReturns,
+				disableInputTypeRegistrations: goInfo.DisableInputTypeRegistrations,
 			}
 			packages[mod] = pack
 		}
