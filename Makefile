@@ -17,6 +17,8 @@ TEST_ALL_DEPS = build $(SUB_PROJECTS:%=%_install)
 
 ensure::
 	$(call STEP_MESSAGE)
+	@echo "Check for pulumictl"; [ -e "$(shell which pulumictl)" ]
+
 	@echo "cd sdk && go mod download"; cd sdk && go mod download
 	@echo "cd pkg && go mod download"; cd pkg && go mod download
 	@echo "cd tests && go mod download"; cd tests && go mod download
