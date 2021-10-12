@@ -1704,6 +1704,10 @@ func (mod *modContext) genIndex() indexData {
 	modName := mod.getModuleFileName()
 	title := modName
 
+	if title == "" {
+		title = formatTitleText(mod.pkg.Name)
+	}
+
 	// If there are submodules, list them.
 	for _, mod := range mod.children {
 		modName := mod.getModuleFileName()
