@@ -129,5 +129,6 @@ func (o RubberTreeOutput) ToRubberTreeOutputWithContext(ctx context.Context) Rub
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*RubberTreeInput)(nil)).Elem(), &RubberTree{})
 	pulumi.RegisterOutputType(RubberTreeOutput{})
 }

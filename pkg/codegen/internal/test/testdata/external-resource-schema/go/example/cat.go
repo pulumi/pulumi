@@ -256,6 +256,7 @@ func (o CatMapOutput) MapIndex(k pulumi.StringInput) CatOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*CatInput)(nil)).Elem(), &Cat{})
 	pulumi.RegisterOutputType(CatOutput{})
 	pulumi.RegisterOutputType(CatPtrOutput{})
 	pulumi.RegisterOutputType(CatArrayOutput{})

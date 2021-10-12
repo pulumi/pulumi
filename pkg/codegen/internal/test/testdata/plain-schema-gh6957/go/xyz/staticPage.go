@@ -243,6 +243,7 @@ func (o StaticPageMapOutput) MapIndex(k pulumi.StringInput) StaticPageOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*StaticPageInput)(nil)).Elem(), &StaticPage{})
 	pulumi.RegisterOutputType(StaticPageOutput{})
 	pulumi.RegisterOutputType(StaticPagePtrOutput{})
 	pulumi.RegisterOutputType(StaticPageArrayOutput{})

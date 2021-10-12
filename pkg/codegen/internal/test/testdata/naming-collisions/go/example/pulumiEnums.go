@@ -503,6 +503,12 @@ func (in *resourceTypeEnumPtr) ToResourceTypeEnumPtrOutputWithContext(ctx contex
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ExampleEnumInput)(nil)).Elem(), ExampleEnumOne)
+	pulumi.RegisterInputType(reflect.TypeOf((*ExampleEnumPtrInput)(nil)).Elem(), ExampleEnumPtrOutput{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ExampleEnumInputEnumInput)(nil)).Elem(), ExampleEnumInputEnumOne)
+	pulumi.RegisterInputType(reflect.TypeOf((*ExampleEnumInputEnumPtrInput)(nil)).Elem(), ExampleEnumInputEnumPtrOutput{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ResourceTypeEnumInput)(nil)).Elem(), ResourceTypeEnumHaha)
+	pulumi.RegisterInputType(reflect.TypeOf((*ResourceTypeEnumPtrInput)(nil)).Elem(), ResourceTypeEnumPtrOutput{})
 	pulumi.RegisterOutputType(ExampleEnumOutput{})
 	pulumi.RegisterOutputType(ExampleEnumPtrOutput{})
 	pulumi.RegisterOutputType(ExampleEnumInputEnumOutput{})

@@ -254,6 +254,7 @@ func (o PetMapOutput) MapIndex(k pulumi.StringInput) PetOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*PetInput)(nil)).Elem(), &Pet{})
 	pulumi.RegisterOutputType(PetOutput{})
 	pulumi.RegisterOutputType(PetPtrOutput{})
 	pulumi.RegisterOutputType(PetArrayOutput{})

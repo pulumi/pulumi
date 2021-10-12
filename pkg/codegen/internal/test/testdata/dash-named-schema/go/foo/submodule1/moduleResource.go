@@ -102,5 +102,6 @@ func (o ModuleResourceOutput) ToModuleResourceOutputWithContext(ctx context.Cont
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ModuleResourceInput)(nil)).Elem(), &ModuleResource{})
 	pulumi.RegisterOutputType(ModuleResourceOutput{})
 }

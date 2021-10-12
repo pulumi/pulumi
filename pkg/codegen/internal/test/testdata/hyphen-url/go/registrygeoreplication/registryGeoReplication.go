@@ -244,6 +244,7 @@ func (o RegistryGeoReplicationMapOutput) MapIndex(k pulumi.StringInput) Registry
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*RegistryGeoReplicationInput)(nil)).Elem(), &RegistryGeoReplication{})
 	pulumi.RegisterOutputType(RegistryGeoReplicationOutput{})
 	pulumi.RegisterOutputType(RegistryGeoReplicationPtrOutput{})
 	pulumi.RegisterOutputType(RegistryGeoReplicationArrayOutput{})

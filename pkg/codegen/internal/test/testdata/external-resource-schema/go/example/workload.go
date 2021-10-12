@@ -253,6 +253,7 @@ func (o WorkloadMapOutput) MapIndex(k pulumi.StringInput) WorkloadOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*WorkloadInput)(nil)).Elem(), &Workload{})
 	pulumi.RegisterOutputType(WorkloadOutput{})
 	pulumi.RegisterOutputType(WorkloadPtrOutput{})
 	pulumi.RegisterOutputType(WorkloadArrayOutput{})

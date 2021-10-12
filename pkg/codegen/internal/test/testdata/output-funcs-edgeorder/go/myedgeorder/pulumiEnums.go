@@ -178,6 +178,8 @@ func (in *supportedFilterTypesPtr) ToSupportedFilterTypesPtrOutputWithContext(ct
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*SupportedFilterTypesInput)(nil)).Elem(), SupportedFilterTypesShipToCountries)
+	pulumi.RegisterInputType(reflect.TypeOf((*SupportedFilterTypesPtrInput)(nil)).Elem(), SupportedFilterTypesPtrOutput{})
 	pulumi.RegisterOutputType(SupportedFilterTypesOutput{})
 	pulumi.RegisterOutputType(SupportedFilterTypesPtrOutput{})
 }

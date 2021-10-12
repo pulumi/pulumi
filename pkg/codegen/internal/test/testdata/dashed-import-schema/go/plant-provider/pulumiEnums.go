@@ -679,6 +679,14 @@ func (in *containerSizePtr) ToContainerSizePtrOutputWithContext(ctx context.Cont
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*CloudAuditOptionsLogNameInput)(nil)).Elem(), CloudAuditOptionsLogNameUnspecifiedLogName)
+	pulumi.RegisterInputType(reflect.TypeOf((*CloudAuditOptionsLogNamePtrInput)(nil)).Elem(), CloudAuditOptionsLogNamePtrOutput{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerBrightnessInput)(nil)).Elem(), ContainerBrightnessZeroPointOne)
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerBrightnessPtrInput)(nil)).Elem(), ContainerBrightnessPtrOutput{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerColorInput)(nil)).Elem(), ContainerColorRed)
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerColorPtrInput)(nil)).Elem(), ContainerColorPtrOutput{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerSizeInput)(nil)).Elem(), ContainerSizeFourInch)
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerSizePtrInput)(nil)).Elem(), ContainerSizePtrOutput{})
 	pulumi.RegisterOutputType(CloudAuditOptionsLogNameOutput{})
 	pulumi.RegisterOutputType(CloudAuditOptionsLogNamePtrOutput{})
 	pulumi.RegisterOutputType(ContainerBrightnessOutput{})

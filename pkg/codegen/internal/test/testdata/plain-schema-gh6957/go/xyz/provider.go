@@ -137,6 +137,7 @@ func (o ProviderPtrOutput) Elem() ProviderOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ProviderInput)(nil)).Elem(), &Provider{})
 	pulumi.RegisterOutputType(ProviderOutput{})
 	pulumi.RegisterOutputType(ProviderPtrOutput{})
 }
