@@ -164,8 +164,9 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	if mod == "" {
 		mod = packageRoot(pkg.pkg)
 	}
-	mod = strings.Replace(mod, "/", "", -1) + "." + name
-	return strings.Replace(mod, "-provider", "", -1)
+	mod = strings.ReplaceAll(mod, "/", "")
+	mod = strings.ReplaceAll(mod, "-", "") + "." + name
+	return strings.ReplaceAll(mod, "-provider", "")
 }
 
 func (pkg *pkgContext) tokenToEnum(tok string) string {
@@ -2520,6 +2521,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		} else {
 			pkgName = basePath[strings.LastIndex(basePath, "/")+1:]
 		}
+		pkgName = strings.ReplaceAll(pkgName, "-", "")
 		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
 	}
 	fmt.Fprintf(w, "\tif err != nil {\n")
