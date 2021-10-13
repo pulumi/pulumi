@@ -133,7 +133,7 @@ async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<str
         // `AssetArchive`, so we stat the path to figure out which it is and use the appropriate
         // Asset constructor.
         const stats = fs.lstatSync(normalizedPath);
-        if (stats.isDirectory()) {
+        if (stats.isDirectory() || stats.isSymbolicLink()) {
             codePaths.set(normalizedPath, new asset.FileArchive(normalizedPath));
         }
         else {
