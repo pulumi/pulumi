@@ -2175,17 +2175,11 @@ func (pkg *pkgContext) genEnumRegistrations(w io.Writer) {
 	// Register all input types
 	if !pkg.disableInputTypeRegistrations {
 		for _, e := range pkg.enums {
-			// We don't need to bother emitting registrations for enums with no
-			// values because they cannot be constructed.
-			if len(e.Elements) == 0 {
-				continue
-			}
+			// Enums are guaranteed to have at least one element when they are
+			// bound into a schema.
+			contract.Assert(len(e.Elements) > 0)
 			name, details := pkg.tokenToEnum(e.Token), pkg.detailsForType(e)
-			instanceGenerator := "%v"
-			if reflect.TypeOf(e.Elements[0].Value).Kind() == reflect.String {
-				instanceGenerator = "%q"
-			}
-			instance := fmt.Sprintf(instanceGenerator, e.Elements[0].Value)
+			instance := fmt.Sprintf("%#v", e.Elements[0].Value)
 			fmt.Fprintf(w,
 				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]s(%[2]s))\n",
 				name, instance)
