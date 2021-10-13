@@ -26,6 +26,9 @@
 - [codegen/go] Add schema flag to disable registering input types.
   [#8198](https://github.com/pulumi/pulumi/pull/8198)
 
+- [sdk/python] - Unmarshal output values in component provider.
+  [#8212](https://github.com/pulumi/pulumi/pull/8212)
+
 ### Bug Fixes
 
 - [codegen/go] - Use `importBasePath` before `name` if specified for name 
