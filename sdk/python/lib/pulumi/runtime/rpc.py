@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from ..output import Inputs, Input, Output
     from ..resource import CustomResource, Resource, ProviderResource
     from ..asset import FileAsset, RemoteAsset, StringAsset, FileArchive, RemoteArchive, AssetArchive
+URN = str
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
@@ -384,11 +385,42 @@ async def serialize_property(value: 'Input[Any]',
 
     return value
 
+def deserialize_special_case(props_struct: struct_pb2.Struct,
+                             keep_unknowns: Optional[bool] = None,
+                             deps: Optional[Set[URN]] = None) -> Any:
+    from .. import FileAsset, StringAsset, RemoteAsset, AssetArchive, FileArchive, RemoteArchive  # pylint: disable=import-outside-toplevel
+    if props_struct[_special_sig_key] == _special_asset_sig:
+        # This is an asset. Re-hydrate this object into an Asset.
+        if "path" in props_struct:
+            return FileAsset(props_struct["path"])
+        if "text" in props_struct:
+            return StringAsset(props_struct["text"])
+        if "uri" in props_struct:
+            return RemoteAsset(props_struct["uri"])
+        raise AssertionError("Invalid asset encountered when unmarshalling resource property")
+    if props_struct[_special_sig_key] == _special_archive_sig:
+        # This is an archive. Re-hydrate this object into an Archive.
+        if "assets" in props_struct:
+            return AssetArchive(deserialize_property(props_struct["assets"], deps=deps))
+        if "path" in props_struct:
+            return FileArchive(props_struct["path"])
+        if "uri" in props_struct:
+            return RemoteArchive(props_struct["uri"])
+        raise AssertionError("Invalid archive encountered when unmarshalling resource property")
+    if props_struct[_special_sig_key] == _special_secret_sig:
+        return wrap_rpc_secret(deserialize_property(props_struct["value"], deps=deps))
+    if props_struct[_special_sig_key] == _special_resource_sig:
+        return deserialize_resource(props_struct, keep_unknowns, deps)
+    if props_struct[_special_sig_key] == _special_output_value_sig:
+        return deserialize_output_value(props_struct, deps=deps)
+    raise AssertionError("Unrecognized signature when unmarshalling resource property")
+
 
 # pylint: disable=too-many-return-statements
 def deserialize_properties(props_struct: struct_pb2.Struct,
                            keep_unknowns: Optional[bool] = None,
-                           keep_internal: Optional[bool] = None) -> Any:
+                           keep_internal: Optional[bool] = None,
+                           prop_deps: Optional[Dict[str, Set[URN]]] = None) -> Any:
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
     Python types.
@@ -398,33 +430,6 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
     #
     # We assume that we are deserializing properties that we got from a Resource RPC endpoint,
     # which has type `Struct` in our gRPC proto definition.
-    if _special_sig_key in props_struct:
-        from .. import FileAsset, StringAsset, RemoteAsset, AssetArchive, FileArchive, RemoteArchive  # pylint: disable=import-outside-toplevel
-        if props_struct[_special_sig_key] == _special_asset_sig:
-            # This is an asset. Re-hydrate this object into an Asset.
-            if "path" in props_struct:
-                return FileAsset(props_struct["path"])
-            if "text" in props_struct:
-                return StringAsset(props_struct["text"])
-            if "uri" in props_struct:
-                return RemoteAsset(props_struct["uri"])
-            raise AssertionError("Invalid asset encountered when unmarshalling resource property")
-        if props_struct[_special_sig_key] == _special_archive_sig:
-            # This is an archive. Re-hydrate this object into an Archive.
-            if "assets" in props_struct:
-                return AssetArchive(deserialize_property(props_struct["assets"]))
-            if "path" in props_struct:
-                return FileArchive(props_struct["path"])
-            if "uri" in props_struct:
-                return RemoteArchive(props_struct["uri"])
-            raise AssertionError("Invalid archive encountered when unmarshalling resource property")
-        if props_struct[_special_sig_key] == _special_secret_sig:
-            return wrap_rpc_secret(deserialize_property(props_struct["value"]))
-        if props_struct[_special_sig_key] == _special_resource_sig:
-            return deserialize_resource(props_struct, keep_unknowns)
-        if props_struct[_special_sig_key] == _special_output_value_sig:
-            return deserialize_output_value(props_struct)
-        raise AssertionError("Unrecognized signature when unmarshalling resource property")
 
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways. Note
     # that if the struct had any secret properties, we push the secretness of the object up to us
@@ -439,7 +444,11 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
         if not keep_internal and k.startswith("__") and k != "__provider":
             continue
 
-        value = deserialize_property(v, keep_unknowns)
+        deps: Optional[Set[URN]] = None
+        if prop_deps:
+            deps = set()
+            prop_deps[k] = deps
+        value = deserialize_property(v, keep_unknowns, deps=deps)
         # We treat values that deserialize to "None" as if they don't exist.
         if value is not None:
             output[k] = value
@@ -447,8 +456,12 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
     return output
 
 
-def deserialize_resource(ref_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> 'Resource':
+def deserialize_resource(ref_struct: struct_pb2.Struct,
+                         keep_unknowns: Optional[bool] = None,
+                         deps: Optional[Set[URN]] = None) -> 'Resource':
     urn = ref_struct["urn"]
+    if deps:
+        deps.add(urn)
     version = ref_struct["packageVersion"] if "packageVersion" in ref_struct else ""
 
     urn_parts = urn_util._parse_urn(urn)
@@ -471,33 +484,36 @@ def deserialize_resource(ref_struct: struct_pb2.Struct, keep_unknowns: Optional[
     # If we've made it here, deserialize the reference as either a URN or an ID (if present).
     if "id" in ref_struct:
         ref_id = ref_struct["id"]
-        return deserialize_property(UNKNOWN if ref_id == "" else ref_id, keep_unknowns)
+        return deserialize_property(UNKNOWN if ref_id == "" else ref_id, keep_unknowns, deps=deps)
 
     return urn
 
 
-def deserialize_output_value(ref_struct: struct_pb2.Struct) -> 'Output[Any]':
+def deserialize_output_value(ref_struct: struct_pb2.Struct,
+                             deps: Optional[Set[URN]]) -> 'Output[Any]':
     is_known = "value" in ref_struct
     is_known_future: 'asyncio.Future' = asyncio.Future()
     is_known_future.set_result(is_known)
 
     value = None
     if is_known:
-        value = deserialize_property(ref_struct["value"])
+        value = deserialize_property(ref_struct["value"], deps=deps)
     value_future: 'asyncio.Future' = asyncio.Future()
     value_future.set_result(value)
 
     is_secret = False
     if "secret" in ref_struct:
-        is_secret = deserialize_property(ref_struct["secret"]) is True
+        is_secret = deserialize_property(ref_struct["secret"], deps=deps) is True
     is_secret_future: 'asyncio.Future' = asyncio.Future()
     is_secret_future.set_result(is_secret)
 
     resources: Set['Resource'] = set()
     if "dependencies" in ref_struct:
         from ..resource import DependencyResource  # pylint: disable=import-outside-toplevel
-        dependencies = cast(List[str], deserialize_property(ref_struct["dependencies"]))
+        dependencies = cast(List[str], deserialize_property(ref_struct["dependencies"], deps=deps))
         for urn in dependencies:
+            if deps:
+                deps.add(urn)
             resources.add(DependencyResource(urn))
 
     from .. import Output  # pylint: disable=import-outside-toplevel
@@ -534,7 +550,9 @@ def unwrap_rpc_secret(value: Any) -> Any:
     return value
 
 
-def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> Any:
+def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None,
+                                     keep_internal: Optional[bool] = None,
+                                     deps: Optional[Set[URN]] = None) -> Any:
     """
     Deserializes a single protobuf value (either `Struct` or `ListValue`) into idiomatic
     Python values.
@@ -546,7 +564,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
         # values has no __iter__ defined but this works.
-        values = [deserialize_property(v, keep_unknowns) for v in value] # type: ignore
+        values = [deserialize_property(v, keep_unknowns, keep_internal, deps) for v in value] # type: ignore
         # If there are any secret values in the list, push the secretness "up" a level by returning
         # an array that is marked as a secret with raw values inside.
         if any(is_rpc_secret(v) for v in values):
@@ -556,7 +574,23 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
 
     # Structs are projected to dictionaries
     if isinstance(value, struct_pb2.Struct):
-        props = deserialize_properties(value, keep_unknowns)
+        if _special_sig_key in value:
+            props = deserialize_special_case(value, keep_unknowns, deps)
+        else:
+            props = {}
+            for k, v in list(value.items()):
+                # Unilaterally skip properties considered internal by the Pulumi engine.
+                # These don't actually contribute to the exposed shape of the object, do
+                # not need to be passed back to the engine, and often will not match the
+                # expected type we are deserializing into.
+                # Keep "__provider" as it's the property name used by Python dynamic providers.
+                if not keep_internal and k.startswith("__") and k != "__provider":
+                    continue
+                prop = deserialize_property(v, keep_unknowns, keep_internal, deps)
+                # We treat values that deserialize to "None" as if they don't exist.
+                if prop is not None:
+                    props[k] = prop
+
         # If there are any secret values in the dictionary, push the secretness "up" a level by returning
         # a dictionary that is marked as a secret with raw values inside. Note: the isinstance check here is
         # important, since deserialize_properties will return either a dictionary or a concret type (in the case of

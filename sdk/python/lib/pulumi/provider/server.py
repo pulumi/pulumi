@@ -249,7 +249,7 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.CallResponse(**resp)
 
     async def Configure(self, request, context) -> proto.ConfigureResponse:  # pylint: disable=invalid-overridden-method
-        return proto.ConfigureResponse(acceptSecrets=True, acceptResources=True)
+        return proto.ConfigureResponse(acceptSecrets=True, acceptResources=True, acceptOutputs=True) 
 
     async def GetPluginInfo(self, request, context) -> proto.PluginInfo:  # pylint: disable=invalid-overridden-method
         return proto.PluginInfo(version=self.provider.version)
