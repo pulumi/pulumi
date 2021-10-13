@@ -153,26 +153,27 @@ export function run(argv: minimist.ParsedArgs,
     const tsConfigPath = "tsconfig.json";
     const skipProject = !fs.existsSync(tsConfigPath);
 
-    let compilerOptions: object;
+    let compilerOptions = {
+        target: "es6",
+        module: "commonjs",
+        moduleResolution: "node",
+        sourceMap: "true",
+    }
     try {
         const tsConfigString = fs.readFileSync(tsConfigPath).toString();
         const tsConfig = parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
-        compilerOptions = tsConfig["compilerOptions"] ?? {};
-    } catch (e) {
-        compilerOptions = {};
-    }
+        if (tsConfig["compilerOptions"]) {
+            compilerOptions = tsConfig["compilerOptions"];
+        }
+    } catch (e) {}
 
     if (typeScript) {
         tsnode.register({
             typeCheck: true,
             skipProject: skipProject,
-            compilerOptions: {
-                target: "es6",
-                module: "commonjs",
-                moduleResolution: "node",
-                sourceMap: "true",
-                ...compilerOptions,
-            },
+            transpileOnly: true,
+            files: true,
+            compilerOptions,
         });
     }
 

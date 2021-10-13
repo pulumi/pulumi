@@ -1,11 +1,11 @@
 {
-    "name": "@pulumi/pulumi",
-    "version": "${VERSION}",
-    "description": "Pulumi's Node.js SDK",
+    "name": "@dmattia/pulumi",
+    "version": "3.19.0",
+    "description": "Pulumi's Node.js SDK, forked by dmattia, meant to be merged back in",
     "license": "Apache-2.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/pulumi/pulumi.git",
+        "url": "https://github.com/dmattia/pulumi.git",
         "directory": "sdk/nodejs"
     },
     "dependencies": {
