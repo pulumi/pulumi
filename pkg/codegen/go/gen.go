@@ -2227,10 +2227,10 @@ func (pkg *pkgContext) genResourceRegistrations(w io.Writer, r *schema.Resource,
 				name)
 			if !r.IsProvider {
 				fmt.Fprintf(w,
-					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), &%[1]sArray{})\n",
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n",
 					name)
 				fmt.Fprintf(w,
-					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), &%[1]sMap{})\n",
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n",
 					name)
 			}
 		}
