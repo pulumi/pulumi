@@ -316,7 +316,7 @@ jobs:
       - name: Sanity Check Pulumi
         run: |
            cd src\github.com\${{ github.repository }}
-           dotnet msbuild /t:Sanity /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+           dotnet msbuild /t:Sanity /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
       # - name: Build Pulumi
       #   run: |
       #     cd src\github.com\${{ github.repository }}

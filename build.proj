@@ -11,6 +11,7 @@
     <TestParallelism>20</TestParallelism>
     <MSVSVersion>2019</MSVSVersion>
     <PulumiRoot Condition="'$(PulumiRoot)' == ''">C:\Pulumi\</PulumiRoot>
+    <PythonVersion Condition="'$(PythonVersion)' == ''">3.9.6</PythonVersion>
     <PulumiBin>$(PulumiRoot)\bin</PulumiBin>
   </PropertyGroup>
 
@@ -185,7 +186,7 @@
 
   <Target Name="Sanity">
     <MakeDir Directories="$(PythonSdkDirectory)\env\src"/>
-    <Exec Command="pipenv install --dev"
+    <Exec Command="pipenv install --python $(PythonVersion) --dev "
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
     <!-- Output python interpreter information. -->
     <Exec Command="pipenv --py"
