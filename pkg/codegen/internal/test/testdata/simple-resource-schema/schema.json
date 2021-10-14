@@ -90,9 +90,37 @@
         "bar": {
           "type": "string",
           "secret": true
+        },
+        "secretStringArray": {
+          "type": "array",
+          "secret": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "secretStringMap": {
+          "type": "object",
+          "secret": true,
+          "additinoalProperties": {
+            "type": "string"
+          }
         }
       },
       "inputProperties": {
+        "secretStringMap": {
+          "type": "object",
+          "secret": true,
+          "additinoalProperties": {
+            "type": "string"
+          }
+        },
+        "secretStringArray": {
+          "type": "array",
+          "secret": true,
+          "items": {
+            "type": "string"
+          }
+        },
         "bar": {
           "type": "string",
           "secret": true

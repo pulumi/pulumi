@@ -25,7 +25,9 @@ meta_desc: "Documentation for the example.Resource resource with examples, input
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-             <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">)</span>
+             <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
+             <span class="nx">secret_string_array</span><span class="p">:</span> <span class="nx">Optional[Sequence[str]]</span> = None<span class="p">,</span>
+             <span class="nx">secret_string_map</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, str]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ResourceArgs]</a></span> = None<span class="p">,</span>
@@ -161,6 +163,22 @@ The Resource resource accepts the following [input]({{< relref "/docs/intro/conc
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secretstringarray_csharp">
+<a href="#secretstringarray_csharp" style="color: inherit; text-decoration: inherit;">Secret<wbr>String<wbr>Array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List&lt;string&gt;</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secretstringmap_csharp">
+<a href="#secretstringmap_csharp" style="color: inherit; text-decoration: inherit;">Secret<wbr>String<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Dictionary&lt;string, string&gt;</span>
+    </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
@@ -172,6 +190,22 @@ The Resource resource accepts the following [input]({{< relref "/docs/intro/conc
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secretstringarray_go">
+<a href="#secretstringarray_go" style="color: inherit; text-decoration: inherit;">Secret<wbr>String<wbr>Array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">[]string</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secretstringmap_go">
+<a href="#secretstringmap_go" style="color: inherit; text-decoration: inherit;">Secret<wbr>String<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">map[string]string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -185,6 +219,22 @@ The Resource resource accepts the following [input]({{< relref "/docs/intro/conc
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secretstringarray_nodejs">
+<a href="#secretstringarray_nodejs" style="color: inherit; text-decoration: inherit;">secret<wbr>String<wbr>Array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string[]</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secretstringmap_nodejs">
+<a href="#secretstringmap_nodejs" style="color: inherit; text-decoration: inherit;">secret<wbr>String<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">{[key: string]: string}</span>
+    </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
@@ -196,6 +246,22 @@ The Resource resource accepts the following [input]({{< relref "/docs/intro/conc
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secret_string_array_python">
+<a href="#secret_string_array_python" style="color: inherit; text-decoration: inherit;">secret_<wbr>string_<wbr>array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Sequence[str]</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="secret_string_map_python">
+<a href="#secret_string_map_python" style="color: inherit; text-decoration: inherit;">secret_<wbr>string_<wbr>map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Mapping[str, str]</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

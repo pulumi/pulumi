@@ -13,7 +13,9 @@ import (
 type Resource struct {
 	pulumi.CustomResourceState
 
-	Bar pulumi.StringPtrOutput `pulumi:"bar"`
+	Bar               pulumi.StringPtrOutput   `pulumi:"bar"`
+	SecretStringArray pulumi.StringArrayOutput `pulumi:"secretStringArray"`
+	SecretStringMap   pulumi.StringMapOutput   `pulumi:"secretStringMap"`
 }
 
 // NewResource registers a new resource with the given unique name, arguments, and options.
@@ -26,8 +28,16 @@ func NewResource(ctx *pulumi.Context,
 	if args.Bar != nil {
 		args.Bar = pulumi.ToSecret(args.Bar).(pulumi.StringPtrOutput)
 	}
+	if args.SecretStringArray != nil {
+		args.SecretStringArray = pulumi.ToSecret(args.SecretStringArray).(pulumi.StringArrayOutput)
+	}
+	if args.SecretStringMap != nil {
+		args.SecretStringMap = pulumi.ToSecret(args.SecretStringMap).(pulumi.StringMapOutput)
+	}
 	secrets := pulumi.AdditionalSecretOutputs([]string{
 		"bar",
+		"secretStringArray",
+		"secretStringMap",
 	})
 	opts = append(opts, secrets)
 	var resource Resource
@@ -62,12 +72,16 @@ func (ResourceState) ElementType() reflect.Type {
 }
 
 type resourceArgs struct {
-	Bar *string `pulumi:"bar"`
+	Bar               *string           `pulumi:"bar"`
+	SecretStringArray []string          `pulumi:"secretStringArray"`
+	SecretStringMap   map[string]string `pulumi:"secretStringMap"`
 }
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	Bar pulumi.StringPtrInput
+	Bar               pulumi.StringPtrInput
+	SecretStringArray pulumi.StringArrayInput
+	SecretStringMap   pulumi.StringMapInput
 }
 
 func (ResourceArgs) ElementType() reflect.Type {

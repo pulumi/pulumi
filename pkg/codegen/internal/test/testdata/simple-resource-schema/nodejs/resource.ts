@@ -32,6 +32,8 @@ export class Resource extends pulumi.CustomResource {
     }
 
     public readonly bar!: pulumi.Output<string | undefined>;
+    public readonly secretStringArray!: pulumi.Output<string[] | undefined>;
+    public readonly secretStringMap!: pulumi.Output<{[key: string]: string} | undefined>;
 
     /**
      * Create a Resource resource with the given unique name, arguments, and options.
@@ -45,13 +47,17 @@ export class Resource extends pulumi.CustomResource {
         opts = opts || {};
         if (!opts.id) {
             inputs["bar"] = args?.bar ? pulumi.secret(args.bar) : undefined;
+            inputs["secretStringArray"] = args?.secretStringArray ? pulumi.secret(args.secretStringArray) : undefined;
+            inputs["secretStringMap"] = args?.secretStringMap ? pulumi.secret(args.secretStringMap) : undefined;
         } else {
             inputs["bar"] = undefined /*out*/;
+            inputs["secretStringArray"] = undefined /*out*/;
+            inputs["secretStringMap"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        const secretOpts = { additionalSecretOutputs: ["bar"] };
+        const secretOpts = { additionalSecretOutputs: ["bar", "secretStringArray", "secretStringMap"] };
         opts = pulumi.mergeOptions(opts, secretOpts);
         super(Resource.__pulumiType, name, inputs, opts);
     }
@@ -62,4 +68,6 @@ export class Resource extends pulumi.CustomResource {
  */
 export interface ResourceArgs {
     bar?: pulumi.Input<string>;
+    secretStringArray?: pulumi.Input<pulumi.Input<string>[]>;
+    secretStringMap?: pulumi.Input<{[key: string]: pulumi.Input<string>}>;
 }

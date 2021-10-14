@@ -15,6 +15,12 @@ namespace Pulumi.Example
         [Output("bar")]
         public Output<string?> Bar { get; private set; } = null!;
 
+        [Output("secretStringArray")]
+        public Output<ImmutableArray<string>> SecretStringArray { get; private set; } = null!;
+
+        [Output("secretStringMap")]
+        public Output<ImmutableDictionary<string, string>?> SecretStringMap { get; private set; } = null!;
+
 
         /// <summary>
         /// Create a Resource resource with the given unique name, arguments, and options.
@@ -41,6 +47,8 @@ namespace Pulumi.Example
                 AdditionalSecretOutputs =
                 {
                     "bar",
+                    "secretStringArray",
+                    "secretStringMap",
                 },
             };
             var merged = CustomResourceOptions.Merge(defaultOptions, options);
@@ -73,6 +81,30 @@ namespace Pulumi.Example
             {
                 var emptySecret = Output.CreateSecret(0);
                 _bar = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
+            }
+        }
+
+        [Input("secretStringArray")]
+        private InputList<string>? _secretStringArray;
+        public InputList<string> SecretStringArray
+        {
+            get => _secretStringArray ?? (_secretStringArray = new InputList<string>());
+            set
+            {
+                var emptySecret = Output.CreateSecret(ImmutableArray.Create<string>());
+                _secretStringArray = Output.All(value, emptySecret).Apply(v => v[0]);
+            }
+        }
+
+        [Input("secretStringMap")]
+        private InputMap<string>? _secretStringMap;
+        public InputMap<string> SecretStringMap
+        {
+            get => _secretStringMap ?? (_secretStringMap = new InputMap<string>());
+            set
+            {
+                var emptySecret = Output.CreateSecret(ImmutableDictionary.Create<string, string>());
+                _secretStringMap = Output.All(value, emptySecret).Apply(v => v[0]);
             }
         }
 

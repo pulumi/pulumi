@@ -13,12 +13,18 @@ __all__ = ['ResourceArgs', 'Resource']
 @pulumi.input_type
 class ResourceArgs:
     def __init__(__self__, *,
-                 bar: Optional[pulumi.Input[str]] = None):
+                 bar: Optional[pulumi.Input[str]] = None,
+                 secret_string_array: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
+                 secret_string_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None):
         """
         The set of arguments for constructing a Resource resource.
         """
         if bar is not None:
             pulumi.set(__self__, "bar", bar)
+        if secret_string_array is not None:
+            pulumi.set(__self__, "secret_string_array", secret_string_array)
+        if secret_string_map is not None:
+            pulumi.set(__self__, "secret_string_map", secret_string_map)
 
     @property
     @pulumi.getter
@@ -29,6 +35,24 @@ class ResourceArgs:
     def bar(self, value: Optional[pulumi.Input[str]]):
         pulumi.set(self, "bar", value)
 
+    @property
+    @pulumi.getter(name="secretStringArray")
+    def secret_string_array(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]:
+        return pulumi.get(self, "secret_string_array")
+
+    @secret_string_array.setter
+    def secret_string_array(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]):
+        pulumi.set(self, "secret_string_array", value)
+
+    @property
+    @pulumi.getter(name="secretStringMap")
+    def secret_string_map(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]:
+        return pulumi.get(self, "secret_string_map")
+
+    @secret_string_map.setter
+    def secret_string_map(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]):
+        pulumi.set(self, "secret_string_map", value)
+
 
 class Resource(pulumi.CustomResource):
     @overload
@@ -36,6 +60,8 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  bar: Optional[pulumi.Input[str]] = None,
+                 secret_string_array: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
+                 secret_string_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -66,6 +92,8 @@ class Resource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  bar: Optional[pulumi.Input[str]] = None,
+                 secret_string_array: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None,
+                 secret_string_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]] = None,
                  __props__=None):
         if opts is None:
             opts = pulumi.ResourceOptions()
@@ -79,7 +107,9 @@ class Resource(pulumi.CustomResource):
             __props__ = ResourceArgs.__new__(ResourceArgs)
 
             __props__.__dict__["bar"] = None if bar is None else pulumi.Output.secret(bar)
-        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["bar"])
+            __props__.__dict__["secret_string_array"] = None if secret_string_array is None else pulumi.Output.secret(secret_string_array)
+            __props__.__dict__["secret_string_map"] = None if secret_string_map is None else pulumi.Output.secret(secret_string_map)
+        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["bar", "secretStringArray", "secretStringMap"])
         opts = pulumi.ResourceOptions.merge(opts, secret_opts)
         super(Resource, __self__).__init__(
             'example::Resource',
@@ -104,10 +134,22 @@ class Resource(pulumi.CustomResource):
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
         __props__.__dict__["bar"] = None
+        __props__.__dict__["secret_string_array"] = None
+        __props__.__dict__["secret_string_map"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
 
     @property
     @pulumi.getter
     def bar(self) -> pulumi.Output[Optional[str]]:
         return pulumi.get(self, "bar")
+
+    @property
+    @pulumi.getter(name="secretStringArray")
+    def secret_string_array(self) -> pulumi.Output[Optional[Sequence[str]]]:
+        return pulumi.get(self, "secret_string_array")
+
+    @property
+    @pulumi.getter(name="secretStringMap")
+    def secret_string_map(self) -> pulumi.Output[Optional[Mapping[str, str]]]:
+        return pulumi.get(self, "secret_string_map")
 
