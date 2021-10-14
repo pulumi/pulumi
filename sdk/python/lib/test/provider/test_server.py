@@ -30,7 +30,7 @@ async def test_construct_inputs_parses_request():
     value = 'foobar'
     inputs = _as_struct({'echo': value})
     req = ConstructRequest(inputs=inputs)
-    inputs = await ProviderServicer._construct_inputs(req)
+    inputs = await ProviderServicer._construct_inputs(req.inputs, req.inputDependencies)
     assert len(inputs) == 1
     assert inputs['echo'] == value
 
@@ -40,7 +40,7 @@ async def test_construct_inputs_preserves_unknowns():
     unknown = '04da6b54-80e4-46f7-96ec-b56ff0331ba9'
     inputs = _as_struct({'echo': unknown})
     req = ConstructRequest(inputs=inputs)
-    inputs = await ProviderServicer._construct_inputs(req)
+    inputs = await ProviderServicer._construct_inputs(req.inputs, req.inputDependencies)
     assert len(inputs) == 1
     assert isinstance(inputs['echo'], pulumi.output.Unknown)
 
@@ -54,6 +54,15 @@ class MockResource(CustomResource):
     def __init__(self, name: str, *opts, **kopts):
         super().__init__("test:index:MockResource", name, None, *opts, **kopts)
 
+class MockInputDependencies:
+    """
+    """
+    def __init__(self, urns: Optional[List[str]]):
+        self.urns = urns if urns else []
+
+    # We intentionally ignore args
+    def get(self, *args):
+        return self
 
 class TestModule(ResourceModule):
     def construct(self, name: str, typ: str, urn: str):
@@ -74,19 +83,18 @@ class TestMocks(Mocks):
 async def assert_output_equal(actual: Any, value: Any, known: bool, secret: bool, deps: Optional[List[str]] = None):
     assert isinstance(actual, pulumi.Output)
 
-    # TODO: ensure that actual.promise() translates
     if callable(value):
-        value(await actual.promise())
+        value(await actual.future())
     else:
-        assert (await actual.promise()) == value
+        assert (await actual.future()) == value
 
-    assert known == await actual.is_known
-    assert secret == await actual.is_secret
+    assert known == await actual.is_known()
+    assert secret == await actual.is_secret()
 
     actual_deps: Set[str] = set()
-    resources = await actual.all_resources()
+    resources = await actual.resources()
     for r in resources:
-        urn = await r.urn.promise()
+        urn = await r.urn.future()
         actual_deps.add(urn)
 
     if deps is None:
@@ -138,16 +146,13 @@ class UnmarshalOutputTestCase:
         self.before_each()
         pulumi.runtime.set_mocks(TestMocks(), "project", "stack", True)
         pulumi.runtime.register_resource_module("test", "index", TestModule())
-        test_resource = MockResource("name") # TODO: this doesn't make sense to me. Is it
-                             # grabbing something from pulumi.runtime?
+        test_resource = MockResource("name") # TODO: this doesn't make sense to me. Is it grabbing
+                                             # something from pulumi.runtime?
 
         inputs = { "value": self.input_ }
         input_struct = _as_struct(inputs)
         req = ConstructRequest(inputs=input_struct)
-        # TODO: I'm unsure about this:
-        for el in self.deps if self.deps else []:
-            req.inputDependencies.get_or_create(el)
-        result = await ProviderServicer._construct_inputs(req)
+        result = await ProviderServicer._construct_inputs(req.inputs, MockInputDependencies(self.deps))
         actual = result["value"]
         if self.assert_:
             await self.assert_(actual)

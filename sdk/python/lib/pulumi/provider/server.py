@@ -82,8 +82,7 @@ class ProviderServicer(ResourceProviderServicer):
             preview=request.dryRun)
 
         pulumi.runtime.config.set_all_config(dict(request.config), request.configSecretKeys)
-
-        inputs = await self._construct_inputs(request)
+        inputs = await self._construct_inputs(request.inputs, request.inputDependencies)
 
         result = self.provider.construct(name=request.name,
                                          resource_type=request.type,
@@ -103,23 +102,22 @@ class ProviderServicer(ResourceProviderServicer):
         return response
 
     @staticmethod
-    async def _construct_inputs(request: proto.ConstructRequest) -> Dict[str, pulumi.Input[Any]]:
+    async def _construct_inputs(inputs: Any, input_dependencies: Any) -> Dict[str, pulumi.Input[Any]]:
 
         def deps(key: str) -> Set[str]:
             return set(urn for urn in
-                       request.inputDependencies.get(
+                       input_dependencies.get(
                            key,
                            proto.ConstructRequest.PropertyDependencies()
                        ).urns)
 
-        results: Dict[URN, pulumi.Input[Any]] = {}
         gathered_prop_deps: Dict[str, Set[URN]] = {}
         return {
             k: await ProviderServicer._create_output(
                 the_input, deps(k), gathered_prop_deps[k] if k in gathered_prop_deps else None
             )
             for k, the_input in
-            rpc.deserialize_properties(request.inputs, keep_unknowns=True, prop_deps=gathered_prop_deps).items()
+            rpc.deserialize_properties(inputs, keep_unknowns=True, prop_deps=gathered_prop_deps).items()
         }
 
     @staticmethod
@@ -258,7 +256,7 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.CallResponse(**resp)
 
     async def Configure(self, request, context) -> proto.ConfigureResponse:  # pylint: disable=invalid-overridden-method
-        return proto.ConfigureResponse(acceptSecrets=True, acceptResources=True, acceptOutputs=True) 
+        return proto.ConfigureResponse(acceptSecrets=True, acceptResources=True, acceptOutputs=True) # type: ignore
 
     async def GetPluginInfo(self, request, context) -> proto.PluginInfo:  # pylint: disable=invalid-overridden-method
         return proto.PluginInfo(version=self.provider.version)
