@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from ..output import Inputs, Input, Output
     from ..resource import CustomResource, Resource, ProviderResource
     from ..asset import FileAsset, RemoteAsset, StringAsset, FileArchive, RemoteArchive, AssetArchive
-URN = str
+URN = known_types.URN
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
@@ -430,7 +430,8 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
     #
     # We assume that we are deserializing properties that we got from a Resource RPC endpoint,
     # which has type `Struct` in our gRPC proto definition.
-
+    if _special_sig_key in props_struct:
+        return deserialize_special_case(props_struct)
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways. Note
     # that if the struct had any secret properties, we push the secretness of the object up to us
     # since we can only set secret outputs on top level properties.

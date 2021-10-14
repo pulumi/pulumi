@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ within the functions themselves.
 """
 from typing import Any, Optional
 
+URN = str
 
 def is_asset(obj: Any) -> bool:
     """
