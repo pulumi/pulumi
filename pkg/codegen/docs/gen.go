@@ -62,7 +62,7 @@ func titleLookup(shortName string) (string, bool) {
 		"alicloud":                            "Alibaba Cloud",
 		"auth0":                               "Auth0",
 		"aws":                                 "AWS Classic",
-		"aws-api-gateway":                     "AWS API Gateway",
+		"aws-apigateway":                      "AWS API Gateway",
 		"aws-miniflux":                        "Miniflux",
 		"aws-native":                          "AWS Native",
 		"aws-quickstart-aurora-mysql":         "AWS QuickStart Aurora MySQL",
