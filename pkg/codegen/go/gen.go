@@ -122,6 +122,7 @@ func (pkg *pkgContext) detailsForType(t schema.Type) *typeDetails {
 	if obj, ok := t.(*schema.ObjectType); ok && obj.IsInputShape() {
 		t = obj.PlainShape
 	}
+
 	details, ok := pkg.typeDetails[t]
 	if !ok {
 		details = &typeDetails{}
