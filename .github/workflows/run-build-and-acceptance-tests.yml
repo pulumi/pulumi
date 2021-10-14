@@ -314,7 +314,7 @@ jobs:
       #     go mod download
       #     popd
       - name: Sanity Check Pulumi
-         run: |
+        run: |
            cd src\github.com\${{ github.repository }}
            dotnet msbuild /t:Sanity /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
       # - name: Build Pulumi
