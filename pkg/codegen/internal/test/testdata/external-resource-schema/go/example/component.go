@@ -280,6 +280,10 @@ func (o ComponentMapOutput) MapIndex(k pulumi.StringInput) ComponentOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ComponentInput)(nil)).Elem(), &Component{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ComponentPtrInput)(nil)).Elem(), &Component{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ComponentArrayInput)(nil)).Elem(), ComponentArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ComponentMapInput)(nil)).Elem(), ComponentMap{})
 	pulumi.RegisterOutputType(ComponentOutput{})
 	pulumi.RegisterOutputType(ComponentPtrOutput{})
 	pulumi.RegisterOutputType(ComponentArrayOutput{})

@@ -110,5 +110,6 @@ func (o TypeUsesOutput) ToTypeUsesOutputWithContext(ctx context.Context) TypeUse
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*TypeUsesInput)(nil)).Elem(), &TypeUses{})
 	pulumi.RegisterOutputType(TypeUsesOutput{})
 }
