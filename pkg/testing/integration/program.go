@@ -1795,10 +1795,19 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 }
 
 func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
+	// Allow ENV var based overload of desired Python version for
+	// the Pipenv environment. This is useful in CI scenarios that
+	// need to pin a specific version such as 3.9.x vs 3.10.x.
+	pythonVersion := os.Getenv("PYTHON_VERSION")
+	if pythonVersion == "" {
+		pythonVersion = "3"
+	}
+
 	// Create a new Pipenv environment. This bootstraps a new virtual environment containing the version of Python that
 	// we requested. Note that this version of Python is sourced from the machine, so you must first install the version
 	// of Python that you are requesting on the host machine before building a virtualenv for it.
-	if err := pt.runPipenvCommand("pipenv-new", []string{"--python", "3"}, cwd); err != nil {
+
+	if err := pt.runPipenvCommand("pipenv-new", []string{"--python", pythonVersion}, cwd); err != nil {
 		return err
 	}
 
