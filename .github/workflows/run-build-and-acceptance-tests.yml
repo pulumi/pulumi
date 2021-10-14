@@ -316,7 +316,7 @@ jobs:
       - name: Build Pulumi
         run: |
           cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="{{ matrix.python-version }}"
+          dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
       - run: |
           which pulumi
           pulumi version
@@ -326,4 +326,4 @@ jobs:
             PYTHON_VERSION: ${{ matrix.python-version }}
         run: |
           cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="{{ matrix.python-version }}"
+          dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"

@@ -336,7 +336,7 @@ jobs:
       - name: Build Binary
         run: |
           cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="{{ matrix.python-version }}"
+          dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
   dispatch-docker-containers-ci-build:
     name: Trigger Docker containers CI build
     needs: [publish-binaries, publish-sdks]
