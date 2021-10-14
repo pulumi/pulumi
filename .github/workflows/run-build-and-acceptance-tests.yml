@@ -70,6 +70,9 @@ jobs:
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
+      - name: Setup environment variables
+        run: |
+          echo "PYTHON_VERSION=${{ matrix.python-version }}" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -254,6 +257,9 @@ jobs:
       PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
+      - name: Setup environment variables
+        run: |
+          echo "PYTHON_VERSION=${{ matrix.python-version }}" >> $GITHUB_ENV
       # - name: Install DotNet ${{ matrix.dotnet }}
       #   uses: actions/setup-dotnet@v1
       #   with:
