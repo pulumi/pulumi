@@ -77,10 +77,7 @@ namespace Pulumi.Example
         public Input<string>? Bar
         {
             get => _bar;
-            set
-            {
-                _bar = value.Apply(Output.CreateSecret);
-            }
+            set => _bar = value.Apply(Output.CreateSecret);
         }
 
         [Input("secretStringArray")]
@@ -88,10 +85,7 @@ namespace Pulumi.Example
         public InputList<string> SecretStringArray
         {
             get => _secretStringArray ?? (_secretStringArray = new InputList<string>());
-            set
-            {
-                _secretStringArray = value.Apply(Output.CreateSecret);
-            }
+            set => _secretStringArray = value.Apply(Output.CreateSecret);
         }
 
         [Input("secretStringMap")]
@@ -99,10 +93,7 @@ namespace Pulumi.Example
         public InputMap<string> SecretStringMap
         {
             get => _secretStringMap ?? (_secretStringMap = new InputMap<string>());
-            set
-            {
-                _secretStringMap = value.Apply(Output.CreateSecret);
-            }
+            set => _secretStringMap = value.Apply(Output.CreateSecret);
         }
 
         public ResourceArgs()

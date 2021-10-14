@@ -559,10 +559,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 			fmt.Fprintf(w, "%s    get => %s;\n", indent, backingFieldName)
 		}
 		if prop.Secret {
-			fmt.Fprintf(w, "%s    set\n", indent)
-			fmt.Fprintf(w, "%s    {\n", indent)
-			fmt.Fprintf(w, "%s        %s = value.Apply(Output.CreateSecret);\n", indent, backingFieldName)
-			fmt.Fprintf(w, "%s    }\n", indent)
+			fmt.Fprintf(w, "%s    set => %s = value.Apply(Output.CreateSecret);\n", indent, backingFieldName)
 		} else {
 			fmt.Fprintf(w, "%s    set => %s = value;\n", indent, backingFieldName)
 		}

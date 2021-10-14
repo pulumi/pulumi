@@ -69,10 +69,7 @@ namespace Pulumi.Example
         public Input<string>? Bar
         {
             get => _bar;
-            set
-            {
-                _bar = value.Apply(Output.CreateSecret);
-            }
+            set => _bar = value.Apply(Output.CreateSecret);
         }
 
         public ResourceArgs()

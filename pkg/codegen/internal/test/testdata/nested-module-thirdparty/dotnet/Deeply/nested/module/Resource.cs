@@ -69,10 +69,7 @@ namespace Pulumi.Foo-bar.Deeply/nested/module
         public Input<string>? Baz
         {
             get => _baz;
-            set
-            {
-                _baz = value.Apply(Output.CreateSecret);
-            }
+            set => _baz = value.Apply(Output.CreateSecret);
         }
 
         public ResourceArgs()
