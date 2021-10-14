@@ -153,6 +153,8 @@ jobs:
       fail-fast: false
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ matrix.platform }}
+    env:
+        PYTHON_VERSION: ${{ matrix.python-version }}
     steps:
       - name: Set PULUMI_TEST_SUBSET env var
         run: |
@@ -314,8 +316,6 @@ jobs:
       #     go mod download
       #     popd
       - name: Sanity Check Pulumi
-        env:
-           PYTHON_VERSION: ${{ matrix.python-version }}
         run: |
            cd src\github.com\${{ github.repository }}
            dotnet msbuild /t:Sanity /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
