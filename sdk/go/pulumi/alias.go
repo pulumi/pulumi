@@ -41,7 +41,6 @@ type Alias struct {
 
 func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Resource,
 	defaultProject, defaultStack string) (URNOutput, error) {
-
 	if a.URN != nil {
 		return a.URN.ToURNOutput(), nil
 	}
