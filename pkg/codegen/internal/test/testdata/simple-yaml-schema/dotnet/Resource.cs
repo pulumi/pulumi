@@ -71,8 +71,7 @@ namespace Pulumi.Example
             get => _bar;
             set
             {
-                var emptySecret = Output.CreateSecret(0);
-                _bar = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
+                _bar = value.Apply(Output.CreateSecret);
             }
         }
 

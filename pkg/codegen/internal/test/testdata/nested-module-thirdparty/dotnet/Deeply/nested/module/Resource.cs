@@ -71,8 +71,7 @@ namespace Pulumi.Foo-bar.Deeply/nested/module
             get => _baz;
             set
             {
-                var emptySecret = Output.CreateSecret(0);
-                _baz = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
+                _baz = value.Apply(Output.CreateSecret);
             }
         }
 

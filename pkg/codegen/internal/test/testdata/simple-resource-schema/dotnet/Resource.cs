@@ -79,8 +79,7 @@ namespace Pulumi.Example
             get => _bar;
             set
             {
-                var emptySecret = Output.CreateSecret(0);
-                _bar = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
+                _bar = value.Apply(Output.CreateSecret);
             }
         }
 
@@ -91,8 +90,7 @@ namespace Pulumi.Example
             get => _secretStringArray ?? (_secretStringArray = new InputList<string>());
             set
             {
-                var emptySecret = Output.CreateSecret(ImmutableArray.Create<string>());
-                _secretStringArray = Output.All(value, emptySecret).Apply(v => v[0]);
+                _secretStringArray = value.Apply(Output.CreateSecret);
             }
         }
 
@@ -103,8 +101,7 @@ namespace Pulumi.Example
             get => _secretStringMap ?? (_secretStringMap = new InputMap<string>());
             set
             {
-                var emptySecret = Output.CreateSecret(ImmutableDictionary.Create<string, string>());
-                _secretStringMap = Output.All(value, emptySecret).Apply(v => v[0]);
+                _secretStringMap = value.Apply(Output.CreateSecret);
             }
         }
 

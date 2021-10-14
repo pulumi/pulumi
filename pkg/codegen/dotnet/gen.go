@@ -561,20 +561,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		if prop.Secret {
 			fmt.Fprintf(w, "%s    set\n", indent)
 			fmt.Fprintf(w, "%s    {\n", indent)
-			// Since we can't directly assign the Output from CreateSecret to the property, use an Output.All or
-			// Output.Tuple to enable the secret flag on the data. (If any input to the All/Tuple is secret, then the
-			// Output will also be secret.)
-			switch t := codegen.UnwrapType(prop.Type).(type) {
-			case *schema.ArrayType:
-				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(ImmutableArray.Create<%s>());\n", indent, codegen.PlainType(t.ElementType).String())
-				fmt.Fprintf(w, "%s        %s = Output.All(value, emptySecret).Apply(v => v[0]);\n", indent, backingFieldName)
-			case *schema.MapType:
-				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(ImmutableDictionary.Create<string, %s>());\n", indent, codegen.PlainType(t.ElementType).String())
-				fmt.Fprintf(w, "%s        %s = Output.All(value, emptySecret).Apply(v => v[0]);\n", indent, backingFieldName)
-			default:
-				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(0);\n", indent)
-				fmt.Fprintf(w, "%s        %s = Output.Tuple<%s?, int>(value, emptySecret).Apply(t => t.Item1);\n", indent, backingFieldName, backingFieldType)
-			}
+			fmt.Fprintf(w, "%s        %s = value.Apply(Output.CreateSecret);\n", indent, backingFieldName)
 			fmt.Fprintf(w, "%s    }\n", indent)
 		} else {
 			fmt.Fprintf(w, "%s    set => %s = value;\n", indent, backingFieldName)
