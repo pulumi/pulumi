@@ -183,6 +183,21 @@
           WorkingDirectory="$(PulumiRoot)\node_modules\@pulumi\pulumi" />
   </Target>
 
+  <Target Name="Sanity">
+    <MakeDir Directories="$(PythonSdkDirectory)\env\src"/>
+    <Exec Command="pipenv install --dev"
+          WorkingDirectory="$(PythonSdkDirectory)\env\src" />
+    <!-- Output python interpreter information. -->
+    <Exec Command="pipenv --py"
+          WorkingDirectory="$(PythonSdkDirectory)\env\src" />
+    <!-- Check which python ends up running under pipenv run python. -->
+    <Exec Command="pipenv run python -c 'import sys; print(sys.version)'"
+          WorkingDirectory="$(PythonSdkDirectory)\env\src" />
+    <!-- Check which versions reported by pytest. -->
+    <Exec Command="pipenv run pytest"
+          WorkingDirectory="$(PythonSdkDirectory)\env\src" />
+  </Target>
+
   <!-- This is where we build and install the Python SDK -->
   <Target Name="BuildPythonSDK"
           DependsOnTargets="PythonDependencies;PythonBuild;PythonInstallPlugin">
@@ -192,6 +207,7 @@
     <MakeDir Directories="$(PythonSdkDirectory)\env\src"/>
     <Exec Command="pipenv install --dev"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
+
   </Target>
 
   <Target Name="PythonBuild">
