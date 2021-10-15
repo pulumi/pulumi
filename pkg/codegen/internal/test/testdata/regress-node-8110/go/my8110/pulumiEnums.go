@@ -175,6 +175,8 @@ func (in *myEnumPtr) ToMyEnumPtrOutputWithContext(ctx context.Context) MyEnumPtr
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*MyEnumInput)(nil)).Elem(), MyEnum("one"))
+	pulumi.RegisterInputType(reflect.TypeOf((*MyEnumPtrInput)(nil)).Elem(), MyEnum("one"))
 	pulumi.RegisterOutputType(MyEnumOutput{})
 	pulumi.RegisterOutputType(MyEnumPtrOutput{})
 }

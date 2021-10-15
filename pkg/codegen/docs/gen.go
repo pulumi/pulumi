@@ -54,8 +54,7 @@ func init() {
 // NOTE: For the time being this lookup map and the one used by the resourcedocsgen
 // tool in `pulumi/docs` must be kept up-to-date.
 //
-// titleLookup is a map of package name to the desired display name
-// for display in the TOC menu under API Reference.
+// titleLookup is a map of package name to the desired display name.
 func titleLookup(shortName string) (string, bool) {
 	v, ok := map[string]string{
 		"aiven":                               "Aiven",
@@ -63,7 +62,7 @@ func titleLookup(shortName string) (string, bool) {
 		"alicloud":                            "Alibaba Cloud",
 		"auth0":                               "Auth0",
 		"aws":                                 "AWS Classic",
-		"aws-api-gateway":                     "AWS API Gateway",
+		"aws-apigateway":                      "AWS API Gateway",
 		"aws-miniflux":                        "Miniflux",
 		"aws-native":                          "AWS Native",
 		"aws-quickstart-aurora-mysql":         "AWS QuickStart Aurora MySQL",
@@ -1653,8 +1652,6 @@ type indexData struct {
 	Title              string
 	TitleTag           string
 	PackageDescription string
-	// Menu indicates if an index page should be part of the TOC menu.
-	Menu bool
 
 	Functions      []indexEntry
 	Resources      []indexEntry
@@ -1706,11 +1703,9 @@ func (mod *modContext) genIndex() indexData {
 
 	modName := mod.getModuleFileName()
 	title := modName
-	menu := false
+
 	if title == "" {
 		title = formatTitleText(mod.pkg.Name)
-		// Flag top-level entries for inclusion in the table-of-contents menu.
-		menu = true
 	}
 
 	// If there are submodules, list them.
@@ -1773,7 +1768,6 @@ func (mod *modContext) genIndex() indexData {
 		PackageDescription: packageDescription,
 		Title:              title,
 		TitleTag:           titleTag,
-		Menu:               menu,
 		Resources:          resources,
 		Functions:          functions,
 		Modules:            modules,

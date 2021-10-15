@@ -180,6 +180,8 @@ func (in *rubberTreeVarietyPtr) ToRubberTreeVarietyPtrOutputWithContext(ctx cont
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*RubberTreeVarietyInput)(nil)).Elem(), RubberTreeVariety("Burgundy"))
+	pulumi.RegisterInputType(reflect.TypeOf((*RubberTreeVarietyPtrInput)(nil)).Elem(), RubberTreeVariety("Burgundy"))
 	pulumi.RegisterOutputType(RubberTreeVarietyOutput{})
 	pulumi.RegisterOutputType(RubberTreeVarietyPtrOutput{})
 }

@@ -1,7 +1,7 @@
 FROM pulumi/pulumi
 
 # Install golangci-lint
-RUN version=1.40.0 \
+RUN version=1.42.1 \
     && curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /go/bin v$version \
     && golangci-lint version
 

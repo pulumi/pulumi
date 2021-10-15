@@ -109,5 +109,6 @@ func (o NurseryOutput) ToNurseryOutputWithContext(ctx context.Context) NurseryOu
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*NurseryInput)(nil)).Elem(), &Nursery{})
 	pulumi.RegisterOutputType(NurseryOutput{})
 }

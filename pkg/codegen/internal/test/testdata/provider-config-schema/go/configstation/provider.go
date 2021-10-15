@@ -81,5 +81,6 @@ func (o ProviderOutput) ToProviderOutputWithContext(ctx context.Context) Provide
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ProviderInput)(nil)).Elem(), &Provider{})
 	pulumi.RegisterOutputType(ProviderOutput{})
 }
