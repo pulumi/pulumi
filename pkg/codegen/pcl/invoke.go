@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -158,4 +158,17 @@ func (b *binder) outputVersionSignature(fn *schema.Function) (model.StaticFuncti
 	argsType := b.schemaTypeToType(fn.Inputs.InputShape)
 	returnType := b.schemaTypeToType(fn.Outputs)
 	return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
+}
+
+// Detects invoke calls that use an output version of a function.
+func IsOutputVersionInvokeCall(call *model.FunctionCallExpression) bool {
+	if call.Name == Invoke {
+		// Currently binder.bindInvokeSignature will assign
+		// either DynamicType, a Promise<T>, or an Output<T>
+		// for the return type of an invoke. Output<T> implies
+		// that an output version has been picked.
+		_, returnsOutput := call.Signature.ReturnType.(*model.OutputType)
+		return returnsOutput
+	}
+	return false
 }

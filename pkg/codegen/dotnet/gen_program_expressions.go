@@ -294,7 +294,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.Invoke:
 		_, name := g.functionName(expr.Args[0])
 
-		g.Fprintf(w, "%s.InvokeAsync(", name)
+		var invokeName = "InvokeAsync"
+		if pcl.IsOutputVersionInvokeCall(expr) {
+			invokeName = "Invoke"
+		}
+
+		g.Fprintf(w, "%s.%s(", name, invokeName)
 		if len(expr.Args) >= 2 {
 			g.Fgenf(w, "%.v", expr.Args[1])
 		}
