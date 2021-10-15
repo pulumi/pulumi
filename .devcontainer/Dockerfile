@@ -32,12 +32,8 @@ RUN mkdir -p /go/bin \
 
 USER $USER_NAME
 
-# The base container sets XDG_CACHE_HOME XDG_CONFIG_HOME specifically for the root user, we can't unset them in a way that vscode will pick up, so we set them to values for the new user.
-# Installing go extensions via vscode use these paths so if we just leave it set to /root/.cache we'll get permission errors.
-ENV XDG_CONFIG_HOME=/home/$USER_NAME/.config
-ENV XDG_CACHE_HOME=/home/$USER_NAME/.cache
-
 RUN echo "export PATH=/opt/pulumi:/opt/pulumi/bin:$GOPATH/bin:/usr/local/go/bin:$PATH" >> ~/.bashrc \
+    && echo "unset XDG_CACHE_HOME XDG_CONFIG_HOME" >> ~/.bashrc \
     && echo "alias l='ls -aF'" >> ~/.bash_aliases \
     && echo "alias ll='ls -ahlF'" >> ~/.bash_aliases \
     && echo "alias ls='ls --color=auto --group-directories-first'" >> ~/.bash_aliases
