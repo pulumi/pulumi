@@ -255,6 +255,41 @@ func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string 
 	return []string{fmt.Sprintf("%s = Pulumi.%[1]s", pkg)}
 }
 
+// Pattern matches to recognize an encoded call to an output-versioned
+// invoke, such as `invoke(token, __convert(objCons(..)))`. If
+// matching, returns the `args` expression and its schema-bound type.
+func (g *generator) recognizeOutputVersionedInvoke(
+	expr *model.FunctionCallExpression) (bool, *model.ObjectConsExpression, model.Type) {
+
+	if !pcl.IsOutputVersionInvokeCall(expr) {
+		return false, nil, nil
+	}
+
+	if len(expr.Args) < 2 {
+		return false, nil, nil
+	}
+
+	convert, isConvert := expr.Args[1].(*model.FunctionCallExpression)
+	if !isConvert {
+		return false, nil, nil
+	}
+
+	if convert.Name != pcl.IntrinsicConvert {
+		return false, nil, nil
+	}
+
+	if len(convert.Args) == 0 {
+		return false, nil, nil
+	}
+
+	objCons, isObjCons := convert.Args[0].(*model.ObjectConsExpression)
+	if !isObjCons {
+		return false, nil, nil
+	}
+
+	return true, objCons, convert.Type()
+}
+
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
@@ -294,15 +329,18 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.Invoke:
 		_, name := g.functionName(expr.Args[0])
 
-		var invokeName = "InvokeAsync"
-		if pcl.IsOutputVersionInvokeCall(expr) {
-			invokeName = "Invoke"
+		isOut, outArgs, outArgsTy := g.recognizeOutputVersionedInvoke(expr)
+		if isOut {
+			g.Fprintf(w, "%s.Invoke(", name)
+			typeName := g.argumentTypeNameWithSuffix(expr, outArgsTy, "InvokeArgs")
+			g.genObjectConsExpressionWithTypeName(w, outArgs, typeName)
+		} else {
+			g.Fprintf(w, "%s.InvokeAsync(", name)
+			if len(expr.Args) >= 2 {
+				g.Fgenf(w, "%.v", expr.Args[1])
+			}
 		}
 
-		g.Fprintf(w, "%s.%s(", name, invokeName)
-		if len(expr.Args) >= 2 {
-			g.Fgenf(w, "%.v", expr.Args[1])
-		}
 		if len(expr.Args) == 3 {
 			g.Fgenf(w, ", %.v", expr.Args[2])
 		}
@@ -451,7 +489,18 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		return
 	}
 
-	typeName := g.argumentTypeName(expr, destType)
+	destTypeName := g.argumentTypeName(expr, destType)
+	g.genObjectConsExpressionWithTypeName(w, expr, destTypeName)
+}
+
+func (g *generator) genObjectConsExpressionWithTypeName(
+	w io.Writer, expr *model.ObjectConsExpression, destTypeName string) {
+
+	if len(expr.Items) == 0 {
+		return
+	}
+
+	typeName := destTypeName
 	if typeName != "" {
 		g.Fgenf(w, "new %s", typeName)
 		g.Fgenf(w, "\n%s{\n", g.Indent)

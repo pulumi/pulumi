@@ -345,6 +345,10 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 
 // argumentTypeName computes the C# argument class name for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
+	return g.argumentTypeNameWithSuffix(expr, destType, "Args")
+}
+
+func (g *generator) argumentTypeNameWithSuffix(expr model.Expression, destType model.Type, suffix string) string {
 	schemaType, ok := pcl.GetSchemaForType(destType.(model.Type))
 	if !ok {
 		return ""
@@ -382,7 +386,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	} else if qualifier != "" {
 		namespace = namespace + "." + qualifier
 	}
-	member = member + "Args"
+	member = member + suffix
 
 	return fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
 }
