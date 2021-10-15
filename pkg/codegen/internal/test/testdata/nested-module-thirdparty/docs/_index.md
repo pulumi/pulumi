@@ -2,9 +2,6 @@
 title: "foo-bar"
 title_tag: "foo-bar Package"
 meta_desc: ""
-menu:
-    reference:
-        parent: API Reference
 layout: api
 no_edit_this_page: true
 ---

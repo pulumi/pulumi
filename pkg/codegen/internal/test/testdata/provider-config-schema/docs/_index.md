@@ -2,9 +2,6 @@
 title: "configstation"
 title_tag: "configstation.configstation"
 meta_desc: ""
-menu:
-    reference:
-        parent: API Reference
 layout: api
 no_edit_this_page: true
 ---
