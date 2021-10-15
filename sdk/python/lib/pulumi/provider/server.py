@@ -112,12 +112,14 @@ class ProviderServicer(ResourceProviderServicer):
                        ).urns)
 
         gathered_prop_deps: Dict[str, Set[URN]] = {}
+        # rpc.deserialize_properties mutates gathered_prop_deps
+        props = rpc.deserialize_properties(inputs, keep_unknowns=True, prop_deps=gathered_prop_deps)
         return {
             k: await ProviderServicer._create_output(
                 the_input, deps(k), gathered_prop_deps[k] if k in gathered_prop_deps else None
             )
             for k, the_input in
-            rpc.deserialize_properties(inputs, keep_unknowns=True, prop_deps=gathered_prop_deps).items()
+            props.items()
         }
 
     @staticmethod

@@ -416,7 +416,6 @@ def deserialize_special_case(props_struct: struct_pb2.Struct,
     raise AssertionError("Unrecognized signature when unmarshalling resource property")
 
 
-# pylint: disable=too-many-return-statements
 def deserialize_properties(props_struct: struct_pb2.Struct,
                            keep_unknowns: Optional[bool] = None,
                            keep_internal: Optional[bool] = None,
@@ -431,7 +430,8 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
     # We assume that we are deserializing properties that we got from a Resource RPC endpoint,
     # which has type `Struct` in our gRPC proto definition.
     if _special_sig_key in props_struct:
-        return deserialize_special_case(props_struct)
+        deps = set()
+        return deserialize_special_case(props_struct, keep_unknowns, deps)
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways. Note
     # that if the struct had any secret properties, we push the secretness of the object up to us
     # since we can only set secret outputs on top level properties.
@@ -446,7 +446,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
             continue
 
         deps: Optional[Set[URN]] = None
-        if prop_deps:
+        if prop_deps is not None:
             deps = set()
             prop_deps[k] = deps
         value = deserialize_property(v, keep_unknowns, deps=deps)
@@ -461,7 +461,7 @@ def deserialize_resource(ref_struct: struct_pb2.Struct,
                          keep_unknowns: Optional[bool] = None,
                          deps: Optional[Set[URN]] = None) -> 'Resource':
     urn = ref_struct["urn"]
-    if deps:
+    if deps is not None:
         deps.add(urn)
     version = ref_struct["packageVersion"] if "packageVersion" in ref_struct else ""
 
@@ -511,9 +511,10 @@ def deserialize_output_value(ref_struct: struct_pb2.Struct,
     resources: Set['Resource'] = set()
     if "dependencies" in ref_struct:
         from ..resource import DependencyResource  # pylint: disable=import-outside-toplevel
+        ref_deps = ref_struct["dependencies"]
         dependencies = cast(List[str], deserialize_property(ref_struct["dependencies"], deps=deps))
         for urn in dependencies:
-            if deps:
+            if deps is not None:
                 deps.add(urn)
             resources.add(DependencyResource(urn))
 
