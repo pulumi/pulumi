@@ -14,6 +14,8 @@
 
 package apitype
 
+import json "encoding/json"
+
 // StackSummary describes the state of a stack, without including its specific resources, etc.
 type StackSummary struct {
 	// OrgName is the organization name the stack is found in.
@@ -78,10 +80,24 @@ type DecryptValueResponse struct {
 }
 
 // ExportStackResponse defines the response body for exporting a Stack.
-type ExportStackResponse UntypedDeployment
+type ExportStackResponse struct {
+	// Version indicates the schema of the encoded deployment.
+	Version int `json:"version,omitempty"`
+	// The opaque Pulumi deployment. This is conceptually of type `Deployment`, but we use `json.Message` to
+	// permit round-tripping of stack contents when an older client is talking to a newer server.  If we unmarshaled
+	// the contents, and then remarshaled them, we could end up losing important information.
+	Deployment json.RawMessage `json:"deployment,omitempty"`
+}
 
 // ImportStackRequest defines the request body for importing a Stack.
-type ImportStackRequest UntypedDeployment
+type ImportStackRequest struct {
+	// Version indicates the schema of the encoded deployment.
+	Version int `json:"version,omitempty"`
+	// The opaque Pulumi deployment. This is conceptually of type `Deployment`, but we use `json.Message` to
+	// permit round-tripping of stack contents when an older client is talking to a newer server.  If we unmarshaled
+	// the contents, and then remarshaled them, we could end up losing important information.
+	Deployment json.RawMessage `json:"deployment,omitempty"`
+}
 
 // ImportStackResponse defines the response body for importing a Stack.
 type ImportStackResponse struct {
