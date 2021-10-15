@@ -126,10 +126,12 @@ test_id = "name_id"
 
 class UnmarshalOutputTestCase:
     def __init__(self,
+                 name: str,
                  input_: Any,
-                 deps: Optional[List[str]],
+                 deps: Optional[List[str]] = None,
                  expected: Optional[Any] = None,
                  assert_: Optional[Callable[[Any], Awaitable]] = None):
+        self.name = name
         self.input_ = input_
         self.deps = deps
         self.expected = expected
@@ -159,24 +161,238 @@ class UnmarshalOutputTestCase:
         else:
             assert actual == self.expected
 
-
-@pytest.mark.asyncio
-async def test_deserialize_unkwown():
-    await UnmarshalOutputTestCase(
+deserialization_tests = [
+    UnmarshalOutputTestCase(
+        name="unknown",
         input_=rpc.UNKNOWN,
         deps=["fakeURN"],
-        assert_=lambda actual: assert_output_equal(actual, None, False, False, ["fakeURN"])).run()
-
-@pytest.mark.asyncio
-async def test_array_nested_unknown():
-    await UnmarshalOutputTestCase(
+        assert_=lambda actual: assert_output_equal(actual, None, False, False, ["fakeURN"]),
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested unknown",
         input_=[rpc.UNKNOWN],
         deps=["fakeURN"],
-        assert_=lambda actual: assert_output_equal(actual, None, False, False, ["fakeURN"])).run()
-
-@pytest.mark.asyncio
-async def test_object_nested_unknown():
-    await UnmarshalOutputTestCase(
+        assert_=lambda actual: assert_output_equal(actual, None, False, False, ["fakeURN"]),
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested unknown",
         input_={"foo": rpc.UNKNOWN},
         deps=["fakeURN"],
-        assert_=lambda actual: assert_output_equal(actual, None, False, False, ["fakeURN"])).run()
+        assert_=lambda actual: assert_output_equal(actual, None, False, False, ["fakeURN"]),
+    ),
+    UnmarshalOutputTestCase(
+        name="unknown output value",
+        input_=create_output_value(),
+        assert_=lambda actual: assert_output_equal(actual, None, False, False),
+    ),
+    UnmarshalOutputTestCase(
+        name="unknown output value deps",
+        input=create_output_value(None, False, ["fakeURN"]),
+        deps=["fakeURN"],
+        assert_=lambda actual: assert_output_equal(actual, None, False, False, ["fakeURN"]),
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested unknown output value deps",
+        input_=[create_output_value(None, False, ["fakeURN"])],
+        deps=["fakeURN"],
+        assert_=array_nested_unknown_output_value_deps,
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested unknown output value deps",
+        input_= { "foo": create_output_value(None, False, ["fakeURN"]) },
+        deps=["fakeURN"],
+        assert_=object_nested_unknown_output_value_deps,
+    ),
+    UnmarshalOutputTestCase(
+        name="string value no deps",
+        input_="hi",
+        expected="hi",
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested string value no deps",
+        input_=["hi"],
+        expected=["hi"],
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested string value no deps",
+        input_= { "foo": "hi" },
+        expected= { "foo": "hi" },
+    ),
+    UnmarshalOutputTestCase(
+        name="string output value no deps",
+        input_=create_output_value("hi"),
+        assert_=lambda actual: assert_output_equal(actual, "hi", True, False),
+    ),
+    UnmarshalOutputTestCase(
+        name="string output value deps",
+        input_=create_output_value("hi", False, ["fakeURN"]),
+        deps=["fakeURN"],
+        assert_=lambda actual: assert_output_equal(actual, "hi", True, False, ["fakeURN"]),
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested string output value deps",
+        input_=[created_output_value("hi", False, ["fakeURN"])],
+        deps=["fakeURN"],
+        assert_=array_nested_string_output_value_deps,
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested string output value deps",
+        input_={ "foo": created_output_value("hi", False, ["fakeURN"])},
+        deps=["fakeURN"],
+        assert_=array_nested_string_output_value_deps,
+    ),
+    UnmarshalOutputTestCase(
+        name="string secrets",
+        input_=create_secret("shh"),
+        assert_=lambda actual: assert_output_equal(actual, "shh", True, True),
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested string secrets",
+        input_=[create_secret("shh")],
+        assert_=lambda actual: assert_output_equal(actual, ["shh"], True, True),
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested string secrets",
+        input_={ "foo": create_secret("shh")},
+        assert_=lambda actual: assert_output_equal(actual, {"foo": "shh"}, True, True),
+    ),
+    UnmarshalOutputTestCase(
+        name="string secrets output value",
+        input_=create_secret("shh", True),
+        assert_=lambda actual: assert_output_equal(actual, "shh", True, True),
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested string secrets output value",
+        input_=[create_secret("shh", True)],
+        assert_=array_nested_string_secrets_output_value,
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested string secrets output value",
+        input_={ "foo": create_secret("shh", True)},
+        assert_=lambda actual: assert_output_equal(actual, {"foo": "shh"}, True, True),
+    ),
+    UnmarshalOutputTestCase(
+        name="string secret output value deps",
+        input_=create_output_value("shh", True, ["fakeURN1", "fakeURN2"]),
+        deps=["fakeURN1", "fakeURN2"],
+        assert_=lambda actual: assert_output_equal(actual, "shh", True, True, ["fakeURN1", "fakeURN2"]),
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested string secret output value deps",
+        input_=[create_output_value("shh", True, ["fakeURN1", "fakeURN2"])],
+        deps=["fakeURN1", "fakeURN2"],
+        assert_=array_nested_string_secret_output_value_deps,
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested string secret output value deps",
+        input_={ "foo": create_output_value("shh", True, ["fakeURN1", "fakeURN2"])},
+        deps=["fakeURN1", "fakeURN2"],
+        assert_=object_nested_string_secret_output_value_deps,
+    ),
+    UnmarshalOutputTestCase(
+        name="resource ref",
+        input_=create_resource_ref(test_urn, test_id),
+        deps=[test_urn],
+        assert_=resource_ref,
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested resource ref",
+        input_=[create_resource_ref(test_urn, test_id)],
+        deps=[test_urn],
+        assert_=array_nested_resource_ref,
+    ),
+     UnmarshalOutputTestCase(
+        name="object nested resource ref",
+        input_={ "foo": create_resource_ref(test_urn, test_id) },
+        deps=[test_urn],
+        assert_=object_nested_resource_ref,
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested resource ref and secret",
+        input_={
+            "foo": create_resource_ref(test_urn, test_id),
+            "bar": create_secret("shh"),
+        },
+        deps=[test_urn],
+        assert_=object_nested_resource_ref_and_secret
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested resource ref and secret output value",
+        input_={
+            "foo": create_resource_ref(test_urn, test_id),
+            "bar": create_output_value("shh", True),
+        },
+        deps=[test_urn],
+        assert_=object_nested_resource_ref_and_secret_output_value,
+    ),
+]
+
+async def object_nested_resource_ref_and_secret_output_value(actual):
+    assert not isinstance(actual, pulumi.Output)
+    assert isinstance(actual["foo"], MockResource)
+    assert await actual["foo"].urn.future() == test_urn
+    assert await actual["foo"].id.future() == test_id
+    await assert_output_equal(actual["bar"], "shh", True, True)
+
+async def object_nested_resource_ref_and_secret(actual):
+    async def helper(v: Any):
+        assert isinstance(v["foo"], MockResource)
+        assert await v["foo"].urn.future() == test_urn
+        assert await v["foo"].id.future() == test_id
+        assert v.bar == "ssh"
+    await assert_output_equal(actual, helper, True, True, [test_urn])
+
+async def object_nested_resource_ref(actual):
+    assert isinstance(actual["foo"], MockResource)
+    assert await actual["foo"].urn.future() == test_urn
+    assert await actual["foo"].id().future() == test_id
+
+async def array_nested_resource_ref(actual):
+    assert isinstance(actual, list)
+    assert isinstance(actual[0], MockResource)
+    assert await actual[0].urn.future() == test_urn
+    assert await actual[0].id().future() == test_id
+
+async def resource_ref(actual):
+    assert isinstance(actual, MockResource)
+    assert await actual.urn.future() == test_urn
+    assert await actual.id().future() == test_id
+
+async def object_nested_string_secret_output_value_deps(actual):
+    assert isinstance(actual, list)
+    await assert_output_equal(actual["foo"], "shh", True, True, ["fakeURN1", "fakeURN2"])
+
+async def array_nested_string_secret_output_value_deps(actual):
+    assert isinstance(actual, list)
+    await assert_output_equal(actual[0], "shh", True, True, ["fakeURN1", "fakeURN2"])
+
+async def object_nested_string_secrets_output_value(actual):
+    assert not isinstance(actual, pulumi.Output)
+    await assert_output_equal(actual["foo"], "shh", True, True)
+
+async def array_nested_string_secrets_output_value(actual):
+    assert isinstance(actual, list)
+    await assert_output_equal(actual[0], "shh", True, True)
+
+async def object_nested_string_output_value_deps(actual):
+    assert not isinstance(actual, pulumi.Output)
+    await assert_output_equal(actual["foo"], "hi", False, False, ["fakeURN"])
+
+
+async def array_nested_string_output_value_deps(actual):
+    assert isinstance(actual, list)
+    await assert_output_equal(actual[0], "hi", True, False, ["fakeURN"])
+
+async def object_nested_unknown_output_value_deps(actual):
+    assert not isinstance(actual, pulumi.Output)
+    await assert_output_equal(actual["foo"], None, False, False, ["fakeURN"])
+
+async def array_nested_unknown_output_value_deps(actual):
+    assert isinstance(actual, list)
+    await assert_output_equal(actual[0], None, False, False, ["fakeURN"])
+
+@pytest.mark.parametrize(
+    "testcase", deserialization_tests, map(lambda x: x.name, deserialization_tests))
+@pytest.mark.asyncio
+async def test_deserialize_correctly(testcase):
+    await testcase.run()
