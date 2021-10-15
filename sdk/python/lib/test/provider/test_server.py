@@ -55,7 +55,7 @@ def _as_struct(key_values: Dict[str, Any]) -> struct_pb2.Struct:
 
 class MockResource(CustomResource):
     def __init__(self, name: str, opts: Optional[ResourceOptions] = None):
-        super().__init__("test:index:MockResource", name, opts=opts)
+        CustomResource.__init__(self, "test:index:MockResource", name, opts=opts)
 
 class MockInputDependencies:
     """ A mock for ConstructRequest.inputDependencies
@@ -166,8 +166,8 @@ class UnmarshalOutputTestCase:
         try:
             pulumi.runtime.set_mocks(TestMocks(), "project", "stack", True)
             pulumi.runtime.register_resource_module("test", "index", TestModule())
-            MockResource("name") # TODO: this doesn't make sense to me. Is it grabbing
-                                                # something from pulumi.runtime?
+            # TODO This doesn't seem to do anything.
+            MockResource("name", opts=ResourceOptions(urn=test_urn))
 
             inputs = { "value": self.input_ }
             input_struct = _as_struct(inputs)
