@@ -86,29 +86,29 @@ class TestMocks(Mocks):
     def new_resource(self, args: pulumi.runtime.MockResourceArgs) -> Tuple[Optional[str], Any]:
         return (args.name+"_id", args.inputs)
 
-async def assert_output_equal(actual: Any, value: Any,
+def assert_output_equal(value: Any,
                               known: bool, secret: bool,
                               deps: Optional[List[str]] = None):
-    assert isinstance(actual, pulumi.Output)
+    async def check(actual: Any):
+        assert isinstance(actual, pulumi.Output)
 
-    if callable(value):
-        value(await actual.future())
-    else:
-        assert (await actual.future()) == value
+        if callable(value):
+            value(await actual.future())
+        else:
+            assert (await actual.future()) == value
 
-    assert known == await actual.is_known()
-    assert secret == await actual.is_secret()
+        assert known == await actual.is_known()
+        assert secret == await actual.is_secret()
 
-    actual_deps: Set[Optional[str]] = set()
-    resources = await actual.resources()
-    for r in resources:
-        urn = await r.urn.future()
-        actual_deps.add(urn)
+        actual_deps: Set[Optional[str]] = set()
+        resources = await actual.resources()
+        for r in resources:
+            urn = await r.urn.future()
+            actual_deps.add(urn)
 
-    if deps is None:
-        deps = []
-    assert actual_deps == set(deps)
-    return True
+        assert actual_deps == set(deps if deps else [])
+        return True
+    return check
 
 
 def create_secret(value: Any):
@@ -211,30 +211,30 @@ deserialization_tests = [
         name="unknown",
         input_=rpc.UNKNOWN,
         deps=["fakeURN"],
-        assert_=lambda actual: assert_output_equal(actual, None, False, False, ["fakeURN"]),
+        assert_=assert_output_equal(None, False, False, ["fakeURN"]),
     ),
     UnmarshalOutputTestCase(
         name="array nested unknown",
         input_=[rpc.UNKNOWN],
         deps=["fakeURN"],
-        assert_=lambda actual: assert_output_equal(actual, None, False, False, ["fakeURN"]),
+        assert_=assert_output_equal(None, False, False, ["fakeURN"]),
     ),
     UnmarshalOutputTestCase(
         name="object nested unknown",
         input_={"foo": rpc.UNKNOWN},
         deps=["fakeURN"],
-        assert_=lambda actual: assert_output_equal(actual, None, False, False, ["fakeURN"]),
+        assert_=assert_output_equal(None, False, False, ["fakeURN"]),
     ),
     UnmarshalOutputTestCase(
         name="unknown output value",
         input_=create_output_value(),
-        assert_=lambda actual: assert_output_equal(actual, None, False, False),
+        assert_=assert_output_equal(None, False, False),
     ),
     UnmarshalOutputTestCase(
         name="unknown output value deps",
         input_=create_output_value(None, False, ["fakeURN"]),
         deps=["fakeURN"],
-        assert_=lambda actual: assert_output_equal(actual, None, False, False, ["fakeURN"]),
+        assert_=assert_output_equal(None, False, False, ["fakeURN"]),
     ),
     UnmarshalOutputTestCase(
         name="array nested unknown output value deps",
@@ -242,7 +242,7 @@ deserialization_tests = [
         deps=["fakeURN"],
         assert_=Assert(
             lambda actual: isinstance(actual, list),
-            lambda actual: assert_output_equal(actual[0], None, False, False, ["fakeURN"])
+            lambda actual: assert_output_equal(None, False, False, ["fakeURN"])(actual[0])
         ),
     ),
     UnmarshalOutputTestCase(
@@ -251,7 +251,7 @@ deserialization_tests = [
         deps=["fakeURN"],
         assert_=Assert(
             lambda actual: not isinstance(actual, pulumi.Output),
-            lambda actual: assert_output_equal(actual["foo"], None, False, False, ["fakeURN"]),
+            lambda actual: assert_output_equal(None, False, False, ["fakeURN"])(actual["foo"]),
         ),
     ),
     UnmarshalOutputTestCase(
@@ -272,13 +272,13 @@ deserialization_tests = [
     UnmarshalOutputTestCase(
         name="string output value no deps",
         input_=create_output_value("hi"),
-        assert_=lambda actual: assert_output_equal(actual, "hi", True, False),
+        assert_=assert_output_equal("hi", True, False),
     ),
     UnmarshalOutputTestCase(
         name="string output value deps",
         input_=create_output_value("hi", False, ["fakeURN"]),
         deps=["fakeURN"],
-        assert_=lambda actual: assert_output_equal(actual, "hi", True, False, ["fakeURN"]),
+        assert_=assert_output_equal("hi", True, False, ["fakeURN"]),
     ),
     UnmarshalOutputTestCase(
         name="array nested string output value deps",
@@ -286,7 +286,7 @@ deserialization_tests = [
         deps=["fakeURN"],
         assert_=Assert(
             lambda actual: isinstance(actual, list),
-            lambda actual: assert_output_equal(actual[0], "hi", True, False, ["fakeURN"]),
+            lambda actual: assert_output_equal("hi", True, False, ["fakeURN"])(actual[0]),
         ),
     ),
     UnmarshalOutputTestCase(
@@ -295,47 +295,47 @@ deserialization_tests = [
         deps=["fakeURN"],
         assert_=Assert(
             lambda actual: not isinstance(actual, pulumi.Output),
-            lambda actual: assert_output_equal(action["foo"], "hi", True, False, ["fakeURN"])
+            lambda actual: assert_output_equal("hi", True, False, ["fakeURN"])(actual["foo"])
         ),
     ),
     UnmarshalOutputTestCase(
         name="string secrets",
         input_=create_secret("shh"),
-        assert_=lambda actual: assert_output_equal(actual, "shh", True, True),
+        assert_=assert_output_equal("shh", True, True),
     ),
     UnmarshalOutputTestCase(
         name="array nested string secrets",
         input_=[create_secret("shh")],
-        assert_=lambda actual: assert_output_equal(actual, ["shh"], True, True),
+        assert_=assert_output_equal(["shh"], True, True),
     ),
     UnmarshalOutputTestCase(
         name="object nested string secrets",
         input_={ "foo": create_secret("shh")},
-        assert_=lambda actual: assert_output_equal(actual, {"foo": "shh"}, True, True),
+        assert_=assert_output_equal({"foo": "shh"}, True, True),
     ),
     UnmarshalOutputTestCase(
         name="string secret output value",
         input_=create_output_value("shh", True),
-        assert_=lambda actual: assert_output_equal(actual, "shh", True, True),
+        assert_=assert_output_equal("shh", True, True),
     ),
     UnmarshalOutputTestCase(
         name="array nested string secret output value",
         input_=[create_output_value("shh", True)],
         assert_=Assert(
             lambda actual: isinstance(actual, list),
-            lambda actual: assert_output_equal(actual[0], "shh", True, True),
+            lambda actual: assert_output_equal("shh", True, True)(actual[0]),
         ),
     ),
     UnmarshalOutputTestCase(
         name="object nested string secret output value",
         input_={ "foo": create_output_value("shh", True)},
-        assert_=lambda actual: assert_output_equal(actual, {"foo": "shh"}, True, True),
+        assert_=assert_output_equal({"foo": "shh"}, True, True),
     ),
     UnmarshalOutputTestCase(
         name="string secret output value deps",
         input_=create_output_value("shh", True, ["fakeURN1", "fakeURN2"]),
         deps=["fakeURN1", "fakeURN2"],
-        assert_=lambda actual: assert_output_equal(actual, "shh", True, True, ["fakeURN1", "fakeURN2"]),
+        assert_=assert_output_equal("shh", True, True, ["fakeURN1", "fakeURN2"]),
     ),
     UnmarshalOutputTestCase(
         name="array nested string secret output value deps",
@@ -343,7 +343,7 @@ deserialization_tests = [
         deps=["fakeURN1", "fakeURN2"],
         assert_=Assert(
             lambda actual: isinstance(actual, list),
-            lambda actual: assert_output_equal(actual[0], "shh", True, True, ["fakeURN1", "fakeURN2"]),
+            lambda actual: assert_output_equal("shh", True, True, ["fakeURN1", "fakeURN2"])(actual[0]),
         ),
     ),
     UnmarshalOutputTestCase(
@@ -352,7 +352,7 @@ deserialization_tests = [
         deps=["fakeURN1", "fakeURN2"],
         assert_=Assert(
             lambda actual: isinstance(actual, list),
-            lambda actual: assert_output_equal(actual["foo"], "shh", True, True, ["fakeURN1", "fakeURN2"]),
+            lambda actual: assert_output_equal("shh", True, True, ["fakeURN1", "fakeURN2"])(actual["foo"]),
         ),
     ),
     UnmarshalOutputTestCase(
@@ -407,7 +407,7 @@ deserialization_tests = [
             lambda actual: isinstance(actual["foo"], MockResource),
             Assert.async_equal(lambda actual: actual["foo"].urn.future(), test_urn),
             Assert.async_equal(lambda actual: actual["foo"].id.future(), test_id),
-            lambda actual: assert_output_equal(actual["bar"], "shh", True, True),
+            lambda actual: assert_output_equal("shh", True, True)(actual["bar"]),
         ),
     ),
 ]
