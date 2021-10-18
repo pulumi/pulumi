@@ -6,29 +6,29 @@ import warnings
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
-from .. import _utilities
-from .. import _inputs as _root_inputs
-from .. import outputs as _root_outputs
+from . import _utilities
 
 __all__ = ['ModuleResourceArgs', 'ModuleResource']
 
 @pulumi.input_type
 class ModuleResourceArgs:
     def __init__(__self__, *,
-                 thing: Optional[pulumi.Input['_root_inputs.TopLevelArgs']] = None):
+                 thing: Optional[str] = None):
         """
         The set of arguments for constructing a ModuleResource resource.
         """
+        if thing is None:
+            thing = 'buzzer'
         if thing is not None:
             pulumi.set(__self__, "thing", thing)
 
     @property
     @pulumi.getter
-    def thing(self) -> Optional[pulumi.Input['_root_inputs.TopLevelArgs']]:
+    def thing(self) -> Optional[str]:
         return pulumi.get(self, "thing")
 
     @thing.setter
-    def thing(self, value: Optional[pulumi.Input['_root_inputs.TopLevelArgs']]):
+    def thing(self, value: Optional[str]):
         pulumi.set(self, "thing", value)
 
 
@@ -37,7 +37,7 @@ class ModuleResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 thing: Optional[pulumi.Input[pulumi.InputType['_root_inputs.TopLevelArgs']]] = None,
+                 thing: Optional[str] = None,
                  __props__=None):
         """
         Create a ModuleResource resource with the given unique name, props, and options.
@@ -67,7 +67,7 @@ class ModuleResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 thing: Optional[pulumi.Input[pulumi.InputType['_root_inputs.TopLevelArgs']]] = None,
+                 thing: Optional[str] = None,
                  __props__=None):
         if opts is None:
             opts = pulumi.ResourceOptions()
@@ -80,9 +80,11 @@ class ModuleResource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
 
+            if thing is None:
+                thing = 'buzzer'
             __props__.__dict__["thing"] = thing
         super(ModuleResource, __self__).__init__(
-            'foobar:submodule1:ModuleResource',
+            'foobar::ModuleResource',
             resource_name,
             __props__,
             opts)
@@ -103,11 +105,5 @@ class ModuleResource(pulumi.CustomResource):
 
         __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
 
-        __props__.__dict__["thing"] = None
         return ModuleResource(resource_name, opts=opts, __props__=__props__)
-
-    @property
-    @pulumi.getter
-    def thing(self) -> pulumi.Output[Optional['_root_outputs.TopLevel']]:
-        return pulumi.get(self, "thing")
 

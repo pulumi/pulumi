@@ -7,15 +7,11 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.FooBar.Submodule1
+namespace Pulumi.FooBar
 {
-    [FooBarResourceType("foobar:submodule1:ModuleResource")]
+    [FooBarResourceType("foobar::ModuleResource")]
     public partial class ModuleResource : Pulumi.CustomResource
     {
-        [Output("thing")]
-        public Output<Pulumi.FooBar.Outputs.TopLevel?> Thing { get; private set; } = null!;
-
-
         /// <summary>
         /// Create a ModuleResource resource with the given unique name, arguments, and options.
         /// </summary>
@@ -24,12 +20,12 @@ namespace Pulumi.FooBar.Submodule1
         /// <param name="args">The arguments used to populate this resource's properties</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
         public ModuleResource(string name, ModuleResourceArgs? args = null, CustomResourceOptions? options = null)
-            : base("foobar:submodule1:ModuleResource", name, args ?? new ModuleResourceArgs(), MakeResourceOptions(options, ""))
+            : base("foobar::ModuleResource", name, args ?? new ModuleResourceArgs(), MakeResourceOptions(options, ""))
         {
         }
 
         private ModuleResource(string name, Input<string> id, CustomResourceOptions? options = null)
-            : base("foobar:submodule1:ModuleResource", name, null, MakeResourceOptions(options, id))
+            : base("foobar::ModuleResource", name, null, MakeResourceOptions(options, id))
         {
         }
 
@@ -61,10 +57,11 @@ namespace Pulumi.FooBar.Submodule1
     public sealed class ModuleResourceArgs : Pulumi.ResourceArgs
     {
         [Input("thing")]
-        public Input<Pulumi.FooBar.Inputs.TopLevelArgs>? Thing { get; set; }
+        public string? Thing { get; set; }
 
         public ModuleResourceArgs()
         {
+            Thing = "buzzer";
         }
     }
 }

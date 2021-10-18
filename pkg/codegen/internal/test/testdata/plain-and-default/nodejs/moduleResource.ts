@@ -2,8 +2,7 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import { input as inputs, output as outputs } from "../types";
-import * as utilities from "../utilities";
+import * as utilities from "./utilities";
 
 export class ModuleResource extends pulumi.CustomResource {
     /**
@@ -19,7 +18,7 @@ export class ModuleResource extends pulumi.CustomResource {
     }
 
     /** @internal */
-    public static readonly __pulumiType = 'foobar:submodule1:ModuleResource';
+    public static readonly __pulumiType = 'foobar::ModuleResource';
 
     /**
      * Returns true if the given object is an instance of ModuleResource.  This is designed to work even
@@ -32,7 +31,6 @@ export class ModuleResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === ModuleResource.__pulumiType;
     }
 
-    public readonly thing!: pulumi.Output<outputs.TopLevel | undefined>;
 
     /**
      * Create a ModuleResource resource with the given unique name, arguments, and options.
@@ -45,9 +43,8 @@ export class ModuleResource extends pulumi.CustomResource {
         let inputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["thing"] = args ? args.thing : undefined;
+            inputs["thing"] = (args ? args.thing : undefined) ?? "buzzer";
         } else {
-            inputs["thing"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
@@ -60,5 +57,5 @@ export class ModuleResource extends pulumi.CustomResource {
  * The set of arguments for constructing a ModuleResource resource.
  */
 export interface ModuleResourceArgs {
-    thing?: pulumi.Input<inputs.TopLevelArgs>;
+    thing?: string;
 }

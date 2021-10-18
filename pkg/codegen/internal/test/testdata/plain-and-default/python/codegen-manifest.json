@@ -2,13 +2,10 @@
   "emittedFiles": [
     "pulumi_foobar/README.md",
     "pulumi_foobar/__init__.py",
-    "pulumi_foobar/_inputs.py",
     "pulumi_foobar/_utilities.py",
-    "pulumi_foobar/outputs.py",
+    "pulumi_foobar/module_resource.py",
     "pulumi_foobar/provider.py",
     "pulumi_foobar/py.typed",
-    "pulumi_foobar/submodule1/__init__.py",
-    "pulumi_foobar/submodule1/module_resource.py",
     "setup.py"
   ]
 }

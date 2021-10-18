@@ -1,33 +1,14 @@
 {
   "version": "0.0.1",
   "name": "foobar",
-  "types": {
-    "foobar:index:TopLevel": {
-      "properties": {
-        "buzz": {
-          "type": "string"
-        }
-      },
+  "resources": {
+    "foobar::ModuleResource": {
+      "properties": {},
       "inputProperties": {
-        "buzz": {
+        "thing": {
           "type": "string",
           "default": "buzzer",
           "plain": true
-        }
-      },
-      "type": "object"
-    }
-  },
-  "resources": {
-    "foobar:submodule1:ModuleResource": {
-      "properties": {
-        "thing": {
-          "$ref": "#/types/foobar:index:TopLevel"
-        }
-      },
-      "inputProperties": {
-        "thing": {
-          "$ref": "#/types/foobar:index:TopLevel"
         }
       },
       "type": "object"

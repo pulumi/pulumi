@@ -5,26 +5,17 @@
 from . import _utilities
 import typing
 # Export this package's modules as members:
+from .module_resource import *
 from .provider import *
-from ._inputs import *
-from . import outputs
-
-# Make subpackages available:
-if typing.TYPE_CHECKING:
-    import pulumi_foobar.submodule1 as __submodule1
-    submodule1 = __submodule1
-else:
-    submodule1 = _utilities.lazy_import('pulumi_foobar.submodule1')
-
 _utilities.register(
     resource_modules="""
 [
  {
   "pkg": "foobar",
-  "mod": "submodule1",
-  "fqn": "pulumi_foobar.submodule1",
+  "mod": "",
+  "fqn": "pulumi_foobar",
   "classes": {
-   "foobar:submodule1:ModuleResource": "ModuleResource"
+   "foobar::ModuleResource": "ModuleResource"
   }
  }
 ]
