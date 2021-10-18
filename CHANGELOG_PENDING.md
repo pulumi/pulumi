@@ -6,7 +6,7 @@
   [#5758](https://github.com/pulumi/pulumi/issues/) for .NET, making
   it easier to compose functions/datasources with Pulumi resources.
   NOTE for resource providers: the generated code requires Pulumi .NET
-  SDK 3.13 or higher.
+  SDK 3.15 or higher.
 
   [#7899](https://github.com/pulumi/pulumi/pull/7899)
 
