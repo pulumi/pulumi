@@ -1431,15 +1431,16 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 
 			switch codegen.UnwrapType(p.Type).(type) {
 			case *schema.EnumType:
-				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-
-				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), strings.TrimSuffix(t, "Ptr"), v)
-				fmt.Fprintf(w, "\t}\n")
-			default:
-				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
-				fmt.Fprintf(w, "\t}\n")
+				t = strings.TrimSuffix(t, "Ptr")
 			}
+			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
+			if p.Plain {
+				fmt.Fprintf(w, "\t\targs.%s = %s\n", Title(p.Name), v)
+			} else {
+				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
+			}
+			fmt.Fprintf(w, "\t}\n")
+
 		}
 	}
 

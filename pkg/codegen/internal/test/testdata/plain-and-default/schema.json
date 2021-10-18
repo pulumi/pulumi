@@ -1,0 +1,61 @@
+{
+  "version": "0.0.1",
+  "name": "foobar",
+  "types": {
+    "foobar:index:TopLevel": {
+      "properties": {
+        "buzz": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "buzz": {
+          "type": "string",
+          "default": "buzzer",
+          "plain": true
+        }
+      },
+      "type": "object"
+    }
+  },
+  "resources": {
+    "foobar:submodule1:ModuleResource": {
+      "properties": {
+        "thing": {
+          "$ref": "#/types/foobar:index:TopLevel"
+        }
+      },
+      "inputProperties": {
+        "thing": {
+          "$ref": "#/types/foobar:index:TopLevel"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "language": {
+    "csharp": {
+      "namespaces": {
+        "foobar": "FooBar"
+      },
+      "packageReferences": {
+        "Pulumi": "3.12",
+        "Pulumi.Aws": "4.20",
+        "Pulumi.Kubernetes": "3.7",
+        "Pulumi.Random": "4.2"
+      }
+    },
+    "go": {
+      "importBasePath": "plain-and-default/foo"
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
+    "python": {}
+  }
+}

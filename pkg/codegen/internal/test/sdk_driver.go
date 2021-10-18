@@ -183,6 +183,11 @@ var sdkTests = []sdkTest{
 		Description: "Ensure that we handle all valid go import paths",
 		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
 	},
+	{
+		Directory:   "plain-and-default",
+		Description: "Ensure that a resource with a plain default property works correctly",
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
+	},
 }
 
 var genSDKOnly bool

@@ -354,6 +354,8 @@ type Property struct {
 	Secret bool
 	// ReplaceOnChanges specifies if the property is to be replaced instead of updated (default false).
 	ReplaceOnChanges bool
+	// // Plain indicates that when used as an input, this type does not accept eventual values.
+	Plain bool
 }
 
 // IsRequired returns true if this property is required (i.e. its type is not Optional).
@@ -2251,6 +2253,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 			Language:           language,
 			Secret:             spec.Secret,
 			ReplaceOnChanges:   spec.ReplaceOnChanges,
+			Plain:              spec.TypeSpec.Plain,
 		}
 
 		propertyMap[name], result = p, append(result, p)
