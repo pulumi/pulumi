@@ -1435,7 +1435,11 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			}
 			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
 			if p.Plain {
-				fmt.Fprintf(w, "\t\targs.%s = %s\n", Title(p.Name), v)
+				// We have the tmp variable because we cannot take the address
+				// of literals.
+				tmp_name := camel(p.Name) + "_"
+				fmt.Fprintf(w, "\t%s := %s\n", tmp_name, v)
+				fmt.Fprintf(w, "\t\targs.%s = &%s\n", Title(p.Name), tmp_name)
 			} else {
 				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
 			}
