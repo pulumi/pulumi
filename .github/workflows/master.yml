@@ -112,7 +112,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
-          version: v0.181.1
+          version: latest
           args: -p 3 -f .goreleaser.prerelease.yml --rm-dist --skip-validate
   #  examples_smoke_test:
   #    name: Trigger Examples Smoke Test
