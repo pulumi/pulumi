@@ -26,3 +26,11 @@ resource privateS3NetworkAclRule "aws:ec2/networkAclRule:NetworkAclRule" {
   fromPort     = 443
   toPort       = 443
 }
+
+# A contrived example to test that helper nested records ( `filters`
+# below) generate correctly when using output-versioned function
+# invoke forms.
+amis = invoke("aws:ec2:getAmiIds", {
+  owners = [bar.id]
+  filters = [{name=bar.id, values=["pulumi*"]}]
+})

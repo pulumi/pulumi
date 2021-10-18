@@ -34,6 +34,24 @@ class MyStack : Stack
             FromPort = 443,
             ToPort = 443,
         });
+        var amis = Aws.Ec2.GetAmiIds.Invoke(new Aws.Ec2.GetAmiIdsInvokeArgs
+        {
+            Owners =
+            {
+                bar.Id,
+            },
+            Filters =
+            {
+                new Aws.Ec2.Inputs.GetAmiIdsFilterArgs
+                {
+                    Name = bar.Id,
+                    Values =
+                    {
+                        "pulumi*",
+                    },
+                },
+            },
+        });
     }
 
 }
