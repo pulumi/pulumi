@@ -14,3 +14,13 @@ export interface BastionShareableLink {
     vm: string;
 }
 
+/**
+ * Bastion Shareable Link.
+ */
+export interface BastionShareableLinkArgs {
+    /**
+     * Reference of the virtual machine resource.
+     */
+    vm: pulumi.Input<string>;
+}
+
