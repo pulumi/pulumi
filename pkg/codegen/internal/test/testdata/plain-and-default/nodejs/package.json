@@ -1,0 +1,16 @@
+{
+    "name": "@pulumi/foobar",
+    "version": "${VERSION}",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+    },
+    "devDependencies": {
+        "typescript": "^3.7.0"
+    },
+    "pulumi": {
+        "resource": true
+    }
+}

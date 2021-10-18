@@ -19,7 +19,8 @@
 package docs
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	// TODO[pulumi/pulumi#8250]
+	// "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -420,8 +421,9 @@ func TestGeneratePackage(t *testing.T) {
 	// `make generate` first. That will regenerate the
 	// compiled templates file packaged.go. See README.md
 	// in this package for more info.
-	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
-		Language:   "docs",
-		GenPackage: generatePackage,
-	})
+	// TODO[pulumi/pulumi#8250]
+	// test.TestSDKCodegen(t, &test.SDKCodegenOptions{
+	// 	Language:   "docs",
+	// 	GenPackage: generatePackage,
+	// })
 }
