@@ -48,10 +48,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\..\..\sdk\dotnet\Pulumi\Pulumi.csproj"  />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="logo.png">
       <Pack>True</Pack>
       <PackagePath></PackagePath>

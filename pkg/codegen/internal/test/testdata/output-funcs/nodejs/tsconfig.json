@@ -24,6 +24,7 @@
         "index.ts",
         "listStorageAccountKeys.ts",
         "provider.ts",
+        "tests/codegen.spec.ts",
         "types/index.ts",
         "types/input.ts",
         "types/output.ts",

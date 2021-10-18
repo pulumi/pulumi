@@ -1,8 +1,12 @@
 package gen
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,8 +50,8 @@ func TestInputUsage(t *testing.T) {
 
 func TestGoPackageName(t *testing.T) {
 	assert.Equal(t, "aws", goPackage("aws"))
-	assert.Equal(t, "azure", goPackage("azure-nextgen"))
-	assert.Equal(t, "plant", goPackage("plant-provider"))
+	assert.Equal(t, "azurenextgen", goPackage("azure-nextgen"))
+	assert.Equal(t, "plantprovider", goPackage("plant-provider"))
 	assert.Equal(t, "", goPackage(""))
 }
 
@@ -129,4 +133,82 @@ func TestGenerateTypeNames(t *testing.T) {
 			return root.typeString(t)
 		}
 	})
+}
+
+func readSchemaFile(file string) *schema.Package {
+	// Read in, decode, and import the schema.
+	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", file))
+	if err != nil {
+		panic(err)
+	}
+	var pkgSpec schema.PackageSpec
+	if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
+		panic(err)
+	}
+	pkg, err := schema.ImportSpec(pkgSpec, map[string]schema.Language{"go": Importer})
+	if err != nil {
+		panic(err)
+	}
+
+	return pkg
+}
+
+// We test the naming/module structure of generated packages.
+func TestPackageNaming(t *testing.T) {
+	testCases := []struct {
+		importBasePath  string
+		rootPackageName string
+		name            string
+		expectedRoot    string
+	}{
+		{
+			importBasePath: "github.com/pulumi/pulumi-azure-quickstart-acr-geo-replication/sdk/go/acr",
+			expectedRoot:   "acr",
+		},
+		{
+			importBasePath:  "github.com/ihave/animport",
+			rootPackageName: "root",
+			expectedRoot:    "",
+		},
+		{
+			name:         "named-package",
+			expectedRoot: "namedpackage",
+		},
+	}
+	for _, tt := range testCases {
+		t.Run(tt.expectedRoot, func(t *testing.T) {
+			// This schema is arbitrary. We just needed a filled out schema. All
+			// path decisions should be made based off of the Name and
+			// Language[go] fields (which we set after import).
+			schema := readSchemaFile(filepath.Join("schema", "good-enum-1.json"))
+			if tt.name != "" {
+				// We want there to be a name, so if one isn't provided we
+				// default to the schema.
+				schema.Name = tt.name
+			}
+			schema.Language = map[string]interface{}{
+				"go": GoPackageInfo{
+					ImportBasePath:  tt.importBasePath,
+					RootPackageName: tt.rootPackageName,
+				},
+			}
+			files, err := GeneratePackage("test", schema)
+			require.NoError(t, err)
+			ordering := make([]string, len(files))
+			var i int
+			for k := range files {
+				ordering[i] = k
+				i++
+			}
+			ordering = sort.StringSlice(ordering)
+			require.NotEmpty(t, files, "This test only works when files are generated")
+			for _, k := range ordering {
+				root := strings.Split(k, "/")[0]
+				if tt.expectedRoot != "" {
+					require.Equal(t, tt.expectedRoot, root, "Root should precede all cases. Got file %s", k)
+				}
+				// We should work on a way to assert this is one level higher then it otherwise would be.
+			}
+		})
+	}
 }

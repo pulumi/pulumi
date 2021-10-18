@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
-using Pulumi.Utilities;
 
 namespace Pulumi.Mypkg
 {
@@ -18,12 +17,6 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Task<GetAmiIdsResult> InvokeAsync(GetAmiIdsArgs args, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<GetAmiIdsResult>("mypkg::getAmiIds", args ?? new GetAmiIdsArgs(), options.WithVersion());
-
-        /// <summary>
-        /// Taken from pulumi-AWS to regress an issue
-        /// </summary>
-        public static Output<GetAmiIdsResult> Invoke(GetAmiIdsInvokeArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<GetAmiIdsResult>("mypkg::getAmiIds", args ?? new GetAmiIdsInvokeArgs(), options.WithVersion());
     }
 
 
@@ -85,68 +78,6 @@ namespace Pulumi.Mypkg
         public bool? SortAscending { get; set; }
 
         public GetAmiIdsArgs()
-        {
-        }
-    }
-
-    public sealed class GetAmiIdsInvokeArgs : Pulumi.InvokeArgs
-    {
-        [Input("executableUsers")]
-        private InputList<string>? _executableUsers;
-
-        /// <summary>
-        /// Limit search to users with *explicit* launch
-        /// permission on  the image. Valid items are the numeric account ID or `self`.
-        /// </summary>
-        public InputList<string> ExecutableUsers
-        {
-            get => _executableUsers ?? (_executableUsers = new InputList<string>());
-            set => _executableUsers = value;
-        }
-
-        [Input("filters")]
-        private InputList<Inputs.GetAmiIdsFilterInputArgs>? _filters;
-
-        /// <summary>
-        /// One or more name/value pairs to filter off of. There
-        /// are several valid keys, for a full reference, check out
-        /// [describe-images in the AWS CLI reference][1].
-        /// </summary>
-        public InputList<Inputs.GetAmiIdsFilterInputArgs> Filters
-        {
-            get => _filters ?? (_filters = new InputList<Inputs.GetAmiIdsFilterInputArgs>());
-            set => _filters = value;
-        }
-
-        /// <summary>
-        /// A regex string to apply to the AMI list returned
-        /// by AWS. This allows more advanced filtering not supported from the AWS API.
-        /// This filtering is done locally on what AWS returns, and could have a performance
-        /// impact if the result is large. It is recommended to combine this with other
-        /// options to narrow down the list AWS returns.
-        /// </summary>
-        [Input("nameRegex")]
-        public Input<string>? NameRegex { get; set; }
-
-        [Input("owners", required: true)]
-        private InputList<string>? _owners;
-
-        /// <summary>
-        /// List of AMI owners to limit search. At least 1 value must be specified. Valid values: an AWS account ID, `self` (the current account), or an AWS owner alias (e.g. `amazon`, `aws-marketplace`, `microsoft`).
-        /// </summary>
-        public InputList<string> Owners
-        {
-            get => _owners ?? (_owners = new InputList<string>());
-            set => _owners = value;
-        }
-
-        /// <summary>
-        /// Used to sort AMIs by creation time.
-        /// </summary>
-        [Input("sortAscending")]
-        public Input<bool>? SortAscending { get; set; }
-
-        public GetAmiIdsInvokeArgs()
         {
         }
     }

@@ -48,3 +48,22 @@ export interface ListStorageAccountKeysResult {
      */
     readonly keys: outputs.StorageAccountKeyResponse[];
 }
+
+export function listStorageAccountKeysOutput(args: ListStorageAccountKeysOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListStorageAccountKeysResult> {
+    return pulumi.output(args).apply(a => listStorageAccountKeys(a, opts))
+}
+
+export interface ListStorageAccountKeysOutputArgs {
+    /**
+     * The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.
+     */
+    accountName: pulumi.Input<string>;
+    /**
+     * Specifies type of the key to be listed. Possible value is kerb.
+     */
+    expand?: pulumi.Input<string>;
+    /**
+     * The name of the resource group within the user's subscription. The name is case insensitive.
+     */
+    resourceGroupName: pulumi.Input<string>;
+}

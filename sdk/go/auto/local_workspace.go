@@ -490,7 +490,12 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 
 	res := make(OutputMap)
 	for k, v := range secrets {
-		isSecret := outputs[k] == secretSentinel
+		raw, err := json.Marshal(outputs[k])
+		if err != nil {
+			return nil, errors.Wrapf(err, "error determining secretness: %s", secretStderr)
+		}
+		rawString := string(raw)
+		isSecret := strings.Contains(rawString, secretSentinel)
 		res[k] = OutputValue{
 			Value:  v,
 			Secret: isSecret,

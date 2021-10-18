@@ -1,6 +1,85 @@
 CHANGELOG
 =========
 
+## 3.15.0 (2021-10-14)
+
+### Improvements
+
+- [automation/python] - Use `rstrip` rather than `strip` for the sake of indentation
+  [#8160](https://github.com/pulumi/pulumi/pull/8160)
+
+- [codegen/nodejs] - Add helper function forms `$fnOutput` that accept
+  `Input`s, return an `Output`, and wrap the underlying `$fn` call.
+  This change addreses
+  [#5758](https://github.com/pulumi/pulumi/issues/5758) for NodeJS,
+  making it easier to compose functions/datasources with Pulumi
+  resources.
+  [#8047](https://github.com/pulumi/pulumi/pull/8047)
+
+- [sdk/dotnet] - Update SDK to support the upcoming codegen feature that
+  will enable functions to accept Outputs
+  ([5758](https://github.com/pulumi/pulumi/issues/5758)). Specifically
+  add `Pulumi.DeploymentInstance.Invoke` and remove the now redundant
+  `Pulumi.Utilities.CodegenUtilities`.
+  [#8142](https://github.com/pulumi/pulumi/pull/8142)
+
+- [cli] - Upgrade CLI to go1.17
+  [#8171](https://github.com/pulumi/pulumi/pull/8171)
+
+- [codegen/go] Register input types for schema object types.
+  [#7959](https://github.com/pulumi/pulumi/pull/7959)
+
+- [codegen/go] Register input types for schema resource and enum types.
+  [#8204]((https://github.com/pulumi/pulumi/pull/8204))
+
+- [codegen/go] Add schema flag to disable registering input types.
+  [#8198](https://github.com/pulumi/pulumi/pull/8198)
+
+### Bug Fixes
+
+- [codegen/go] - Use `importBasePath` before `name` if specified for name
+  and path.
+  [#8159](https://github.com/pulumi/pulumi/pull/8159)
+  [#8187](https://github.com/pulumi/pulumi/pull/8187)
+
+- [auto/go] - Mark entire exported map as secret if key in map is secret.
+  [#8179](https://github.com/pulumi/pulumi/pull/8179)
+
+
+## 3.14.0 (2021-10-06)
+
+### Improvements
+
+- [cli] - Differentiate in-progress actions by bolding output.
+  [#7918](https://github.com/pulumi/pulumi/pull/7918)
+
+- [CLI] Adding the ability to set `refresh: always` in an options object at a Pulumi.yaml level
+  to allow a user to be able to always refresh their derivative stacks by default
+  [#8071](https://github.com/pulumi/pulumi/pull/8071)
+
+### Bug Fixes
+
+- [codegen/go] - Fix generation of cyclic struct types.
+  [#8049](https://github.com/pulumi/pulumi/pull/8049)
+
+- [codegen/nodejs] - Fix type literal generation by adding
+  disambiguating parens; previously nested types such as arrays of
+  unions and optionals generated type literals that were incorrectly
+  parsed by TypeScript precedence rules.
+
+  NOTE for providers: using updated codegen may result in API changes
+  that break existing working programs built against the older
+  (incorrect) API declarations.
+
+  [#8116](https://github.com/pulumi/pulumi/pull/8116)
+
+- [auto/go] - Fix --target / --replace args
+  [#8109](https://github.com/pulumi/pulumi/pull/8109)
+
+- [sdk/python] - Fix deprecation warning when using python 3.10
+  [#8129](https://github.com/pulumi/pulumi/pull/8129)
+
+
 ## 3.13.2 (2021-09-27)
 
 **Please Note:** The v3.13.1 release failed in our build pipeline and was re-released as v3.13.2.
@@ -184,7 +263,7 @@ CHANGELOG
 - [sdk/python] - Fix program hangs when monitor becomes unavailable.
   [#7734](https://github.com/pulumi/pulumi/pull/7734)
 
-- [sdk/python] Allow Python dynamic provider resources to be constructed outside of `__main__`. 
+- [sdk/python] Allow Python dynamic provider resources to be constructed outside of `__main__`.
   [#7755](https://github.com/pulumi/pulumi/pull/7755)
 
 ## 3.10.1 (2021-08-12)

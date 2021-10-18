@@ -113,6 +113,9 @@ type pkgContext struct {
 
 	// Determines whether to make single-return-value methods return an output struct or the value
 	liftSingleValueMethodReturns bool
+
+	// Determines if we should emit type registration code
+	disableInputTypeRegistrations bool
 }
 
 func (pkg *pkgContext) detailsForType(t schema.Type) *typeDetails {
@@ -162,10 +165,11 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 		return name
 	}
 	if mod == "" {
-		mod = goPackage(components[0])
+		mod = packageRoot(pkg.pkg)
 	}
-	mod = strings.Replace(mod, "/", "", -1) + "." + name
-	return strings.Replace(mod, "-provider", "", -1)
+	mod = strings.ReplaceAll(mod, "/", "")
+	mod = strings.ReplaceAll(mod, "-", "") + "." + name
+	return strings.ReplaceAll(mod, "-provider", "")
 }
 
 func (pkg *pkgContext) tokenToEnum(tok string) string {
@@ -1739,27 +1743,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		}
 	}
 
-	// Register all output types
-	fmt.Fprintf(w, "func init() {\n")
-	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
-	for _, method := range r.Methods {
-		if method.Function.Outputs != nil {
-			if pkg.liftSingleValueMethodReturns && len(method.Function.Outputs.Properties) == 1 {
-				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", camel(name), Title(method.Name))
-			} else {
-				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", name, Title(method.Name))
-			}
-		}
-	}
-
-	if generateResourceContainerTypes {
-		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
-		if !r.IsProvider {
-			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
-			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
-		}
-	}
-	fmt.Fprintf(w, "}\n\n")
+	pkg.genResourceRegistrations(w, r, generateResourceContainerTypes)
 
 	return nil
 }
@@ -2141,6 +2125,31 @@ func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
 
 func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.ObjectType, types ...string) {
 	fmt.Fprintf(w, "func init() {\n")
+
+	// Input types.
+	if !pkg.disableInputTypeRegistrations {
+		for _, obj := range objTypes {
+			name, details := pkg.tokenToType(obj.Token), pkg.detailsForType(obj)
+			fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]sArgs{})\n", name)
+			if details.ptrElement {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]sArgs{})\n", name)
+			}
+			if details.arrayElement {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n", name)
+			}
+			if details.mapElement {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n", name)
+			}
+		}
+		for _, t := range types {
+			fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]s{})\n", t)
+		}
+	}
+
+	// Output types.
 	for _, obj := range objTypes {
 		name, details := pkg.tokenToType(obj.Token), pkg.detailsForType(obj)
 		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
@@ -2154,11 +2163,98 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.Obje
 			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
 		}
 	}
-
 	for _, t := range types {
 		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", t)
 	}
+
 	fmt.Fprintf(w, "}\n")
+}
+
+func (pkg *pkgContext) genEnumRegistrations(w io.Writer) {
+	fmt.Fprintf(w, "func init() {\n")
+	// Register all input types
+	if !pkg.disableInputTypeRegistrations {
+		for _, e := range pkg.enums {
+			// Enums are guaranteed to have at least one element when they are
+			// bound into a schema.
+			contract.Assert(len(e.Elements) > 0)
+			name, details := pkg.tokenToEnum(e.Token), pkg.detailsForType(e)
+			instance := fmt.Sprintf("%#v", e.Elements[0].Value)
+			fmt.Fprintf(w,
+				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]s(%[2]s))\n",
+				name, instance)
+			fmt.Fprintf(w,
+				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]s(%[2]s))\n",
+				name, instance)
+			if details.arrayElement {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n",
+					name)
+			}
+			if details.mapElement {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n",
+					name)
+			}
+		}
+	}
+	// Register all output types
+	for _, e := range pkg.enums {
+		name, details := pkg.tokenToEnum(e.Token), pkg.detailsForType(e)
+		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
+		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
+		if details.arrayElement {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
+		}
+		if details.mapElement {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
+		}
+	}
+	fmt.Fprintf(w, "}\n\n")
+}
+
+func (pkg *pkgContext) genResourceRegistrations(w io.Writer, r *schema.Resource, generateResourceContainerTypes bool) {
+	name := disambiguatedResourceName(r, pkg)
+	fmt.Fprintf(w, "func init() {\n")
+	// Register input type
+	if !pkg.disableInputTypeRegistrations {
+		fmt.Fprintf(w,
+			"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), &%[1]s{})\n",
+			name)
+		if generateResourceContainerTypes {
+			fmt.Fprintf(w,
+				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), &%[1]s{})\n",
+				name)
+			if !r.IsProvider {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n",
+					name)
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n",
+					name)
+			}
+		}
+	}
+	// Register all output types
+	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
+	for _, method := range r.Methods {
+		if method.Function.Outputs != nil {
+			if pkg.liftSingleValueMethodReturns && len(method.Function.Outputs.Properties) == 1 {
+				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", camel(name), Title(method.Name))
+			} else {
+				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", name, Title(method.Name))
+			}
+		}
+	}
+
+	if generateResourceContainerTypes {
+		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
+		if !r.IsProvider {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
+		}
+	}
+	fmt.Fprintf(w, "}\n\n")
 }
 
 func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAliases map[string]string, seen map[schema.Type]struct{}) {
@@ -2317,10 +2413,7 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 
 	var pkgName string
 	if pkg.mod == "" {
-		pkgName = pkg.rootPackageName
-		if pkgName == "" {
-			pkgName = goPackage(pkg.pkg.Name)
-		}
+		pkgName = packageName(pkg.pkg)
 	} else {
 		pkgName = path.Base(pkg.mod)
 	}
@@ -2419,12 +2512,6 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 
 	basePath := pkg.importBasePath
 
-	// TODO: importBasePath isn't currently set for schemas generated by pulumi-terraform-bridge.
-	//		 Remove this once the linked issue is fixed. https://github.com/pulumi/pulumi-terraform-bridge/issues/320
-	if len(basePath) == 0 {
-		basePath = fmt.Sprintf("github.com/pulumi/pulumi-%[1]s/sdk/v2/go/%[1]s", pkg.pkg.Name)
-	}
-
 	imports := map[string]string{
 		"github.com/blang/semver":                   "",
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
@@ -2506,6 +2593,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		} else {
 			pkgName = basePath[strings.LastIndex(basePath, "/")+1:]
 		}
+		pkgName = strings.ReplaceAll(pkgName, "-", "")
 		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
 	}
 	fmt.Fprintf(w, "\tif err != nil {\n")
@@ -2536,21 +2624,22 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		pack, ok := packages[mod]
 		if !ok {
 			pack = &pkgContext{
-				pkg:                          pkg,
-				mod:                          mod,
-				importBasePath:               goInfo.ImportBasePath,
-				rootPackageName:              goInfo.RootPackageName,
-				typeDetails:                  map[schema.Type]*typeDetails{},
-				names:                        codegen.NewStringSet(),
-				schemaNames:                  codegen.NewStringSet(),
-				renamed:                      map[string]string{},
-				duplicateTokens:              map[string]bool{},
-				functionNames:                map[*schema.Function]string{},
-				tool:                         tool,
-				modToPkg:                     goInfo.ModuleToPackage,
-				pkgImportAliases:             goInfo.PackageImportAliases,
-				packages:                     packages,
-				liftSingleValueMethodReturns: goInfo.LiftSingleValueMethodReturns,
+				pkg:                           pkg,
+				mod:                           mod,
+				importBasePath:                goInfo.ImportBasePath,
+				rootPackageName:               goInfo.RootPackageName,
+				typeDetails:                   map[schema.Type]*typeDetails{},
+				names:                         codegen.NewStringSet(),
+				schemaNames:                   codegen.NewStringSet(),
+				renamed:                       map[string]string{},
+				duplicateTokens:               map[string]bool{},
+				functionNames:                 map[*schema.Function]string{},
+				tool:                          tool,
+				modToPkg:                      goInfo.ModuleToPackage,
+				pkgImportAliases:              goInfo.PackageImportAliases,
+				packages:                      packages,
+				liftSingleValueMethodReturns:  goInfo.LiftSingleValueMethodReturns,
+				disableInputTypeRegistrations: goInfo.DisableInputTypeRegistrations,
 			}
 			packages[mod] = pack
 		}
@@ -2952,6 +3041,37 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	return resources, nil
 }
 
+// packageRoot is the relative root file for go code. That means that every go
+// source file should be under this root. For example:
+//
+// root = aws => sdk/go/aws/*.go
+func packageRoot(pkg *schema.Package) string {
+	var info GoPackageInfo
+	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+		info = goInfo
+	}
+	if info.RootPackageName != "" {
+		// package structure is flat
+		return ""
+	}
+	if info.ImportBasePath != "" {
+		return path.Base(info.ImportBasePath)
+	}
+	return goPackage(pkg.Name)
+}
+
+// packageName is the go package name for the generated package.
+func packageName(pkg *schema.Package) string {
+	var info GoPackageInfo
+	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+		info = goInfo
+	}
+	if info.RootPackageName != "" {
+		return info.RootPackageName
+	}
+	return goPackage(packageRoot(pkg))
+}
+
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
 	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 		return nil, err
@@ -2970,16 +3090,12 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 	sort.Strings(pkgMods)
 
-	name := goPkgInfo.RootPackageName
-	if name == "" {
-		name = goPackage(pkg.Name)
-	}
+	name := packageName(pkg)
+	pathPrefix := packageRoot(pkg)
 
 	files := map[string][]byte{}
 	setFile := func(relPath, contents string) {
-		if goPkgInfo.RootPackageName == "" {
-			relPath = path.Join(goPackage(name), relPath)
-		}
+		relPath = path.Join(pathPrefix, relPath)
 		if _, ok := files[relPath]; ok {
 			panic(errors.Errorf("duplicate file: %s", relPath))
 		}
@@ -3066,21 +3182,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				}
 				delete(knownTypes, e)
 			}
-			// Register all output types
-			fmt.Fprintf(buffer, "func init() {\n")
-			for _, e := range pkg.enums {
-				name := pkg.tokenToEnum(e.Token)
-				fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
-				fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
-				details := pkg.detailsForType(e)
-				if details.arrayElement {
-					fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
-				}
-				if details.mapElement {
-					fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
-				}
-			}
-			fmt.Fprintf(buffer, "}\n\n")
+			pkg.genEnumRegistrations(buffer)
 			setFile(path.Join(mod, "pulumiEnums.go"), buffer.String())
 		}
 
@@ -3158,7 +3260,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 // goPackage returns the suggested package name for the given string.
 func goPackage(name string) string {
-	return strings.Split(name, "-")[0]
+	return strings.ReplaceAll(name, "-", "")
 }
 
 const utilitiesFile = `

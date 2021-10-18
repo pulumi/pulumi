@@ -3,6 +3,8 @@
 title: "funcWithAllOptionalInputs"
 title_tag: "mypkg.funcWithAllOptionalInputs"
 meta_desc: "Documentation for the mypkg.funcWithAllOptionalInputs function with examples, input properties, output properties, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 

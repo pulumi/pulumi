@@ -3,6 +3,8 @@
 title: "funcWithDefaultValue"
 title_tag: "mypkg.funcWithDefaultValue"
 meta_desc: "Documentation for the mypkg.funcWithDefaultValue function with examples, input properties, output properties, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 

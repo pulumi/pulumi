@@ -132,7 +132,7 @@ jobs:
     needs: publish-binaries
     strategy:
       matrix:
-        go-version: [ 1.16.x ]
+        go-version: [ 1.17.x ]
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
@@ -189,7 +189,7 @@ jobs:
     needs: [lint, build-and-test, windows-build]
     strategy:
       matrix:
-        go-version: [ 1.16.x ]
+        go-version: [ 1.17.x ]
     steps:
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
@@ -294,7 +294,7 @@ jobs:
     strategy:
       matrix:
         platform: [ ubuntu-latest, macos-latest ]
-        go-version: [1.16.x]
+        go-version: [1.17.x]
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
@@ -380,7 +380,7 @@ jobs:
     name: Windows Build
     strategy:
       matrix:
-        go-version: [1.16.x]
+        go-version: [1.17.x]
         node-version: [14.x]
         python-version: [3.9.x]
         dotnet: [3.1.x]
@@ -458,13 +458,13 @@ jobs:
       - name: Build Binary
         run: |
           cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+          dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
   verify-containers:
     name: Run Container Tests
     needs: [publish-binaries, publish-sdks]
     strategy:
       matrix:
-        go-version: [1.16.x]
+        go-version: [1.17.x]
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
@@ -485,3 +485,5 @@ jobs:
           git fetch --quiet --prune --unshallow --tags
       - name: Run Container Tests
         run: make test_containers VERSION=v$(pulumictl get version --language generic -o)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}

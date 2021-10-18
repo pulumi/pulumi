@@ -36,3 +36,18 @@ export interface FuncWithAllOptionalInputsArgs {
 export interface FuncWithAllOptionalInputsResult {
     readonly r: string;
 }
+
+export function funcWithAllOptionalInputsOutput(args?: FuncWithAllOptionalInputsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithAllOptionalInputsResult> {
+    return pulumi.output(args).apply(a => funcWithAllOptionalInputs(a, opts))
+}
+
+export interface FuncWithAllOptionalInputsOutputArgs {
+    /**
+     * Property A
+     */
+    a?: pulumi.Input<string>;
+    /**
+     * Property B
+     */
+    b?: pulumi.Input<string>;
+}

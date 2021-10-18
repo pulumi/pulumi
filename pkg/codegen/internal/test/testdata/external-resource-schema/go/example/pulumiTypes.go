@@ -235,6 +235,8 @@ func (o PetPtrOutput) RequiredNameMap() random.RandomPetMapOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*PetInput)(nil)).Elem(), PetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*PetPtrInput)(nil)).Elem(), PetArgs{})
 	pulumi.RegisterOutputType(PetOutput{})
 	pulumi.RegisterOutputType(PetPtrOutput{})
 }

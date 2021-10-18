@@ -66,5 +66,6 @@ func (o ChildOutput) Name() pulumi.StringPtrOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ChildInput)(nil)).Elem(), ChildArgs{})
 	pulumi.RegisterOutputType(ChildOutput{})
 }

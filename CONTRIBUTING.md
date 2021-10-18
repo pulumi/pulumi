@@ -8,13 +8,14 @@ For larger features, we'd appreciate it if you open a [new issue](https://github
 
 To hack on Pulumi, you'll need to get a development environment set up. You'll want to install the following on your machine:
 
-- Go 1.16
+- Go 1.17
 - NodeJS 12.X.X or later
 - Python 3.6 or later
 - [.NET Core](https://dotnet.microsoft.com/download)
 - [pipenv](https://github.com/pypa/pipenv)
 - [Golangci-lint](https://github.com/golangci/golangci-lint)
 - [Yarn](https://yarnpkg.com/)
+- [Pulumictl](https://github.com/pulumi/pulumictl)
 
 ## Getting dependencies on macOS
 

@@ -238,6 +238,10 @@ func (o GetAmiIdsFilterArrayOutput) Index(i pulumi.IntInput) GetAmiIdsFilterOutp
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*StorageAccountKeyResponseInput)(nil)).Elem(), StorageAccountKeyResponseArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*StorageAccountKeyResponseArrayInput)(nil)).Elem(), StorageAccountKeyResponseArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetAmiIdsFilterInput)(nil)).Elem(), GetAmiIdsFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*GetAmiIdsFilterArrayInput)(nil)).Elem(), GetAmiIdsFilterArray{})
 	pulumi.RegisterOutputType(StorageAccountKeyResponseOutput{})
 	pulumi.RegisterOutputType(StorageAccountKeyResponseArrayOutput{})
 	pulumi.RegisterOutputType(GetAmiIdsFilterOutput{})
