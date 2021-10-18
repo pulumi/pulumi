@@ -111,6 +111,7 @@ func (o FooOutput) ToFooOutputWithContext(ctx context.Context) FooOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*FooInput)(nil)).Elem(), &Foo{})
 	pulumi.RegisterOutputType(FooOutput{})
 	pulumi.RegisterOutputType(fooGetKubeconfigResultOutput{})
 }

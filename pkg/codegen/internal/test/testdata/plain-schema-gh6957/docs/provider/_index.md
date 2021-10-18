@@ -3,6 +3,8 @@
 title: "Provider"
 title_tag: "xyz.Provider"
 meta_desc: "Documentation for the xyz.Provider resource with examples, input properties, output properties, lookup functions, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 

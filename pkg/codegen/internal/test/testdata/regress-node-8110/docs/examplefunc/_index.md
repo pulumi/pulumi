@@ -3,6 +3,8 @@
 title: "exampleFunc"
 title_tag: "my8110.exampleFunc"
 meta_desc: "Documentation for the my8110.exampleFunc function with examples, input properties, output properties, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 

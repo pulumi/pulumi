@@ -103,5 +103,6 @@ func (o ComponentOutput) ToComponentOutputWithContext(ctx context.Context) Compo
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ComponentInput)(nil)).Elem(), &Component{})
 	pulumi.RegisterOutputType(ComponentOutput{})
 }

@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/tests/construct_component
+module github.com/pulumi/pulumi/tests/construct_component_provider
 
 go 1.16
 

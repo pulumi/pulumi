@@ -111,7 +111,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
-          version: latest
+          version: v0.181.1
           args: -p 3 -f .goreleaser.prerelease.yml --rm-dist
   lint:
     container: golangci/golangci-lint:latest
@@ -336,7 +336,7 @@ jobs:
       - name: Build Binary
         run: |
           cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+          dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
   dispatch-docker-containers-ci-build:
     name: Trigger Docker containers CI build
     needs: [publish-binaries, publish-sdks]
