@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
 
 package ints
 
@@ -797,4 +797,34 @@ func TestRotatePassphrase(t *testing.T) {
 
 	e.Stdin, e.Passphrase = nil, "qwerty"
 	e.RunCommand("pulumi", "config", "get", "foo")
+}
+
+func TestReplaceOnChanges(t *testing.T) {
+	for _, tt := range []struct {
+		lang string
+		main string
+	}{
+		{"dotnet", "MyStack.cs"},
+		{"python", "__main__.py"},
+		{"go", "main.go"},
+		{"nodejs", "index.ts"},
+	} {
+		t.Run(tt.lang, func(t *testing.T) {
+			e := ptesting.NewEnvironment(t)
+			defer func() {
+				if !t.Failed() {
+					e.DeleteEnvironment()
+				}
+			}()
+			e.ImportDirectory(filepath.Join("replace_on_changes", tt.lang))
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			e.RunCommand("pulumi", "stack", "init", "dev")
+			e.RunCommand("pulumi", "config", "set", "aws:region", "us-west-2")
+			e.RunCommand("pulumi", "up", "--skip-preview", "--non-interactive", "--yes")
+			err := os.Rename(tt.main+".changed", tt.main)
+			assert.NoError(t, err)
+			stdout, _ := e.RunCommand("pulumi", "preview", "--non-interactive", "--color=never")
+			assert.Contains(t, stdout, "+-1 to replace")
+		})
+	}
 }

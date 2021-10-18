@@ -1,0 +1,6 @@
+name: replace-on-changes-python-test
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: A minimal AWS Python Pulumi program
