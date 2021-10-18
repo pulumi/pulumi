@@ -6,6 +6,7 @@
     "funcWithDefaultValue.ts",
     "funcWithDictParam.ts",
     "funcWithListParam.ts",
+    "getBastionShareableLink.ts",
     "getClientConfig.ts",
     "getIntegrationRuntimeObjectMetadatum.ts",
     "index.ts",

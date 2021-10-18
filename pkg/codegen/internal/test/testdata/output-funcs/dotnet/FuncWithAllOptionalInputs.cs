@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Utilities;
 
 namespace Pulumi.Mypkg
 {
@@ -16,6 +17,12 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Task<FuncWithAllOptionalInputsResult> InvokeAsync(FuncWithAllOptionalInputsArgs? args = null, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsArgs(), options.WithVersion());
+
+        /// <summary>
+        /// Check codegen of functions with all optional inputs.
+        /// </summary>
+        public static Output<FuncWithAllOptionalInputsResult> Invoke(FuncWithAllOptionalInputsInvokeArgs? args = null, InvokeOptions? options = null)
+            => Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithVersion());
     }
 
 
@@ -34,6 +41,25 @@ namespace Pulumi.Mypkg
         public string? B { get; set; }
 
         public FuncWithAllOptionalInputsArgs()
+        {
+        }
+    }
+
+    public sealed class FuncWithAllOptionalInputsInvokeArgs : Pulumi.InvokeArgs
+    {
+        /// <summary>
+        /// Property A
+        /// </summary>
+        [Input("a")]
+        public Input<string>? A { get; set; }
+
+        /// <summary>
+        /// Property B
+        /// </summary>
+        [Input("b")]
+        public Input<string>? B { get; set; }
+
+        public FuncWithAllOptionalInputsInvokeArgs()
         {
         }
     }

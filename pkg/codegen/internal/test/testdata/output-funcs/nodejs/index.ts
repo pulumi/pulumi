@@ -10,6 +10,7 @@ export * from "./funcWithConstInput";
 export * from "./funcWithDefaultValue";
 export * from "./funcWithDictParam";
 export * from "./funcWithListParam";
+export * from "./getBastionShareableLink";
 export * from "./getClientConfig";
 export * from "./getIntegrationRuntimeObjectMetadatum";
 export * from "./listStorageAccountKeys";
