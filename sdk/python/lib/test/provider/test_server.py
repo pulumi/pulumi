@@ -15,8 +15,6 @@
 from typing import Dict, Any, Optional, Tuple, List, Set, Callable, Awaitable
 from semver import VersionInfo as Version
 
-import os
-import inspect
 import pytest
 
 from pulumi.runtime.settings import Settings, configure
@@ -60,12 +58,11 @@ class MockResource(CustomResource):
 class MockInputDependencies:
     """ A mock for ConstructRequest.inputDependencies
 
-    We need only support a `get(str) -> List[str]` operation.
+    We need only support a `get() -> T where T.urns: List[str]` operation.
     """
     def __init__(self, urns: Optional[List[str]]):
         self.urns = urns if urns else []
 
-    # We intentionally ignore args
     def get(self, *args):
         #pylint: disable=unused-argument
         return self
@@ -118,7 +115,7 @@ def create_secret(value: Any):
 
 def create_resource_ref(urn: str, id_: Optional[str]):
     ref = {rpc._special_sig_key: rpc._special_resource_sig, "urn": urn}
-    if id_:
+    if id_ is not None:
         ref["id"] = id_
     return ref
 
@@ -185,7 +182,20 @@ class UnmarshalOutputTestCase:
 
 
 class Assert():
-    """ Describes a series of asserts to be performed """
+    """Describes a series of asserts to be performed.
+
+    Each assert can be:
+    - An async value to be awaited and asserted.
+      assert await val
+
+    - A sync function to be called and asserted on. This will be called on the
+      same set of arguments that the class was called on.
+      assert fn(actual)
+
+    - A plain value to be asserted on.
+      assert val
+
+    """
     def __init__(self, *asserts):
         self.asserts = asserts
 
@@ -204,9 +214,12 @@ class Assert():
 
     @staticmethod
     def async_equal(a, b):
-        async def check(actual):
-            a_res = await Assert.__eval(a, actual)
-            b_res = await Assert.__eval(b, actual)
+        """Asserts that two values are equal when evaluated with async and
+        given the args that `Asserts` were called on.
+        """
+        async def check(*args, **kargs):
+            a_res = await Assert.__eval(a, *args, **kargs)
+            b_res = await Assert.__eval(b, *args, **kargs)
             assert a_res == b_res
             return True
         return check

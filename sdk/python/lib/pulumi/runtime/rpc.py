@@ -27,6 +27,7 @@ from google.protobuf import struct_pb2
 from semver import VersionInfo as Version
 import six
 from . import known_types, settings
+from .known_types import URN
 from .. import log
 from .. import _types
 from .. import urn as urn_util
@@ -35,7 +36,6 @@ if TYPE_CHECKING:
     from ..output import Inputs, Input, Output
     from ..resource import CustomResource, Resource, ProviderResource
     from ..asset import FileAsset, RemoteAsset, StringAsset, FileArchive, RemoteArchive, AssetArchive
-URN = known_types.URN
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
@@ -430,7 +430,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
     # We assume that we are deserializing properties that we got from a Resource RPC endpoint,
     # which has type `Struct` in our gRPC proto definition.
     if _special_sig_key in props_struct:
-        deps = set()
+        deps: Set[URN] = set()
         return deserialize_special_case(props_struct, keep_unknowns, deps)
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways. Note
     # that if the struct had any secret properties, we push the secretness of the object up to us
@@ -445,7 +445,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
         if not keep_internal and k.startswith("__") and k != "__provider":
             continue
 
-        deps: Optional[Set[URN]] = None
+        deps: Optional[Set[URN]] = None # type: ignore [name-defined,no-redef]
         if prop_deps is not None:
             deps = set()
             prop_deps[k] = deps
@@ -511,7 +511,6 @@ def deserialize_output_value(ref_struct: struct_pb2.Struct,
     resources: Set['Resource'] = set()
     if "dependencies" in ref_struct:
         from ..resource import DependencyResource  # pylint: disable=import-outside-toplevel
-        ref_deps = ref_struct["dependencies"]
         dependencies = cast(List[str], deserialize_property(ref_struct["dependencies"], deps=deps))
         for urn in dependencies:
             if deps is not None:

@@ -18,6 +18,7 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 """
 
 from typing import Dict, List, Set, Optional, TypeVar, Any, cast
+from pulumi.runtime.known_types import URN
 import argparse
 import asyncio
 import sys
@@ -35,8 +36,6 @@ import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
-
-URN = known_types.URN
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
@@ -125,11 +124,9 @@ class ProviderServicer(ResourceProviderServicer):
     @staticmethod
     async def _create_output(the_input: Any, deps: Set[URN], gathered_prop_deps: Optional[Set[URN]] = None) -> Any:
         is_secret = rpc.is_rpc_secret(the_input)
-        if gathered_prop_deps:
-            if not is_secret and len(gathered_prop_deps) > 0 and gathered_prop_deps.issuperset(deps):
-                return the_input
+        if gathered_prop_deps and not is_secret and gathered_prop_deps.issuperset(deps):
+            return the_input
 
-        # best effort check. We want to expand on this.
         # If it's a resource reference or a prompt value, return it directly without wrapping
         # it as an output.
         if await _is_resource_reference(the_input, deps) or (not is_secret and len(deps) == 0):
