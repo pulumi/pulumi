@@ -18,7 +18,6 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 """
 
 from typing import Dict, List, Set, Optional, TypeVar, Any, cast
-from pulumi.runtime.known_types import URN
 import argparse
 import asyncio
 import sys
@@ -32,6 +31,7 @@ from pulumi.resource import ProviderResource, Resource, DependencyResource, Depe
 from pulumi.runtime import known_types, proto, rpc
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.runtime.stack import wait_for_rpcs
+from pulumi.runtime.known_types import URN
 import pulumi
 import pulumi.resource
 import pulumi.runtime.config
