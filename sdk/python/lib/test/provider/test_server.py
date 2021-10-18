@@ -166,8 +166,9 @@ class UnmarshalOutputTestCase:
         try:
             pulumi.runtime.set_mocks(TestMocks(), "project", "stack", True)
             pulumi.runtime.register_resource_module("test", "index", TestModule())
-            # TODO This doesn't seem to do anything.
-            MockResource("name", opts=ResourceOptions(urn=test_urn))
+            # This registers the resource purely for the purpose of the test.
+            pulumi.runtime.settings.get_monitor().resources[test_urn] = \
+                pulumi.runtime.mocks.MockMonitor.ResourceRegistration(test_urn, test_id, dict())
 
             inputs = { "value": self.input_ }
             input_struct = _as_struct(inputs)
@@ -215,7 +216,7 @@ async def object_nested_resource_ref_and_secret(actual):
         assert isinstance(v["foo"], MockResource)
         assert await v["foo"].urn.future() == test_urn
         assert await v["foo"].id.future() == test_id
-        assert v.bar == "ssh"
+        assert v["bar"] == "ssh"
     await assert_output_equal(helper, True, True, [test_urn])(actual)
 
 
@@ -389,7 +390,7 @@ deserialization_tests = [
             lambda actual: isinstance(actual, list),
             lambda actual: isinstance(actual[0], MockResource),
             Assert.async_equal(lambda actual: actual[0].urn.future(), test_urn),
-            Assert.async_equal(lambda actual: actual[0].id().future(), test_id),
+            Assert.async_equal(lambda actual: actual[0].id.future(), test_id),
         ),
     ),
     UnmarshalOutputTestCase(
@@ -399,14 +400,14 @@ deserialization_tests = [
         assert_=Assert(
             lambda actual: isinstance(actual["foo"], MockResource),
             Assert.async_equal(lambda actual: actual["foo"].urn.future(), test_urn),
-            Assert.async_equal(lambda actual: actual["foo"].id().future(), test_id),
+            Assert.async_equal(lambda actual: actual["foo"].id.future(), test_id),
         ),
     ),
     UnmarshalOutputTestCase(
         name="object nested resource ref and secret",
         input_={
             "foo": create_resource_ref(test_urn, test_id),
-            "bar": create_secret("shh"),
+            "bar": create_secret("ssh"),
         },
         deps=[test_urn],
         assert_=object_nested_resource_ref_and_secret
