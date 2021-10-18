@@ -220,7 +220,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
-          version: v0.181.1
+          version: latest
           args: -p 3 -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md
   lint:
     container: golangci/golangci-lint:latest

@@ -6,6 +6,7 @@
     "mypkg/funcWithDefaultValue.go",
     "mypkg/funcWithDictParam.go",
     "mypkg/funcWithListParam.go",
+    "mypkg/getBastionShareableLink.go",
     "mypkg/getClientConfig.go",
     "mypkg/getIntegrationRuntimeObjectMetadatum.go",
     "mypkg/init.go",
