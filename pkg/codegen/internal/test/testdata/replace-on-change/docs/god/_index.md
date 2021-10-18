@@ -3,6 +3,8 @@
 title: "God"
 title_tag: "example.God"
 meta_desc: "Documentation for the example.God resource with examples, input properties, output properties, lookup functions, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 

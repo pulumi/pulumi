@@ -3,6 +3,8 @@
 title: "Nursery"
 title_tag: "plant.tree/v1.Nursery"
 meta_desc: "Documentation for the plant.tree/v1.Nursery resource with examples, input properties, output properties, lookup functions, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 

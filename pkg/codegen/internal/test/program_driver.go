@@ -67,6 +67,8 @@ var programTests = []programTest{
 	{
 		Name:        "azure-native",
 		Description: "Azure Native",
+		Skip:        codegen.NewStringSet("go"),
+		// Blocked on TODO[pulumi/pulumi#8123]
 		SkipCompile: codegen.NewStringSet("go", "nodejs"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8072]
