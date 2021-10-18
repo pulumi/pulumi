@@ -22,7 +22,8 @@ func NewModuleResource(ctx *pulumi.Context,
 	}
 
 	if args.Thing == nil {
-		args.Thing = "buzzer"
+		thing_ := "buzzer"
+		args.Thing = &thing_
 	}
 	var resource ModuleResource
 	err := ctx.RegisterResource("foobar::ModuleResource", name, args, &resource, opts...)
