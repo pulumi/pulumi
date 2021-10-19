@@ -125,12 +125,15 @@ var programTests = []programTest{
 }
 
 // Checks that a generated program is correct
-type CheckProgramOutput = func(*testing.T, string)
+//
+// The arguments are to be read:
+// (Testing environment, path to generated code, set of dependencies)
+type CheckProgramOutput = func(*testing.T, string, codegen.StringSet)
 
 // Generates a program from a pcl.Program
 type GenProgram = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
-type ProgramLangConfig struct {
+type ProgramCodegenOptions struct {
 	Language   string
 	Extension  string
 	OutputFile string
@@ -151,7 +154,7 @@ func TestProgramCodegen(
 	t *testing.T,
 	// language string,
 	// genProgram func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error
-	testcase ProgramLangConfig,
+	testcase ProgramCodegenOptions,
 
 ) {
 	ensureValidSchemaVersions(t)
@@ -222,7 +225,16 @@ func TestProgramCodegen(
 				assert.Equal(t, string(expected), string(files[testcase.OutputFile]))
 			}
 			if testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
-				testcase.Check(t, expectedFile)
+				extraPulumiPackages := codegen.NewStringSet()
+				for _, n := range program.Nodes {
+					if r, isResource := n.(*pcl.Resource); isResource {
+						pkg, _, _, _ := r.DecomposeToken()
+						if pkg != "pulumi" {
+							extraPulumiPackages.Add(pkg)
+						}
+					}
+				}
+				testcase.Check(t, expectedFile, extraPulumiPackages)
 			}
 		})
 	}
