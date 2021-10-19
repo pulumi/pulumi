@@ -48,7 +48,7 @@ async def test_construct_inputs_preserves_unknowns():
 
 def _as_struct(key_values: Dict[str, Any]) -> struct_pb2.Struct:
     the_struct = struct_pb2.Struct()
-    the_struct.update(key_values) # pylint: disable=no-member
+    the_struct.update(key_values)  # pylint: disable=no-member
     return the_struct
 
 class MockResource(CustomResource):
@@ -181,7 +181,7 @@ class UnmarshalOutputTestCase:
             self.after()
 
 
-class Assert():
+class Assert:
     """Describes a series of asserts to be performed.
 
     Each assert can be:

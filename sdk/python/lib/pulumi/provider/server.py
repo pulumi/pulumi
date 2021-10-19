@@ -25,13 +25,13 @@ import sys
 import grpc
 import grpc.aio
 
+from google.protobuf import struct_pb2
 from pulumi.provider.provider import Provider, CallResult, ConstructResult
 from pulumi.resource import ProviderResource, Resource, DependencyResource, DependencyProviderResource, \
     _parse_resource_reference
 from pulumi.runtime import known_types, proto, rpc
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.runtime.stack import wait_for_rpcs
-from pulumi.runtime.known_types import URN
 import pulumi
 import pulumi.resource
 import pulumi.runtime.config
@@ -101,7 +101,7 @@ class ProviderServicer(ResourceProviderServicer):
         return response
 
     @staticmethod
-    async def _construct_inputs(inputs: Any, input_dependencies: Any) -> Dict[str, pulumi.Input[Any]]:
+    async def _construct_inputs(inputs: struct_pb2.Struct, input_dependencies: Any) -> Dict[str, pulumi.Input[Any]]:
 
         def deps(key: str) -> Set[str]:
             return set(urn for urn in
@@ -110,7 +110,7 @@ class ProviderServicer(ResourceProviderServicer):
                            proto.ConstructRequest.PropertyDependencies()
                        ).urns)
 
-        gathered_prop_deps: Dict[str, Set[URN]] = {}
+        gathered_prop_deps: Dict[str, Set[str]] = {}
         # rpc.deserialize_properties mutates gathered_prop_deps
         props = rpc.deserialize_properties(inputs, keep_unknowns=True, prop_deps=gathered_prop_deps)
         return {
@@ -122,8 +122,12 @@ class ProviderServicer(ResourceProviderServicer):
         }
 
     @staticmethod
-    async def _create_output(the_input: Any, deps: Set[URN], gathered_prop_deps: Optional[Set[URN]] = None) -> Any:
+    async def _create_output(the_input: Any, deps: Set[str], gathered_prop_deps: Optional[Set[str]] = None) -> Any:
         is_secret = rpc.is_rpc_secret(the_input)
+
+        # If the property dependencies are equal to or a subset of the gathered nested
+        # dependencies, we don't need to create a top-level output for the property
+        # because any nested output values will have already been deserialized as outputs.
         if gathered_prop_deps and not is_secret and gathered_prop_deps.issuperset(deps):
             return the_input
 
@@ -255,7 +259,7 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.CallResponse(**resp)
 
     async def Configure(self, request, context) -> proto.ConfigureResponse:  # pylint: disable=invalid-overridden-method
-        return proto.ConfigureResponse(acceptSecrets=True, acceptResources=True, acceptOutputs=True) # type: ignore
+        return proto.ConfigureResponse(acceptSecrets=True, acceptResources=True, acceptOutputs=True)
 
     async def GetPluginInfo(self, request, context) -> proto.PluginInfo:  # pylint: disable=invalid-overridden-method
         return proto.PluginInfo(version=self.provider.version)

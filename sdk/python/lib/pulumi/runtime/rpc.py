@@ -27,7 +27,6 @@ from google.protobuf import struct_pb2
 from semver import VersionInfo as Version
 import six
 from . import known_types, settings
-from .known_types import URN
 from .. import log
 from .. import _types
 from .. import urn as urn_util
@@ -387,7 +386,7 @@ async def serialize_property(value: 'Input[Any]',
 
 def deserialize_special_case(props_struct: struct_pb2.Struct,
                              keep_unknowns: Optional[bool] = None,
-                             deps: Optional[Set[URN]] = None) -> Any:
+                             deps: Optional[Set[str]] = None) -> Any:
     from .. import FileAsset, StringAsset, RemoteAsset, AssetArchive, FileArchive, RemoteArchive  # pylint: disable=import-outside-toplevel
     if props_struct[_special_sig_key] == _special_asset_sig:
         # This is an asset. Re-hydrate this object into an Asset.
@@ -419,7 +418,7 @@ def deserialize_special_case(props_struct: struct_pb2.Struct,
 def deserialize_properties(props_struct: struct_pb2.Struct,
                            keep_unknowns: Optional[bool] = None,
                            keep_internal: Optional[bool] = None,
-                           prop_deps: Optional[Dict[str, Set[URN]]] = None) -> Any:
+                           prop_deps: Optional[Dict[str, Set[str]]] = None) -> Any:
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
     Python types.
@@ -430,8 +429,9 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
     # We assume that we are deserializing properties that we got from a Resource RPC endpoint,
     # which has type `Struct` in our gRPC proto definition.
     if _special_sig_key in props_struct:
-        deps: Set[URN] = set()
+        deps: Set[str] = set()
         return deserialize_special_case(props_struct, keep_unknowns, deps)
+
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways. Note
     # that if the struct had any secret properties, we push the secretness of the object up to us
     # since we can only set secret outputs on top level properties.
@@ -445,7 +445,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
         if not keep_internal and k.startswith("__") and k != "__provider":
             continue
 
-        deps: Optional[Set[URN]] = None # type: ignore [name-defined,no-redef]
+        deps: Optional[Set[str]] = None # type: ignore [name-defined,no-redef]
         if prop_deps is not None:
             deps = set()
             prop_deps[k] = deps
@@ -459,7 +459,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct,
 
 def deserialize_resource(ref_struct: struct_pb2.Struct,
                          keep_unknowns: Optional[bool] = None,
-                         deps: Optional[Set[URN]] = None) -> 'Resource':
+                         deps: Optional[Set[str]] = None) -> 'Resource':
     urn = ref_struct["urn"]
     if deps is not None:
         deps.add(urn)
@@ -491,7 +491,7 @@ def deserialize_resource(ref_struct: struct_pb2.Struct,
 
 
 def deserialize_output_value(ref_struct: struct_pb2.Struct,
-                             deps: Optional[Set[URN]]) -> 'Output[Any]':
+                             deps: Optional[Set[str]]) -> 'Output[Any]':
     is_known = "value" in ref_struct
     is_known_future: 'asyncio.Future' = asyncio.Future()
     is_known_future.set_result(is_known)
@@ -553,7 +553,7 @@ def unwrap_rpc_secret(value: Any) -> Any:
 
 def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None,
                                      keep_internal: Optional[bool] = None,
-                                     deps: Optional[Set[URN]] = None) -> Any:
+                                     deps: Optional[Set[str]] = None) -> Any:
     """
     Deserializes a single protobuf value (either `Struct` or `ListValue`) into idiomatic
     Python values.

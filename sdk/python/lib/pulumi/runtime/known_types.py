@@ -26,8 +26,6 @@ within the functions themselves.
 """
 from typing import Any, Optional
 
-URN = str
-
 def is_asset(obj: Any) -> bool:
     """
     Returns true if the given type is an Asset, false otherwise.
