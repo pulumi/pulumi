@@ -1424,22 +1424,25 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 				return err
 			}
 
-			t := strings.TrimSuffix(pkg.inputType(p.Type), "Input")
+			t := strings.TrimSuffix(pkg.typeString(p.Type), "Input")
 			if t == "pulumi." {
 				t = "pulumi.Any"
 			}
-
 			switch codegen.UnwrapType(p.Type).(type) {
 			case *schema.EnumType:
 				t = strings.TrimSuffix(t, "Ptr")
 			}
 			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-			if p.Plain {
-				// We have the tmp variable because we cannot take the address
-				// of literals.
-				tmp_name := camel(p.Name) + "_"
-				fmt.Fprintf(w, "\t%s := %s\n", tmp_name, v)
-				fmt.Fprintf(w, "\t\targs.%s = &%s\n", Title(p.Name), tmp_name)
+			if schema.IsPrimitiveType(codegen.UnwrapType(p.Type)) {
+				// This is non-nullable type. We must construct a reference to
+				// it.
+				if strings.HasPrefix(t, "*") {
+					tmpName := camel(p.Name) + "_"
+					fmt.Fprintf(w, "\t%s := %s\n", tmpName, v)
+					fmt.Fprintf(w, "\t\targs.%s = &%s\n", Title(p.Name), tmpName)
+				} else {
+					fmt.Fprintf(w, "\t\targs.%s = %s\n", Title(p.Name), v)
+				}
 			} else {
 				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
 			}
