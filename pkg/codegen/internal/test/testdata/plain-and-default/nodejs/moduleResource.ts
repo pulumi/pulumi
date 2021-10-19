@@ -39,11 +39,40 @@ export class ModuleResource extends pulumi.CustomResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: ModuleResourceArgs, opts?: pulumi.CustomResourceOptions) {
+    constructor(name: string, args: ModuleResourceArgs, opts?: pulumi.CustomResourceOptions) {
         let inputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["thing"] = (args ? args.thing : undefined) ?? "buzzer";
+            if ((!args || args.plain_required_bool === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'plain_required_bool'");
+            }
+            if ((!args || args.plain_required_number === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'plain_required_number'");
+            }
+            if ((!args || args.plain_required_string === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'plain_required_string'");
+            }
+            if ((!args || args.required_bool === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'required_bool'");
+            }
+            if ((!args || args.required_number === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'required_number'");
+            }
+            if ((!args || args.required_string === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'required_string'");
+            }
+            inputs["optional_bool"] = (args ? args.optional_bool : undefined) ?? true;
+            inputs["optional_number"] = (args ? args.optional_number : undefined) ?? 42;
+            inputs["optional_string"] = (args ? args.optional_string : undefined) ?? "buzzer";
+            inputs["plain_optional_bool"] = (args ? args.plain_optional_bool : undefined) ?? true;
+            inputs["plain_optional_number"] = (args ? args.plain_optional_number : undefined) ?? 42;
+            inputs["plain_optional_string"] = (args ? args.plain_optional_string : undefined) ?? "buzzer";
+            inputs["plain_required_bool"] = (args ? args.plain_required_bool : undefined) ?? true;
+            inputs["plain_required_number"] = (args ? args.plain_required_number : undefined) ?? 42;
+            inputs["plain_required_string"] = (args ? args.plain_required_string : undefined) ?? "buzzer";
+            inputs["required_bool"] = (args ? args.required_bool : undefined) ?? true;
+            inputs["required_number"] = (args ? args.required_number : undefined) ?? 42;
+            inputs["required_string"] = (args ? args.required_string : undefined) ?? "buzzer";
         } else {
         }
         if (!opts.version) {
@@ -57,5 +86,16 @@ export class ModuleResource extends pulumi.CustomResource {
  * The set of arguments for constructing a ModuleResource resource.
  */
 export interface ModuleResourceArgs {
-    thing?: string;
+    optional_bool?: pulumi.Input<boolean>;
+    optional_number?: pulumi.Input<number>;
+    optional_string?: pulumi.Input<string>;
+    plain_optional_bool?: boolean;
+    plain_optional_number?: number;
+    plain_optional_string?: string;
+    plain_required_bool: boolean;
+    plain_required_number: number;
+    plain_required_string: string;
+    required_bool: pulumi.Input<boolean>;
+    required_number: pulumi.Input<number>;
+    required_string: pulumi.Input<string>;
 }

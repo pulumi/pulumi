@@ -19,7 +19,7 @@ namespace Pulumi.FooBar
         /// <param name="name">The unique name of the resource</param>
         /// <param name="args">The arguments used to populate this resource's properties</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
-        public ModuleResource(string name, ModuleResourceArgs? args = null, CustomResourceOptions? options = null)
+        public ModuleResource(string name, ModuleResourceArgs args, CustomResourceOptions? options = null)
             : base("foobar::ModuleResource", name, args ?? new ModuleResourceArgs(), MakeResourceOptions(options, ""))
         {
         }
@@ -56,12 +56,56 @@ namespace Pulumi.FooBar
 
     public sealed class ModuleResourceArgs : Pulumi.ResourceArgs
     {
-        [Input("thing")]
-        public string? Thing { get; set; }
+        [Input("optional_bool")]
+        public Input<bool>? Optional_bool { get; set; }
+
+        [Input("optional_number")]
+        public Input<double>? Optional_number { get; set; }
+
+        [Input("optional_string")]
+        public Input<string>? Optional_string { get; set; }
+
+        [Input("plain_optional_bool")]
+        public bool? Plain_optional_bool { get; set; }
+
+        [Input("plain_optional_number")]
+        public double? Plain_optional_number { get; set; }
+
+        [Input("plain_optional_string")]
+        public string? Plain_optional_string { get; set; }
+
+        [Input("plain_required_bool", required: true)]
+        public bool Plain_required_bool { get; set; }
+
+        [Input("plain_required_number", required: true)]
+        public double Plain_required_number { get; set; }
+
+        [Input("plain_required_string", required: true)]
+        public string Plain_required_string { get; set; } = null!;
+
+        [Input("required_bool", required: true)]
+        public Input<bool> Required_bool { get; set; } = null!;
+
+        [Input("required_number", required: true)]
+        public Input<double> Required_number { get; set; } = null!;
+
+        [Input("required_string", required: true)]
+        public Input<string> Required_string { get; set; } = null!;
 
         public ModuleResourceArgs()
         {
-            Thing = "buzzer";
+            Optional_bool = true;
+            Optional_number = 42;
+            Optional_string = "buzzer";
+            Plain_optional_bool = true;
+            Plain_optional_number = 42;
+            Plain_optional_string = "buzzer";
+            Plain_required_bool = true;
+            Plain_required_number = 42;
+            Plain_required_string = "buzzer";
+            Required_bool = true;
+            Required_number = 42;
+            Required_string = "buzzer";
         }
     }
 }

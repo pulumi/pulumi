@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -18,12 +19,47 @@ type ModuleResource struct {
 func NewModuleResource(ctx *pulumi.Context,
 	name string, args *ModuleResourceArgs, opts ...pulumi.ResourceOption) (*ModuleResource, error) {
 	if args == nil {
-		args = &ModuleResourceArgs{}
+		return nil, errors.New("missing one or more required arguments")
 	}
 
-	if args.Thing == nil {
-		thing_ := "buzzer"
-		args.Thing = &thing_
+	if args.Optional_bool == nil {
+		args.Optional_bool = pulumi.BoolPtr(true)
+	}
+	if args.Optional_number == nil {
+		args.Optional_number = pulumi.Float64Ptr(42.0)
+	}
+	if args.Optional_string == nil {
+		args.Optional_string = pulumi.StringPtr("buzzer")
+	}
+	if args.Plain_optional_bool == nil {
+		plain_optional_bool_ := true
+		args.Plain_optional_bool = &plain_optional_bool_
+	}
+	if args.Plain_optional_number == nil {
+		plain_optional_number_ := 42.0
+		args.Plain_optional_number = &plain_optional_number_
+	}
+	if args.Plain_optional_string == nil {
+		plain_optional_string_ := "buzzer"
+		args.Plain_optional_string = &plain_optional_string_
+	}
+	if args.Plain_required_bool == false {
+		args.Plain_required_bool = true
+	}
+	if args.Plain_required_number == 0.0 {
+		args.Plain_required_number = 42.0
+	}
+	if args.Plain_required_string == "" {
+		args.Plain_required_string = "buzzer"
+	}
+	if args.Required_bool == nil {
+		args.Required_bool = pulumi.Bool(true)
+	}
+	if args.Required_number == nil {
+		args.Required_number = pulumi.Float64(42.0)
+	}
+	if args.Required_string == nil {
+		args.Required_string = pulumi.String("buzzer")
 	}
 	var resource ModuleResource
 	err := ctx.RegisterResource("foobar::ModuleResource", name, args, &resource, opts...)
@@ -57,12 +93,34 @@ func (ModuleResourceState) ElementType() reflect.Type {
 }
 
 type moduleResourceArgs struct {
-	Thing *string `pulumi:"thing"`
+	Optional_bool         *bool    `pulumi:"optional_bool"`
+	Optional_number       *float64 `pulumi:"optional_number"`
+	Optional_string       *string  `pulumi:"optional_string"`
+	Plain_optional_bool   *bool    `pulumi:"plain_optional_bool"`
+	Plain_optional_number *float64 `pulumi:"plain_optional_number"`
+	Plain_optional_string *string  `pulumi:"plain_optional_string"`
+	Plain_required_bool   bool     `pulumi:"plain_required_bool"`
+	Plain_required_number float64  `pulumi:"plain_required_number"`
+	Plain_required_string string   `pulumi:"plain_required_string"`
+	Required_bool         bool     `pulumi:"required_bool"`
+	Required_number       float64  `pulumi:"required_number"`
+	Required_string       string   `pulumi:"required_string"`
 }
 
 // The set of arguments for constructing a ModuleResource resource.
 type ModuleResourceArgs struct {
-	Thing *string
+	Optional_bool         pulumi.BoolPtrInput
+	Optional_number       pulumi.Float64PtrInput
+	Optional_string       pulumi.StringPtrInput
+	Plain_optional_bool   *bool
+	Plain_optional_number *float64
+	Plain_optional_string *string
+	Plain_required_bool   bool
+	Plain_required_number float64
+	Plain_required_string string
+	Required_bool         pulumi.BoolInput
+	Required_number       pulumi.Float64Input
+	Required_string       pulumi.StringInput
 }
 
 func (ModuleResourceArgs) ElementType() reflect.Type {

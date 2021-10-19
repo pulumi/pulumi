@@ -297,6 +297,21 @@ func isNilType(t schema.Type) bool {
 	return false
 }
 
+func nilValue(t schema.Type) string {
+	switch t {
+	case schema.BoolType:
+		return "false"
+	case schema.IntType:
+		return "0"
+	case schema.NumberType:
+		return "0.0"
+	case schema.StringType:
+		return "\"\""
+	default:
+		return "nil"
+	}
+}
+
 func (pkg *pkgContext) inputType(t schema.Type) (result string) {
 	switch t := codegen.SimplifyInputUnion(t).(type) {
 	case *schema.OptionalType:
@@ -1284,7 +1299,11 @@ func goPrimitiveValue(value interface{}) (string, error) {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
 		return strconv.FormatUint(v.Uint(), 10), nil
 	case reflect.Float32, reflect.Float64:
-		return strconv.FormatFloat(v.Float(), 'f', -1, 64), nil
+		value := strconv.FormatFloat(v.Float(), 'f', -1, 64)
+		if !strings.ContainsRune(value, '.') {
+			value += ".0"
+		}
+		return value, nil
 	case reflect.String:
 		return fmt.Sprintf("%q", v.String()), nil
 	default:
@@ -1432,18 +1451,20 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			case *schema.EnumType:
 				t = strings.TrimSuffix(t, "Ptr")
 			}
-			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-			if schema.IsPrimitiveType(codegen.UnwrapType(p.Type)) {
-				// This is non-nullable type. We must construct a reference to
-				// it.
-				if strings.HasPrefix(t, "*") {
+			if !codegen.IsInput(p.Type) {
+				if isNilType(p.Type) {
+					// This type is optional, and so it can be nil.
+					fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
 					tmpName := camel(p.Name) + "_"
 					fmt.Fprintf(w, "\t%s := %s\n", tmpName, v)
 					fmt.Fprintf(w, "\t\targs.%s = &%s\n", Title(p.Name), tmpName)
 				} else {
+					// A default value has already been provided.
+					fmt.Fprintf(w, "\tif args.%s == %s {\n", Title(p.Name), nilValue(p.Type))
 					fmt.Fprintf(w, "\t\targs.%s = %s\n", Title(p.Name), v)
 				}
 			} else {
+				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
 				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
 			}
 			fmt.Fprintf(w, "\t}\n")

@@ -5,12 +5,69 @@
     "foobar::ModuleResource": {
       "properties": {},
       "inputProperties": {
-        "thing": {
+        "plain_optional_string": {
           "type": "string",
           "default": "buzzer",
           "plain": true
+        },
+        "plain_optional_bool": {
+          "type": "boolean",
+          "default": true,
+          "plain": true
+        },
+        "plain_optional_number": {
+          "type": "number",
+          "default": 42,
+          "plain": true
+        },
+        "plain_required_string": {
+          "type": "string",
+          "default": "buzzer",
+          "plain": true
+        },
+        "plain_required_bool": {
+          "type": "boolean",
+          "default": true,
+          "plain": true
+        },
+        "plain_required_number": {
+          "type": "number",
+          "default": 42,
+          "plain": true
+        },
+        "optional_string": {
+          "type": "string",
+          "default": "buzzer"
+        },
+        "optional_bool": {
+          "type": "boolean",
+          "default": true
+        },
+        "optional_number": {
+          "type": "number",
+          "default": 42
+        },
+        "required_string": {
+          "type": "string",
+          "default": "buzzer"
+        },
+        "required_bool": {
+          "type": "boolean",
+          "default": true
+        },
+        "required_number": {
+          "type": "number",
+          "default": 42
         }
       },
+      "requiredInputs": [
+        "plain_required_string",
+        "plain_required_bool",
+        "plain_required_number",
+        "required_string",
+        "required_bool",
+        "required_number"
+      ],
       "type": "object"
     }
   },
@@ -20,10 +77,7 @@
         "foobar": "FooBar"
       },
       "packageReferences": {
-        "Pulumi": "3.12",
-        "Pulumi.Aws": "4.20",
-        "Pulumi.Kubernetes": "3.7",
-        "Pulumi.Random": "4.2"
+        "Pulumi": "3.12"
       }
     },
     "go": {

@@ -89,6 +89,19 @@ func UnwrapType(t schema.Type) schema.Type {
 	}
 }
 
+func IsInput(t schema.Type) bool {
+	for {
+		switch typ := t.(type) {
+		case *schema.InputType:
+			return true
+		case *schema.OptionalType:
+			t = typ.ElementType
+		default:
+			return false
+		}
+	}
+}
+
 func resolvedType(t schema.Type, plainObjects bool) schema.Type {
 	switch typ := t.(type) {
 	case *schema.InputType:
