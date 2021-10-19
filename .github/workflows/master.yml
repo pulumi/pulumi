@@ -31,7 +31,7 @@ jobs:
         language: ["nodejs", "python", "dotnet"]
     steps:
       - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
       - name: Set up Python ${{ matrix.python-version }}
@@ -86,7 +86,7 @@ jobs:
         go-version: [1.17.x]
     steps:
       - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
       - name: Checkout Repo
@@ -149,7 +149,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
       - name: Set up Python ${{ matrix.python-version }}
@@ -218,8 +218,11 @@ jobs:
       - name: Set PULUMI_TEST_SUBSET env var
         run: |
           echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV
+      - name: Enable code coverage
+        run: |
+          echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
       - name: Set up Python ${{ matrix.python-version }}
@@ -285,6 +288,17 @@ jobs:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+      - name: Merge Go coverage data
+        run: |
+          covmerge -in ./coverage -out ./coverage/go-all.txt
+          rm ./coverage/*.cov
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v2
+        with:
+          directory: coverage
+          files: '*'
+          fail_ci_if_error: true
+          verbose: true
   windows-build:
     name: Windows Build + Test + Publish
     strategy:
@@ -314,7 +328,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
       - name: Set up Python ${{ matrix.python-version }}
