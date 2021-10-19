@@ -126,9 +126,8 @@ func (b *binder) signatureForArgs(fn *schema.Function, args model.Expression) (m
 	}
 	if useOutputVersion {
 		return b.outputVersionSignature(fn)
-	} else {
-		return b.regularSignature(fn), nil
 	}
+	return b.regularSignature(fn), nil
 }
 
 func (b *binder) regularSignature(fn *schema.Function) model.StaticFunctionSignature {

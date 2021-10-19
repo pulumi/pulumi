@@ -317,7 +317,7 @@ func (g *generator) visitToMarkTypesUsedInFunctionOutputVersionInputs(expr model
 		}
 		return expr, nil
 	}
-	model.VisitExpression(expr, nil, visitor)
+	model.VisitExpression(expr, nil, visitor) // nolint:errcheck
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
