@@ -10,9 +10,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 func TestGeneratePackage(t *testing.T) {
@@ -21,22 +18,21 @@ func TestGeneratePackage(t *testing.T) {
 		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
 			"dotnet/compile": typeCheckGeneratedPackage,
+			"dotnet/test":    testGeneratedPackage,
 		},
 	})
 }
 
 func typeCheckGeneratedPackage(t *testing.T, pwd string) {
-	var err error
-	var dotnet string
-	dotnet, err = executable.FindExecutable("dotnet")
-	require.NoError(t, err)
-	cmdOptions := integration.ProgramTestOptions{}
 	versionPath := filepath.Join(pwd, "version.txt")
-	err = os.WriteFile(versionPath, []byte("0.0.0\n"), 0600)
-	defer func() { contract.IgnoreError(os.Remove(versionPath)) }()
+	err := os.WriteFile(versionPath, []byte("0.0.0\n"), 0600)
 	require.NoError(t, err)
-	err = integration.RunCommand(t, "dotnet build", []string{dotnet, "build"}, pwd, &cmdOptions)
-	require.NoError(t, err)
+
+	test.RunCommand(t, "dotnet build", pwd, "dotnet", "build")
+}
+
+func testGeneratedPackage(t *testing.T, pwd string) {
+	test.RunCommand(t, "dotnet build", pwd, "dotnet", "test")
 }
 
 func TestGenerateType(t *testing.T) {

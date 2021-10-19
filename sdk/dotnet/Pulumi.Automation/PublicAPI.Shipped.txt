@@ -356,8 +356,13 @@ Pulumi.Automation.WorkspaceStack.RemoveAllConfigAsync(System.Collections.Generic
 Pulumi.Automation.WorkspaceStack.RemoveConfigAsync(string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 Pulumi.Automation.WorkspaceStack.SetAllConfigAsync(System.Collections.Generic.IDictionary<string, Pulumi.Automation.ConfigValue> configMap, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 Pulumi.Automation.WorkspaceStack.SetConfigAsync(string key, Pulumi.Automation.ConfigValue value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStack.State.get -> Pulumi.Automation.WorkspaceStackState
 Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpResult>
 Pulumi.Automation.WorkspaceStack.Workspace.get -> Pulumi.Automation.Workspace
+Pulumi.Automation.WorkspaceStackState
+Pulumi.Automation.WorkspaceStackState.DeleteAsync(string urn, bool force = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStackState.UnprotectAllAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStackState.UnprotectAsync(string urn, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 abstract Pulumi.Automation.Workspace.CreateStackAsync(string stackName, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task
 abstract Pulumi.Automation.Workspace.EnvironmentVariables.get -> System.Collections.Generic.IDictionary<string, string>
 abstract Pulumi.Automation.Workspace.EnvironmentVariables.set -> void

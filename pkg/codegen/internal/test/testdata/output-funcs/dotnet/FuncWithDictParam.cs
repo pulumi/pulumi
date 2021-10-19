@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Utilities;
 
 namespace Pulumi.Mypkg
 {
@@ -16,6 +17,12 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Task<FuncWithDictParamResult> InvokeAsync(FuncWithDictParamArgs? args = null, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<FuncWithDictParamResult>("mypkg::funcWithDictParam", args ?? new FuncWithDictParamArgs(), options.WithVersion());
+
+        /// <summary>
+        /// Check codegen of functions with a Dict&lt;str,str&gt; parameter.
+        /// </summary>
+        public static Output<FuncWithDictParamResult> Invoke(FuncWithDictParamInvokeArgs? args = null, InvokeOptions? options = null)
+            => Pulumi.Deployment.Instance.Invoke<FuncWithDictParamResult>("mypkg::funcWithDictParam", args ?? new FuncWithDictParamInvokeArgs(), options.WithVersion());
     }
 
 
@@ -33,6 +40,24 @@ namespace Pulumi.Mypkg
         public string? B { get; set; }
 
         public FuncWithDictParamArgs()
+        {
+        }
+    }
+
+    public sealed class FuncWithDictParamInvokeArgs : Pulumi.InvokeArgs
+    {
+        [Input("a")]
+        private InputMap<string>? _a;
+        public InputMap<string> A
+        {
+            get => _a ?? (_a = new InputMap<string>());
+            set => _a = value;
+        }
+
+        [Input("b")]
+        public Input<string>? B { get; set; }
+
+        public FuncWithDictParamInvokeArgs()
         {
         }
     }

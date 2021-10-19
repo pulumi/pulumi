@@ -117,7 +117,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "simple-methods-schema",
 		Description:      "Simple schema with methods",
-		SkipCompileCheck: codegen.NewStringSet(nodejs, dotnet, golang),
+		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
 		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
@@ -166,7 +166,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "output-funcs-tfbridge20",
 		Description:      "Similar to output-funcs, but with compatibility: tfbridge20, to simulate pulumi-aws use case",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, golang, python),
+		SkipCompileCheck: codegen.NewStringSet(dotnet, python),
 	},
 	{
 		Directory:   "cyclic-types",

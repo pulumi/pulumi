@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Utilities;
 
 namespace Pulumi.Myedgeorder
 {
@@ -17,6 +18,13 @@ namespace Pulumi.Myedgeorder
         /// </summary>
         public static Task<ListProductFamiliesResult> InvokeAsync(ListProductFamiliesArgs args, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesArgs(), options.WithVersion());
+
+        /// <summary>
+        /// The list of product families.
+        /// API Version: 2020-12-01-preview.
+        /// </summary>
+        public static Output<ListProductFamiliesResult> Invoke(ListProductFamiliesInvokeArgs args, InvokeOptions? options = null)
+            => Pulumi.Deployment.Instance.Invoke<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesInvokeArgs(), options.WithVersion());
     }
 
 
@@ -53,6 +61,43 @@ namespace Pulumi.Myedgeorder
         public string? SkipToken { get; set; }
 
         public ListProductFamiliesArgs()
+        {
+        }
+    }
+
+    public sealed class ListProductFamiliesInvokeArgs : Pulumi.InvokeArgs
+    {
+        /// <summary>
+        /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
+        /// </summary>
+        [Input("customerSubscriptionDetails")]
+        public Input<Inputs.CustomerSubscriptionDetailsArgs>? CustomerSubscriptionDetails { get; set; }
+
+        /// <summary>
+        /// $expand is supported on configurations parameter for product, which provides details on the configurations for the product.
+        /// </summary>
+        [Input("expand")]
+        public Input<string>? Expand { get; set; }
+
+        [Input("filterableProperties", required: true)]
+        private InputMap<ImmutableArray<Inputs.FilterablePropertyArgs>>? _filterableProperties;
+
+        /// <summary>
+        /// Dictionary of filterable properties on product family.
+        /// </summary>
+        public InputMap<ImmutableArray<Inputs.FilterablePropertyArgs>> FilterableProperties
+        {
+            get => _filterableProperties ?? (_filterableProperties = new InputMap<ImmutableArray<Inputs.FilterablePropertyArgs>>());
+            set => _filterableProperties = value;
+        }
+
+        /// <summary>
+        /// $skipToken is supported on list of product families, which provides the next page in the list of product families.
+        /// </summary>
+        [Input("skipToken")]
+        public Input<string>? SkipToken { get; set; }
+
+        public ListProductFamiliesInvokeArgs()
         {
         }
     }
