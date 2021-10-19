@@ -19,8 +19,7 @@
 package docs
 
 import (
-	// TODO[pulumi/pulumi#8250]
-	// "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -410,21 +409,19 @@ func TestExamplesProcessing(t *testing.T) {
 	}
 }
 
-// TODO[pulumi/pulumi#8250]
-// func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-// 	dctx := newDocGenContext()
-// 	dctx.initialize(tool, pkg)
-// 	return dctx.generatePackage(tool, pkg)
-// }
+func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	dctx := newDocGenContext()
+	dctx.initialize(tool, pkg)
+	return dctx.generatePackage(tool, pkg)
+}
 
 func TestGeneratePackage(t *testing.T) {
 	// When running this test locally, be sure to run
 	// `make generate` first. That will regenerate the
 	// compiled templates file packaged.go. See README.md
 	// in this package for more info.
-	// TODO[pulumi/pulumi#8250]
-	// test.TestSDKCodegen(t, &test.SDKCodegenOptions{
-	// 	Language:   "docs",
-	// 	GenPackage: generatePackage,
-	// })
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
+		Language:   "docs",
+		GenPackage: generatePackage,
+	})
 }
