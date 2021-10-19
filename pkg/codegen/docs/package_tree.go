@@ -2,6 +2,7 @@ package docs
 
 import (
 	"github.com/pkg/errors"
+	"sort"
 )
 
 type entryType string
@@ -47,6 +48,9 @@ func generatePackageTree(rootMod modContext) ([]PackageTreeItem, error) {
 
 		packageTree = append(packageTree, ti)
 	}
+	sort.Slice(packageTree, func(i, j int) bool {
+		return packageTree[i].Name < packageTree[j].Name
+	})
 
 	for _, r := range rootMod.resources {
 		name := resourceName(r)
@@ -59,6 +63,15 @@ func generatePackageTree(rootMod modContext) ([]PackageTreeItem, error) {
 
 		packageTree = append(packageTree, ti)
 	}
+	sort.SliceStable(packageTree, func(i, j int) bool {
+		pti, ptj := packageTree[i], packageTree[j]
+		switch {
+		case pti.Type != ptj.Type:
+			return pti.Type == entryTypeModule && ptj.Type != entryTypeModule
+		default:
+			return pti.Name < ptj.Name
+		}
+	})
 
 	for _, f := range rootMod.functions {
 		name := tokenToName(f.Token)
@@ -71,5 +84,15 @@ func generatePackageTree(rootMod modContext) ([]PackageTreeItem, error) {
 
 		packageTree = append(packageTree, ti)
 	}
+	sort.SliceStable(packageTree, func(i, j int) bool {
+		pti, ptj := packageTree[i], packageTree[j]
+		switch {
+		case pti.Type != ptj.Type:
+			return (pti.Type == entryTypeModule || pti.Type == entryTypeResource) &&
+				(ptj.Type != entryTypeModule && ptj.Type != entryTypeResource)
+		default:
+			return pti.Name < ptj.Name
+		}
+	})
 	return packageTree, nil
 }
