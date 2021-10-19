@@ -820,6 +820,9 @@ func TestReplaceOnChanges(t *testing.T) {
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "stack", "init", "dev")
 			e.RunCommand("pulumi", "config", "set", "aws:region", "us-west-2")
+			if tt.lang == "nodejs" {
+				e.RunCommand("yarn", "install")
+			}
 			e.RunCommand("pulumi", "up", "--skip-preview", "--non-interactive", "--yes")
 			err := os.Rename(tt.main+".changed", tt.main)
 			assert.NoError(t, err)
