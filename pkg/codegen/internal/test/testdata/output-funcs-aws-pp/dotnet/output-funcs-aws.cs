@@ -36,16 +36,16 @@ class MyStack : Stack
         });
         var amis = Aws.Ec2.GetAmiIds.Invoke(new Aws.Ec2.GetAmiIdsInvokeArgs
         {
-            Owners =
+            Owners = 
             {
                 bar.Id,
             },
-            Filters =
+            Filters = 
             {
-                new Aws.Ec2.Inputs.GetAmiIdsFilterArgs
+                new Aws.Ec2.Inputs.GetAmiIdsFilterInputArgs
                 {
                     Name = bar.Id,
-                    Values =
+                    Values = 
                     {
                         "pulumi*",
                     },

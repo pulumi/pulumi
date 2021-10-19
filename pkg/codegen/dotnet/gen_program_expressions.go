@@ -255,6 +255,32 @@ func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string 
 	return []string{fmt.Sprintf("%s = Pulumi.%[1]s", pkg)}
 }
 
+// Pattern matches to recognize `__convert(objCons(..))` pattern that
+// is used to annotate object constructors with appropriate nominal
+// types. If the expression matches, returns true followed by the
+// constructor expression and the appropriate type.
+func (g *generator) recognizeTypedObjectCons(theExpr model.Expression) (bool, *model.ObjectConsExpression, model.Type) {
+	expr, isFunc := theExpr.(*model.FunctionCallExpression)
+	if !isFunc {
+		return false, nil, nil
+	}
+
+	if expr.Name != pcl.IntrinsicConvert {
+		return false, nil, nil
+	}
+
+	if len(expr.Args) != 1 {
+		return false, nil, nil
+	}
+
+	objCons, isObjCons := expr.Args[0].(*model.ObjectConsExpression)
+	if !isObjCons {
+		return false, nil, nil
+	}
+
+	return true, objCons, expr.Type()
+}
+
 // Pattern matches to recognize an encoded call to an output-versioned
 // invoke, such as `invoke(token, __convert(objCons(..)))`. If
 // matching, returns the `args` expression and its schema-bound type.
@@ -269,25 +295,29 @@ func (g *generator) recognizeOutputVersionedInvoke(
 		return false, nil, nil
 	}
 
-	convert, isConvert := expr.Args[1].(*model.FunctionCallExpression)
-	if !isConvert {
-		return false, nil, nil
-	}
+	return g.recognizeTypedObjectCons(expr.Args[1])
+}
 
-	if convert.Name != pcl.IntrinsicConvert {
-		return false, nil, nil
+func (g *generator) markTypeAsUsedInFunctionOutputVersionInputs(t model.Type) {
+	if g.usedInFunctionOutputVersionInputs == nil {
+		g.usedInFunctionOutputVersionInputs = make(map[schema.Type]bool)
 	}
-
-	if len(convert.Args) == 0 {
-		return false, nil, nil
+	schemaType, ok := g.toSchemaType(t)
+	if !ok {
+		return
 	}
+	g.usedInFunctionOutputVersionInputs[schemaType] = true
+}
 
-	objCons, isObjCons := convert.Args[0].(*model.ObjectConsExpression)
-	if !isObjCons {
-		return false, nil, nil
+func (g *generator) visitToMarkTypesUsedInFunctionOutputVersionInputs(expr model.Expression) {
+	visitor := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+		isCons, _, t := g.recognizeTypedObjectCons(expr)
+		if isCons {
+			g.markTypeAsUsedInFunctionOutputVersionInputs(t)
+		}
+		return expr, nil
 	}
-
-	return true, objCons, convert.Type()
+	model.VisitExpression(expr, nil, visitor)
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
@@ -331,6 +361,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		isOut, outArgs, outArgsTy := g.recognizeOutputVersionedInvoke(expr)
 		if isOut {
+			g.visitToMarkTypesUsedInFunctionOutputVersionInputs(outArgs)
 			g.Fprintf(w, "%s.Invoke(", name)
 			typeName := g.argumentTypeNameWithSuffix(expr, outArgsTy, "InvokeArgs")
 			g.genObjectConsExpressionWithTypeName(w, outArgs, typeName)
