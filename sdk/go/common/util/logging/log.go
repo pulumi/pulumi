@@ -63,6 +63,13 @@ func Flush() {
 	glog.Flush()
 }
 
+func maybeSetFlag(name, value string) {
+	if f := flag.Lookup(name); f != nil {
+		err := f.Value.Set(value)
+		assertNoError(err)
+	}
+}
+
 // InitLogging ensures the logging library has been initialized with the given settings.
 func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	// Remember the settings in case someone inquires.
@@ -78,12 +85,10 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 		assertNoError(err)
 	}
 	if logToStderr {
-		err := flag.Lookup("logtostderr").Value.Set("true")
-		assertNoError(err)
+		maybeSetFlag("logtostderr", "true")
 	}
 	if verbose > 0 {
-		err := flag.Lookup("v").Value.Set(strconv.Itoa(verbose))
-		assertNoError(err)
+		maybeSetFlag("v", strconv.Itoa(verbose))
 	}
 }
 
