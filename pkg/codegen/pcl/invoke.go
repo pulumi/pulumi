@@ -171,3 +171,44 @@ func IsOutputVersionInvokeCall(call *model.FunctionCallExpression) bool {
 	}
 	return false
 }
+
+// Pattern matches to recognize `__convert(objCons(..))` pattern that
+// is used to annotate object constructors with appropriate nominal
+// types. If the expression matches, returns true followed by the
+// constructor expression and the appropriate type.
+func RecognizeTypedObjectCons(theExpr model.Expression) (bool, *model.ObjectConsExpression, model.Type) {
+	expr, isFunc := theExpr.(*model.FunctionCallExpression)
+	if !isFunc {
+		return false, nil, nil
+	}
+
+	if expr.Name != IntrinsicConvert {
+		return false, nil, nil
+	}
+
+	if len(expr.Args) != 1 {
+		return false, nil, nil
+	}
+
+	objCons, isObjCons := expr.Args[0].(*model.ObjectConsExpression)
+	if !isObjCons {
+		return false, nil, nil
+	}
+
+	return true, objCons, expr.Type()
+}
+
+// Pattern matches to recognize an encoded call to an output-versioned
+// invoke, such as `invoke(token, __convert(objCons(..)))`. If
+// matching, returns the `args` expression and its schema-bound type.
+func RecognizeOutputVersionedInvoke(expr *model.FunctionCallExpression) (bool, *model.ObjectConsExpression, model.Type) {
+	if !IsOutputVersionInvokeCall(expr) {
+		return false, nil, nil
+	}
+
+	if len(expr.Args) < 2 {
+		return false, nil, nil
+	}
+
+	return RecognizeTypedObjectCons(expr.Args[1])
+}

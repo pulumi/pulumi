@@ -49,7 +49,6 @@ var programTests = []programTest{
 	{
 		Name:        "aws-fargate",
 		Description: "AWS Fargate",
-		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Name:        "aws-s3-logging",

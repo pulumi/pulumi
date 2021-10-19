@@ -20,8 +20,8 @@ func main() {
 		if err != nil {
 			return err
 		}
-		subnets, err := ec2.GetSubnetIds(ctx, &ec2.GetSubnetIdsArgs{
-			VpcId: vpc.Id,
+		subnets, err := ec2.GetSubnetIdsOutput(ctx, ec2.GetSubnetIdsOutputArgs{
+			VpcId: pulumi.String(vpc.Id),
 		}, nil)
 		if err != nil {
 			return err
@@ -87,7 +87,9 @@ func main() {
 			return err
 		}
 		webLoadBalancer, err := elasticloadbalancingv2.NewLoadBalancer(ctx, "webLoadBalancer", &elasticloadbalancingv2.LoadBalancerArgs{
-			Subnets: subnets.Ids,
+			Subnets: subnets.ApplyT(func(subnets ec2.GetSubnetIdsResult) ([]string, error) {
+				return subnets.Ids, nil
+			}).(pulumi.StringArrayOutput),
 			SecurityGroups: pulumi.StringArray{
 				webSecurityGroup.ID(),
 			},
@@ -155,7 +157,9 @@ func main() {
 			TaskDefinition: appTask.Arn,
 			NetworkConfiguration: &ecs.ServiceNetworkConfigurationArgs{
 				AssignPublicIp: pulumi.Bool(true),
-				Subnets:        subnets.Ids,
+				Subnets: subnets.ApplyT(func(subnets ec2.GetSubnetIdsResult) ([]string, error) {
+					return subnets.Ids, nil
+				}).(pulumi.StringArrayOutput),
 				SecurityGroups: pulumi.StringArray{
 					webSecurityGroup.ID(),
 				},
