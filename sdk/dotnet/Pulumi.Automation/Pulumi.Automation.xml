@@ -1198,6 +1198,11 @@
             The Workspace the Stack was created from.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.WorkspaceStack.State">
+            <summary>
+            A module for editing the Stack's state.
+            </summary>
+        </member>
         <member name="M:Pulumi.Automation.WorkspaceStack.CreateAsync(System.String,Pulumi.Automation.Workspace,System.Threading.CancellationToken)">
             <summary>
             Creates a new stack using the given workspace, and stack name.
@@ -1347,6 +1352,60 @@
             pending when the update was canceled. This command is not
             supported for local backends.
             </summary>
+        </member>
+        <member name="T:Pulumi.Automation.WorkspaceStackState">
+            <summary>
+            Module class for manipulating stack state for a given <see cref="T:Pulumi.Automation.WorkspaceStack"/>.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.DeleteAsync(System.String,System.Boolean,System.Threading.CancellationToken)">
+            <summary>
+            This command deletes a resource from a stack’s state, as long as it is safe to do so.
+            The resource is specified by its Pulumi URN.
+            <para/>
+            Resources can’t be deleted if there exist other resources that depend on it or are parented to it.
+            Protected resources will not be deleted unless it is specifically requested using the <paramref name="force"/> flag.
+            </summary>
+            <param name="urn">The Pulumi URN of the resource to be deleted.</param>
+            <param name="force">A boolean indicating whether the deletion should be forced.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAsync(System.String)">
+            <summary>
+            Unprotect a resource in a stack's state.
+            This command clears the ‘protect’ bit on the provided resource <paramref name="urn"/>, allowing the resource to be deleted.
+            </summary>
+            <param name="urn">The Pulumi URN to be unprotected.</param>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Unprotect a resource in a stack's state.
+            This command clears the ‘protect’ bit on the provided resource <paramref name="urn"/>, allowing the resource to be deleted.
+            </summary>
+            <param name="urn">The Pulumi URN to be unprotected.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAsync(System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Unprotect resources in a stack's state.
+            This command clears the ‘protect’ bit on the provided resource <paramref name="urns"/>, allowing those resources to be deleted.
+            </summary>
+            <param name="urns">The Pulumi URNs to be unprotected.</param>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAsync(System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
+            <summary>
+            Unprotect resources in a stack's state.
+            This command clears the ‘protect’ bit on the provided resource <paramref name="urns"/>, allowing those resources to be deleted.
+            </summary>
+            <param name="urns">The Pulumi URNs to be unprotected.</param>
+            <param name="cancellationToken">A cancellation token.</param>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAllAsync(System.Threading.CancellationToken)">
+            <summary>
+            Unprotect all resources in a stack's state.
+            This command clears the ‘protect’ bit on all resources in the stack, allowing those resources to be deleted.
+            </summary>
+            <param name="cancellationToken">A cancellation token.</param>
         </member>
     </members>
 </doc>

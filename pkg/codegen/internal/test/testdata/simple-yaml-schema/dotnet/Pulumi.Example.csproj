@@ -40,7 +40,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pulumi" Version="3.12" />
+    <PackageReference Include="Pulumi" Version="3.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\..\..\..\sdk\dotnet\Pulumi\Pulumi.csproj"  />
   </ItemGroup>
 
   <ItemGroup>

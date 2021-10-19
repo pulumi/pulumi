@@ -10,10 +10,12 @@ from .func_with_const_input import *
 from .func_with_default_value import *
 from .func_with_dict_param import *
 from .func_with_list_param import *
+from .get_bastion_shareable_link import *
 from .get_client_config import *
 from .get_integration_runtime_object_metadatum import *
 from .list_storage_account_keys import *
 from .provider import *
+from ._inputs import *
 from . import outputs
 _utilities.register(
     resource_modules="""
