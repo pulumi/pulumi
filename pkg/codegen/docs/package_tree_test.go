@@ -39,9 +39,18 @@ func TestGeneratePackageTree(t *testing.T) {
 
 	t.Run("ValidatePackageTreeTopLevelItems", func(t *testing.T) {
 		assert.Equal(t, entryTypeModule, pkgTree[0].Type)
-		assert.Equal(t, entryTypeResource, pkgTree[1].Type)
+		assert.Equal(t, entryTypeModule, pkgTree[1].Type)
 		assert.Equal(t, entryTypeResource, pkgTree[2].Type)
-		assert.Equal(t, entryTypeFunction, pkgTree[3].Type)
+		assert.Equal(t, entryTypeResource, pkgTree[3].Type)
+		assert.Equal(t, entryTypeFunction, pkgTree[4].Type)
+	})
+
+	t.Run("ValidateSortOrder", func(t *testing.T) {
+		assert.Equal(t, "module", pkgTree[0].Name)
+		assert.Equal(t, "module2", pkgTree[1].Name)
+		assert.Equal(t, "PackageLevelResource", pkgTree[2].Name)
+		assert.Equal(t, "Provider", pkgTree[3].Name)
+		assert.Equal(t, "getPackageResource", pkgTree[4].Name)
 	})
 
 	t.Run("ValidatePackageTreeModuleChildren", func(t *testing.T) {

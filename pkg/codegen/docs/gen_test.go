@@ -19,6 +19,7 @@
 package docs
 
 import (
+	"fmt"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
@@ -127,7 +128,95 @@ func initTestPackageSpec(t *testing.T) {
 				},
 			},
 		},
+		Provider: schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Description: fmt.Sprintf("The provider type for the %s package.", providerPackage),
+				Type:        "object",
+			},
+			InputProperties: map[string]schema.PropertySpec{
+				"stringProp": {
+					Description: "A stringProp for the provider resource.",
+					TypeSpec: schema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
 		Resources: map[string]schema.ResourceSpec{
+			"prov:module2/resource2:Resource2": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: `This is a module-level resource called Resource.
+{{% examples %}}
+## Example Usage
+
+{{% example %}}
+### Basic Example
+
+` + codeFence + `typescript
+					// Some TypeScript code.
+` + codeFence + `
+` + codeFence + `python
+					# Some Python code.
+` + codeFence + `
+{{% /example %}}
+{{% example %}}
+### Custom Sub-Domain Example
+
+` + codeFence + `typescript
+					// Some typescript code
+` + codeFence + `
+` + codeFence + `python
+					# Some Python code.
+` + codeFence + `
+{{% /example %}}
+{{% /examples %}}
+
+## Import
+
+The import docs would be here
+
+` + codeFence + `sh
+$ pulumi import prov:module/resource:Resource test test
+` + codeFence + `
+`,
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"integerProp": {
+						Description: "This is integerProp's description.",
+						TypeSpec: schema.TypeSpec{
+							Type: "integer",
+						},
+					},
+					"stringProp": {
+						Description: "This is stringProp's description.",
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
+					},
+					"boolProp": {
+						Description: "A bool prop.",
+						TypeSpec: schema.TypeSpec{
+							Type: "boolean",
+						},
+					},
+					"optionsProp": {
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						},
+					},
+					"options2Prop": {
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions2:ResourceOptions2",
+						},
+					},
+					"recursiveType": {
+						Description: "I am a recursive type.",
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						},
+					},
+				},
+			},
 			"prov:module/resource:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Description: `This is a module-level resource called Resource.
