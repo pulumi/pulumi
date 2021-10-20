@@ -102,7 +102,7 @@ func ShowJSONEvents(events <-chan engine.Event, done chan<- bool, opts Options) 
 		if err := logJSONEvent(encoder, e, opts, sequence); err != nil {
 			logging.V(7).Infof("failed to log event: %v", err)
 		}
-		sequence += 1
+		sequence++
 
 		// In the event of cancellation, break out of the loop.
 		if e.Type == engine.CancelEvent {
@@ -115,7 +115,7 @@ func ShowJSONEvents(events <-chan engine.Event, done chan<- bool, opts Options) 
 // emit events incrementally so that it can guarantee anything emitted to stdout is well-formed. This means that,
 // if used interactively, the experience will lead to potentially very long pauses. If run in CI, it is up to the
 // end user to ensure that output is periodically printed to prevent tools from thinking preview has hung.
-func ShowPreviewDigest(op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 

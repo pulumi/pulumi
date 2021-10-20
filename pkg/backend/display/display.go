@@ -47,7 +47,7 @@ func ShowEvents(
 
 	if opts.JSONDisplay {
 		if isPreview && !streamPreview {
-			ShowPreviewDigest(op, action, events, done, opts)
+			ShowPreviewDigest(events, done, opts)
 		} else {
 			ShowJSONEvents(events, done, opts)
 		}
@@ -119,7 +119,7 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options
 			if err = logJSONEvent(encoder, e, opts, sequence); err != nil {
 				logging.V(7).Infof("failed to log event: %v", err)
 			}
-			sequence += 1
+			sequence++
 
 			outEvents <- e
 
