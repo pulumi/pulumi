@@ -81,7 +81,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public async Task TestComplexType1()
         {
-            var data = Converter.ConvertValue<ComplexType1>("", await SerializeToValueAsync(new Dictionary<string, object>
+            var data = Converter.ConvertValue<ComplexType1>(NoWarn, "", await SerializeToValueAsync(new Dictionary<string, object>
             {
                 { "s", "str" },
                 { "b", true },
@@ -133,10 +133,10 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public async Task TestComplexType2()
         {
-            var data = Converter.ConvertValue<ComplexType2>("", await SerializeToValueAsync(new Dictionary<string, object>
+            var data = Converter.ConvertValue<ComplexType2>(NoWarn, "", await SerializeToValueAsync(new Dictionary<string, object>
             {
                 {
-                    "c", 
+                    "c",
                     new Dictionary<string, object>
                     {
                         { "s", "str1" },
@@ -168,7 +168,7 @@ namespace Pulumi.Tests.Serialization
                         }
                     }
                 },
-                { 
+                {
                     "c2Map",
                     new Dictionary<string, object>
                     {

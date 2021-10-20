@@ -17,38 +17,41 @@ namespace Pulumi.Serialization
 {
     internal static class Converter
     {
-        public static OutputData<T> ConvertValue<T>(string context, Value value)
+        public static OutputData<T> ConvertValue<T>(Action<string> warn, string context, Value value)
         {
-            var (data, isKnown, isSecret) = ConvertValue(context, value, typeof(T));
-            return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)data!, isKnown, isSecret);
+            var (data, isKnown, isSecret) = ConvertValue(warn, context, value, typeof(T));
+            var result = data == null ? default(T)! : (T)data;
+            return new OutputData<T>(ImmutableHashSet<Resource>.Empty, result!, isKnown, isSecret);
         }
 
-        public static OutputData<object?> ConvertValue(string context, Value value, Type targetType)
+        public static OutputData<object?> ConvertValue(Action<string> warn, string context, Value value, Type targetType)
         {
-            return ConvertValue(context, value, targetType, ImmutableHashSet<Resource>.Empty);
+            return ConvertValue(warn, context, value, targetType, ImmutableHashSet<Resource>.Empty);
         }
 
         public static OutputData<object?> ConvertValue(
-            string context, Value value, Type targetType, ImmutableHashSet<Resource> resources)
+            Action<string> warn, string context, Value value, Type targetType, ImmutableHashSet<Resource> resources)
         {
             CheckTargetType(context, targetType, new HashSet<Type>());
 
             var (deserialized, isKnown, isSecret) = Deserializer.Deserialize(value);
-            var converted = ConvertObject(context, deserialized, targetType);
+            var converted = ConvertObject(warn, context, deserialized, targetType);
 
             return new OutputData<object?>(resources, converted, isKnown, isSecret);
         }
 
-        private static object? ConvertObject(string context, object? val, Type targetType)
+        private static object? ConvertObject(Action<string> warn, string context, object? val, Type targetType)
         {
-            var (result, exception) = TryConvertObject(context, val, targetType);
-            if (exception != null)
-                throw exception;
+            var (result, error) = TryConvertObject(context, val, targetType);
+            if (error != null)
+            {
+                warn(error);
+            }
 
             return result;
         }
 
-        private static (object?, InvalidOperationException?) TryConvertObject(string context, object? val, Type targetType)
+        private static (object?, string?) TryConvertObject(string context, object? val, Type targetType)
         {
             var targetIsNullable = targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(Nullable<>);
 
@@ -144,16 +147,16 @@ namespace Pulumi.Serialization
                 if (valType != typeof(string) &&
                     valType != typeof(double))
                 {
-                    return (null, new InvalidOperationException(
-                        $"Expected {typeof(string).FullName} or {typeof(double).FullName} but got {valType.FullName} deserializing {context}"));
+                    return (null,
+                        $"Expected {typeof(string).FullName} or {typeof(double).FullName} but got {valType.FullName} deserializing {context}");
                 }
 
                 var enumTypeConstructor = targetType.GetConstructor(
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { valType }, null);
                 if (enumTypeConstructor == null)
                 {
-                    return (null, new InvalidOperationException(
-                        $"Expected target type {targetType.FullName} to have a constructor with a single {valType.FullName} parameter."));
+                    return (null,
+                        $"Expected target type {targetType.FullName} to have a constructor with a single {valType.FullName} parameter.");
                 }
                 return (enumTypeConstructor.Invoke(new[] { val }), null);
             }
@@ -165,22 +168,21 @@ namespace Pulumi.Serialization
 
                 if (targetType.GetGenericTypeDefinition() == typeof(ImmutableArray<>))
                     return TryConvertArray(context, val, targetType);
-                
+
                 if (targetType.GetGenericTypeDefinition() == typeof(ImmutableDictionary<,>))
                     return TryConvertDictionary(context, val, targetType);
-                
+
                 throw new InvalidOperationException(
                     $"Unexpected generic target type {targetType.FullName} when deserializing {context}");
             }
 
             if (targetType.GetCustomAttribute<OutputTypeAttribute>() == null)
-                return (null, new InvalidOperationException(
-                    $"Unexpected target type {targetType.FullName} when deserializing {context}"));
+                return (null, $"Unexpected target type {targetType.FullName} when deserializing {context}");
 
             var constructor = GetPropertyConstructor(targetType);
             if (constructor == null)
-                return (null, new InvalidOperationException(
-                    $"Expected target type {targetType.FullName} to have [{nameof(OutputConstructorAttribute)}] constructor when deserializing {context}"));
+                return (null,
+                    $"Expected target type {targetType.FullName} to have [{nameof(OutputConstructorAttribute)}] constructor when deserializing {context}");
 
             var (dictionary, tempException) = TryEnsureType<ImmutableDictionary<string, object>>(context, val);
             if (tempException != null)
@@ -207,15 +209,15 @@ namespace Pulumi.Serialization
             return (constructor.Invoke(arguments), null);
         }
 
-        private static (object?, InvalidOperationException?) TryConvertJsonElement(
+        private static (object?, string?) TryConvertJsonElement(
             string context, object val)
         {
             using var stream = new MemoryStream();
             using (var writer = new Utf8JsonWriter(stream))
             {
-                var exception = TryWriteJson(context, writer, val);
-                if (exception != null)
-                    return (null, exception);
+                var error = TryWriteJson(context, writer, val);
+                if (error != null)
+                    return (null, error);
             }
 
             stream.Position = 0;
@@ -224,7 +226,7 @@ namespace Pulumi.Serialization
             return (element, null);
         }
 
-        private static InvalidOperationException? TryWriteJson(string context, Utf8JsonWriter writer, object? val)
+        private static string? TryWriteJson(string context, Utf8JsonWriter writer, object? val)
         {
             switch (val)
             {
@@ -262,14 +264,14 @@ namespace Pulumi.Serialization
                     writer.WriteEndObject();
                     return null;
                 default:
-                    return new InvalidOperationException($"Unexpected type {val.GetType().FullName} when converting {context} to {nameof(JsonElement)}");
+                    return $"Unexpected type {val.GetType().FullName} when converting {context} to {nameof(JsonElement)}";
             }
         }
 
-        private static (T, InvalidOperationException?) TryEnsureType<T>(string context, object val)
-            => val is T t ? (t, null) : (default(T)!, new InvalidOperationException($"Expected {typeof(T).FullName} but got {val.GetType().FullName} deserializing {context}"));
+        private static (T, string?) TryEnsureType<T>(string context, object val)
+            => val is T t ? (t, null) : (default(T)!, $"Expected {typeof(T).FullName} but got {val.GetType().FullName} deserializing {context}");
 
-        private static (object?, InvalidOperationException?) TryConvertOneOf(string context, object val, Type oneOfType)
+        private static (object?, string?) TryConvertOneOf(string context, object val, Type oneOfType)
         {
             var firstType = oneOfType.GenericTypeArguments[0];
             var secondType = oneOfType.GenericTypeArguments[1];
@@ -288,15 +290,15 @@ namespace Pulumi.Serialization
                 return (fromT1Method?.Invoke(null, new[] { val2 }), null);
             }
 
-            return (null, new InvalidOperationException($"Expected {firstType.FullName} or {secondType.FullName} but got {val.GetType().FullName} deserializing {context}"));
+            return (null, $"Expected {firstType.FullName} or {secondType.FullName} but got {val.GetType().FullName} deserializing {context}");
         }
 
-        private static (object?, InvalidOperationException?) TryConvertArray(
+        private static (object?, string?) TryConvertArray(
             string fieldName, object val, Type targetType)
         {
             if (!(val is ImmutableArray<object> array))
-                return (null, new InvalidOperationException(
-                    $"Expected {typeof(ImmutableArray<object>).FullName} but got {val.GetType().FullName} deserializing {fieldName}"));
+                return (null,
+                    $"Expected {typeof(ImmutableArray<object>).FullName} but got {val.GetType().FullName} deserializing {fieldName}");
 
             var builder =
                 typeof(ImmutableArray).GetMethod(nameof(ImmutableArray.CreateBuilder), Array.Empty<Type>())!
@@ -319,12 +321,12 @@ namespace Pulumi.Serialization
             return (builderToImmutable.Invoke(builder, null), null);
         }
 
-        private static (object?, InvalidOperationException?) TryConvertDictionary(
+        private static (object?, string?) TryConvertDictionary(
             string fieldName, object val, Type targetType)
         {
             if (!(val is ImmutableDictionary<string, object> dictionary))
-                return (null, new InvalidOperationException(
-                    $"Expected {typeof(ImmutableDictionary<string, object>).FullName} but got {val.GetType().FullName} deserializing {fieldName}"));
+                return (null,
+                    $"Expected {typeof(ImmutableDictionary<string, object>).FullName} but got {val.GetType().FullName} deserializing {fieldName}");
 
             // check if already in the form we need.  no need to convert anything.
             if (targetType == typeof(ImmutableDictionary<string, object>))
@@ -332,8 +334,8 @@ namespace Pulumi.Serialization
 
             var keyType = targetType.GenericTypeArguments[0];
             if (keyType != typeof(string))
-                return (null, new InvalidOperationException(
-                    $"Unexpected type {targetType.FullName} when deserializing {fieldName}. ImmutableDictionary's TKey type was not {typeof(string).FullName}"));
+                return (null,
+                    $"Unexpected type {targetType.FullName} when deserializing {fieldName}. ImmutableDictionary's TKey type was not {typeof(string).FullName}");
 
             var builder =
                 typeof(ImmutableDictionary).GetMethod(nameof(ImmutableDictionary.CreateBuilder), Array.Empty<Type>())!

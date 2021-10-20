@@ -12,7 +12,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public void IgnoreInternalProperty()
         {
-            var data = Converter.ConvertValue<ImmutableDictionary<string, string>>("", new Value
+            var data = Converter.ConvertValue<ImmutableDictionary<string, string>>(NoWarn, "", new Value
             {
                 StructValue = new Struct
                 {
