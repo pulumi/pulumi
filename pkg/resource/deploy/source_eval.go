@@ -631,13 +631,16 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
 	}
 
-	argDependencies := map[resource.PropertyKey][]resource.URN{}
-	for name, deps := range req.GetArgDependencies() {
-		urns := make([]resource.URN, len(deps.Urns))
-		for i, urn := range deps.Urns {
-			urns[i] = resource.URN(urn)
+	var argDependencies map[resource.PropertyKey][]resource.URN
+	if len(req.GetArgDependencies()) > 0 {
+		argDependencies = map[resource.PropertyKey][]resource.URN{}
+		for name, deps := range req.GetArgDependencies() {
+			urns := make([]resource.URN, len(deps.Urns))
+			for i, urn := range deps.Urns {
+				urns[i] = resource.URN(urn)
+			}
+			argDependencies[resource.PropertyKey(name)] = urns
 		}
-		argDependencies[resource.PropertyKey(name)] = urns
 	}
 
 	info := plugin.CallInfo{
@@ -853,6 +856,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	replaceOnChanges := req.GetReplaceOnChanges()
 	id := resource.ID(req.GetImportId())
 	customTimeouts := req.GetCustomTimeouts()
+	hasOutputs := req.GetHasOutputs()
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
 	// provider responsible for managing a particular resource (based on the type's Package).
@@ -913,7 +917,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			KeepResources:      true,
 			// To initially scope the use of this new feature, we only keep output values when unmarshaling
 			// properties for RegisterResource (when remote is true for multi-lang components) and Call.
-			KeepOutputValues: remote,
+			KeepOutputValues: remote || hasOutputs,
 		})
 	if err != nil {
 		return nil, err
@@ -993,11 +997,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Invoke the provider's Construct RPC method.
 		options := plugin.ConstructOptions{
-			Aliases:              aliases,
-			Dependencies:         dependencies,
-			Protect:              protect,
-			PropertyDependencies: propertyDependencies,
-			Providers:            providerRefs,
+			Aliases:      aliases,
+			Dependencies: dependencies,
+			Protect:      protect,
+			Providers:    providerRefs,
+		}
+		if !hasOutputs {
+			// Only include property dependencies when we don't have output values in the properties.
+			options.PropertyDependencies = propertyDependencies
 		}
 		constructResult, err := provider.Construct(rm.constructInfo, t, name, parent, props, options)
 		if err != nil {
