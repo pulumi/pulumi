@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -106,5 +107,15 @@ func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
 	// IDEA: use a "strict" marshaler, so that we can warn on unrecognized keys (avoiding silly mistakes).  We should
 	//     set aside an officially sanctioned area in the metadata for extensibility by 3rd parties.
 
-	return yaml.Unmarshal(data, v)
+	err := yaml.Unmarshal(data, v)
+	if err != nil {
+		// Return type errors directly
+		if _, ok := err.(*yaml.TypeError); ok {
+			return err
+		} else {
+			// Other errors will be parse errors due to invalid syntax
+			return errors.Wrap(err, "invalid YAML file")
+		}
+	}
+	return nil
 }
