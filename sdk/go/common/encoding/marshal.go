@@ -112,10 +112,9 @@ func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
 		// Return type errors directly
 		if _, ok := err.(*yaml.TypeError); ok {
 			return err
-		} else {
-			// Other errors will be parse errors due to invalid syntax
-			return errors.Wrap(err, "invalid YAML file")
 		}
+		// Other errors will be parse errors due to invalid syntax
+		return errors.Wrap(err, "invalid YAML file")
 	}
 	return nil
 }
