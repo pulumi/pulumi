@@ -1425,50 +1425,46 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		}
 	}
 
+	assign := func(p *schema.Property, value string, indentation int) {
+		ind := strings.Repeat("\t", indentation)
+		t := strings.TrimSuffix(pkg.typeString(p.Type), "Input")
+		switch codegen.UnwrapType(p.Type).(type) {
+		case *schema.EnumType:
+			t = strings.TrimSuffix(t, "Ptr")
+		}
+		if t == "pulumi." {
+			t = "pulumi.Any"
+		}
+
+		if codegen.IsNOptionalInput(p.Type) {
+			fmt.Fprintf(w, "\targs.%s = %s(%s)\n", Title(p.Name), t, value)
+		} else if isNilType(p.Type) {
+			tmpName := camel(p.Name) + "_"
+			fmt.Fprintf(w, "%s%s := %s\n", ind, tmpName, value)
+			fmt.Fprintf(w, "%sargs.%s = &%s\n", ind, Title(p.Name), tmpName)
+		} else {
+			fmt.Fprintf(w, "%sargs.%s = %s\n", ind, Title(p.Name), value)
+		}
+	}
+
 	for _, p := range r.InputProperties {
 		if p.ConstValue != nil {
 			v, err := pkg.getConstValue(p.ConstValue)
 			if err != nil {
 				return err
 			}
-
-			t := pkg.inputType(p.Type)
-			if t == "pulumi." {
-				t = "pulumi.Any"
-			}
-
-			fmt.Fprintf(w, "\targs.%s = %s(%s)\n", Title(p.Name), t, v)
-		}
-		if p.DefaultValue != nil {
+			assign(p, v, 1)
+		} else if p.DefaultValue != nil {
 			v, err := pkg.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
 			if err != nil {
 				return err
 			}
-
-			t := strings.TrimSuffix(pkg.typeString(p.Type), "Input")
-			if t == "pulumi." {
-				t = "pulumi.Any"
+			defaultComp := "nil"
+			if !codegen.IsNOptionalInput(p.Type) && !isNilType(p.Type) {
+				defaultComp = primitiveNilValue(p.Type)
 			}
-			switch codegen.UnwrapType(p.Type).(type) {
-			case *schema.EnumType:
-				t = strings.TrimSuffix(t, "Ptr")
-			}
-			if !codegen.IsNOptionalInput(p.Type) {
-				if isNilType(p.Type) {
-					// This type is optional, and so it can be nil.
-					fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-					tmpName := camel(p.Name) + "_"
-					fmt.Fprintf(w, "\t%s := %s\n", tmpName, v)
-					fmt.Fprintf(w, "\t\targs.%s = &%s\n", Title(p.Name), tmpName)
-				} else {
-					// A default value has already been provided.
-					fmt.Fprintf(w, "\tif args.%s == %s {\n", Title(p.Name), primitiveNilValue(p.Type))
-					fmt.Fprintf(w, "\t\targs.%s = %s\n", Title(p.Name), v)
-				}
-			} else {
-				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
-			}
+			fmt.Fprintf(w, "\tif args.%s == %s {\n", Title(p.Name), defaultComp)
+			assign(p, v, 2)
 			fmt.Fprintf(w, "\t}\n")
 
 		}

@@ -25,6 +25,7 @@ func NewModuleResource(ctx *pulumi.Context,
 	if args.Optional_bool == nil {
 		args.Optional_bool = pulumi.BoolPtr(true)
 	}
+	args.Optional_const = pulumi.StringPtr("val")
 	if args.Optional_enum == nil {
 		args.Optional_enum = EnumThing(8)
 	}
@@ -38,6 +39,8 @@ func NewModuleResource(ctx *pulumi.Context,
 		plain_optional_bool_ := true
 		args.Plain_optional_bool = &plain_optional_bool_
 	}
+	plain_optional_const_ := "val"
+	args.Plain_optional_const = &plain_optional_const_
 	if args.Plain_optional_number == nil {
 		plain_optional_number_ := 42.0
 		args.Plain_optional_number = &plain_optional_number_
@@ -49,6 +52,7 @@ func NewModuleResource(ctx *pulumi.Context,
 	if args.Plain_required_bool == false {
 		args.Plain_required_bool = true
 	}
+	args.Plain_required_const = "val"
 	if args.Plain_required_number == 0.0 {
 		args.Plain_required_number = 42.0
 	}
@@ -100,13 +104,16 @@ func (ModuleResourceState) ElementType() reflect.Type {
 
 type moduleResourceArgs struct {
 	Optional_bool         *bool      `pulumi:"optional_bool"`
+	Optional_const        *string    `pulumi:"optional_const"`
 	Optional_enum         *EnumThing `pulumi:"optional_enum"`
 	Optional_number       *float64   `pulumi:"optional_number"`
 	Optional_string       *string    `pulumi:"optional_string"`
 	Plain_optional_bool   *bool      `pulumi:"plain_optional_bool"`
+	Plain_optional_const  *string    `pulumi:"plain_optional_const"`
 	Plain_optional_number *float64   `pulumi:"plain_optional_number"`
 	Plain_optional_string *string    `pulumi:"plain_optional_string"`
 	Plain_required_bool   bool       `pulumi:"plain_required_bool"`
+	Plain_required_const  string     `pulumi:"plain_required_const"`
 	Plain_required_number float64    `pulumi:"plain_required_number"`
 	Plain_required_string string     `pulumi:"plain_required_string"`
 	Required_bool         bool       `pulumi:"required_bool"`
@@ -118,13 +125,16 @@ type moduleResourceArgs struct {
 // The set of arguments for constructing a ModuleResource resource.
 type ModuleResourceArgs struct {
 	Optional_bool         pulumi.BoolPtrInput
+	Optional_const        pulumi.StringPtrInput
 	Optional_enum         EnumThingPtrInput
 	Optional_number       pulumi.Float64PtrInput
 	Optional_string       pulumi.StringPtrInput
 	Plain_optional_bool   *bool
+	Plain_optional_const  *string
 	Plain_optional_number *float64
 	Plain_optional_string *string
 	Plain_required_bool   bool
+	Plain_required_const  string
 	Plain_required_number float64
 	Plain_required_string string
 	Required_bool         pulumi.BoolInput

@@ -4,6 +4,12 @@
   "resources": {
     "foobar::ModuleResource": {
       "inputProperties": {
+        "plain_optional_const": {
+          "type": "string",
+          "const": "val",
+          "default": "another",
+          "plain": true
+        },
         "plain_optional_string": {
           "type": "string",
           "default": "buzzer",
@@ -34,6 +40,11 @@
           "default": 42,
           "plain": true
         },
+        "optional_const": {
+          "type": "string",
+          "const": "val",
+          "default": "another"
+        },
         "optional_string": {
           "type": "string",
           "default": "buzzer"
@@ -49,6 +60,12 @@
         "optional_enum": {
           "$ref": "#/types/foobar::EnumThing",
           "default": 8
+        },
+        "plain_required_const": {
+          "type": "string",
+          "const": "val",
+          "default": "another",
+          "plain": true
         },
         "required_string": {
           "type": "string",
@@ -71,6 +88,7 @@
         "plain_required_string",
         "plain_required_bool",
         "plain_required_number",
+        "plain_required_const",
         "required_string",
         "required_bool",
         "required_number",
