@@ -10,6 +10,10 @@
             "type": "string",
             "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*$"
         },
+        "displayName": {
+            "description": "The human-friendly name of the package.",
+            "type": "string"
+        },
         "version": {
             "description": "The version of the package. The version must be valid semver.",
             "type": "string",
@@ -48,6 +52,10 @@
         },
         "pluginDownloadUrl": {
             "description": "The URL to use when downloading the provider plugin binary.",
+            "type": "string"
+        },
+        "publisher": {
+            "description": "The name of the person or organization that authored and published the package.",
             "type": "string"
         },
         "meta": {
