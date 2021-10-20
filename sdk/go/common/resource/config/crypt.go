@@ -156,7 +156,7 @@ func (p panicCrypter) EncryptValue(_ string) (string, error) {
 }
 
 func (p panicCrypter) BulkDecrypt(_ []string) (map[string]string, error) {
-	panic("attempt to bulk decrypt values")
+	return nil, nil
 }
 
 func (p panicCrypter) DecryptValue(_ string) (string, error) {

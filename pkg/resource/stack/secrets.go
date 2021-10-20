@@ -130,18 +130,7 @@ func (c *cachingCrypter) DecryptValue(ciphertext string) (string, error) {
 }
 
 func (c *cachingCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, cip := range ciphertexts {
-		if _, ok := secretMap[cip]; ok {
-			continue
-		}
-		v, err := c.decrypter.DecryptValue(cip)
-		if err != nil {
-			return nil, err
-		}
-		secretMap[cip] = v
-	}
-	return secretMap, nil
+	return c.decrypter.BulkDecrypt(ciphertexts)
 }
 
 // encryptSecret encrypts the plaintext associated with the given secret value.

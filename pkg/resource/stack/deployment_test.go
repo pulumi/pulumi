@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -401,6 +402,24 @@ func TestCustomSerialization(t *testing.T) {
 			t.Logf("Full JSON encoding:\n%v", json)
 		}
 	})
+}
+
+func TestDeserializeDeploymentSecretCache(t *testing.T) {
+	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
+	_, err := DeserializeDeploymentV3(apitype.DeploymentV3{
+		SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+		Resources: []apitype.ResourceV3{
+			{
+				URN:    resource.URN(urn),
+				Type:   "aws:ebs/volume:Volume",
+				Custom: true,
+				ID:     "vol-044ba5ad2bd959bc1",
+			},
+		},
+	}, DefaultSecretsProvider)
+	//assert.Nil(t, deployment)
+	assert.NoError(t, err)
+	//assert.Equal(t, fmt.Sprintf("resource '%s' missing required 'type' field", urn), err.Error())
 }
 
 func TestDeserializeInvalidResourceErrors(t *testing.T) {

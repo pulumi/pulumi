@@ -63,17 +63,32 @@ func (c *serviceCrypter) DecryptValue(cipherstring string) (string, error) {
 	return string(plaintext), nil
 }
 
+type secret struct {
+	ciphertext string
+	value      string
+	err        error
+}
+
 func (c *serviceCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
+	ch := make(chan secret)
+
 	for _, cip := range ciphertexts {
-		if _, ok := secretMap[cip]; ok {
-			continue
+		go func(cip string) {
+			v, err := c.DecryptValue(cip)
+			if err != nil {
+				ch <- secret{err: err}
+			}
+			ch <- secret{ciphertext: cip, value: v}
+		}(cip)
+	}
+
+	secretMap := map[string]string{}
+	for i := 0; i < len(ciphertexts); i++ {
+		sec := <-ch
+		if sec.err != nil {
+			return nil, sec.err
 		}
-		v, err := c.DecryptValue(cip)
-		if err != nil {
-			return nil, err
-		}
-		secretMap[cip] = v
+		secretMap[sec.ciphertext] = sec.value
 	}
 	return secretMap, nil
 }
