@@ -2,6 +2,7 @@
   "emittedFiles": [
     "pulumi_foobar/README.md",
     "pulumi_foobar/__init__.py",
+    "pulumi_foobar/_enums.py",
     "pulumi_foobar/_utilities.py",
     "pulumi_foobar/module_resource.py",
     "pulumi_foobar/provider.py",

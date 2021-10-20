@@ -8,6 +8,9 @@ import * as utilities from "./utilities";
 export * from "./moduleResource";
 export * from "./provider";
 
+// Export enums:
+export * from "./types/enums";
+
 // Import resources to register:
 import { ModuleResource } from "./moduleResource";
 

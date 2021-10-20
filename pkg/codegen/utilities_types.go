@@ -89,7 +89,7 @@ func UnwrapType(t schema.Type) schema.Type {
 	}
 }
 
-func IsInput(t schema.Type) bool {
+func IsNOptionalInput(t schema.Type) bool {
 	for {
 		switch typ := t.(type) {
 		case *schema.InputType:

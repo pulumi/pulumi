@@ -4,6 +4,7 @@
     "foo/init.go",
     "foo/moduleResource.go",
     "foo/provider.go",
+    "foo/pulumiEnums.go",
     "foo/pulumiUtilities.go"
   ]
 }

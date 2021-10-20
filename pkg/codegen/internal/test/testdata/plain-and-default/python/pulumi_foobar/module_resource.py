@@ -7,6 +7,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
+from ._enums import *
 
 __all__ = ['ModuleResourceArgs', 'ModuleResource']
 
@@ -17,9 +18,11 @@ class ModuleResourceArgs:
                  plain_required_number: float,
                  plain_required_string: str,
                  required_bool: pulumi.Input[bool],
+                 required_enum: pulumi.Input['EnumThing'],
                  required_number: pulumi.Input[float],
                  required_string: pulumi.Input[str],
                  optional_bool: Optional[pulumi.Input[bool]] = None,
+                 optional_enum: Optional[pulumi.Input['EnumThing']] = None,
                  optional_number: Optional[pulumi.Input[float]] = None,
                  optional_string: Optional[pulumi.Input[str]] = None,
                  plain_optional_bool: Optional[bool] = None,
@@ -40,6 +43,9 @@ class ModuleResourceArgs:
         if required_bool is None:
             required_bool = True
         pulumi.set(__self__, "required_bool", required_bool)
+        if required_enum is None:
+            required_enum = 4
+        pulumi.set(__self__, "required_enum", required_enum)
         if required_number is None:
             required_number = 42
         pulumi.set(__self__, "required_number", required_number)
@@ -50,6 +56,10 @@ class ModuleResourceArgs:
             optional_bool = True
         if optional_bool is not None:
             pulumi.set(__self__, "optional_bool", optional_bool)
+        if optional_enum is None:
+            optional_enum = 8
+        if optional_enum is not None:
+            pulumi.set(__self__, "optional_enum", optional_enum)
         if optional_number is None:
             optional_number = 42
         if optional_number is not None:
@@ -109,6 +119,15 @@ class ModuleResourceArgs:
 
     @property
     @pulumi.getter
+    def required_enum(self) -> pulumi.Input['EnumThing']:
+        return pulumi.get(self, "required_enum")
+
+    @required_enum.setter
+    def required_enum(self, value: pulumi.Input['EnumThing']):
+        pulumi.set(self, "required_enum", value)
+
+    @property
+    @pulumi.getter
     def required_number(self) -> pulumi.Input[float]:
         return pulumi.get(self, "required_number")
 
@@ -133,6 +152,15 @@ class ModuleResourceArgs:
     @optional_bool.setter
     def optional_bool(self, value: Optional[pulumi.Input[bool]]):
         pulumi.set(self, "optional_bool", value)
+
+    @property
+    @pulumi.getter
+    def optional_enum(self) -> Optional[pulumi.Input['EnumThing']]:
+        return pulumi.get(self, "optional_enum")
+
+    @optional_enum.setter
+    def optional_enum(self, value: Optional[pulumi.Input['EnumThing']]):
+        pulumi.set(self, "optional_enum", value)
 
     @property
     @pulumi.getter
@@ -186,6 +214,7 @@ class ModuleResource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  optional_bool: Optional[pulumi.Input[bool]] = None,
+                 optional_enum: Optional[pulumi.Input['EnumThing']] = None,
                  optional_number: Optional[pulumi.Input[float]] = None,
                  optional_string: Optional[pulumi.Input[str]] = None,
                  plain_optional_bool: Optional[bool] = None,
@@ -195,6 +224,7 @@ class ModuleResource(pulumi.CustomResource):
                  plain_required_number: Optional[float] = None,
                  plain_required_string: Optional[str] = None,
                  required_bool: Optional[pulumi.Input[bool]] = None,
+                 required_enum: Optional[pulumi.Input['EnumThing']] = None,
                  required_number: Optional[pulumi.Input[float]] = None,
                  required_string: Optional[pulumi.Input[str]] = None,
                  __props__=None):
@@ -227,6 +257,7 @@ class ModuleResource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  optional_bool: Optional[pulumi.Input[bool]] = None,
+                 optional_enum: Optional[pulumi.Input['EnumThing']] = None,
                  optional_number: Optional[pulumi.Input[float]] = None,
                  optional_string: Optional[pulumi.Input[str]] = None,
                  plain_optional_bool: Optional[bool] = None,
@@ -236,6 +267,7 @@ class ModuleResource(pulumi.CustomResource):
                  plain_required_number: Optional[float] = None,
                  plain_required_string: Optional[str] = None,
                  required_bool: Optional[pulumi.Input[bool]] = None,
+                 required_enum: Optional[pulumi.Input['EnumThing']] = None,
                  required_number: Optional[pulumi.Input[float]] = None,
                  required_string: Optional[pulumi.Input[str]] = None,
                  __props__=None):
@@ -253,6 +285,9 @@ class ModuleResource(pulumi.CustomResource):
             if optional_bool is None:
                 optional_bool = True
             __props__.__dict__["optional_bool"] = optional_bool
+            if optional_enum is None:
+                optional_enum = 8
+            __props__.__dict__["optional_enum"] = optional_enum
             if optional_number is None:
                 optional_number = 42
             __props__.__dict__["optional_number"] = optional_number
@@ -288,6 +323,11 @@ class ModuleResource(pulumi.CustomResource):
             if required_bool is None and not opts.urn:
                 raise TypeError("Missing required property 'required_bool'")
             __props__.__dict__["required_bool"] = required_bool
+            if required_enum is None:
+                required_enum = 4
+            if required_enum is None and not opts.urn:
+                raise TypeError("Missing required property 'required_enum'")
+            __props__.__dict__["required_enum"] = required_enum
             if required_number is None:
                 required_number = 42
             if required_number is None and not opts.urn:

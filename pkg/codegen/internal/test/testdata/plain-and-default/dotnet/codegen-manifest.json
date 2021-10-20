@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    "Enums.cs",
     "ModuleResource.cs",
     "Provider.cs",
     "Pulumi.FooBar.csproj",

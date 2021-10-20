@@ -59,6 +59,9 @@ namespace Pulumi.FooBar
         [Input("optional_bool")]
         public Input<bool>? Optional_bool { get; set; }
 
+        [Input("optional_enum")]
+        public Input<Pulumi.FooBar.EnumThing>? Optional_enum { get; set; }
+
         [Input("optional_number")]
         public Input<double>? Optional_number { get; set; }
 
@@ -86,6 +89,9 @@ namespace Pulumi.FooBar
         [Input("required_bool", required: true)]
         public Input<bool> Required_bool { get; set; } = null!;
 
+        [Input("required_enum", required: true)]
+        public Input<Pulumi.FooBar.EnumThing> Required_enum { get; set; } = null!;
+
         [Input("required_number", required: true)]
         public Input<double> Required_number { get; set; } = null!;
 
@@ -95,6 +101,7 @@ namespace Pulumi.FooBar
         public ModuleResourceArgs()
         {
             Optional_bool = true;
+            Optional_enum = Pulumi.FooBar.EnumThing.Eight;
             Optional_number = 42;
             Optional_string = "buzzer";
             Plain_optional_bool = true;
@@ -104,6 +111,7 @@ namespace Pulumi.FooBar
             Plain_required_number = 42;
             Plain_required_string = "buzzer";
             Required_bool = true;
+            Required_enum = Pulumi.FooBar.EnumThing.Four;
             Required_number = 42;
             Required_string = "buzzer";
         }

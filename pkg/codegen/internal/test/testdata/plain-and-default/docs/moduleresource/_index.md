@@ -28,6 +28,7 @@ no_edit_this_page: true
 <span class="k">def </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                    <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
                    <span class="nx">optional_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
+                   <span class="nx">optional_enum</span><span class="p">:</span> <span class="nx">Optional[EnumThing]</span> = None<span class="p">,</span>
                    <span class="nx">optional_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
                    <span class="nx">optional_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                    <span class="nx">plain_optional_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
@@ -37,6 +38,7 @@ no_edit_this_page: true
                    <span class="nx">plain_required_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
                    <span class="nx">plain_required_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                    <span class="nx">required_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
+                   <span class="nx">required_enum</span><span class="p">:</span> <span class="nx">Optional[EnumThing]</span> = None<span class="p">,</span>
                    <span class="nx">required_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
                    <span class="nx">required_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
@@ -200,6 +202,14 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
+        <span id="required_enum_csharp">
+<a href="#required_enum_csharp" style="color: inherit; text-decoration: inherit;">Required_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
         <span id="required_number_csharp">
 <a href="#required_number_csharp" style="color: inherit; text-decoration: inherit;">Required_<wbr>number</a>
 </span>
@@ -221,6 +231,14 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_enum_csharp">
+<a href="#optional_enum_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -300,6 +318,14 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
+        <span id="required_enum_go">
+<a href="#required_enum_go" style="color: inherit; text-decoration: inherit;">Required_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
         <span id="required_number_go">
 <a href="#required_number_go" style="color: inherit; text-decoration: inherit;">Required_<wbr>number</a>
 </span>
@@ -321,6 +347,14 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_enum_go">
+<a href="#optional_enum_go" style="color: inherit; text-decoration: inherit;">Optional_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -400,6 +434,14 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
+        <span id="required_enum_nodejs">
+<a href="#required_enum_nodejs" style="color: inherit; text-decoration: inherit;">required_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
         <span id="required_number_nodejs">
 <a href="#required_number_nodejs" style="color: inherit; text-decoration: inherit;">required_<wbr>number</a>
 </span>
@@ -421,6 +463,14 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_enum_nodejs">
+<a href="#optional_enum_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -500,6 +550,14 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
+        <span id="required_enum_python">
+<a href="#required_enum_python" style="color: inherit; text-decoration: inherit;">required_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
         <span id="required_number_python">
 <a href="#required_number_python" style="color: inherit; text-decoration: inherit;">required_<wbr>number</a>
 </span>
@@ -521,6 +579,14 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="optional_enum_python">
+<a href="#optional_enum_python" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -625,6 +691,40 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
+
+## Supporting Types
+
+
+
+<h4 id="enumthing">Enum<wbr>Thing</h4>
+
+{{% choosable language csharp %}}
+<dl class="tabular"><dt>Four</dt>
+    <dd>4</dd><dt>Six</dt>
+    <dd>6</dd><dt>Eight</dt>
+    <dd>8</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language go %}}
+<dl class="tabular"><dt>Enum<wbr>Thing<wbr>Four</dt>
+    <dd>4</dd><dt>Enum<wbr>Thing<wbr>Six</dt>
+    <dd>6</dd><dt>Enum<wbr>Thing<wbr>Eight</dt>
+    <dd>8</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language nodejs %}}
+<dl class="tabular"><dt>Four</dt>
+    <dd>4</dd><dt>Six</dt>
+    <dd>6</dd><dt>Eight</dt>
+    <dd>8</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language python %}}
+<dl class="tabular"><dt>FOUR</dt>
+    <dd>4</dd><dt>SIX</dt>
+    <dd>6</dd><dt>EIGHT</dt>
+    <dd>8</dd></dl>
+{{% /choosable %}}
 
 
 <h2 id="package-details">Package Details</h2>

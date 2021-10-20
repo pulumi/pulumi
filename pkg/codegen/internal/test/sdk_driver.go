@@ -184,9 +184,10 @@ var sdkTests = []sdkTest{
 		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
 	},
 	{
-		Directory:   "plain-and-default",
-		Description: "Ensure that a resource with a plain default property works correctly",
-		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
+		Directory:        "plain-and-default",
+		Description:      "Ensure that a resource with a plain default property works correctly",
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
+		SkipCompileCheck: codegen.NewStringSet(nodejs),
 	},
 }
 

@@ -2,6 +2,7 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
+import { input as inputs, output as outputs, enums } from "./types";
 import * as utilities from "./utilities";
 
 export class ModuleResource extends pulumi.CustomResource {
@@ -55,6 +56,9 @@ export class ModuleResource extends pulumi.CustomResource {
             if ((!args || args.required_bool === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'required_bool'");
             }
+            if ((!args || args.required_enum === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'required_enum'");
+            }
             if ((!args || args.required_number === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'required_number'");
             }
@@ -62,6 +66,7 @@ export class ModuleResource extends pulumi.CustomResource {
                 throw new Error("Missing required property 'required_string'");
             }
             inputs["optional_bool"] = (args ? args.optional_bool : undefined) ?? true;
+            inputs["optional_enum"] = (args ? args.optional_enum : undefined) ?? 8;
             inputs["optional_number"] = (args ? args.optional_number : undefined) ?? 42;
             inputs["optional_string"] = (args ? args.optional_string : undefined) ?? "buzzer";
             inputs["plain_optional_bool"] = (args ? args.plain_optional_bool : undefined) ?? true;
@@ -71,6 +76,7 @@ export class ModuleResource extends pulumi.CustomResource {
             inputs["plain_required_number"] = (args ? args.plain_required_number : undefined) ?? 42;
             inputs["plain_required_string"] = (args ? args.plain_required_string : undefined) ?? "buzzer";
             inputs["required_bool"] = (args ? args.required_bool : undefined) ?? true;
+            inputs["required_enum"] = (args ? args.required_enum : undefined) ?? 4;
             inputs["required_number"] = (args ? args.required_number : undefined) ?? 42;
             inputs["required_string"] = (args ? args.required_string : undefined) ?? "buzzer";
         } else {
@@ -87,6 +93,7 @@ export class ModuleResource extends pulumi.CustomResource {
  */
 export interface ModuleResourceArgs {
     optional_bool?: pulumi.Input<boolean>;
+    optional_enum?: pulumi.Input<enums.EnumThing>;
     optional_number?: pulumi.Input<number>;
     optional_string?: pulumi.Input<string>;
     plain_optional_bool?: boolean;
@@ -96,6 +103,7 @@ export interface ModuleResourceArgs {
     plain_required_number: number;
     plain_required_string: string;
     required_bool: pulumi.Input<boolean>;
+    required_enum: pulumi.Input<enums.EnumThing>;
     required_number: pulumi.Input<number>;
     required_string: pulumi.Input<string>;
 }

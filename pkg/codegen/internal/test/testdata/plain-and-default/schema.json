@@ -3,7 +3,6 @@
   "name": "foobar",
   "resources": {
     "foobar::ModuleResource": {
-      "properties": {},
       "inputProperties": {
         "plain_optional_string": {
           "type": "string",
@@ -47,6 +46,10 @@
           "type": "number",
           "default": 42
         },
+        "optional_enum": {
+          "$ref": "#/types/foobar::EnumThing",
+          "default": 8
+        },
         "required_string": {
           "type": "string",
           "default": "buzzer"
@@ -58,6 +61,10 @@
         "required_number": {
           "type": "number",
           "default": 42
+        },
+        "required_enum": {
+          "$ref": "#/types/foobar::EnumThing",
+          "default": 4
         }
       },
       "requiredInputs": [
@@ -66,9 +73,29 @@
         "plain_required_number",
         "required_string",
         "required_bool",
-        "required_number"
+        "required_number",
+        "required_enum"
       ],
       "type": "object"
+    }
+  },
+  "types": {
+    "foobar::EnumThing": {
+      "type": "integer",
+      "enum": [
+        {
+          "value": 4,
+          "name": "Four"
+        },
+        {
+          "value": 6,
+          "name": "Six"
+        },
+        {
+          "value": 8,
+          "name": "Eight"
+        }
+      ]
     }
   },
   "language": {

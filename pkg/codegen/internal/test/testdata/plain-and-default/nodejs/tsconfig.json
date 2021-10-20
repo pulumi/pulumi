@@ -16,6 +16,7 @@
         "index.ts",
         "moduleResource.ts",
         "provider.ts",
+        "types/enums/index.ts",
         "utilities.ts"
     ]
 }

@@ -297,7 +297,9 @@ func isNilType(t schema.Type) bool {
 	return false
 }
 
-func nilValue(t schema.Type) string {
+// The default value for a Pulumi primitive type.
+func primitiveNilValue(t schema.Type) string {
+	contract.Assert(schema.IsPrimitiveType(t))
 	switch t {
 	case schema.BoolType:
 		return "false"
@@ -1430,7 +1432,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 				return err
 			}
 
-			t := strings.TrimSuffix(pkg.inputType(p.Type), "Input")
+			t := pkg.inputType(p.Type)
 			if t == "pulumi." {
 				t = "pulumi.Any"
 			}
@@ -1451,7 +1453,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			case *schema.EnumType:
 				t = strings.TrimSuffix(t, "Ptr")
 			}
-			if !codegen.IsInput(p.Type) {
+			if !codegen.IsNOptionalInput(p.Type) {
 				if isNilType(p.Type) {
 					// This type is optional, and so it can be nil.
 					fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
@@ -1460,7 +1462,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 					fmt.Fprintf(w, "\t\targs.%s = &%s\n", Title(p.Name), tmpName)
 				} else {
 					// A default value has already been provided.
-					fmt.Fprintf(w, "\tif args.%s == %s {\n", Title(p.Name), nilValue(p.Type))
+					fmt.Fprintf(w, "\tif args.%s == %s {\n", Title(p.Name), primitiveNilValue(p.Type))
 					fmt.Fprintf(w, "\t\targs.%s = %s\n", Title(p.Name), v)
 				}
 			} else {

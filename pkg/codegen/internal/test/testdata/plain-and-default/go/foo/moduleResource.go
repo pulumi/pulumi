@@ -25,6 +25,9 @@ func NewModuleResource(ctx *pulumi.Context,
 	if args.Optional_bool == nil {
 		args.Optional_bool = pulumi.BoolPtr(true)
 	}
+	if args.Optional_enum == nil {
+		args.Optional_enum = EnumThing(8)
+	}
 	if args.Optional_number == nil {
 		args.Optional_number = pulumi.Float64Ptr(42.0)
 	}
@@ -54,6 +57,9 @@ func NewModuleResource(ctx *pulumi.Context,
 	}
 	if args.Required_bool == nil {
 		args.Required_bool = pulumi.Bool(true)
+	}
+	if args.Required_enum == nil {
+		args.Required_enum = EnumThing(4)
 	}
 	if args.Required_number == nil {
 		args.Required_number = pulumi.Float64(42.0)
@@ -93,23 +99,26 @@ func (ModuleResourceState) ElementType() reflect.Type {
 }
 
 type moduleResourceArgs struct {
-	Optional_bool         *bool    `pulumi:"optional_bool"`
-	Optional_number       *float64 `pulumi:"optional_number"`
-	Optional_string       *string  `pulumi:"optional_string"`
-	Plain_optional_bool   *bool    `pulumi:"plain_optional_bool"`
-	Plain_optional_number *float64 `pulumi:"plain_optional_number"`
-	Plain_optional_string *string  `pulumi:"plain_optional_string"`
-	Plain_required_bool   bool     `pulumi:"plain_required_bool"`
-	Plain_required_number float64  `pulumi:"plain_required_number"`
-	Plain_required_string string   `pulumi:"plain_required_string"`
-	Required_bool         bool     `pulumi:"required_bool"`
-	Required_number       float64  `pulumi:"required_number"`
-	Required_string       string   `pulumi:"required_string"`
+	Optional_bool         *bool      `pulumi:"optional_bool"`
+	Optional_enum         *EnumThing `pulumi:"optional_enum"`
+	Optional_number       *float64   `pulumi:"optional_number"`
+	Optional_string       *string    `pulumi:"optional_string"`
+	Plain_optional_bool   *bool      `pulumi:"plain_optional_bool"`
+	Plain_optional_number *float64   `pulumi:"plain_optional_number"`
+	Plain_optional_string *string    `pulumi:"plain_optional_string"`
+	Plain_required_bool   bool       `pulumi:"plain_required_bool"`
+	Plain_required_number float64    `pulumi:"plain_required_number"`
+	Plain_required_string string     `pulumi:"plain_required_string"`
+	Required_bool         bool       `pulumi:"required_bool"`
+	Required_enum         EnumThing  `pulumi:"required_enum"`
+	Required_number       float64    `pulumi:"required_number"`
+	Required_string       string     `pulumi:"required_string"`
 }
 
 // The set of arguments for constructing a ModuleResource resource.
 type ModuleResourceArgs struct {
 	Optional_bool         pulumi.BoolPtrInput
+	Optional_enum         EnumThingPtrInput
 	Optional_number       pulumi.Float64PtrInput
 	Optional_string       pulumi.StringPtrInput
 	Plain_optional_bool   *bool
@@ -119,6 +128,7 @@ type ModuleResourceArgs struct {
 	Plain_required_number float64
 	Plain_required_string string
 	Required_bool         pulumi.BoolInput
+	Required_enum         EnumThingInput
 	Required_number       pulumi.Float64Input
 	Required_string       pulumi.StringInput
 }
