@@ -130,7 +130,9 @@ func TestStackInitValidation(t *testing.T) {
 
 		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "valid-name")
 		assert.Equal(t, "", stdout)
-		assert.Contains(t, stderr, "error: could not get cloud url: could not load current project: invalid YAML file: yaml: line 1: did not find expected key")
+		assert.Contains(t, stderr,
+			"error: could not get cloud url: could not load current project: "+
+				"invalid YAML file: yaml: line 1: did not find expected key")
 	})
 }
 
