@@ -199,8 +199,7 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			}
 		case engine.ResourceOutputsEvent, engine.ResourceOperationFailed:
 		// Because we are only JSON serializing previews, we don't need to worry about outputs
-		// resolving or operations failing. In the future, if we serialize actual deployments, we will
-		// need to come up with a scheme for matching the failure to the associated step.
+		// resolving or operations failing.
 
 		// Events occurring late:
 		case engine.PolicyViolationEvent:
