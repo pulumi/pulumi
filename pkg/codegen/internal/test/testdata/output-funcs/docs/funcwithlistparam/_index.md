@@ -19,13 +19,18 @@ Check codegen of functions with a List parameter.
 
 ## Using funcWithListParam {#using}
 
+Two invocation forms are available. The direct form accepts plain
+arguments and either blocks until the result value is available, or
+returns a Promise-wrapped result. The output form accepts
+Input-wrapped arguments and returns an Output-wrapped result.
+
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
 {{% choosable language nodejs %}}
 <div class="highlight"
-><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>funcWithListParamOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">FuncWithListParamOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">FuncWithListParamResult</a></span>></span></code></pre
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>funcWithListParam<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">FuncWithListParamArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">FuncWithListParamResult</a></span>></span></code></pre
+><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>funcWithListParamOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">FuncWithListParamOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">FuncWithListParamResult</a></span>></span></code></pre
 ></div>
 {{% /choosable %}}
 
@@ -35,17 +40,17 @@ Check codegen of functions with a List parameter.
 <pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>func_with_list_param(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[Sequence[str]]</span> = None<span class="p">,</span>
                          <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                          <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> FuncWithListParamResult</code></pre>
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>func_with_list_param_output(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[Sequence[str]]</span> = None<span class="p">,</span>
-                         <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
-                         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> FuncWithListParamResult</code></pre>
 </div>
+<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>func_with_list_param_output(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]</span> = None<span class="p">,</span>
+                         <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
+                         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> Output[FuncWithListParamResult]</code></pre>
 {{% /choosable %}}
 
 
 {{% choosable language go %}}
 <div class="highlight"
-><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>FuncWithListParamOutput<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">FuncWithListParamOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) FuncWithListParamResultOutput</span></code></pre
 ><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>FuncWithListParam<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">FuncWithListParamArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">FuncWithListParamResult</a></span>, error)</span></code></pre
+><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>FuncWithListParamOutput<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">FuncWithListParamOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) FuncWithListParamResultOutput</span></code></pre
 ></div>
 
 > Note: This function is named `FuncWithListParam` in the Go SDK.

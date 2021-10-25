@@ -32,7 +32,6 @@ Failing example taken from azure-native. Original doc: Use this function to acce
 {{% choosable language python %}}
 <div class="highlight">
 <pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>get_client_config(</span><span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> GetClientConfigResult</code></pre>
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>get_client_config_output(</span><span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> GetClientConfigResult</code></pre>
 </div>
 {{% /choosable %}}
 

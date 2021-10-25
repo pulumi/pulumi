@@ -31,8 +31,6 @@ no_edit_this_page: true
 <div class="highlight">
 <pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>example_func(</span><span class="nx">enums</span><span class="p">:</span> <span class="nx">Optional[Sequence[Union[str, MyEnum]]]</span> = None<span class="p">,</span>
                  <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> ExampleFuncResult</code></pre>
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>example_func_output(</span><span class="nx">enums</span><span class="p">:</span> <span class="nx">Optional[Sequence[Union[str, MyEnum]]]</span> = None<span class="p">,</span>
-                 <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> ExampleFuncResult</code></pre>
 </div>
 {{% /choosable %}}
 

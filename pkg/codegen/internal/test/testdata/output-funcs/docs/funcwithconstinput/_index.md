@@ -33,8 +33,6 @@ Codegen demo with const inputs
 <div class="highlight">
 <pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>func_with_const_input(</span><span class="nx">plain_input</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                           <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> FuncWithConstInputResult</code></pre>
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>func_with_const_input_output(</span><span class="nx">plain_input</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
-                          <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> FuncWithConstInputResult</code></pre>
 </div>
 {{% /choosable %}}
 

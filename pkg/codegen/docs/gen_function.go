@@ -232,7 +232,7 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string, output
 	return params
 }
 
-func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string) []formalParam {
+func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string, outputVersion bool) []formalParam {
 	dctx := mod.docGenContext
 	docLanguageHelper := dctx.getLanguageDocHelper("python")
 	var params []formalParam
@@ -240,9 +240,24 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 	// Some functions don't have any inputs other than the InvokeOptions.
 	// For example, the `get_billing_service_account` function.
 	if f.Inputs != nil {
-		params = make([]formalParam, 0, len(f.Inputs.Properties))
-		for _, prop := range f.Inputs.Properties {
-			typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, codegen.PlainType(codegen.OptionalType(prop)), true /*input*/)
+
+		inputs := f.Inputs
+		if outputVersion {
+			inputs = inputs.InputShape
+		}
+
+		params = make([]formalParam, 0, len(inputs.Properties))
+		for _, prop := range inputs.Properties {
+
+			var schemaType schema.Type
+			if outputVersion {
+				schemaType = codegen.OptionalType(prop)
+			} else {
+				schemaType = codegen.PlainType(codegen.OptionalType(prop))
+			}
+
+			typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod,
+				schemaType, true /*input*/)
 			params = append(params, formalParam{
 				Name:         python.PyName(prop.Name),
 				DefaultValue: " = None",
@@ -294,7 +309,7 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 			params = mod.genFunctionCS(f, funcNameMap["csharp"], outputVersion)
 			paramTemplate = "csharp_formal_param"
 		case "python":
-			params = mod.genFunctionPython(f, funcNameMap["python"]) // TODO propagate outputVersion
+			params = mod.genFunctionPython(f, funcNameMap["python"], outputVersion)
 			paramTemplate = "py_formal_param"
 			paramSeparatorTemplate = "py_param_separator"
 
@@ -397,8 +412,6 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 
 		PackageDetails: packageDetails,
 	}
-
-	args.FunctionArgsOutputVersion = map[string]string{}
 
 	if f.NeedsOutputVersion() {
 		args.HasOutputVersion = true
