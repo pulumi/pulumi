@@ -15,5 +15,5 @@
 
 ### Bug Fixes
 
-- [codegen/go] - Fix interaction between plain types with default values.
+- [codegen/go] - Interaction between the `plain` and `default` tags of a type. 
   [#8254](https://github.com/pulumi/pulumi/pull/8254)
