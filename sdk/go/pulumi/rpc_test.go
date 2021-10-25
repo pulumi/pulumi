@@ -1129,6 +1129,30 @@ func (o TemplateTagSpecificationArrayOutput) ToTemplateTagSpecificationArrayOutp
 	return o
 }
 
+type bucketObjectArgs struct {
+	Source AssetOrArchive `pulumi:"source"`
+}
+
+type BucketObjectArgs struct {
+	Source AssetOrArchiveInput
+}
+
+func (BucketObjectArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*bucketObjectArgs)(nil)).Elem()
+}
+
+type myResourceArgs struct {
+	Res Resource `pulumi:"res"`
+}
+
+type MyResourceArgs struct {
+	Res ResourceInput
+}
+
+func (MyResourceArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*myResourceArgs)(nil)).Elem()
+}
+
 func TestOutputValueMarshallingNested(t *testing.T) {
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
@@ -1148,6 +1172,15 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 	stringOutputType := reflect.TypeOf((*StringOutput)(nil)).Elem()
 	unknownStringOutput := ctx.newOutput(stringOutputType).(StringOutput)
 	unknownStringOutput.getState().resolve("", false /*known*/, false /*secret*/, nil)
+
+	assetOutputType := reflect.TypeOf((*AssetOutput)(nil)).Elem()
+	fileAssetOutput := ctx.newOutput(assetOutputType).(AssetOutput)
+	fileAssetOutput.getState().resolve(&asset{path: "foo.txt"}, true /*known*/, false /*secret*/, nil)
+	fileAssetSecretOutput := ctx.newOutput(assetOutputType).(AssetOutput)
+	fileAssetSecretOutput.getState().resolve(&asset{path: "foo.txt"}, true /*known*/, true /*secret*/, nil)
+	fileAssetOutputDeps := ctx.newOutput(assetOutputType).(AssetOutput)
+	fileAssetOutputDeps.getState().resolve(&asset{path: "foo.txt"}, true /*known*/, false, /*secret*/
+		[]Resource{newSimpleCustomResource(ctx, "fakeURN", "fakeID")})
 
 	tests := []struct {
 		name     string
@@ -1274,6 +1307,81 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 							}),
 						}),
 					}),
+				}),
+			}),
+		},
+		{
+			name: "bucket object with file asset",
+			input: &BucketObjectArgs{
+				Source: NewFileAsset("foo.txt"),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"source": resource.NewAssetProperty(&resource.Asset{
+					Path: "foo.txt",
+				}),
+			}),
+		},
+		{
+			name: "bucket object with file archive",
+			input: &BucketObjectArgs{
+				Source: NewFileArchive("bar.zip"),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"source": resource.NewArchiveProperty(&resource.Archive{
+					Path: "bar.zip",
+				}),
+			}),
+		},
+		{
+			name: "bucket object with file asset output",
+			input: &BucketObjectArgs{
+				Source: fileAssetOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"source": resource.NewAssetProperty(&resource.Asset{
+					Path: "foo.txt",
+				}),
+			}),
+		},
+		{
+			name: "bucket object with file asset secret output",
+			input: &BucketObjectArgs{
+				Source: fileAssetSecretOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"source": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewAssetProperty(&resource.Asset{
+						Path: "foo.txt",
+					}),
+					Known:  true,
+					Secret: true,
+				}),
+			}),
+		},
+		{
+			name: "bucket object with file asset with deps",
+			input: &BucketObjectArgs{
+				Source: fileAssetOutputDeps,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"source": resource.NewOutputProperty(resource.Output{
+					Element: resource.NewAssetProperty(&resource.Asset{
+						Path: "foo.txt",
+					}),
+					Known:        true,
+					Dependencies: []resource.URN{"fakeURN"},
+				}),
+			}),
+		},
+		{
+			name: "resource",
+			input: &MyResourceArgs{
+				Res: NewResourceInput(newSimpleCustomResource(ctx, "fakeURN", "fakeID")),
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"res": resource.NewResourceReferenceProperty(resource.ResourceReference{
+					URN: "fakeURN",
+					ID:  resource.NewStringProperty("fakeID"),
 				}),
 			}),
 		},
