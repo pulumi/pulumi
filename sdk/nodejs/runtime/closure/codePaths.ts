@@ -132,7 +132,7 @@ async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<str
         // The Asset model does not support a consistent way to embed a file-or-directory into an
         // `AssetArchive`, so we stat the path to figure out which it is and use the appropriate
         // Asset constructor.
-        const stats = fs.lstatSync(normalizedPath);
+        const stats = fs.statSync(normalizedPath);
         if (stats.isDirectory()) {
             codePaths.set(normalizedPath, new asset.FileArchive(normalizedPath));
         }
