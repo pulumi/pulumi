@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 		t = String(defaultType)
 	}
 
-	var parent StringInput
+	parent := defaultParent.URN()
 	if a.Parent != nil && a.ParentURN != nil {
 		return URNOutput{}, errors.New("alias can specify either Parent or ParentURN but not both")
 	}
