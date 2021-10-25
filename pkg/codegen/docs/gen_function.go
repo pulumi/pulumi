@@ -25,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
@@ -61,10 +62,13 @@ type functionDocArgs struct {
 
 	PackageDetails packageDetails
 
-	// Check if the function supports an Output version that is
-	// automatically lifted to accept Input values and return an
-	// Output.
-	HasOutputVersion bool
+	// Check if the function supports an `Output` version that is
+	// automatically lifted to accept `Input` values and return an
+	// `Output` (per language).
+	HasOutputVersion map[string]bool
+
+	// True if any of the entries in `HasOutputVersion` are true.
+	AnyLanguageHasOutputVersion bool
 
 	// Same as FunctionArgs, but specific to the Output version of
 	// the function.
@@ -361,6 +365,19 @@ func (mod *modContext) genFunctionHeader(f *schema.Function) header {
 	}
 }
 
+func (mod *modContext) genFunctionOutputVersionMap(f *schema.Function) map[string]bool {
+	dctx := mod.docGenContext
+	result := map[string]bool{}
+	for _, lang := range dctx.supportedLanguages {
+		hasOutputVersion := f.NeedsOutputVersion()
+		if lang == "go" {
+			hasOutputVersion = go_gen.NeedsGoOutputVersion(f)
+		}
+		result[lang] = hasOutputVersion
+	}
+	return result
+}
+
 // genFunction is the main entrypoint for generating docs for a Function.
 // Returns args type that can be used to execute the `function.tmpl` doc template.
 func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
@@ -413,8 +430,16 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		PackageDetails: packageDetails,
 	}
 
+	args.HasOutputVersion = mod.genFunctionOutputVersionMap(f)
+
+	for _, hasOutputVersion := range args.HasOutputVersion {
+		if hasOutputVersion {
+			args.AnyLanguageHasOutputVersion = true
+			continue
+		}
+	}
+
 	if f.NeedsOutputVersion() {
-		args.HasOutputVersion = true
 		args.FunctionArgsOutputVersion = mod.genFunctionArgs(f, funcNameMap, true /*outputVersion*/)
 		args.FunctionResultOutputVersion = mod.getFunctionResourceInfo(f, true /*outputVersion*/)
 	}

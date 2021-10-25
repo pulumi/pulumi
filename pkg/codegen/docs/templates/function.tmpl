@@ -15,7 +15,7 @@
 <!-- Input properties -->
 ## Using {{ .Header.Title }} {#using}
 
-{{- if .HasOutputVersion }}
+{{- if .AnyLanguageHasOutputVersion }}
 
 Two invocation forms are available. The direct form accepts plain
 arguments and either blocks until the result value is available, or
@@ -30,7 +30,7 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{ print "{{% choosable language nodejs %}}" }}
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>{{ .FunctionName.nodejs }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.nodejs }}<span class="p">): Promise<{{ template "linkify_param" .FunctionResult.nodejs }}></span></code></pre
-{{- if .HasOutputVersion }}
+{{- if .HasOutputVersion.nodejs }}
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>{{ .FunctionName.nodejs }}Output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.nodejs }}<span class="p">): Output<{{ template "linkify_param" .FunctionResult.nodejs }}></span></code></pre
 {{- end }}
 ></div>
@@ -41,7 +41,7 @@ Input-wrapped arguments and returns an Output-wrapped result.
 <div class="highlight">
 <pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>{{ .FunctionName.python }}(</span>{{ htmlSafe .FunctionArgs.python }}<span class="p">) -&gt;</span> {{ .FunctionResult.python.Name }}</code></pre>
 </div>
-{{- if .HasOutputVersion }}
+{{- if .HasOutputVersion.python }}
 <pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>{{ .FunctionName.python }}_output(</span>{{ htmlSafe .FunctionArgsOutputVersion.python }}<span class="p">) -&gt;</span> Output[{{ .FunctionResult.python.Name }}]</code></pre>
 {{- end }}
 {{ print "{{% /choosable %}}" }}
@@ -50,7 +50,7 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{ print "{{% choosable language go %}}" }}
 <div class="highlight"
 ><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>{{ .FunctionName.go }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.go }}<span class="p">) (*{{ template "linkify_param" .FunctionResult.go }}, error)</span></code></pre
-{{- if .HasOutputVersion }}
+{{- if .HasOutputVersion.go }}
 ><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>{{ .FunctionName.go }}Output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.go }}<span class="p">) {{ .FunctionResultOutputVersion.go.Name }}</span></code></pre
 {{- end }}
 ></div>
@@ -63,7 +63,7 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{ print "{{% choosable language csharp %}}" }}
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">{{ .FunctionName.csharp }} </span><span class="p">
 {</span><span class="k">
-    public static </span>Task<{{ template "linkify_param" .FunctionResult.csharp }}> <span class="p">InvokeAsync(</span>{{ htmlSafe .FunctionArgs.csharp }}<span class="p">)</span>{{- if .HasOutputVersion }}<span class="k">
+    public static </span>Task<{{ template "linkify_param" .FunctionResult.csharp }}> <span class="p">InvokeAsync(</span>{{ htmlSafe .FunctionArgs.csharp }}<span class="p">)</span>{{- if .HasOutputVersion.csharp }}<span class="k">
     public static </span>Output<{{ template "linkify_param" .FunctionResult.csharp }}> <span class="p">Invoke(</span>{{ htmlSafe .FunctionArgsOutputVersion.csharp }}<span class="p">)</span>{{- end }}<span class="p">
 }</span></span></pre></div>
 {{ print "{{% /choosable %}}" }}
