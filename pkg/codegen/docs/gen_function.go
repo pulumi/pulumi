@@ -60,11 +60,26 @@ type functionDocArgs struct {
 	NestedTypes []docNestedType
 
 	PackageDetails packageDetails
+
+	// Check if the function supports an Output version that is
+	// automatically lifted to accept Input values and return an
+	// Output.
+	HasOutputVersion bool
+
+	// Same as FunctionArgs, but specific to the Output version of
+	// the function.
+	FunctionArgsOutputVersion map[string]string
+
+	// Same as FunctionResult, but specific to the Output version
+	// of the function. In languages like Go, `Output<Result>`
+	// gets a dedicated nominal type to emulate generics, which
+	// will be passed in here.
+	FunctionResultOutputVersion map[string]propertyType
 }
 
 // getFunctionResourceInfo returns a map of per-language information about
 // the resource being looked-up using a static "getter" function.
-func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]propertyType {
+func (mod *modContext) getFunctionResourceInfo(f *schema.Function, outputVersion bool) map[string]propertyType {
 	dctx := mod.docGenContext
 	resourceMap := make(map[string]propertyType)
 
@@ -76,6 +91,9 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 		case "go":
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
+			if outputVersion {
+				resultTypeName = fmt.Sprintf("%sOutput", resultTypeName)
+			}
 		case "csharp":
 			namespace := title(mod.pkg.Name, lang)
 			if ns, ok := dctx.csharpPkgInfo.Namespaces[mod.pkg.Name]; ok {
@@ -106,9 +124,16 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 	return resourceMap
 }
 
-func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []formalParam {
+func (mod *modContext) genFunctionTS(f *schema.Function, funcName string, outputVersion bool) []formalParam {
 	dctx := mod.docGenContext
-	argsType := title(funcName+"Args", "nodejs")
+
+	argsTypeSuffix := "Args"
+	if outputVersion {
+		argsTypeSuffix = "OutputArgs"
+	}
+
+	argsType := title(fmt.Sprintf("%s%s", funcName, argsTypeSuffix), "nodejs")
+
 	docLangHelper := dctx.getLanguageDocHelper("nodejs")
 	var params []formalParam
 	if f.Inputs != nil {
@@ -132,8 +157,13 @@ func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []form
 	return params
 }
 
-func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []formalParam {
-	argsType := funcName + "Args"
+func (mod *modContext) genFunctionGo(f *schema.Function, funcName string, outputVersion bool) []formalParam {
+	argsTypeSuffix := "Args"
+	if outputVersion {
+		argsTypeSuffix = "OutputArgs"
+	}
+
+	argsType := fmt.Sprintf("%s%s", funcName, argsTypeSuffix)
 
 	params := []formalParam{
 		{
@@ -167,9 +197,16 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 	return params
 }
 
-func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []formalParam {
+func (mod *modContext) genFunctionCS(f *schema.Function, funcName string, outputVersion bool) []formalParam {
 	dctx := mod.docGenContext
-	argsType := funcName + "Args"
+
+	argsTypeSuffix := "Args"
+	if outputVersion {
+		argsTypeSuffix = "InvokeArgs"
+
+	}
+
+	argsType := funcName + argsTypeSuffix
 	docLangHelper := dctx.getLanguageDocHelper("csharp")
 	var params []formalParam
 	if f.Inputs != nil {
@@ -232,7 +269,7 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 
 // genFunctionArgs generates the arguments string for a given Function that can be
 // rendered directly into a template.
-func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[string]string) map[string]string {
+func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[string]string, outputVersion bool) map[string]string {
 	dctx := mod.docGenContext
 	functionParams := make(map[string]string)
 
@@ -248,16 +285,16 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 
 		switch lang {
 		case "nodejs":
-			params = mod.genFunctionTS(f, funcNameMap["nodejs"])
+			params = mod.genFunctionTS(f, funcNameMap["nodejs"], outputVersion)
 			paramTemplate = "ts_formal_param"
 		case "go":
-			params = mod.genFunctionGo(f, funcNameMap["go"])
+			params = mod.genFunctionGo(f, funcNameMap["go"], outputVersion)
 			paramTemplate = "go_formal_param"
 		case "csharp":
-			params = mod.genFunctionCS(f, funcNameMap["csharp"])
+			params = mod.genFunctionCS(f, funcNameMap["csharp"], outputVersion)
 			paramTemplate = "csharp_formal_param"
 		case "python":
-			params = mod.genFunctionPython(f, funcNameMap["python"])
+			params = mod.genFunctionPython(f, funcNameMap["python"]) // TODO propagate outputVersion
 			paramTemplate = "py_formal_param"
 			paramSeparatorTemplate = "py_param_separator"
 
@@ -346,8 +383,8 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		Tool: mod.tool,
 
 		FunctionName:   funcNameMap,
-		FunctionArgs:   mod.genFunctionArgs(f, funcNameMap),
-		FunctionResult: mod.getFunctionResourceInfo(f),
+		FunctionArgs:   mod.genFunctionArgs(f, funcNameMap, false /*outputVersion*/),
+		FunctionResult: mod.getFunctionResourceInfo(f, false /*outputVersion*/),
 
 		Comment:            docInfo.description,
 		DeprecationMessage: f.DeprecationMessage,
@@ -359,6 +396,14 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		NestedTypes: nestedTypes,
 
 		PackageDetails: packageDetails,
+	}
+
+	args.FunctionArgsOutputVersion = map[string]string{}
+
+	if f.NeedsOutputVersion() {
+		args.HasOutputVersion = true
+		args.FunctionArgsOutputVersion = mod.genFunctionArgs(f, funcNameMap, true /*outputVersion*/)
+		args.FunctionResultOutputVersion = mod.getFunctionResourceInfo(f, true /*outputVersion*/)
 	}
 
 	return args
