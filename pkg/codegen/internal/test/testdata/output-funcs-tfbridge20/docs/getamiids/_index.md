@@ -70,7 +70,7 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">GetAmiIdsResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">GetAmiIdsArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">GetAmiIdsResult</a></span>> <span class="p">Invoke(</span><span class="nx">GetAmiIdsInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
-}</span></span></pre></div>
+}</span></code></pre></div>
 {{% /choosable %}}
 
 
