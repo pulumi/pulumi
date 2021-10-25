@@ -75,6 +75,11 @@ class ResourceResolverOperations(NamedTuple):
     A list of aliases applied to this resource.
     """
 
+    has_outputs: bool
+    """
+    true if the object was serialized with output values.
+    """
+
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
 # pylint: disable=too-many-locals
@@ -102,8 +107,12 @@ async def prepare_resource(res: 'Resource',
 
     # To initially scope the use of this new feature, we only keep output values when
     # remote is true (for multi-lang components).
+    # Note: The serializer will check with the monitor to see if it supports output values.
     serialized_props = await rpc.serialize_properties(props, property_dependencies_resources, translate, typ,
         keep_output_values=remote)
+
+    # Keep track of whether we've kept output values when serializing.
+    has_outputs = remote and await settings.monitor_supports_output_values()
 
     # Wait for our parent to resolve
     parent_urn: Optional[str] = ""
@@ -165,6 +174,7 @@ async def prepare_resource(res: 'Resource',
         provider_refs,
         property_dependencies,
         aliases,
+        has_outputs,
     )
 
 
@@ -504,6 +514,7 @@ def register_resource(res: 'Resource',
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
+                hasOutputs=resolver.has_outputs,
             )
 
             from ..resource import create_urn  # pylint: disable=import-outside-toplevel

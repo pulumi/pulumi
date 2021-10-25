@@ -24,7 +24,7 @@ from ..invoke import InvokeOptions
 from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
-from .settings import get_monitor, grpc_error_to_exception, handle_grpc_error
+from .settings import get_monitor, grpc_error_to_exception, handle_grpc_error, monitor_supports_output_values
 from .sync_await import _sync_await
 
 if TYPE_CHECKING:
@@ -182,29 +182,35 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
 
             # Serialize out all props to their final values. In doing so, we'll also collect all the Resources pointed to
             # by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
+            # Note: If the monitor supports output values, we will not pass these collected dependencies as the
+            # dependencies are implicitly contained within the output values within the inputs.
             property_dependencies_resources: Dict[str, List['Resource']] = {}
             # We keep output values when serializing inputs for call.
             inputs = await rpc.serialize_properties(props, property_dependencies_resources, keep_output_values=True)
 
-            property_dependencies = {}
-            for key, property_deps in property_dependencies_resources.items():
-                urns = set()
-                for dep in property_deps:
-                    urn = await dep.urn.future()
-                    urns.add(urn)
-                property_dependencies[key] = provider_pb2.CallRequest.ArgumentDependencies(urns=list(urns))
+            # Prepare the CallRequest arguments.
+            req_args = {
+                "tok": tok,
+                "args": inputs,
+                "provider": provider_ref,
+                "version": version,
+            }
 
-            req = provider_pb2.CallRequest(
-                tok=tok,
-                args=inputs,
-                argDependencies=property_dependencies,
-                provider=provider_ref,
-                version=version,
-            )
+            # Only include `argDependencies` in the request when the monitor does *not* support output values.
+            # When the monitor *does* support output values, the dependencies will already exist within the inputs.
+            if not await monitor_supports_output_values():
+                arg_dependencies = {}
+                for key, property_deps in property_dependencies_resources.items():
+                    urns = set()
+                    for dep in property_deps:
+                        urn = await dep.urn.future()
+                        urns.add(urn)
+                    arg_dependencies[key] = provider_pb2.CallRequest.ArgumentDependencies(urns=list(urns))
+                req_args["argDependencies"] = arg_dependencies
 
             def do_rpc_call():
                 try:
-                    return monitor.Call(req)
+                    return monitor.Call(provider_pb2.CallRequest(**req_args))
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
                     return None
