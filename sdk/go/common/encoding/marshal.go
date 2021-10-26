@@ -16,9 +16,9 @@ package encoding
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -114,7 +114,7 @@ func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
 			return err
 		}
 		// Other errors will be parse errors due to invalid syntax
-		return errors.Wrap(err, "invalid YAML file")
+		return fmt.Errorf("invalid YAML file: %w", err)
 	}
 	return nil
 }
