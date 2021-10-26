@@ -36,7 +36,7 @@ type PackageInfo struct {
 	// PackageName is an override for the name of the generated python package.
 	PackageName    string            `json:"packageName,omitempty"`
 	// PythonRequires determines the Python versions that the generated provider supports
-	PythonRequires string            `json:pythonRequires,omitempty`
+	PythonRequires string            `json:"pythonRequires,omitempty"`
 	Requires       map[string]string `json:"requires,omitempty"`
 	// Readme contains the text for the package's README.md files.
 	Readme string `json:"readme,omitempty"`
