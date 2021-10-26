@@ -915,20 +915,29 @@ func TestOutputValueMarshalling(t *testing.T) {
 
 					out := ctx.newOutput(anyOutputType, resources...)
 					out.getState().resolve(value.value, known, secret, nil)
+					inputs := Map{"value": out}
 
-					expected := resource.Output{
-						Known:        known,
-						Secret:       secret,
-						Dependencies: deps,
+					expectedValue := value.expected
+					if !known || secret || len(deps) > 0 {
+						v := resource.Output{
+							Known:        known,
+							Secret:       secret,
+							Dependencies: deps,
+						}
+						if known {
+							v.Element = value.expected
+						}
+						expectedValue = resource.NewOutputProperty(v)
 					}
-					if known {
-						expected.Element = value.expected
+
+					expected := resource.PropertyMap{"value": expectedValue}
+					if value.value == nil && known && !secret && len(deps) == 0 {
+						// marshalInputs excludes plain nil values.
+						expected = resource.PropertyMap{}
 					}
 
 					name := fmt.Sprintf("value=%v, known=%v, secret=%v, deps=%v", value, known, secret, deps)
 					t.Run(name, func(t *testing.T) {
-						inputs := Map{"value": out}
-						expected := resource.PropertyMap{"value": resource.NewOutputProperty(expected)}
 						actual, _, _, err := marshalInputs(inputs)
 						assert.NoError(t, err)
 						assert.Equal(t, expected, actual)
