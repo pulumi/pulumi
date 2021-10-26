@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -587,10 +587,12 @@ export class LocalWorkspace implements Workspace {
     }
     private async getPulumiVersion(minVersion: semver.SemVer) {
         const result = await this.runPulumiCmd(["version"]);
-        const version = new semver.SemVer(result.stdout.trim());
+        const version = semver.parse(result.stdout.trim());
         const optOut = !!this.envVars[SKIP_VERSION_CHECK_VAR] || !!process.env[SKIP_VERSION_CHECK_VAR];
         validatePulumiVersion(minVersion, version, optOut);
-        this._pulumiVersion = version;
+        if (version != null) {
+            this._pulumiVersion = version;
+        }
     }
     private async runPulumiCmd(
         args: string[],
@@ -718,9 +720,12 @@ function loadProjectSettings(workDir: string) {
 }
 
 /** @internal */
-export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer, optOut: boolean) {
+export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer | null, optOut: boolean) {
     if (optOut) {
         return;
+    }
+    if (currentVersion == null) {
+        throw new Error(`Failed to parse Pulumi CLI version.`);
     }
     if (minVersion.major < currentVersion.major) {
         throw new Error(`Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${minVersion.major}. Please update the SDK.`);
