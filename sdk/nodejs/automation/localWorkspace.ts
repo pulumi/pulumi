@@ -71,9 +71,9 @@ export class LocalWorkspace implements Workspace {
      *
      * @returns A string representation of the version, if available. `null` otherwise.
      */
-    public get pulumiVersion(): string | null {
+    public get pulumiVersion(): string {
         if (this._pulumiVersion === undefined) {
-            return null;
+            throw new Error(`Failed to get Pulumi version`);
         }
         return this._pulumiVersion.toString();
     }

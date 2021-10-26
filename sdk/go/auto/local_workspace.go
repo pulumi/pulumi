@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -591,18 +592,24 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		pulumiHome: lwOpts.PulumiHome,
 	}
 
-	v, err := l.getPulumiVersion(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create workspace, unable to get pulumi version")
-	}
-	l.pulumiVersion = v
-	optOut := os.Getenv(skipVersionCheckVar) != ""
+	// optOut indicates we should skip the version check.
+	optOut := cmdutil.IsTruthy(os.Getenv(skipVersionCheckVar))
 	if val, ok := lwOpts.EnvVars[skipVersionCheckVar]; ok {
-		optOut = optOut || val != ""
+		optOut = optOut || cmdutil.IsTruthy(val)
 	}
+	v, err := l.getPulumiVersion(ctx)
+	if err == nil {
+		l.pulumiVersion = v
+	}
+	if !optOut {
+		if err != nil {
+			return nil, errors.Wrapf(err,
+				"failed to create workspace, unable to get pulumi version (skip with %s=true)", skipVersionCheckVar)
+		}
+		if err = validatePulumiVersion(minimumVersion, l.pulumiVersion, optOut); err != nil {
+			return nil, err
+		}
 
-	if err = validatePulumiVersion(minimumVersion, l.pulumiVersion, optOut); err != nil {
-		return nil, err
 	}
 
 	if lwOpts.Project != nil {
