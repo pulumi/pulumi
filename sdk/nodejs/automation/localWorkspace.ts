@@ -68,9 +68,14 @@ export class LocalWorkspace implements Workspace {
     private _pulumiVersion?: semver.SemVer;
     /**
      * The version of the underlying Pulumi CLI/Engine.
+     *
+     * @returns A string representation of the version, if available. `null` otherwise.
      */
-    public get pulumiVersion(): string {
-        return this._pulumiVersion!.toString();
+    public get pulumiVersion(): string | null {
+        if (this._pulumiVersion === undefined) {
+            return null;
+        }
+        return this._pulumiVersion.toString();
     }
     private ready: Promise<any[]>;
     /**
@@ -719,13 +724,20 @@ function loadProjectSettings(workDir: string) {
     throw new Error(`failed to find project settings file in workdir: ${workDir}`);
 }
 
-/** @internal */
+/**
+ * @internal
+ * Throws an error if the Pulumi CLI version is not valid.
+ *
+ * @param minVersion The minimum acceptable version of the Pulumi CLI.
+ * @param currentVersion The currently known version. `null` indicates that the current version is unknown.
+ * @paramoptOut If the user has opted out of the version check.
+ */
 export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer | null, optOut: boolean) {
     if (optOut) {
         return;
     }
     if (currentVersion == null) {
-        throw new Error(`Failed to parse Pulumi CLI version.`);
+        throw new Error(`Failed to parse Pulumi CLI version. This is probably an internal error. You can override this by setting "${SKIP_VERSION_CHECK_VAR}" to "true".`);
     }
     if (minVersion.major < currentVersion.major) {
         throw new Error(`Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${minVersion.major}. Please update the SDK.`);
