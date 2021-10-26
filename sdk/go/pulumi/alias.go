@@ -63,7 +63,7 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 		parent = defaultParent.URN().ToStringPtrOutput()
 	}
 	if a.Parent != nil && a.ParentURN != nil {
-		return URNOutput{}, errors.New("alias can specify only one of Parent, ParentURN or Unparent")
+		return URNOutput{}, errors.New("alias can specify either Parent or ParentURN but not both")
 	}
 	if a.Parent != nil {
 		parent = a.Parent.URN().ToStringPtrOutput()
