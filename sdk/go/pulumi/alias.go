@@ -55,7 +55,10 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 		t = String(defaultType)
 	}
 
-	parent := defaultParent.URN()
+	var parent StringInput
+	if defaultParent != nil {
+		parent = defaultParent.URN()
+	}
 	if a.Parent != nil && a.ParentURN != nil {
 		return URNOutput{}, errors.New("alias can specify either Parent or ParentURN but not both")
 	}
