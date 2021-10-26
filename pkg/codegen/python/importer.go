@@ -34,7 +34,7 @@ type PropertyInfo struct {
 // PackageInfo tracks Python-specific information associated with a package.
 type PackageInfo struct {
 	// PackageName is an override for the name of the generated python package.
-	PackageName    string            `json:"packageName,omitempty"`
+	PackageName string `json:"packageName,omitempty"`
 	// PythonRequires determines the Python versions that the generated provider supports
 	PythonRequires string            `json:"pythonRequires,omitempty"`
 	Requires       map[string]string `json:"requires,omitempty"`
