@@ -37,6 +37,9 @@ type Alias struct {
 	Stack StringInput
 	// The previous project of the resource. If not provided, defaults to `context.GetProject()`.
 	Project StringInput
+	// There is no parent resource. We need to because go does not
+	// allow distinguishing if no parent is passed from passing `nil` to parent.
+	Unparent BoolInput
 }
 
 func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Resource,
@@ -55,18 +58,26 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 		t = String(defaultType)
 	}
 
-	var parent StringInput
+	var parent StringPtrInput
 	if defaultParent != nil {
-		parent = defaultParent.URN()
+		parent = defaultParent.URN().ToStringPtrOutput()
 	}
 	if a.Parent != nil && a.ParentURN != nil {
-		return URNOutput{}, errors.New("alias can specify either Parent or ParentURN but not both")
+		return URNOutput{}, errors.New("alias can specify only one of Parent, ParentURN or Unparent")
 	}
 	if a.Parent != nil {
-		parent = a.Parent.URN()
+		parent = a.Parent.URN().ToStringPtrOutput()
 	}
 	if a.ParentURN != nil {
-		parent = a.ParentURN.ToURNOutput()
+		parent = a.ParentURN.ToURNOutput().ToStringPtrOutput()
+	}
+	if a.Unparent != nil {
+		parent = All(a.Unparent.ToBoolOutput(), parent).ApplyT(func(a []interface{}) *string {
+			if a[0].(bool) {
+				return nil
+			}
+			return a[1].(*string)
+		}).(StringPtrOutput)
 	}
 
 	project := a.Project
@@ -82,15 +93,25 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 }
 
 // CreateURN computes a URN from the combination of a resource name, resource type, and optional parent,
-func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
+func CreateURN(name, t StringInput, parent StringPtrInput, project, stack StringInput) URNOutput {
 	var parentPrefix StringInput
+	parentless := func(stack, project string) string {
+		return "urn:pulumi:" + stack + "::" + project + "::"
+	}
 	if parent != nil {
-		parentPrefix = parent.ToStringOutput().ApplyT(func(p string) string {
+		parentPrefix = All(parent, stack, project).ApplyT(func(a []interface{}) string {
+			parent := a[0].(*string)
+			stack := a[1].(string)
+			project := a[2].(string)
+			if parent == nil {
+				return parentless(stack, project)
+			}
+			p := *parent
 			return p[0:strings.LastIndex(p, "::")] + "$"
 		}).(StringOutput)
 	} else {
 		parentPrefix = All(stack, project).ApplyT(func(a []interface{}) string {
-			return "urn:pulumi:" + a[0].(string) + "::" + a[1].(string) + "::"
+			return parentless(a[0].(string), a[1].(string))
 		}).(StringOutput)
 
 	}
@@ -111,5 +132,5 @@ func inheritedChildAlias(childName, parentName, childType, project, stack string
 			return string(parentPrefix) + childName[len(parentName):]
 		}).(StringOutput)
 	}
-	return CreateURN(aliasName, String(childType), parentURN, String(project), String(stack))
+	return CreateURN(aliasName, String(childType), parentURN.ToStringPtrOutput(), String(project), String(stack))
 }

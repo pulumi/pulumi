@@ -83,6 +83,9 @@ func NewFooComponent3(ctx *pulumi.Context,
 	alias := &pulumi.Alias{
 		Parent: childAliasParent,
 	}
+	if childAliasParent == nil {
+		alias.Unparent = pulumi.Bool(true)
+	}
 	aliasOpt := pulumi.Aliases([]pulumi.Alias{*alias})
 	parentOpt := pulumi.Parent(fooComp)
 	_, err = NewFooComponent2(ctx, name+"-child", aliasOpt, parentOpt)
@@ -114,7 +117,7 @@ func main() {
 			return err
 		}
 		alias := &pulumi.Alias{
-			Parent: nil,
+			Unparent: pulumi.Bool(true),
 		}
 		aliasOpt := pulumi.Aliases([]pulumi.Alias{*alias})
 		parentOpt := pulumi.Parent(comp2)
