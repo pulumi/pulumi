@@ -92,7 +92,7 @@ class LocalWorkspace(Workspace):
         if env_vars:
             opt_out = opt_out or env_vars.get(_SKIP_VERSION_CHECK_VAR) is not None
         _validate_pulumi_version(_MINIMUM_VERSION, pulumi_version, opt_out)
-        self.pulumi_version = str(pulumi_version)
+        self.pulumi_version = str(pulumi_version) if pulumi_version else None
 
         if project_settings:
             self.save_project_settings(project_settings)
@@ -288,12 +288,14 @@ class LocalWorkspace(Workspace):
             outputs[key] = OutputValue(value=plaintext_outputs[key], secret=secret)
         return outputs
 
-    def _get_pulumi_version(self) -> VersionInfo:
+    def _get_pulumi_version(self) -> Optional[VersionInfo]:
         result = self._run_pulumi_cmd_sync(["version"])
         version_string = result.stdout.strip()
         if version_string[0] == "v":
             version_string = version_string[1:]
-        return VersionInfo.parse(version_string)
+        if VersionInfo.isvalid(version_string):
+            return VersionInfo.parse(version_string)
+        return None
 
     def _run_pulumi_cmd_sync(self, args: List[str], on_output: Optional[OnOutput] = None) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}
@@ -477,6 +479,9 @@ def get_stack_settings_name(name: str) -> str:
 def _validate_pulumi_version(min_version: VersionInfo, current_version: VersionInfo, opt_out: bool):
     if opt_out:
         return
+    if current_version is None:
+        raise InvalidVersionError(f"Could not parse the Pulumi CLI version. This is probably an internal error. "
+                                  f"If you are sure you have the correct version, set {_SKIP_VERSION_CHECK_VAR}=true.")
     if min_version.major < current_version.major:
         raise InvalidVersionError(f"Major version mismatch. You are using Pulumi CLI version {current_version} with "
                                   f"Automation SDK v{min_version.major}. Please update the SDK.")

@@ -264,6 +264,8 @@ namespace Pulumi.Automation
         public static Task<WorkspaceStack> CreateOrSelectStackAsync(LocalProgramArgs args, CancellationToken cancellationToken)
             => CreateStackHelperAsync(args, WorkspaceStack.CreateOrSelectAsync, cancellationToken);
 
+        private static string SkipVersionCheckVar = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
+
         private static async Task<WorkspaceStack> CreateStackHelperAsync(
             InlineProgramArgs args,
             Func<string, Workspace, CancellationToken, Task<WorkspaceStack>> initFunc,
@@ -374,13 +376,10 @@ namespace Pulumi.Automation
             var result = await this.RunCommandAsync(new[] { "version" }, cancellationToken).ConfigureAwait(false);
             var versionString = result.StandardOutput.Trim();
             versionString = versionString.TrimStart('v');
-            if (!SemVersion.TryParse(versionString, out var version))
-            {
-                throw new InvalidOperationException("Failed to get Pulumi version.");
-            }
-            var skipVersionCheckVar = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
-            var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(skipVersionCheckVar) ?? false;
-            var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(skipVersionCheckVar) != null;
+
+            var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(SkipVersionCheckVar) ?? false;
+            var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(SkipVersionCheckVar) != null;
+            var parsedVersion = SemVersion.TryParse(versionString, out var version);
             ValidatePulumiVersion(_minimumVersion, version, optOut);
             this._pulumiVersion = version;
         }
@@ -390,6 +389,10 @@ namespace Pulumi.Automation
             if (optOut)
             {
                 return;
+            }
+            if (currentVersion == null)
+            {
+                throw new InvalidOperationException("Failed to get Pulumi version. This is probably a pulumi error. You can override by version checking by setting {SkipVersionCheckVar}=true.");
             }
             if (minVersion.Major < currentVersion.Major)
             {
