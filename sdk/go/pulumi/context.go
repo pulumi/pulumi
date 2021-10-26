@@ -551,7 +551,7 @@ func (ctx *Context) ReadResource(
 	}
 
 	options := merge(opts...)
-	parent := options.Parent
+	aliasParent := options.Parent
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -564,7 +564,7 @@ func (ctx *Context) ReadResource(
 	}
 
 	// Collapse aliases to URNs.
-	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, parent)
+	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, aliasParent)
 	if err != nil {
 		return err
 	}
