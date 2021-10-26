@@ -106,6 +106,36 @@ func TestStackTagValidation(t *testing.T) {
 	})
 }
 
+// TestStackInitValidation verifies various error scenarios related to init'ing a stack.
+func TestStackInitValidation(t *testing.T) {
+	t.Run("Error_InvalidStackYaml", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+		e.RunCommand("git", "init")
+
+		e.ImportDirectory("stack_project_name")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+		// Starting a yaml value with a quote string and then more data is invalid
+		invalidYaml := "\"this is invalid\" yaml because of trailing data after quote string"
+
+		// Change the contents of the Description property of Pulumi.yaml.
+		yamlPath := filepath.Join(e.CWD, "Pulumi.yaml")
+		err := integration.ReplaceInFile("description: ", "description: "+invalidYaml, yamlPath)
+		assert.NoError(t, err)
+
+		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "valid-name")
+		assert.Equal(t, "", stdout)
+		assert.Contains(t, stderr,
+			"error: could not get cloud url: could not load current project: "+
+				"invalid YAML file: yaml: line 1: did not find expected key")
+	})
+}
+
 // TestConfigSave ensures that config commands in the Pulumi CLI work as expected.
 func TestConfigSave(t *testing.T) {
 	e := ptesting.NewEnvironment(t)

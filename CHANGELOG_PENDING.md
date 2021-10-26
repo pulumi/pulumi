@@ -1,19 +1,11 @@
 ### Improvements
 
-- [codegen/dotnet] - Add helper function forms `$fn.Invoke` that
-  accept `Input`s, return an `Output`, and wrap the underlying
-  `$fn.InvokeAsync` call. This change addreses
-  [#5758](https://github.com/pulumi/pulumi/issues/) for .NET, making
-  it easier to compose functions/datasources with Pulumi resources.
-  NOTE for resource providers: the generated code requires Pulumi .NET
-  SDK 3.15 or higher.
-
-  [#7899](https://github.com/pulumi/pulumi/pull/7899)
-  
-- [auto/dotnet] - Add `pulumi state delete` and `pulumi state unprotect` functionality
-  [#8202](https://github.com/pulumi/pulumi/pull/8202)
+* reformat error message string in `sdk/go/common/diag/errors.go`
 
 ### Bug Fixes
 
 - [codegen/go] - Interaction between the `plain` and `default` tags of a type. 
   [#8254](https://github.com/pulumi/pulumi/pull/8254)
+
+- [sdk/dotnet] - Fix a race condition when detecting exceptions in stack creation
+  [#8294](https://github.com/pulumi/pulumi/pull/8294)

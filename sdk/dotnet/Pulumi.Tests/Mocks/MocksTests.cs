@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation
+// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
@@ -24,6 +24,16 @@ namespace Pulumi.Tests.Mocks
                 "pkg:index:MyCustom" => Task.FromResult<(string?, object)>((args.Name + "_id", args.Inputs)),
                 _ => throw new Exception($"Unknown resource {args.Type}")
             };
+    }
+
+    class Issue8163Mocks : IMocks
+    {
+        public Task<object> CallAsync(MockCallArgs args)
+        {
+            throw new Grpc.Core.RpcException(new Grpc.Core.Status(Grpc.Core.StatusCode.Unknown, "error code 404"));
+        }
+
+        public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args) => throw new Exception("Not used");
     }
 
     public class MocksTests
@@ -66,6 +76,38 @@ namespace Pulumi.Tests.Mocks
             var ip = await stack!.PublicIp.GetValueAsync(whenUnknown: default!);
             Assert.Equal("203.0.113.12", ip);
         }
+
+        /// Test for https://github.com/pulumi/pulumi/issues/8163
+        [Fact]
+        public async Task TestInvokeThrowing()
+        {
+            var (resources, exception) = await Testing.RunAsync(new Issue8163Mocks(), async () => {
+
+                var role = await GetRole.InvokeAsync(new GetRoleArgs()
+                {
+                    Name = "doesNotExistTypoEcsTaskExecutionRole"
+                });
+
+                var myInstance = new Instance("instance", new InstanceArgs());
+
+                return new Dictionary<string, object?>()
+                {
+                    { "result", "x"},
+                    { "instance", myInstance.PublicIp }
+                };
+            });
+
+            var stack = resources.OfType<Stack>().FirstOrDefault();
+            Assert.NotNull(stack);
+
+            var instance = resources.OfType<Instance>().FirstOrDefault();
+            Assert.Null(instance);
+
+            Assert.NotNull(exception);
+            Assert.StartsWith("Running program '", exception!.Message);
+            Assert.Contains("' failed with an unhandled exception:", exception!.Message);
+            Assert.Contains("Grpc.Core.RpcException: Status(StatusCode=\"Unknown\", Detail=\"error code 404\")", exception!.Message);
+        }
     }
 
     public static class Testing
@@ -73,6 +115,11 @@ namespace Pulumi.Tests.Mocks
         public static Task<ImmutableArray<Resource>> RunAsync<T>() where T : Stack, new()
         {
             return Deployment.TestAsync<T>(new MyMocks(), new TestOptions { IsPreview = false });
+        }
+
+        public static Task<(ImmutableArray<Resource> Resources, Exception? Exception)> RunAsync(IMocks mocks, Func<Task<IDictionary<string, object?>>> func)
+        {
+            return Deployment.TryTestAsync(mocks, runner => runner.RunAsync(func, null), new TestOptions { IsPreview = false });
         }
     }
 }
