@@ -43,6 +43,7 @@ from pulumi.automation._local_workspace import _validate_pulumi_version
 extensions = ["json", "yaml", "yml"]
 
 version_tests = [
+    # current_version, expect_error, opt_out
     ("100.0.0", True, False),
     ("1.0.0", True, False),
     ("2.22.0", False, False),
@@ -54,7 +55,9 @@ version_tests = [
     ("2.21.1-alpha.1234", True, False),
     # Test opting out of version check
     ("2.20.0", False, True),
-    ("2.22.0", False, True)
+    ("2.22.0", False, True),
+    ("invalid", True, False),
+    ("invalid", False, True),
 ]
 test_min_version = VersionInfo.parse("2.21.1")
 

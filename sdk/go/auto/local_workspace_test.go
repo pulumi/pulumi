@@ -1575,6 +1575,18 @@ var minVersionTests = []struct {
 		false,
 		true,
 	},
+	{
+		"invalid_version",
+		nil,
+		true,
+		false,
+	},
+	{
+		"invalid_version_opt_out",
+		nil,
+		false,
+		true,
+	},
 }
 
 func TestMinimumVersion(t *testing.T) {
