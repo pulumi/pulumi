@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1575,18 +1575,7 @@ var minVersionTests = []struct {
 		false,
 		true,
 	},
-	{
-		"invalid_version",
-		nil,
-		true,
-		false,
-	},
-	{
-		"invalid_version_opt_out",
-		nil,
-		false,
-		true,
-	},
+	// We don't test for invalid versions here because we check for those in NewLocalWorkspace
 }
 
 func TestMinimumVersion(t *testing.T) {

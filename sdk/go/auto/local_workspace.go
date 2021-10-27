@@ -604,7 +604,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	if !optOut {
 		if err != nil {
 			return nil, errors.Wrapf(err,
-				"failed to create workspace, unable to get pulumi version (skip with %s=true)", skipVersionCheckVar)
+				"failed to create workspace, unable to get Pulumi CLI version (skip with %s=true)", skipVersionCheckVar)
 		}
 		if err = validatePulumiVersion(minimumVersion, l.pulumiVersion, optOut); err != nil {
 			return nil, err

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -759,6 +759,18 @@ describe(`checkVersionIsValid`, () => {
             currentVersion: "v2.22.0",
             expectError: false,
             optOut: true,
+        },
+        {
+            name: "invalid_version",
+            currentVersion: "invalid",
+            expectError: true,
+            outOpt: false,
+        },
+        {
+            name: "invalid_version_opt_out",
+            currentVersion: "invalid",
+            expectError: false,
+            optOutt: true,
         },
     ];
     const minVersion = new semver.SemVer("v2.21.1");
