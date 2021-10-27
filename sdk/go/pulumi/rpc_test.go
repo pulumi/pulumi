@@ -1162,6 +1162,18 @@ func (MyResourceArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*myResourceArgs)(nil)).Elem()
 }
 
+type myNestedOutputArgs struct {
+	Nested interface{} `pulumi:"nested"`
+}
+
+type MyNestedOutputArgs struct {
+	Nested Input
+}
+
+func (MyNestedOutputArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*myNestedOutputArgs)(nil)).Elem()
+}
+
 func TestOutputValueMarshallingNested(t *testing.T) {
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
@@ -1190,6 +1202,17 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 	fileAssetOutputDeps := ctx.newOutput(assetOutputType).(AssetOutput)
 	fileAssetOutputDeps.getState().resolve(&asset{path: "foo.txt"}, true /*known*/, false, /*secret*/
 		[]Resource{newSimpleCustomResource(ctx, "fakeURN", "fakeID")})
+
+	anyOutputType := reflect.TypeOf((*AnyOutput)(nil)).Elem()
+
+	nestedOutput := ctx.newOutput(anyOutputType).(AnyOutput)
+	nestedOutput.getState().resolve(fileAssetOutput, true /*known*/, false /*secret*/, nil)
+
+	nestedPtrOutput := ctx.newOutput(anyOutputType).(AnyOutput)
+	nestedPtrOutput.getState().resolve(&fileAssetOutput, true /*known*/, false /*secret*/, nil)
+
+	nestedNestedOutput := ctx.newOutput(anyOutputType).(AnyOutput)
+	nestedNestedOutput.getState().resolve(nestedOutput, true /*known*/, false /*secret*/, nil)
 
 	tests := []struct {
 		name     string
@@ -1391,6 +1414,39 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 				"res": resource.NewResourceReferenceProperty(resource.ResourceReference{
 					URN: "fakeURN",
 					ID:  resource.NewStringProperty("fakeID"),
+				}),
+			}),
+		},
+		{
+			name: "nested output",
+			input: &MyNestedOutputArgs{
+				Nested: nestedOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"nested": resource.NewAssetProperty(&resource.Asset{
+					Path: "foo.txt",
+				}),
+			}),
+		},
+		{
+			name: "nested ptr output",
+			input: &MyNestedOutputArgs{
+				Nested: nestedPtrOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"nested": resource.NewAssetProperty(&resource.Asset{
+					Path: "foo.txt",
+				}),
+			}),
+		},
+		{
+			name: "nested nested output",
+			input: &MyNestedOutputArgs{
+				Nested: nestedNestedOutput,
+			},
+			expected: resource.NewObjectProperty(resource.PropertyMap{
+				"nested": resource.NewAssetProperty(&resource.Asset{
+					Path: "foo.txt",
 				}),
 			}),
 		},
