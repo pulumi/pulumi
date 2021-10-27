@@ -92,13 +92,24 @@ class LocalWorkspace(Workspace):
         if env_vars:
             opt_out = opt_out or env_vars.get(_SKIP_VERSION_CHECK_VAR) is not None
         _validate_pulumi_version(_MINIMUM_VERSION, pulumi_version, opt_out)
-        self.pulumi_version = str(pulumi_version) if pulumi_version else None
+        self.__pulumi_version = str(pulumi_version) if pulumi_version else None
 
         if project_settings:
             self.save_project_settings(project_settings)
         if stack_settings:
             for key in stack_settings:
                 self.save_stack_settings(key, stack_settings[key])
+
+    # mypy does not support properties: https://github.com/python/mypy/issues/1362
+    @property # type: ignore
+    def pulumi_version(self) -> str: # type: ignore
+        if self.__pulumi_version:
+            return self.__pulumi_version
+        raise InvalidVersionError("Could not get Pulumi CLI version")
+
+    @pulumi_version.setter # type: ignore
+    def pulumi_version(self, v: str):
+        self.__pulumi_version = v
 
     def __repr__(self):
         return f"{self.__class__.__name__}(work_dir={self.work_dir!r}, " \
@@ -293,9 +304,10 @@ class LocalWorkspace(Workspace):
         version_string = result.stdout.strip()
         if version_string[0] == "v":
             version_string = version_string[1:]
-        if VersionInfo.isvalid(version_string):
+        try:
             return VersionInfo.parse(version_string)
-        return None
+        except ValueError:
+            return None
 
     def _run_pulumi_cmd_sync(self, args: List[str], on_output: Optional[OnOutput] = None) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}
@@ -476,7 +488,7 @@ def get_stack_settings_name(name: str) -> str:
     return parts[-1]
 
 
-def _validate_pulumi_version(min_version: VersionInfo, current_version: VersionInfo, opt_out: bool):
+def _validate_pulumi_version(min_version: VersionInfo, current_version: Optional[VersionInfo], opt_out: bool):
     if opt_out:
         return
     if current_version is None:
