@@ -459,7 +459,10 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_validate_pulumi_version(self):
         for current_version, expect_error, opt_out in version_tests:
             with self.subTest():
-                current_version = VersionInfo.parse(current_version)
+                try:
+                    current_version = VersionInfo.parse(current_version)
+                except ValueError:
+                    current_version = None
                 if expect_error:
                     error_regex = "Major version mismatch." \
                         if test_min_version.major < current_version.major \
