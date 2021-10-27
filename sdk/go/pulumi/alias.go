@@ -30,16 +30,17 @@ type Alias struct {
 	// The previous type of the resource.  If not provided, the current type of the resource is used.
 	Type StringInput
 	// The previous parent of the resource.  If not provided, the current parent of the resource is used.
+	// To specify no original parent, use `Alias { NoParent: pulumi.Bool(true) }`.
 	Parent Resource
 	// The previous parent of the resource in URN format, mutually exclusive to 'Parent'
+	// To specify no original parent, use `Alias { NoParent: pulumi.Bool(true) }`.
 	ParentURN URNInput
 	// The name of the previous stack of the resource.  If not provided, defaults to `context.GetStack()
 	Stack StringInput
 	// The previous project of the resource. If not provided, defaults to `context.GetProject()`.
 	Project StringInput
-	// There is no parent resource. We need to because go does not
-	// allow distinguishing if no parent is passed from passing `nil` to parent.
-	Unparent BoolInput
+	// Used to indicate the resource previously had no parent.
+	NoParent BoolInput
 }
 
 func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Resource,
@@ -58,26 +59,26 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 		t = String(defaultType)
 	}
 
-	var parent StringPtrInput
+	var parent StringInput = String("")
 	if defaultParent != nil {
-		parent = defaultParent.URN().ToStringPtrOutput()
+		parent = defaultParent.URN().ToStringOutput()
 	}
 	if a.Parent != nil && a.ParentURN != nil {
 		return URNOutput{}, errors.New("alias can specify either Parent or ParentURN but not both")
 	}
 	if a.Parent != nil {
-		parent = a.Parent.URN().ToStringPtrOutput()
+		parent = a.Parent.URN().ToStringOutput()
 	}
 	if a.ParentURN != nil {
-		parent = a.ParentURN.ToURNOutput().ToStringPtrOutput()
+		parent = a.ParentURN.ToURNOutput()
 	}
-	if a.Unparent != nil {
-		parent = All(a.Unparent.ToBoolOutput(), parent).ApplyT(func(a []interface{}) *string {
+	if a.NoParent != nil {
+		parent = All(a.NoParent.ToBoolOutput(), parent).ApplyT(func(a []interface{}) string {
 			if a[0].(bool) {
-				return nil
+				return ""
 			}
-			return a[1].(*string)
-		}).(StringPtrOutput)
+			return a[1].(string)
+		}).(StringOutput)
 	}
 
 	project := a.Project
@@ -93,20 +94,19 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 }
 
 // CreateURN computes a URN from the combination of a resource name, resource type, and optional parent,
-func CreateURN(name, t StringInput, parent StringPtrInput, project, stack StringInput) URNOutput {
+func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 	var parentPrefix StringInput
 	parentless := func(stack, project string) string {
 		return "urn:pulumi:" + stack + "::" + project + "::"
 	}
 	if parent != nil {
 		parentPrefix = All(parent, stack, project).ApplyT(func(a []interface{}) string {
-			parent := a[0].(*string)
+			p := a[0].(string)
 			stack := a[1].(string)
 			project := a[2].(string)
-			if parent == nil {
+			if p == "" {
 				return parentless(stack, project)
 			}
-			p := *parent
 			return p[0:strings.LastIndex(p, "::")] + "$"
 		}).(StringOutput)
 	} else {
@@ -132,5 +132,5 @@ func inheritedChildAlias(childName, parentName, childType, project, stack string
 			return string(parentPrefix) + childName[len(parentName):]
 		}).(StringOutput)
 	}
-	return CreateURN(aliasName, String(childType), parentURN.ToStringPtrOutput(), String(project), String(stack))
+	return CreateURN(aliasName, String(childType), parentURN.ToStringOutput(), String(project), String(stack))
 }
