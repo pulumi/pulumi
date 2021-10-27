@@ -10,6 +10,9 @@
   However, the streaming output can be extended to `preview` by using the `PULUMI_ENABLE_STREAMING_JSON_PREVIEW` environment variable.
 
   [#8275](https://github.com/pulumi/pulumi/pull/8275)
+  
+- [sdk/python] - Expand dependencies when marshaling output values
+  [#8301](https://github.com/pulumi/pulumi/pull/8301)
 
 ### Bug Fixes
 
