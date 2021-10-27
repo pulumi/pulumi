@@ -464,9 +464,12 @@ class TestLocalWorkspace(unittest.TestCase):
                 except ValueError:
                     current_version = None
                 if expect_error:
-                    error_regex = "Major version mismatch." \
-                        if test_min_version.major < current_version.major \
-                        else "Minimum version requirement failed."
+                    if test_min_version.major < current_version.major:
+                        error_regex = "Major version mismatch."
+                    elif current_version is not None:
+                        error_regex = "Minimum version requirement failed."
+                    else:
+                        error_regex = "Could not parse the Pulumi CLI"
                     with self.assertRaisesRegex(
                             InvalidVersionError,
                             error_regex,

@@ -1514,14 +1514,18 @@ namespace Pulumi.Automation.Tests
         public void ValidVersionTheory(string currentVersion, bool errorExpected, bool optOut)
         {
             var testMinVersion = SemVersion.Parse("2.21.1");
+            if (!SemVersion.TryParse(currentVersion, out var version))
+            {
+                version = null;
+            }
             if (errorExpected)
             {
-                void ValidatePulumiVersion() => LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
+                void ValidatePulumiVersion() => LocalWorkspace.ValidatePulumiVersion(testMinVersion, version, optOut);
                 Assert.Throws<InvalidOperationException>(ValidatePulumiVersion);
             }
             else
             {
-                LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
+                LocalWorkspace.ValidatePulumiVersion(testMinVersion, version, optOut);
             }
         }
 

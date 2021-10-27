@@ -777,16 +777,18 @@ describe(`checkVersionIsValid`, () => {
 
     versionTests.forEach(test => {
         it(`validates ${test.currentVersion}`, () => {
-            const currentVersion = new semver.SemVer(test.currentVersion);
-
+            const currentVersion = semver.parse(test.currentVersion);
+            const validate = () => validatePulumiVersion(minVersion, currentVersion, test.optOut);
             if (test.expectError) {
-                if (minVersion.major < currentVersion.major) {
-                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion, test.optOut), /Major version mismatch./);
+                if (currentVersion && minVersion.major < currentVersion.major) {
+                    assert.throws(validate, /Major version mismatch./);
+                } else if (currentVersion){
+                    assert.throws(validate, /Minimum version requirement failed./);
                 } else {
-                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion, test.optOut), /Minimum version requirement failed./);
+                    assert.throws(validate, /Failed to parse/);
                 }
             } else {
-                assert.doesNotThrow(() => validatePulumiVersion(minVersion, currentVersion, test.optOut));
+                assert.doesNotThrow(validate);
             }
         });
     });
