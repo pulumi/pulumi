@@ -4,18 +4,21 @@ package ints
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -827,4 +830,65 @@ func TestRotatePassphrase(t *testing.T) {
 
 	e.Stdin, e.Passphrase = nil, "qwerty"
 	e.RunCommand("pulumi", "config", "get", "foo")
+}
+
+var previewSummaryRegex = regexp.MustCompile(
+	`{\s+"steps": \[[\s\S]+],\s+"duration": \d+,\s+"changeSummary": {[\s\S]+}\s+}`)
+
+func assertOutputContainsEvent(t *testing.T, evt apitype.EngineEvent, output string) {
+	evtJSON := bytes.Buffer{}
+	encoder := json.NewEncoder(&evtJSON)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(evt)
+	assert.NoError(t, err)
+	assert.Contains(t, output, evtJSON.String())
+}
+
+func TestJSONOutput(t *testing.T) {
+	stdout := &bytes.Buffer{}
+
+	// Test without env var for streaming preview (should print previewSummary).
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Stdout:       stdout,
+		Verbose:      true,
+		JSONOutput:   true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+
+			// Check that the previewSummary is present.
+			assert.Regexp(t, previewSummaryRegex, output)
+
+			// Check that each event present in the event stream is also in stdout.
+			for _, evt := range stack.Events {
+				assertOutputContainsEvent(t, evt, output)
+			}
+		},
+	})
+}
+
+func TestJSONOutputWithStreamingPreview(t *testing.T) {
+	stdout := &bytes.Buffer{}
+
+	// Test with env var for streaming preview (should *not* print previewSummary).
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Stdout:       stdout,
+		Verbose:      true,
+		JSONOutput:   true,
+		Env:          []string{"PULUMI_ENABLE_STREAMING_JSON_PREVIEW=1"},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+
+			// Check that the previewSummary is *not* present.
+			assert.NotRegexp(t, previewSummaryRegex, output)
+
+			// Check that each event present in the event stream is also in stdout.
+			for _, evt := range stack.Events {
+				assertOutputContainsEvent(t, evt, output)
+			}
+		},
+	})
 }
