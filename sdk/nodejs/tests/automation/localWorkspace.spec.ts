@@ -764,13 +764,13 @@ describe(`checkVersionIsValid`, () => {
             name: "invalid_version",
             currentVersion: "invalid",
             expectError: true,
-            outOpt: false,
+            optOut: false,
         },
         {
             name: "invalid_version_opt_out",
             currentVersion: "invalid",
             expectError: false,
-            optOutt: true,
+            optOut: true,
         },
     ];
     const minVersion = new semver.SemVer("v2.21.1");
