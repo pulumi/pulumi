@@ -303,6 +303,9 @@ func marshalInputImpl(v interface{},
 			}
 		}
 
+		// Set skipInputCheck to false, so that if we loop around we don't skip the input check.
+		skipInputCheck = false
+
 		// If v is nil, just return that.
 		if v == nil {
 			return resource.PropertyValue{}, nil, nil
