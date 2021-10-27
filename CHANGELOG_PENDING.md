@@ -21,3 +21,8 @@
 
 - [sdk/go] - Fix regression marshaling assets/archives.
   [#8290](https://github.com/pulumi/pulumi/pull/8290)
+
+### Miscellaneous
+
+- [sdk/python] - Drop support for python 3.6
+  [#8161](https://github.com/pulumi/pulumi/pull/8161)
