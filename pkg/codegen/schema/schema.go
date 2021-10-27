@@ -541,6 +541,8 @@ type Package struct {
 
 	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes". "random")
 	Name string
+	// DisplayName is the human-friendly name of the package.
+	DisplayName string
 	// Version is the version of the package.
 	Version *semver.Version
 	// Description is the description of the package.
@@ -559,6 +561,8 @@ type Package struct {
 	LogoURL string
 	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
 	PluginDownloadURL string
+	// Publisher is the name of the person or organization that authored and published the package.
+	Publisher string
 
 	// Types is the list of non-resource types defined by the package.
 	Types []Type
@@ -1462,6 +1466,8 @@ type MetadataSpec struct {
 type PackageSpec struct {
 	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "random")
 	Name string `json:"name" yaml:"name"`
+	// DisplayName is the human-friendly name of the package.
+	DisplayName string `json:"displayName,omitempty" yaml:"displayName,omitempty"`
 	// Version is the version of the package. The version must be valid semver.
 	Version string `json:"version,omitempty" yaml:"version,omitempty"`
 	// Description is the description of the package.
@@ -1480,6 +1486,8 @@ type PackageSpec struct {
 	LogoURL string `json:"logoUrl,omitempty" yaml:"logoUrl,omitempty"`
 	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
 	PluginDownloadURL string `json:"pluginDownloadURL,omitempty" yaml:"pluginDownloadURL,omitempty"`
+	// Publisher is the name of the person or organization that authored and published the package.
+	Publisher string `json:"publisher,omitempty" yaml:"publisher,omitempty"`
 
 	// Meta contains information for the importer about this package.
 	Meta *MetadataSpec `json:"meta,omitempty" yaml:"meta,omitempty"`
@@ -1691,6 +1699,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*
 	*pkg = Package{
 		moduleFormat:      moduleFormatRegexp,
 		Name:              spec.Name,
+		DisplayName:       spec.DisplayName,
 		Version:           version,
 		Description:       spec.Description,
 		Keywords:          spec.Keywords,
@@ -1699,6 +1708,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*
 		Attribution:       spec.Attribution,
 		Repository:        spec.Repository,
 		PluginDownloadURL: spec.PluginDownloadURL,
+		Publisher:         spec.Publisher,
 		Config:            config,
 		Types:             typeList,
 		Provider:          provider,
