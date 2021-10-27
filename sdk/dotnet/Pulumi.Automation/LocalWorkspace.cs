@@ -379,12 +379,15 @@ namespace Pulumi.Automation
 
             var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(SkipVersionCheckVar) ?? false;
             var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(SkipVersionCheckVar) != null;
-            var parsedVersion = SemVersion.TryParse(versionString, out var version);
+            if (!SemVersion.TryParse(versionString, out var version))
+            {
+                version = null;
+            }
             ValidatePulumiVersion(_minimumVersion, version, optOut);
             this._pulumiVersion = version;
         }
 
-        internal static void ValidatePulumiVersion(SemVersion minVersion, SemVersion currentVersion, bool optOut)
+        internal static void ValidatePulumiVersion(SemVersion minVersion, SemVersion? currentVersion, bool optOut)
         {
             if (optOut)
             {
