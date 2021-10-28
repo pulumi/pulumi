@@ -21,16 +21,64 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var aliasTestCases = []struct {
+	name        string
+	alias       func(t *testing.T) Alias
+	expectedURN string
+}{
+	{
+		"plain",
+		func(*testing.T) Alias {
+			return Alias{
+				Type: String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
+			}
+		},
+		"AnUrn$kubernetes:storage.k8s.io/v1beta1:CSIDriver::defName",
+	},
+	{
+		"noParent",
+		func(*testing.T) Alias {
+			return Alias{
+				Type:     String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
+				NoParent: Bool(true),
+			}
+		}, "urn:pulumi:defStack::defProject::kubernetes:storage.k8s.io/v1beta1:CSIDriver::defName",
+	},
+	{
+		"parent",
+		func(t *testing.T) Alias {
+			return Alias{
+				Type:   String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
+				Parent: newResource(t, URN("AParent::AParent"), ID("theParent")),
+			}
+		}, "AParent$kubernetes:storage.k8s.io/v1beta1:CSIDriver::defName",
+	},
+	{
+		"parentURN",
+		func(*testing.T) Alias {
+			return Alias{
+				Type:      String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
+				ParentURN: URN("AParent::AParent"),
+			}
+		}, "AParent$kubernetes:storage.k8s.io/v1beta1:CSIDriver::defName",
+	},
+}
+
 func TestAliasResolution(t *testing.T) {
-	k8Alias := Alias{
-		Type: String("kubernetes:storage.k8s.io/v1beta1:CSIDriver"),
+	for _, tt := range aliasTestCases {
+		t.Run(tt.name, func(t *testing.T) {
+			parent := newResource(t, URN("AnUrn::ASegment"), ID("hello"))
+			out, err := tt.alias(t).collapseToURN("defName", "defType", parent, "defProject", "defStack")
+			assert.NoError(t, err)
+			urn, _, _, err := out.awaitURN(context.Background())
+			assert.NoError(t, err)
+			assert.Equal(t, URN(tt.expectedURN), urn)
+		})
 	}
+}
+
+func newResource(t *testing.T, urn URN, id ID) Resource {
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.NoError(t, err)
-	parent := newSimpleCustomResource(ctx, URN("AnUrn::ASegment"), ID("hello"))
-	out, err := k8Alias.collapseToURN("defName", "defType", parent, "defProject", "defStack")
-	assert.NoError(t, err)
-	urn, _, _, err := out.awaitURN(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, URN("AnUrn$kubernetes:storage.k8s.io/v1beta1:CSIDriver::defName"), urn)
+	return newSimpleCustomResource(ctx, urn, id)
 }

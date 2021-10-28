@@ -16,6 +16,7 @@ package pulumi
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -29,8 +30,8 @@ type Alias struct {
 	Name StringInput
 	// The previous type of the resource.  If not provided, the current type of the resource is used.
 	Type StringInput
-	// The previous parent of the resource.  If not provided, the current parent of the resource is used.
-	// To specify no original parent, use `Alias { NoParent: pulumi.Bool(true) }`.
+	// The previous parent of the resource. If not provided, the current parent of the resource is used by default.
+	// Use Alias { NoParent: pulumi.Bool(true) } to avoid defaulting to the current parent.
 	Parent Resource
 	// The previous parent of the resource in URN format, mutually exclusive to 'Parent'
 	// To specify no original parent, use `Alias { NoParent: pulumi.Bool(true) }`.
@@ -39,7 +40,7 @@ type Alias struct {
 	Stack StringInput
 	// The previous project of the resource. If not provided, defaults to `context.GetProject()`.
 	Project StringInput
-	// Used to indicate the resource previously had no parent.
+	// When true, indicates that the resource previously had no parent. When true, this overrides `Parent` and `ParentURN`.
 	NoParent BoolInput
 }
 
@@ -95,29 +96,27 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 
 // CreateURN computes a URN from the combination of a resource name, resource type, and optional parent,
 func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
-	var parentPrefix StringInput
-	parentless := func(stack, project string) string {
-		return "urn:pulumi:" + stack + "::" + project + "::"
+	if parent == nil {
+		parent = String("")
 	}
-	if parent != nil {
-		parentPrefix = All(parent, stack, project).ApplyT(func(a []interface{}) string {
-			p := a[0].(string)
-			stack := a[1].(string)
-			project := a[2].(string)
-			if p == "" {
-				return parentless(stack, project)
+	createURN := func(parent, stack, project, t, name string) URN {
+		var parentPrefix string
+		if parent == "" {
+			parentPrefix = "urn:pulumi:" + stack + "::" + project + "::"
+		} else {
+			ix := strings.LastIndex(parent, "::")
+			if ix == -1 {
+				panic(fmt.Sprintf("Expected 'parent' string '%s' to contain '::'", parent))
 			}
-			return p[0:strings.LastIndex(p, "::")] + "$"
-		}).(StringOutput)
-	} else {
-		parentPrefix = All(stack, project).ApplyT(func(a []interface{}) string {
-			return parentless(a[0].(string), a[1].(string))
-		}).(StringOutput)
-
+			parentPrefix = parent[0:ix] + "$"
+		}
+		return URN(parentPrefix + t + "::" + name)
 	}
-
-	return All(parentPrefix, t, name).ApplyT(func(a []interface{}) URN {
-		return URN(a[0].(string) + a[1].(string) + "::" + a[2].(string))
+	// The explicit call to `ToStringOutput` is necessary because `URNOutput`
+	// conforms to `StringInput` so `parent.(string)` can fail without the
+	// explicit conversion.
+	return All(parent.ToStringOutput(), stack, project, t, name).ApplyT(func(a []interface{}) URN {
+		return createURN(a[0].(string), a[1].(string), a[2].(string), a[3].(string), a[4].(string))
 	}).(URNOutput)
 }
 
