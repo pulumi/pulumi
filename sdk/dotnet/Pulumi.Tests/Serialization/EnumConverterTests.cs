@@ -200,8 +200,8 @@ namespace Pulumi.Tests.Serialization
         public static IEnumerable<object[]> EnumsWithUnconvertibleValues()
             => new[]
             {
-                new object[] { typeof(ContainerColor), new Value { NumberValue = 1.0 }, "Expected target type Pulumi.Tests.Serialization.EnumConverterTests+ContainerColor to have a constructor with a single System.String parameter" },
-                new object[] { typeof(ContainerBrightness), new Value { StringValue = "hello" }, "Expected target type Pulumi.Tests.Serialization.EnumConverterTests+ContainerBrightness to have a constructor with a single System.Double parameter" },
+                new object[] { typeof(ContainerColor), new Value { NumberValue = 1.0 }, "Expected target type Pulumi.Tests.Serialization.EnumConverterTests+ContainerColor to have a constructor with a single System.Double parameter." },
+                new object[] { typeof(ContainerBrightness), new Value { StringValue = "hello" }, "Expected target type Pulumi.Tests.Serialization.EnumConverterTests+ContainerBrightness to have a constructor with a single System.String parameter." },
                 new object[] { typeof(ContainerSize), new Value { StringValue = "hello" }, "Expected System.Double but got System.String deserializing " },
             };
 

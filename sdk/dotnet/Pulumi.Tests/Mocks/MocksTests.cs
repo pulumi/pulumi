@@ -50,7 +50,6 @@ namespace Pulumi.Tests.Mocks
                 "pkg:index:MyCustom" => Task.FromResult<(string?, object)>((args.Name + "_id", args.Inputs)),
                 _ => throw new Exception($"Unknown resource {args.Type}")
             };
-        }
     }
 
     public class MocksTests
