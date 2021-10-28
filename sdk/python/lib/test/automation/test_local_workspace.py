@@ -469,7 +469,7 @@ class TestLocalWorkspace(unittest.TestCase):
                             expected_error,
                             msg=f"min_version:{test_min_version}, current_version:{current_version}"
                     ):
-                        _validate_pulumi_version(test_min_version, current_version, opt_out)
+                        _parse_and_validate_pulumi_version(test_min_version, current_version, opt_out)
                 else:
                     _parse_and_validate_pulumi_version(test_min_version, current_version, opt_out)
 
