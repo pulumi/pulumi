@@ -297,6 +297,23 @@ func isNilType(t schema.Type) bool {
 	return false
 }
 
+// The default value for a Pulumi primitive type.
+func primitiveNilValue(t schema.Type) string {
+	contract.Assert(schema.IsPrimitiveType(t))
+	switch t {
+	case schema.BoolType:
+		return "false"
+	case schema.IntType:
+		return "0"
+	case schema.NumberType:
+		return "0.0"
+	case schema.StringType:
+		return "\"\""
+	default:
+		return "nil"
+	}
+}
+
 func (pkg *pkgContext) inputType(t schema.Type) (result string) {
 	switch t := codegen.SimplifyInputUnion(t).(type) {
 	case *schema.OptionalType:
@@ -1284,7 +1301,11 @@ func goPrimitiveValue(value interface{}) (string, error) {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32:
 		return strconv.FormatUint(v.Uint(), 10), nil
 	case reflect.Float32, reflect.Float64:
-		return strconv.FormatFloat(v.Float(), 'f', -1, 64), nil
+		value := strconv.FormatFloat(v.Float(), 'f', -1, 64)
+		if !strings.ContainsRune(value, '.') {
+			value += ".0"
+		}
+		return value, nil
 	case reflect.String:
 		return fmt.Sprintf("%q", v.String()), nil
 	default:
@@ -1404,42 +1425,48 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		}
 	}
 
+	assign := func(p *schema.Property, value string, indentation int) {
+		ind := strings.Repeat("\t", indentation)
+		t := strings.TrimSuffix(pkg.typeString(p.Type), "Input")
+		switch codegen.UnwrapType(p.Type).(type) {
+		case *schema.EnumType:
+			t = strings.TrimSuffix(t, "Ptr")
+		}
+		if t == "pulumi." {
+			t = "pulumi.Any"
+		}
+
+		if codegen.IsNOptionalInput(p.Type) {
+			fmt.Fprintf(w, "\targs.%s = %s(%s)\n", Title(p.Name), t, value)
+		} else if isNilType(p.Type) {
+			tmpName := camel(p.Name) + "_"
+			fmt.Fprintf(w, "%s%s := %s\n", ind, tmpName, value)
+			fmt.Fprintf(w, "%sargs.%s = &%s\n", ind, Title(p.Name), tmpName)
+		} else {
+			fmt.Fprintf(w, "%sargs.%s = %s\n", ind, Title(p.Name), value)
+		}
+	}
+
 	for _, p := range r.InputProperties {
 		if p.ConstValue != nil {
 			v, err := pkg.getConstValue(p.ConstValue)
 			if err != nil {
 				return err
 			}
-
-			t := strings.TrimSuffix(pkg.inputType(p.Type), "Input")
-			if t == "pulumi." {
-				t = "pulumi.Any"
-			}
-
-			fmt.Fprintf(w, "\targs.%s = %s(%s)\n", Title(p.Name), t, v)
-		}
-		if p.DefaultValue != nil {
+			assign(p, v, 1)
+		} else if p.DefaultValue != nil {
 			v, err := pkg.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
 			if err != nil {
 				return err
 			}
-
-			t := strings.TrimSuffix(pkg.inputType(p.Type), "Input")
-			if t == "pulumi." {
-				t = "pulumi.Any"
+			defaultComp := "nil"
+			if !codegen.IsNOptionalInput(p.Type) && !isNilType(p.Type) {
+				defaultComp = primitiveNilValue(p.Type)
 			}
+			fmt.Fprintf(w, "\tif args.%s == %s {\n", Title(p.Name), defaultComp)
+			assign(p, v, 2)
+			fmt.Fprintf(w, "\t}\n")
 
-			switch codegen.UnwrapType(p.Type).(type) {
-			case *schema.EnumType:
-				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-
-				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), strings.TrimSuffix(t, "Ptr"), v)
-				fmt.Fprintf(w, "\t}\n")
-			default:
-				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
-				fmt.Fprintf(w, "\t}\n")
-			}
 		}
 	}
 

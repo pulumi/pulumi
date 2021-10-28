@@ -30,7 +30,7 @@ func NewRubberTree(ctx *pulumi.Context,
 	}
 
 	if args.Diameter == nil {
-		args.Diameter = Diameter(6)
+		args.Diameter = Diameter(6.0)
 	}
 	if args.Farm == nil {
 		args.Farm = pulumi.StringPtr("(unknown)")

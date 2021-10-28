@@ -1,3 +1,0 @@
-name: trivial-dotnet
-runtime: dotnet
-description: A trivial Pulumi program for .NET

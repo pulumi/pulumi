@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,9 +68,14 @@ export class LocalWorkspace implements Workspace {
     private _pulumiVersion?: semver.SemVer;
     /**
      * The version of the underlying Pulumi CLI/Engine.
+     *
+     * @returns A string representation of the version, if available. `null` otherwise.
      */
     public get pulumiVersion(): string {
-        return this._pulumiVersion!.toString();
+        if (this._pulumiVersion === undefined) {
+            throw new Error(`Failed to get Pulumi version`);
+        }
+        return this._pulumiVersion.toString();
     }
     private ready: Promise<any[]>;
     /**
@@ -587,10 +592,11 @@ export class LocalWorkspace implements Workspace {
     }
     private async getPulumiVersion(minVersion: semver.SemVer) {
         const result = await this.runPulumiCmd(["version"]);
-        const version = new semver.SemVer(result.stdout.trim());
         const optOut = !!this.envVars[SKIP_VERSION_CHECK_VAR] || !!process.env[SKIP_VERSION_CHECK_VAR];
-        validatePulumiVersion(minVersion, version, optOut);
-        this._pulumiVersion = version;
+        const version = parseAndValidatePulumiVersion(minVersion, result.stdout.trim(), optOut);
+        if (version != null) {
+            this._pulumiVersion = version;
+        }
     }
     private async runPulumiCmd(
         args: string[],
@@ -717,15 +723,27 @@ function loadProjectSettings(workDir: string) {
     throw new Error(`failed to find project settings file in workdir: ${workDir}`);
 }
 
-/** @internal */
-export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer, optOut: boolean) {
+/**
+ * @internal
+ * Throws an error if the Pulumi CLI version is not valid.
+ *
+ * @param minVersion The minimum acceptable version of the Pulumi CLI.
+ * @param currentVersion The currently known version. `null` indicates that the current version is unknown.
+ * @paramoptOut If the user has opted out of the version check.
+ */
+export function parseAndValidatePulumiVersion(minVersion: semver.SemVer, currentVersion: string, optOut: boolean): semver.SemVer | null {
+    const version = semver.parse(currentVersion);
     if (optOut) {
-        return;
+        return version;
     }
-    if (minVersion.major < currentVersion.major) {
+    if (version == null) {
+        throw new Error(`Failed to parse Pulumi CLI version. This is probably an internal error. You can override this by setting "${SKIP_VERSION_CHECK_VAR}" to "true".`);
+    }
+    if (minVersion.major < version.major) {
         throw new Error(`Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${minVersion.major}. Please update the SDK.`);
     }
-    if (minVersion.compare(currentVersion) === 1) {
+    if (minVersion.compare(version) === 1) {
         throw new Error(`Minimum version requirement failed. The minimum CLI version requirement is ${minVersion.toString()}, your current CLI version is ${currentVersion.toString()}. Please update the Pulumi CLI.`);
     }
+    return version;
 }
