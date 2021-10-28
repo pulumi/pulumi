@@ -24,7 +24,7 @@ import {
     OutputMap,
     ProjectSettings,
     Stack,
-    validatePulumiVersion,
+    parseAndValidatePulumiVersion,
 } from "../../automation";
 import { Config, output } from "../../index";
 import { asyncTest } from "../util";
@@ -502,7 +502,7 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     }));
-    it(`imports and exports stacks`, asyncTest(async() => {
+    it(`imports and exports stacks`, asyncTest(async () => {
         const program = async () => {
             const config = new Config();
             return {
@@ -647,8 +647,8 @@ describe("LocalWorkspace", () => {
         const projectName = "correct_project";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack(
-            {stackName, projectName, program: async() => { return; }},
-            {workDir: upath.joinSafe(__dirname, "data", "correct_project")},
+            { stackName, projectName, program: async () => { return; } },
+            { workDir: upath.joinSafe(__dirname, "data", "correct_project") },
         );
         const projectSettings = await stack.workspace.projectSettings();
         assert.strictEqual(projectSettings.name, "correct_project");
@@ -658,7 +658,7 @@ describe("LocalWorkspace", () => {
     }));
     it(`correctly sets config on multiple stacks concurrently`, asyncTest(async () => {
         const dones = [];
-        const stacks = [ "dev", "dev2", "dev3", "dev4", "dev5" ];
+        const stacks = ["dev", "dev2", "dev3", "dev4", "dev5"];
         const workDir = upath.joinSafe(__dirname, "data", "tcfg");
         const ws = await LocalWorkspace.create({
             workDir,
@@ -679,7 +679,7 @@ describe("LocalWorkspace", () => {
             const s = stacks[i];
             dones.push((async () => {
                 for (let j = 0; j < 20; j++) {
-                    await ws.setConfig(s, "var-" + j, { value: ((x*20)+j).toString()});
+                    await ws.setConfig(s, "var-" + j, { value: ((x * 20) + j).toString() });
                 }
             })());
         }
@@ -697,96 +697,93 @@ describe("LocalWorkspace", () => {
     }));
 });
 
+const MAJOR = /Major version mismatch./;
+const MINIMUM = /Minimum version requirement failed./;
+const PARSE = /Failed to parse/;
+
 describe(`checkVersionIsValid`, () => {
     const versionTests = [
         {
             name: "higher_major",
             currentVersion: "100.0.0",
-            expectError: true,
+            expectError: MAJOR,
             optOut: false,
         },
         {
             name: "lower_major",
             currentVersion: "1.0.0",
-            expectError: true,
+            expectError: MINIMUM,
             optOut: false,
         },
         {
             name: "higher_minor",
             currentVersion: "v2.22.0",
-            expectError: false,
+            expectError: null,
             optOut: false,
         },
         {
             name: "lower_minor",
             currentVersion: "v2.1.0",
-            expectError: true,
+            expectError: MINIMUM,
             optOut: false,
         },
         {
             name: "equal_minor_higher_patch",
             currentVersion: "v2.21.2",
-            expectError: false,
+            expectError: null,
             optOut: false,
         },
         {
             name: "equal_minor_equal_patch",
             currentVersion: "v2.21.1",
-            expectError: false,
+            expectError: null,
             optOut: false,
         },
         {
             name: "equal_minor_lower_patch",
             currentVersion: "v2.21.0",
-            expectError: true,
+            expectError: MINIMUM,
             optOut: false,
         },
         {
             name: "equal_minor_equal_patch_prerelease",
             // Note that prerelease < release so this case will error
             currentVersion: "v2.21.1-alpha.1234",
-            expectError: true,
+            expectError: MINIMUM,
             optOut: false,
         },
         {
             name: "opt_out_of_check_would_fail_otherwise",
             currentVersion: "v2.20.0",
-            expectError: false,
+            expectError: null,
             optOut: true,
         },
         {
             name: "opt_out_of_check_would_succeed_otherwise",
             currentVersion: "v2.22.0",
-            expectError: false,
+            expectError: null,
             optOut: true,
         },
         {
             name: "invalid_version",
             currentVersion: "invalid",
-            expectError: true,
+            expectError: PARSE,
             optOut: false,
         },
         {
             name: "invalid_version_opt_out",
             currentVersion: "invalid",
-            expectError: false,
+            expectError: null,
             optOut: true,
         },
     ];
     const minVersion = new semver.SemVer("v2.21.1");
 
     versionTests.forEach(test => {
-        it(`validates ${test.currentVersion}`, () => {
-            const currentVersion = semver.parse(test.currentVersion);
-            const validate = () => validatePulumiVersion(minVersion, currentVersion, test.optOut);
+        it(`validates ${test.name} (${test.currentVersion})`, () => {
+            const validate = () => parseAndValidatePulumiVersion(minVersion, test.currentVersion, test.optOut);
             if (test.expectError) {
-                if (currentVersion && minVersion.major < currentVersion.major) {
-                    assert.throws(validate, /Major version mismatch./);
-                } else if (currentVersion){
-                    assert.throws(validate, /Minimum version requirement failed./);
-                } else {
-                    assert.throws(validate, /Failed to parse/);
-                }
+                assert.throws(validate, test.expectError);
             } else {
                 assert.doesNotThrow(validate);
             }
