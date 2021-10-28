@@ -38,23 +38,30 @@ from pulumi.automation import (
     StackAlreadyExistsError,
     fully_qualified_stack_name,
 )
-from pulumi.automation._local_workspace import _validate_pulumi_version
+from pulumi.automation._local_workspace import _parse_and_validate_pulumi_version
 
 extensions = ["json", "yaml", "yml"]
 
+MAJOR = "Major version mismatch."
+MINIMAL = "Minimum version requirement failed."
+PARSE = "Could not parse the Pulumi CLI"
 version_tests = [
-    ("100.0.0", True, False),
-    ("1.0.0", True, False),
-    ("2.22.0", False, False),
-    ("2.1.0", True, False),
-    ("2.21.2", False, False),
-    ("2.21.1", False, False),
-    ("2.21.0", True, False),
+    # current_version, expected_error regex, opt_out
+    ("100.0.0", MAJOR, False),
+    ("1.0.0", MINIMAL, False),
+    ("2.22.0", None, False),
+    ("2.1.0", MINIMAL, False),
+    ("2.21.2", None, False),
+    ("2.21.1", None, False),
+    ("2.21.0", MINIMAL, False),
     # Note that prerelease < release so this case will error
-    ("2.21.1-alpha.1234", True, False),
+    ("2.21.1-alpha.1234", MINIMAL, False),
     # Test opting out of version check
-    ("2.20.0", False, True),
-    ("2.22.0", False, True)
+    ("2.20.0", None, True),
+    ("2.22.0", None, True),
+    # Test invalid version
+    ("invalid", PARSE, False),
+    ("invalid", None, True),
 ]
 test_min_version = VersionInfo.parse("2.21.1")
 
@@ -454,21 +461,17 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertRegex(ws.pulumi_version, r"(\d+\.)(\d+\.)(\d+)(-.*)?")
 
     def test_validate_pulumi_version(self):
-        for current_version, expect_error, opt_out in version_tests:
+        for current_version, expected_error, opt_out in version_tests:
             with self.subTest():
-                current_version = VersionInfo.parse(current_version)
-                if expect_error:
-                    error_regex = "Major version mismatch." \
-                        if test_min_version.major < current_version.major \
-                        else "Minimum version requirement failed."
+                if expected_error:
                     with self.assertRaisesRegex(
                             InvalidVersionError,
-                            error_regex,
+                            expected_error,
                             msg=f"min_version:{test_min_version}, current_version:{current_version}"
                     ):
-                        _validate_pulumi_version(test_min_version, current_version, opt_out)
+                        _parse_and_validate_pulumi_version(test_min_version, current_version, opt_out)
                 else:
-                    self.assertIsNone(_validate_pulumi_version(test_min_version, current_version, opt_out))
+                    _parse_and_validate_pulumi_version(test_min_version, current_version, opt_out)
 
     def test_project_settings_respected(self):
         project_name = "correct_project"

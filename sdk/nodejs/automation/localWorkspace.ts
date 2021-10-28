@@ -592,9 +592,8 @@ export class LocalWorkspace implements Workspace {
     }
     private async getPulumiVersion(minVersion: semver.SemVer) {
         const result = await this.runPulumiCmd(["version"]);
-        const version = semver.parse(result.stdout.trim());
         const optOut = !!this.envVars[SKIP_VERSION_CHECK_VAR] || !!process.env[SKIP_VERSION_CHECK_VAR];
-        validatePulumiVersion(minVersion, version, optOut);
+        const version = parseAndValidatePulumiVersion(minVersion, result.stdout.trim(), optOut);
         if (version != null) {
             this._pulumiVersion = version;
         }
@@ -732,17 +731,19 @@ function loadProjectSettings(workDir: string) {
  * @param currentVersion The currently known version. `null` indicates that the current version is unknown.
  * @paramoptOut If the user has opted out of the version check.
  */
-export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer | null, optOut: boolean) {
+export function parseAndValidatePulumiVersion(minVersion: semver.SemVer, currentVersion: string, optOut: boolean): semver.SemVer | null {
+    const version = semver.parse(currentVersion);
     if (optOut) {
-        return;
+        return version;
     }
-    if (currentVersion == null) {
+    if (version == null) {
         throw new Error(`Failed to parse Pulumi CLI version. This is probably an internal error. You can override this by setting "${SKIP_VERSION_CHECK_VAR}" to "true".`);
     }
-    if (minVersion.major < currentVersion.major) {
+    if (minVersion.major < version.major) {
         throw new Error(`Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${minVersion.major}. Please update the SDK.`);
     }
-    if (minVersion.compare(currentVersion) === 1) {
+    if (minVersion.compare(version) === 1) {
         throw new Error(`Minimum version requirement failed. The minimum CLI version requirement is ${minVersion.toString()}, your current CLI version is ${currentVersion.toString()}. Please update the Pulumi CLI.`);
     }
+    return version;
 }
