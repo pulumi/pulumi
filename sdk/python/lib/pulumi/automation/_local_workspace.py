@@ -91,7 +91,7 @@ class LocalWorkspace(Workspace):
         opt_out = os.getenv(_SKIP_VERSION_CHECK_VAR) is not None
         if env_vars:
             opt_out = opt_out or env_vars.get(_SKIP_VERSION_CHECK_VAR) is not None
-        version = _validate_pulumi_version(_MINIMUM_VERSION, pulumi_version, opt_out)
+        version = _parse_and_validate_pulumi_version(_MINIMUM_VERSION, pulumi_version, opt_out)
         self.__pulumi_version = str(version) if version else None
 
         if project_settings:
@@ -485,9 +485,14 @@ def get_stack_settings_name(name: str) -> str:
     return parts[-1]
 
 
-def _validate_pulumi_version(min_version: VersionInfo,
+def _parse_and_validate_pulumi_version(min_version: VersionInfo,
                              current_version: str,
                              opt_out: bool) -> Optional[VersionInfo]:
+    """
+    Parse and return a version. An error is raised if the version is not
+    valid. If *current_version* is not a valid version but *opt_out* is true,
+    *None* is returned.
+    """
     try:
         version: Optional[VersionInfo] = VersionInfo.parse(current_version)
     except ValueError:

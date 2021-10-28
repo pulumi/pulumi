@@ -38,7 +38,7 @@ from pulumi.automation import (
     StackAlreadyExistsError,
     fully_qualified_stack_name,
 )
-from pulumi.automation._local_workspace import _validate_pulumi_version
+from pulumi.automation._local_workspace import _parse_and_validate_pulumi_version
 
 extensions = ["json", "yaml", "yml"]
 
@@ -471,7 +471,7 @@ class TestLocalWorkspace(unittest.TestCase):
                     ):
                         _validate_pulumi_version(test_min_version, current_version, opt_out)
                 else:
-                    _validate_pulumi_version(test_min_version, current_version, opt_out)
+                    _parse_and_validate_pulumi_version(test_min_version, current_version, opt_out)
 
     def test_project_settings_respected(self):
         project_name = "correct_project"

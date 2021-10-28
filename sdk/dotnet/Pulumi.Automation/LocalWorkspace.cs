@@ -379,32 +379,32 @@ namespace Pulumi.Automation
 
             var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(SkipVersionCheckVar) ?? false;
             var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(SkipVersionCheckVar) != null;
-            if (!SemVersion.TryParse(versionString, out var version))
+            this._pulumiVersion = ParseAndValidatePulumiVersion(_minimumVersion, versionString, optOut);
+        }
+
+        internal static SemVersion? ParseAndValidatePulumiVersion(SemVersion minVersion, string currentVersion, bool optOut)
+        {
+            if (!SemVersion.TryParse(currentVersion, out var version))
             {
                 version = null;
             }
-            ValidatePulumiVersion(_minimumVersion, version, optOut);
-            this._pulumiVersion = version;
-        }
-
-        internal static void ValidatePulumiVersion(SemVersion minVersion, SemVersion? currentVersion, bool optOut)
-        {
             if (optOut)
             {
-                return;
+                return version;
             }
-            if (currentVersion == null)
+            if (version == null)
             {
                 throw new InvalidOperationException("Failed to get Pulumi version. This is probably a pulumi error. You can override by version checking by setting {SkipVersionCheckVar}=true.");
             }
-            if (minVersion.Major < currentVersion.Major)
+            if (minVersion.Major < version.Major)
             {
-                throw new InvalidOperationException($"Major version mismatch. You are using Pulumi CLI version {currentVersion} with Automation SDK v{minVersion.Major}. Please update the SDK.");
+                throw new InvalidOperationException($"Major version mismatch. You are using Pulumi CLI version {version} with Automation SDK v{minVersion.Major}. Please update the SDK.");
             }
-            if (minVersion > currentVersion)
+            if (minVersion > version)
             {
-                throw new InvalidOperationException($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is {currentVersion}. Please update the Pulumi CLI.");
+                throw new InvalidOperationException($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is {version}. Please update the Pulumi CLI.");
             }
+            return version;
         }
 
         /// <inheritdoc/>
