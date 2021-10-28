@@ -80,9 +80,11 @@ func NewFooComponent3(ctx *pulumi.Context,
 		return nil, err
 	}
 
-	alias := &pulumi.Alias{
-		Parent:   childAliasParent,
-		NoParent: pulumi.Bool(childAliasParent == nil),
+	var alias = &pulumi.Alias{}
+	if childAliasParent != nil {
+		alias.Parent = childAliasParent
+	} else {
+		alias.NoParent = pulumi.Bool(true)
 	}
 
 	aliasOpt := pulumi.Aliases([]pulumi.Alias{*alias})

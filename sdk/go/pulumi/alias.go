@@ -31,17 +31,32 @@ type Alias struct {
 	// The previous type of the resource.  If not provided, the current type of the resource is used.
 	Type StringInput
 	// The previous parent of the resource. If not provided, the current parent of the resource is used by default.
-	// Use Alias { NoParent: pulumi.Bool(true) } to avoid defaulting to the current parent.
+	// This option is mutually exclusive to `ParentURN` and `NoParent`.
+	// Use `Alias { NoParent: pulumi.Bool(true) }` to avoid defaulting to the current parent.
 	Parent Resource
-	// The previous parent of the resource in URN format, mutually exclusive to 'Parent'
+	// The previous parent of the resource in URN format, mutually exclusive to `Parent` and `ParentURN`.
 	// To specify no original parent, use `Alias { NoParent: pulumi.Bool(true) }`.
 	ParentURN URNInput
+	// When true, indicates that the resource previously had no parent.
+	// This option is mutually exclusive to `Parent` and `ParentURN`.
+	NoParent BoolInput
 	// The name of the previous stack of the resource.  If not provided, defaults to `context.GetStack()
 	Stack StringInput
 	// The previous project of the resource. If not provided, defaults to `context.GetProject()`.
 	Project StringInput
-	// When true, indicates that the resource previously had no parent. When true, this overrides `Parent` and `ParentURN`.
-	NoParent BoolInput
+}
+
+// More then one bool is set to true.
+func multipleTrue(booleans ...bool) bool {
+	var found bool
+	for _, b := range booleans {
+		if b && found {
+			return true
+		} else if b {
+			found = true
+		}
+	}
+	return false
 }
 
 func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Resource,
@@ -64,8 +79,8 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 	if defaultParent != nil {
 		parent = defaultParent.URN().ToStringOutput()
 	}
-	if a.Parent != nil && a.ParentURN != nil {
-		return URNOutput{}, errors.New("alias can specify either Parent or ParentURN but not both")
+	if multipleTrue(a.Parent != nil, a.ParentURN != nil, a.NoParent != nil) {
+		return URNOutput{}, errors.New("alias can specify Parent, ParentURN or NoParent but not more then one")
 	}
 	if a.Parent != nil {
 		parent = a.Parent.URN().ToStringOutput()
