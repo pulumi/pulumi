@@ -384,7 +384,7 @@ namespace Pulumi.Automation
 
         internal static SemVersion? ParseAndValidatePulumiVersion(SemVersion minVersion, string currentVersion, bool optOut)
         {
-            if (!SemVersion.TryParse(currentVersion, out var version))
+            if (!SemVersion.TryParse(currentVersion, out SemVersion? version))
             {
                 version = null;
             }
