@@ -8,10 +8,8 @@
 - [sdk/go] - Respect implicit parents in alias resolution
   [#8288](https://github.com/pulumi/pulumi/pull/8288)
 
-- [sdk/dotnet] - Fix a race condition when detecting exceptions in stack creation
-  [#8294](https://github.com/pulumi/pulumi/pull/8294)
- - Clarify error message string in `sdk/go/common/diag/errors.go`
-   [#8284](https://github.com/pulumi/pulumi/pull/8284)
+- Clarify error message string in `sdk/go/common/diag/errors.go`
+  [#8284](https://github.com/pulumi/pulumi/pull/8284)
 
 - [cli] Add `--json` flag to `up`, `destroy` and `refresh`.
 
@@ -21,7 +19,7 @@
 
   [#8275](https://github.com/pulumi/pulumi/pull/8275)
 
-- [codegen/go] - Interaction between the `plain` and `default` tags of a type.
+- [codegen/go] - Interaction between the `plain` and `default` tags of a type. 
   [#8254](https://github.com/pulumi/pulumi/pull/8254)
 
 - [sdk/dotnet] - Fix a race condition when detecting exceptions in stack creation
