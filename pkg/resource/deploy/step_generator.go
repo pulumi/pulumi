@@ -157,7 +157,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// Check each proposed step against the relevant resource plan, if any, and generate any output resource plans.
 	for _, s := range steps {
-		if resourcePlan, ok := sg.plan.resourcePlans[s.URN()]; ok {
+		if resourcePlan, ok := sg.deployment.resourcePlans[s.URN()]; ok {
 			if len(resourcePlan.Ops) == 0 {
 				return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 			}
@@ -169,10 +169,10 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			resourcePlan.Ops = resourcePlan.Ops[1:]
 		}
 
-		resourcePlan, ok := sg.plan.newResourcePlans[s.URN()]
+		resourcePlan, ok := sg.deployment.newResourcePlans[s.URN()]
 		if !ok {
 			resourcePlan = &ResourcePlan{}
-			sg.plan.newResourcePlans[s.URN()] = resourcePlan
+			sg.deployment.newResourcePlans[s.URN()] = resourcePlan
 		}
 		resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 	}

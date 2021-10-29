@@ -295,7 +295,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		return nil, result.Bail()
 	}
 
-	return pe.plan.newResourcePlans, res
+	return ex.deployment.newResourcePlans, res
 }
 
 func (ex *deploymentExecutor) performDeletes(
@@ -466,7 +466,7 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context, opts Op
 		ex.reportExecResult("canceled", preview)
 		return nil, result.Bail()
 	}
-	return ex.plan.newResourcePlans, nil
+	return ex.deployment.newResourcePlans, nil
 }
 
 // refresh refreshes the state of the base checkpoint file for the current deployment in memory.

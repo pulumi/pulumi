@@ -1,7 +1,7 @@
 package apitype
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // ResourcePlanV1 is the serializable version of a resource plan.
