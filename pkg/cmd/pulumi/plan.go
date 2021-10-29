@@ -220,7 +220,7 @@ func renderResourcePlan(urn resource.URN, plan *deploy.ResourcePlan, prefix, inf
 	}
 
 	columns := []string{
-		color.Colorize(displayOp.Prefix()),
+		color.Colorize(displayOp.Prefix(false)),
 		prefix + typ,
 		name,
 		color.Colorize(displayOp.Color() + string(displayOp) + colors.Reset),
