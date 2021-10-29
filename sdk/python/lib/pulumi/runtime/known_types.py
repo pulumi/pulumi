@@ -89,4 +89,3 @@ def is_unknown(obj: Any) -> bool:
     """
     from ..output import Unknown  # pylint: disable=import-outside-toplevel
     return isinstance(obj, Unknown)
-
