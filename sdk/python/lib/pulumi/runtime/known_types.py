@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,7 +69,7 @@ def is_custom_timeouts(obj: Any) -> bool:
 
 def is_stack(obj: Any) -> bool:
     """
-    Returns true if the given type is an Output, false otherwise.
+    Returns true if the given type is a Stack, false otherwise.
     """
     from .stack import Stack  # pylint: disable=import-outside-toplevel
     return isinstance(obj, Stack)
@@ -89,3 +89,4 @@ def is_unknown(obj: Any) -> bool:
     """
     from ..output import Unknown  # pylint: disable=import-outside-toplevel
     return isinstance(obj, Unknown)
+

@@ -663,7 +663,7 @@ def convert_providers(
     return result
 
 
-async def _add_dependency(deps: Set[str], res: 'Resource', from_resource: 'Resource'):
+async def _add_dependency(deps: Set[str], res: 'Resource', from_resource: Optional['Resource']):
     """
     _add_dependency adds a dependency on the given resource to the set of deps.
 
@@ -702,14 +702,14 @@ async def _add_dependency(deps: Set[str], res: 'Resource', from_resource: 'Resou
         if not res._remote:
             return
 
-    no_cycles = declare_dependency(from_resource, res)
+    no_cycles = declare_dependency(from_resource, res) if from_resource else True
     if no_cycles:
         urn = await res.urn.future()
         if urn:
             deps.add(urn)
 
 
-async def _expand_dependencies(deps: Iterable['Resource'], from_resource: 'Resource') -> Set[str]:
+async def _expand_dependencies(deps: Iterable['Resource'], from_resource: Optional['Resource']) -> Set[str]:
     """
     _expand_dependencies expands the given iterable of Resources into a set of URNs.
     """
@@ -744,61 +744,3 @@ async def _resolve_depends_on_urns(options: 'ResourceOptions', from_resource: 'R
             all_deps.add(direct_dep)
 
     return await _expand_dependencies(all_deps, from_resource)
-
-async def _all_transitively_referenced_resource_urns(resources: Set['Resource']) -> Set[str]:
-    # pylint: disable=trailing-whitespace,anomalous-backslash-in-string
-    """
-    Get all the transitively references resource urns. Only include custom resources and remote resources.
-
-    Go through *resources*, but transitively walk through **Component** resources, collecting any
-    of their child resources.  This way, a Component acts as an aggregation really of all the
-    reachable resources it parents.  This walking will stop when it hits custom resources.
-
-    This function also terminates at remote components, whose children are not known to the Python SDK directly.
-    Remote components will always wait on all of their children, so ensuring we return the remote component
-    itself here and waiting on it will accomplish waiting on all of it's children regardless of whether they
-    are returned explicitly here.
-
-    In other words, if we had:
-
-                     Comp1
-                 /     |     \ 
-             Cust1   Comp2  Remote1
-                     /   \       \ 
-                 Cust2   Cust3  Comp3
-                 /                 \ 
-             Cust4                Cust5
-
-    Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
-    It will **not** include:
-    * Cust4 because it is a child of a custom resource
-    * Comp2 because it is a non-remote component resource
-    * Comp3 and Cust5 because Comp3 is a child of a remote component resource
-
-    To do this, first we just get the transitively reachable set of resources (not diving
-    into custom resources).  In the above picture, if we start with 'Comp1', this will be
-    [Comp1, Cust1, Comp2, Cust2, Cust3]
-
-
-    This is the python version of *getAllTransitivelyReferencedResourceURNs*, whose documentation I
-    copied.
-    """
-    # hasattr("uri") => remote resource
-    reachable_resources = await _transitivly_referenced_child_resources_of_compenent_resources(resources)
-    custom_resources = filter(lambda r: known_types.is_custom_resource(r) or hasattr(r, "uri"),
-           reachable_resources)
-    promises = map(lambda r: r.urn, custom_resources)
-    return await Output.all(*promises).apply(cast(Callable, set)).future() or set()
-
-async def _transitivly_referenced_child_resources_of_compenent_resources(resources: Set['Resource']) -> Set['Resource']:
-    """
-    The set of Resources that are referenced by a resource in *resources*.
-    """
-    from .. import ComponentResource # pylint: disable=import-outside-toplevel
-    result = set()
-    for resource in resources:
-        if resource not in result:
-            result.add(resource)
-            if isinstance(resource, ComponentResource):
-                result.update(await _transitivly_referenced_child_resources_of_compenent_resources(resource._childResources))
-    return result

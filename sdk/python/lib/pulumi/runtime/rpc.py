@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ from google.protobuf import struct_pb2
 from semver import VersionInfo as Version
 import six
 from . import known_types, settings
-from .resource import _all_transitively_referenced_resource_urns
+from .resource import _expand_dependencies
 from .. import log
 from .. import _types
 from .. import urn as urn_util
@@ -300,7 +300,7 @@ async def serialize_property(value: 'Input[Any]',
             promise_deps.extend(set(urn_deps))
             value_resources.update(urn_deps)
 
-            dependencies = await _all_transitively_referenced_resource_urns(value_resources)
+            dependencies = await _expand_dependencies(value_resources, None)
 
             output_value: Dict[str, Any] = {
                 _special_sig_key: _special_output_value_sig
