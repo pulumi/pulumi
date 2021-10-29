@@ -8,10 +8,8 @@
 - [sdk/go] - Respect implicit parents in alias resolution
   [#8288](https://github.com/pulumi/pulumi/pull/8288)
 
-- [sdk/dotnet] - Fix a race condition when detecting exceptions in stack creation
-  [#8294](https://github.com/pulumi/pulumi/pull/8294)
- - Clarify error message string in `sdk/go/common/diag/errors.go`
-   [#8284](https://github.com/pulumi/pulumi/pull/8284)
+- Clarify error message string in `sdk/go/common/diag/errors.go`
+  [#8284](https://github.com/pulumi/pulumi/pull/8284)
 
 - [cli] Add `--json` flag to `up`, `destroy` and `refresh`.
 
@@ -29,6 +27,9 @@
 
 - [sdk/go] - Fix regression marshaling assets/archives.
   [#8290](https://github.com/pulumi/pulumi/pull/8290)
+
+- [sdk/dotnet] - Don't panic on schema mismatches
+  [#8286](https://github.com/pulumi/pulumi/pull/8286)
 
 ### Miscellaneous
 

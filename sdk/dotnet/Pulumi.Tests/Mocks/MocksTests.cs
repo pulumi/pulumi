@@ -36,6 +36,22 @@ namespace Pulumi.Tests.Mocks
         public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args) => throw new Exception("Not used");
     }
 
+    class MyInvalidMocks : IMocks
+    {
+        public Task<object> CallAsync(MockCallArgs args)
+        {
+            return Task.FromResult<object>(args);
+        }
+
+        public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args) =>
+            args.Type switch
+            {
+                "aws:ec2/instance:Instance" => Task.FromResult<(string?, object)>(("i-1234567890abcdef0", new Dictionary<string, object> { { "publicIp", unchecked((int)0xcb00710c) }, })),
+                "pkg:index:MyCustom" => Task.FromResult<(string?, object)>((args.Name + "_id", args.Inputs)),
+                _ => throw new Exception($"Unknown resource {args.Type}")
+            };
+    }
+
     public class MocksTests
     {
         [Fact]
@@ -107,6 +123,20 @@ namespace Pulumi.Tests.Mocks
             Assert.StartsWith("Running program '", exception!.Message);
             Assert.Contains("' failed with an unhandled exception:", exception!.Message);
             Assert.Contains("Grpc.Core.RpcException: Status(StatusCode=\"Unknown\", Detail=\"error code 404\")", exception!.Message);
+        }
+
+        [Fact]
+        public async Task TestStackWithInvalidSchema()
+        {
+            var resources = await Deployment.TestAsync<MyStack>(new MyInvalidMocks(), new TestOptions { IsPreview = false });
+
+            var stack = resources.OfType<MyStack>().FirstOrDefault();
+            Assert.NotNull(stack);
+
+            var ip = await stack!.PublicIp.GetValueAsync(whenUnknown: default!);
+            Assert.Null(ip);
+
+            // TODO: It would be good to assert that a warning was logged to the engine but getting hold of warnings requires re-plumbing what TestAsync returns.
         }
     }
 
