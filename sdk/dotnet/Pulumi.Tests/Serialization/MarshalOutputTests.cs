@@ -14,7 +14,7 @@ namespace Pulumi.Tests.Serialization
             object? value_;
             object? expected_;
             List<string> deps;
-            List<DependencyResource> resources;
+            ImmutableHashSet<Resource> resources;
             bool isKnown;
             bool isSecret;
 
@@ -25,9 +25,10 @@ namespace Pulumi.Tests.Serialization
                 this.deps = deps;
                 this.isKnown = isKnown;
                 this.isSecret = isSecret;
-                this.resources = new List<DependencyResource>();
+                var resources = new HashSet<Resource>();
                 foreach (var d in deps)
-                    this.resources.Add(new DependencyResource(d));
+                    resources.Add(new DependencyResource(d));
+                this.resources = resources.ToImmutableHashSet();
             }
 
             private static List<(object?, object?)> testValues => new List<(object?, object?)>{
@@ -36,18 +37,29 @@ namespace Pulumi.Tests.Serialization
                 (1, 1),
                 ("", ""),
                 ("hi", "hi"),
-                (new List<int>(), new List<int>()),
+                (ImmutableDictionary.CreateBuilder<string, object?>().ToImmutable(),
+                 ImmutableDictionary.CreateBuilder<string, object?>().ToImmutable()),
+                (new List<object?>(), new List<object?>()),
                 };
 
-            public string name => $"Output(${deps}, ${value_}, + isKnown=${isKnown}, isSecret=${isSecret})";
-            public Output<object> input => Output.Create(Task.FromResult<object>(resources));
-            public ImmutableDictionary<string, object> expected
+            public string name => $"Output(deps={deps}, value={value_}, isKnown={isKnown}, isSecret={isSecret})";
+            public Output<object?> input
             {
                 get
                 {
-                    var b = ImmutableDictionary.CreateBuilder<string, object>();
+                    // TODO we don't create the `Ouput` we want here.
+                    var d = OutputData.Create<object?>(this.resources, value_, isKnown, isSecret);
+                    return new Output<object?>(Task.FromResult(d));
+                }
+            }
+
+            public ImmutableDictionary<string, object?> expected
+            {
+                get
+                {
+                    var b = ImmutableDictionary.CreateBuilder<string, object?>();
                     b.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
-                    if (isKnown && expected_ != null) b.Add("value", expected_!);
+                    if (isKnown) b.Add("value", expected_);
                     if (isSecret) b.Add("secret", isSecret);
                     if (deps.Count > 0) b.Add("dependencies", deps);
                     return b.ToImmutableDictionary();
