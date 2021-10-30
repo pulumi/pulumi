@@ -39,7 +39,7 @@ namespace Pulumi
         /// creating a reasonable POCO object that can be remoted over to registerResource.
         /// </summary>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
-            string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources)
+            string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources, bool keepOutputValues = false)
         {
             var propertyToDependentResources = ImmutableDictionary.CreateBuilder<string, HashSet<Resource>>();
             var result = ImmutableDictionary.CreateBuilder<string, object>();
@@ -49,7 +49,7 @@ namespace Pulumi
                 if (acceptKey(key))
                 {
                     // We treat properties with null values as if they do not exist.
-                    var serializer = new Serializer(_excessiveDebugOutput);
+                    var serializer = new Serializer(_excessiveDebugOutput, keepOutputValues);
                     var v = await serializer.SerializeAsync($"{label}.{key}", val, keepResources).ConfigureAwait(false);
                     if (v != null)
                     {

@@ -53,8 +53,10 @@ namespace Pulumi
             }
 
             var (serialized, argDependencies) = await SerializeFilteredPropertiesAsync(
-    				$"call:{token}",
-    				argsDict, _ => true, keepResources: true).ConfigureAwait(false);
+                    $"call:{token}",
+                    argsDict, _ => true,
+                    keepResources: true,
+                    keepOutputValues: true).ConfigureAwait(false);
             Log.Debug($"Call RPC prepared: token={token}" +
                 (_excessiveDebugOutput ? $", obj={serialized}" : ""));
 

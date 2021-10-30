@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections;
@@ -19,10 +19,13 @@ namespace Pulumi.Serialization
 
         private readonly bool _excessiveDebugOutput;
 
-        public Serializer(bool excessiveDebugOutput)
+        private readonly bool _keepOutputValues;
+
+        public Serializer(bool excessiveDebugOutput, bool keepOutputValues = false)
         {
             this.DependentResources = new HashSet<Resource>();
             _excessiveDebugOutput = excessiveDebugOutput;
+            _keepOutputValues = keepOutputValues;
         }
 
         /// <summary>
@@ -39,7 +42,7 @@ namespace Pulumi.Serialization
         /// <item><see cref="Asset"/>s</item>
         /// <item><see cref="Archive"/>s</item>
         /// <item><see cref="Resource"/>s</item>
-        /// <item><see cref="ResourceArgs"/>s</item>
+        /// <item><see cref="ResourceArgs"/></item>
         /// <item><see cref="JsonElement"/></item>
         /// </list>
         /// Additionally, other more complex objects can be serialized as long as they are built
@@ -137,6 +140,9 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
                 var data = await output.GetDataAsync().ConfigureAwait(false);
                 this.DependentResources.AddRange(data.Resources);
+                var propResources = new HashSet<Resource>();
+                propResources.UnionWith(data.Resources);
+
 
                 // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
                 // sentinel. We will do the former for all outputs created directly by user code (such outputs always
@@ -144,10 +150,39 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 var isKnown = data.IsKnown;
                 var isSecret = data.IsSecret;
 
+                var child = new Serializer(_excessiveDebugOutput, keepOutputValues: false);
+                var value = await child.SerializeAsync($"{ctx}.id", data.Value, keepResources).ConfigureAwait(false);
+                var promiseDeps = child.DependentResources;
+                this.DependentResources.UnionWith(promiseDeps);
+
+                if (_keepOutputValues /* && monitor supports output values */)
+                {
+                    // do thing
+                    var urnDeps = new HashSet<Resource>();
+                    foreach (var resource in propResources)
+                    {
+                        var childURNResolver = new Serializer(_excessiveDebugOutput, keepOutputValues: false);
+                        await childURNResolver.SerializeAsync($"{ctx} dependency", resource.Urn, keepResources);
+                        urnDeps.UnionWith(childURNResolver.DependentResources);
+                    }
+                    propResources.UnionWith(urnDeps);
+                    this.DependentResources.UnionWith(urnDeps);
+
+                    var depencdencies = await Deployment.GetAllTransitivelyReferencedResourceUrnsAsync(propResources);
+                    var builder = ImmutableDictionary.CreateBuilder<string, object?>();
+                    builder.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
+                    if (isKnown)
+                        builder.Add("value", value);
+                    if (isSecret)
+                        builder.Add("secret", isSecret);
+                    if (depencdencies.Count > 0)
+                        builder.Add("dependencies", depencdencies.ToArray());
+                    return builder.ToImmutable();
+                }
+
                 if (!isKnown)
                     return Constants.UnknownValue;
 
-                var value = await SerializeAsync($"{ctx}.id", data.Value, keepResources).ConfigureAwait(false);
                 if (isSecret)
                 {
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
@@ -257,27 +292,27 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 case JsonValueKind.False:
                     return element.GetBoolean();
                 case JsonValueKind.Array:
-                {
-                    var result = ImmutableArray.CreateBuilder<object?>();
-                    var index = 0;
-                    foreach (var child in element.EnumerateArray())
                     {
-                        result.Add(SerializeJson($"{ctx}[{index}]", child));
-                        index++;
-                    }
+                        var result = ImmutableArray.CreateBuilder<object?>();
+                        var index = 0;
+                        foreach (var child in element.EnumerateArray())
+                        {
+                            result.Add(SerializeJson($"{ctx}[{index}]", child));
+                            index++;
+                        }
 
-                    return result.ToImmutable();
-                }
+                        return result.ToImmutable();
+                    }
                 case JsonValueKind.Object:
-                {
-                    var result = ImmutableDictionary.CreateBuilder<string, object?>();
-                    foreach (var x in element.EnumerateObject())
                     {
-                        result[x.Name] = SerializeJson($"{ctx}.{x.Name}", x.Value);
-                    }
+                        var result = ImmutableDictionary.CreateBuilder<string, object?>();
+                        foreach (var x in element.EnumerateObject())
+                        {
+                            result[x.Name] = SerializeJson($"{ctx}.{x.Name}", x.Value);
+                        }
 
-                    return result.ToImmutable();
-                }
+                        return result.ToImmutable();
+                    }
                 default:
                     throw new InvalidOperationException($"Unknown {nameof(JsonElement)}.{nameof(JsonElement.ValueKind)}: {element.ValueKind}");
             }

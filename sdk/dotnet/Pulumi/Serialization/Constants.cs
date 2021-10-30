@@ -34,6 +34,11 @@ namespace Pulumi.Serialization
         /// </summary>
         public const string SpecialResourceSig = "5cf8f73096256a8f31e491e813e4eb8e";
 
+        /// <summary>
+        /// SpecialOutputValueSig is a randomly assigned hash used to identify outputs in maps. See sdk/go/common/resource/properties.go.
+        /// </summary>
+        public const string SpecialOutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4";
+
         public const string SecretValueName = "value";
 
         public const string AssetTextName = "text";

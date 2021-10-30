@@ -123,7 +123,10 @@ namespace Pulumi
         private static Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
             => resources.ToOutput().GetValueAsync(whenUnknown: ImmutableArray<Resource>.Empty);
 
-        private static async Task<HashSet<string>> GetAllTransitivelyReferencedResourceUrnsAsync(
+        /// <summary>
+        /// Only for internal use
+        /// </summary>
+        internal static async Task<HashSet<string>> GetAllTransitivelyReferencedResourceUrnsAsync(
             HashSet<Resource> resources)
         {
             // Go through 'resources', but transitively walk through **Component** resources, collecting any
