@@ -68,14 +68,14 @@ namespace Pulumi.Tests.Serialization
         }
 
         [Fact]
-        public async Task TransferProperties()
+        static public async Task TransferProperties()
         {
             foreach (var test in TestValue.AllValues())
             {
                 await RunInNormal(async () =>
                 {
-                    var s = new Serializer(true, keepOutputValues: true);
-                    var actual = await s.SerializeAsync("test", test.input, true).ConfigureAwait(false);
+                    var s = new Serializer(excessiveDebugOutput: false, keepOutputValues: true);
+                    var actual = await s.SerializeAsync("", test.input, true).ConfigureAwait(false);
                     Assert.Equal(test.expected, actual);
                 });
             }
