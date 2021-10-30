@@ -13,7 +13,7 @@ namespace Pulumi.Tests.Serialization
         {
             object? value_;
             object? expected_;
-            List<string> deps;
+            string[] deps;
             ImmutableHashSet<Resource> resources;
             bool isKnown;
             bool isSecret;
@@ -22,13 +22,13 @@ namespace Pulumi.Tests.Serialization
             {
                 this.value_ = value_;
                 this.expected_ = expected;
-                this.deps = deps;
+                this.deps = deps.ToArray();
                 this.isKnown = isKnown;
                 this.isSecret = isSecret;
-                var resources = new HashSet<Resource>();
+                var r = new HashSet<Resource>();
                 foreach (var d in deps)
-                    resources.Add(new DependencyResource(d));
-                this.resources = resources.ToImmutableHashSet();
+                    r.Add(new DependencyResource(d));
+                this.resources = r.ToImmutableHashSet();
             }
 
             private static List<(object?, object?)> testValues => new List<(object?, object?)>{
@@ -61,7 +61,7 @@ namespace Pulumi.Tests.Serialization
                     b.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
                     if (isKnown) b.Add("value", expected_);
                     if (isSecret) b.Add("secret", isSecret);
-                    if (deps.Count > 0) b.Add("dependencies", deps);
+                    if (deps.Length > 0) b.Add("dependencies", deps);
                     return b.ToImmutableDictionary();
                 }
             }
@@ -79,6 +79,34 @@ namespace Pulumi.Tests.Serialization
             }
         }
 
+        /// <summary>
+        /// Asserts that two dictionaries are sufficiently equivalent.
+        /// </summary>
+        private static void ShouldBeEquivalent(
+            in ImmutableDictionary<string, object?> expected,
+            in ImmutableDictionary<string, object?> actual)
+        {
+            var expectedKeys = expected.Keys.ToImmutableHashSet();
+            var actualKeys = actual.Keys.ToImmutableHashSet();
+            Assert.True(expectedKeys.SetEquals(actualKeys), "Key mismatch");
+            foreach (var k in expectedKeys)
+            {
+                var expectedArray = expected[k] as object[];
+                if (expectedArray != null)
+                {
+                    var actualArray = (actual[k] as object[])!;
+                    System.Array.Sort(actualArray);
+                    System.Array.Sort(expectedArray);
+
+                    Assert.Equal(expected, actual);
+                }
+                else
+                {
+                    Assert.Equal(expected[k], actual[k]);
+                }
+            }
+        }
+
         [Fact]
         static public async Task TransferProperties()
         {
@@ -87,8 +115,8 @@ namespace Pulumi.Tests.Serialization
                 await RunInNormal(async () =>
                 {
                     var s = new Serializer(excessiveDebugOutput: false, keepOutputValues: true);
-                    var actual = await s.SerializeAsync("", test.input, true).ConfigureAwait(false);
-                    Assert.Equal(test.expected, actual);
+                    var actual = await s.SerializeAsync("", test.input, true).ConfigureAwait(false) as ImmutableDictionary<string, object>;
+                    ShouldBeEquivalent(test.expected, actual!);
                 });
             }
         }
