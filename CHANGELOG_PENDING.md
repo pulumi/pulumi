@@ -3,6 +3,9 @@
 - [cli] Reformat error message string in `sdk/go/common/diag/errors.go`
   [#8284](https://github.com/pulumi/pulumi/pull/8284)
 
+- [sdk/dotnet] - Add capability to marshal output values
+  [#8316](https://github.com/pulumi/pulumi/pull/8316)
+
 ### Bug Fixes
 
 - [sdk/go] - Respect implicit parents in alias resolution
