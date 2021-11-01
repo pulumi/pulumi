@@ -95,11 +95,12 @@ namespace Pulumi
 
             var keepResources = await this.MonitorSupportsResourceReferences().ConfigureAwait(false);
 
-            var argsSerializationResult  = await SerializeFilteredPropertiesAsync(
+            var argsSerializationResult = await SerializeFilteredPropertiesAsync(
                 label: $"invoke:{token}",
                 args: argsDict,
                 acceptKey: key => true,
-                keepResources: keepResources
+                keepResources: keepResources,
+                keepOutputValues: false
             ).ConfigureAwait(false);
 
             var serialized = argsSerializationResult.Serialized;

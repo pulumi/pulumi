@@ -154,10 +154,10 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 var value = await child.SerializeAsync($"{ctx}.id", data.Value, keepResources).ConfigureAwait(false);
                 var promiseDeps = child.DependentResources;
                 this.DependentResources.UnionWith(promiseDeps);
+                propResources.UnionWith(promiseDeps);
 
                 if (_keepOutputValues /* && monitor supports output values */)
                 {
-                    // do thing
                     var urnDeps = new HashSet<Resource>();
                     foreach (var resource in propResources)
                     {
@@ -176,7 +176,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     if (isSecret)
                         builder.Add("secret", isSecret);
                     if (dependencies.Count > 0)
-                        builder.Add("dependencies", dependencies.ToArray());
+                        builder.Add("dependencies", dependencies.ToImmutableArray<object>());
                     return builder.ToImmutable();
                 }
 

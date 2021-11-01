@@ -20,16 +20,20 @@ namespace Pulumi
         /// to registerResource.
         /// </summary>
         private static Task<SerializationResult> SerializeResourcePropertiesAsync(
-            string label, IDictionary<string, object?> args, bool keepResources)
+            string label, IDictionary<string, object?> args, bool keepResources, bool remote)
         {
             return SerializeFilteredPropertiesAsync(
-                label, args, key => key != Constants.IdPropertyName && key != Constants.UrnPropertyName, keepResources);
+                label, args,
+                key => key != Constants.IdPropertyName && key != Constants.UrnPropertyName,
+                keepResources, keepOutputValues: remote);
         }
 
         private static async Task<Struct> SerializeAllPropertiesAsync(
             string label, IDictionary<string, object?> args, bool keepResources)
         {
-            var result = await SerializeFilteredPropertiesAsync(label, args, _ => true, keepResources).ConfigureAwait(false);
+            var result = await SerializeFilteredPropertiesAsync(
+                label, args, _ => true,
+                keepResources, keepOutputValues: false).ConfigureAwait(false);
             return result.Serialized;
         }
 
@@ -39,7 +43,7 @@ namespace Pulumi
         /// creating a reasonable POCO object that can be remoted over to registerResource.
         /// </summary>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
-            string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources, bool keepOutputValues = false)
+            string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources, bool keepOutputValues)
         {
             var propertyToDependentResources = ImmutableDictionary.CreateBuilder<string, HashSet<Resource>>();
             var result = ImmutableDictionary.CreateBuilder<string, object>();

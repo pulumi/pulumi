@@ -33,7 +33,8 @@ namespace Pulumi
                 await SerializeResourcePropertiesAsync(
                         label,
                         dictionary,
-                        await this.MonitorSupportsResourceReferences().ConfigureAwait(false)).ConfigureAwait(false);
+                        await this.MonitorSupportsResourceReferences().ConfigureAwait(false),
+                        remote: remote).ConfigureAwait(false);
             LogExcessive($"Serialized properties: t={type}, name={name}, custom={custom}, remote={remote}");
 
             // Wait for the parent to complete.
@@ -155,8 +156,10 @@ namespace Pulumi
             // * Comp3 and Cust5 because Comp3 is a child of a remote component resource
             var transitivelyReachableResources = GetTransitivelyReferencedChildResourcesOfComponentResources(resources);
 
-            var transitivelyReachableCustomResources = transitivelyReachableResources.Where(res => {
-                switch (res) {
+            var transitivelyReachableCustomResources = transitivelyReachableResources.Where(res =>
+            {
+                switch (res)
+                {
                     case CustomResource _: return true;
                     case ComponentResource component: return component.remote;
                     default: return false; // Unreachable
