@@ -25,7 +25,7 @@ from . import rpc, rpc_manager
 from .settings import Settings, configure, get_stack, get_project, get_root_resource
 from .sync_await import _ensure_event_loop, _sync_await
 from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
-from ..runtime.stack import Stack, run_pulumi_func, wait_for_rpcs
+from ..runtime.stack import Stack, run_pulumi_func
 
 if TYPE_CHECKING:
     from ..resource import Resource
@@ -68,7 +68,8 @@ class MockResourceArgs:
                  resource_id: Optional[str] = None,
                  custom: Optional[bool] = None) -> None:
         """
-        :param str typ: The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
+        :param str typ: The token that indicates which resource type is being constructed.
+        This token is of the form "package:module:type".
         :param str name: The logical name of the resource instance.
         :param dict inputs: The inputs for the resource.
         :param str provider: The identifier of the provider instance being used to manage this resource.
@@ -93,7 +94,8 @@ class MockCallArgs:
 
     def __init__(self, token: str, args: dict, provider: str) -> None:
         """
-        :param str token: The token that indicates which function is being called. This token is of the form "package:module:function".
+        :param str token: The token that indicates which function is being called.
+        This token is of the form "package:module:function".
         :param dict args: The arguments provided to the function call.
         :param str provider: The identifier of the provider instance being used to make the call
         """
@@ -104,26 +106,26 @@ class MockCallArgs:
 
 class Mocks(ABC):
     """
-    Mocks is an abstract class that allows subclasses to replace operations normally implemented by the Pulumi engine with
-    their own implementations. This can be used during testing to ensure that calls to provider functions and resource constructors
-    return predictable values.
+    Mocks is an abstract class that allows subclasses to replace operations normally implemented by the Pulumi
+    engine with their own implementations. This can be used during testing to ensure that calls to provider
+    functions and resource constructors return predictable values.
     """
     @abstractmethod
-    def call(self, args: MockCallArgs) -> Tuple[dict, Optional[List[Tuple[str,str]]]]:
+    def call(self, args: MockCallArgs) -> Tuple[dict, Optional[List[Tuple[str, str]]]]:
         """
         call mocks provider-implemented function calls (e.g. aws.get_availability_zones).
 
-        :param MockCallArgs args.
+        :param args MockCallArgs
         """
         return {}, None
 
     @abstractmethod
     def new_resource(self, args: MockResourceArgs) -> Tuple[Optional[str], dict]:
         """
-        new_resource mocks resource construction calls. This function should return the physical identifier and the output properties
-        for the resource being constructed.
+        new_resource mocks resource construction calls. This function should return the physical identifier and
+        the output properties for the resource being constructed.
 
-        :param MockResourceArgs args.
+        :param args MockResourceArgs
         """
         return "", {}
 
@@ -143,9 +145,9 @@ class MockMonitor:
 
     def make_urn(self, parent: str, type_: str, name: str) -> str:
         if parent != "":
-            qualifiedType = parent.split("::")[2]
-            parentType = qualifiedType.split("$").pop()
-            type_ = parentType + "$" + type_
+            qualified_type = parent.split("::")[2]
+            parent_type = qualified_type.split("$").pop()
+            type_ = parent_type + "$" + type_
 
         return "urn:pulumi:" + "::".join([get_stack(), get_project(), type_, name])
 
@@ -168,7 +170,9 @@ class MockMonitor:
         if isinstance(tup, dict):
             (ret, failures) = (tup, None)
         else:
-            (ret, failures) = tup[0], [provider_pb2.CheckFailure(property=failure[0], reason=failure[1]) for failure in tup[1]]
+            (ret, failures) = tup[0], [
+                provider_pb2.CheckFailure(property=failure[0], reason=failure[1]) for failure in tup[1]
+            ]
 
         ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
 
@@ -229,7 +233,7 @@ class MockMonitor:
         # Support for "outputValues" is deliberately disabled for the mock monitor so
         # instances of `Output` don't show up in `MockResourceArgs` inputs.
         has_support = request.id in {"secrets", "resourceReferences"}
-        return type('SupportsFeatureResponse', (object,), {'hasSupport' : has_support})
+        return type('SupportsFeatureResponse', (object,), {'hasSupport': has_support})
 
 
 class MockEngine:

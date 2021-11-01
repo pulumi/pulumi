@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1507,72 +1507,87 @@ func TestPulumiVersion(t *testing.T) {
 	assert.Regexp(t, `(\d+\.)(\d+\.)(\d+)(-.*)?`, version)
 }
 
+const PARSE = `Unable to parse`
+const MAJOR = `Major version mismatch.`
+const MINIMUM = `Minimum version requirement failed.`
+
 var minVersionTests = []struct {
 	name           string
-	currentVersion semver.Version
-	expectError    bool
+	currentVersion string
+	expectedError  string
 	optOut         bool
 }{
 	{
 		"higher_major",
-		semver.Version{Major: 100, Minor: 0, Patch: 0},
-		true,
+		"100.0.0",
+		MAJOR,
 		false,
 	},
 	{
 		"lower_major",
-		semver.Version{Major: 1, Minor: 0, Patch: 0},
-		true,
+		"1.0.0",
+		MINIMUM,
 		false,
 	},
 	{
 		"higher_minor",
-		semver.Version{Major: 2, Minor: 22, Patch: 0},
-		false,
+		"2.2.0",
+		MINIMUM,
 		false,
 	},
 	{
 		"lower_minor",
-		semver.Version{Major: 2, Minor: 1, Patch: 0},
-		true,
+		"2.1.0",
+		MINIMUM,
 		false,
 	},
 	{
 		"equal_minor_higher_patch",
-		semver.Version{Major: 2, Minor: 21, Patch: 2},
-		false,
+		"2.2.2",
+		MINIMUM,
 		false,
 	},
 	{
 		"equal_minor_equal_patch",
-		semver.Version{Major: 2, Minor: 21, Patch: 1},
-		false,
+		"2.2.1",
+		MINIMUM,
 		false,
 	},
 	{
 		"equal_minor_lower_patch",
-		semver.Version{Major: 2, Minor: 21, Patch: 0},
-		true,
+		"2.2.0",
+		MINIMUM,
 		false,
 	},
 	{
 		"equal_minor_equal_patch_prerelease",
 		// Note that prerelease < release so this case will error
-		semver.Version{Major: 2, Minor: 21, Patch: 1,
-			Pre: []semver.PRVersion{{VersionStr: "alpha"}, {VersionNum: 1234, IsNum: true}}},
-		true,
+		"2.21.1-alpha.1234",
+		MINIMUM,
 		false,
 	},
 	{
 		"opt_out_of_check_would_fail_otherwise",
-		semver.Version{Major: 2, Minor: 20, Patch: 0},
-		false,
+		"2.2.0",
+		"",
 		true,
 	},
 	{
 		"opt_out_of_check_would_succeed_otherwise",
-		semver.Version{Major: 2, Minor: 22, Patch: 0},
+		"2.2.0",
+		"",
+		true,
+	},
+	{
+		"unparsable_version",
+		"invalid",
+		PARSE,
 		false,
+	},
+	{
+		"opt_out_unparsable_version",
+		"invalid",
+		"",
 		true,
 	},
 }
@@ -1582,15 +1597,11 @@ func TestMinimumVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			minVersion := semver.Version{Major: 2, Minor: 21, Patch: 1}
 
-			err := validatePulumiVersion(minVersion, tt.currentVersion, tt.optOut)
+			_, err := parseAndValidatePulumiVersion(minVersion, tt.currentVersion, tt.optOut)
 
-			if tt.expectError {
+			if tt.expectedError != "" {
 				assert.Error(t, err)
-				if minVersion.Major < tt.currentVersion.Major {
-					assert.Regexp(t, `Major version mismatch.`, err.Error())
-				} else {
-					assert.Regexp(t, `Minimum version requirement failed.`, err.Error())
-				}
+				assert.Regexp(t, tt.expectedError, err.Error())
 			} else {
 				assert.Nil(t, err)
 			}

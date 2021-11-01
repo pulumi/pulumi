@@ -4,18 +4,21 @@ package ints
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -103,6 +106,36 @@ func TestStackTagValidation(t *testing.T) {
 		assert.Contains(t, stderr, "error: could not create stack:")
 		assert.Contains(t, stderr, "validating stack properties:")
 		assert.Contains(t, stderr, "stack tag \"pulumi:description\" value is too long (max length 256 characters)")
+	})
+}
+
+// TestStackInitValidation verifies various error scenarios related to init'ing a stack.
+func TestStackInitValidation(t *testing.T) {
+	t.Run("Error_InvalidStackYaml", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+		e.RunCommand("git", "init")
+
+		e.ImportDirectory("stack_project_name")
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+		// Starting a yaml value with a quote string and then more data is invalid
+		invalidYaml := "\"this is invalid\" yaml because of trailing data after quote string"
+
+		// Change the contents of the Description property of Pulumi.yaml.
+		yamlPath := filepath.Join(e.CWD, "Pulumi.yaml")
+		err := integration.ReplaceInFile("description: ", "description: "+invalidYaml, yamlPath)
+		assert.NoError(t, err)
+
+		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "valid-name")
+		assert.Equal(t, "", stdout)
+		assert.Contains(t, stderr,
+			"error: could not get cloud url: could not load current project: "+
+				"invalid YAML file: yaml: line 1: did not find expected key")
 	})
 }
 
@@ -797,4 +830,65 @@ func TestRotatePassphrase(t *testing.T) {
 
 	e.Stdin, e.Passphrase = nil, "qwerty"
 	e.RunCommand("pulumi", "config", "get", "foo")
+}
+
+var previewSummaryRegex = regexp.MustCompile(
+	`{\s+"steps": \[[\s\S]+],\s+"duration": \d+,\s+"changeSummary": {[\s\S]+}\s+}`)
+
+func assertOutputContainsEvent(t *testing.T, evt apitype.EngineEvent, output string) {
+	evtJSON := bytes.Buffer{}
+	encoder := json.NewEncoder(&evtJSON)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(evt)
+	assert.NoError(t, err)
+	assert.Contains(t, output, evtJSON.String())
+}
+
+func TestJSONOutput(t *testing.T) {
+	stdout := &bytes.Buffer{}
+
+	// Test without env var for streaming preview (should print previewSummary).
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Stdout:       stdout,
+		Verbose:      true,
+		JSONOutput:   true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+
+			// Check that the previewSummary is present.
+			assert.Regexp(t, previewSummaryRegex, output)
+
+			// Check that each event present in the event stream is also in stdout.
+			for _, evt := range stack.Events {
+				assertOutputContainsEvent(t, evt, output)
+			}
+		},
+	})
+}
+
+func TestJSONOutputWithStreamingPreview(t *testing.T) {
+	stdout := &bytes.Buffer{}
+
+	// Test with env var for streaming preview (should *not* print previewSummary).
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("stack_outputs", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Stdout:       stdout,
+		Verbose:      true,
+		JSONOutput:   true,
+		Env:          []string{"PULUMI_ENABLE_STREAMING_JSON_PREVIEW=1"},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			output := stdout.String()
+
+			// Check that the previewSummary is *not* present.
+			assert.NotRegexp(t, previewSummaryRegex, output)
+
+			// Check that each event present in the event stream is also in stdout.
+			for _, evt := range stack.Events {
+				assertOutputContainsEvent(t, evt, output)
+			}
+		},
+	})
 }

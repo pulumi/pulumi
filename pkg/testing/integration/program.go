@@ -276,6 +276,10 @@ type ProgramTestOptions struct {
 
 	// If set, this hook is called after the `pulumi preview` command has completed.
 	PreviewCompletedHook func(dir string) error
+
+	// JSONOutput indicates that the `--json` flag should be passed to `up`, `preview`,
+	// `refresh` and `destroy` commands.
+	JSONOutput bool
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -832,7 +836,7 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 				return false, nil, nil
 			}
 
-			// someother error, fail
+			// some other error, fail
 			return false, nil, runerr
 		},
 	})
@@ -1152,6 +1156,9 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 		if pt.opts.GetDebugUpdates() {
 			destroy = append(destroy, "-d")
 		}
+		if pt.opts.JSONOutput {
+			destroy = append(destroy, "--json")
+		}
 		if err := pt.runPulumiCommand("pulumi-destroy", destroy, pt.projdir, false); err != nil {
 			return err
 		}
@@ -1213,6 +1220,9 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		if pt.opts.GetDebugUpdates() {
 			refresh = append(refresh, "-d")
 		}
+		if pt.opts.JSONOutput {
+			refresh = append(refresh, "--json")
+		}
 		if !pt.opts.ExpectRefreshChanges {
 			refresh = append(refresh, "--expect-no-changes")
 		}
@@ -1249,6 +1259,10 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 	if pt.opts.GetDebugUpdates() {
 		preview = append(preview, "-d")
 		update = append(update, "-d")
+	}
+	if pt.opts.JSONOutput {
+		preview = append(preview, "--json")
+		update = append(update, "--json")
 	}
 	if expectNopPreview {
 		preview = append(preview, "--expect-no-changes")

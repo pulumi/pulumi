@@ -166,7 +166,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "output-funcs-tfbridge20",
 		Description:      "Similar to output-funcs, but with compatibility: tfbridge20, to simulate pulumi-aws use case",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, golang, python),
+		SkipCompileCheck: codegen.NewStringSet(dotnet, python),
 	},
 	{
 		Directory:   "cyclic-types",
@@ -182,6 +182,12 @@ var sdkTests = []sdkTest{
 		Directory:   "dashed-import-schema",
 		Description: "Ensure that we handle all valid go import paths",
 		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
+	},
+	{
+		Directory:        "plain-and-default",
+		Description:      "Ensure that a resource with a plain default property works correctly",
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
+		SkipCompileCheck: codegen.NewStringSet(nodejs),
 	},
 }
 
