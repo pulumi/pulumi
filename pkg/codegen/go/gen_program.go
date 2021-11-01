@@ -244,9 +244,7 @@ func (g *generator) collectImports(
 					}
 					pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
 				} else if call.Name == pcl.IntrinsicConvert {
-					if schemaType, ok := pcl.GetSchemaForType(call.Type()); ok {
-						g.collectTypeImports(program, schemaType, pulumiImports)
-					}
+					g.collectConvertImports(program, call, pulumiImports)
 				}
 
 				// Checking to see if this function call deserves its own dedicated helper method in the preamble
@@ -275,6 +273,30 @@ func (g *generator) collectImports(
 	}
 
 	return stdImports, pulumiImports, preambleHelperMethods
+}
+
+func (g *generator) collectConvertImports(
+	program *pcl.Program,
+	call *model.FunctionCallExpression,
+	pulumiImports codegen.StringSet) {
+	if schemaType, ok := pcl.GetSchemaForType(call.Type()); ok {
+		// Sometimes code for a `__convert` call does not
+		// really use the import of the result type. In such
+		// cases it is important not to generate a
+		// non-compiling unused import. Detect some of these
+		// cases here.
+		//
+		// Fully solving this is deferred for later:
+		// TODO[pulumi/pulumi#8324].
+		if expr, ok := call.Args[0].(*model.TemplateExpression); ok {
+			if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok &&
+				model.StringType.AssignableFrom(lit.Type()) &&
+				call.Type().AssignableFrom(lit.Type()) {
+				return
+			}
+		}
+		g.collectTypeImports(program, schemaType, pulumiImports)
+	}
 }
 
 func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, error) {

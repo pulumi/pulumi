@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ecs"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/elasticloadbalancingv2"
@@ -20,12 +19,9 @@ func main() {
 		if err != nil {
 			return err
 		}
-		subnets, err := ec2.GetSubnetIdsOutput(ctx, ec2.GetSubnetIdsOutputArgs{
+		subnets := ec2.GetSubnetIdsOutput(ctx, ec2.GetSubnetIdsOutputArgs{
 			VpcId: pulumi.String(vpc.Id),
 		}, nil)
-		if err != nil {
-			return err
-		}
 		webSecurityGroup, err := ec2.NewSecurityGroup(ctx, "webSecurityGroup", &ec2.SecurityGroupArgs{
 			VpcId: pulumi.String(vpc.Id),
 			Egress: ec2.SecurityGroupEgressArray{
