@@ -19,7 +19,7 @@
 
   [#8275](https://github.com/pulumi/pulumi/pull/8275)
 
-- [codegen/go] - Interaction between the `plain` and `default` tags of a type. 
+- [codegen/go] - Interaction between the `plain` and `default` tags of a type.
   [#8254](https://github.com/pulumi/pulumi/pull/8254)
 
 - [sdk/dotnet] - Fix a race condition when detecting exceptions in stack creation
@@ -30,6 +30,10 @@
 
 - [sdk/dotnet] - Don't panic on schema mismatches
   [#8286](https://github.com/pulumi/pulumi/pull/8286)
+
+- [codegen/python] - Fixes issue with `$fn_output` functions failing in
+  preview when called with unknown arguments
+  [#8320](https://github.com/pulumi/pulumi/pull/8320)
 
 ### Miscellaneous
 
