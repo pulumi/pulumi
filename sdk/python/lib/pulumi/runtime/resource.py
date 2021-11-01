@@ -640,11 +640,13 @@ class RegisterResponse:
         self.propertyDependencies = propertyDependencies
 
 
-# Merge all providers opts (opts.provider and both list and dict forms of opts.providers) into a single dict.
 def convert_providers(
         provider: Optional['ProviderResource'],
         providers: Optional[Union[Mapping[str, 'ProviderResource'],
                                   Sequence['ProviderResource']]]) -> Mapping[str, 'ProviderResource']:
+    """
+    Merge all providers opts (opts.provider and both list and dict forms of opts.providers) into a single dict.
+    """
     if provider is not None:
         return convert_providers(None, [provider])
 
@@ -661,7 +663,7 @@ def convert_providers(
     return result
 
 
-async def _add_dependency(deps: Set[str], res: 'Resource', from_resource: 'Resource'):
+async def _add_dependency(deps: Set[str], res: 'Resource', from_resource: Optional['Resource']):
     """
     _add_dependency adds a dependency on the given resource to the set of deps.
 
@@ -700,14 +702,14 @@ async def _add_dependency(deps: Set[str], res: 'Resource', from_resource: 'Resou
         if not res._remote:
             return
 
-    no_cycles = declare_dependency(from_resource, res)
+    no_cycles = declare_dependency(from_resource, res) if from_resource else True
     if no_cycles:
         urn = await res.urn.future()
         if urn:
             deps.add(urn)
 
 
-async def _expand_dependencies(deps: Iterable['Resource'], from_resource: 'Resource') -> Set[str]:
+async def _expand_dependencies(deps: Iterable['Resource'], from_resource: Optional['Resource']) -> Set[str]:
     """
     _expand_dependencies expands the given iterable of Resources into a set of URNs.
     """
