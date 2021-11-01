@@ -37,6 +37,9 @@
   NullReferenceException to be raised when constructing resources
   [#8495](https://github.com/pulumi/pulumi/pull/8495)
 
+- [cli] Log secret decryption events when a project uses the Pulumi Service and a 3rd party secrets provider
+  [#8563](https://github.com/pulumi/pulumi/pull/8563)
+
 ### Bug Fixes
 
 - [codegen/schema] - Error on type token names that are not allowed (schema.Name

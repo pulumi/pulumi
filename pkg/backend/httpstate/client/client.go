@@ -374,6 +374,26 @@ func (pc *Client) DecryptValue(ctx context.Context, stack StackIdentifier, ciphe
 	return resp.Plaintext, nil
 }
 
+func (pc *Client) Log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, stack StackIdentifier,
+	secretName string) error {
+	req := apitype.Log3rdPartyDecryptionEvent{SecretName: secretName}
+	if err := pc.restCall(ctx, "POST", path.Join(getStackPath(stack, "decrypt"), "log-decryption"),
+		nil, &req, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pc *Client) LogBulk3rdPartySecretsProviderDecryptionEvent(ctx context.Context, stack StackIdentifier,
+	command string) error {
+	req := apitype.Log3rdPartyDecryptionEvent{CommandName: command}
+	if err := pc.restCall(ctx, "POST", path.Join(getStackPath(stack, "decrypt"), "log-batch-decryption"), nil,
+		&req, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetStackUpdates returns all updates to the indicated stack.
 func (pc *Client) GetStackUpdates(
 	ctx context.Context,
