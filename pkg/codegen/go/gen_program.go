@@ -614,11 +614,17 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
 		case pcl.Invoke:
-			g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr)
-			g.isErrAssigned = true
-			g.Fgenf(w, "if err != nil {\n")
-			g.Fgenf(w, "return err\n")
-			g.Fgenf(w, "}\n")
+			// OutputVersionedInvoke does not return an error
+			noError, _, _ := pcl.RecognizeOutputVersionedInvoke(expr)
+			if noError {
+				g.Fgenf(w, "%s %s %.3v;\n", name, assignment, expr)
+			} else {
+				g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr)
+				g.isErrAssigned = true
+				g.Fgenf(w, "if err != nil {\n")
+				g.Fgenf(w, "return err4\n")
+				g.Fgenf(w, "}\n")
+			}
 		case "join", "toBase64", "mimeType", "fileAsset":
 			g.Fgenf(w, "%s := %.3v;\n", name, expr)
 		}
