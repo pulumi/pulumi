@@ -18,8 +18,7 @@
 
     "extensions": ["golang.go", "ms-dotnettools.csharp", "ms-python.python"],
 
-    // We want to dotnet restore all projects on startup so that omnisharp doesn't complain about lots of missing types on startup.
-    "postCreateCommand": "find -name \"*.??proj\" | xargs -L1 dotnet restore",
+    "postCreateCommand": "make ensure",
 
     "settings": {
         "extensions.ignoreRecommendations": true
