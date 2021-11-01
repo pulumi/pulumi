@@ -42,6 +42,16 @@ namespace Pulumi
         /// awaiting all interior promises for properties with keys that match the provided filter,
         /// creating a reasonable POCO object that can be remoted over to registerResource.
         /// </summary>
+        ///
+        /// <param name="label">label</param>
+        /// <param name="args">args</param>
+        /// <param name="acceptKey">acceptKey</param>
+        /// <param name="keepResources">keepResources</param>
+        /// <param name="keepOutputValues">
+        /// Specifies if we should marshal output values. It is the callers
+        /// responsibility to ensure that the monitor supports the OutputValues
+        /// feature.
+        /// </param>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
             string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources, bool keepOutputValues)
         {
