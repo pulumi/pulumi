@@ -16,7 +16,7 @@
 
     "remoteUser": "user",
 
-    "extensions": ["golang.go", "ms-dotnettools.csharp", "ms-python.python"],
+    "extensions": ["golang.go", "ms-dotnettools.csharp", "ms-python.python", "formulahendry.dotnet-test-explorer"],
 
     "postCreateCommand": "make ensure",
 
