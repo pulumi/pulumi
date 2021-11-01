@@ -168,15 +168,15 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     propResources.UnionWith(urnDeps);
                     this.DependentResources.UnionWith(urnDeps);
 
-                    var depencdencies = await Deployment.GetAllTransitivelyReferencedResourceUrnsAsync(propResources);
+                    var dependencies = await Deployment.GetAllTransitivelyReferencedResourceUrnsAsync(propResources);
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
                     builder.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
                     if (isKnown)
                         builder.Add("value", value);
                     if (isSecret)
                         builder.Add("secret", isSecret);
-                    if (depencdencies.Count > 0)
-                        builder.Add("dependencies", depencdencies.ToArray());
+                    if (dependencies.Count > 0)
+                        builder.Add("dependencies", dependencies.ToArray());
                     return builder.ToImmutable();
                 }
 
