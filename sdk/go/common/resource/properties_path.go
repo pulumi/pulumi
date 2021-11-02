@@ -300,7 +300,7 @@ func requiresQuote(c rune) bool {
 
 func (p PropertyPath) String() string {
 	var buf bytes.Buffer
-	for _, k := range p {
+	for i, k := range p {
 		switch k := k.(type) {
 		case string:
 			var keyBuf bytes.Buffer
@@ -315,7 +315,11 @@ func (p PropertyPath) String() string {
 				keyBuf.WriteRune(c)
 			}
 			if !quoted {
-				fmt.Fprintf(&buf, ".%s", keyBuf.String())
+				if i == 0 {
+					fmt.Fprintf(&buf, "%s", keyBuf.String())
+				} else {
+					fmt.Fprintf(&buf, ".%s", keyBuf.String())
+				}
 			} else {
 				fmt.Fprintf(&buf, `["%s"]`, keyBuf.String())
 			}

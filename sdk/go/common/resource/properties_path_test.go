@@ -49,68 +49,84 @@ func TestPropertyPath(t *testing.T) {
 	}))
 
 	cases := []struct {
-		path   string
-		parsed PropertyPath
+		path     string
+		parsed   PropertyPath
+		expected string
 	}{
 		{
 			"root",
 			PropertyPath{"root"},
+			"root",
 		},
 		{
 			"root.nested",
 			PropertyPath{"root", "nested"},
+			"root.nested",
 		},
 		{
 			`root["nested"]`,
 			PropertyPath{"root", "nested"},
+			`root.nested`,
 		},
 		{
 			"root.double.nest",
 			PropertyPath{"root", "double", "nest"},
+			"root.double.nest",
 		},
 		{
 			`root["double"].nest`,
 			PropertyPath{"root", "double", "nest"},
+			`root.double.nest`,
 		},
 		{
 			`root["double"]["nest"]`,
 			PropertyPath{"root", "double", "nest"},
+			`root.double.nest`,
 		},
 		{
 			"root.array[0]",
 			PropertyPath{"root", "array", 0},
+			"root.array[0]",
 		},
 		{
 			"root.array[1]",
 			PropertyPath{"root", "array", 1},
+			"root.array[1]",
 		},
 		{
 			"root.array[0].nested",
 			PropertyPath{"root", "array", 0, "nested"},
+			"root.array[0].nested",
 		},
 		{
 			"root.array2[0][1].nested",
 			PropertyPath{"root", "array2", 0, 1, "nested"},
+			"root.array2[0][1].nested",
 		},
 		{
 			"root.nested.array[0].double[1]",
 			PropertyPath{"root", "nested", "array", 0, "double", 1},
+			"root.nested.array[0].double[1]",
 		},
 		{
 			`root["key with \"escaped\" quotes"]`,
 			PropertyPath{"root", `key with "escaped" quotes`},
+			`root["key with \"escaped\" quotes"]`,
 		},
 		{
 			`root["key with a ."]`,
 			PropertyPath{"root", "key with a ."},
+			`root["key with a ."]`,
 		},
 		{
 			`["root key with \"escaped\" quotes"].nested`,
 			PropertyPath{`root key with "escaped" quotes`, "nested"},
+			`["root key with \"escaped\" quotes"].nested`,
 		},
 		{
 			`["root key with a ."][1]`,
 			PropertyPath{"root key with a .", 1},
+			`["root key with a ."][1]`,
 		},
 	}
 
@@ -119,6 +135,7 @@ func TestPropertyPath(t *testing.T) {
 			parsed, err := ParsePropertyPath(c.path)
 			assert.NoError(t, err)
 			assert.Equal(t, c.parsed, parsed)
+			assert.Equal(t, c.expected, parsed.String())
 
 			v, ok := parsed.Get(value)
 			assert.True(t, ok)
