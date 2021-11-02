@@ -37,8 +37,3 @@
 - [codegen/python] - Fixes issue with `$fn_output` functions failing in
   preview when called with unknown arguments
   [#8320](https://github.com/pulumi/pulumi/pull/8320)
-
-### Miscellaneous
-
-- [sdk/python] - Drop support for python 3.6
-  [#8161](https://github.com/pulumi/pulumi/pull/8161)
