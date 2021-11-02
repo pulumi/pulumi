@@ -1,7 +1,9 @@
 // Copyright 2016-2021, Pulumi Corporation
+using System;
 using System.Collections.Generic;
-using Pulumi.Serialization;
 using System.Collections.Immutable;
+using System.Linq;
+using Pulumi.Serialization;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
 using Xunit;
@@ -10,111 +12,82 @@ namespace Pulumi.Tests.Serialization
 {
     public class MarshalTests : PulumiTest
     {
-        private struct TestValue
+        public struct TestValue
         {
-            object? value_;
-            object? expected_;
-            string[] deps;
-            ImmutableHashSet<Resource> resources;
-            bool isKnown;
-            bool isSecret;
+            public readonly string Name;
+            public ImmutableDictionary<string, object?> Expected;
 
-            public TestValue(object? value_, object? expected, List<string> deps, bool isKnown, bool isSecret)
+            public Output<object?> Input;
+            internal OutputData<object?> ExpectedRoundTrip;
+
+            public TestValue(object? value_, object? expected, string[] deps, bool isKnown, bool isSecret)
             {
-                this.value_ = value_;
-                this.expected_ = expected;
-                this.deps = deps.ToArray();
-                this.isKnown = isKnown;
-                this.isSecret = isSecret;
+                Name = $"Output(deps={deps}, value={value_}, isKnown={isKnown}, isSecret={isSecret})";
                 var r = new HashSet<Resource>();
                 foreach (var d in deps)
                     r.Add(new DependencyResource(d));
-                this.resources = r.ToImmutableHashSet();
+                var resources = r.ToImmutableHashSet();
+
+
+                var b = ImmutableDictionary.CreateBuilder<string, object?>();
+                b.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
+                if (isKnown) b.Add("value", expected);
+                if (isSecret) b.Add("secret", isSecret);
+                if (deps.Length > 0) b.Add("dependencies", deps);
+                Expected = b.ToImmutableDictionary();
+
+                var data = OutputData.Create<object?>(resources, value_, isKnown, isSecret);
+                Input = new Output<object?>(Task.FromResult(data));
+
+                ExpectedRoundTrip = OutputData.Create<object?>(resources, isKnown ? ToValue(expected) : null, isKnown, isSecret);
             }
 
-            private static List<(object?, object?)> testValues => new List<(object?, object?)>{
-                (null, null),
-                (0, 0),
-                (1, 1),
-                ("", ""),
-                ("hi", "hi"),
-                (ImmutableDictionary.CreateBuilder<string, object?>().ToImmutable(),
-                 ImmutableDictionary.CreateBuilder<string, object?>().ToImmutable()),
-                (new List<object?>(), new List<object?>()),
-                };
-
-            public string name => $"Output(deps={deps}, value={value_}, isKnown={isKnown}, isSecret={isSecret})";
-            public Output<object?> input
-            {
-                get
-                {
-                    var d = OutputData.Create<object?>(this.resources, value_, isKnown, isSecret);
-                    return new Output<object?>(Task.FromResult(d));
-                }
-            }
-
-            public ImmutableDictionary<string, object?> expected
-            {
-                get
-                {
-                    var b = ImmutableDictionary.CreateBuilder<string, object?>();
-                    b.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
-                    if (isKnown) b.Add("value", expected_);
-                    if (isSecret) b.Add("secret", isSecret);
-                    if (deps.Length > 0) b.Add("dependencies", deps);
-                    return b.ToImmutableDictionary();
-                }
-            }
-
-            public Output<object?> expectedRoundTrip
-            {
-                get
-                {
-                    var d = OutputData.Create<object?>(this.resources, isKnown ? ToValue(this.expected_) : null, isKnown, isSecret);
-                    return new Output<object?>(Task.FromResult(d));
-                }
-            }
-
-            public static IEnumerable<TestValue> AllValues()
-            {
-                var result = new List<TestValue>();
-                foreach (var tv in testValues)
-                    foreach (var deps in new List<List<string>>
-                    { new List<string>(), new List<string> { "fakeURN1", "fakeURN2" } })
-                        foreach (var isSecret in new List<bool> { true, false })
-                            foreach (var isKnown in new List<bool> { true, false })
-                                result.Add(new TestValue(tv.Item1, tv.Item2, deps, isSecret, isKnown));
-                return result;
-            }
+            public override string ToString() => Name;
         }
+
+        public static IEnumerable<object[]> AllValues =>
+            from tv in new object?[]
+            {
+                null,
+                0,
+                1,
+                "",
+                "hi",
+                ImmutableDictionary.CreateBuilder<string, object?>().ToImmutable(),
+                new List<object?>(),
+            }
+            from deps in new[] { Array.Empty<string>(), new[] { "fakeURN1", "fakeURN2" } }
+            from isSecret in new List<bool> { true, false }
+            from isKnown in new List<bool> { true, false }
+            select new object[] { new TestValue(tv, tv, deps, isSecret, isKnown) };
 
         /// <summary>
         /// Asserts that two dictionaries are sufficiently equivalent.
         /// </summary>
-        private static void ShouldBeEquivalent(
+        private static void AssertEquivalent(
             in ImmutableDictionary<string, object?> expected,
             in ImmutableDictionary<string, object?> actual)
         {
-            var expectedKeys = expected.Keys.ToImmutableHashSet();
-            var actualKeys = actual.Keys.ToImmutableHashSet();
-            Assert.True(expectedKeys.SetEquals(actualKeys), "Key mismatch");
-            foreach (var k in expectedKeys)
+            AssertEx.Equivalent(expected.Keys, actual.Keys);
+            foreach (var (key, expectedValue) in expected)
             {
-                var e = expected[k] as IEnumerable<object>;
-                if (e != null)
+                var actualValue = actual[key];
+                if (expectedValue is IEnumerable<object> expectedCollection)
                 {
-                    var a = (actual[k] as IEnumerable<object>)!;
-                    Assert.Equal(e.ToImmutableSortedSet(), a.ToImmutableSortedSet());
+                    Assert.IsAssignableFrom<IEnumerable<object>>(actualValue);
+                    AssertEx.Equivalent(expectedCollection, (IEnumerable<object>)actualValue!);
                 }
                 else
-                    Assert.Equal(expected[k], actual[k]);
+                {
+                    Assert.Equal(expectedValue, actualValue);
+                }
             }
         }
 
         /// <summary>
         /// Asserts that two <c>OutputData<T></c> instances are sufficiently equivalent.
         /// </summary>
-        private async static Task ShouldBeEquivalent<T>(OutputData<T> e, OutputData<T> a)
+        private async static Task AssertEquivalent<T>(OutputData<T> e, OutputData<T> a)
         {
             System.Func<IEnumerable<Resource>, Task<ImmutableSortedSet<string>>> urns = async (resources) =>
             {
@@ -165,23 +138,21 @@ namespace Pulumi.Tests.Serialization
             }
         }
 
-        [Fact]
-        static public async Task TransferProperties()
+        [Theory]
+        [MemberData(nameof(AllValues))]
+        static public async Task TransferProperties(TestValue test)
         {
-            foreach (var test in TestValue.AllValues())
+            await RunInNormal(async () =>
             {
-                await RunInNormal(async () =>
-                {
-                    var s = new Serializer(excessiveDebugOutput: false);
-                    var actual = await s.SerializeAsync(
-                        "", test.input,
-                        keepResources: true,
-                        keepOutputValues: true).ConfigureAwait(false) as ImmutableDictionary<string, object>;
-                    ShouldBeEquivalent(test.expected, actual!);
-                    var back = Deserializer.Deserialize(ToValue(actual!));
-                    await ShouldBeEquivalent(await test.expectedRoundTrip.DataTask, back);
-                });
-            }
+                var s = new Serializer(excessiveDebugOutput: false);
+                var actual = await s.SerializeAsync(
+                    "", test.Input,
+                    keepResources: true,
+                    keepOutputValues: true).ConfigureAwait(false) as ImmutableDictionary<string, object>;
+                AssertEquivalent(test.Expected, actual!);
+                var back = Deserializer.Deserialize(ToValue(actual!));
+                await AssertEquivalent(test.ExpectedRoundTrip, back);
+            });
         }
     }
 }
