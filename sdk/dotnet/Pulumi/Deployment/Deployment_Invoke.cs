@@ -57,19 +57,19 @@ namespace Pulumi
             // `Invoke`.
 
             var keepResources = await this.MonitorSupportsResourceReferences().ConfigureAwait(false);
-	    var serializedArgs = await SerializeInvokeArgs(token, args, keepResources);
+            var serializedArgs = await SerializeInvokeArgs(token, args, keepResources);
 
-	    // Short-circuit actually invoking if `Unknowns` are
-	    // present in `args`, otherwise preview can break.
-	    if (serializedArgs.PropertyValues.Values.Any(Serializer.ContainsUnknowns))
-	    {
-		return new OutputData<T>(resources: ImmutableHashSet.Create<Resource>(),
-					 value: default!,
-					 isKnown: false,
-					 isSecret: false);
-	    }
+            // Short-circuit actually invoking if `Unknowns` are
+            // present in `args`, otherwise preview can break.
+            if (serializedArgs.PropertyValues.Values.Any(Serializer.ContainsUnknowns))
+            {
+                return new OutputData<T>(resources: ImmutableHashSet.Create<Resource>(),
+                                         value: default!,
+                                         isKnown: false,
+                                         isSecret: false);
+            }
 
-	    var protoArgs = serializedArgs.ToSerializationResult();
+            var protoArgs = serializedArgs.ToSerializationResult();
             var result = await InvokeRawAsync(token, protoArgs, options).ConfigureAwait(false);
             var data = Converter.ConvertValue<T>(err => Log.Warn(err), $"{token} result",
                                                  new Value { StructValue = result.Serialized });
@@ -133,8 +133,8 @@ namespace Pulumi
             return new SerializationResult(result.Return, argsSerializationResult.PropertyToDependentResources);
         }
 
-	private async Task<RawSerializationResult> SerializeInvokeArgs(string token, InvokeArgs args, bool keepResources)
-	{
+        private async Task<RawSerializationResult> SerializeInvokeArgs(string token, InvokeArgs args, bool keepResources)
+        {
             Log.Debug($"Invoking function: token={token} asynchronously");
 
             // Be resilient to misbehaving callers.
@@ -150,15 +150,15 @@ namespace Pulumi
                 acceptKey: key => true,
                 keepResources: keepResources
             ).ConfigureAwait(false);
-	}
+        }
 
         private async Task<SerializationResult> InvokeRawAsync(string token, InvokeArgs args, InvokeOptions? options)
-	{
+        {
             var keepResources = await this.MonitorSupportsResourceReferences().ConfigureAwait(false);
-	    var argsSerializationRawResult = await SerializeInvokeArgs(token, args, keepResources);
-	    var argsSerializationResult = argsSerializationRawResult.ToSerializationResult();
-	    return await InvokeRawAsync(token, argsSerializationResult, options);
-	}
+            var argsSerializationRawResult = await SerializeInvokeArgs(token, args, keepResources);
+            var argsSerializationResult = argsSerializationRawResult.ToSerializationResult();
+            return await InvokeRawAsync(token, argsSerializationResult, options);
+        }
 
         private static ProviderResource? GetProvider(string token, InvokeOptions? options)
                 => options?.Provider ?? options?.Parent?.GetProvider(token);
