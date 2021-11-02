@@ -63,8 +63,8 @@ namespace Pulumi
                 if (acceptKey(key))
                 {
                     // We treat properties with null values as if they do not exist.
-                    var serializer = new Serializer(_excessiveDebugOutput, keepOutputValues);
-                    var v = await serializer.SerializeAsync($"{label}.{key}", val, keepResources).ConfigureAwait(false);
+                    var serializer = new Serializer(_excessiveDebugOutput);
+                    var v = await serializer.SerializeAsync($"{label}.{key}", val, keepResources, keepOutputValues).ConfigureAwait(false);
                     if (v != null)
                     {
                         result[key] = v;

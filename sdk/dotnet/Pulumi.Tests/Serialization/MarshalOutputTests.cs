@@ -161,8 +161,11 @@ namespace Pulumi.Tests.Serialization
             {
                 await RunInNormal(async () =>
                 {
-                    var s = new Serializer(excessiveDebugOutput: false, keepOutputValues: true);
-                    var actual = await s.SerializeAsync("", test.input, true).ConfigureAwait(false) as ImmutableDictionary<string, object>;
+                    var s = new Serializer(excessiveDebugOutput: false);
+                    var actual = await s.SerializeAsync(
+                        "", test.input,
+                        keepResources: true,
+                        keepOutputValues: true).ConfigureAwait(false) as ImmutableDictionary<string, object>;
                     ShouldBeEquivalent(test.expected, actual!);
                     var f = new Struct();
                     foreach (var (k, v) in actual!)

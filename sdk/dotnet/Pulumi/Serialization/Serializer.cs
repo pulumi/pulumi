@@ -19,13 +19,10 @@ namespace Pulumi.Serialization
 
         private readonly bool _excessiveDebugOutput;
 
-        private readonly bool _keepOutputValues;
-
-        public Serializer(bool excessiveDebugOutput, bool keepOutputValues = false)
+        public Serializer(bool excessiveDebugOutput)
         {
             this.DependentResources = new HashSet<Resource>();
             _excessiveDebugOutput = excessiveDebugOutput;
-            _keepOutputValues = keepOutputValues;
         }
 
         /// <summary>
@@ -70,7 +67,7 @@ namespace Pulumi.Serialization
         /// </list>
         /// No other result type are allowed to be returned.
         /// </summary>
-        public async Task<object?> SerializeAsync(string ctx, object? prop, bool keepResources)
+        public async Task<object?> SerializeAsync(string ctx, object? prop, bool keepResources, bool keepOutputValues = false)
         {
             // IMPORTANT:
             // IMPORTANT: Keep this in sync with serializesPropertiesSync in invoke.ts
@@ -149,18 +146,18 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 var isKnown = data.IsKnown;
                 var isSecret = data.IsSecret;
 
-                var child = new Serializer(_excessiveDebugOutput, keepOutputValues: false);
+                var child = new Serializer(_excessiveDebugOutput);
                 var value = await child.SerializeAsync($"{ctx}.id", data.Value, keepResources).ConfigureAwait(false);
                 var promiseDeps = child.DependentResources;
                 this.DependentResources.UnionWith(promiseDeps);
                 propResources.UnionWith(promiseDeps);
 
-                if (_keepOutputValues /* && monitor supports output values */)
+                if (keepOutputValues /* && monitor supports output values */)
                 {
                     var urnDeps = new HashSet<Resource>();
                     foreach (var resource in propResources)
                     {
-                        var childURNResolver = new Serializer(_excessiveDebugOutput, keepOutputValues: false);
+                        var childURNResolver = new Serializer(_excessiveDebugOutput);
                         await childURNResolver.SerializeAsync($"{ctx} dependency", resource.Urn, keepResources);
                         urnDeps.UnionWith(childURNResolver.DependentResources);
                     }
