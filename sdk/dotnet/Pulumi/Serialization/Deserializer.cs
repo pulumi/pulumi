@@ -12,11 +12,6 @@ namespace Pulumi.Serialization
     {
         private static OutputData<T> DeserializeCore<T>(Value value, Func<Value, OutputData<T>> func)
         {
-
-            if (TryDeserializeOutputValue<T>(value, out var result))
-            {
-                return result.Value;
-            }
             var (innerVal, isSecret) = UnwrapSecret(value);
             value = innerVal;
 
@@ -31,10 +26,15 @@ namespace Pulumi.Serialization
             {
                 return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)assetOrArchive, isKnown: true, isSecret);
             }
+            if (TryDeserializeOutputValue<T>(value, out var result))
+            {
+                return result.Value;
+            }
             if (TryDeserializeResource(value, out var resource))
             {
                 return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)resource, isKnown: true, isSecret);
             }
+
 
 
             var innerData = func(value);
@@ -263,8 +263,7 @@ namespace Pulumi.Serialization
 
         private static bool TryDeserializeOutputValue<T>(Value prop, [NotNullWhen(true)] out OutputData<T>? output)
         {
-            var hasSpecialValue = prop.StructValue.Fields.TryGetValue(Constants.SpecialSigKey, out var outPutValueSig);
-            if (!hasSpecialValue || outPutValueSig.StringValue != Constants.SpecialOutputValueSig)
+            if (!IsSpecialStruct(prop, out var sig) || sig != Constants.SpecialOutputValueSig)
             {
                 output = null;
                 return false;
@@ -274,9 +273,12 @@ namespace Pulumi.Serialization
             isSecret = isSecret && secretValue.BoolValue;
             var hasDeps = prop.StructValue.Fields.TryGetValue(Constants.DependenciesName, out var depsValue);
             var deps = ImmutableHashSet.CreateBuilder<Resource>();
-            foreach (var dep in depsValue.ListValue.Values)
+            if (hasDeps)
             {
-                deps.Add(new DependencyResource(dep.StringValue));
+                foreach (var dep in depsValue.ListValue.Values)
+                {
+                    deps.Add(new DependencyResource(dep.StringValue));
+                }
             }
             output = new OutputData<T>(deps.ToImmutable(), (T)(object)value, isKnown, isSecret);
             return true;

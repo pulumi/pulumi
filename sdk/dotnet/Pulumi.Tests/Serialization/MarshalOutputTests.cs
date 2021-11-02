@@ -70,7 +70,7 @@ namespace Pulumi.Tests.Serialization
             {
                 get
                 {
-                    var d = OutputData.Create<object?>(this.resources, isKnown ? this.expected : null, isKnown, isSecret);
+                    var d = OutputData.Create<object?>(this.resources, isKnown ? ToValue(this.expected_) : null, isKnown, isSecret);
                     return new Output<object?>(Task.FromResult(d));
                 }
             }
@@ -100,22 +100,21 @@ namespace Pulumi.Tests.Serialization
             Assert.True(expectedKeys.SetEquals(actualKeys), "Key mismatch");
             foreach (var k in expectedKeys)
             {
-                var expectedArray = expected[k] as object[];
-                if (expectedArray != null)
+                var e = expected[k] as IEnumerable<object>;
+                if (e != null)
                 {
-                    var actualArray = (actual[k] as object[])!;
-                    System.Array.Sort(actualArray);
-                    System.Array.Sort(expectedArray);
-
-                    Assert.Equal(expected, actual);
+                    var a = (actual[k] as IEnumerable<object>)!;
+                    Assert.Equal(e.ToImmutableSortedSet(), a.ToImmutableSortedSet());
                 }
                 else
-                {
                     Assert.Equal(expected[k], actual[k]);
-                }
             }
         }
-        private static void ShouldBeEquivalent<T>(OutputData<T> e, OutputData<T> a)
+
+        /// <summary>
+        /// Asserts that two <c>OutputData<T></c> instances are sufficiently equivalent.
+        /// </summary>
+        private async static Task ShouldBeEquivalent<T>(OutputData<T> e, OutputData<T> a)
         {
             System.Func<IEnumerable<Resource>, Task<ImmutableSortedSet<string>>> urns = async (resources) =>
             {
@@ -129,9 +128,12 @@ namespace Pulumi.Tests.Serialization
             Assert.Equal(e.IsSecret, a.IsSecret);
             Assert.Equal(e.IsKnown, a.IsKnown);
             Assert.Equal(e.Value, a.Value);
-            Assert.Equal(urns(e.Resources), urns(a.Resources));
+            Assert.Equal(await urns(e.Resources), await urns(a.Resources));
         }
 
+        /// <summary>
+        /// This is a poor implementation of the <c>ToValue</c> function, designed only for test code.
+        /// </summary>
         private static Value ToValue(object? o)
         {
             switch (o)
@@ -149,6 +151,15 @@ namespace Pulumi.Tests.Serialization
                         s.Fields.Add(k, ToValue(v));
                     }
                     return new Value { StructValue = s };
+                case bool b:
+                    return new Value { BoolValue = b };
+                case List<object> l:
+                    return ToValue(l.ToImmutableArray());
+                case ImmutableArray<object> iArray:
+                    var list = new ListValue();
+                    foreach (var v in iArray)
+                        list.Values.Add(ToValue(v));
+                    return new Value { ListValue = list };
                 default:
                     throw new System.TypeAccessException($"Failed to create value type of type {o.GetType().FullName}");
             }
@@ -167,15 +178,8 @@ namespace Pulumi.Tests.Serialization
                         keepResources: true,
                         keepOutputValues: true).ConfigureAwait(false) as ImmutableDictionary<string, object>;
                     ShouldBeEquivalent(test.expected, actual!);
-                    var f = new Struct();
-                    foreach (var (k, v) in actual!)
-                    {
-                        f.Fields.Add(k, ToValue(v));
-                    }
-                    var value = new Value();
-                    value.StructValue = f;
-                    var back = Deserializer.Deserialize(value);
-                    ShouldBeEquivalent(await test.expectedRoundTrip.DataTask, back);
+                    var back = Deserializer.Deserialize(ToValue(actual!));
+                    await ShouldBeEquivalent(await test.expectedRoundTrip.DataTask, back);
                 });
             }
         }
