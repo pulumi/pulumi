@@ -224,9 +224,10 @@ def lift_output_func(func: typing.Any) -> typing.Callable[[_F], _F]:
 
     def lifted_func(*args, opts=None, **kwargs):
         bound_args = func_sig.bind(*args, **kwargs)
-
+        # Convert tuple to list, see pulumi/pulumi#8172
+        args_list = list(bound_args.args)
         return pulumi.Output.from_input({
-            'args': bound_args.args,
+            'args': args_list,
             'kwargs': bound_args.kwargs
         }).apply(lambda resolved_args: func(*resolved_args['args'],
                                             opts=opts,

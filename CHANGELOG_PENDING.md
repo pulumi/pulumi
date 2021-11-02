@@ -21,8 +21,11 @@
   However, the streaming output can be extended to `preview` by using the `PULUMI_ENABLE_STREAMING_JSON_PREVIEW` environment variable.
 
   [#8275](https://github.com/pulumi/pulumi/pull/8275)
+  
+- [sdk/python] - Expand dependencies when marshaling output values
+  [#8301](https://github.com/pulumi/pulumi/pull/8301)
 
-- [codegen/go] - Interaction between the `plain` and `default` tags of a type. 
+- [codegen/go] - Interaction between the `plain` and `default` tags of a type.
   [#8254](https://github.com/pulumi/pulumi/pull/8254)
 
 - [sdk/dotnet] - Fix a race condition when detecting exceptions in stack creation
@@ -38,3 +41,7 @@
 
 - [sdk/python] - Drop support for python 3.6.
   [#8161](https://github.com/pulumi/pulumi/pull/8161)
+
+- [codegen/python] - Fixes issue with `$fn_output` functions failing in
+  preview when called with unknown arguments
+  [#8320](https://github.com/pulumi/pulumi/pull/8320)
