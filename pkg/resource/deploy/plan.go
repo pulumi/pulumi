@@ -174,7 +174,8 @@ func (rp *ResourcePlan) checkGoal(programGoal *resource.Goal) error {
 	}
 
 	// Check that the additionalSecretOutputs sets are identical.
-	if message, changed := rp.diffPropertyKeys(rp.Goal.AdditionalSecretOutputs, programGoal.AdditionalSecretOutputs); changed {
+	if message, changed := rp.diffPropertyKeys(
+		rp.Goal.AdditionalSecretOutputs, programGoal.AdditionalSecretOutputs); changed {
 		return fmt.Errorf("additionalSecretOutputs changed: %v", message)
 	}
 

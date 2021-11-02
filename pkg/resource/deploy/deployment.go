@@ -147,7 +147,13 @@ func (m *resourceMap) mapRange(callback func(urn resource.URN, state *resource.S
 
 type resourcePlans struct {
 	m     sync.RWMutex
-	plans map[resource.URN]*ResourcePlan
+	plans Plan
+}
+
+func newResourcePlan() *resourcePlans {
+	return &resourcePlans{
+		plans: make(Plan),
+	}
 }
 
 func (m *resourcePlans) set(urn resource.URN, plan *ResourcePlan) {
@@ -378,7 +384,7 @@ func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan Pla
 		providers:            reg,
 		goals:                newGoals,
 		news:                 newResources,
-		newPlans:             &resourcePlans{},
+		newPlans:             newResourcePlan(),
 	}, nil
 }
 

@@ -433,7 +433,11 @@ func (ex *deploymentExecutor) retirePendingDeletes(callerCtx context.Context, op
 }
 
 // import imports a list of resources into a stack.
-func (ex *deploymentExecutor) importResources(callerCtx context.Context, opts Options, preview bool) (Plan, result.Result) {
+func (ex *deploymentExecutor) importResources(
+	callerCtx context.Context,
+	opts Options,
+	preview bool) (Plan, result.Result) {
+
 	if len(ex.deployment.imports) == 0 {
 		return nil, nil
 	}

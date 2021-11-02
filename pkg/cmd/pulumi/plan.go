@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -104,25 +105,25 @@ type planNode struct {
 func renderPlanNode(node *planNode, padding, branch string, rows *[]cmdutil.TableRow, color colors.Colorization) {
 	padBranch := ""
 	switch branch {
-	case "├─ ":
-		padBranch = "│  "
-	case "└─ ":
-		padBranch = "   "
+	case util.TBranchString:
+		padBranch = util.TPaddingString
+	case util.LBranchString:
+		padBranch = util.LPaddingString
 	}
 	childPadding := padding + padBranch
 
-	infoBranch := "   "
+	infoBranch := util.LPaddingString
 	if len(node.children) > 0 {
-		infoBranch = "│  "
+		infoBranch = util.TPaddingString
 	}
 	infoPadding := childPadding + infoBranch
 
 	*rows = append(*rows, renderResourcePlan(node.urn, node.plan, padding+branch, infoPadding, color))
 
 	for i, child := range node.children {
-		childBranch := "├─ "
+		childBranch := util.TBranchString
 		if i == len(node.children)-1 {
-			childBranch = "└─ "
+			childBranch = util.LBranchString
 		}
 		renderPlanNode(child, childPadding, childBranch, rows, color)
 	}
@@ -198,7 +199,13 @@ func renderPlan(plan deploy.Plan, showSames bool, color colors.Colorization) []c
 	return rows
 }
 
-func renderResourcePlan(urn resource.URN, plan *deploy.ResourcePlan, prefix, infoPrefix string, color colors.Colorization) cmdutil.TableRow {
+func renderResourcePlan(
+	urn resource.URN,
+	plan *deploy.ResourcePlan,
+	prefix,
+	infoPrefix string,
+	color colors.Colorization) cmdutil.TableRow {
+
 	displayOp := deploy.OpSame
 	if plan != nil {
 		for _, op := range plan.Ops {

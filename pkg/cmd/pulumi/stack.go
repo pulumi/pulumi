@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -234,25 +235,25 @@ type treeNode struct {
 func renderNode(node *treeNode, padding, branch string, showURNs, showIDs bool, rows *[]cmdutil.TableRow) {
 	padBranch := ""
 	switch branch {
-	case "├─ ":
-		padBranch = "│  "
-	case "└─ ":
-		padBranch = "   "
+	case util.TBranchString:
+		padBranch = util.TPaddingString
+	case util.LBranchString:
+		padBranch = util.LPaddingString
 	}
 	childPadding := padding + padBranch
 
-	infoBranch := "   "
+	infoBranch := util.LPaddingString
 	if len(node.children) > 0 {
-		infoBranch = "│  "
+		infoBranch = util.TPaddingString
 	}
 	infoPadding := childPadding + infoBranch
 
 	*rows = append(*rows, renderResourceRow(node.res, padding+branch, infoPadding, showURNs, showIDs))
 
 	for i, child := range node.children {
-		childBranch := "├─ "
+		childBranch := util.TBranchString
 		if i == len(node.children)-1 {
-			childBranch = "└─ "
+			childBranch = util.LBranchString
 		}
 		renderNode(child, childPadding, childBranch, showURNs, showIDs, rows)
 	}

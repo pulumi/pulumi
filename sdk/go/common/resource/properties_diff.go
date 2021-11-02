@@ -457,8 +457,8 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 	return v.V == other.V
 }
 
-func (m PropertyMap) ConstrainedTo(constraints PropertyMap) (*ObjectDiff, bool) {
-	diff := constraints.diff(m, true, nil)
+func (props PropertyMap) ConstrainedTo(constraints PropertyMap) (*ObjectDiff, bool) {
+	diff := constraints.diff(props, true, nil)
 	return diff, diff == nil
 }
 

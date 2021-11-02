@@ -381,7 +381,10 @@ func (ms *MockStack) Backend() Backend {
 	panic("not implemented")
 }
 
-func (ms *MockStack) Preview(ctx context.Context, op UpdateOperation) (deploy.Plan, engine.ResourceChanges, result.Result) {
+func (ms *MockStack) Preview(
+	ctx context.Context,
+	op UpdateOperation) (deploy.Plan, engine.ResourceChanges, result.Result) {
+
 	if ms.PreviewF != nil {
 		return ms.PreviewF(ctx, op)
 	}

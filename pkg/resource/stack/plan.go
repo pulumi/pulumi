@@ -7,7 +7,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
-func SerializeResourcePlan(plan *deploy.ResourcePlan, enc config.Encrypter, showSecrets bool) (apitype.ResourcePlanV1, error) {
+func SerializeResourcePlan(
+	plan *deploy.ResourcePlan,
+	enc config.Encrypter,
+	showSecrets bool) (apitype.ResourcePlanV1, error) {
+
 	properties, err := SerializeProperties(plan.Goal.Properties, enc, showSecrets)
 	if err != nil {
 		return apitype.ResourcePlanV1{}, err
@@ -64,7 +68,11 @@ func SerializePlan(plan deploy.Plan, enc config.Encrypter, showSecrets bool) (ap
 	return apitype.DeploymentPlanV1{ResourcePlans: resourcePlans}, nil
 }
 
-func DeserializeResourcePlan(plan apitype.ResourcePlanV1, dec config.Decrypter, enc config.Encrypter) (*deploy.ResourcePlan, error) {
+func DeserializeResourcePlan(
+	plan apitype.ResourcePlanV1,
+	dec config.Decrypter,
+	enc config.Encrypter) (*deploy.ResourcePlan, error) {
+
 	properties, err := DeserializeProperties(plan.Goal.Properties, dec, enc)
 	if err != nil {
 		return nil, err
