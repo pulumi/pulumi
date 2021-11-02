@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import asyncio
 import json
 import pytest
 
@@ -32,8 +33,20 @@ def my_mocks():
         pulumi.runtime.settings.configure(old_settings)
 
 
+@pytest.fixture
+def my_preview_mocks():
+    old_settings = pulumi.runtime.settings.SETTINGS
+    try:
+        mocks = MyMocks()
+        pulumi.runtime.mocks.set_mocks(mocks, preview=True)
+        yield mocks
+    finally:
+        pulumi.runtime.settings.configure(old_settings)
+
+
 class MyMocks(pulumi.runtime.Mocks):
     def call(self, args):
+
         if args.token in ['mypkg::funcWithAllOptionalInputs',
                           'mypkg::funcWithDefaultValue']:
             a = args.args.get('a', None)
@@ -49,6 +62,15 @@ class MyMocks(pulumi.runtime.Mocks):
                     'value': [args.args]}
 
         if args.token == 'mypkg::listStorageAccountKeys':
+
+            if 'accountName' not in args.args or \
+               not args.args['accountName'] or \
+               pulumi.contains_unknowns(args.args['accountName']):
+                raise Exception(
+                    'Missing required argument: '
+                    'The argument "account_name" is required, '
+                    'but no definition was found')
+
             return {'keys': [
                 dict(creationTime='my-creation-time',
                      keyName='my-key-name',
@@ -193,6 +215,15 @@ def test_list_storage_accounts(my_mocks):
         )])
 
 
+@pulumi.runtime.test
+def test_preview_with_unknowns(my_preview_mocks):
+
+    def check(r):
+        assert False, 'check() should not be called when args contain unknowns'
+
+    return list_storage_account_keys_output(account_name=unknown()).apply(check)
+
+
 def jstr(x):
     return json.dumps(x, sort_keys=True)
 
@@ -203,3 +234,14 @@ def r(x):
 
 def out(x):
     return pulumi.Output.from_input(x).apply(lambda x: x)
+
+
+def unknown():
+    is_known_fut: asyncio.Future[bool] = asyncio.Future()
+    is_secret_fut: asyncio.Future[bool] = asyncio.Future()
+    is_known_fut.set_result(False)
+    is_secret_fut.set_result(False)
+
+    value_fut: asyncio.Future[Any] = asyncio.Future()
+    value_fut.set_result(pulumi.UNKNOWN)
+    return pulumi.Output(set(), value_fut, is_known_fut, is_secret_fut)

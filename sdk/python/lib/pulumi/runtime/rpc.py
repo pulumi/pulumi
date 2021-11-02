@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ from google.protobuf import struct_pb2
 from semver import VersionInfo as Version
 import six
 from . import known_types, settings
+from .resource import _expand_dependencies
 from .. import log
 from .. import _types
 from .. import urn as urn_util
@@ -278,7 +279,7 @@ async def serialize_property(value: 'Input[Any]',
 
     if known_types.is_output(value):
         output = cast('Output', value)
-        value_resources = await output.resources()
+        value_resources: Set['Resource'] = await output.resources()
         deps.extend(value_resources)
 
         # When serializing an Output, we will either serialize it as its resolved value or the
@@ -287,14 +288,19 @@ async def serialize_property(value: 'Input[Any]',
         # resolved with known values.
         is_known = await output._is_known
         is_secret = await output._is_secret
-        value = await serialize_property(output.future(), deps, input_transformer, typ, keep_output_values=False)
+        promise_deps: List['Resource'] = []
+        value = await serialize_property(output.future(), promise_deps, input_transformer, typ, keep_output_values=False)
+        deps.extend(promise_deps)
+        value_resources.update(promise_deps)
 
         if keep_output_values and await settings.monitor_supports_output_values():
-            # TODO[pulumi/pulumi#7977]: Expand dependencies
-            dependencies: Set[str] = set()
+            urn_deps: List['Resource'] = []
             for resource in value_resources:
-                urn = await serialize_property(resource.urn, deps, input_transformer, keep_output_values=False)
-                dependencies.add(cast(str, urn))
+                await serialize_property(resource.urn, urn_deps, input_transformer, keep_output_values=False)
+            promise_deps.extend(set(urn_deps))
+            value_resources.update(urn_deps)
+
+            dependencies = await _expand_dependencies(value_resources, None)
 
             output_value: Dict[str, Any] = {
                 _special_sig_key: _special_output_value_sig

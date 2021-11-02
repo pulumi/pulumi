@@ -15,7 +15,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public void T0()
         {
-            var data = Converter.ConvertValue<Union<int, string>>("", new Value { NumberValue = 1 });
+            var data = Converter.ConvertValue<Union<int, string>>(NoWarn, "", new Value { NumberValue = 1 });
             Assert.True(data.Value.IsT0);
             Assert.True(data.IsKnown);
             Assert.Equal(1, data.Value.AsT0);
@@ -24,7 +24,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public void T1()
         {
-            var data = Converter.ConvertValue<Union<int, string>>("", new Value { StringValue = "foo" });
+            var data = Converter.ConvertValue<Union<int, string>>(NoWarn, "", new Value { StringValue = "foo" });
             Assert.True(data.Value.IsT1);
             Assert.True(data.IsKnown);
             Assert.Equal("foo", data.Value.AsT1);
@@ -33,7 +33,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public async Task MixedList()
         {
-            var data = Converter.ConvertValue<ImmutableArray<Union<int, string>>>("",
+            var data = Converter.ConvertValue<ImmutableArray<Union<int, string>>>(NoWarn, "",
                 await SerializeToValueAsync(new List<object> { 1, "foo" }));
             Assert.True(data.IsKnown);
             Assert.Equal(2, data.Value.Length);
@@ -46,12 +46,16 @@ namespace Pulumi.Tests.Serialization
         }
 
         [Fact]
-        public void WrongTypeThrows()
+        public void WrongTypeLogs()
         {
-            Assert.Throws<InvalidOperationException>(() =>
-            {
-                Converter.ConvertValue<Union<int, string>>("", new Value { BoolValue = true });
-            });
+            string? loggedError = null;
+            Action<string> warn = error => loggedError = error;
+            var data = Converter.ConvertValue<Union<int, string>>(warn, "", new Value { BoolValue = true });
+
+            Assert.Equal(default(Union<int, string>), data.Value);
+            Assert.True(data.IsKnown);
+
+            Assert.Equal("Expected System.Int32 or System.String but got System.Boolean deserializing ", loggedError);
         }
     }
 }
