@@ -227,7 +227,7 @@ func renderResourcePlan(
 	}
 
 	columns := []string{
-		color.Colorize(displayOp.Prefix(false)),
+		color.Colorize(displayOp.Prefix(false) + colors.Reset),
 		prefix + typ,
 		name,
 		color.Colorize(displayOp.Color() + string(displayOp) + colors.Reset),
