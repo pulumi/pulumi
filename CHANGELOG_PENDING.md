@@ -4,6 +4,9 @@
   invoke forms in API documentation.
   [#8287](https://github.com/pulumi/pulumi/pull/8287)
 
+- [schema] Add IsOverlay option to disable codegen for particular types
+  [#8338](https://github.com/pulumi/pulumi/pull/8338)
+
 
 ### Bug Fixes
 

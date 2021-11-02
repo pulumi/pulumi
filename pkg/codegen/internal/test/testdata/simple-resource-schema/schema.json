@@ -66,6 +66,15 @@
       },
       "type": "object"
     },
+    "example::ConfigMapOverlay": {
+      "isOverlay": true,
+      "properties": {
+        "config": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "example::ObjectWithNodeOptionalInputs": {
       "properties": {
         "foo": {
@@ -114,6 +123,20 @@
       },
       "type": "object"
     },
+    "example::OverlayResource": {
+      "isOverlay": true,
+      "properties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        }
+      },
+      "type": "object"
+    },
     "example::TypeUses": {
       "properties": {
         "foo": {
@@ -142,6 +165,23 @@
   },
   "functions": {
     "example::argFunction": {
+      "inputs": {
+        "properties": {
+          "arg1": {
+            "$ref": "#/resources/example::Resource"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "$ref": "#/resources/example::Resource"
+          }
+        }
+      }
+    },
+    "example::overlayFunction": {
+      "isOverlay": true,
       "inputs": {
         "properties": {
           "arg1": {

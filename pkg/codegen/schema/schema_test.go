@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -410,6 +411,43 @@ func TestMethods(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestIsOverlay tests that the IsOverlay field is set correctly for resources, types, and functions. Does not test
+// codegen.
+func TestIsOverlay(t *testing.T) {
+	t.Run("overlay", func(t *testing.T) {
+		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay.json"))
+
+		pkg, err := ImportSpec(pkgSpec, nil)
+		if err != nil {
+			t.Error(err)
+		}
+		for _, v := range pkg.Resources {
+			if strings.Contains(v.Token, "Overlay") {
+				assert.Truef(t, v.IsOverlay, "resource %q", v.Token)
+			} else {
+				assert.Falsef(t, v.IsOverlay, "resource %q", v.Token)
+			}
+		}
+		for _, v := range pkg.Types {
+			switch v := v.(type) {
+			case *ObjectType:
+				if strings.Contains(v.Token, "Overlay") {
+					assert.Truef(t, v.IsOverlay, "object type %q", v.Token)
+				} else {
+					assert.Falsef(t, v.IsOverlay, "object type %q", v.Token)
+				}
+			}
+		}
+		for _, v := range pkg.Functions {
+			if strings.Contains(v.Token, "Overlay") {
+				assert.Truef(t, v.IsOverlay, "function %q", v.Token)
+			} else {
+				assert.Falsef(t, v.IsOverlay, "function %q", v.Token)
+			}
+		}
+	})
 }
 
 // Tests that the method ReplaceOnChanges works as expected. Does not test
