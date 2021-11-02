@@ -125,18 +125,18 @@ namespace Pulumi.Tests.Mocks
             Assert.Contains("Grpc.Core.RpcException: Status(StatusCode=\"Unknown\", Detail=\"error code 404\")", exception!.Message);
         }
 
-	[Fact]
-	public async Task TestInvokeToleratesUnknownsInPreview()
-	{
-	    var resources = await Deployment.TestAsync<Issue8322.ReproStack>(
-		new Issue8322.ReproMocks(),
-		new TestOptions() { IsPreview = true }
-	    );
-	    var stack = resources.OfType<Issue8322.ReproStack>().FirstOrDefault();
-	    Assert.NotNull(stack);
-	    var result = await stack.Result.GetValueAsync(whenUnknown: "unknown!");
-	    Assert.Equal("unknown!", result);
-	}
+        [Fact]
+        public async Task TestInvokeToleratesUnknownsInPreview()
+        {
+            var resources = await Deployment.TestAsync<Issue8322.ReproStack>(
+                new Issue8322.ReproMocks(),
+                new TestOptions() { IsPreview = true }
+            );
+            var stack = resources.OfType<Issue8322.ReproStack>().FirstOrDefault();
+            Assert.NotNull(stack);
+            var result = await stack.Result.GetValueAsync(whenUnknown: "unknown!");
+            Assert.Equal("unknown!", result);
+        }
 
         [Fact]
         public async Task TestStackWithInvalidSchema()
