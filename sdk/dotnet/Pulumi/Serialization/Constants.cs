@@ -39,7 +39,9 @@ namespace Pulumi.Serialization
         /// </summary>
         public const string SpecialOutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4";
 
-        public const string SecretValueName = "value";
+        public const string SecretName = "secret";
+        public const string ValueName = "value";
+        public const string DependenciesName = "dependencies";
 
         public const string AssetTextName = "text";
         public const string ArchiveAssetsName = "assets";

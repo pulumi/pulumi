@@ -12,6 +12,11 @@ namespace Pulumi.Serialization
     {
         private static OutputData<T> DeserializeCore<T>(Value value, Func<Value, OutputData<T>> func)
         {
+
+            if (TryDeserializeOutputValue<T>(value, out var result))
+            {
+                return result.Value;
+            }
             var (innerVal, isSecret) = UnwrapSecret(value);
             value = innerVal;
 
@@ -30,6 +35,7 @@ namespace Pulumi.Serialization
             {
                 return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)resource, isKnown: true, isSecret);
             }
+
 
             var innerData = func(value);
             return OutputData.Create(innerData.Resources, innerData.Value, innerData.IsKnown, isSecret || innerData.IsSecret);
@@ -100,7 +106,7 @@ namespace Pulumi.Serialization
                 });
 
         public static OutputData<object?> Deserialize(Value value)
-            => DeserializeCore(value, 
+            => DeserializeCore(value,
                 v => v.KindCase switch
                 {
                     Value.KindOneofCase.NumberValue => DeserializerDouble(v),
@@ -120,7 +126,7 @@ namespace Pulumi.Serialization
             while (IsSpecialStruct(value, out var sig) &&
                    sig == Constants.SpecialSecretSig)
             {
-                if (!value.StructValue.Fields.TryGetValue(Constants.SecretValueName, out var secretValue))
+                if (!value.StructValue.Fields.TryGetValue(Constants.ValueName, out var secretValue))
                     throw new InvalidOperationException("Secrets must have a field called 'value'");
 
                 isSecret = true;
@@ -222,7 +228,8 @@ namespace Pulumi.Serialization
                 throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
             }
 
-            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out var version)) {
+            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out var version))
+            {
                 version = "";
             }
 
@@ -231,7 +238,8 @@ namespace Pulumi.Serialization
             var qualifiedTypeParts = qualifiedType.Split('$');
             var type = qualifiedTypeParts[^1];
 
-            if (ResourcePackages.TryConstruct(type, version, urn, out resource)) {
+            if (ResourcePackages.TryConstruct(type, version, urn, out resource))
+            {
                 return true;
             }
 
@@ -251,6 +259,27 @@ namespace Pulumi.Serialization
 
             result = null;
             return false;
+        }
+
+        private static bool TryDeserializeOutputValue<T>(Value prop, [NotNullWhen(true)] out OutputData<T>? output)
+        {
+            var hasSpecialValue = prop.StructValue.Fields.TryGetValue(Constants.SpecialSigKey, out var outPutValueSig);
+            if (!hasSpecialValue || outPutValueSig.StringValue != Constants.SpecialOutputValueSig)
+            {
+                output = null;
+                return false;
+            }
+            var isKnown = prop.StructValue.Fields.TryGetValue(Constants.ValueName, out var value);
+            var isSecret = prop.StructValue.Fields.TryGetValue(Constants.SecretName, out var secretValue);
+            isSecret = isSecret && secretValue.BoolValue;
+            var hasDeps = prop.StructValue.Fields.TryGetValue(Constants.DependenciesName, out var depsValue);
+            var deps = ImmutableHashSet.CreateBuilder<Resource>();
+            foreach (var dep in depsValue.ListValue.Values)
+            {
+                deps.Add(new DependencyResource(dep.StringValue));
+            }
+            output = new OutputData<T>(deps.ToImmutable(), (T)(object)value, isKnown, isSecret);
+            return true;
         }
     }
 }

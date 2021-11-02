@@ -137,7 +137,6 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 {
                     Log.Debug($"Serialize property[{ctx}]: Recursing into Output");
                 }
-
                 var data = await output.GetDataAsync().ConfigureAwait(false);
                 this.DependentResources.AddRange(data.Resources);
                 var propResources = new HashSet<Resource>();
@@ -172,11 +171,11 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
                     builder.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
                     if (isKnown)
-                        builder.Add("value", value);
+                        builder.Add(Constants.ValueName, value);
                     if (isSecret)
-                        builder.Add("secret", isSecret);
+                        builder.Add(Constants.SecretName, isSecret);
                     if (dependencies.Count > 0)
-                        builder.Add("dependencies", dependencies.ToImmutableArray<object>());
+                        builder.Add(Constants.DependenciesName, dependencies.ToImmutableArray<object>());
                     return builder.ToImmutable();
                 }
 
@@ -187,7 +186,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 {
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
                     builder.Add(Constants.SpecialSigKey, Constants.SpecialSecretSig);
-                    builder.Add(Constants.SecretValueName, value);
+                    builder.Add(Constants.ValueName, value);
                     return builder.ToImmutable();
                 }
 

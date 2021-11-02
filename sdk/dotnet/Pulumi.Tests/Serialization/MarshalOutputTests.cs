@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Pulumi.Serialization;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 using Xunit;
 
 namespace Pulumi.Tests.Serialization
@@ -47,7 +48,6 @@ namespace Pulumi.Tests.Serialization
             {
                 get
                 {
-                    // TODO we don't create the `Ouput` we want here.
                     var d = OutputData.Create<object?>(this.resources, value_, isKnown, isSecret);
                     return new Output<object?>(Task.FromResult(d));
                 }
@@ -63,6 +63,15 @@ namespace Pulumi.Tests.Serialization
                     if (isSecret) b.Add("secret", isSecret);
                     if (deps.Length > 0) b.Add("dependencies", deps);
                     return b.ToImmutableDictionary();
+                }
+            }
+
+            public Output<object?> expectedRoundTrip
+            {
+                get
+                {
+                    var d = OutputData.Create<object?>(this.resources, isKnown ? this.expected : null, isKnown, isSecret);
+                    return new Output<object?>(Task.FromResult(d));
                 }
             }
 
@@ -106,6 +115,44 @@ namespace Pulumi.Tests.Serialization
                 }
             }
         }
+        private static void ShouldBeEquivalent<T>(OutputData<T> e, OutputData<T> a)
+        {
+            System.Func<IEnumerable<Resource>, Task<ImmutableSortedSet<string>>> urns = async (resources) =>
+            {
+                var s = ImmutableSortedSet.CreateBuilder<string>();
+                foreach (var r in resources)
+                {
+                    s.Add((await r.Urn.DataTask).Value);
+                }
+                return s.ToImmutable();
+            };
+            Assert.Equal(e.IsSecret, a.IsSecret);
+            Assert.Equal(e.IsKnown, a.IsKnown);
+            Assert.Equal(e.Value, a.Value);
+            Assert.Equal(urns(e.Resources), urns(a.Resources));
+        }
+
+        private static Value ToValue(object? o)
+        {
+            switch (o)
+            {
+                case null:
+                    return new Value { NullValue = NullValue.NullValue };
+                case string str:
+                    return new Value { StringValue = str };
+                case int i:
+                    return new Value { NumberValue = i };
+                case ImmutableDictionary<string, object?> dict:
+                    var s = new Struct();
+                    foreach (var (k, v) in dict)
+                    {
+                        s.Fields.Add(k, ToValue(v));
+                    }
+                    return new Value { StructValue = s };
+                default:
+                    throw new System.TypeAccessException($"Failed to create value type of type {o.GetType().FullName}");
+            }
+        }
 
         [Fact]
         static public async Task TransferProperties()
@@ -117,6 +164,15 @@ namespace Pulumi.Tests.Serialization
                     var s = new Serializer(excessiveDebugOutput: false, keepOutputValues: true);
                     var actual = await s.SerializeAsync("", test.input, true).ConfigureAwait(false) as ImmutableDictionary<string, object>;
                     ShouldBeEquivalent(test.expected, actual!);
+                    var f = new Struct();
+                    foreach (var (k, v) in actual!)
+                    {
+                        f.Fields.Add(k, ToValue(v));
+                    }
+                    var value = new Value();
+                    value.StructValue = f;
+                    var back = Deserializer.Deserialize(value);
+                    ShouldBeEquivalent(await test.expectedRoundTrip.DataTask, back);
                 });
             }
         }
