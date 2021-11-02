@@ -40,14 +40,14 @@ namespace Pulumi
         /// </summary>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
             string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources)
-	{
-	    var result = await SerializeFilteredPropertiesRawAsync(label, args, acceptKey, keepResources);
-	    return result.ToSerializationResult();
-	}
+        {
+            var result = await SerializeFilteredPropertiesRawAsync(label, args, acceptKey, keepResources);
+            return result.ToSerializationResult();
+        }
 
         /// <summary>
-	/// Acts as `SerializeFilteredPropertiesAsync` without the
-	/// last step of encoding the value into a Protobuf form.
+        /// Acts as `SerializeFilteredPropertiesAsync` without the
+        /// last step of encoding the value into a Protobuf form.
         /// </summary>
         private static async Task<RawSerializationResult> SerializeFilteredPropertiesRawAsync(
             string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources)
@@ -71,8 +71,8 @@ namespace Pulumi
             }
 
             return new RawSerializationResult(
-		result.ToImmutable(),
-		propertyToDependentResources.ToImmutable());
+                result.ToImmutable(),
+                propertyToDependentResources.ToImmutable());
         }
 
         private readonly struct SerializationResult
@@ -97,23 +97,23 @@ namespace Pulumi
             }
         }
 
-	private readonly struct RawSerializationResult
-	{
-	    public readonly ImmutableDictionary<string, object> PropertyValues;
+        private readonly struct RawSerializationResult
+        {
+            public readonly ImmutableDictionary<string, object> PropertyValues;
             public readonly ImmutableDictionary<string, HashSet<Resource>> PropertyToDependentResources;
 
-	    public RawSerializationResult(
-		ImmutableDictionary<string, object> propertyValues,
-		ImmutableDictionary<string, HashSet<Resource>> propertyToDependentResources)
-	    {
-		PropertyValues = propertyValues;
-		PropertyToDependentResources = propertyToDependentResources;
-	    }
+            public RawSerializationResult(
+                ImmutableDictionary<string, object> propertyValues,
+                ImmutableDictionary<string, HashSet<Resource>> propertyToDependentResources)
+            {
+                PropertyValues = propertyValues;
+                PropertyToDependentResources = propertyToDependentResources;
+            }
 
-	    public SerializationResult ToSerializationResult()
-		=> new SerializationResult(
-		    Serializer.CreateStruct(this.PropertyValues),
-		    this.PropertyToDependentResources);
-	}
+            public SerializationResult ToSerializationResult()
+                => new SerializationResult(
+                    Serializer.CreateStruct(this.PropertyValues),
+                    this.PropertyToDependentResources);
+        }
     }
 }
