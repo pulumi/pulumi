@@ -388,11 +388,11 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
         /// <summary>
         /// Detects encoded `Unknown` values in objects that conform
         /// to the grammar returned by `SerializeAsync`.
-	///
-	/// This possibly needs to be revisited to detect `Unknown`
-	/// values before `SerializeAsync` converts them, in the more
-	/// generic Output representation.
-	/// </summary>
+        ///
+        /// This possibly needs to be revisited to detect `Unknown`
+        /// values before `SerializeAsync` converts them, in the more
+        /// generic Output representation.
+        /// </summary>
         internal static bool ContainsUnknowns(object? value)
             => value switch
             {
