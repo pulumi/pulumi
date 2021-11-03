@@ -78,22 +78,6 @@ jobs:
           pulumictl create choco-deploy $(pulumictl get version --language generic -o)
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
-  docker:
-    name: Build Slim Docker Images
-    runs-on: ubuntu-latest
-    needs: [publish-sdks, verify-containers]
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
-        with:
-          repo: pulumi/pulumictl
-      - name: Repository Dispatch
-        run: |
-          pulumictl create containers $(pulumictl get version --language generic -o)
-        env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   docs:
     name: Build Package Docs
     runs-on: ubuntu-latest
