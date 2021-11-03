@@ -140,6 +140,9 @@ func (table Table) String() string {
 	return table.ToStringWithGap("  ")
 }
 
+// 7-bit C1 ANSI sequences
+var ansiEscape *regexp.Regexp = regexp.MustCompile(`\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`)
+
 func (table *Table) ToStringWithGap(columnGap string) string {
 	columnCount := len(table.Headers)
 
@@ -152,9 +155,6 @@ func (table *Table) ToStringWithGap(columnGap string) string {
 	}}
 
 	allRows = append(allRows, table.Rows...)
-
-	// 7-bit C1 ANSI sequences
-	ansiEscape := regexp.MustCompile(`\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`)
 
 	for rowIndex, row := range allRows {
 		columns := row.Columns
