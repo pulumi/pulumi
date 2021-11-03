@@ -34,7 +34,7 @@ namespace Pulumi
                         label,
                         dictionary,
                         await this.MonitorSupportsResourceReferences().ConfigureAwait(false),
-                        remote: remote && await MonitorSupportsOutputValues()).ConfigureAwait(false);
+                        keepOutputValues: remote && await MonitorSupportsOutputValues()).ConfigureAwait(false);
             LogExcessive($"Serialized properties: t={type}, name={name}, custom={custom}, remote={remote}");
 
             // Wait for the parent to complete.
@@ -124,9 +124,6 @@ namespace Pulumi
         private static Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
             => resources.ToOutput().GetValueAsync(whenUnknown: ImmutableArray<Resource>.Empty);
 
-        /// <summary>
-        /// Only for internal use
-        /// </summary>
         internal static async Task<HashSet<string>> GetAllTransitivelyReferencedResourceUrnsAsync(
             HashSet<Resource> resources)
         {

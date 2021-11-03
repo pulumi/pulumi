@@ -20,12 +20,12 @@ namespace Pulumi
         /// to registerResource.
         /// </summary>
         private static Task<SerializationResult> SerializeResourcePropertiesAsync(
-            string label, IDictionary<string, object?> args, bool keepResources, bool remote)
+            string label, IDictionary<string, object?> args, bool keepResources, bool keepOutputValues)
         {
             return SerializeFilteredPropertiesAsync(
                 label, args,
                 key => key != Constants.IdPropertyName && key != Constants.UrnPropertyName,
-                keepResources, keepOutputValues: remote);
+                keepResources, keepOutputValues: keepOutputValues);
         }
 
         private static async Task<Struct> SerializeAllPropertiesAsync(

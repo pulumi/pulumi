@@ -1,45 +1,45 @@
 // Copyright 2016-2021, Pulumi Corporation
+
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using Pulumi.Serialization;
 using System.Threading.Tasks;
+using Pulumi.Serialization;
 using Google.Protobuf.WellKnownTypes;
 using Xunit;
 
 namespace Pulumi.Tests.Serialization
 {
-    public class MarshalTests : PulumiTest
+    public class MarshalOutputTests : PulumiTest
     {
         public struct TestValue
         {
             public readonly string Name;
-            public ImmutableDictionary<string, object?> Expected;
+            public readonly ImmutableDictionary<string, object?> Expected;
+            public readonly Output<object?> Input;
 
-            public Output<object?> Input;
-            internal OutputData<object?> ExpectedRoundTrip;
+            // OutputData<object?> is `internal`, so `ExpectedRoundTrip` must
+            // also be `internal`.
+            internal readonly OutputData<object?> ExpectedRoundTrip;
 
-            public TestValue(object? value_, object? expected, string[] deps, bool isKnown, bool isSecret)
+            public TestValue(object? value, object? expected, string[] deps, bool isKnown, bool isSecret)
             {
-                Name = $"Output(deps={deps}, value={value_}, isKnown={isKnown}, isSecret={isSecret})";
+                Name = $"Output(deps={deps}, value={value}, isKnown={isKnown}, isSecret={isSecret})";
                 var r = new HashSet<Resource>();
-                foreach (var d in deps)
-                    r.Add(new DependencyResource(d));
-                var resources = r.ToImmutableHashSet();
-
+                var resources = ImmutableHashSet.CreateRange<Resource>(deps.Select(d => new DependencyResource(d)));
 
                 var b = ImmutableDictionary.CreateBuilder<string, object?>();
                 b.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
-                if (isKnown) b.Add("value", expected);
-                if (isSecret) b.Add("secret", isSecret);
-                if (deps.Length > 0) b.Add("dependencies", deps);
+                if (isKnown) b.Add(Constants.ValueName, expected);
+                if (isSecret) b.Add(Constants.SecretName, isSecret);
+                if (deps.Length > 0) b.Add(Constants.DependenciesName, deps);
                 Expected = b.ToImmutableDictionary();
 
-                var data = OutputData.Create<object?>(resources, value_, isKnown, isSecret);
+                var data = OutputData.Create<object?>(resources, value, isKnown, isSecret);
                 Input = new Output<object?>(Task.FromResult(data));
 
-                ExpectedRoundTrip = OutputData.Create<object?>(resources, isKnown ? ToValue(expected) : null, isKnown, isSecret);
+                ExpectedRoundTrip = OutputData.Create<object?>(resources, isKnown ? CreateValue(expected) : null, isKnown, isSecret);
             }
 
             public override string ToString() => Name;
@@ -53,7 +53,7 @@ namespace Pulumi.Tests.Serialization
                 1,
                 "",
                 "hi",
-                ImmutableDictionary.CreateBuilder<string, object?>().ToImmutable(),
+                ImmutableDictionary<string, object?>.Empty,
                 new List<object?>(),
             }
             from deps in new[] { Array.Empty<string>(), new[] { "fakeURN1", "fakeURN2" } }
@@ -87,9 +87,14 @@ namespace Pulumi.Tests.Serialization
         /// <summary>
         /// Asserts that two <c>OutputData<T></c> instances are sufficiently equivalent.
         /// </summary>
-        private async static Task AssertEquivalent<T>(OutputData<T> e, OutputData<T> a)
+        private static async Task AssertEquivalent<T>(OutputData<T> e, OutputData<T> a)
         {
-            System.Func<IEnumerable<Resource>, Task<ImmutableSortedSet<string>>> urns = async (resources) =>
+            Assert.Equal(e.IsSecret, a.IsSecret);
+            Assert.Equal(e.IsKnown, a.IsKnown);
+            Assert.Equal(e.Value, a.Value);
+            Assert.Equal(await GetUrns(e.Resources), await GetUrns(a.Resources));
+
+            static async Task<ImmutableSortedSet<string>> GetUrns(IEnumerable<Resource> resources)
             {
                 var s = ImmutableSortedSet.CreateBuilder<string>();
                 foreach (var r in resources)
@@ -97,52 +102,30 @@ namespace Pulumi.Tests.Serialization
                     s.Add((await r.Urn.DataTask).Value);
                 }
                 return s.ToImmutable();
-            };
-            Assert.Equal(e.IsSecret, a.IsSecret);
-            Assert.Equal(e.IsKnown, a.IsKnown);
-            Assert.Equal(e.Value, a.Value);
-            Assert.Equal(await urns(e.Resources), await urns(a.Resources));
-        }
-
-        /// <summary>
-        /// This is a poor implementation of the <c>ToValue</c> function, designed only for test code.
-        /// </summary>
-        private static Value ToValue(object? o)
-        {
-            switch (o)
-            {
-                case null:
-                    return new Value { NullValue = NullValue.NullValue };
-                case string str:
-                    return new Value { StringValue = str };
-                case int i:
-                    return new Value { NumberValue = i };
-                case ImmutableDictionary<string, object?> dict:
-                    var s = new Struct();
-                    foreach (var (k, v) in dict)
-                    {
-                        s.Fields.Add(k, ToValue(v));
-                    }
-                    return new Value { StructValue = s };
-                case bool b:
-                    return new Value { BoolValue = b };
-                case List<object> l:
-                    return ToValue(l.ToImmutableArray());
-                case ImmutableArray<object> iArray:
-                    var list = new ListValue();
-                    foreach (var v in iArray)
-                        list.Values.Add(ToValue(v));
-                    return new Value { ListValue = list };
-                default:
-                    throw new System.TypeAccessException($"Failed to create value type of type {o.GetType().FullName}");
             }
         }
 
+        /// <summary>
+        /// Internal for testing purposes.
+        /// </summary>
+        internal static Value CreateValue(object? value)
+            => value switch
+            {
+                null => Value.ForNull(),
+                int i => Value.ForNumber(i),
+                double d => Value.ForNumber(d),
+                bool b => Value.ForBool(b),
+                string s => Value.ForString(s),
+                ImmutableArray<object> list => Value.ForList(list.Select(CreateValue).ToArray()),
+                List<object> list => Value.ForList(list.Select(CreateValue).ToArray()),
+                ImmutableDictionary<string, object> dict => Value.ForStruct(Serializer.CreateStruct(dict)),
+                _ => throw new InvalidOperationException("Unsupported value when converting to protobuf: " + value.GetType().FullName),
+            };
+
         [Theory]
         [MemberData(nameof(AllValues))]
-        static public async Task TransferProperties(TestValue test)
-        {
-            await RunInNormal(async () =>
+        public static Task TestRoundTrip(TestValue test)
+            => RunInNormal(async () =>
             {
                 var s = new Serializer(excessiveDebugOutput: false);
                 var actual = await s.SerializeAsync(
@@ -150,9 +133,8 @@ namespace Pulumi.Tests.Serialization
                     keepResources: true,
                     keepOutputValues: true).ConfigureAwait(false) as ImmutableDictionary<string, object>;
                 AssertEquivalent(test.Expected, actual!);
-                var back = Deserializer.Deserialize(ToValue(actual!));
+                var back = Deserializer.Deserialize(CreateValue(actual!));
                 await AssertEquivalent(test.ExpectedRoundTrip, back);
             });
-        }
     }
 }

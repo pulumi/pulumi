@@ -205,7 +205,7 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// Check if the monitor supports the "resourceReferences" feature.
+        /// Check if the monitor supports the "outputValues" feature.
         /// </summary>
         internal Task<bool> MonitorSupportsOutputValues()
         {

@@ -136,9 +136,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 }
                 var data = await output.GetDataAsync().ConfigureAwait(false);
                 this.DependentResources.AddRange(data.Resources);
-                var propResources = new HashSet<Resource>();
-                propResources.UnionWith(data.Resources);
-
+                var propResources = new HashSet<Resource>(data.Resources);
 
                 // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
                 // sentinel. We will do the former for all outputs created directly by user code (such outputs always
@@ -146,9 +144,9 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 var isKnown = data.IsKnown;
                 var isSecret = data.IsSecret;
 
-                var child = new Serializer(_excessiveDebugOutput);
-                var value = await child.SerializeAsync($"{ctx}.id", data.Value, keepResources).ConfigureAwait(false);
-                var promiseDeps = child.DependentResources;
+                var valueSerializer = new Serializer(_excessiveDebugOutput);
+                var value = await valueSerializer.SerializeAsync($"{ctx}.id", data.Value, keepResources).ConfigureAwait(false);
+                var promiseDeps = valueSerializer.DependentResources;
                 this.DependentResources.UnionWith(promiseDeps);
                 propResources.UnionWith(promiseDeps);
 
@@ -157,9 +155,9 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     var urnDeps = new HashSet<Resource>();
                     foreach (var resource in propResources)
                     {
-                        var childURNResolver = new Serializer(_excessiveDebugOutput);
-                        await childURNResolver.SerializeAsync($"{ctx} dependency", resource.Urn, keepResources);
-                        urnDeps.UnionWith(childURNResolver.DependentResources);
+                        var urnSerializer = new Serializer(_excessiveDebugOutput);
+                        await urnSerializer.SerializeAsync($"{ctx} dependency", resource.Urn, keepResources);
+                        urnDeps.UnionWith(urnSerializer.DependentResources);
                     }
                     propResources.UnionWith(urnDeps);
                     this.DependentResources.UnionWith(urnDeps);
