@@ -22,6 +22,41 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestMeasureText(t *testing.T) {
+	cases := []struct {
+		text     string
+		expected int
+	}{
+		{
+			text:     "",
+			expected: 0,
+		},
+		{
+			text:     "a",
+			expected: 1,
+		},
+		{
+			text:     "├",
+			expected: 1,
+		},
+		{
+			text:     "├─  ",
+			expected: 4,
+		},
+		{
+			text:     "\x1b[4m\x1b[38;5;12mType\x1b[0m",
+			expected: 4,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.text, func(t *testing.T) {
+			count := MeasureText(c.text)
+			assert.Equal(t, c.expected, count)
+		})
+	}
+}
+
 func TestTablePrinting(t *testing.T) {
 	rows := []TableRow{
 		{Columns: []string{"A", "B", "C"}},
