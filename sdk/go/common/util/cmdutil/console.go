@@ -17,10 +17,11 @@ package cmdutil
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 
+	"github.com/rivo/uniseg"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
@@ -152,6 +153,9 @@ func (table *Table) ToStringWithGap(columnGap string) string {
 
 	allRows = append(allRows, table.Rows...)
 
+	// 7-bit C1 ANSI sequences
+	ansiEscape := regexp.MustCompile(`\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`)
+
 	for rowIndex, row := range allRows {
 		columns := row.Columns
 		if len(columns) != len(preferredColumnWidths) {
@@ -161,36 +165,42 @@ func (table *Table) ToStringWithGap(columnGap string) string {
 		}
 
 		for columnIndex, val := range columns {
-			preferredColumnWidths[columnIndex] = max(preferredColumnWidths[columnIndex], len(val))
+			// Strip ansi escape sequences
+			clean := ansiEscape.ReplaceAllString(val, "")
+
+			// Need to count graphemes not runes or bytes
+			preferredColumnWidths[columnIndex] = max(preferredColumnWidths[columnIndex], uniseg.GraphemeClusterCount(clean))
 		}
 	}
 
-	format := ""
-	for i, maxWidth := range preferredColumnWidths {
-		if i < len(preferredColumnWidths)-1 {
-			format += "%-" + strconv.Itoa(maxWidth+len(columnGap)) + "s"
-		} else {
+	result := ""
+	for _, row := range allRows {
+		result += table.Prefix
+
+		for columnIndex, val := range row.Columns {
+			result += val
+
+			if columnIndex < columnCount-1 {
+				// Work out how much whitespace we need to add to this string to bring it up to the
+				// preferredColumnWidth for this column. Remembering to ignore ansiEscapes
+
+				// Strip ansi escape sequences
+				clean := ansiEscape.ReplaceAllString(val, "")
+				maxWidth := preferredColumnWidths[columnIndex]
+				padding := maxWidth - uniseg.GraphemeClusterCount(clean)
+				result += strings.Repeat(" ", padding)
+
+				// Now, ensure we have the requested gap between columns as well.
+				result += columnGap
+			}
 			// do not want whitespace appended to the last column.  It would cause wrapping on lines
 			// that were not actually long if some other line was very long.
-			format += "%s"
-		}
-	}
-	format += "\n"
-	result := ""
-	columns := make([]interface{}, columnCount)
-	for _, row := range allRows {
-		for columnIndex, value := range row.Columns {
-			// Now, ensure we have the requested gap between columns as well.
-			if columnIndex < columnCount-1 {
-				value += columnGap
-			}
-
-			columns[columnIndex] = value
 		}
 
-		result += fmt.Sprintf(table.Prefix+format, columns...)
+		result += "\n"
+
 		if row.AdditionalInfo != "" {
-			result += fmt.Sprint(row.AdditionalInfo)
+			result += row.AdditionalInfo
 		}
 	}
 	return result
