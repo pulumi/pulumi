@@ -158,16 +158,20 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// Check each proposed step against the relevant resource plan, if any, and generate any output resource plans.
 	for _, s := range steps {
-		if resourcePlan, ok := sg.deployment.plan[s.URN()]; ok {
-			if len(resourcePlan.Ops) == 0 {
-				return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
-			}
+		if sg.deployment.plan != nil {
+			if resourcePlan, ok := sg.deployment.plan[s.URN()]; ok {
+				if len(resourcePlan.Ops) == 0 {
+					return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
+				}
 
-			constraint := resourcePlan.Ops[0]
-			if !s.Op().ConstrainedTo(constraint) {
-				return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+				constraint := resourcePlan.Ops[0]
+				if !s.Op().ConstrainedTo(constraint) {
+					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+				}
+				resourcePlan.Ops = resourcePlan.Ops[1:]
+			} else {
+				return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
 			}
-			resourcePlan.Ops = resourcePlan.Ops[1:]
 		}
 
 		resourcePlan, ok := sg.deployment.newPlans.get(s.URN())
@@ -758,6 +762,30 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 				}
 			}
 		}
+	}
+
+	// Check each proposed delete against the relevant resource plan
+	for _, s := range dels {
+		if resourcePlan, ok := sg.deployment.plan[s.URN()]; ok {
+			if len(resourcePlan.Ops) == 0 {
+				return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
+			}
+
+			constraint := resourcePlan.Ops[0]
+			if !s.Op().ConstrainedTo(constraint) {
+				return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+			}
+			resourcePlan.Ops = resourcePlan.Ops[1:]
+		}
+
+		resourcePlan, ok := sg.deployment.newPlans.get(s.URN())
+		if !ok {
+			// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
+			// application. However, it is necessary in the face of computed inputs.
+			resourcePlan = &ResourcePlan{}
+			sg.deployment.newPlans.set(s.URN(), resourcePlan)
+		}
+		resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 	}
 
 	// If -target was provided to either `pulumi update` or `pulumi destroy` then only delete

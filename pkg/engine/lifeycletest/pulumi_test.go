@@ -2691,3 +2691,112 @@ func TestPlannedUpdate(t *testing.T) {
 	})
 	assert.Equal(t, expected, snap.Resources[1].Outputs)
 }
+
+func TestUnplannedCreate(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	createResource := false
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		if createResource {
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: ins,
+			})
+			assert.NoError(t, err)
+		}
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Create a plan to do nothing
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(nil), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Now set the flag for the language runtime to create a resource, and run update with the plan
+	createResource = true
+	p.Options.Plan = plan
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+
+	// Check nothing was was created
+	assert.NotNil(t, snap)
+	if !assert.Len(t, snap.Resources, 0) {
+		return
+	}
+}
+
+func TestUnplannedDelete(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
+					return resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	createAllResources := true
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		if createAllResources {
+			_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs: ins,
+			})
+			assert.NoError(t, err)
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Create an initial snapshot that resA and resB exist
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Create a plan that resA and resB won't change
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(snap), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Now set the flag for the language runtime to not create resB and run an update with the no-op plan, this should block the delete
+	createAllResources = false
+	p.Options.Plan = plan
+	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.NotNil(t, res)
+
+	// Check both resources and the provider are still listed in the snapshot
+	if !assert.Len(t, snap.Resources, 3) {
+		return
+	}
+}
