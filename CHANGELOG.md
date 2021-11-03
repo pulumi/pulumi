@@ -8,14 +8,6 @@ CHANGELOG
 - [cli] - Reformat error message string in `sdk/go/common/diag/errors.go`.
   [#8284](https://github.com/pulumi/pulumi/pull/8284)
 
-### Bug Fixes
-
-- [sdk/go] - Respect implicit parents in alias resolution.
-  [#8288](https://github.com/pulumi/pulumi/pull/8288)
-
-- Clarify error message string in `sdk/go/common/diag/errors.go`.
-  [#8284](https://github.com/pulumi/pulumi/pull/8284)
-
 - [cli] - Add `--json` flag to `up`, `destroy` and `refresh`.
 
   Passing the `--json` flag to `up`, `destroy` and `refresh` will stream JSON events from the engine to stdout.
@@ -23,6 +15,11 @@ CHANGELOG
   However, the streaming output can be extended to `preview` by using the `PULUMI_ENABLE_STREAMING_JSON_PREVIEW` environment variable.
 
   [#8275](https://github.com/pulumi/pulumi/pull/8275)
+
+### Bug Fixes
+
+- [sdk/go] - Respect implicit parents in alias resolution.
+  [#8288](https://github.com/pulumi/pulumi/pull/8288)
 
 - [sdk/python] - Expand dependencies when marshaling output values.
   [#8301](https://github.com/pulumi/pulumi/pull/8301)
