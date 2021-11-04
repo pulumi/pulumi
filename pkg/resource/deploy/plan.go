@@ -97,8 +97,15 @@ func (rp *ResourcePlan) diffPropertyDependencies(a, b map[resource.PropertyKey][
 }
 
 func (rp *ResourcePlan) checkGoal(programGoal *resource.Goal) error {
-	contract.Assert(rp.Goal.Type == programGoal.Type)
-	contract.Assert(rp.Goal.Name == programGoal.Name)
+	contract.Assert(programGoal != nil)
+	// rp.Goal may be nil, but if it isn't Type and Name should match
+	contract.Assert(rp.Goal == nil || rp.Goal.Type == programGoal.Type)
+	contract.Assert(rp.Goal == nil || rp.Goal.Name == programGoal.Name)
+
+	if rp.Goal == nil {
+		// If the plan goal is nil it expected a delete
+		return fmt.Errorf("resource unexpectedly not deleted")
+	}
 
 	// Check that either both resources are custom resources or both are component resources.
 	if programGoal.Custom != rp.Goal.Custom {

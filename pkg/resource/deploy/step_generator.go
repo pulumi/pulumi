@@ -241,7 +241,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	sg.urns[urn] = true
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
-	if len(sg.deployment.plan) != 0 {
+	if sg.deployment.plan != nil {
 		resourcePlan, ok := sg.deployment.plan[urn]
 		if !ok {
 			return nil, result.Errorf("resource not found in plan")
