@@ -276,6 +276,7 @@ from . import _utils
 
 T = TypeVar('T')
 
+
 _PULUMI_NAME = "_pulumi_name"
 _PULUMI_INPUT_TYPE = "_pulumi_input_type"
 _PULUMI_OUTPUT_TYPE = "_pulumi_output_type"
@@ -286,27 +287,22 @@ _TRANSLATE_PROPERTY = "_translate_property"
 def is_input_type(cls: type) -> bool:
     return hasattr(cls, _PULUMI_INPUT_TYPE)
 
-
 def is_output_type(cls: type) -> bool:
     return hasattr(cls, _PULUMI_OUTPUT_TYPE)
 
 
 class _MISSING_TYPE:
     pass
-
-
 MISSING = _MISSING_TYPE()
 """
 MISSING is a singleton sentinel object to detect if a parameter is supplied or not.
 """
-
 
 class _Property:
     """
     Represents a Pulumi property. It is not meant to be created outside this module,
     rather, the property() function should be used.
     """
-
     def __init__(self, name: str, default: Any = MISSING) -> None:
         if not name:
             raise TypeError("Missing name argument")
@@ -394,10 +390,8 @@ def _create_py_property(a_name: str, pulumi_name: str, typ: Any, setter: bool = 
     """
     Returns a Python property getter that looks up the value using get.
     """
-
     def getter_fn(self):
         return get(self, a_name)
-
     getter_fn.__name__ = a_name
     getter_fn.__annotations__ = {"return": typ}
     setattr(getter_fn, _PULUMI_NAME, pulumi_name)
@@ -405,7 +399,6 @@ def _create_py_property(a_name: str, pulumi_name: str, typ: Any, setter: bool = 
     if setter:
         def setter_fn(self, value):
             return set(self, a_name, value)
-
         setter_fn.__name__ = a_name
         setter_fn.__annotations__ = {"value": typ}
         return builtins.property(fget=getter_fn, fset=setter_fn)
@@ -422,7 +415,6 @@ def _py_properties(cls: type) -> Iterator[Tuple[str, str, builtins.property]]:
                 if pulumi_name is not MISSING:
                     yield (python_name, pulumi_name, prop)
 
-
 def input_type(cls: Type[T]) -> Type[T]:
     """
     Returns the same class as was passed in, but marked as an input type.
@@ -438,7 +430,6 @@ def input_type(cls: Type[T]) -> Type[T]:
     def create_setter(name: str) -> Callable:
         def setter_fn(self, value):
             set(self, name, value)
-
         return setter_fn
 
     # Now, process the class's properties, replacing properties with empty setters with
@@ -549,7 +540,6 @@ def getter(_fn=None, *, name: Optional[str] = None):
 
     name is the Pulumi property name. If not set, the name of the function is used.
     """
-
     def decorator(fn: Callable) -> Callable:
         if not callable(fn):
             raise TypeError("Expected fn to be callable")
@@ -561,7 +551,6 @@ def getter(_fn=None, *, name: Optional[str] = None):
             def get_fn(self):
                 # Get the value using the Python name, which is the name of the function.
                 return get(self, fn.__name__)
-
             fn = get_fn
         setattr(fn, _PULUMI_NAME, pulumi_name)
         return fn
@@ -651,22 +640,41 @@ if sys.version_info[:2] >= (3, 8):
     get_origin = typing.get_origin  # type: ignore
     # pylint: disable=no-member
     get_args = typing.get_args  # type: ignore
-else:
+elif sys.version_info[:2] >= (3, 7):
     def get_origin(tp):
         if isinstance(tp, typing._GenericAlias):  # type: ignore
             return tp.__origin__
         return None
 
-
     def get_args(tp):
         if isinstance(tp, typing._GenericAlias):  # type: ignore
+            return tp.__args__
+        return ()
+else:
+    def get_origin(tp):
+        if hasattr(tp, "__origin__"):
+            return tp.__origin__
+        return None
+
+    def get_args(tp):
+        # Emulate the behavior of get_args for Union on Python 3.6.
+        if _is_union_type(tp) and hasattr(tp, "_subs_tree"):
+            tree = tp._subs_tree()
+            if isinstance(tree, tuple) and len(tree) > 1:
+                def _eval(args):
+                    return tuple(arg if not isinstance(arg, tuple) else arg[0][_eval(arg[1:])] for arg in args)
+                return _eval(tree[1:])
+        if hasattr(tp, "__args__"):
             return tp.__args__
         return ()
 
 
 def _is_union_type(tp):
-    return (tp is Union or
-            isinstance(tp, typing._GenericAlias) and tp.__origin__ is Union)  # type: ignore
+    if sys.version_info[:2] >= (3, 7):
+        return (tp is Union or
+                isinstance(tp, typing._GenericAlias) and tp.__origin__ is Union)  # type: ignore
+    # pylint: disable=unidiomatic-typecheck, no-member
+    return type(tp) is typing._Union  # type: ignore
 
 
 def _is_optional_type(tp):
@@ -911,29 +919,29 @@ def unwrap_type(val: type) -> type:
         def isInputType(args):
             assert len(args) > 1
             return (is_input_type(args[0]) and
-                    args[1] is dict or get_origin(args[1]) in {dict, Dict, Mapping, collections.abc.Mapping})
+                args[1] is dict or get_origin(args[1]) in {dict, Dict, Mapping, collections.abc.Mapping})
 
-        def isInput(args, i=1):
+        def isInput(args, i = 1):
             assert len(args) > i + 1
             return (get_origin(args[i]) in {typing.Awaitable, collections.abc.Awaitable} and
-                    get_origin(args[i + 1]) is Output)
+                get_origin(args[i + 1]) is Output)
 
         args = get_args(val)
         if len(args) == 2:
-            if isInputType(args):  # InputType[T]
+            if isInputType(args): # InputType[T]
                 return args[0]
         elif len(args) == 3:
-            if isInput(args):  # Input[T]
+            if isInput(args): # Input[T]
                 return args[0]
-            if isInputType(args) and args[2] is type(None):  # Optional[InputType[T]]
+            if isInputType(args) and args[2] is type(None): # Optiona[InputType[T]]
                 return args[0]
         elif len(args) == 4:
-            if isInput(args) and args[3] is type(None):  # Optional[Input[T]]
+            if isInput(args) and args[3] is type(None): # Optional[Input[T]]
                 return args[0]
-            if isInputType(args) and isInput(args, 2):  # Input[InputType[T]]
+            if isInputType(args) and isInput(args, 2): # Input[InputType[T]]
                 return args[0]
         elif len(args) == 5:
-            if isInputType(args) and isInput(args, 2) and args[4] is type(None):  # Optional[Input[InputType[T]]]
+            if isInputType(args) and isInput(args, 2) and args[4] is type(None): # Optional[Input[InputType[T]]]
                 return args[0]
 
     return unwrap_optional_type(val)

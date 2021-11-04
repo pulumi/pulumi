@@ -140,6 +140,18 @@ func (table Table) String() string {
 	return table.ToStringWithGap("  ")
 }
 
+// 7-bit C1 ANSI sequences
+var ansiEscape = regexp.MustCompile(`\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`)
+
+// MeasureText returns the number of glyphs in a string.
+// Importantly this also ignores ANSI escape sequences, so can be used to calculate layout of colorized strings.
+func MeasureText(text string) int {
+	// Strip ansi escape sequences
+	clean := ansiEscape.ReplaceAllString(text, "")
+	// Need to count graphemes not runes or bytes
+	return uniseg.GraphemeClusterCount(clean)
+}
+
 func (table *Table) ToStringWithGap(columnGap string) string {
 	columnCount := len(table.Headers)
 
@@ -153,9 +165,6 @@ func (table *Table) ToStringWithGap(columnGap string) string {
 
 	allRows = append(allRows, table.Rows...)
 
-	// 7-bit C1 ANSI sequences
-	ansiEscape := regexp.MustCompile(`\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`)
-
 	for rowIndex, row := range allRows {
 		columns := row.Columns
 		if len(columns) != len(preferredColumnWidths) {
@@ -165,11 +174,7 @@ func (table *Table) ToStringWithGap(columnGap string) string {
 		}
 
 		for columnIndex, val := range columns {
-			// Strip ansi escape sequences
-			clean := ansiEscape.ReplaceAllString(val, "")
-
-			// Need to count graphemes not runes or bytes
-			preferredColumnWidths[columnIndex] = max(preferredColumnWidths[columnIndex], uniseg.GraphemeClusterCount(clean))
+			preferredColumnWidths[columnIndex] = max(preferredColumnWidths[columnIndex], MeasureText(val))
 		}
 	}
 
@@ -182,12 +187,10 @@ func (table *Table) ToStringWithGap(columnGap string) string {
 
 			if columnIndex < columnCount-1 {
 				// Work out how much whitespace we need to add to this string to bring it up to the
-				// preferredColumnWidth for this column. Remembering to ignore ansiEscapes
+				// preferredColumnWidth for this column.
 
-				// Strip ansi escape sequences
-				clean := ansiEscape.ReplaceAllString(val, "")
 				maxWidth := preferredColumnWidths[columnIndex]
-				padding := maxWidth - uniseg.GraphemeClusterCount(clean)
+				padding := maxWidth - MeasureText(val)
 				result += strings.Repeat(" ", padding)
 
 				// Now, ensure we have the requested gap between columns as well.

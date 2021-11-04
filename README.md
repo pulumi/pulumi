@@ -173,8 +173,8 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 | Architecture | Build Status |
 | ------------ | ------------ |
-| Linux/macOS x64 | ![Linux x64 Build Status](https://github.com/pulumi/pulumi/actions/workflows/master.yml/badge.svg)                |
-| Windows x64     | ![Windows x64 Build Status](https://github.com/pulumi/pulumi/actions/workflows/master.yml/badge.svg) |
+| Linux/macOS x64 | [![Linux x64 Build Status](https://travis-ci.com/pulumi/pulumi.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi)                |
+| Windows x64     | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true&branch=master)](https://ci.appveyor.com/project/pulumi/pulumi) |
 
 ### Languages
 
@@ -182,7 +182,7 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 | -- | -------- | ------ | ------- |
 | <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](./sdk/nodejs) | Stable  | Node.js 12+  |
 | <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](./sdk/nodejs) | Stable  | Node.js 12+  |
-| <img src="https://www.pulumi.com/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python)     | Stable  | Python 3.7+ |
+| <img src="https://www.pulumi.com/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python)     | Stable  | Python 3.6+ |
 | <img src="https://www.pulumi.com/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go)             | Stable  | Go 1.14+   |
 | <img src="https://www.pulumi.com/logos/tech/dotnet.png" height=38 />      | [.NET (C#/F#/VB.NET)](./sdk/dotnet)     | Stable  | .NET Core 3.1+  |
 
@@ -193,5 +193,5 @@ full list of supported cloud and infrastructure providers.
 
 ## Contributing
 
-Please see [CONTRIBUTING.md](https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md)
+Please See [CONTRIBUTING.md](https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md)
 for information on building Pulumi from source or contributing improvements.
