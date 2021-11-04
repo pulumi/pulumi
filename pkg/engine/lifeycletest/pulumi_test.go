@@ -2805,3 +2805,68 @@ func TestUnplannedDelete(t *testing.T) {
 		return
 	}
 }
+
+func TestExpectedDelete(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DeleteF: func(
+					urn resource.URN,
+					id resource.ID,
+					olds resource.PropertyMap,
+					timeout float64) (resource.Status, error) {
+					return resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	createAllResources := true
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		if createAllResources {
+			_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs: ins,
+			})
+			assert.NoError(t, err)
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Create an initial snapshot that resA and resB exist
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Create a plan that resA is same and resB is deleted
+	createAllResources = false
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(snap), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Now run but set the runtime to return resA and resB, given we expected resB to be deleted
+	// this should be an error
+	createAllResources = true
+	p.Options.Plan = plan
+	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.NotNil(t, res)
+
+	// Check both resources and the provider are still listed in the snapshot
+	if !assert.Len(t, snap.Resources, 3) {
+		return
+	}
+}
