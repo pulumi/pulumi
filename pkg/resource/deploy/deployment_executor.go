@@ -267,6 +267,16 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		res = ex.checkTargets(opts.UpdateTargets, OpUpdate)
 	}
 
+	// Check that we did operations for everything expected in the plan. We mutate ResourcePlan.Ops as we run
+	// so by the time we get here everything in the map should have an empty ops list
+	if ex.deployment.plan != nil {
+		for urn, resourcePlan := range ex.deployment.plan {
+			if len(resourcePlan.Ops) != 0 {
+				return nil, result.Errorf("Expected resource operations for %v but none were seen.", urn)
+			}
+		}
+	}
+
 	if res != nil && res.IsBail() {
 		return nil, res
 	}
