@@ -39,7 +39,7 @@ namespace Pulumi.Tests.Serialization
                 var data = OutputData.Create<object?>(resources, value, isKnown, isSecret);
                 Input = new Output<object?>(Task.FromResult(data));
 
-                ExpectedRoundTrip = OutputData.Create<object?>(resources, isKnown ? CreateValue(expected) : null, isKnown, isSecret);
+                ExpectedRoundTrip = OutputData.Create<object?>(resources, isKnown ? expected : null, isKnown, isSecret);
             }
 
             public override string ToString() => Name;
@@ -49,8 +49,8 @@ namespace Pulumi.Tests.Serialization
             from tv in new object?[]
             {
                 null,
-                0,
-                1,
+                0.0,
+                1.0,
                 "",
                 "hi",
                 ImmutableDictionary<string, object?>.Empty,

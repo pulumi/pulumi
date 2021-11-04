@@ -29,7 +29,12 @@ namespace Pulumi.Serialization
             }
             if (TryDeserializeOutputValue<T>(value, out var deps, out var innerValue, out var isKnown, out var internalIsSecret))
             {
-                return new OutputData<T>(deps, (T)(object)innerValue, isKnown, isSecret || internalIsSecret);
+                // We use `DeserializeCore` instead of just calling `func` because `innerValue` might be a `Resource` (or any other
+                // special Pulumi data type). We use `DeserializeCore` instead of `Deserialize` to avoid a circular dependency
+                // between the two.
+                return new OutputData<T>(
+                    deps, isKnown ? DeserializeCore(innerValue, func).Value : default!,
+                    isKnown, isSecret || internalIsSecret);
             }
             if (TryDeserializeResource(value, out var resource))
             {
