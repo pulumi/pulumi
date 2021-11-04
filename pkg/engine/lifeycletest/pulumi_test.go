@@ -2746,7 +2746,11 @@ func TestUnplannedDelete(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
+				DeleteF: func(
+					urn resource.URN,
+					id resource.ID,
+					olds resource.PropertyMap,
+					timeout float64) (resource.Status, error) {
 					return resource.StatusOK, nil
 				},
 			}, nil
@@ -2788,7 +2792,8 @@ func TestUnplannedDelete(t *testing.T) {
 	plan, res := TestOp(Update).Plan(project, p.GetTarget(snap), p.Options, p.BackendClient, nil)
 	assert.Nil(t, res)
 
-	// Now set the flag for the language runtime to not create resB and run an update with the no-op plan, this should block the delete
+	// Now set the flag for the language runtime to not create resB and run an update with
+	// the no-op plan, this should block the delete
 	createAllResources = false
 	p.Options.Plan = plan
 	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
