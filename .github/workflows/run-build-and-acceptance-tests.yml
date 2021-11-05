@@ -87,9 +87,23 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Diagnose python paths
+        run: |
+          which pipenv
+          pipenv --version
+          which python
+          python --version
+          python -m pipenv --version
       - name: Install pipenv
         run: |
           python -m pip install --upgrade pipenv requests wheel
+      - name: Diagnose python paths once more
+        run: |
+          which pipenv
+          pipenv --version
+          which python
+          python --version
+          python -m pipenv --version
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
