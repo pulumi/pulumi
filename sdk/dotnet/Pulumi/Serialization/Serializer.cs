@@ -401,10 +401,8 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 double d => false,
                 bool b => false,
                 string s => s == Constants.UnknownValue,
-                ImmutableArray<object> list => list.Any(ContainsUnknowns),
-                ImmutableDictionary<string, object> dict =>
-                    dict.Values.Any(ContainsUnknowns) ||
-                    dict.Keys.Contains(Constants.UnknownValue),
+                ImmutableArray<object> list => list.Any(v => ContainsUnknowns(v)),
+                ImmutableDictionary<string, object> dict => dict.AnyValues(v => ContainsUnknowns(v)),
                 _ => throw new InvalidOperationException("Unsupported value when converting to protobuf: " + value.GetType().FullName),
             };
 
