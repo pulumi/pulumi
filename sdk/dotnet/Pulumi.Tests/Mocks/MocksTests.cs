@@ -132,8 +132,7 @@ namespace Pulumi.Tests.Mocks
                 new Issue8322.ReproMocks(),
                 new TestOptions() { IsPreview = true }
             );
-            var stack = resources.OfType<Issue8322.ReproStack>().FirstOrDefault();
-            Assert.NotNull(stack);
+            var stack = resources.OfType<Issue8322.ReproStack>().Single();
             var result = await stack.Result.GetValueAsync(whenUnknown: "unknown!");
             Assert.Equal("unknown!", result);
         }

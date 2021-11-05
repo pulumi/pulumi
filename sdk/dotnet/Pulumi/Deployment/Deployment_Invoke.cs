@@ -61,9 +61,9 @@ namespace Pulumi
 
             // Short-circuit actually invoking if `Unknowns` are
             // present in `args`, otherwise preview can break.
-            if (serializedArgs.PropertyValues.Values.Any(Serializer.ContainsUnknowns))
+            if (Serializer.ContainsUnknowns(serializedArgs.PropertyValues))
             {
-                return new OutputData<T>(resources: ImmutableHashSet.Create<Resource>(),
+                return new OutputData<T>(resources: ImmutableHashSet<Resource>.Empty,
                                          value: default!,
                                          isKnown: false,
                                          isSecret: false);
