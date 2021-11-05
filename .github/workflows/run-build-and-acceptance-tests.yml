@@ -87,6 +87,14 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Install pipenv in an isolated fashion
+        run: |
+          python -m venv /tmp/pipenv-venv
+          /tmp/pipenv-venv/bin/python -m pip install pipenv
+          ln -s /tmp/pipenv-venv/bin/pipenv /home/runner/.local/bin/pipenv
+      - name: Verify isolated pipenv install
+        run: |
+          which pipenv && pipenv --version || echo "no pipenv"
       - name: Diagnose python paths
         run: |
           which pipenv && pipenv --version || echo "no pipenv"
