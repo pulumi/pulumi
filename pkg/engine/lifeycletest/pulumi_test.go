@@ -2940,3 +2940,49 @@ func TestExpectedCreate(t *testing.T) {
 		return
 	}
 }
+
+func TestPropertySetChange(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "baz",
+	})
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Create an initial plan to create resA
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(nil), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Now change the runtime to not return property "frob", this should error
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	p.Options.Plan = plan
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.NotNil(t, res)
+}
