@@ -89,19 +89,13 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Diagnose python paths
         run: |
-          which pipenv
-          pipenv --version
-          which python
-          python --version
-          python -m pipenv --version
+          which pipenv && pipenv --version || echo "no pipenv"
       - name: Install pipenv
         run: |
           python -m pip install --upgrade pipenv requests wheel
       - name: Diagnose python paths once more
         run: |
-          which pipenv
-          pipenv --version
-          which python
+          which pipenv && pipenv --version || echo "no pipenv"
           python --version
           python -m pipenv --version
       - name: Setup git
