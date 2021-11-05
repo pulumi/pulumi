@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -52,6 +53,7 @@ func newDestroyCmd() *cobra.Command {
 	var yes bool
 	var targets *[]string
 	var targetDependents bool
+	var excludeProtected bool
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -149,6 +151,24 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
+
+			var protectedCount int
+			if excludeProtected {
+				snapshot, err := s.Snapshot(commandContext())
+				if err != nil {
+					return result.FromError(err)
+				}
+				var unprotected []*resource.State
+				unprotected, protected := seperateProtected(snapshot.Resources)
+				protectedCount = len(protected)
+				for _, r := range unprotected {
+					targetUrns = append(targetUrns, r.URN)
+				}
+			}
+
+			if targets != nil && len(*targets) > 0 && excludeProtected {
+				return result.FromError(errors.New("You cannot specify --target and --exclude-protected"))
+			}
 			opts.Engine = engine.UpdateOptions{
 				Parallel:                  parallel,
 				Debug:                     debug,
@@ -170,8 +190,10 @@ func newDestroyCmd() *cobra.Command {
 				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
 			})
-
-			if res == nil && len(*targets) == 0 && !jsonDisplay {
+			if protectedCount > 0 {
+				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
+					" associated with this stack.\n", protectedCount)
+			} else if res == nil && len(*targets) == 0 && !jsonDisplay {
 				fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 					"associated with the stack are still maintained. \nIf you want to remove the stack "+
 					"completely, run 'pulumi stack rm %s'.\n", s.Ref())
@@ -202,6 +224,8 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&targetDependents, "target-dependents", false,
 		"Allows destroying of dependent targets discovered but not specified in --target list")
+	cmd.PersistentFlags().BoolVar(&excludeProtected, "exclude-protected", false, "Do not destroy protected resources."+
+		" Destroy all other resources.")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(
@@ -256,4 +280,58 @@ func newDestroyCmd() *cobra.Command {
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
 	return cmd
+}
+
+// seperateProtected returns a list or unprotected and protected resources
+// respectively. Protection is contravarient.
+//
+// A
+// B: Parent = A
+// C: Parent = A, Protect = True
+//
+// -->
+//
+// Unprotected: B
+// Protected: A, C
+//
+// We rely on the fact that `resources` is topologically sorted with respect to its dependencies.
+func seperateProtected(resources []*resource.State) ([]*resource.State, []*resource.State) {
+	// We create a wrapper because we don't want to mutate the contents of
+	// `resources`.
+	type node struct {
+		protected bool
+		resource  *resource.State
+	}
+
+	urns := make(map[resource.URN]*node, len(resources))
+
+	for _, resource := range resources {
+		urns[resource.URN] = &node{resource.Protect, resource}
+		r := urns[resource.URN]
+		if r.protected {
+			for {
+				// If p is already protected, we don't need to continue to
+				// traverse. All nodes above p will have already been marked as
+				// protected.
+				if p, ok := urns[r.resource.Parent]; ok && !p.protected {
+					p.protected = true
+					r = p
+				} else {
+					break
+				}
+			}
+		}
+	}
+	unprotected := make([]*resource.State, 0)
+	protected := make([]*resource.State, 0)
+	for urn, r := range urns {
+		// Default providers do not have a reasonable place in the resource DAG.
+		// We ignore them.
+		if !r.protected && !providers.IsDefaultProvider(urn) {
+			unprotected = append(unprotected, r.resource)
+		} else if !providers.IsDefaultProvider(urn) {
+			protected = append(protected, r.resource)
+		}
+	}
+	return unprotected, protected
 }
