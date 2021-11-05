@@ -101,7 +101,7 @@ jobs:
           which pipenv && pipenv --version || echo "no pipenv"
       - name: Install pipenv
         run: |
-          python -m pip install --upgrade pipenv requests wheel
+          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
       - name: Diagnose python paths once more
         run: |
           which pipenv && pipenv --version || echo "no pipenv"
@@ -195,7 +195,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Install pipenv
         run: |
-          python -m pip install --upgrade pipenv requests wheel
+          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
