@@ -87,27 +87,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Install pipenv in an isolated fashion
-        run: |
-          python -m venv /tmp/pipenv-venv
-          /tmp/pipenv-venv/bin/python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
-          mkdir -p /home/runner/.local/bin
-          ln -s /tmp/pipenv-venv/bin/pipenv /home/runner/.local/bin/pipenv-iso
-      - name: Verify isolated pipenv install
-        run: |
-          which pipenv-iso && pipenv-iso --version || echo "no pipenv-iso"
-      - name: Diagnose python paths
-        run: |
-          which pipenv && pipenv --version || echo "no pipenv"
       - name: Install pipenv
         run: |
           python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
-      - name: Diagnose python paths once more
-        run: |
-          which pipenv && pipenv --version || echo "no pipenv"
-          python --version
-          python -c 'import sys; print("\n".join(sys.path))'
-          python -m pipenv --version
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
