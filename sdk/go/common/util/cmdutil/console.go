@@ -88,6 +88,12 @@ func IsTruthy(s string) bool {
 	return s == "1" || strings.EqualFold(s, "true")
 }
 
+// IsFalsy returns true if the given string represents a CLI input interpreted as "false".
+// It is not the case that !IsTruthy => IsFalsy.
+func IsFalsy(s string) bool {
+	return s == "0" || strings.EqualFold(s, "false")
+}
+
 // RemoveTrailingNewline removes a trailing newline from a string. On windows, we'll remove either \r\n or \n, on other
 // platforms, we just remove \n.
 func RemoveTrailingNewline(s string) string {
