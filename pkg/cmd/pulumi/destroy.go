@@ -156,6 +156,8 @@ func newDestroyCmd() *cobra.Command {
 				snapshot, err := s.Snapshot(commandContext())
 				if err != nil {
 					return result.FromError(err)
+				} else if snapshot == nil {
+					return result.FromError(errors.New("Failed to find the stack snapshot. Are you in a stack?"))
 				}
 				var unprotected []*resource.State
 				unprotected, protected := seperateProtected(snapshot.Resources)
