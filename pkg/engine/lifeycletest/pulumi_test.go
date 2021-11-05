@@ -2986,3 +2986,6 @@ func TestPropertySetChange(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.NotNil(t, res)
 }
+
+// Test that if we expect a create but end up doing a same that's ok
+// Likewise if we expect a delete but its already gone, that's ok
