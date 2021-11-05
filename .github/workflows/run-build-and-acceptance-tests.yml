@@ -97,6 +97,7 @@ jobs:
         run: |
           which pipenv && pipenv --version || echo "no pipenv"
           python --version
+          python -c 'import sys; print("\n".join(sys.path))'
           python -m pipenv --version
       - name: Setup git
         run: |
