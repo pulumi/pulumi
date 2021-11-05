@@ -65,7 +65,7 @@ const (
 )
 
 var (
-	mimimumPythonVersion      = semver.MustParse("3.6.0")
+	mimimumPythonVersion      = semver.MustParse("3.7.0")
 	minimumPythonVersionIssue = "pulumi/pulumi issue #8131"
 )
 
