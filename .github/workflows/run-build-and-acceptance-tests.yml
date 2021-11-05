@@ -89,7 +89,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Install pipenv
         run: |
-          python -m pip install --upgrade pipenv wheel
+          python -m pip install --upgrade pipenv requests wheel
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -177,7 +177,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Install pipenv
         run: |
-          python -m pip install --upgrade pipenv wheel
+          python -m pip install --upgrade pipenv requests wheel
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
