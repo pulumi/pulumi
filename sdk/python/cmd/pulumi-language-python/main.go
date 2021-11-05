@@ -37,6 +37,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -61,6 +62,11 @@ const (
 	// The runtime expects the array of secret config keys to be saved to this environment variable.
 	//nolint: gosec
 	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
+)
+
+var (
+	mimimumPythonVersion      = semver.MustParse("3.6.0")
+	minimumPythonVersionIssue = "pulumi/pulumi issue #8131"
 )
 
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the
@@ -119,6 +125,7 @@ func main() {
 
 	// Resolve virtualenv path relative to root.
 	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
+	validateVersion(virtualenvPath)
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
@@ -658,4 +665,35 @@ func (host *pythonLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
+}
+
+// validateVersion checks that python is running a valid version. If a version
+// is invalid, it prints to os.Stderr. This is interpreted as diagnostic message
+// by the Pulumi CLI program.
+func validateVersion(virtualEnvPath string) {
+	var versionCmd *exec.Cmd
+	var err error
+	versionArgs := []string{"--version"}
+	if virtualEnvPath == "" {
+		versionCmd = python.VirtualEnvCommand(virtualEnvPath, "python", versionArgs...)
+	} else if versionCmd, err = python.Command(versionArgs...); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to find python executable\n")
+		return
+	}
+	var out []byte
+	if out, err = versionCmd.Output(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to resolve python version command: %s\n", err.Error())
+		return
+	}
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+	parsed, err := semver.Parse(version)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse python version: '%s'\n", version)
+		return
+	}
+	if parsed.LT(mimimumPythonVersion) {
+		fmt.Fprintf(os.Stderr, "Python %d.%d is approaching EOL and will not be supported in Pulumi soon."+
+			" Check %s for more details\n", mimimumPythonVersion.Major,
+			mimimumPythonVersion.Minor, minimumPythonVersionIssue)
+	}
 }
