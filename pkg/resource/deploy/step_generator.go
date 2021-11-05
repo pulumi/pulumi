@@ -772,23 +772,49 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 	return dels, nil
 }
 
-func (sg *stepGenerator) getTargetIncludingChildren(target resource.URN) map[resource.URN]bool {
-	allTargets := make(map[resource.URN]bool)
-	allTargets[target] = true
+// getTargetDependents returns the (transitive) set of dependents on the target resources.
+// This includes both implicit and explicit dependents in the DAG itself, as well as children.
+func (sg *stepGenerator) getTargetDependents(targetsOpt map[resource.URN]bool) map[resource.URN]bool {
+	// Seed the list with the initial set of targets.
+	var frontier []resource.URN
+	for target := range targetsOpt {
+		frontier = append(frontier, target)
+	}
 
-	// The list of resources is a topological sort of the reverse-dependency graph, so any
-	// resource R will appear in a list before its dependents and its children. We can use this
-	// to our advantage here and find all of a resource's children via a linear scan of the list
-	// starting from R.
-	for _, res := range sg.deployment.prev.Resources {
-		if _, has := allTargets[res.Parent]; has {
-			allTargets[res.URN] = true
+	// Loop until we have explored the transitive closure of all implicated targets.
+	targets := make(map[resource.URN]bool)
+	for len(frontier) > 0 {
+		// Pop the next to explore, mark it, and skip any we've already seen.
+		next := frontier[0]
+		frontier = frontier[1:]
+		if _, has := targets[next]; has {
+			continue
+		}
+		targets[next] = true
+
+		// Walk the resources looking for children and anything implicitly or explicitly
+		// depending on the resource being deleted. Mark them, and add them for exploration.
+		for _, res := range sg.deployment.prev.Resources {
+			// Check whether the parent is being deleted; if yes, this one is implicated too.
+			if _, has := targets[res.Parent]; has {
+				frontier = append(frontier, res.URN)
+			}
+			// Check whether any of the dependencies are being deleted; if yes, this one is implicated too.
+			for _, dep := range res.Dependencies {
+				if _, has := targets[dep]; has {
+					frontier = append(frontier, res.URN)
+				}
+			}
 		}
 	}
 
-	return allTargets
+	return targets
 }
 
+// determineAllowedResourcesToDeleteFromTargets computes the full (transitive) closure of resources
+// that need to be deleted to permit the full list of targetsOpt resources to be deleted. This list
+// will include the targetsOpt resources, but may contain more than just that, if there are dependent
+// or child resources that require the targets to exist (and so are implicated in the deletion).
 func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	targetsOpt map[resource.URN]bool) (map[resource.URN]bool, result.Result) {
 
@@ -797,21 +823,14 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 		return nil, nil
 	}
 
-	targetsIncludingChildren := make(map[resource.URN]bool)
-
-	// Include all the children of each target.
-	for target := range targetsOpt {
-		allTargets := sg.getTargetIncludingChildren(target)
-		for child := range allTargets {
-			targetsIncludingChildren[child] = true
-		}
-	}
-
+	// Produce a map of targets and their dependents, including explicit and implicit
+	// DAG dependencies, as well as children (transitively).
+	targets := sg.getTargetDependents(targetsOpt)
 	logging.V(7).Infof("Planner was asked to only delete/update '%v'", targetsOpt)
 	resourcesToDelete := make(map[resource.URN]bool)
 
 	// Now actually use all the requested targets to figure out the exact set to delete.
-	for target := range targetsIncludingChildren {
+	for target := range targets {
 		current := sg.deployment.olds[target]
 		if current == nil {
 			// user specified a target that didn't exist.  they will have already gotten a warning
