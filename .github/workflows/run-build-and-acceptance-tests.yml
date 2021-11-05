@@ -92,10 +92,10 @@ jobs:
           python -m venv /tmp/pipenv-venv
           /tmp/pipenv-venv/bin/python -m pip install pipenv
           mkdir -p /home/runner/.local/bin
-          ln -s /tmp/pipenv-venv/bin/pipenv /home/runner/.local/bin/pipenv
+          ln -s /tmp/pipenv-venv/bin/pipenv /home/runner/.local/bin/pipenv-iso
       - name: Verify isolated pipenv install
         run: |
-          which pipenv && pipenv --version || echo "no pipenv"
+          which pipenv-iso && pipenv-iso --version || echo "no pipenv-iso"
       - name: Diagnose python paths
         run: |
           which pipenv && pipenv --version || echo "no pipenv"
