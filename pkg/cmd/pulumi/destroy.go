@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -161,6 +160,14 @@ func newDestroyCmd() *cobra.Command {
 				var unprotected []*resource.State
 				unprotected, protected := seperateProtected(snapshot.Resources)
 				protectedCount = len(protected)
+				if len(unprotected) == 0 && protectedCount > 0 {
+					fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
+						" protected resources associated with this stack.\n", protectedCount)
+					// We need to return now. Otherwise the update will conclude
+					// we tried to destroy everything and error for trying to
+					// destroy a protected resource.
+					return nil
+				}
 				for _, r := range unprotected {
 					targetUrns = append(targetUrns, r.URN)
 				}
@@ -190,7 +197,7 @@ func newDestroyCmd() *cobra.Command {
 				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
 			})
-			if protectedCount > 0 {
+			if res == nil && protectedCount > 0 && !jsonDisplay {
 				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
 					" associated with this stack.\n", protectedCount)
 			} else if res == nil && len(*targets) == 0 && !jsonDisplay {
@@ -294,7 +301,9 @@ func newDestroyCmd() *cobra.Command {
 // Unprotected: B
 // Protected: A, C
 //
-// We rely on the fact that `resources` is topologically sorted with respect to its dependencies.
+// We rely on the fact that `resources` is topologically sorted with respect to
+// its dependencies. This function understands that providers live outside this
+// topological sort.
 func seperateProtected(resources []*resource.State) ([]*resource.State, []*resource.State) {
 	// We create a wrapper because we don't want to mutate the contents of
 	// `resources`.
@@ -303,33 +312,52 @@ func seperateProtected(resources []*resource.State) ([]*resource.State, []*resou
 		resource  *resource.State
 	}
 
+	protectedProviders := make(map[string]struct{})
+
 	urns := make(map[resource.URN]*node, len(resources))
 
-	for _, resource := range resources {
-		urns[resource.URN] = &node{resource.Protect, resource}
-		r := urns[resource.URN]
-		if r.protected {
-			for {
-				// If p is already protected, we don't need to continue to
-				// traverse. All nodes above p will have already been marked as
-				// protected.
-				if p, ok := urns[r.resource.Parent]; ok && !p.protected {
-					p.protected = true
-					r = p
-				} else {
-					break
-				}
+	// Mark a resource and its parents as protected.
+	markProtected := func(urn resource.URN) {
+		r := urns[urn]
+		r.protected = true
+		protectedProviders[r.resource.Provider] = struct{}{}
+		for {
+			// If p is already protected, we don't need to continue to traverse.
+			// All nodes above p will have already been marked as protected.
+			// This is a property of `resources` being topologically sorted.
+			if p, ok := urns[r.resource.Parent]; ok && !p.protected {
+				p.protected = true
+				protectedProviders[p.resource.Provider] = struct{}{}
+				r = p
+			} else {
+				break
 			}
 		}
 	}
+	for _, resource := range resources {
+		urns[resource.URN] = &node{resource.Protect, resource}
+		if resource.Protect {
+			markProtected(resource.URN)
+		}
+	}
+
+	// This will only trigger if (urn, node) is a provider. The check is implicit
+	// in the set lookup.
+	for urn, node := range urns {
+		asProvider := fmt.Sprintf("%s::%s", string(urn), string(node.resource.ID))
+		if _, ok := protectedProviders[asProvider]; ok {
+			markProtected(urn)
+		}
+	}
+
 	unprotected := make([]*resource.State, 0)
 	protected := make([]*resource.State, 0)
-	for urn, r := range urns {
+	for _, r := range urns {
 		// Default providers do not have a reasonable place in the resource DAG.
 		// We ignore them.
-		if !r.protected && !providers.IsDefaultProvider(urn) {
+		if !r.protected {
 			unprotected = append(unprotected, r.resource)
-		} else if !providers.IsDefaultProvider(urn) {
+		} else {
 			protected = append(protected, r.resource)
 		}
 	}
