@@ -90,6 +90,11 @@ jobs:
       - name: Install pipenv
         run: |
           python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
+      - name: Debug the problem with python SDK
+        run: |
+           cd sdk/python && make ensure build install
+           cd sdk/python && pipenv run pip install ./env/src
+           cd sdk/python && pipenv run ./sdk/python/cmd/pulumi-language-python-exec --help
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
