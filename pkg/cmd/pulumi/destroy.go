@@ -292,7 +292,9 @@ func newDestroyCmd() *cobra.Command {
 }
 
 // seperateProtected returns a list or unprotected and protected resources
-// respectively. Protection is contravarient.
+// respectively. This allows us to safely destroy all resources in the
+// unprotected list without invalidating any resource in the protected list.
+// Protection is contravarient.
 //
 // A
 // B: Parent = A
@@ -306,40 +308,16 @@ func newDestroyCmd() *cobra.Command {
 // We rely on the fact that `resources` is topologically sorted with respect to
 // its dependencies. This function understands that providers live outside this
 // topological sort.
-func seperateProtected(resources []*resource.State) ([]*resource.State, []*resource.State) {
-	// We create a wrapper because we don't want to mutate the contents of
-	// `resources`.
-	type node struct {
-		protected bool
-		resource  *resource.State
-	}
-
+func seperateProtected(resources []*resource.State) (
+	/*unprotected*/ []*resource.State /*protected*/, []*resource.State) {
 	protectedProviders := make(map[string]struct{})
 
 	urns := make(map[resource.URN]*node, len(resources))
 
-	// Mark a resource and its parents as protected.
-	markProtected := func(urn resource.URN) {
-		r := urns[urn]
-		r.protected = true
-		protectedProviders[r.resource.Provider] = struct{}{}
-		for {
-			// If p is already protected, we don't need to continue to traverse.
-			// All nodes above p will have already been marked as protected.
-			// This is a property of `resources` being topologically sorted.
-			if p, ok := urns[r.resource.Parent]; ok && !p.protected {
-				p.protected = true
-				protectedProviders[p.resource.Provider] = struct{}{}
-				r = p
-			} else {
-				break
-			}
-		}
-	}
 	for _, resource := range resources {
 		urns[resource.URN] = &node{resource.Protect, resource}
 		if resource.Protect {
-			markProtected(resource.URN)
+			markProtected(resource.URN, urns, protectedProviders)
 		}
 	}
 
@@ -348,7 +326,7 @@ func seperateProtected(resources []*resource.State) ([]*resource.State, []*resou
 	for urn, node := range urns {
 		asProvider := fmt.Sprintf("%s::%s", string(urn), string(node.resource.ID))
 		if _, ok := protectedProviders[asProvider]; ok {
-			markProtected(urn)
+			markProtected(urn, urns, protectedProviders)
 		}
 	}
 
@@ -364,4 +342,32 @@ func seperateProtected(resources []*resource.State) ([]*resource.State, []*resou
 		}
 	}
 	return unprotected, protected
+}
+
+// Mark a resource and its parents as protected.
+func markProtected(urn resource.URN, urns map[resource.URN]*node, protectedProviders map[string]struct{}) {
+	r := urns[urn]
+	for {
+		r.protected = true
+		protectedProviders[r.resource.Provider] = struct{}{}
+		for _, dep := range r.resource.Dependencies {
+			markProtected(dep, urns, protectedProviders)
+		}
+
+		// If p is already protected, we don't need to continue to traverse.
+		// All nodes above p will have already been marked as protected.
+		// This is a property of `resources` being topologically sorted.
+		if p, ok := urns[r.resource.Parent]; ok && !p.protected {
+			r = p
+		} else {
+			break
+		}
+	}
+}
+
+// We create a wrapper because we don't want to mutate the contents of
+// `resources`.
+type node struct {
+	protected bool
+	resource  *resource.State
 }
