@@ -125,7 +125,7 @@ jobs:
           cd sdk/dotnet && make lint
       - name: Debug the problem with python SDK
         run: |
-           cd sdk/python && make build_package install_package
+           cd sdk/python && make build_package
            cd sdk/python && pipenv run pip install ./env/src
            cd sdk/python && pipenv run ./sdk/python/cmd/pulumi-language-python-exec --help
   build_and_test:
