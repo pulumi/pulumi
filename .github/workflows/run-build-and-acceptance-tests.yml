@@ -123,13 +123,6 @@ jobs:
       - name: Lint .NET
         run: |
           cd sdk/dotnet && make lint
-      - name: Debug the problem with python SDK
-        run: |
-           cd sdk/python
-           make build_package
-           python -m pip install -e ./env/src
-           pipenv install -e ./env/src
-           pipenv run ./cmd/pulumi-language-python-exec --help
   build_and_test:
     name: Build & Test
     strategy:
