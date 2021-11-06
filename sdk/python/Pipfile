@@ -13,6 +13,7 @@ semver = ">=2.8.1"
 pyyaml = ">=5.3.1"
 
 [dev-packages]
+pip = ">=21.3.1"
 pylint = "==2.10.2"
 mypy = ">=0.78"
 pytest = "*"
@@ -24,3 +25,5 @@ pytest-asyncio = "*"
 urllib3 = ">=1.26.7"
 chardet = ">=4.0.0"
 setuptools = "==57.5.0"
+requests = ">=2.26.0"
+wheel = ">=0.37.0"
