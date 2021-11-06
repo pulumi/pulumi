@@ -52,6 +52,9 @@ test_fast:: $(TEST_ALL_DEPS)
 	pipenv run pip list
 	pipenv run python -m pip list
 	$(RUN_TESTSUITE) pip pipenv run pip list
+	pipenv run python --version
+	pipenv --version
+	pipenv run python -c 'import pulumi; pulumi.Output.secret("hi")'
 	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
 	$(RUN_TESTSUITE) python/lib/test pipenv run pytest lib/test --ignore lib/test/automation --ignore lib/test/langhost/resource_thens/test_resource_thens.py
 	$(RUN_TESTSUITE) python/lib/test/langhost/resource_thens pipenv run python -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
