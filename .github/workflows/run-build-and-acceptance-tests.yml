@@ -87,8 +87,6 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Install pipenv
-        uses: dschep/install-pipenv-action@v1
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -174,8 +172,6 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Install pipenv
-        uses: dschep/install-pipenv-action@v1
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
