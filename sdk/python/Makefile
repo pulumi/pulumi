@@ -49,6 +49,8 @@ install:: install_package install_plugin
 test_fast:: $(TEST_ALL_DEPS)
 	$(GO_TEST) ${PROJECT_PKGS}
 	pipenv run pip install ./env/src
+	pipenv run pip list
+	pipenv run python -m pip list
 	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
 	$(RUN_TESTSUITE) python/lib/test pipenv run pytest lib/test --ignore lib/test/automation --ignore lib/test/langhost/resource_thens/test_resource_thens.py
 	$(RUN_TESTSUITE) python/lib/test/langhost/resource_thens pipenv run python -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
