@@ -17,7 +17,7 @@ include ../../build/common.mk
 TEST_ALL_DEPS = build
 
 ensure::
-	pipenv install --dev
+	pipenv install --dev --python 3.9.x
 	mkdir -p $(PYENVSRC)
 
 build_package::
