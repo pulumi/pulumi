@@ -127,7 +127,8 @@ jobs:
         run: |
            cd sdk/python
            make build_package
-           pipenv run pip install ./env/src
+           python -m pip install -e ./env/src
+           pipenv install -e ./env/src
            pipenv run ./cmd/pulumi-language-python-exec --help
   build_and_test:
     name: Build & Test
