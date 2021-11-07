@@ -859,7 +859,6 @@ func TestConstructNode(t *testing.T) {
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
-		env                   []string
 	}{
 		{
 			componentDir:          "testcomponent",
@@ -868,7 +867,6 @@ func TestConstructNode(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -880,7 +878,7 @@ func TestConstructNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
-				optsForConstructNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructNode(t, test.expectedResourceCount, pathEnv))
 		})
 	}
 }
@@ -964,7 +962,6 @@ func TestConstructPlainNode(t *testing.T) {
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
-		env                   []string
 	}{
 		{
 			componentDir:          "testcomponent",
@@ -973,7 +970,6 @@ func TestConstructPlainNode(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -985,7 +981,7 @@ func TestConstructPlainNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
-				optsForConstructPlainNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructPlainNode(t, test.expectedResourceCount, pathEnv))
 		})
 	}
 }
@@ -1013,14 +1009,12 @@ func TestConstructUnknownNode(t *testing.T) {
 func TestConstructMethodsNode(t *testing.T) {
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -1030,7 +1024,7 @@ func TestConstructMethodsNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          append(test.env, pathEnv),
+				Env:          []string{pathEnv},
 				Dir:          filepath.Join("construct_component_methods", "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
@@ -1059,14 +1053,12 @@ func TestConstructProviderNode(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -1076,7 +1068,7 @@ func TestConstructProviderNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          append(test.env, pathEnv),
+				Env:          []string{pathEnv},
 				Dir:          filepath.Join(testDir, "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
