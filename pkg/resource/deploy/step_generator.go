@@ -776,36 +776,31 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 // This includes both implicit and explicit dependents in the DAG itself, as well as children.
 func (sg *stepGenerator) getTargetDependents(targetsOpt map[resource.URN]bool) map[resource.URN]bool {
 	// Seed the list with the initial set of targets.
-	var frontier []resource.URN
-	for target := range targetsOpt {
-		frontier = append(frontier, target)
+	var frontier []*resource.State
+	for _, res := range sg.deployment.prev.Resources {
+		if _, has := targetsOpt[res.URN]; has {
+			frontier = append(frontier, res)
+		}
 	}
 
-	// Loop until we have explored the transitive closure of all implicated targets.
+	// Produce a dependency graph of resources.
+	dg := graph.NewDependencyGraph(sg.deployment.prev.Resources)
+
+	// Now accumulate a list of targets that are implicated because they depend upon the targets.
 	targets := make(map[resource.URN]bool)
 	for len(frontier) > 0 {
 		// Pop the next to explore, mark it, and skip any we've already seen.
 		next := frontier[0]
 		frontier = frontier[1:]
-		if _, has := targets[next]; has {
+		if _, has := targets[next.URN]; has {
 			continue
 		}
-		targets[next] = true
+		targets[next.URN] = true
 
-		// Walk the resources looking for children and anything implicitly or explicitly
-		// depending on the resource being deleted. Mark them, and add them for exploration.
-		for _, res := range sg.deployment.prev.Resources {
-			// Check whether the parent is being deleted; if yes, this one is implicated too.
-			if _, has := targets[res.Parent]; has {
-				frontier = append(frontier, res.URN)
-			}
-			// Check whether any of the dependencies are being deleted; if yes, this one is implicated too.
-			for _, dep := range res.Dependencies {
-				if _, has := targets[dep]; has {
-					frontier = append(frontier, res.URN)
-				}
-			}
-		}
+		// Compute the set of resources depending on this one, either implicitly, explicitly,
+		// or because it is a child resource. Add them to the frontier to keep exploring.
+		deps := dg.DependingOn(next, targets, true)
+		frontier = append(frontier, deps...)
 	}
 
 	return targets
@@ -1414,7 +1409,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	// that have already been registered must not depend on the root. Thus, we ignore these resources if they are
 	// encountered while walking the old dependency graph to determine the set of dependents.
 	impossibleDependents := sg.urns
-	for _, d := range sg.deployment.depGraph.DependingOn(root, impossibleDependents) {
+	for _, d := range sg.deployment.depGraph.DependingOn(root, impossibleDependents, false) {
 		replace, keys, res := requiresReplacement(d)
 		if res != nil {
 			return nil, res
