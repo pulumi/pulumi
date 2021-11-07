@@ -2278,6 +2278,14 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		}
 	}
 
+	for name, prop := range propertyMap {
+		_, optional := prop.Type.(*OptionalType)
+		if many(!optional, prop.ConstValue != nil, prop.DefaultValue != nil) {
+			diags = diags.Append(errorf(path+name,
+				"Cannot specify more then one of 'required', 'const', or 'default'"))
+		}
+	}
+
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Name < result[j].Name
 	})
@@ -2767,4 +2775,17 @@ func (fun *Function) NeedsOutputVersion() bool {
 	}
 
 	return true
+}
+
+// True if more then one boolean is true.
+func many(booleans ...bool) bool {
+	var found bool
+	for _, b := range booleans {
+		if found && b {
+			return true
+		} else if b {
+			found = true
+		}
+	}
+	return false
 }
