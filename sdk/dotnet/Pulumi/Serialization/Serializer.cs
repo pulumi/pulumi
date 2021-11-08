@@ -386,6 +386,27 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             };
 
         /// <summary>
+        /// Detects encoded `Unknown` values in objects that conform
+        /// to the grammar returned by `SerializeAsync`.
+        ///
+        /// This possibly needs to be revisited to detect `Unknown`
+        /// values before `SerializeAsync` converts them, in the more
+        /// generic Output representation.
+        /// </summary>
+        internal static bool ContainsUnknowns(object? value)
+            => value switch
+            {
+                null => false,
+                int _ => false,
+                double d => false,
+                bool b => false,
+                string s => s == Constants.UnknownValue,
+                ImmutableArray<object> list => list.Any(v => ContainsUnknowns(v)),
+                ImmutableDictionary<string, object> dict => dict.AnyValues(v => ContainsUnknowns(v)),
+                _ => throw new InvalidOperationException("Unsupported value when converting to protobuf: " + value.GetType().FullName),
+            };
+
+        /// <summary>
         /// Given a <see cref="ImmutableDictionary{TKey, TValue}"/> produced by <see cref="SerializeAsync"/>,
         /// produces the equivalent <see cref="Struct"/> that can be passed to the Pulumi engine.
         /// </summary>
