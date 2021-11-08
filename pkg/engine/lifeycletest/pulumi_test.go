@@ -2858,11 +2858,13 @@ func TestExpectedDelete(t *testing.T) {
 
 	// Create an initial snapshot that resA and resB exist
 	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
 	assert.Nil(t, res)
 
 	// Create a plan that resA is same and resB is deleted
 	createAllResources = false
 	plan, res := TestOp(Update).Plan(project, p.GetTarget(snap), p.Options, p.BackendClient, nil)
+	assert.NotNil(t, plan)
 	assert.Nil(t, res)
 
 	// Now run but set the runtime to return resA and resB, given we expected resB to be deleted
@@ -2920,11 +2922,13 @@ func TestExpectedCreate(t *testing.T) {
 
 	// Create an initial snapshot that resA exists
 	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
 	assert.Nil(t, res)
 
 	// Create a plan that resA is same and resB is created
 	createAllResources = true
 	plan, res := TestOp(Update).Plan(project, p.GetTarget(snap), p.Options, p.BackendClient, nil)
+	assert.NotNil(t, plan)
 	assert.Nil(t, res)
 
 	// Now run but set the runtime to return resA, given we expected resB to be created
@@ -2975,6 +2979,7 @@ func TestPropertySetChange(t *testing.T) {
 
 	// Create an initial plan to create resA
 	plan, res := TestOp(Update).Plan(project, p.GetTarget(nil), p.Options, p.BackendClient, nil)
+	assert.NotNil(t, plan)
 	assert.Nil(t, res)
 
 	// Now change the runtime to not return property "frob", this should error
@@ -2987,5 +2992,123 @@ func TestPropertySetChange(t *testing.T) {
 	assert.NotNil(t, res)
 }
 
-// Test that if we expect a create but end up doing a same that's ok
-// Likewise if we expect a delete but its already gone, that's ok
+func TestExpectedUnneededCreate(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Create a plan that resA needs creating
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(nil), p.Options, p.BackendClient, nil)
+	assert.NotNil(t, plan)
+	assert.Nil(t, res)
+
+	// Create an a snapshot that resA exists
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.Nil(t, res)
+
+	// Now run again with the plan set but the snapshot that resA already exists
+	p.Options.Plan = plan
+	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.NotNil(t, res)
+
+	// Check resA and the provider are still listed in the snapshot
+	if !assert.Len(t, snap.Resources, 2) {
+		return
+	}
+}
+
+func TestExpectedUnneededDelete(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				},
+				DeleteF: func(
+					urn resource.URN,
+					id resource.ID,
+					olds resource.PropertyMap,
+					timeout float64) (resource.Status, error) {
+					return resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	createResource := true
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		if createResource {
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: ins,
+			})
+			assert.NoError(t, err)
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Create an initial snapshot that resA exists
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Create a plan that resA is deleted
+	createResource = false
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(snap), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Now run to delete resA
+	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.Nil(t, res)
+
+	// Now run again with the plan set but the snapshot that resA is already deleted
+	createResource = true
+	p.Options.Plan = plan
+	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.NotNil(t, res)
+
+	// Check the resources are still gone
+	if !assert.Len(t, snap.Resources, 0) {
+		return
+	}
+}
