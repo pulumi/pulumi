@@ -202,7 +202,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				panic(fmt.Errorf("Error when generating an output-versioned Invoke: %w", err))
 			}
 			g.Fgenf(w, "%s.%sOutput(ctx, ", module, fn)
-			g.genObjectConsExpressionWithTypeName(w, outArgs, outArgsType, false /*isInput*/, outTypeName)
+			g.genObjectConsExpressionWithTypeName(w, outArgs, outArgsType, outTypeName)
 		} else {
 			g.Fgenf(w, "%s.%s(ctx, ", module, fn)
 			g.Fgenf(w, "%.v", expr.Args[1])
@@ -352,6 +352,8 @@ func (g *generator) genObjectConsExpression(
 	destType model.Type,
 	isInput bool) {
 
+	isInput = isInput || isInputty(destType)
+
 	typeName := g.argumentTypeName(expr, destType, isInput)
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok {
@@ -361,14 +363,13 @@ func (g *generator) genObjectConsExpression(
 		}
 	}
 
-	g.genObjectConsExpressionWithTypeName(w, expr, destType, isInput, typeName)
+	g.genObjectConsExpressionWithTypeName(w, expr, destType, typeName)
 }
 
 func (g *generator) genObjectConsExpressionWithTypeName(
 	w io.Writer,
 	expr *model.ObjectConsExpression,
 	destType model.Type,
-	isInput bool,
 	typeName string) {
 
 	if len(expr.Items) == 0 {
@@ -377,8 +378,6 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	}
 
 	var temps []interface{}
-	//isInput = isInput || isInputty(destType) // TODO why is this commented out?
-
 	// TODO: @pgavlin --- ineffectual assignment, was there some work in flight here?
 	// if strings.HasSuffix(typeName, "Args") {
 	// 	isInput = true
