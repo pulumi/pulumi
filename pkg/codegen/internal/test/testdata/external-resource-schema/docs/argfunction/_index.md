@@ -27,29 +27,33 @@ Input-wrapped arguments and returns an Output-wrapped result.
 
 {{% choosable language nodejs %}}
 <div class="highlight"
-><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>argFunction<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ArgFunctionArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">ArgFunctionResult</a></span>></span></code></pre
-><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>argFunctionOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ArgFunctionOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">ArgFunctionResult</a></span>></span></code></pre
-></div>
+><pre class="chroma"><code class="language-typescript" data-lang="typescript"
+><span class="k">function </span>argFunction<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ArgFunctionArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">ArgFunctionResult</a></span>></span
+><span class="k">
+function </span>argFunctionOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ArgFunctionOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">ArgFunctionResult</a></span>></span
+></code></pre></div>
 {{% /choosable %}}
 
 
 {{% choosable language python %}}
-<div class="highlight">
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>arg_function(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">Optional[pulumi_random.RandomPet]</span> = None<span class="p">,</span>
-                 <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> ArgFunctionResult</code></pre>
-</div>
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>arg_function_output(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[pulumi_random.RandomPet]]</span> = None<span class="p">,</span>
-                 <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> Output[ArgFunctionResult]</code></pre>
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
+><span class="k">def </span>arg_function<span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">Optional[pulumi_random.RandomPet]</span> = None<span class="p">,</span>
+                 <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>ArgFunctionResult</span
+><span class="k">
+def </span>arg_function_output<span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[pulumi_random.RandomPet]]</span> = None<span class="p">,</span>
+                 <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[ArgFunctionResult]</span
+></code></pre></div>
 {{% /choosable %}}
 
 
 {{% choosable language go %}}
-<div class="highlight"
-><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>ArgFunction<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ArgFunctionArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">ArgFunctionResult</a></span>, error)</span></code></pre
-><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>ArgFunctionOutput<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ArgFunctionOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) ArgFunctionResultOutput</span></code></pre
-></div>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
+><span class="k">func </span>ArgFunction<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ArgFunctionArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">ArgFunctionResult</a></span>, error)</span
+><span class="k">
+func </span>ArgFunctionOutput<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ArgFunctionOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) ArgFunctionResultOutput</span
+></code></pre></div>
 
-> Note: This function is named `ArgFunction` in the Go SDK.
+&gt; Note: This function is named `ArgFunction` in the Go SDK.
 
 {{% /choosable %}}
 

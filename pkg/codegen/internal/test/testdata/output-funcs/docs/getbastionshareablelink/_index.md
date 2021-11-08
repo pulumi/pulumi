@@ -30,33 +30,37 @@ Input-wrapped arguments and returns an Output-wrapped result.
 
 {{% choosable language nodejs %}}
 <div class="highlight"
-><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>getBastionShareableLink<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetBastionShareableLinkArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>></span></code></pre
-><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>getBastionShareableLinkOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetBastionShareableLinkOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>></span></code></pre
-></div>
+><pre class="chroma"><code class="language-typescript" data-lang="typescript"
+><span class="k">function </span>getBastionShareableLink<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetBastionShareableLinkArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>></span
+><span class="k">
+function </span>getBastionShareableLinkOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetBastionShareableLinkOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>></span
+></code></pre></div>
 {{% /choosable %}}
 
 
 {{% choosable language python %}}
-<div class="highlight">
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>get_bastion_shareable_link(</span><span class="nx">bastion_host_name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
+><span class="k">def </span>get_bastion_shareable_link<span class="p">(</span><span class="nx">bastion_host_name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                                <span class="nx">resource_group_name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                                <span class="nx">vms</span><span class="p">:</span> <span class="nx">Optional[Sequence[BastionShareableLink]]</span> = None<span class="p">,</span>
-                               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> GetBastionShareableLinkResult</code></pre>
-</div>
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>get_bastion_shareable_link_output(</span><span class="nx">bastion_host_name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
+                               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>GetBastionShareableLinkResult</span
+><span class="k">
+def </span>get_bastion_shareable_link_output<span class="p">(</span><span class="nx">bastion_host_name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                                <span class="nx">resource_group_name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                                <span class="nx">vms</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Sequence[pulumi.Input[BastionShareableLinkArgs]]]]</span> = None<span class="p">,</span>
-                               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> Output[GetBastionShareableLinkResult]</code></pre>
+                               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetBastionShareableLinkResult]</span
+></code></pre></div>
 {{% /choosable %}}
 
 
 {{% choosable language go %}}
-<div class="highlight"
-><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>GetBastionShareableLink<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">GetBastionShareableLinkArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>, error)</span></code></pre
-><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>GetBastionShareableLinkOutput<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">GetBastionShareableLinkOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) GetBastionShareableLinkResultOutput</span></code></pre
-></div>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
+><span class="k">func </span>GetBastionShareableLink<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">GetBastionShareableLinkArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>, error)</span
+><span class="k">
+func </span>GetBastionShareableLinkOutput<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">GetBastionShareableLinkOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) GetBastionShareableLinkResultOutput</span
+></code></pre></div>
 
-> Note: This function is named `GetBastionShareableLink` in the Go SDK.
+&gt; Note: This function is named `GetBastionShareableLink` in the Go SDK.
 
 {{% /choosable %}}
 

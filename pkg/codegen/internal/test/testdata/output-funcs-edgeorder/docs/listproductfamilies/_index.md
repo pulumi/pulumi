@@ -30,35 +30,39 @@ Input-wrapped arguments and returns an Output-wrapped result.
 
 {{% choosable language nodejs %}}
 <div class="highlight"
-><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>listProductFamilies<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ListProductFamiliesArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>></span></code></pre
-><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>listProductFamiliesOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ListProductFamiliesOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>></span></code></pre
-></div>
+><pre class="chroma"><code class="language-typescript" data-lang="typescript"
+><span class="k">function </span>listProductFamilies<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ListProductFamiliesArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>></span
+><span class="k">
+function </span>listProductFamiliesOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ListProductFamiliesOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>></span
+></code></pre></div>
 {{% /choosable %}}
 
 
 {{% choosable language python %}}
-<div class="highlight">
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>list_product_families(</span><span class="nx">customer_subscription_details</span><span class="p">:</span> <span class="nx">Optional[CustomerSubscriptionDetails]</span> = None<span class="p">,</span>
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
+><span class="k">def </span>list_product_families<span class="p">(</span><span class="nx">customer_subscription_details</span><span class="p">:</span> <span class="nx">Optional[CustomerSubscriptionDetails]</span> = None<span class="p">,</span>
                           <span class="nx">expand</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                           <span class="nx">filterable_properties</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, Sequence[FilterableProperty]]]</span> = None<span class="p">,</span>
                           <span class="nx">skip_token</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
-                          <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> ListProductFamiliesResult</code></pre>
-</div>
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>list_product_families_output(</span><span class="nx">customer_subscription_details</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[CustomerSubscriptionDetailsArgs]]</span> = None<span class="p">,</span>
+                          <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>ListProductFamiliesResult</span
+><span class="k">
+def </span>list_product_families_output<span class="p">(</span><span class="nx">customer_subscription_details</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[CustomerSubscriptionDetailsArgs]]</span> = None<span class="p">,</span>
                           <span class="nx">expand</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                           <span class="nx">filterable_properties</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input[FilterablePropertyArgs]]]]]]</span> = None<span class="p">,</span>
                           <span class="nx">skip_token</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
-                          <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> Output[ListProductFamiliesResult]</code></pre>
+                          <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[ListProductFamiliesResult]</span
+></code></pre></div>
 {{% /choosable %}}
 
 
 {{% choosable language go %}}
-<div class="highlight"
-><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>ListProductFamilies<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ListProductFamiliesArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>, error)</span></code></pre
-><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>ListProductFamiliesOutput<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ListProductFamiliesOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) ListProductFamiliesResultOutput</span></code></pre
-></div>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
+><span class="k">func </span>ListProductFamilies<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ListProductFamiliesArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>, error)</span
+><span class="k">
+func </span>ListProductFamiliesOutput<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ListProductFamiliesOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) ListProductFamiliesResultOutput</span
+></code></pre></div>
 
-> Note: This function is named `ListProductFamilies` in the Go SDK.
+&gt; Note: This function is named `ListProductFamilies` in the Go SDK.
 
 {{% /choosable %}}
 
