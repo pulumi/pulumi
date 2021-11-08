@@ -328,8 +328,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if module != "" {
 			module = "." + module
 		}
+		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		name := fmt.Sprintf("%s%s.%s", makeValidIdentifier(pkg), module, fn)
-
+		if isOut {
+			name = fmt.Sprintf("%sOutput", name)
+		}
 		g.Fprintf(w, "%s(", name)
 		if len(expr.Args) >= 2 {
 			g.Fgenf(w, "%.v", expr.Args[1])
