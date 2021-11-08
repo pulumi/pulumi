@@ -1,3 +1,4 @@
 {
-    "go.buildTags": "all"
+    "go.buildTags": "all",
+    "go.testTimeout": "1h"
 }
