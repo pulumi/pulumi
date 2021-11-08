@@ -377,7 +377,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	}
 
 	var temps []interface{}
-	isInput = isInput || isInputty(destType)
+	//isInput = isInput || isInputty(destType) // TODO why is this commented out?
 
 	// TODO: @pgavlin --- ineffectual assignment, was there some work in flight here?
 	// if strings.HasSuffix(typeName, "Args") {
