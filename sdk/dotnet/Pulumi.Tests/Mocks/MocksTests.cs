@@ -126,6 +126,18 @@ namespace Pulumi.Tests.Mocks
         }
 
         [Fact]
+        public async Task TestInvokeToleratesUnknownsInPreview()
+        {
+            var resources = await Deployment.TestAsync<Issue8322.ReproStack>(
+                new Issue8322.ReproMocks(),
+                new TestOptions() { IsPreview = true }
+            );
+            var stack = resources.OfType<Issue8322.ReproStack>().Single();
+            var result = await stack.Result.GetValueAsync(whenUnknown: "unknown!");
+            Assert.Equal("unknown!", result);
+        }
+
+        [Fact]
         public async Task TestStackWithInvalidSchema()
         {
             var resources = await Deployment.TestAsync<MyStack>(new MyInvalidMocks(), new TestOptions { IsPreview = false });
