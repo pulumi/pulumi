@@ -1749,7 +1749,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	return nil
 }
 
-func (pkg *pkgContext) needsGoOutputVersion(f *schema.Function) bool {
+func NeedsGoOutputVersion(f *schema.Function) bool {
 	fPkg := f.Package
 
 	var goInfo GoPackageInfo
@@ -1772,7 +1772,7 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) string {
 	buffer := &bytes.Buffer{}
 
 	var imports []string
-	if pkg.needsGoOutputVersion(f) {
+	if NeedsGoOutputVersion(f) {
 		imports = []string{"context", "reflect"}
 	}
 
@@ -1863,7 +1863,7 @@ func (pkg *pkgContext) functionResultTypeName(f *schema.Function) string {
 }
 
 func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function) {
-	if !pkg.needsGoOutputVersion(f) {
+	if !NeedsGoOutputVersion(f) {
 		return
 	}
 
