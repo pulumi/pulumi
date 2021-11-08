@@ -1,6 +1,5 @@
 ### Improvements
 
-
 ### Bug Fixes
 
 - [sdk/dotnet] - Fixes failing preview for programs that call data
@@ -9,3 +8,6 @@
 
 - [programgen/go] - Don't change imported resource names.
   [#8353](https://github.com/pulumi/pulumi/pull/8353)
+
+- [codegen] - Forbid nonsensical combinations of schema property flags.
+  [#8373](https://github.com/pulumi/pulumi/pull/8373)
