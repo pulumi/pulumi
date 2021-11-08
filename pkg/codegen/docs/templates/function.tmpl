@@ -29,33 +29,37 @@ Input-wrapped arguments and returns an Output-wrapped result.
 <!-- TS/JS -->
 {{ print "{{% choosable language nodejs %}}" }}
 <div class="highlight"
-><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>{{ .FunctionName.nodejs }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.nodejs }}<span class="p">): Promise<{{ template "linkify_param" .FunctionResult.nodejs }}></span></code></pre
+><pre class="chroma"><code class="language-typescript" data-lang="typescript"
+><span class="k">function </span>{{ .FunctionName.nodejs }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.nodejs }}<span class="p">): Promise<{{ template "linkify_param" .FunctionResult.nodejs }}></span
 {{- if .HasOutputVersion.nodejs }}
-><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>{{ .FunctionName.nodejs }}Output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.nodejs }}<span class="p">): Output<{{ template "linkify_param" .FunctionResult.nodejs }}></span></code></pre
+><span class="k">
+function </span>{{ .FunctionName.nodejs }}Output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.nodejs }}<span class="p">): Output<{{ template "linkify_param" .FunctionResult.nodejs }}></span
 {{- end }}
-></div>
+></code></pre></div>
 {{ print "{{% /choosable %}}" }}
 
 <!-- Python -->
 {{ print "{{% choosable language python %}}" }}
-<div class="highlight">
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>{{ .FunctionName.python }}(</span>{{ htmlSafe .FunctionArgs.python }}<span class="p">) -&gt;</span> {{ .FunctionResult.python.Name }}</code></pre>
-</div>
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
+><span class="k">def </span>{{ .FunctionName.python }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.python }}<span class="p">) -&gt;</span> <span>{{ .FunctionResult.python.Name }}</span
 {{- if .HasOutputVersion.python }}
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>{{ .FunctionName.python }}_output(</span>{{ htmlSafe .FunctionArgsOutputVersion.python }}<span class="p">) -&gt;</span> Output[{{ .FunctionResult.python.Name }}]</code></pre>
+><span class="k">
+def </span>{{ .FunctionName.python }}_output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.python }}<span class="p">) -&gt;</span> <span>Output[{{ .FunctionResult.python.Name }}]</span
 {{- end }}
+></code></pre></div>
 {{ print "{{% /choosable %}}" }}
 
 <!-- Go -->
 {{ print "{{% choosable language go %}}" }}
-<div class="highlight"
-><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>{{ .FunctionName.go }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.go }}<span class="p">) (*{{ template "linkify_param" .FunctionResult.go }}, error)</span></code></pre
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
+><span class="k">func </span>{{ .FunctionName.go }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.go }}<span class="p">) (*{{ template "linkify_param" .FunctionResult.go }}, error)</span
 {{- if .HasOutputVersion.go }}
-><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>{{ .FunctionName.go }}Output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.go }}<span class="p">) {{ .FunctionResultOutputVersion.go.Name }}</span></code></pre
+><span class="k">
+func </span>{{ .FunctionName.go }}Output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.go }}<span class="p">) {{ .FunctionResultOutputVersion.go.Name }}</span
 {{- end }}
-></div>
+></code></pre></div>
 {{ if ne .FunctionName.go .Header.Title }}
-> Note: This function is named `{{ .FunctionName.go }}` in the Go SDK.
+&gt; Note: This function is named `{{ .FunctionName.go }}` in the Go SDK.
 {{ end }}
 {{ print "{{% /choosable %}}" }}
 
