@@ -151,7 +151,9 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "hyphen-url",
 		Description: "A resource url with a hyphen in its path",
-		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
+		// TODO[pulumi/pulumi#8370]: Re-enable compiling for Go.
+		SkipCompileCheck: codegen.NewStringSet(golang),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "output-funcs",
