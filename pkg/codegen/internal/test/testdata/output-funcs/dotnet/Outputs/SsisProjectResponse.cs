@@ -44,7 +44,7 @@ namespace Pulumi.Mypkg.Outputs
         /// The type of SSIS object metadata.
         /// Expected value is 'Project'.
         /// </summary>
-        public readonly string Type;
+        public readonly string? Type;
         /// <summary>
         /// Project version.
         /// </summary>
@@ -64,7 +64,7 @@ namespace Pulumi.Mypkg.Outputs
 
             ImmutableArray<Outputs.SsisParameterResponse> parameters,
 
-            string type,
+            string? type,
 
             double? version)
         {

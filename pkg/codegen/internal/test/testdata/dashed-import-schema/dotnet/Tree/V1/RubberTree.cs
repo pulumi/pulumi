@@ -25,7 +25,7 @@ namespace Pulumi.Plant.Tree.V1
         public Output<Pulumi.Plant.Tree.V1.TreeSize?> Size { get; private set; } = null!;
 
         [Output("type")]
-        public Output<Pulumi.Plant.Tree.V1.RubberTreeVariety> Type { get; private set; } = null!;
+        public Output<Pulumi.Plant.Tree.V1.RubberTreeVariety?> Type { get; private set; } = null!;
 
 
         /// <summary>
@@ -85,12 +85,11 @@ namespace Pulumi.Plant.Tree.V1
         [Input("size")]
         public Input<Pulumi.Plant.Tree.V1.TreeSize>? Size { get; set; }
 
-        [Input("type", required: true)]
-        public Input<Pulumi.Plant.Tree.V1.RubberTreeVariety> Type { get; set; } = null!;
+        [Input("type")]
+        public Input<Pulumi.Plant.Tree.V1.RubberTreeVariety>? Type { get; set; }
 
         public RubberTreeArgs()
         {
-            Diameter = Pulumi.Plant.Tree.V1.Diameter.Sixinch;
             Farm = "(unknown)";
             Size = Pulumi.Plant.Tree.V1.TreeSize.Medium;
             Type = Pulumi.Plant.Tree.V1.RubberTreeVariety.Burgundy;

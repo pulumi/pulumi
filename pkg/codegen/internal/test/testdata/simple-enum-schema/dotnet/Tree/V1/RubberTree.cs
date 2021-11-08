@@ -16,7 +16,7 @@ namespace Pulumi.Plant.Tree.V1
         public Output<Pulumi.Plant.Outputs.Container?> Container { get; private set; } = null!;
 
         [Output("diameter")]
-        public Output<Pulumi.Plant.Tree.V1.Diameter> Diameter { get; private set; } = null!;
+        public Output<Pulumi.Plant.Tree.V1.Diameter?> Diameter { get; private set; } = null!;
 
         [Output("farm")]
         public Output<string?> Farm { get; private set; } = null!;
@@ -76,8 +76,8 @@ namespace Pulumi.Plant.Tree.V1
         [Input("container")]
         public Input<Pulumi.Plant.Inputs.ContainerArgs>? Container { get; set; }
 
-        [Input("diameter", required: true)]
-        public Input<Pulumi.Plant.Tree.V1.Diameter> Diameter { get; set; } = null!;
+        [Input("diameter")]
+        public Input<Pulumi.Plant.Tree.V1.Diameter>? Diameter { get; set; }
 
         [Input("farm")]
         public InputUnion<Pulumi.Plant.Tree.V1.Farm, string>? Farm { get; set; }
@@ -93,7 +93,6 @@ namespace Pulumi.Plant.Tree.V1
             Diameter = Pulumi.Plant.Tree.V1.Diameter.Sixinch;
             Farm = "(unknown)";
             Size = Pulumi.Plant.Tree.V1.TreeSize.Medium;
-            Type = Pulumi.Plant.Tree.V1.RubberTreeVariety.Burgundy;
         }
     }
 

@@ -15,77 +15,57 @@ __all__ = ['ModuleResourceArgs', 'ModuleResource']
 class ModuleResourceArgs:
     def __init__(__self__, *,
                  plain_required_bool: bool,
-                 plain_required_const: str,
+                 plain_required_enum: 'EnumThing',
                  plain_required_number: float,
                  plain_required_string: str,
                  required_bool: pulumi.Input[bool],
                  required_enum: pulumi.Input['EnumThing'],
                  required_number: pulumi.Input[float],
                  required_string: pulumi.Input[str],
-                 optional_bool: Optional[pulumi.Input[bool]] = None,
-                 optional_const: Optional[pulumi.Input[str]] = None,
+                 default_bool: Optional[pulumi.Input[bool]] = None,
+                 default_enum: Optional[pulumi.Input['EnumThing']] = None,
+                 default_number: Optional[pulumi.Input[float]] = None,
+                 default_string: Optional[pulumi.Input[str]] = None,
                  optional_enum: Optional[pulumi.Input['EnumThing']] = None,
-                 optional_number: Optional[pulumi.Input[float]] = None,
-                 optional_string: Optional[pulumi.Input[str]] = None,
                  plain_optional_bool: Optional[bool] = None,
-                 plain_optional_const: Optional[str] = None,
                  plain_optional_number: Optional[float] = None,
-                 plain_optional_string: Optional[str] = None):
+                 plain_optional_string: Optional[str] = None,
+                 string_const: Optional[pulumi.Input[str]] = None):
         """
         The set of arguments for constructing a ModuleResource resource.
         """
-        if plain_required_bool is None:
-            plain_required_bool = True
         pulumi.set(__self__, "plain_required_bool", plain_required_bool)
-        if plain_required_const is None:
-            plain_required_const = 'another'
-        pulumi.set(__self__, "plain_required_const", 'val')
-        if plain_required_number is None:
-            plain_required_number = 42
+        pulumi.set(__self__, "plain_required_enum", plain_required_enum)
         pulumi.set(__self__, "plain_required_number", plain_required_number)
-        if plain_required_string is None:
-            plain_required_string = 'buzzer'
         pulumi.set(__self__, "plain_required_string", plain_required_string)
-        if required_bool is None:
-            required_bool = True
         pulumi.set(__self__, "required_bool", required_bool)
-        if required_enum is None:
-            required_enum = 4
         pulumi.set(__self__, "required_enum", required_enum)
-        if required_number is None:
-            required_number = 42
         pulumi.set(__self__, "required_number", required_number)
-        if required_string is None:
-            required_string = 'buzzer'
         pulumi.set(__self__, "required_string", required_string)
-        if optional_bool is None:
-            optional_bool = True
-        if optional_bool is not None:
-            pulumi.set(__self__, "optional_bool", optional_bool)
-        if optional_const is None:
-            optional_const = 'another'
-        if optional_const is not None:
-            pulumi.set(__self__, "optional_const", 'val')
+        if default_bool is None:
+            default_bool = True
+        if default_bool is not None:
+            pulumi.set(__self__, "default_bool", default_bool)
+        if default_enum is None:
+            default_enum = 4
+        if default_enum is not None:
+            pulumi.set(__self__, "default_enum", default_enum)
+        if default_number is None:
+            default_number = 42
+        if default_number is not None:
+            pulumi.set(__self__, "default_number", default_number)
+        if default_string is None:
+            default_string = 'buzzer'
+        if default_string is not None:
+            pulumi.set(__self__, "default_string", default_string)
         if optional_enum is None:
             optional_enum = 8
         if optional_enum is not None:
             pulumi.set(__self__, "optional_enum", optional_enum)
-        if optional_number is None:
-            optional_number = 42
-        if optional_number is not None:
-            pulumi.set(__self__, "optional_number", optional_number)
-        if optional_string is None:
-            optional_string = 'buzzer'
-        if optional_string is not None:
-            pulumi.set(__self__, "optional_string", optional_string)
         if plain_optional_bool is None:
             plain_optional_bool = True
         if plain_optional_bool is not None:
             pulumi.set(__self__, "plain_optional_bool", plain_optional_bool)
-        if plain_optional_const is None:
-            plain_optional_const = 'another'
-        if plain_optional_const is not None:
-            pulumi.set(__self__, "plain_optional_const", 'val')
         if plain_optional_number is None:
             plain_optional_number = 42
         if plain_optional_number is not None:
@@ -94,6 +74,8 @@ class ModuleResourceArgs:
             plain_optional_string = 'buzzer'
         if plain_optional_string is not None:
             pulumi.set(__self__, "plain_optional_string", plain_optional_string)
+        if string_const is not None:
+            pulumi.set(__self__, "string_const", 'val')
 
     @property
     @pulumi.getter
@@ -106,12 +88,12 @@ class ModuleResourceArgs:
 
     @property
     @pulumi.getter
-    def plain_required_const(self) -> str:
-        return pulumi.get(self, "plain_required_const")
+    def plain_required_enum(self) -> 'EnumThing':
+        return pulumi.get(self, "plain_required_enum")
 
-    @plain_required_const.setter
-    def plain_required_const(self, value: str):
-        pulumi.set(self, "plain_required_const", value)
+    @plain_required_enum.setter
+    def plain_required_enum(self, value: 'EnumThing'):
+        pulumi.set(self, "plain_required_enum", value)
 
     @property
     @pulumi.getter
@@ -169,21 +151,39 @@ class ModuleResourceArgs:
 
     @property
     @pulumi.getter
-    def optional_bool(self) -> Optional[pulumi.Input[bool]]:
-        return pulumi.get(self, "optional_bool")
+    def default_bool(self) -> Optional[pulumi.Input[bool]]:
+        return pulumi.get(self, "default_bool")
 
-    @optional_bool.setter
-    def optional_bool(self, value: Optional[pulumi.Input[bool]]):
-        pulumi.set(self, "optional_bool", value)
+    @default_bool.setter
+    def default_bool(self, value: Optional[pulumi.Input[bool]]):
+        pulumi.set(self, "default_bool", value)
 
     @property
     @pulumi.getter
-    def optional_const(self) -> Optional[pulumi.Input[str]]:
-        return pulumi.get(self, "optional_const")
+    def default_enum(self) -> Optional[pulumi.Input['EnumThing']]:
+        return pulumi.get(self, "default_enum")
 
-    @optional_const.setter
-    def optional_const(self, value: Optional[pulumi.Input[str]]):
-        pulumi.set(self, "optional_const", value)
+    @default_enum.setter
+    def default_enum(self, value: Optional[pulumi.Input['EnumThing']]):
+        pulumi.set(self, "default_enum", value)
+
+    @property
+    @pulumi.getter
+    def default_number(self) -> Optional[pulumi.Input[float]]:
+        return pulumi.get(self, "default_number")
+
+    @default_number.setter
+    def default_number(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "default_number", value)
+
+    @property
+    @pulumi.getter
+    def default_string(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "default_string")
+
+    @default_string.setter
+    def default_string(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "default_string", value)
 
     @property
     @pulumi.getter
@@ -196,39 +196,12 @@ class ModuleResourceArgs:
 
     @property
     @pulumi.getter
-    def optional_number(self) -> Optional[pulumi.Input[float]]:
-        return pulumi.get(self, "optional_number")
-
-    @optional_number.setter
-    def optional_number(self, value: Optional[pulumi.Input[float]]):
-        pulumi.set(self, "optional_number", value)
-
-    @property
-    @pulumi.getter
-    def optional_string(self) -> Optional[pulumi.Input[str]]:
-        return pulumi.get(self, "optional_string")
-
-    @optional_string.setter
-    def optional_string(self, value: Optional[pulumi.Input[str]]):
-        pulumi.set(self, "optional_string", value)
-
-    @property
-    @pulumi.getter
     def plain_optional_bool(self) -> Optional[bool]:
         return pulumi.get(self, "plain_optional_bool")
 
     @plain_optional_bool.setter
     def plain_optional_bool(self, value: Optional[bool]):
         pulumi.set(self, "plain_optional_bool", value)
-
-    @property
-    @pulumi.getter
-    def plain_optional_const(self) -> Optional[str]:
-        return pulumi.get(self, "plain_optional_const")
-
-    @plain_optional_const.setter
-    def plain_optional_const(self, value: Optional[str]):
-        pulumi.set(self, "plain_optional_const", value)
 
     @property
     @pulumi.getter
@@ -248,29 +221,38 @@ class ModuleResourceArgs:
     def plain_optional_string(self, value: Optional[str]):
         pulumi.set(self, "plain_optional_string", value)
 
+    @property
+    @pulumi.getter
+    def string_const(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "string_const")
+
+    @string_const.setter
+    def string_const(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "string_const", value)
+
 
 class ModuleResource(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 optional_bool: Optional[pulumi.Input[bool]] = None,
-                 optional_const: Optional[pulumi.Input[str]] = None,
+                 default_bool: Optional[pulumi.Input[bool]] = None,
+                 default_enum: Optional[pulumi.Input['EnumThing']] = None,
+                 default_number: Optional[pulumi.Input[float]] = None,
+                 default_string: Optional[pulumi.Input[str]] = None,
                  optional_enum: Optional[pulumi.Input['EnumThing']] = None,
-                 optional_number: Optional[pulumi.Input[float]] = None,
-                 optional_string: Optional[pulumi.Input[str]] = None,
                  plain_optional_bool: Optional[bool] = None,
-                 plain_optional_const: Optional[str] = None,
                  plain_optional_number: Optional[float] = None,
                  plain_optional_string: Optional[str] = None,
                  plain_required_bool: Optional[bool] = None,
-                 plain_required_const: Optional[str] = None,
+                 plain_required_enum: Optional['EnumThing'] = None,
                  plain_required_number: Optional[float] = None,
                  plain_required_string: Optional[str] = None,
                  required_bool: Optional[pulumi.Input[bool]] = None,
                  required_enum: Optional[pulumi.Input['EnumThing']] = None,
                  required_number: Optional[pulumi.Input[float]] = None,
                  required_string: Optional[pulumi.Input[str]] = None,
+                 string_const: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         """
         Create a ModuleResource resource with the given unique name, props, and options.
@@ -300,23 +282,23 @@ class ModuleResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 optional_bool: Optional[pulumi.Input[bool]] = None,
-                 optional_const: Optional[pulumi.Input[str]] = None,
+                 default_bool: Optional[pulumi.Input[bool]] = None,
+                 default_enum: Optional[pulumi.Input['EnumThing']] = None,
+                 default_number: Optional[pulumi.Input[float]] = None,
+                 default_string: Optional[pulumi.Input[str]] = None,
                  optional_enum: Optional[pulumi.Input['EnumThing']] = None,
-                 optional_number: Optional[pulumi.Input[float]] = None,
-                 optional_string: Optional[pulumi.Input[str]] = None,
                  plain_optional_bool: Optional[bool] = None,
-                 plain_optional_const: Optional[str] = None,
                  plain_optional_number: Optional[float] = None,
                  plain_optional_string: Optional[str] = None,
                  plain_required_bool: Optional[bool] = None,
-                 plain_required_const: Optional[str] = None,
+                 plain_required_enum: Optional['EnumThing'] = None,
                  plain_required_number: Optional[float] = None,
                  plain_required_string: Optional[str] = None,
                  required_bool: Optional[pulumi.Input[bool]] = None,
                  required_enum: Optional[pulumi.Input['EnumThing']] = None,
                  required_number: Optional[pulumi.Input[float]] = None,
                  required_string: Optional[pulumi.Input[str]] = None,
+                 string_const: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         if opts is None:
             opts = pulumi.ResourceOptions()
@@ -329,73 +311,55 @@ class ModuleResource(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
 
-            if optional_bool is None:
-                optional_bool = True
-            __props__.__dict__["optional_bool"] = optional_bool
-            if optional_const is None:
-                optional_const = 'another'
-            __props__.__dict__["optional_const"] = 'val'
+            if default_bool is None:
+                default_bool = True
+            __props__.__dict__["default_bool"] = default_bool
+            if default_enum is None:
+                default_enum = 4
+            __props__.__dict__["default_enum"] = default_enum
+            if default_number is None:
+                default_number = 42
+            __props__.__dict__["default_number"] = default_number
+            if default_string is None:
+                default_string = 'buzzer'
+            __props__.__dict__["default_string"] = default_string
             if optional_enum is None:
                 optional_enum = 8
             __props__.__dict__["optional_enum"] = optional_enum
-            if optional_number is None:
-                optional_number = 42
-            __props__.__dict__["optional_number"] = optional_number
-            if optional_string is None:
-                optional_string = 'buzzer'
-            __props__.__dict__["optional_string"] = optional_string
             if plain_optional_bool is None:
                 plain_optional_bool = True
             __props__.__dict__["plain_optional_bool"] = plain_optional_bool
-            if plain_optional_const is None:
-                plain_optional_const = 'another'
-            __props__.__dict__["plain_optional_const"] = 'val'
             if plain_optional_number is None:
                 plain_optional_number = 42
             __props__.__dict__["plain_optional_number"] = plain_optional_number
             if plain_optional_string is None:
                 plain_optional_string = 'buzzer'
             __props__.__dict__["plain_optional_string"] = plain_optional_string
-            if plain_required_bool is None:
-                plain_required_bool = True
             if plain_required_bool is None and not opts.urn:
                 raise TypeError("Missing required property 'plain_required_bool'")
             __props__.__dict__["plain_required_bool"] = plain_required_bool
-            if plain_required_const is None:
-                plain_required_const = 'another'
-            if plain_required_const is None and not opts.urn:
-                raise TypeError("Missing required property 'plain_required_const'")
-            __props__.__dict__["plain_required_const"] = 'val'
-            if plain_required_number is None:
-                plain_required_number = 42
+            if plain_required_enum is None and not opts.urn:
+                raise TypeError("Missing required property 'plain_required_enum'")
+            __props__.__dict__["plain_required_enum"] = plain_required_enum
             if plain_required_number is None and not opts.urn:
                 raise TypeError("Missing required property 'plain_required_number'")
             __props__.__dict__["plain_required_number"] = plain_required_number
-            if plain_required_string is None:
-                plain_required_string = 'buzzer'
             if plain_required_string is None and not opts.urn:
                 raise TypeError("Missing required property 'plain_required_string'")
             __props__.__dict__["plain_required_string"] = plain_required_string
-            if required_bool is None:
-                required_bool = True
             if required_bool is None and not opts.urn:
                 raise TypeError("Missing required property 'required_bool'")
             __props__.__dict__["required_bool"] = required_bool
-            if required_enum is None:
-                required_enum = 4
             if required_enum is None and not opts.urn:
                 raise TypeError("Missing required property 'required_enum'")
             __props__.__dict__["required_enum"] = required_enum
-            if required_number is None:
-                required_number = 42
             if required_number is None and not opts.urn:
                 raise TypeError("Missing required property 'required_number'")
             __props__.__dict__["required_number"] = required_number
-            if required_string is None:
-                required_string = 'buzzer'
             if required_string is None and not opts.urn:
                 raise TypeError("Missing required property 'required_string'")
             __props__.__dict__["required_string"] = required_string
+            __props__.__dict__["string_const"] = 'val'
         super(ModuleResource, __self__).__init__(
             'foobar::ModuleResource',
             resource_name,

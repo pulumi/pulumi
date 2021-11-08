@@ -34,7 +34,7 @@ export class RubberTree extends pulumi.CustomResource {
     }
 
     public readonly container!: pulumi.Output<outputs.Container | undefined>;
-    public readonly diameter!: pulumi.Output<enums.tree.v1.Diameter>;
+    public readonly diameter!: pulumi.Output<enums.tree.v1.Diameter | undefined>;
     public readonly farm!: pulumi.Output<enums.tree.v1.Farm | string | undefined>;
     public readonly size!: pulumi.Output<enums.tree.v1.TreeSize | undefined>;
     public readonly type!: pulumi.Output<enums.tree.v1.RubberTreeVariety>;
@@ -55,9 +55,6 @@ export class RubberTree extends pulumi.CustomResource {
             inputs["farm"] = state ? state.farm : undefined;
         } else {
             const args = argsOrState as RubberTreeArgs | undefined;
-            if ((!args || args.diameter === undefined) && !opts.urn) {
-                throw new Error("Missing required property 'diameter'");
-            }
             if ((!args || args.type === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'type'");
             }
@@ -65,7 +62,7 @@ export class RubberTree extends pulumi.CustomResource {
             inputs["diameter"] = (args ? args.diameter : undefined) ?? 6;
             inputs["farm"] = (args ? args.farm : undefined) ?? "(unknown)";
             inputs["size"] = (args ? args.size : undefined) ?? "medium";
-            inputs["type"] = (args ? args.type : undefined) ?? "Burgundy";
+            inputs["type"] = args ? args.type : undefined;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
@@ -83,7 +80,7 @@ export interface RubberTreeState {
  */
 export interface RubberTreeArgs {
     container?: pulumi.Input<inputs.ContainerArgs>;
-    diameter: pulumi.Input<enums.tree.v1.Diameter>;
+    diameter?: pulumi.Input<enums.tree.v1.Diameter>;
     farm?: pulumi.Input<enums.tree.v1.Farm | string>;
     size?: pulumi.Input<enums.tree.v1.TreeSize>;
     type: pulumi.Input<enums.tree.v1.RubberTreeVariety>;

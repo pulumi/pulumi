@@ -60,7 +60,8 @@ var sdkTests = []sdkTest{
 		Directory:        "external-resource-schema",
 		Description:      "External resource schema",
 		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
-		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
+		Skip: codegen.NewStringSet("python/test", "nodejs/test",
+			/* TODO[pulumi/pulumi#8308] */ "all"),
 	},
 	{
 		Directory:        "nested-module",
@@ -77,7 +78,8 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "plain-schema-gh6957",
 		Description: "Repro for #6957",
-		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
+		Skip: codegen.NewStringSet("python/test", "nodejs/test",
+			/* TODO[pulumi/pulumi#8308] */ "all"),
 	},
 	{
 		Directory:   "resource-args-python-case-insensitive",
@@ -153,7 +155,8 @@ var sdkTests = []sdkTest{
 		Description: "A resource url with a hyphen in its path",
 		// TODO[pulumi/pulumi#8370]: Re-enable compiling for Go.
 		SkipCompileCheck: codegen.NewStringSet(golang),
-		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
+		Skip: codegen.NewStringSet("python/test", "nodejs/test",
+			/* TODO[pulumi/pulumi#8308] */ "all"),
 	},
 	{
 		Directory:   "output-funcs",
@@ -285,6 +288,11 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			}
 
 			t.Log(tt.Description)
+			// Skip all check. This needs to be here because it needs to skip
+			// the codegen.
+			if tt.Skip.Has("all") {
+				t.SkipNow()
+			}
 
 			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
 

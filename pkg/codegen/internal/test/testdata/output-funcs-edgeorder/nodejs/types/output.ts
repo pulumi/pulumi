@@ -236,7 +236,7 @@ export interface Pav2MeterDetailsResponse {
      * Represents billing type.
      * Expected value is 'Pav2'.
      */
-    billingType: "Pav2";
+    billingType?: "Pav2";
     /**
      * Charging type.
      */
@@ -373,7 +373,7 @@ export interface PurchaseMeterDetailsResponse {
      * Represents billing type.
      * Expected value is 'Purchase'.
      */
-    billingType: "Purchase";
+    billingType?: "Purchase";
     /**
      * Charging type.
      */

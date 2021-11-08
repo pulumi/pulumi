@@ -18,19 +18,14 @@ __all__ = ['RubberTreeArgs', 'RubberTree']
 class RubberTreeArgs:
     def __init__(__self__, *,
                  diameter: pulumi.Input['Diameter'],
-                 type: pulumi.Input['RubberTreeVariety'],
                  container: Optional[pulumi.Input['_root_inputs.ContainerArgs']] = None,
                  farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
-                 size: Optional[pulumi.Input['TreeSize']] = None):
+                 size: Optional[pulumi.Input['TreeSize']] = None,
+                 type: Optional[pulumi.Input['RubberTreeVariety']] = None):
         """
         The set of arguments for constructing a RubberTree resource.
         """
-        if diameter is None:
-            diameter = 6
         pulumi.set(__self__, "diameter", diameter)
-        if type is None:
-            type = 'Burgundy'
-        pulumi.set(__self__, "type", type)
         if container is not None:
             pulumi.set(__self__, "container", container)
         if farm is None:
@@ -41,6 +36,10 @@ class RubberTreeArgs:
             size = 'medium'
         if size is not None:
             pulumi.set(__self__, "size", size)
+        if type is None:
+            type = 'Burgundy'
+        if type is not None:
+            pulumi.set(__self__, "type", type)
 
     @property
     @pulumi.getter
@@ -50,15 +49,6 @@ class RubberTreeArgs:
     @diameter.setter
     def diameter(self, value: pulumi.Input['Diameter']):
         pulumi.set(self, "diameter", value)
-
-    @property
-    @pulumi.getter
-    def type(self) -> pulumi.Input['RubberTreeVariety']:
-        return pulumi.get(self, "type")
-
-    @type.setter
-    def type(self, value: pulumi.Input['RubberTreeVariety']):
-        pulumi.set(self, "type", value)
 
     @property
     @pulumi.getter
@@ -86,6 +76,15 @@ class RubberTreeArgs:
     @size.setter
     def size(self, value: Optional[pulumi.Input['TreeSize']]):
         pulumi.set(self, "size", value)
+
+    @property
+    @pulumi.getter
+    def type(self) -> Optional[pulumi.Input['RubberTreeVariety']]:
+        return pulumi.get(self, "type")
+
+    @type.setter
+    def type(self, value: Optional[pulumi.Input['RubberTreeVariety']]):
+        pulumi.set(self, "type", value)
 
 
 @pulumi.input_type
@@ -167,8 +166,6 @@ class RubberTree(pulumi.CustomResource):
             __props__ = RubberTreeArgs.__new__(RubberTreeArgs)
 
             __props__.__dict__["container"] = container
-            if diameter is None:
-                diameter = 6
             if diameter is None and not opts.urn:
                 raise TypeError("Missing required property 'diameter'")
             __props__.__dict__["diameter"] = diameter
@@ -180,8 +177,6 @@ class RubberTree(pulumi.CustomResource):
             __props__.__dict__["size"] = size
             if type is None:
                 type = 'Burgundy'
-            if type is None and not opts.urn:
-                raise TypeError("Missing required property 'type'")
             __props__.__dict__["type"] = type
         super(RubberTree, __self__).__init__(
             'plant:tree/v1:RubberTree',
@@ -235,6 +230,6 @@ class RubberTree(pulumi.CustomResource):
 
     @property
     @pulumi.getter
-    def type(self) -> pulumi.Output['RubberTreeVariety']:
+    def type(self) -> pulumi.Output[Optional['RubberTreeVariety']]:
         return pulumi.get(self, "type")
 

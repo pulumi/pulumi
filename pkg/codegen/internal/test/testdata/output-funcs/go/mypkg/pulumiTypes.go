@@ -249,7 +249,7 @@ type SsisEnvironmentResponse struct {
 	Name *string `pulumi:"name"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Environment'.
-	Type string `pulumi:"type"`
+	Type *string `pulumi:"type"`
 	// Variable in environment
 	Variables []SsisVariableResponse `pulumi:"variables"`
 }
@@ -277,7 +277,7 @@ type SsisEnvironmentResponseArgs struct {
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Environment'.
-	Type pulumi.StringInput `pulumi:"type"`
+	Type pulumi.StringPtrInput `pulumi:"type"`
 	// Variable in environment
 	Variables SsisVariableResponseArrayInput `pulumi:"variables"`
 }
@@ -331,8 +331,8 @@ func (o SsisEnvironmentResponseOutput) Name() pulumi.StringPtrOutput {
 
 // The type of SSIS object metadata.
 // Expected value is 'Environment'.
-func (o SsisEnvironmentResponseOutput) Type() pulumi.StringOutput {
-	return o.ApplyT(func(v SsisEnvironmentResponse) string { return v.Type }).(pulumi.StringOutput)
+func (o SsisEnvironmentResponseOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v SsisEnvironmentResponse) *string { return v.Type }).(pulumi.StringPtrOutput)
 }
 
 // Variable in environment
@@ -350,7 +350,7 @@ type SsisFolderResponse struct {
 	Name *string `pulumi:"name"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Folder'.
-	Type string `pulumi:"type"`
+	Type *string `pulumi:"type"`
 }
 
 // SsisFolderResponseInput is an input type that accepts SsisFolderResponseArgs and SsisFolderResponseOutput values.
@@ -374,7 +374,7 @@ type SsisFolderResponseArgs struct {
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Folder'.
-	Type pulumi.StringInput `pulumi:"type"`
+	Type pulumi.StringPtrInput `pulumi:"type"`
 }
 
 func (SsisFolderResponseArgs) ElementType() reflect.Type {
@@ -421,8 +421,8 @@ func (o SsisFolderResponseOutput) Name() pulumi.StringPtrOutput {
 
 // The type of SSIS object metadata.
 // Expected value is 'Folder'.
-func (o SsisFolderResponseOutput) Type() pulumi.StringOutput {
-	return o.ApplyT(func(v SsisFolderResponse) string { return v.Type }).(pulumi.StringOutput)
+func (o SsisFolderResponseOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v SsisFolderResponse) *string { return v.Type }).(pulumi.StringPtrOutput)
 }
 
 // Ssis Package.
@@ -443,7 +443,7 @@ type SsisPackageResponse struct {
 	ProjectVersion *float64 `pulumi:"projectVersion"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Package'.
-	Type string `pulumi:"type"`
+	Type *string `pulumi:"type"`
 }
 
 // SsisPackageResponseInput is an input type that accepts SsisPackageResponseArgs and SsisPackageResponseOutput values.
@@ -475,7 +475,7 @@ type SsisPackageResponseArgs struct {
 	ProjectVersion pulumi.Float64PtrInput `pulumi:"projectVersion"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Package'.
-	Type pulumi.StringInput `pulumi:"type"`
+	Type pulumi.StringPtrInput `pulumi:"type"`
 }
 
 func (SsisPackageResponseArgs) ElementType() reflect.Type {
@@ -542,8 +542,8 @@ func (o SsisPackageResponseOutput) ProjectVersion() pulumi.Float64PtrOutput {
 
 // The type of SSIS object metadata.
 // Expected value is 'Package'.
-func (o SsisPackageResponseOutput) Type() pulumi.StringOutput {
-	return o.ApplyT(func(v SsisPackageResponse) string { return v.Type }).(pulumi.StringOutput)
+func (o SsisPackageResponseOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v SsisPackageResponse) *string { return v.Type }).(pulumi.StringPtrOutput)
 }
 
 // Ssis parameter.
@@ -761,7 +761,7 @@ type SsisProjectResponse struct {
 	Parameters []SsisParameterResponse `pulumi:"parameters"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Project'.
-	Type string `pulumi:"type"`
+	Type *string `pulumi:"type"`
 	// Project version.
 	Version *float64 `pulumi:"version"`
 }
@@ -793,7 +793,7 @@ type SsisProjectResponseArgs struct {
 	Parameters SsisParameterResponseArrayInput `pulumi:"parameters"`
 	// The type of SSIS object metadata.
 	// Expected value is 'Project'.
-	Type pulumi.StringInput `pulumi:"type"`
+	Type pulumi.StringPtrInput `pulumi:"type"`
 	// Project version.
 	Version pulumi.Float64PtrInput `pulumi:"version"`
 }
@@ -857,8 +857,8 @@ func (o SsisProjectResponseOutput) Parameters() SsisParameterResponseArrayOutput
 
 // The type of SSIS object metadata.
 // Expected value is 'Project'.
-func (o SsisProjectResponseOutput) Type() pulumi.StringOutput {
-	return o.ApplyT(func(v SsisProjectResponse) string { return v.Type }).(pulumi.StringOutput)
+func (o SsisProjectResponseOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v SsisProjectResponse) *string { return v.Type }).(pulumi.StringPtrOutput)
 }
 
 // Project version.

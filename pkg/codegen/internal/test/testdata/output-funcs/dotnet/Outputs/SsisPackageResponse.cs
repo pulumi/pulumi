@@ -48,7 +48,7 @@ namespace Pulumi.Mypkg.Outputs
         /// The type of SSIS object metadata.
         /// Expected value is 'Package'.
         /// </summary>
-        public readonly string Type;
+        public readonly string? Type;
 
         [OutputConstructor]
         private SsisPackageResponse(
@@ -66,7 +66,7 @@ namespace Pulumi.Mypkg.Outputs
 
             double? projectVersion,
 
-            string type)
+            string? type)
         {
             Description = description;
             FolderId = folderId;

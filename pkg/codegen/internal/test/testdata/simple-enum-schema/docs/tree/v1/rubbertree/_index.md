@@ -161,14 +161,6 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 {{% choosable language csharp %}}
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
-        <span id="diameter_csharp">
-<a href="#diameter_csharp" style="color: inherit; text-decoration: inherit;">Diameter</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#diameter">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Diameter</a></span>
-    </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
-            title="Required">
         <span id="type_csharp">
 <a href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
@@ -182,6 +174,14 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Pulumi.<wbr>Plant.<wbr>Inputs.<wbr>Container<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="diameter_csharp">
+<a href="#diameter_csharp" style="color: inherit; text-decoration: inherit;">Diameter</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#diameter">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Diameter</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -205,14 +205,6 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 {{% choosable language go %}}
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
-        <span id="diameter_go">
-<a href="#diameter_go" style="color: inherit; text-decoration: inherit;">Diameter</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#diameter">Diameter</a></span>
-    </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
-            title="Required">
         <span id="type_go">
 <a href="#type_go" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
@@ -226,6 +218,14 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="diameter_go">
+<a href="#diameter_go" style="color: inherit; text-decoration: inherit;">Diameter</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#diameter">Diameter</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -249,14 +249,6 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 {{% choosable language nodejs %}}
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
-        <span id="diameter_nodejs">
-<a href="#diameter_nodejs" style="color: inherit; text-decoration: inherit;">diameter</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#diameter">Diameter</a></span>
-    </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
-            title="Required">
         <span id="type_nodejs">
 <a href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
@@ -270,6 +262,14 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="diameter_nodejs">
+<a href="#diameter_nodejs" style="color: inherit; text-decoration: inherit;">diameter</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#diameter">Diameter</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -293,14 +293,6 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 {{% choosable language python %}}
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
-        <span id="diameter_python">
-<a href="#diameter_python" style="color: inherit; text-decoration: inherit;">diameter</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#diameter">Diameter</a></span>
-    </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
-            title="Required">
         <span id="type_python">
 <a href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
@@ -314,6 +306,14 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="diameter_python">
+<a href="#diameter_python" style="color: inherit; text-decoration: inherit;">diameter</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#diameter">Diameter</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">

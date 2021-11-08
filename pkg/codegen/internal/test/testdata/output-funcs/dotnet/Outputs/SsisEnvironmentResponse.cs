@@ -36,7 +36,7 @@ namespace Pulumi.Mypkg.Outputs
         /// The type of SSIS object metadata.
         /// Expected value is 'Environment'.
         /// </summary>
-        public readonly string Type;
+        public readonly string? Type;
         /// <summary>
         /// Variable in environment
         /// </summary>
@@ -52,7 +52,7 @@ namespace Pulumi.Mypkg.Outputs
 
             string? name,
 
-            string type,
+            string? type,
 
             ImmutableArray<Outputs.SsisVariableResponse> variables)
         {

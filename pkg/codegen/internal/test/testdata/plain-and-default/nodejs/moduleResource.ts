@@ -47,8 +47,8 @@ export class ModuleResource extends pulumi.CustomResource {
             if ((!args || args.plain_required_bool === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'plain_required_bool'");
             }
-            if ((!args || args.plain_required_const === undefined) && !opts.urn) {
-                throw new Error("Missing required property 'plain_required_const'");
+            if ((!args || args.plain_required_enum === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'plain_required_enum'");
             }
             if ((!args || args.plain_required_number === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'plain_required_number'");
@@ -68,23 +68,23 @@ export class ModuleResource extends pulumi.CustomResource {
             if ((!args || args.required_string === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'required_string'");
             }
-            inputs["optional_bool"] = (args ? args.optional_bool : undefined) ?? true;
-            inputs["optional_const"] = "val";
+            inputs["default_bool"] = (args ? args.default_bool : undefined) ?? true;
+            inputs["default_enum"] = (args ? args.default_enum : undefined) ?? 4;
+            inputs["default_number"] = (args ? args.default_number : undefined) ?? 42;
+            inputs["default_string"] = (args ? args.default_string : undefined) ?? "buzzer";
             inputs["optional_enum"] = (args ? args.optional_enum : undefined) ?? 8;
-            inputs["optional_number"] = (args ? args.optional_number : undefined) ?? 42;
-            inputs["optional_string"] = (args ? args.optional_string : undefined) ?? "buzzer";
             inputs["plain_optional_bool"] = (args ? args.plain_optional_bool : undefined) ?? true;
-            inputs["plain_optional_const"] = "val";
             inputs["plain_optional_number"] = (args ? args.plain_optional_number : undefined) ?? 42;
             inputs["plain_optional_string"] = (args ? args.plain_optional_string : undefined) ?? "buzzer";
-            inputs["plain_required_bool"] = (args ? args.plain_required_bool : undefined) ?? true;
-            inputs["plain_required_const"] = "val";
-            inputs["plain_required_number"] = (args ? args.plain_required_number : undefined) ?? 42;
-            inputs["plain_required_string"] = (args ? args.plain_required_string : undefined) ?? "buzzer";
-            inputs["required_bool"] = (args ? args.required_bool : undefined) ?? true;
-            inputs["required_enum"] = (args ? args.required_enum : undefined) ?? 4;
-            inputs["required_number"] = (args ? args.required_number : undefined) ?? 42;
-            inputs["required_string"] = (args ? args.required_string : undefined) ?? "buzzer";
+            inputs["plain_required_bool"] = args ? args.plain_required_bool : undefined;
+            inputs["plain_required_enum"] = args ? args.plain_required_enum : undefined;
+            inputs["plain_required_number"] = args ? args.plain_required_number : undefined;
+            inputs["plain_required_string"] = args ? args.plain_required_string : undefined;
+            inputs["required_bool"] = args ? args.required_bool : undefined;
+            inputs["required_enum"] = args ? args.required_enum : undefined;
+            inputs["required_number"] = args ? args.required_number : undefined;
+            inputs["required_string"] = args ? args.required_string : undefined;
+            inputs["string_const"] = "val";
         } else {
         }
         if (!opts.version) {
@@ -98,21 +98,21 @@ export class ModuleResource extends pulumi.CustomResource {
  * The set of arguments for constructing a ModuleResource resource.
  */
 export interface ModuleResourceArgs {
-    optional_bool?: pulumi.Input<boolean>;
-    optional_const?: pulumi.Input<"val">;
+    default_bool?: pulumi.Input<boolean>;
+    default_enum?: pulumi.Input<enums.EnumThing>;
+    default_number?: pulumi.Input<number>;
+    default_string?: pulumi.Input<string>;
     optional_enum?: pulumi.Input<enums.EnumThing>;
-    optional_number?: pulumi.Input<number>;
-    optional_string?: pulumi.Input<string>;
     plain_optional_bool?: boolean;
-    plain_optional_const?: "val";
     plain_optional_number?: number;
     plain_optional_string?: string;
     plain_required_bool: boolean;
-    plain_required_const: "val";
+    plain_required_enum: enums.EnumThing;
     plain_required_number: number;
     plain_required_string: string;
     required_bool: pulumi.Input<boolean>;
     required_enum: pulumi.Input<enums.EnumThing>;
     required_number: pulumi.Input<number>;
     required_string: pulumi.Input<string>;
+    string_const?: pulumi.Input<"val">;
 }

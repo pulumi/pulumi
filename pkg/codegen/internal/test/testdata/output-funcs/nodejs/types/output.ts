@@ -50,7 +50,7 @@ export interface SsisEnvironmentResponse {
      * The type of SSIS object metadata.
      * Expected value is 'Environment'.
      */
-    type: "Environment";
+    type?: "Environment";
     /**
      * Variable in environment
      */
@@ -77,7 +77,7 @@ export interface SsisFolderResponse {
      * The type of SSIS object metadata.
      * Expected value is 'Folder'.
      */
-    type: "Folder";
+    type?: "Folder";
 }
 
 /**
@@ -116,7 +116,7 @@ export interface SsisPackageResponse {
      * The type of SSIS object metadata.
      * Expected value is 'Package'.
      */
-    type: "Package";
+    type?: "Package";
 }
 
 /**
@@ -205,7 +205,7 @@ export interface SsisProjectResponse {
      * The type of SSIS object metadata.
      * Expected value is 'Project'.
      */
-    type: "Project";
+    type?: "Project";
     /**
      * Project version.
      */

@@ -600,31 +600,23 @@ class Pav2MeterDetailsResponse(dict):
     Billing type PAV2 meter details
     """
     def __init__(__self__, *,
-                 billing_type: str,
                  charging_type: str,
                  meter_guid: str,
-                 multiplier: float):
+                 multiplier: float,
+                 billing_type: Optional[str] = None):
         """
         Billing type PAV2 meter details
-        :param str billing_type: Represents billing type.
-               Expected value is 'Pav2'.
         :param str charging_type: Charging type.
         :param str meter_guid: Validation status of requested data center and transport.
         :param float multiplier: Billing unit applicable for Pav2 billing
+        :param str billing_type: Represents billing type.
+               Expected value is 'Pav2'.
         """
-        pulumi.set(__self__, "billing_type", 'Pav2')
         pulumi.set(__self__, "charging_type", charging_type)
         pulumi.set(__self__, "meter_guid", meter_guid)
         pulumi.set(__self__, "multiplier", multiplier)
-
-    @property
-    @pulumi.getter(name="billingType")
-    def billing_type(self) -> str:
-        """
-        Represents billing type.
-        Expected value is 'Pav2'.
-        """
-        return pulumi.get(self, "billing_type")
+        if billing_type is not None:
+            pulumi.set(__self__, "billing_type", 'Pav2')
 
     @property
     @pulumi.getter(name="chargingType")
@@ -649,6 +641,15 @@ class Pav2MeterDetailsResponse(dict):
         Billing unit applicable for Pav2 billing
         """
         return pulumi.get(self, "multiplier")
+
+    @property
+    @pulumi.getter(name="billingType")
+    def billing_type(self) -> Optional[str]:
+        """
+        Represents billing type.
+        Expected value is 'Pav2'.
+        """
+        return pulumi.get(self, "billing_type")
 
 
 @pulumi.output_type
@@ -954,37 +955,29 @@ class PurchaseMeterDetailsResponse(dict):
     Billing type Purchase meter details
     """
     def __init__(__self__, *,
-                 billing_type: str,
                  charging_type: str,
                  multiplier: float,
                  product_id: str,
                  sku_id: str,
-                 term_id: str):
+                 term_id: str,
+                 billing_type: Optional[str] = None):
         """
         Billing type Purchase meter details
-        :param str billing_type: Represents billing type.
-               Expected value is 'Purchase'.
         :param str charging_type: Charging type.
         :param float multiplier: Billing unit applicable for Pav2 billing
         :param str product_id: Product Id
         :param str sku_id: Sku Id
         :param str term_id: Term Id
+        :param str billing_type: Represents billing type.
+               Expected value is 'Purchase'.
         """
-        pulumi.set(__self__, "billing_type", 'Purchase')
         pulumi.set(__self__, "charging_type", charging_type)
         pulumi.set(__self__, "multiplier", multiplier)
         pulumi.set(__self__, "product_id", product_id)
         pulumi.set(__self__, "sku_id", sku_id)
         pulumi.set(__self__, "term_id", term_id)
-
-    @property
-    @pulumi.getter(name="billingType")
-    def billing_type(self) -> str:
-        """
-        Represents billing type.
-        Expected value is 'Purchase'.
-        """
-        return pulumi.get(self, "billing_type")
+        if billing_type is not None:
+            pulumi.set(__self__, "billing_type", 'Purchase')
 
     @property
     @pulumi.getter(name="chargingType")
@@ -1025,6 +1018,15 @@ class PurchaseMeterDetailsResponse(dict):
         Term Id
         """
         return pulumi.get(self, "term_id")
+
+    @property
+    @pulumi.getter(name="billingType")
+    def billing_type(self) -> Optional[str]:
+        """
+        Represents billing type.
+        Expected value is 'Purchase'.
+        """
+        return pulumi.get(self, "billing_type")
 
 
 @pulumi.output_type

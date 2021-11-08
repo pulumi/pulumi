@@ -19,7 +19,7 @@ type RubberTree struct {
 	Diameter  DiameterOutput                   `pulumi:"diameter"`
 	Farm      pulumi.StringPtrOutput           `pulumi:"farm"`
 	Size      TreeSizePtrOutput                `pulumi:"size"`
-	Type      RubberTreeVarietyOutput          `pulumi:"type"`
+	Type      RubberTreeVarietyPtrOutput       `pulumi:"type"`
 }
 
 // NewRubberTree registers a new resource with the given unique name, arguments, and options.
@@ -30,7 +30,7 @@ func NewRubberTree(ctx *pulumi.Context,
 	}
 
 	if args.Diameter == nil {
-		args.Diameter = Diameter(6.0)
+		return nil, errors.New("invalid value for required argument 'Diameter'")
 	}
 	if args.Farm == nil {
 		args.Farm = pulumi.StringPtr("(unknown)")
@@ -79,7 +79,7 @@ type rubberTreeArgs struct {
 	Diameter  Diameter                 `pulumi:"diameter"`
 	Farm      *string                  `pulumi:"farm"`
 	Size      *TreeSize                `pulumi:"size"`
-	Type      RubberTreeVariety        `pulumi:"type"`
+	Type      *RubberTreeVariety       `pulumi:"type"`
 }
 
 // The set of arguments for constructing a RubberTree resource.
@@ -88,7 +88,7 @@ type RubberTreeArgs struct {
 	Diameter  DiameterInput
 	Farm      pulumi.StringPtrInput
 	Size      TreeSizePtrInput
-	Type      RubberTreeVarietyInput
+	Type      RubberTreeVarietyPtrInput
 }
 
 func (RubberTreeArgs) ElementType() reflect.Type {

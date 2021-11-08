@@ -20,7 +20,7 @@ namespace Pulumi.Myedgeorder.Outputs
         /// Represents billing type.
         /// Expected value is 'Pav2'.
         /// </summary>
-        public readonly string BillingType;
+        public readonly string? BillingType;
         /// <summary>
         /// Charging type.
         /// </summary>
@@ -36,7 +36,7 @@ namespace Pulumi.Myedgeorder.Outputs
 
         [OutputConstructor]
         private Pav2MeterDetailsResponse(
-            string billingType,
+            string? billingType,
 
             string chargingType,
 

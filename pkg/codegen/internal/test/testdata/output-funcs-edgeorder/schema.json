@@ -814,7 +814,6 @@
       },
       "type": "object",
       "required": [
-        "billingType",
         "chargingType",
         "multiplier",
         "productId",
@@ -845,7 +844,6 @@
       },
       "type": "object",
       "required": [
-        "billingType",
         "chargingType",
         "meterGuid",
         "multiplier"

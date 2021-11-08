@@ -4,12 +4,6 @@
   "resources": {
     "foobar::ModuleResource": {
       "inputProperties": {
-        "plain_optional_const": {
-          "type": "string",
-          "const": "val",
-          "default": "another",
-          "plain": true
-        },
         "plain_optional_string": {
           "type": "string",
           "default": "buzzer",
@@ -27,59 +21,53 @@
         },
         "plain_required_string": {
           "type": "string",
-          "default": "buzzer",
           "plain": true
         },
         "plain_required_bool": {
           "type": "boolean",
-          "default": true,
           "plain": true
         },
         "plain_required_number": {
           "type": "number",
-          "default": 42,
           "plain": true
         },
-        "optional_const": {
+        "string_const": {
           "type": "string",
-          "const": "val",
-          "default": "another"
-        },
-        "optional_string": {
-          "type": "string",
-          "default": "buzzer"
-        },
-        "optional_bool": {
-          "type": "boolean",
-          "default": true
-        },
-        "optional_number": {
-          "type": "number",
-          "default": 42
+          "const": "val"
         },
         "optional_enum": {
           "$ref": "#/types/foobar::EnumThing",
           "default": 8
         },
-        "plain_required_const": {
-          "type": "string",
-          "const": "val",
-          "default": "another",
+        "required_string": {
+          "type": "string"
+        },
+        "required_bool": {
+          "type": "boolean"
+        },
+        "required_number": {
+          "type": "number"
+        },
+        "plain_required_enum": {
+          "$ref": "#/types/foobar::EnumThing",
           "plain": true
         },
-        "required_string": {
+        "required_enum": {
+          "$ref": "#/types/foobar::EnumThing"
+        },
+        "default_string": {
           "type": "string",
           "default": "buzzer"
         },
-        "required_bool": {
+        "default_bool": {
           "type": "boolean",
           "default": true
         },
-        "required_number": {
+        "default_number": {
           "type": "number",
           "default": 42
         },
-        "required_enum": {
+        "default_enum": {
           "$ref": "#/types/foobar::EnumThing",
           "default": 4
         }
@@ -88,7 +76,7 @@
         "plain_required_string",
         "plain_required_bool",
         "plain_required_number",
-        "plain_required_const",
+        "plain_required_enum",
         "required_string",
         "required_bool",
         "required_number",

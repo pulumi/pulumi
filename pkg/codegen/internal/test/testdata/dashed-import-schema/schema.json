@@ -42,8 +42,7 @@
           "default": "medium"
         },
         "diameter": {
-          "$ref": "#/types/plant:tree/v1:Diameter",
-          "default": 6
+          "$ref": "#/types/plant:tree/v1:Diameter"
         }
       },
       "stateInputs": {
@@ -75,12 +74,11 @@
           "default": "medium"
         },
         "diameter": {
-          "$ref": "#/types/plant:tree/v1:Diameter",
-          "default": 6
+          "$ref": "#/types/plant:tree/v1:Diameter"
         }
       },
-      "required": ["type", "diameter"],
-      "requiredInputs": ["type", "diameter"]
+      "required": ["diameter"],
+      "requiredInputs": ["diameter"]
     }
   },
   "types": {

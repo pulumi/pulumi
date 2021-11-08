@@ -32,9 +32,7 @@ namespace Pulumi.FooBar
         private static ModuleResourceArgs MakeArgs(ModuleResourceArgs args)
         {
             args ??= new ModuleResourceArgs();
-            args.Optional_const = "val";
-            args.Plain_optional_const = "val";
-            args.Plain_required_const = "val";
+            args.String_const = "val";
             return args;
         }
 
@@ -65,26 +63,23 @@ namespace Pulumi.FooBar
 
     public sealed class ModuleResourceArgs : Pulumi.ResourceArgs
     {
-        [Input("optional_bool")]
-        public Input<bool>? Optional_bool { get; set; }
+        [Input("default_bool")]
+        public Input<bool>? Default_bool { get; set; }
 
-        [Input("optional_const")]
-        public Input<string>? Optional_const { get; set; }
+        [Input("default_enum")]
+        public Input<Pulumi.FooBar.EnumThing>? Default_enum { get; set; }
+
+        [Input("default_number")]
+        public Input<double>? Default_number { get; set; }
+
+        [Input("default_string")]
+        public Input<string>? Default_string { get; set; }
 
         [Input("optional_enum")]
         public Input<Pulumi.FooBar.EnumThing>? Optional_enum { get; set; }
 
-        [Input("optional_number")]
-        public Input<double>? Optional_number { get; set; }
-
-        [Input("optional_string")]
-        public Input<string>? Optional_string { get; set; }
-
         [Input("plain_optional_bool")]
         public bool? Plain_optional_bool { get; set; }
-
-        [Input("plain_optional_const")]
-        public string? Plain_optional_const { get; set; }
 
         [Input("plain_optional_number")]
         public double? Plain_optional_number { get; set; }
@@ -95,8 +90,8 @@ namespace Pulumi.FooBar
         [Input("plain_required_bool", required: true)]
         public bool Plain_required_bool { get; set; }
 
-        [Input("plain_required_const", required: true)]
-        public string Plain_required_const { get; set; } = null!;
+        [Input("plain_required_enum", required: true)]
+        public Pulumi.FooBar.EnumThing Plain_required_enum { get; set; }
 
         [Input("plain_required_number", required: true)]
         public double Plain_required_number { get; set; }
@@ -116,25 +111,19 @@ namespace Pulumi.FooBar
         [Input("required_string", required: true)]
         public Input<string> Required_string { get; set; } = null!;
 
+        [Input("string_const")]
+        public Input<string>? String_const { get; set; }
+
         public ModuleResourceArgs()
         {
-            Optional_bool = true;
-            Optional_const = "another";
+            Default_bool = true;
+            Default_enum = Pulumi.FooBar.EnumThing.Four;
+            Default_number = 42;
+            Default_string = "buzzer";
             Optional_enum = Pulumi.FooBar.EnumThing.Eight;
-            Optional_number = 42;
-            Optional_string = "buzzer";
             Plain_optional_bool = true;
-            Plain_optional_const = "another";
             Plain_optional_number = 42;
             Plain_optional_string = "buzzer";
-            Plain_required_bool = true;
-            Plain_required_const = "another";
-            Plain_required_number = 42;
-            Plain_required_string = "buzzer";
-            Required_bool = true;
-            Required_enum = Pulumi.FooBar.EnumThing.Four;
-            Required_number = 42;
-            Required_string = "buzzer";
         }
     }
 }

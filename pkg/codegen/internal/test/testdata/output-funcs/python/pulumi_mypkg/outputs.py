@@ -85,23 +85,22 @@ class SsisEnvironmentResponse(dict):
     Ssis environment.
     """
     def __init__(__self__, *,
-                 type: str,
                  description: Optional[str] = None,
                  folder_id: Optional[float] = None,
                  id: Optional[float] = None,
                  name: Optional[str] = None,
+                 type: Optional[str] = None,
                  variables: Optional[Sequence['outputs.SsisVariableResponse']] = None):
         """
         Ssis environment.
-        :param str type: The type of SSIS object metadata.
-               Expected value is 'Environment'.
         :param str description: Metadata description.
         :param float folder_id: Folder id which contains environment.
         :param float id: Metadata id.
         :param str name: Metadata name.
+        :param str type: The type of SSIS object metadata.
+               Expected value is 'Environment'.
         :param Sequence['SsisVariableResponse'] variables: Variable in environment
         """
-        pulumi.set(__self__, "type", 'Environment')
         if description is not None:
             pulumi.set(__self__, "description", description)
         if folder_id is not None:
@@ -110,17 +109,10 @@ class SsisEnvironmentResponse(dict):
             pulumi.set(__self__, "id", id)
         if name is not None:
             pulumi.set(__self__, "name", name)
+        if type is not None:
+            pulumi.set(__self__, "type", 'Environment')
         if variables is not None:
             pulumi.set(__self__, "variables", variables)
-
-    @property
-    @pulumi.getter
-    def type(self) -> str:
-        """
-        The type of SSIS object metadata.
-        Expected value is 'Environment'.
-        """
-        return pulumi.get(self, "type")
 
     @property
     @pulumi.getter
@@ -156,6 +148,15 @@ class SsisEnvironmentResponse(dict):
 
     @property
     @pulumi.getter
+    def type(self) -> Optional[str]:
+        """
+        The type of SSIS object metadata.
+        Expected value is 'Environment'.
+        """
+        return pulumi.get(self, "type")
+
+    @property
+    @pulumi.getter
     def variables(self) -> Optional[Sequence['outputs.SsisVariableResponse']]:
         """
         Variable in environment
@@ -169,34 +170,26 @@ class SsisFolderResponse(dict):
     Ssis folder.
     """
     def __init__(__self__, *,
-                 type: str,
                  description: Optional[str] = None,
                  id: Optional[float] = None,
-                 name: Optional[str] = None):
+                 name: Optional[str] = None,
+                 type: Optional[str] = None):
         """
         Ssis folder.
-        :param str type: The type of SSIS object metadata.
-               Expected value is 'Folder'.
         :param str description: Metadata description.
         :param float id: Metadata id.
         :param str name: Metadata name.
+        :param str type: The type of SSIS object metadata.
+               Expected value is 'Folder'.
         """
-        pulumi.set(__self__, "type", 'Folder')
         if description is not None:
             pulumi.set(__self__, "description", description)
         if id is not None:
             pulumi.set(__self__, "id", id)
         if name is not None:
             pulumi.set(__self__, "name", name)
-
-    @property
-    @pulumi.getter
-    def type(self) -> str:
-        """
-        The type of SSIS object metadata.
-        Expected value is 'Folder'.
-        """
-        return pulumi.get(self, "type")
+        if type is not None:
+            pulumi.set(__self__, "type", 'Folder')
 
     @property
     @pulumi.getter
@@ -222,6 +215,15 @@ class SsisFolderResponse(dict):
         """
         return pulumi.get(self, "name")
 
+    @property
+    @pulumi.getter
+    def type(self) -> Optional[str]:
+        """
+        The type of SSIS object metadata.
+        Expected value is 'Folder'.
+        """
+        return pulumi.get(self, "type")
+
 
 @pulumi.output_type
 class SsisPackageResponse(dict):
@@ -229,18 +231,16 @@ class SsisPackageResponse(dict):
     Ssis Package.
     """
     def __init__(__self__, *,
-                 type: str,
                  description: Optional[str] = None,
                  folder_id: Optional[float] = None,
                  id: Optional[float] = None,
                  name: Optional[str] = None,
                  parameters: Optional[Sequence['outputs.SsisParameterResponse']] = None,
                  project_id: Optional[float] = None,
-                 project_version: Optional[float] = None):
+                 project_version: Optional[float] = None,
+                 type: Optional[str] = None):
         """
         Ssis Package.
-        :param str type: The type of SSIS object metadata.
-               Expected value is 'Package'.
         :param str description: Metadata description.
         :param float folder_id: Folder id which contains package.
         :param float id: Metadata id.
@@ -248,8 +248,9 @@ class SsisPackageResponse(dict):
         :param Sequence['SsisParameterResponse'] parameters: Parameters in package
         :param float project_id: Project id which contains package.
         :param float project_version: Project version which contains package.
+        :param str type: The type of SSIS object metadata.
+               Expected value is 'Package'.
         """
-        pulumi.set(__self__, "type", 'Package')
         if description is not None:
             pulumi.set(__self__, "description", description)
         if folder_id is not None:
@@ -264,15 +265,8 @@ class SsisPackageResponse(dict):
             pulumi.set(__self__, "project_id", project_id)
         if project_version is not None:
             pulumi.set(__self__, "project_version", project_version)
-
-    @property
-    @pulumi.getter
-    def type(self) -> str:
-        """
-        The type of SSIS object metadata.
-        Expected value is 'Package'.
-        """
-        return pulumi.get(self, "type")
+        if type is not None:
+            pulumi.set(__self__, "type", 'Package')
 
     @property
     @pulumi.getter
@@ -329,6 +323,15 @@ class SsisPackageResponse(dict):
         Project version which contains package.
         """
         return pulumi.get(self, "project_version")
+
+    @property
+    @pulumi.getter
+    def type(self) -> Optional[str]:
+        """
+        The type of SSIS object metadata.
+        Expected value is 'Package'.
+        """
+        return pulumi.get(self, "type")
 
 
 @pulumi.output_type
@@ -492,27 +495,26 @@ class SsisProjectResponse(dict):
     Ssis project.
     """
     def __init__(__self__, *,
-                 type: str,
                  description: Optional[str] = None,
                  environment_refs: Optional[Sequence['outputs.SsisEnvironmentReferenceResponse']] = None,
                  folder_id: Optional[float] = None,
                  id: Optional[float] = None,
                  name: Optional[str] = None,
                  parameters: Optional[Sequence['outputs.SsisParameterResponse']] = None,
+                 type: Optional[str] = None,
                  version: Optional[float] = None):
         """
         Ssis project.
-        :param str type: The type of SSIS object metadata.
-               Expected value is 'Project'.
         :param str description: Metadata description.
         :param Sequence['SsisEnvironmentReferenceResponse'] environment_refs: Environment reference in project
         :param float folder_id: Folder id which contains project.
         :param float id: Metadata id.
         :param str name: Metadata name.
         :param Sequence['SsisParameterResponse'] parameters: Parameters in project
+        :param str type: The type of SSIS object metadata.
+               Expected value is 'Project'.
         :param float version: Project version.
         """
-        pulumi.set(__self__, "type", 'Project')
         if description is not None:
             pulumi.set(__self__, "description", description)
         if environment_refs is not None:
@@ -525,17 +527,10 @@ class SsisProjectResponse(dict):
             pulumi.set(__self__, "name", name)
         if parameters is not None:
             pulumi.set(__self__, "parameters", parameters)
+        if type is not None:
+            pulumi.set(__self__, "type", 'Project')
         if version is not None:
             pulumi.set(__self__, "version", version)
-
-    @property
-    @pulumi.getter
-    def type(self) -> str:
-        """
-        The type of SSIS object metadata.
-        Expected value is 'Project'.
-        """
-        return pulumi.get(self, "type")
 
     @property
     @pulumi.getter
@@ -584,6 +579,15 @@ class SsisProjectResponse(dict):
         Parameters in project
         """
         return pulumi.get(self, "parameters")
+
+    @property
+    @pulumi.getter
+    def type(self) -> Optional[str]:
+        """
+        The type of SSIS object metadata.
+        Expected value is 'Project'.
+        """
+        return pulumi.get(self, "type")
 
     @property
     @pulumi.getter

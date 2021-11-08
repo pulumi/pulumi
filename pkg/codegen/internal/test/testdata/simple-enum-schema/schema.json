@@ -27,8 +27,7 @@
           "$ref": "#/types/plant::Container"
         },
         "type": {
-          "$ref": "#/types/plant:tree/v1:RubberTreeVariety",
-          "default": "Burgundy"
+          "$ref": "#/types/plant:tree/v1:RubberTreeVariety"
         },
         "farm": {
           "oneOf": [
@@ -79,8 +78,8 @@
           "default": 6
         }
       },
-      "required": ["type", "diameter"],
-      "requiredInputs": ["type", "diameter"]
+      "required": ["type"],
+      "requiredInputs": ["type"]
     }
   },
   "types": {

@@ -16,7 +16,7 @@ type RubberTree struct {
 	pulumi.CustomResourceState
 
 	Container plant.ContainerPtrOutput `pulumi:"container"`
-	Diameter  DiameterOutput           `pulumi:"diameter"`
+	Diameter  DiameterPtrOutput        `pulumi:"diameter"`
 	Farm      pulumi.StringPtrOutput   `pulumi:"farm"`
 	Size      TreeSizePtrOutput        `pulumi:"size"`
 	Type      RubberTreeVarietyOutput  `pulumi:"type"`
@@ -29,6 +29,9 @@ func NewRubberTree(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
+	if args.Type == nil {
+		return nil, errors.New("invalid value for required argument 'Type'")
+	}
 	if args.Diameter == nil {
 		args.Diameter = Diameter(6.0)
 	}
@@ -37,9 +40,6 @@ func NewRubberTree(ctx *pulumi.Context,
 	}
 	if args.Size == nil {
 		args.Size = TreeSize("medium")
-	}
-	if args.Type == nil {
-		args.Type = RubberTreeVariety("Burgundy")
 	}
 	var resource RubberTree
 	err := ctx.RegisterResource("plant:tree/v1:RubberTree", name, args, &resource, opts...)
@@ -76,7 +76,7 @@ func (RubberTreeState) ElementType() reflect.Type {
 
 type rubberTreeArgs struct {
 	Container *plant.Container  `pulumi:"container"`
-	Diameter  Diameter          `pulumi:"diameter"`
+	Diameter  *Diameter         `pulumi:"diameter"`
 	Farm      *string           `pulumi:"farm"`
 	Size      *TreeSize         `pulumi:"size"`
 	Type      RubberTreeVariety `pulumi:"type"`
@@ -85,7 +85,7 @@ type rubberTreeArgs struct {
 // The set of arguments for constructing a RubberTree resource.
 type RubberTreeArgs struct {
 	Container plant.ContainerPtrInput
-	Diameter  DiameterInput
+	Diameter  DiameterPtrInput
 	Farm      pulumi.StringPtrInput
 	Size      TreeSizePtrInput
 	Type      RubberTreeVarietyInput

@@ -356,10 +356,7 @@
           "description": "Variable in environment"
         }
       },
-      "type": "object",
-      "required": [
-        "type"
-      ]
+      "type": "object"
     },
     "mypkg::SsisFolderResponse": {
       "description": "Ssis folder.",
@@ -382,10 +379,7 @@
           "const": "Folder"
         }
       },
-      "type": "object",
-      "required": [
-        "type"
-      ]
+      "type": "object"
     },
     "mypkg::SsisPackageResponse": {
       "description": "Ssis Package.",
@@ -428,10 +422,7 @@
           "const": "Package"
         }
       },
-      "type": "object",
-      "required": [
-        "type"
-      ]
+      "type": "object"
     },
     "mypkg::SsisProjectResponse": {
       "description": "Ssis project.",
@@ -478,10 +469,7 @@
           "description": "Project version."
         }
       },
-      "type": "object",
-      "required": [
-        "type"
-      ]
+      "type": "object"
     },
     "mypkg::SsisEnvironmentReferenceResponse": {
       "description": "Ssis environment reference.",

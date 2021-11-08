@@ -1657,7 +1657,7 @@ func (o LinkResponseArrayOutput) Index(i pulumi.IntInput) LinkResponseOutput {
 type Pav2MeterDetailsResponse struct {
 	// Represents billing type.
 	// Expected value is 'Pav2'.
-	BillingType string `pulumi:"billingType"`
+	BillingType *string `pulumi:"billingType"`
 	// Charging type.
 	ChargingType string `pulumi:"chargingType"`
 	// Validation status of requested data center and transport.
@@ -1681,7 +1681,7 @@ type Pav2MeterDetailsResponseInput interface {
 type Pav2MeterDetailsResponseArgs struct {
 	// Represents billing type.
 	// Expected value is 'Pav2'.
-	BillingType pulumi.StringInput `pulumi:"billingType"`
+	BillingType pulumi.StringPtrInput `pulumi:"billingType"`
 	// Charging type.
 	ChargingType pulumi.StringInput `pulumi:"chargingType"`
 	// Validation status of requested data center and transport.
@@ -1719,8 +1719,8 @@ func (o Pav2MeterDetailsResponseOutput) ToPav2MeterDetailsResponseOutputWithCont
 
 // Represents billing type.
 // Expected value is 'Pav2'.
-func (o Pav2MeterDetailsResponseOutput) BillingType() pulumi.StringOutput {
-	return o.ApplyT(func(v Pav2MeterDetailsResponse) string { return v.BillingType }).(pulumi.StringOutput)
+func (o Pav2MeterDetailsResponseOutput) BillingType() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v Pav2MeterDetailsResponse) *string { return v.BillingType }).(pulumi.StringPtrOutput)
 }
 
 // Charging type.
@@ -2231,7 +2231,7 @@ func (o ProductResponseArrayOutput) Index(i pulumi.IntInput) ProductResponseOutp
 type PurchaseMeterDetailsResponse struct {
 	// Represents billing type.
 	// Expected value is 'Purchase'.
-	BillingType string `pulumi:"billingType"`
+	BillingType *string `pulumi:"billingType"`
 	// Charging type.
 	ChargingType string `pulumi:"chargingType"`
 	// Billing unit applicable for Pav2 billing
@@ -2259,7 +2259,7 @@ type PurchaseMeterDetailsResponseInput interface {
 type PurchaseMeterDetailsResponseArgs struct {
 	// Represents billing type.
 	// Expected value is 'Purchase'.
-	BillingType pulumi.StringInput `pulumi:"billingType"`
+	BillingType pulumi.StringPtrInput `pulumi:"billingType"`
 	// Charging type.
 	ChargingType pulumi.StringInput `pulumi:"chargingType"`
 	// Billing unit applicable for Pav2 billing
@@ -2301,8 +2301,8 @@ func (o PurchaseMeterDetailsResponseOutput) ToPurchaseMeterDetailsResponseOutput
 
 // Represents billing type.
 // Expected value is 'Purchase'.
-func (o PurchaseMeterDetailsResponseOutput) BillingType() pulumi.StringOutput {
-	return o.ApplyT(func(v PurchaseMeterDetailsResponse) string { return v.BillingType }).(pulumi.StringOutput)
+func (o PurchaseMeterDetailsResponseOutput) BillingType() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v PurchaseMeterDetailsResponse) *string { return v.BillingType }).(pulumi.StringPtrOutput)
 }
 
 // Charging type.

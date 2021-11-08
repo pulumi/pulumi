@@ -2223,7 +2223,7 @@ func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Typ
 
 // bindProperties binds the map of property specs and list of required properties into a sorted list of properties and
 // a lookup table.
-func (t *types) bindProperties(path string, properties map[string]PropertySpec, requiredPath string, required []string,
+func (t *types) bindProperties(rootPath string, properties map[string]PropertySpec, requiredPath string, required []string,
 	inputShape bool) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
 
 	var diags hcl.Diagnostics
@@ -2232,7 +2232,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 	propertyMap := map[string]*Property{}
 	var result []*Property
 	for name, spec := range properties {
-		propertyPath := path + "/" + name
+		propertyPath := rootPath + "/" + name
 
 		typ, typDiags, err := t.bindType(propertyPath, spec.TypeSpec, inputShape)
 		diags = diags.Extend(typDiags)
@@ -2280,9 +2280,18 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 
 	for name, prop := range propertyMap {
 		_, optional := prop.Type.(*OptionalType)
-		if many(!optional, prop.ConstValue != nil, prop.DefaultValue != nil) {
-			diags = diags.Append(errorf(path+name,
-				"Cannot specify more then one of 'required', 'const', or 'default'"))
+		error := func(message string) {
+			diags = diags.Append(errorf(path.Join(rootPath, name), "Cannot combine flags "+message+
+				" for the same property. Only one of these flags may be set at a time"))
+		}
+		if !optional && prop.ConstValue != nil && prop.DefaultValue != nil {
+			error("'required', 'const' and 'default'")
+		} else if !optional && prop.ConstValue != nil {
+			error("'required' and 'const'")
+		} else if !optional && prop.DefaultValue != nil {
+			error("'required' and 'default'")
+		} else if prop.DefaultValue != nil && prop.ConstValue != nil {
+			error("'default' and 'const'")
 		}
 	}
 
@@ -2775,17 +2784,4 @@ func (fun *Function) NeedsOutputVersion() bool {
 	}
 
 	return true
-}
-
-// True if more then one boolean is true.
-func many(booleans ...bool) bool {
-	var found bool
-	for _, b := range booleans {
-		if found && b {
-			return true
-		} else if b {
-			found = true
-		}
-	}
-	return false
 }

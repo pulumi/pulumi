@@ -20,7 +20,7 @@ namespace Pulumi.Myedgeorder.Outputs
         /// Represents billing type.
         /// Expected value is 'Purchase'.
         /// </summary>
-        public readonly string BillingType;
+        public readonly string? BillingType;
         /// <summary>
         /// Charging type.
         /// </summary>
@@ -44,7 +44,7 @@ namespace Pulumi.Myedgeorder.Outputs
 
         [OutputConstructor]
         private PurchaseMeterDetailsResponse(
-            string billingType,
+            string? billingType,
 
             string chargingType,
 
