@@ -24,6 +24,8 @@ from ..runtime.proto import language_pb2, plugin_pb2, LanguageRuntimeServicer
 from ..runtime import run_in_stack, reset_options, set_all_config
 from ..errors import RunError
 
+_py_version_less_than_3_7 = sys.version_info[0] == 3 and sys.version_info[1] < 7
+
 
 class LanguageServer(LanguageRuntimeServicer):
     program: PulumiFn
@@ -87,7 +89,7 @@ class LanguageServer(LanguageRuntimeServicer):
             # at the time the loop is closed, which results in a `Task was destroyed but it is pending!` error being
             # logged to stdout. To avoid this, we collect all the unresolved tasks in the loop and cancel them before
             # closing the loop.
-            pending = asyncio.all_tasks(loop)
+            pending = asyncio.Task.all_tasks(loop) if _py_version_less_than_3_7 else asyncio.all_tasks(loop)  # pylint: disable=no-member
             log.debug(f"Cancelling {len(pending)} tasks.")
             for task in pending:
                 task.cancel()

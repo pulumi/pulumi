@@ -453,7 +453,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
-	resName := makeValidIdentifier(r.Name())
+	resName, resNameVar := r.Name(), makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
 	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
 		mod = pkg
@@ -509,7 +509,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		rangeExpr, temps := g.lowerExpression(r.Options.Range, rangeType)
 		g.genTemps(w, temps)
 
-		g.Fgenf(w, "var %s []*%s.%s\n", resName, modOrAlias, typ)
+		g.Fgenf(w, "var %s []*%s.%s\n", resNameVar, modOrAlias, typ)
 
 		// ahead of range statement declaration generate the resource instantiation
 		// to detect and removed unused k,v variables
@@ -524,11 +524,11 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 		g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
 		g.Fgen(w, instantiation)
-		g.Fgenf(w, "%s = append(%s, __res)\n", resName, resName)
+		g.Fgenf(w, "%[1]s = append(%[1]s, __res)\n", resNameVar)
 		g.Fgenf(w, "}\n")
 
 	} else {
-		instantiate(resName, fmt.Sprintf("%q", resName), w)
+		instantiate(resNameVar, fmt.Sprintf("%q", resName), w)
 	}
 
 }
