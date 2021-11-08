@@ -772,10 +772,14 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 			}
 
 			constraint := resourcePlan.Ops[0]
+			// We remove the Op from the list before doing the constraint check.
+			// This is because we look at Ops at the end to see if any expected operations didn't attempt to happen.
+			// This op has been attempted, it just might fail its constraint.
+			resourcePlan.Ops = resourcePlan.Ops[1:]
+
 			if !s.Op().ConstrainedTo(constraint) {
 				return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 			}
-			resourcePlan.Ops = resourcePlan.Ops[1:]
 		}
 
 		resourcePlan, ok := sg.deployment.newPlans.get(s.URN())
