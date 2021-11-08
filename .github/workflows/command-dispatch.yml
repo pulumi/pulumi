@@ -43,19 +43,6 @@ jobs:
           permission: write
           issue-type: pull-request
           repository: pulumi/pulumi
-  command-dispatch-for-containers-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Run Build
-        uses: peter-evans/slash-command-dispatch@v2
-        with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          reaction-token: ${{ secrets.GITHUB_TOKEN }}
-          commands: run-containers
-          permission: write
-          issue-type: pull-request
-          repository: pulumi/pulumi
   auto-rebase-command:
     runs-on: ubuntu-latest
     steps:

@@ -624,7 +624,7 @@ export async function getAllTransitivelyReferencedResourceURNs(resources: Set<Re
     // Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
     // It will *not* include:
     // * Cust4 because it is a child of a custom resource
-    // * Comp2 because it is a non-remote component resoruce
+    // * Comp2 because it is a non-remote component resource
     // * Comp3 and Cust5 because Comp3 is a child of a remote component resource
 
     // To do this, first we just get the transitively reachable set of resources (not diving

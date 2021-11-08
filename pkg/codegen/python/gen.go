@@ -1909,7 +1909,7 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func genPackageMetadata(
-	tool string, pkg *schema.Package, pyPkgName string, emitPulumiPluginFile bool, requires map[string]string) (string, error) {
+	tool string, pkg *schema.Package, pyPkgName string, emitPulumiPluginFile bool, requires map[string]string, pythonRequires string) (string, error) {
 
 	w := &bytes.Buffer{}
 	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil)
@@ -1960,6 +1960,9 @@ func genPackageMetadata(
 
 	// Finally, the actual setup part.
 	fmt.Fprintf(w, "setup(name='%s',\n", pyPkgName)
+	if pythonRequires != "" {
+		fmt.Fprintf(w, "      python_requires='%s',\n", pythonRequires)
+	}
 	fmt.Fprintf(w, "      version=VERSION,\n")
 	if pkg.Description != "" {
 		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(pkg.Description))
@@ -2783,7 +2786,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	// Finally emit the package metadata (setup.py).
-	setup, err := genPackageMetadata(tool, pkg, pkgName, info.EmitPulumiPluginFile, info.Requires)
+	setup, err := genPackageMetadata(tool, pkg, pkgName, info.EmitPulumiPluginFile, info.Requires, info.PythonRequires)
 	if err != nil {
 		return nil, err
 	}
@@ -3014,9 +3017,10 @@ def lift_output_func(func: typing.Any) -> typing.Callable[[_F], _F]:
 
     def lifted_func(*args, opts=None, **kwargs):
         bound_args = func_sig.bind(*args, **kwargs)
-
+        # Convert tuple to list, see pulumi/pulumi#8172
+        args_list = list(bound_args.args)
         return pulumi.Output.from_input({
-            'args': bound_args.args,
+            'args': args_list,
             'kwargs': bound_args.kwargs
         }).apply(lambda resolved_args: func(*resolved_args['args'],
                                             opts=opts,

@@ -56,7 +56,7 @@ namespace Pulumi
             // tracking, which is a good future direction also for
             // `Invoke`.
             var result = await InvokeRawAsync(token, args, options).ConfigureAwait(false);
-            var data = Converter.ConvertValue<T>($"{token} result",
+            var data = Converter.ConvertValue<T>(err => Log.Warn(err), $"{token} result",
                                                  new Value { StructValue = result.Serialized });
             var resources = ImmutableHashSet.CreateRange(
                 result.PropertyToDependentResources.Values.SelectMany(r => r)
@@ -77,7 +77,7 @@ namespace Pulumi
                 return default!;
             }
 
-            var data = Converter.ConvertValue<T>($"{token} result", new Value { StructValue = result.Serialized });
+            var data = Converter.ConvertValue<T>(err => Log.Warn(err), $"{token} result", new Value { StructValue = result.Serialized });
             return data.Value;
         }
 

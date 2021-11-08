@@ -151,7 +151,9 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "hyphen-url",
 		Description: "A resource url with a hyphen in its path",
-		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
+		// TODO[pulumi/pulumi#8370]: Re-enable compiling for Go.
+		SkipCompileCheck: codegen.NewStringSet(golang),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "output-funcs",
@@ -182,6 +184,12 @@ var sdkTests = []sdkTest{
 		Directory:   "dashed-import-schema",
 		Description: "Ensure that we handle all valid go import paths",
 		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
+	},
+	{
+		Directory:        "plain-and-default",
+		Description:      "Ensure that a resource with a plain default property works correctly",
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
+		SkipCompileCheck: codegen.NewStringSet(nodejs),
 	},
 }
 

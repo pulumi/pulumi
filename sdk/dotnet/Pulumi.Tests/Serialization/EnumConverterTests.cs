@@ -91,7 +91,7 @@ namespace Pulumi.Tests.Serialization
         [MemberData(nameof(StringEnums))]
         public async Task StringEnum(ContainerColor input)
         {
-            var data = Converter.ConvertValue<ContainerColor>("", await SerializeToValueAsync(input));
+            var data = Converter.ConvertValue<ContainerColor>(NoWarn, "", await SerializeToValueAsync(input));
 
             Assert.Equal(input, data.Value);
             Assert.True(data.IsKnown);
@@ -108,7 +108,7 @@ namespace Pulumi.Tests.Serialization
         [MemberData(nameof(DoubleEnums))]
         public async Task DoubleEnum(ContainerBrightness input)
         {
-            var data = Converter.ConvertValue<ContainerBrightness>("", await SerializeToValueAsync(input));
+            var data = Converter.ConvertValue<ContainerBrightness>(NoWarn, "", await SerializeToValueAsync(input));
 
             Assert.Equal(input, data.Value);
             Assert.True(data.IsKnown);
@@ -123,7 +123,7 @@ namespace Pulumi.Tests.Serialization
         [InlineData((ContainerSize)int.MaxValue)]
         public async Task Int32Enum(ContainerSize input)
         {
-            var data = Converter.ConvertValue<ContainerSize>("", await SerializeToValueAsync(input));
+            var data = Converter.ConvertValue<ContainerSize>(NoWarn, "", await SerializeToValueAsync(input));
 
             Assert.Equal(input, data.Value);
             Assert.True(data.IsKnown);
@@ -200,19 +200,23 @@ namespace Pulumi.Tests.Serialization
         public static IEnumerable<object[]> EnumsWithUnconvertibleValues()
             => new[]
             {
-                new object[] { typeof(ContainerColor), new Value { NumberValue = 1.0 } },
-                new object[] { typeof(ContainerBrightness), new Value { StringValue = "hello" } },
-                new object[] { typeof(ContainerSize), new Value { StringValue = "hello" } },
+                new object[] { typeof(ContainerColor), new Value { NumberValue = 1.0 }, "Expected target type Pulumi.Tests.Serialization.EnumConverterTests+ContainerColor to have a constructor with a single System.Double parameter." },
+                new object[] { typeof(ContainerBrightness), new Value { StringValue = "hello" }, "Expected target type Pulumi.Tests.Serialization.EnumConverterTests+ContainerBrightness to have a constructor with a single System.String parameter." },
+                new object[] { typeof(ContainerSize), new Value { StringValue = "hello" }, "Expected System.Double but got System.String deserializing " },
             };
 
         [Theory]
         [MemberData(nameof(EnumsWithUnconvertibleValues))]
-        public void ConvertingUnconvertibleValuesThrows(Type targetType, Value value)
+        public void ConvertingUnconvertibleValuesLogs(Type targetType, Value value, string expectedError)
         {
-            Assert.Throws<InvalidOperationException>(() =>
-            {
-                Converter.ConvertValue("", value, targetType);
-            });
+            string? loggedError = null;
+            Action<string> warn = error => loggedError = error;
+            var data = Converter.ConvertValue(warn, "", value, targetType);
+
+            Assert.Null(data.Value);
+            Assert.True(data.IsKnown);
+
+            Assert.Equal(expectedError, loggedError);
         }
     }
 }
