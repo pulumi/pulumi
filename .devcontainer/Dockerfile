@@ -22,6 +22,7 @@ ARG USER_GID=$USER_UID
 
 RUN groupadd --gid $USER_GID $USER_NAME \
     && useradd --uid $USER_UID --gid $USER_GID --shell /bin/bash -m $USER_NAME \
+    && mkdir -p /etc/sudoers.d \
     && echo "$USER_NAME ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/$USER_NAME \
     && chmod 0440 /etc/sudoers.d/$USER_NAME
 
