@@ -363,7 +363,7 @@ func RunCommandWithOptions(
 type SchemaVersion = string
 
 const (
-	AwsSchema         SchemaVersion = "4.21.1"
+	AwsSchema         SchemaVersion = "4.26.0"
 	AzureNativeSchema SchemaVersion = "1.29.0"
 	AzureSchema       SchemaVersion = "4.18.0"
 	KubernetesSchema  SchemaVersion = "3.7.2"
