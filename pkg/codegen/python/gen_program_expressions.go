@@ -230,6 +230,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		name := fmt.Sprintf("%s%s.%s", pkg, module, PyName(fn))
 
+		isOut := pcl.IsOutputVersionInvokeCall(expr)
+		if isOut {
+			name = fmt.Sprintf("%s_output", name)
+		}
+
 		if len(expr.Args) == 1 {
 			g.Fprintf(w, "%s()", name)
 			return
