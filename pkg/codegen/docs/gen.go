@@ -1706,8 +1706,13 @@ func (mod *modContext) genIndex() indexData {
 	modName := mod.getModuleFileName()
 	title := modName
 
+	// An empty string indicates that this is the root module.
 	if title == "" {
-		title = formatTitleText(mod.pkg.Name)
+		if mod.pkg.DisplayName != "" {
+			title = mod.pkg.DisplayName
+		} else {
+			title = getPackageDisplayName(mod.pkg.Name)
+		}
 	}
 
 	// If there are submodules, list them.
@@ -1759,7 +1764,7 @@ func (mod *modContext) genIndex() indexData {
 	// assume top level package index page when formatting title tags otherwise, if contains modules, assume modules
 	// top level page when generating title tags.
 	if len(modules) > 0 {
-		titleTag = fmt.Sprintf("%s Package", formatTitleText(title))
+		titleTag = fmt.Sprintf("%s Package", getPackageDisplayName(title))
 	} else {
 		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, title)
 		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s.%s module.", mod.pkg.Name, title)
@@ -1784,7 +1789,9 @@ func (mod *modContext) genIndex() indexData {
 	return data
 }
 
-func formatTitleText(title string) string {
+// getPackageDisplayName uses the title lookup map to look for a
+// display name for the given title.
+func getPackageDisplayName(title string) string {
 	// If title not found in titleLookup map, default back to title given.
 	if val, ok := titleLookup(title); ok {
 		return val
