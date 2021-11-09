@@ -252,7 +252,6 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 
 		params = make([]formalParam, 0, len(inputs.Properties))
 		for _, prop := range inputs.Properties {
-
 			var schemaType schema.Type
 			if outputVersion {
 				schemaType = codegen.OptionalType(prop)
