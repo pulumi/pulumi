@@ -19,14 +19,13 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/docker/docker/pkg/ioutils"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -141,25 +140,7 @@ func (pw *projectWorkspace) Save() error {
 	if err != nil {
 		return err
 	}
-	return atomicWrite(settingsFile, b)
-}
-
-// atomicWrite writes to a file path atomically.
-//
-// It uses the write mv/rename trick to atomically write a file.
-func atomicWrite(path string, b []byte) error {
-	// This RNG provides no security. It is intended only to generate
-	// probabilistically unique names.
-	tmpFile := fmt.Sprintf("%s%d.tmp", path, rand.Int31()) // nolint: gosec
-	err := ioutil.WriteFile(tmpFile, b, 0600)
-	if err != nil {
-		return err
-	}
-	err = os.Rename(tmpFile, path)
-	if err != nil {
-		return err
-	}
-	return os.Remove(tmpFile)
+	return ioutils.AtomicWriteFile(settingsFile, b, 0600)
 }
 
 func (pw *projectWorkspace) readSettings() error {
