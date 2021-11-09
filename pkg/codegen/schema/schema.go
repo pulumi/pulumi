@@ -552,8 +552,8 @@ type Package struct {
 	// package in the Pulumi registry. `category/<name>` and `kind/<type>` are the only
 	// reserved keywords at this time, where `<name>` can be one of:
 	// `cloud`, `database`, `infrastructure`, `monitoring`, `network`, `utility`, `vcs`
-	// and `<type>` is either `native` or `component`. If the package is a TF-based provider,
-	// then don't include the `kind/` label.
+	// and `<type>` is either `native` or `component`. If the package is a bridged Terraform
+	// provider, then don't include the `kind/` label.
 	Keywords []string
 	// Homepage is the package's homepage.
 	Homepage string
@@ -1483,8 +1483,8 @@ type PackageSpec struct {
 	// package in the Pulumi registry. `category/<name>` and `kind/<type>` are the only
 	// reserved keywords at this time, where `<name>` can be one of:
 	// `cloud`, `database`, `infrastructure`, `monitoring`, `network`, `utility`, `vcs`
-	// and `<type>` is either `native` or `component`. If the package is a TF-based provider,
-	// then don't include the `kind/` label.
+	// and `<type>` is either `native` or `component`. If the package is a bridged Terraform
+	// provider, then don't include the `kind/` label.
 	Keywords []string `json:"keywords,omitempty" yaml:"keywords,omitempty"`
 	// Homepage is the package's homepage.
 	Homepage string `json:"homepage,omitempty" yaml:"homepage,omitempty"`
