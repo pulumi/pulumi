@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 
@@ -26,15 +25,6 @@ namespace Pulumi.Serialization
             if (TryDeserializeAssetOrArchive(value, out var assetOrArchive))
             {
                 return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)assetOrArchive, isKnown: true, isSecret);
-            }
-            if (TryDeserializeOutputValue<T>(value, out var deps, out var innerValue, out var isKnown, out var internalIsSecret))
-            {
-                // We use `DeserializeCore` instead of just calling `func` because `innerValue` might be a `Resource` (or any other
-                // special Pulumi data type). We use `DeserializeCore` instead of `Deserialize` to avoid a circular dependency
-                // between the two.
-                return new OutputData<T>(
-                    deps, isKnown ? DeserializeCore(innerValue, func).Value : default!,
-                    isKnown, isSecret || internalIsSecret);
             }
             if (TryDeserializeResource(value, out var resource))
             {
@@ -263,33 +253,6 @@ namespace Pulumi.Serialization
 
             result = null;
             return false;
-        }
-
-        private static bool TryDeserializeOutputValue<T>(Value prop,
-                                                          out ImmutableHashSet<Resource> deps,
-                                                         [NotNullWhen(true)] out Value? output,
-                                                          out bool isKnown,
-                                                          out bool isSecret)
-        {
-            if (!IsSpecialStruct(prop, out var sig) || sig != Constants.SpecialOutputValueSig)
-            {
-                output = null;
-                isSecret = false;
-                isKnown = false;
-                deps = ImmutableHashSet<Resource>.Empty;
-                return false;
-            }
-            isKnown = prop.StructValue.Fields.TryGetValue(Constants.ValueName, out var value);
-            isSecret = prop.StructValue.Fields.TryGetValue(Constants.SecretName, out var secretValue);
-            isSecret = isSecret && secretValue.BoolValue;
-            var hasDeps = prop.StructValue.Fields.TryGetValue(Constants.DependenciesName, out var depsValue);
-            var depsBuilder = ImmutableHashSet.CreateBuilder<Resource>();
-            deps = hasDeps ?
-                ImmutableHashSet.CreateRange<Resource>(
-                    depsValue.ListValue.Values.Select(dep => new DependencyResource(dep.StringValue)))
-                : ImmutableHashSet<Resource>.Empty;
-            output = value;
-            return true;
         }
     }
 }

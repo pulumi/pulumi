@@ -133,8 +133,6 @@ namespace Pulumi.Tests.Serialization
                     keepResources: true,
                     keepOutputValues: true).ConfigureAwait(false) as ImmutableDictionary<string, object>;
                 AssertEquivalent(test.Expected, actual!);
-                var back = Deserializer.Deserialize(CreateValue(actual!));
-                await AssertEquivalent(test.ExpectedRoundTrip, back);
             });
     }
 }
