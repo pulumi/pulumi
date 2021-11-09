@@ -84,6 +84,7 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
+	github.com/alecthomas/participle/v2 v2.0.0-alpha7 // indirect
 	github.com/apparentlymart/go-textseg v1.0.0 // indirect
 	github.com/cheggaaa/pb v1.0.18 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
