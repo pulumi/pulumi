@@ -171,7 +171,13 @@ func CopyDir(src, dst string) error {
 
 // AssertHTTPResultWithRetry attempts to assert that an HTTP endpoint exists
 // and evaluate its response.
-func AssertHTTPResultWithRetry(t *testing.T, output interface{}, headers map[string]string, maxWait time.Duration, check func(string) bool) bool {
+func AssertHTTPResultWithRetry(
+	t *testing.T,
+	output interface{},
+	headers map[string]string,
+	maxWait time.Duration,
+	check func(string) bool,
+) bool {
 	hostname, ok := output.(string)
 	if !assert.True(t, ok, fmt.Sprintf("expected `%s` output", output)) {
 		return false
