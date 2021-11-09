@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,8 +65,12 @@ const (
 )
 
 var (
-	mimimumPythonVersion      = semver.MustParse("3.7.0")
-	minimumPythonVersionIssue = "pulumi/pulumi issue #8131"
+	// The minimum python version that Pulumi supports
+	minimumSupportedPythonVersion = semver.MustParse("3.6.0")
+	// Any version less then `eolPythonVersion` is EOL.
+	eolPythonVersion = semver.MustParse("3.7.0")
+	// An url to the issue discussing EOL.
+	eolPythonVersionIssue = "https://github.com/pulumi/pulumi/issues/8131"
 )
 
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the
@@ -691,9 +695,12 @@ func validateVersion(virtualEnvPath string) {
 		fmt.Fprintf(os.Stderr, "Failed to parse python version: '%s'\n", version)
 		return
 	}
-	if parsed.LT(mimimumPythonVersion) {
+	if parsed.LT(minimumSupportedPythonVersion) {
+		fmt.Fprintf(os.Stderr, "Pulumi does not support Python %s."+
+			" Please upgrade to at least %s\n", parsed, minimumSupportedPythonVersion)
+	} else if parsed.LT(eolPythonVersion) {
 		fmt.Fprintf(os.Stderr, "Python %d.%d is approaching EOL and will not be supported in Pulumi soon."+
-			" Check %s for more details\n", mimimumPythonVersion.Major,
-			mimimumPythonVersion.Minor, minimumPythonVersionIssue)
+			" Check %s for more details\n", parsed.Major,
+			eolPythonVersion.Minor, eolPythonVersionIssue)
 	}
 }
