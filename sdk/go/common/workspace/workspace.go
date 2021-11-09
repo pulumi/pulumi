@@ -25,7 +25,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/docker/docker/pkg/ioutils"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -140,7 +139,30 @@ func (pw *projectWorkspace) Save() error {
 	if err != nil {
 		return err
 	}
-	return ioutils.AtomicWriteFile(settingsFile, b, 0600)
+	return atomicWriteFile(settingsFile, b)
+}
+
+// atomicWriteFile provides a rename based atomic write through a temporary file.
+func atomicWriteFile(path string, b []byte) error {
+	tmp, err := ioutil.TempFile("", filepath.Base(path))
+	if err != nil {
+		return errors.Wrapf(err, "failed to create temporary file %s", path)
+	}
+	defer func() { contract.Ignore(os.Remove(tmp.Name())) }()
+
+	if err = tmp.Chmod(0600); err != nil {
+		return errors.Wrap(err, "failed to set temporary file permission")
+	}
+	if _, err = tmp.Write(b); err != nil {
+		return errors.Wrap(err, "failed to write to temporary file")
+	}
+	if err = tmp.Sync(); err != nil {
+		return err
+	}
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
 }
 
 func (pw *projectWorkspace) readSettings() error {
