@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,9 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -105,7 +107,7 @@ func NewFrom(dir string) (W, error) {
 
 	err = w.readSettings()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to read workspace settings")
 	}
 
 	upsertIntoCache(dir, w)
@@ -139,8 +141,25 @@ func (pw *projectWorkspace) Save() error {
 	if err != nil {
 		return err
 	}
+	return atomicWrite(settingsFile, b)
+}
 
-	return ioutil.WriteFile(settingsFile, b, 0600)
+// atomicWrite writes to a file path atomically.
+//
+// It uses the write mv/rename trick to atomically write a file.
+func atomicWrite(path string, b []byte) error {
+	// This RNG provides no security. It is intended only to generate
+	// probabilistically unique names.
+	tmpFile := fmt.Sprintf("%s%d.tmp", path, rand.Int31()) // nolint: gosec
+	err := ioutil.WriteFile(tmpFile, b, 0600)
+	if err != nil {
+		return err
+	}
+	err = os.Rename(tmpFile, path)
+	if err != nil {
+		return err
+	}
+	return os.Remove(tmpFile)
 }
 
 func (pw *projectWorkspace) readSettings() error {
@@ -159,7 +178,7 @@ func (pw *projectWorkspace) readSettings() error {
 
 	err = json.Unmarshal(b, &settings)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not parse file %s", settingsPath)
 	}
 
 	pw.settings = &settings
