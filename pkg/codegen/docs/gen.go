@@ -48,11 +48,10 @@ func init() {
 	packagedTemplates = map[string][]byte{}
 }
 
-// TODO[pulumi/pulumi#7813]: Remove this lookup once display name is available in
-// the Pulumi schema.
-//
-// NOTE: For the time being this lookup map and the one used by the resourcedocsgen
-// tool in `pulumi/docs` must be kept up-to-date.
+// NOTE: This lookup map can be removed when all Pulumi-managed packages
+// have a DisplayName in their schema. See pulumi/pulumi#7813.
+// This lookup table no longer needs to be updated for new providers
+// and is considered stale.
 //
 // titleLookup is a map of package name to the desired display name.
 func titleLookup(shortName string) (string, bool) {
