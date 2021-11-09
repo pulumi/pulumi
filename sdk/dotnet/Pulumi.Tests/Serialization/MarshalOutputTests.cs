@@ -6,7 +6,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
-using Google.Protobuf.WellKnownTypes;
 using Xunit;
 
 namespace Pulumi.Tests.Serialization
@@ -19,14 +18,9 @@ namespace Pulumi.Tests.Serialization
             public readonly ImmutableDictionary<string, object?> Expected;
             public readonly Output<object?> Input;
 
-            // OutputData<object?> is `internal`, so `ExpectedRoundTrip` must
-            // also be `internal`.
-            internal readonly OutputData<object?> ExpectedRoundTrip;
-
             public TestValue(object? value, object? expected, string[] deps, bool isKnown, bool isSecret)
             {
                 Name = $"Output(deps={deps}, value={value}, isKnown={isKnown}, isSecret={isSecret})";
-                var r = new HashSet<Resource>();
                 var resources = ImmutableHashSet.CreateRange<Resource>(deps.Select(d => new DependencyResource(d)));
 
                 var b = ImmutableDictionary.CreateBuilder<string, object?>();
@@ -36,10 +30,8 @@ namespace Pulumi.Tests.Serialization
                 if (deps.Length > 0) b.Add(Constants.DependenciesName, deps);
                 Expected = b.ToImmutableDictionary();
 
-                var data = OutputData.Create<object?>(resources, value, isKnown, isSecret);
+                var data = OutputData.Create(resources, value, isKnown, isSecret);
                 Input = new Output<object?>(Task.FromResult(data));
-
-                ExpectedRoundTrip = OutputData.Create<object?>(resources, isKnown ? expected : null, isKnown, isSecret);
             }
 
             public override string ToString() => Name;
@@ -84,47 +76,9 @@ namespace Pulumi.Tests.Serialization
             }
         }
 
-        /// <summary>
-        /// Asserts that two <c>OutputData<T></c> instances are sufficiently equivalent.
-        /// </summary>
-        private static async Task AssertEquivalent<T>(OutputData<T> e, OutputData<T> a)
-        {
-            Assert.Equal(e.IsSecret, a.IsSecret);
-            Assert.Equal(e.IsKnown, a.IsKnown);
-            Assert.Equal(e.Value, a.Value);
-            Assert.Equal(await GetUrns(e.Resources), await GetUrns(a.Resources));
-
-            static async Task<ImmutableSortedSet<string>> GetUrns(IEnumerable<Resource> resources)
-            {
-                var s = ImmutableSortedSet.CreateBuilder<string>();
-                foreach (var r in resources)
-                {
-                    s.Add((await r.Urn.DataTask).Value);
-                }
-                return s.ToImmutable();
-            }
-        }
-
-        /// <summary>
-        /// Internal for testing purposes.
-        /// </summary>
-        internal static Value CreateValue(object? value)
-            => value switch
-            {
-                null => Value.ForNull(),
-                int i => Value.ForNumber(i),
-                double d => Value.ForNumber(d),
-                bool b => Value.ForBool(b),
-                string s => Value.ForString(s),
-                ImmutableArray<object> list => Value.ForList(list.Select(CreateValue).ToArray()),
-                List<object> list => Value.ForList(list.Select(CreateValue).ToArray()),
-                ImmutableDictionary<string, object> dict => Value.ForStruct(Serializer.CreateStruct(dict)),
-                _ => throw new InvalidOperationException("Unsupported value when converting to protobuf: " + value.GetType().FullName),
-            };
-
         [Theory]
         [MemberData(nameof(AllValues))]
-        public static Task TestRoundTrip(TestValue test)
+        public static Task TestSerialize(TestValue test)
             => RunInNormal(async () =>
             {
                 var s = new Serializer(excessiveDebugOutput: false);
