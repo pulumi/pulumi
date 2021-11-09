@@ -386,6 +386,9 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.dotnet }}
+      - name: Create Local Nuget
+        run: mkdir -p "${{ env.PULUMI_LOCAL_NUGET }}"
+        shell: bash
       - run: dotnet nuget add source ${{ env.PULUMI_LOCAL_NUGET }}
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1

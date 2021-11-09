@@ -279,6 +279,9 @@ jobs:
         run: |
           pip3 install pyenv-win
           pip3 install pipenv
+      - name: Create Local Nuget
+        run: mkdir -p "${{ env.PULUMI_LOCAL_NUGET }}"
+        shell: bash
       - run: dotnet nuget add source ${{ env.PULUMI_LOCAL_NUGET }}
       - name: Set Build Env Vars
         shell: bash
