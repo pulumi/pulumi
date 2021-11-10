@@ -42,7 +42,6 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	// require.NoError(t, err)
 
 	test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
-	test.RunCommand(t, "yarn_add_types", pwd, "yarn", "add", "@types/node", "--dev")
 	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
 	tscOptions := &integration.ProgramTestOptions{
 		// Avoid Out of Memory error on CI:
