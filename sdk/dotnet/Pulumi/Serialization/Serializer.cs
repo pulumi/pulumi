@@ -161,13 +161,13 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     foreach (var resource in propResources)
                     {
                         var urnSerializer = new Serializer(_excessiveDebugOutput);
-                        await urnSerializer.SerializeAsync($"{ctx} dependency", resource.Urn, keepResources, keepOutputValues: false);
+                        await urnSerializer.SerializeAsync($"{ctx} dependency", resource.Urn, keepResources, keepOutputValues: false).ConfigureAwait(false);
                         urnDeps.UnionWith(urnSerializer.DependentResources);
                     }
                     propResources.UnionWith(urnDeps);
                     this.DependentResources.UnionWith(urnDeps);
 
-                    var dependencies = await Deployment.GetAllTransitivelyReferencedResourceUrnsAsync(propResources);
+                    var dependencies = await Deployment.GetAllTransitivelyReferencedResourceUrnsAsync(propResources).ConfigureAwait(false);
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
                     builder.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
                     if (isKnown)
