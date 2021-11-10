@@ -36,16 +36,56 @@ namespace Pulumi.Tests.Serialization
             var data = OutputData.Create(resources, value, isKnown, isSecret);
             var input = new Output<object?>(Task.FromResult(data));
 
-            var b = ImmutableDictionary.CreateBuilder<string, object?>();
-            b.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
-            if (isKnown) b.Add(Constants.ValueName, value);
-            if (isSecret) b.Add(Constants.SecretName, isSecret);
-            if (deps.Length > 0) b.Add(Constants.DependenciesName, deps.ToImmutableArray());
-            var expected = b.ToImmutableDictionary();
+            var expected = CreateOutputValue(value, isKnown, isSecret, deps);
 
             var s = new Serializer(excessiveDebugOutput: false);
             var actual = await s.SerializeAsync("", input, keepResources: true, keepOutputValues: true);
             Assert.Equal(expected, actual);
         });
+
+        public sealed class FooArgs : ResourceArgs
+        {
+            [Input("foo")]
+            public Input<string>? Foo { get; set; }
+        }
+
+        public static IEnumerable<object[]> SerializeData() => new object[][]
+        {
+            new object[]
+            {
+                new FooArgs { Foo = Output.CreateSecret("hello") },
+                ImmutableDictionary<string, object>.Empty.Add("foo", CreateOutputValue("hello", isSecret: true))
+            },
+            new object[]
+            {
+                new List<Input<string>> { Output.CreateSecret("hello") },
+                ImmutableArray<object>.Empty.Add(CreateOutputValue("hello", isSecret: true))
+            },
+            new object[]
+            {
+                new Dictionary<string, Input<string>> { { "foo", Output.CreateSecret("hello") } },
+                ImmutableDictionary<string, object>.Empty.Add("foo", CreateOutputValue("hello", isSecret: true))
+            },
+        };
+
+        [Theory]
+        [MemberData(nameof(SerializeData))]
+        public static Task TestSerialize(object input, object expected) => RunInNormal(async () =>
+        {
+            var s = new Serializer(excessiveDebugOutput: false);
+            var actual = await s.SerializeAsync("", input, keepResources: true, keepOutputValues: true);
+            Assert.Equal(expected, actual);
+        });
+
+        private static ImmutableDictionary<string, object?> CreateOutputValue(
+            object? value, bool isKnown = true, bool isSecret = false, params string[] deps)
+        {
+            var b = ImmutableDictionary.CreateBuilder<string, object?>();
+            b.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
+            if (isKnown) b.Add(Constants.ValueName, value);
+            if (isSecret) b.Add(Constants.SecretName, isSecret);
+            if (deps.Length > 0) b.Add(Constants.DependenciesName, deps.ToImmutableArray());
+            return b.ToImmutableDictionary();
+        }
     }
 }

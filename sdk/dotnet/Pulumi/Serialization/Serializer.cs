@@ -87,10 +87,15 @@ namespace Pulumi.Serialization
             }
 
             if (prop is InputArgs args)
-                return await SerializeInputArgsAsync(ctx, args, keepResources).ConfigureAwait(false);
+            {
+                return await SerializeInputArgsAsync(ctx, args, keepResources, keepOutputValues).ConfigureAwait(false);
+            }
 
             if (prop is AssetOrArchive assetOrArchive)
+            {
+                // There's no need to pass keepOutputValues when serializing assets or archives.
                 return await SerializeAssetOrArchiveAsync(ctx, assetOrArchive, keepResources).ConfigureAwait(false);
+            }
 
             if (prop is Task)
             {
@@ -105,7 +110,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Recursing into IInput");
                 }
 
-                return await SerializeAsync(ctx, input.ToOutput(), keepResources).ConfigureAwait(false);
+                return await SerializeAsync(ctx, input.ToOutput(), keepResources, keepOutputValues).ConfigureAwait(false);
             }
 
             if (prop is IUnion union)
@@ -115,7 +120,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Recursing into IUnion");
                 }
 
-                return await SerializeAsync(ctx, union.Value, keepResources).ConfigureAwait(false);
+                return await SerializeAsync(ctx, union.Value, keepResources, keepOutputValues).ConfigureAwait(false);
             }
 
             if (prop is JsonElement element)
@@ -145,7 +150,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 var isSecret = data.IsSecret;
 
                 var valueSerializer = new Serializer(_excessiveDebugOutput);
-                var value = await valueSerializer.SerializeAsync($"{ctx}.id", data.Value, keepResources).ConfigureAwait(false);
+                var value = await valueSerializer.SerializeAsync($"{ctx}.id", data.Value, keepResources, keepOutputValues: false).ConfigureAwait(false);
                 var promiseDeps = valueSerializer.DependentResources;
                 this.DependentResources.UnionWith(promiseDeps);
                 propResources.UnionWith(promiseDeps);
@@ -156,7 +161,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     foreach (var resource in propResources)
                     {
                         var urnSerializer = new Serializer(_excessiveDebugOutput);
-                        await urnSerializer.SerializeAsync($"{ctx} dependency", resource.Urn, keepResources);
+                        await urnSerializer.SerializeAsync($"{ctx} dependency", resource.Urn, keepResources, keepOutputValues: false);
                         urnDeps.UnionWith(urnSerializer.DependentResources);
                     }
                     propResources.UnionWith(urnDeps);
@@ -198,10 +203,10 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
                 this.DependentResources.Add(customResource);
 
-                var id = await SerializeAsync($"{ctx}.id", customResource.Id, keepResources).ConfigureAwait(false);
+                var id = await SerializeAsync($"{ctx}.id", customResource.Id, keepResources, keepOutputValues: false).ConfigureAwait(false);
                 if (keepResources)
                 {
-                    var urn = await SerializeAsync($"{ctx}.urn", customResource.Urn, keepResources).ConfigureAwait(false);
+                    var urn = await SerializeAsync($"{ctx}.urn", customResource.Urn, keepResources, keepOutputValues: false).ConfigureAwait(false);
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
                     builder.Add(Constants.SpecialSigKey, Constants.SpecialResourceSig);
                     builder.Add(Constants.ResourceUrnName, urn);
@@ -235,7 +240,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Encountered ComponentResource");
                 }
 
-                var urn = await SerializeAsync($"{ctx}.urn", componentResource.Urn, keepResources).ConfigureAwait(false);
+                var urn = await SerializeAsync($"{ctx}.urn", componentResource.Urn, keepResources, keepOutputValues: false).ConfigureAwait(false);
                 if (keepResources)
                 {
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
@@ -247,10 +252,14 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             }
 
             if (prop is IDictionary dictionary)
-                return await SerializeDictionaryAsync(ctx, dictionary, keepResources).ConfigureAwait(false);
+            {
+                return await SerializeDictionaryAsync(ctx, dictionary, keepResources, keepOutputValues).ConfigureAwait(false);
+            }
 
             if (prop is IList list)
-                return await SerializeListAsync(ctx, list, keepResources).ConfigureAwait(false);
+            {
+                return await SerializeListAsync(ctx, list, keepResources, keepOutputValues).ConfigureAwait(false);
+            }
 
             if (prop is Enum e && e.GetTypeCode() == TypeCode.Int32)
             {
@@ -325,7 +334,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 throw new InvalidOperationException("Cannot serialize invalid archive");
 
             var propName = assetOrArchive.PropName;
-            var value = await SerializeAsync(ctx + "." + propName, assetOrArchive.Value, keepResources).ConfigureAwait(false);
+            var value = await SerializeAsync(ctx + "." + propName, assetOrArchive.Value, keepResources, keepOutputValues: false).ConfigureAwait(false);
 
             var builder = ImmutableDictionary.CreateBuilder<string, object>();
             builder.Add(Constants.SpecialSigKey, assetOrArchive.SigKey);
@@ -333,7 +342,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             return builder.ToImmutable();
         }
 
-        private async Task<ImmutableDictionary<string, object>> SerializeInputArgsAsync(string ctx, InputArgs args, bool keepResources)
+        private async Task<ImmutableDictionary<string, object>> SerializeInputArgsAsync(string ctx, InputArgs args, bool keepResources, bool keepOutputValues)
         {
             if (_excessiveDebugOutput)
             {
@@ -341,10 +350,10 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             }
 
             var dictionary = await args.ToDictionaryAsync().ConfigureAwait(false);
-            return await SerializeDictionaryAsync(ctx, dictionary, keepResources).ConfigureAwait(false);
+            return await SerializeDictionaryAsync(ctx, dictionary, keepResources, keepOutputValues).ConfigureAwait(false);
         }
 
-        private async Task<ImmutableArray<object?>> SerializeListAsync(string ctx, IList list, bool keepResources)
+        private async Task<ImmutableArray<object?>> SerializeListAsync(string ctx, IList list, bool keepResources, bool keepOutputValues)
         {
             if (_excessiveDebugOutput)
             {
@@ -359,13 +368,13 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: array[{i}] element");
                 }
 
-                result.Add(await SerializeAsync($"{ctx}[{i}]", list[i], keepResources).ConfigureAwait(false));
+                result.Add(await SerializeAsync($"{ctx}[{i}]", list[i], keepResources, keepOutputValues).ConfigureAwait(false));
             }
 
             return result.MoveToImmutable();
         }
 
-        private async Task<ImmutableDictionary<string, object>> SerializeDictionaryAsync(string ctx, IDictionary dictionary, bool keepResources)
+        private async Task<ImmutableDictionary<string, object>> SerializeDictionaryAsync(string ctx, IDictionary dictionary, bool keepResources, bool keepOutputValues)
         {
             if (_excessiveDebugOutput)
             {
@@ -388,7 +397,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
                 // When serializing an object, we omit any keys with null values. This matches
                 // JSON semantics.
-                var v = await SerializeAsync($"{ctx}.{stringKey}", dictionary[stringKey], keepResources).ConfigureAwait(false);
+                var v = await SerializeAsync($"{ctx}.{stringKey}", dictionary[stringKey], keepResources, keepOutputValues).ConfigureAwait(false);
                 if (v != null)
                 {
                     result[stringKey] = v;
