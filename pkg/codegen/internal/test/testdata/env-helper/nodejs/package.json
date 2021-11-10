@@ -5,6 +5,7 @@
         "build": "tsc"
     },
     "devDependencies": {
+        "@types/node": "^16.11.7",
         "typescript": "^4.3.5"
     },
     "peerDependencies": {

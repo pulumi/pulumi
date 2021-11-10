@@ -7,6 +7,13 @@ import * as utilities from "./utilities";
 // Export members:
 export * from "./provider";
 
+// Export sub-modules:
+import * as types from "./types";
+
+export {
+    types,
+};
+
 import { Provider } from "./provider";
 
 pulumi.runtime.registerResourcePackage("example", {
