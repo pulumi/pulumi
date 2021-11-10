@@ -34,7 +34,7 @@ namespace Pulumi
                         label,
                         dictionary,
                         await this.MonitorSupportsResourceReferences().ConfigureAwait(false),
-                        keepOutputValues: remote && await MonitorSupportsOutputValues()).ConfigureAwait(false);
+                        keepOutputValues: remote && await MonitorSupportsOutputValues().ConfigureAwait(false)).ConfigureAwait(false);
             LogExcessive($"Serialized properties: t={type}, name={name}, custom={custom}, remote={remote}");
 
             // Wait for the parent to complete.
