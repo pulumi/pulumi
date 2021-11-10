@@ -16,3 +16,6 @@
 
 - [programgen/go] - Don't change imported resource names.
   [#8353](https://github.com/pulumi/pulumi/pull/8353)
+
+- [cli/engine] - Update command respects `--target-dependents`
+  [#8395](https://github.com/pulumi/pulumi/pull/8395)
