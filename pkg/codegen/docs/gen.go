@@ -23,6 +23,7 @@ package docs
 import (
 	"bytes"
 	"fmt"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/docs/bundler"
 	"html"
 	"html/template"
 	"path"
@@ -45,7 +46,13 @@ import (
 var packagedTemplates map[string][]byte
 
 func init() {
-	packagedTemplates = map[string][]byte{}
+	var err error
+	packagedTemplates, err = bundler.GenerateTemplatesBundle()
+	if err != nil {
+		glog.Fatalf("Failed to initialize templates: %v", err)
+		// Flush logs immediately since we are about to exit with an error.
+		glog.Flush()
+	}
 }
 
 // NOTE: This lookup map can be removed when all Pulumi-managed packages
@@ -1941,10 +1948,6 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 	})
 
 	defer glog.Flush()
-
-	if len(packagedTemplates) == 0 {
-		glog.Fatal(`packagedTemplates is empty. Did you run "make generate" first?`)
-	}
 
 	for name, b := range packagedTemplates {
 		template.Must(dctx.templates.New(name).Parse(string(b)))
