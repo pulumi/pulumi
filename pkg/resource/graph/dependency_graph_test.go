@@ -229,3 +229,41 @@ func TestDependenciesOfRemoteComponentsNoCycle(t *testing.T) {
 	assert.True(t, rDependencies[parent])
 	assert.False(t, rDependencies[child])
 }
+
+func NewCustomResource(name string, provider *resource.State, deps ...resource.URN) *resource.State {
+	r := NewResource(name, provider, deps...)
+	r.Custom = true
+	return r
+}
+
+func TestDependingOnIndirect(t *testing.T) {
+	var noProvider *resource.State
+
+	d2 := NewCustomResource("d2", noProvider)
+	d3 := NewCustomResource("d3", noProvider, d2.URN)
+	c3 := NewCustomResource("c3", noProvider)
+	c3.Parent = d3.URN
+
+	dg := NewDependencyGraph([]*resource.State{
+		d2, d3, c3,
+	})
+
+	for r := range dg.DependenciesOf(c3) {
+		t.Logf("dg.DependenciesOf(c3) includes %v", r.URN)
+	}
+
+	for r := range dg.DependenciesOf(d3) {
+		t.Logf("dg.DependenciesOf(d3) includes %v", r.URN)
+	}
+
+	var foundC3 bool
+	for _, r := range dg.DependingOn(d2, nil, true) {
+		if r == c3 {
+			foundC3 = true
+		}
+		t.Logf("DependingOn(d2) includes %v", r.URN)
+	}
+	if !foundC3 {
+		t.Errorf("DependingOn(d2, nil) should have included c3")
+	}
+}

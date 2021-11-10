@@ -32,21 +32,23 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 	dependentSet[res.URN] = true
 
 	isDependent := func(candidate *resource.State) bool {
-		if ignore[candidate.URN] {
-			return false
-		}
-		if includeChildren && candidate.Parent == res.URN {
-			return true
-		}
-		for _, dependency := range candidate.Dependencies {
-			if dependentSet[dependency] {
-				return true
-			}
-		}
+		// Direct deps include explicit `Dependencies`,
+		// provider, and parent (under `includeChildren=true`
+		// semantic).
+		directDeps := candidate.Dependencies
 		if candidate.Provider != "" {
 			ref, err := providers.ParseReference(candidate.Provider)
 			contract.Assert(err == nil)
-			if dependentSet[ref.URN()] {
+			directDeps = append(directDeps, ref.URN())
+		}
+		if includeChildren && candidate.Parent != "" {
+			directDeps = append(directDeps, candidate.Parent)
+		}
+
+		// We are computing a transitive closure of direct
+		// deps; therefore check in `dependentSet`.
+		for _, dependency := range directDeps {
+			if dependentSet[dependency] {
 				return true
 			}
 		}
