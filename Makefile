@@ -26,6 +26,11 @@ ensure::
 build-proto::
 	cd sdk/proto && ./generate.sh
 
+.PHONY: generate
+generate::
+	$(call STEP_MESSAGE)
+	echo "This command does not do anything anymore. It will be removed in a future version."
+
 build::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
