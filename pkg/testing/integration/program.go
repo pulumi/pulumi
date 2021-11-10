@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -2005,27 +2006,25 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
-	if localNuget == "" {
-		localNuget = "/opt/pulumi/nuget"
+	sdkDir, err := filepath.Abs(path.Join("..", "..", "sdk", "dotnet"))
+	if err != nil {
+		return err
 	}
 
 	for _, dep := range pt.opts.Dependencies {
 
 		// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.
-		matches, err := filepath.Glob(filepath.Join(localNuget, dep+".?.*.nupkg"))
+		matches, err := filepath.Glob(filepath.Join(sdkDir, "*", dep+".csproj"))
 		if err != nil {
-			return errors.Wrap(err, "failed to find a local Pulumi NuGet package")
+			return errors.Wrap(err, "failed to find a local Pulumi project")
 		}
 		if len(matches) != 1 {
-			return errors.Errorf("attempting to find a local Pulumi NuGet package yielded %v results", matches)
+			return errors.Errorf("attempting to find a local Pulumi project yielded %v results", matches)
 		}
-		file := filepath.Base(matches[0])
-		r := strings.NewReplacer(dep+".", "", ".nupkg", "")
-		version := r.Replace(file)
+		file := matches[0]
 
-		err = pt.runCommand("dotnet-add-package",
-			[]string{dotNetBin, "add", "package", dep, "-v", version}, cwd)
+		err = pt.runCommand("dotnet-add-reference",
+			[]string{dotNetBin, "add", "reference", file}, cwd)
 		if err != nil {
 			return errors.Wrapf(err, "failed to add dependency on %s", dep)
 		}

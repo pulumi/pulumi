@@ -108,7 +108,6 @@ PIP ?= pip3
 
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
-PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
 
 RUN_TESTSUITE = python3 ${PROJECT_ROOT}/scripts/run-testsuite.py
 GO_TEST_FAST = PATH="$(PULUMI_BIN):$(PATH)" python3 ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM}
@@ -170,7 +169,6 @@ install::
 	$(call STEP_MESSAGE)
 	@mkdir -p $(PULUMI_BIN)
 	@mkdir -p $(PULUMI_NODE_MODULES)
-	@mkdir -p $(PULUMI_NUGET)
 
 dist::
 	$(call STEP_MESSAGE)
