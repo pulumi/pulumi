@@ -21,7 +21,7 @@ namespace Pulumi.Serialization
 
         public Serializer(bool excessiveDebugOutput)
         {
-            this.DependentResources = new HashSet<Resource>();
+            DependentResources = new HashSet<Resource>();
             _excessiveDebugOutput = excessiveDebugOutput;
         }
 
@@ -140,7 +140,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Recursing into Output");
                 }
                 var data = await output.GetDataAsync().ConfigureAwait(false);
-                this.DependentResources.AddRange(data.Resources);
+                DependentResources.AddRange(data.Resources);
                 var propResources = new HashSet<Resource>(data.Resources);
 
                 // When serializing an Output, we will either serialize it as its resolved value or the "unknown value"
@@ -152,10 +152,10 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 var valueSerializer = new Serializer(_excessiveDebugOutput);
                 var value = await valueSerializer.SerializeAsync($"{ctx}.id", data.Value, keepResources, keepOutputValues: false).ConfigureAwait(false);
                 var promiseDeps = valueSerializer.DependentResources;
-                this.DependentResources.UnionWith(promiseDeps);
+                DependentResources.UnionWith(promiseDeps);
                 propResources.UnionWith(promiseDeps);
 
-                if (keepOutputValues /* && monitor supports output values */)
+                if (keepOutputValues)
                 {
                     var urnDeps = new HashSet<Resource>();
                     foreach (var resource in propResources)
@@ -164,8 +164,8 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                         await urnSerializer.SerializeAsync($"{ctx} dependency", resource.Urn, keepResources, keepOutputValues: false).ConfigureAwait(false);
                         urnDeps.UnionWith(urnSerializer.DependentResources);
                     }
+                    DependentResources.UnionWith(urnDeps);
                     propResources.UnionWith(urnDeps);
-                    this.DependentResources.UnionWith(urnDeps);
 
                     var dependencies = await Deployment.GetAllTransitivelyReferencedResourceUrnsAsync(propResources).ConfigureAwait(false);
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
@@ -201,7 +201,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Encountered CustomResource");
                 }
 
-                this.DependentResources.Add(customResource);
+                DependentResources.Add(customResource);
 
                 var id = await SerializeAsync($"{ctx}.id", customResource.Id, keepResources, keepOutputValues: false).ConfigureAwait(false);
                 if (keepResources)
