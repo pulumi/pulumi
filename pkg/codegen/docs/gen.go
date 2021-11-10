@@ -22,6 +22,7 @@ package docs
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
 	"html"
 	"html/template"
@@ -41,18 +42,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// Populated in auto-generated `packaged.go`
-var packagedTemplates map[string][]byte
-
-func init() {
-	var err error
-	packagedTemplates, err = generateTemplatesBundle()
-	if err != nil {
-		glog.Fatalf("Failed to initialize templates: %v", err)
-		// Flush logs immediately since we are about to exit with an error.
-		glog.Flush()
-	}
-}
+//go:embed templates/*.tmpl
+var packagedTemplates embed.FS
 
 // NOTE: This lookup map can be removed when all Pulumi-managed packages
 // have a DisplayName in their schema. See pulumi/pulumi#7813.
@@ -1948,8 +1939,8 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 
 	defer glog.Flush()
 
-	for name, b := range packagedTemplates {
-		template.Must(dctx.templates.New(name).Parse(string(b)))
+	if _, err := dctx.templates.ParseFS(packagedTemplates, "templates/*.tmpl"); err != nil {
+		glog.Fatalf("initializing templates: %v", err)
 	}
 
 	// Generate the modules from the schema, and for every module
