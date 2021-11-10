@@ -2,9 +2,8 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
+import { input as inputs, output as outputs } from "./types";
 import * as utilities from "./utilities";
-
-import {HelmReleaseSettings} from "./index";
 
 /**
  * The provider type for the kubernetes package.
@@ -52,5 +51,5 @@ export interface ProviderArgs {
     /**
      * BETA FEATURE - Options to configure the Helm Release resource.
      */
-    helmReleaseSettings?: pulumi.Input<HelmReleaseSettings>;
+    helmReleaseSettings?: pulumi.Input<inputs.HelmReleaseSettingsArgs>;
 }

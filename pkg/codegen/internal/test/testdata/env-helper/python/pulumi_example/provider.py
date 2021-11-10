@@ -7,30 +7,31 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
+from ._inputs import *
 
 __all__ = ['ProviderArgs', 'Provider']
 
 @pulumi.input_type
 class ProviderArgs:
     def __init__(__self__, *,
-                 helm_release_settings: Optional[Any] = None):
+                 helm_release_settings: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None):
         """
         The set of arguments for constructing a Provider resource.
-        :param Any helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
+        :param pulumi.Input['HelmReleaseSettingsArgs'] helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
         """
         if helm_release_settings is not None:
             pulumi.set(__self__, "helm_release_settings", helm_release_settings)
 
     @property
     @pulumi.getter(name="helmReleaseSettings")
-    def helm_release_settings(self) -> Optional[Any]:
+    def helm_release_settings(self) -> Optional[pulumi.Input['HelmReleaseSettingsArgs']]:
         """
         BETA FEATURE - Options to configure the Helm Release resource.
         """
         return pulumi.get(self, "helm_release_settings")
 
     @helm_release_settings.setter
-    def helm_release_settings(self, value: Optional[Any]):
+    def helm_release_settings(self, value: Optional[pulumi.Input['HelmReleaseSettingsArgs']]):
         pulumi.set(self, "helm_release_settings", value)
 
 
@@ -39,14 +40,14 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 helm_release_settings: Optional[Any] = None,
+                 helm_release_settings: Optional[pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']]] = None,
                  __props__=None):
         """
         The provider type for the kubernetes package.
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param Any helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
+        :param pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']] helm_release_settings: BETA FEATURE - Options to configure the Helm Release resource.
         """
         ...
     @overload
@@ -72,7 +73,7 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 helm_release_settings: Optional[Any] = None,
+                 helm_release_settings: Optional[pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']]] = None,
                  __props__=None):
         if opts is None:
             opts = pulumi.ResourceOptions()

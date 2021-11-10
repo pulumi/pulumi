@@ -28,6 +28,7 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	err := os.WriteFile(versionPath, []byte("0.0.0\n"), 0600)
 	require.NoError(t, err)
 
+	test.RunCommand(t, "dotnet add Pulumi", pwd, "dotnet", "add", "package", "Pulumi")
 	test.RunCommand(t, "dotnet build", pwd, "dotnet", "build")
 }
 
