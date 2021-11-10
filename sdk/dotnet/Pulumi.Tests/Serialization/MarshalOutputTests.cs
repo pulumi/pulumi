@@ -12,33 +12,8 @@ namespace Pulumi.Tests.Serialization
 {
     public class MarshalOutputTests : PulumiTest
     {
-        public struct TestValue
-        {
-            public readonly string Name;
-            public readonly ImmutableDictionary<string, object?> Expected;
-            public readonly Output<object?> Input;
-
-            public TestValue(object? value, object? expected, string[] deps, bool isKnown, bool isSecret)
-            {
-                Name = $"Output(deps={deps}, value={value}, isKnown={isKnown}, isSecret={isSecret})";
-                var resources = ImmutableHashSet.CreateRange<Resource>(deps.Select(d => new DependencyResource(d)));
-
-                var b = ImmutableDictionary.CreateBuilder<string, object?>();
-                b.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
-                if (isKnown) b.Add(Constants.ValueName, expected);
-                if (isSecret) b.Add(Constants.SecretName, isSecret);
-                if (deps.Length > 0) b.Add(Constants.DependenciesName, deps.ToImmutableArray());
-                Expected = b.ToImmutableDictionary();
-
-                var data = OutputData.Create(resources, value, isKnown, isSecret);
-                Input = new Output<object?>(Task.FromResult(data));
-            }
-
-            public override string ToString() => Name;
-        }
-
-        public static IEnumerable<object[]> AllValues =>
-            from tv in new object?[]
+        public static IEnumerable<object[]> BasicSerializeData =>
+            from value in new object?[]
             {
                 null,
                 0.0,
@@ -49,18 +24,28 @@ namespace Pulumi.Tests.Serialization
                 ImmutableArray<object?>.Empty,
             }
             from deps in new[] { Array.Empty<string>(), new[] { "fakeURN1", "fakeURN2" } }
-            from isSecret in new List<bool> { true, false }
-            from isKnown in new List<bool> { true, false }
-            select new object[] { new TestValue(tv, tv, deps, isKnown, isSecret) };
+            from isKnown in new[] { true, false }
+            from isSecret in new[] { true, false }
+            select new object[] { value, deps, isKnown, isSecret };
 
         [Theory]
-        [MemberData(nameof(AllValues))]
-        public static Task TestSerialize(TestValue test)
-            => RunInNormal(async () =>
-            {
-                var s = new Serializer(excessiveDebugOutput: false);
-                var actual = await s.SerializeAsync("", test.Input, keepResources: true, keepOutputValues: true);
-                Assert.Equal(test.Expected, actual!);
-            });
+        [MemberData(nameof(BasicSerializeData))]
+        public static Task TestBasicSerialize(object? value, string[] deps, bool isKnown, bool isSecret) => RunInNormal(async () =>
+        {
+            var resources = ImmutableHashSet.CreateRange<Resource>(deps.Select(d => new DependencyResource(d)));
+            var data = OutputData.Create(resources, value, isKnown, isSecret);
+            var input = new Output<object?>(Task.FromResult(data));
+
+            var b = ImmutableDictionary.CreateBuilder<string, object?>();
+            b.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
+            if (isKnown) b.Add(Constants.ValueName, value);
+            if (isSecret) b.Add(Constants.SecretName, isSecret);
+            if (deps.Length > 0) b.Add(Constants.DependenciesName, deps.ToImmutableArray());
+            var expected = b.ToImmutableDictionary();
+
+            var s = new Serializer(excessiveDebugOutput: false);
+            var actual = await s.SerializeAsync("", input, keepResources: true, keepOutputValues: true);
+            Assert.Equal(expected, actual);
+        });
     }
 }
