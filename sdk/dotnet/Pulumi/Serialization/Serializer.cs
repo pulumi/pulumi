@@ -157,6 +157,11 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
 
                 if (keepOutputValues)
                 {
+                    if (isKnown && !isSecret && propResources.Count == 0)
+                    {
+                        return value;
+                    }
+
                     var urnDeps = new HashSet<Resource>();
                     foreach (var resource in propResources)
                     {

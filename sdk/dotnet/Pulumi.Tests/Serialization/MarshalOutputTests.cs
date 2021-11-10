@@ -36,7 +36,9 @@ namespace Pulumi.Tests.Serialization
             var data = OutputData.Create(resources, value, isKnown, isSecret);
             var input = new Output<object?>(Task.FromResult(data));
 
-            var expected = CreateOutputValue(value, isKnown, isSecret, deps);
+            var expected = isKnown && !isSecret && deps.Length == 0
+                ? value
+                : CreateOutputValue(value, isKnown, isSecret, deps);
 
             var s = new Serializer(excessiveDebugOutput: false);
             var actual = await s.SerializeAsync("", input, keepResources: true, keepOutputValues: true);
@@ -49,12 +51,38 @@ namespace Pulumi.Tests.Serialization
             public Input<string>? Foo { get; set; }
         }
 
+        public sealed class BarArgs : ResourceArgs
+        {
+            [Input("foo")]
+            public Input<FooArgs>? Foo { get; set; }
+        }
+
         public static IEnumerable<object[]> SerializeData() => new object[][]
         {
             new object[]
             {
+                new FooArgs { Foo = "hello" },
+                ImmutableDictionary<string, object>.Empty.Add("foo", "hello")
+            },
+            new object[]
+            {
+                new FooArgs { Foo = Output.Create("hello") },
+                ImmutableDictionary<string, object>.Empty.Add("foo", "hello")
+            },
+            new object[]
+            {
                 new FooArgs { Foo = Output.CreateSecret("hello") },
                 ImmutableDictionary<string, object>.Empty.Add("foo", CreateOutputValue("hello", isSecret: true))
+            },
+            new object[]
+            {
+                new List<Input<string>> { "hello" },
+                ImmutableArray<object>.Empty.Add("hello")
+            },
+            new object[]
+            {
+                new List<Input<string>> { Output.Create("hello") },
+                ImmutableArray<object>.Empty.Add("hello")
             },
             new object[]
             {
@@ -63,8 +91,30 @@ namespace Pulumi.Tests.Serialization
             },
             new object[]
             {
+                new Dictionary<string, Input<string>> { { "foo", "hello" } },
+                ImmutableDictionary<string, object>.Empty.Add("foo", "hello")
+            },
+            new object[]
+            {
+                new Dictionary<string, Input<string>> { { "foo", Output.Create("hello") } },
+                ImmutableDictionary<string, object>.Empty.Add("foo", "hello")
+            },
+            new object[]
+            {
                 new Dictionary<string, Input<string>> { { "foo", Output.CreateSecret("hello") } },
                 ImmutableDictionary<string, object>.Empty.Add("foo", CreateOutputValue("hello", isSecret: true))
+            },
+            new object[]
+            {
+                new BarArgs { Foo = new FooArgs { Foo = "hello" } },
+                ImmutableDictionary<string, object>.Empty.Add("foo",
+                    ImmutableDictionary<string, object>.Empty.Add("foo", "hello"))
+            },
+            new object[]
+            {
+                new BarArgs { Foo = new FooArgs { Foo = Output.Create("hello") } },
+                ImmutableDictionary<string, object>.Empty.Add("foo",
+                    ImmutableDictionary<string, object>.Empty.Add("foo", "hello"))
             },
         };
 
