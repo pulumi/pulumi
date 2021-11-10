@@ -23,7 +23,6 @@ package docs
 import (
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/docs/bundler"
 	"html"
 	"html/template"
 	"path"
@@ -47,7 +46,7 @@ var packagedTemplates map[string][]byte
 
 func init() {
 	var err error
-	packagedTemplates, err = bundler.GenerateTemplatesBundle()
+	packagedTemplates, err = generateTemplatesBundle()
 	if err != nil {
 		glog.Fatalf("Failed to initialize templates: %v", err)
 		// Flush logs immediately since we are about to exit with an error.

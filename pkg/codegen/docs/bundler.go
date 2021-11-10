@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package bundler
+package docs
 
 import (
 	"fmt"
@@ -25,9 +25,9 @@ const (
 	docsTemplatesPath = basePath + "/templates"
 )
 
-// GenerateTemplatesBundle reads the templates from `../templates/` and returns a map
+// generateTemplatesBundle reads the templates from `../templates/` and returns a map
 // containing byte-slices of the templates.
-func GenerateTemplatesBundle() (map[string][]byte, error) {
+func generateTemplatesBundle() (map[string][]byte, error) {
 	files, err := ioutil.ReadDir(docsTemplatesPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading the templates dir")
