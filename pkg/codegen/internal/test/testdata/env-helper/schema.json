@@ -34,5 +34,24 @@
       },
       "type": "object"
     }
+  },
+  "language": {
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.12"
+      }
+    },
+    "go": {
+      "importBasePath": "env-helper/example"
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
+    "python": {}
   }
 }
