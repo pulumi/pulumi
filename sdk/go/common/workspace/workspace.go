@@ -144,7 +144,7 @@ func (pw *projectWorkspace) Save() error {
 
 // atomicWriteFile provides a rename based atomic write through a temporary file.
 func atomicWriteFile(path string, b []byte) error {
-	tmp, err := ioutil.TempFile("", filepath.Base(path))
+	tmp, err := ioutil.TempFile(filepath.Dir(path), filepath.Base(path))
 	if err != nil {
 		return errors.Wrapf(err, "failed to create temporary file %s", path)
 	}
