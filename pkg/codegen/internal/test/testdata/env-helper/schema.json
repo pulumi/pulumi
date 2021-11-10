@@ -1,0 +1,38 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+
+  "provider": {
+    "description": "The provider type for the kubernetes package.",
+    "type": "object",
+    "inputProperties": {
+      "helmReleaseSettings": {
+        "$ref": "#/types/example:index:HelmReleaseSettings",
+        "description": "BETA FEATURE - Options to configure the Helm Release resource."
+      }
+    },
+    "types": {
+      "example:index:HelmReleaseSettings": {
+        "description": "BETA FEATURE - Options to configure the Helm Release resource.",
+        "properties": {
+          "driver": {
+            "type": "string",
+            "description": "The backend storage driver for Helm. Values are: configmap, secret, memory, sql.",
+            "default": "secret",
+            "defaultInfo": {
+              "environment": ["PULUMI_K8S_HELM_DRIVER"]
+            }
+          },
+          "pluginsPath": {
+            "type": "string",
+            "description": "The path to the helm plugins directory.",
+            "defaultInfo": {
+              "environment": ["PULUMI_K8S_HELM_PLUGINS_PATH"]
+            }
+          }
+        },
+        "type": "object"
+      }
+    }
+  }
+}

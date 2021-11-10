@@ -191,6 +191,11 @@ var sdkTests = []sdkTest{
 		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 		SkipCompileCheck: codegen.NewStringSet(nodejs),
 	},
+	{
+		Directory:   "env-helper",
+		Description: "Ensure that eviromental helpers are generated (repro #8132)",
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
+	},
 }
 
 var genSDKOnly bool
