@@ -27,7 +27,7 @@ namespace Pulumi.Tests.Serialization
                 b.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
                 if (isKnown) b.Add(Constants.ValueName, expected);
                 if (isSecret) b.Add(Constants.SecretName, isSecret);
-                if (deps.Length > 0) b.Add(Constants.DependenciesName, deps);
+                if (deps.Length > 0) b.Add(Constants.DependenciesName, deps.ToImmutableArray());
                 Expected = b.ToImmutableDictionary();
 
                 var data = OutputData.Create(resources, value, isKnown, isSecret);
@@ -46,35 +46,12 @@ namespace Pulumi.Tests.Serialization
                 "",
                 "hi",
                 ImmutableDictionary<string, object?>.Empty,
-                new List<object?>(),
+                ImmutableArray<object?>.Empty,
             }
             from deps in new[] { Array.Empty<string>(), new[] { "fakeURN1", "fakeURN2" } }
             from isSecret in new List<bool> { true, false }
             from isKnown in new List<bool> { true, false }
-            select new object[] { new TestValue(tv, tv, deps, isSecret, isKnown) };
-
-        /// <summary>
-        /// Asserts that two dictionaries are sufficiently equivalent.
-        /// </summary>
-        private static void AssertEquivalent(
-            in ImmutableDictionary<string, object?> expected,
-            in ImmutableDictionary<string, object?> actual)
-        {
-            AssertEx.Equivalent(expected.Keys, actual.Keys);
-            foreach (var (key, expectedValue) in expected)
-            {
-                var actualValue = actual[key];
-                if (expectedValue is IEnumerable<object> expectedCollection)
-                {
-                    Assert.IsAssignableFrom<IEnumerable<object>>(actualValue);
-                    AssertEx.Equivalent(expectedCollection, (IEnumerable<object>)actualValue!);
-                }
-                else
-                {
-                    Assert.Equal(expectedValue, actualValue);
-                }
-            }
-        }
+            select new object[] { new TestValue(tv, tv, deps, isKnown, isSecret) };
 
         [Theory]
         [MemberData(nameof(AllValues))]
@@ -82,11 +59,8 @@ namespace Pulumi.Tests.Serialization
             => RunInNormal(async () =>
             {
                 var s = new Serializer(excessiveDebugOutput: false);
-                var actual = await s.SerializeAsync(
-                    "", test.Input,
-                    keepResources: true,
-                    keepOutputValues: true).ConfigureAwait(false) as ImmutableDictionary<string, object>;
-                AssertEquivalent(test.Expected, actual!);
+                var actual = await s.SerializeAsync("", test.Input, keepResources: true, keepOutputValues: true);
+                Assert.Equal(test.Expected, actual!);
             });
     }
 }

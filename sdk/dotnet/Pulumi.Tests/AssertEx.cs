@@ -11,12 +11,6 @@ namespace Pulumi.Tests
         public static void SequenceEqual<T>(IEnumerable<T> expected, IEnumerable<T> actual)
             => Assert.Equal(expected, actual);
 
-        /// <summary>
-        /// Asserts whether two collections contain the same items in any order.
-        /// </summary>
-        public static void Equivalent<T>(IEnumerable<T> expected, IEnumerable<T> actual)
-            => Assert.Equal(expected.OrderBy(k => k), actual.OrderBy(k => k));
-
         public static void MapEqual<TKey, TValue>(IDictionary<TKey, TValue> expected, IDictionary<TKey, TValue> actual) where TKey : notnull
         {
             Assert.Equal(expected.Count, actual.Count);

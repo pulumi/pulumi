@@ -170,7 +170,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     if (isSecret)
                         builder.Add(Constants.SecretName, isSecret);
                     if (dependencies.Count > 0)
-                        builder.Add(Constants.DependenciesName, dependencies.ToImmutableArray<object>());
+                        builder.Add(Constants.DependenciesName, dependencies.ToImmutableArray().Sort(StringComparer.Ordinal));
                     return builder.ToImmutable();
                 }
 
