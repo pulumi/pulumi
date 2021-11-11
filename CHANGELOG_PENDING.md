@@ -16,3 +16,6 @@
 
 - [programgen/go] - Don't change imported resource names.
   [#8353](https://github.com/pulumi/pulumi/pull/8353)
+
+- [codegen/typescript] - Respect default values in Pulumi object types.
+  [#8400](https://github.com/pulumi/pulumi/pull/8400)
