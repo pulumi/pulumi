@@ -433,13 +433,15 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 		defaultProvderName := provideDefaultsFuncName(name)
 		printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s",
 			defaultProvderName, name), "", indent)
-		fmt.Fprintf(w, "%sexport function %s(val: %s): %s {\n%s    return {\n",
-			indent, defaultProvderName, name, name, indent)
+		fmt.Fprintf(w, "%sexport function %s(val: pulumi.Input<%s | undefined>): "+
+			"pulumi.Output<%s | undefined> {\n", indent, defaultProvderName, name, name)
+		fmt.Fprintf(w, "%s    const def = (val: %s | undefined) => val ? {\n", indent, name)
 		fmt.Fprintf(w, "%s        ...val,\n", indent)
 		for _, val := range defaults {
 			fmt.Fprintf(w, "%s        %s,\n", indent, val)
 		}
-		fmt.Fprintf(w, "%s    }\n", indent)
+		fmt.Fprintf(w, "%s    } : undefined;\n", indent)
+		fmt.Fprintf(w, "%s    return pulumi.output(val).apply(def);\n", indent)
 		fmt.Fprintf(w, "%s}\n", indent)
 	}
 	return nil
@@ -453,8 +455,13 @@ func provideDefaultsFuncName(typeName string) string {
 
 // If a helper function needs to be invoked to provide devault values for a
 // plain type.
-func isProvideDefaultsFuncRequired(properties []*schema.Property) bool {
-	for _, p := range properties {
+func isProvideDefaultsFuncRequired(t schema.Type) bool {
+	t = codegen.UnwrapType(t)
+	object, ok := t.(*schema.ObjectType)
+	if !ok {
+		return false
+	}
+	for _, p := range object.Properties {
 		if p.DefaultValue != nil {
 			return true
 		}
@@ -702,10 +709,20 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 		for _, prop := range r.InputProperties {
 			var arg string
+			applyDefaults := func(arg string) string {
+				if isProvideDefaultsFuncRequired(prop.Type) {
+					obj := codegen.UnwrapType(prop.Type).(*schema.ObjectType)
+					name := mod.getObjectName(obj, true)
+					arg = fmt.Sprintf("inputs.%s(%s)", provideDefaultsFuncName(name), arg)
+				}
+				return arg
+			}
+
+			argValue := applyDefaults(fmt.Sprintf("args.%s", prop.Name))
 			if prop.Secret {
-				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(args.%[1]s) : undefined", prop.Name)
+				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(%[2]s) : undefined", prop.Name, argValue)
 			} else {
-				arg = fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
+				arg = fmt.Sprintf("args ? %[1]s : undefined", argValue)
 			}
 
 			prefix := "            "
@@ -730,13 +747,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 					arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
 				}
 			}
-			fmt.Fprintf(w, "%sinputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
+			fmt.Fprintf(w, "%sresourceInputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
 		}
 
 		for _, prop := range r.Properties {
 			prefix := "            "
 			if !ins.Has(prop.Name) {
-				fmt.Fprintf(w, "%sinputs[\"%s\"] = undefined /*out*/;\n", prefix, prop.Name)
+				fmt.Fprintf(w, "%sresourceInputs[\"%s\"] = undefined /*out*/;\n", prefix, prop.Name)
 			}
 		}
 
@@ -758,7 +775,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
-		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
+		fmt.Fprintf(w, "        let resourceInputs: pulumi.Inputs = {};\n")
 		fmt.Fprintf(w, "        opts = opts || {};\n")
 
 		if r.StateInputs != nil {
@@ -766,7 +783,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			fmt.Fprintf(w, "        if (opts.id) {\n")
 			fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
 			for _, prop := range r.StateInputs.Properties {
-				fmt.Fprintf(w, "            inputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
+				fmt.Fprintf(w, "            resourceInputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
 			}
 			// The creation case (with args):
 			fmt.Fprintf(w, "        } else {\n")
@@ -785,11 +802,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			// The get case:
 			fmt.Fprintf(w, "        } else {\n")
 			for _, prop := range r.Properties {
-				fmt.Fprintf(w, "            inputs[\"%[1]s\"] = undefined /*out*/;\n", prop.Name)
+				fmt.Fprintf(w, "            resourceInputs[\"%[1]s\"] = undefined /*out*/;\n", prop.Name)
 			}
 		}
 	} else {
-		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
+		fmt.Fprintf(w, "        let resourceInputs: pulumi.Inputs = {};\n")
 		fmt.Fprintf(w, "        opts = opts || {};\n")
 		fmt.Fprintf(w, "        {\n")
 		err := genInputProps()
@@ -841,9 +858,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	// If it's a ComponentResource, set the remote option.
 	if r.IsComponent {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts, true /*remote*/);\n", name)
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/);\n", name)
 	} else {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts);\n", name)
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts);\n", name)
 	}
 
 	fmt.Fprintf(w, "    }\n")
@@ -1047,6 +1064,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	if fun.Inputs != nil {
 		for _, p := range fun.Inputs.Properties {
 			// Pass the argument to the invocation.
+			// TODO: handle const and default values
 			fmt.Fprintf(w, "        \"%[1]s\": args.%[1]s,\n", p.Name)
 		}
 	}
@@ -1162,6 +1180,12 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 		}
 	}
 
+	name := mod.getObjectName(obj, input)
+	return mod.genPlainType(w, name, obj.Comment, properties, input, false, true, level)
+}
+
+// getObjectName recovers the name of `obj` as a type.
+func (mod *modContext) getObjectName(obj *schema.ObjectType, input bool) string {
 	name := tokenToName(obj.Token)
 
 	details := mod.details(obj)
@@ -1171,8 +1195,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 	} else if obj.IsInputShape() && mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
 		name += "Args"
 	}
-
-	return mod.genPlainType(w, name, obj.Comment, properties, input, false, true, level)
+	return name
 }
 
 func (mod *modContext) getTypeImports(t schema.Type, recurse bool, externalImports codegen.StringSet, imports map[string]codegen.StringSet, seen codegen.Set) bool {
@@ -1462,7 +1485,7 @@ func (mod *modContext) genTypes() (string, string, error) {
 	var hasDefaultObjects bool
 	for _, t := range mod.types {
 		mod.getImports(t, externalImports, imports)
-		if isProvideDefaultsFuncRequired(t.Properties) {
+		if isProvideDefaultsFuncRequired(t) {
 			hasDefaultObjects = true
 		}
 	}

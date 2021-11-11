@@ -18,14 +18,19 @@ export interface HelmReleaseSettingsArgs {
      * The path to the helm plugins directory.
      */
     pluginsPath?: pulumi.Input<string>;
+    /**
+     * to test required args
+     */
+    requiredArg: pulumi.Input<string>;
 }
 /**
  * helmReleaseSettingsArgsProvideDefaults sets the appropriate defaults for HelmReleaseSettingsArgs
  */
-export function helmReleaseSettingsArgsProvideDefaults(val: HelmReleaseSettingsArgs): HelmReleaseSettingsArgs {
-    return {
+export function helmReleaseSettingsArgsProvideDefaults(val: pulumi.Input<HelmReleaseSettingsArgs | undefined>): pulumi.Output<HelmReleaseSettingsArgs | undefined> {
+    const def = (val: HelmReleaseSettingsArgs | undefined) => val ? {
         ...val,
         driver: (val.driver) ?? (utilities.getEnv("PULUMI_K8S_HELM_DRIVER") || "secret"),
         pluginsPath: (val.pluginsPath) ?? utilities.getEnv("PULUMI_K8S_HELM_PLUGINS_PATH"),
-    }
+    } : undefined;
+    return pulumi.output(val).apply(def);
 }

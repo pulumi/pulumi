@@ -5,6 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export * from "./foo";
 export * from "./provider";
 
 // Export sub-modules:
@@ -13,6 +14,22 @@ import * as types from "./types";
 export {
     types,
 };
+
+// Import resources to register:
+import { Foo } from "./foo";
+
+const _module = {
+    version: utilities.getVersion(),
+    construct: (name: string, type: string, urn: string): pulumi.Resource => {
+        switch (type) {
+            case "example:index:Foo":
+                return new Foo(name, <any>undefined, { urn })
+            default:
+                throw new Error(`unknown resource type ${type}`);
+        }
+    },
+};
+pulumi.runtime.registerResourceModule("example", "index", _module)
 
 import { Provider } from "./provider";
 

@@ -32,15 +32,15 @@ export class Provider extends pulumi.ProviderResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: ProviderArgs, opts?: pulumi.ResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         {
-            inputs["helmReleaseSettings"] = pulumi.output(args ? args.helmReleaseSettings : undefined).apply(JSON.stringify);
+            resourceInputs["helmReleaseSettings"] = pulumi.output(args ? inputs.helmReleaseSettingsArgsProvideDefaults(args.helmReleaseSettings) : undefined).apply(JSON.stringify);
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(Provider.__pulumiType, name, inputs, opts);
+        super(Provider.__pulumiType, name, resourceInputs, opts);
     }
 }
 

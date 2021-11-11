@@ -15,13 +15,16 @@ __all__ = [
 @pulumi.input_type
 class HelmReleaseSettingsArgs:
     def __init__(__self__, *,
+                 required_arg: pulumi.Input[str],
                  driver: Optional[pulumi.Input[str]] = None,
                  plugins_path: Optional[pulumi.Input[str]] = None):
         """
         BETA FEATURE - Options to configure the Helm Release resource.
+        :param pulumi.Input[str] required_arg: to test required args
         :param pulumi.Input[str] driver: The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
         :param pulumi.Input[str] plugins_path: The path to the helm plugins directory.
         """
+        pulumi.set(__self__, "required_arg", required_arg)
         if driver is None:
             driver = (_utilities.get_env('PULUMI_K8S_HELM_DRIVER') or 'secret')
         if driver is not None:
@@ -30,6 +33,18 @@ class HelmReleaseSettingsArgs:
             plugins_path = _utilities.get_env('PULUMI_K8S_HELM_PLUGINS_PATH')
         if plugins_path is not None:
             pulumi.set(__self__, "plugins_path", plugins_path)
+
+    @property
+    @pulumi.getter(name="requiredArg")
+    def required_arg(self) -> pulumi.Input[str]:
+        """
+        to test required args
+        """
+        return pulumi.get(self, "required_arg")
+
+    @required_arg.setter
+    def required_arg(self, value: pulumi.Input[str]):
+        pulumi.set(self, "required_arg", value)
 
     @property
     @pulumi.getter

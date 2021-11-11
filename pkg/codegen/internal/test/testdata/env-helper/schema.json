@@ -12,6 +12,21 @@
       }
     }
   },
+  "resources": {
+    "example:index:Foo": {
+      "description": "test new feature with resoruces",
+      "inputProperties": {
+        "argument": {
+          "type": "string",
+          "plain": true
+        },
+        "settings": {
+          "$ref": "#/types/example:index:HelmReleaseSettings",
+          "description": "describing things"
+        }
+      }
+    }
+  },
   "types": {
     "example:index:HelmReleaseSettings": {
       "description": "BETA FEATURE - Options to configure the Helm Release resource.",
@@ -30,8 +45,13 @@
           "defaultInfo": {
             "environment": ["PULUMI_K8S_HELM_PLUGINS_PATH"]
           }
+        },
+        "requiredArg": {
+          "type": "string",
+          "description": "to test required args"
         }
       },
+      "required": ["requiredArg"],
       "type": "object"
     }
   },

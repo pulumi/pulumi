@@ -1,6 +1,7 @@
 {
   "emittedFiles": [
     "README.md",
+    "foo.ts",
     "index.ts",
     "package.json",
     "provider.ts",

@@ -16,6 +16,8 @@ type HelmReleaseSettings struct {
 	Driver *string `pulumi:"driver"`
 	// The path to the helm plugins directory.
 	PluginsPath *string `pulumi:"pluginsPath"`
+	// to test required args
+	RequiredArg string `pulumi:"requiredArg"`
 }
 
 // HelmReleaseSettingsInput is an input type that accepts HelmReleaseSettingsArgs and HelmReleaseSettingsOutput values.
@@ -35,6 +37,8 @@ type HelmReleaseSettingsArgs struct {
 	Driver pulumi.StringPtrInput `pulumi:"driver"`
 	// The path to the helm plugins directory.
 	PluginsPath pulumi.StringPtrInput `pulumi:"pluginsPath"`
+	// to test required args
+	RequiredArg pulumi.StringInput `pulumi:"requiredArg"`
 }
 
 func (HelmReleaseSettingsArgs) ElementType() reflect.Type {
@@ -125,6 +129,11 @@ func (o HelmReleaseSettingsOutput) PluginsPath() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v HelmReleaseSettings) *string { return v.PluginsPath }).(pulumi.StringPtrOutput)
 }
 
+// to test required args
+func (o HelmReleaseSettingsOutput) RequiredArg() pulumi.StringOutput {
+	return o.ApplyT(func(v HelmReleaseSettings) string { return v.RequiredArg }).(pulumi.StringOutput)
+}
+
 type HelmReleaseSettingsPtrOutput struct{ *pulumi.OutputState }
 
 func (HelmReleaseSettingsPtrOutput) ElementType() reflect.Type {
@@ -166,6 +175,16 @@ func (o HelmReleaseSettingsPtrOutput) PluginsPath() pulumi.StringPtrOutput {
 			return nil
 		}
 		return v.PluginsPath
+	}).(pulumi.StringPtrOutput)
+}
+
+// to test required args
+func (o HelmReleaseSettingsPtrOutput) RequiredArg() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *HelmReleaseSettings) *string {
+		if v == nil {
+			return nil
+		}
+		return &v.RequiredArg
 	}).(pulumi.StringPtrOutput)
 }
 

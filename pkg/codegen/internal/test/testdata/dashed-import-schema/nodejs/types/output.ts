@@ -15,10 +15,11 @@ export interface Container {
 /**
  * containerProvideDefaults sets the appropriate defaults for Container
  */
-export function containerProvideDefaults(val: Container): Container {
-    return {
+export function containerProvideDefaults(val: pulumi.Input<Container | undefined>): pulumi.Output<Container | undefined> {
+    const def = (val: Container | undefined) => val ? {
         ...val,
         brightness: (val.brightness) ?? 1,
-    }
+    } : undefined;
+    return pulumi.output(val).apply(def);
 }
 

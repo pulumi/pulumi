@@ -27,6 +27,12 @@ namespace Pulumi.Example.Inputs
         [Input("pluginsPath")]
         public Input<string>? PluginsPath { get; set; }
 
+        /// <summary>
+        /// to test required args
+        /// </summary>
+        [Input("requiredArg", required: true)]
+        public Input<string> RequiredArg { get; set; } = null!;
+
         public HelmReleaseSettingsArgs()
         {
             Driver = Utilities.GetEnv("PULUMI_K8S_HELM_DRIVER") ?? "secret";

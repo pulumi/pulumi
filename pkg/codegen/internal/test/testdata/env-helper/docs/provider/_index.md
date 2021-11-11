@@ -272,7 +272,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <h4 id="helmreleasesettings">Helm<wbr>Release<wbr>Settings</h4>
 
 {{% choosable language csharp %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="requiredarg_csharp">
+<a href="#requiredarg_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Arg</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_csharp">
 <a href="#driver_csharp" style="color: inherit; text-decoration: inherit;">Driver</a>
@@ -292,7 +300,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 {{% /choosable %}}
 
 {{% choosable language go %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="requiredarg_go">
+<a href="#requiredarg_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Arg</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_go">
 <a href="#driver_go" style="color: inherit; text-decoration: inherit;">Driver</a>
@@ -312,7 +328,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="requiredarg_nodejs">
+<a href="#requiredarg_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Arg</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_nodejs">
 <a href="#driver_nodejs" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -332,7 +356,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 {{% /choosable %}}
 
 {{% choosable language python %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="required_arg_python">
+<a href="#required_arg_python" style="color: inherit; text-decoration: inherit;">required_<wbr>arg</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">str</span>
+    </dt>
+    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_python">
 <a href="#driver_python" style="color: inherit; text-decoration: inherit;">driver</a>

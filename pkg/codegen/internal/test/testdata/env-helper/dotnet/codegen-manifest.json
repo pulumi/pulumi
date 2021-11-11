@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    "Foo.cs",
     "Inputs/HelmReleaseSettingsArgs.cs",
     "Provider.cs",
     "Pulumi.Example.csproj",
