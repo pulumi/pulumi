@@ -29,19 +29,18 @@ build-proto::
 .PHONY: generate
 generate::
 	$(call STEP_MESSAGE)
-	echo "Generate static assets bundle for docs generator"
-	cd pkg && go generate ./codegen/docs/gen.go
+	echo "This command does not do anything anymore. It will be removed in a future version."
 
-build:: generate
+build::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
-build_debug:: generate
+build_debug::
 	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 developer_docs::
 	cd developer-docs && make html
 
-install:: generate
+install::
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 install_all:: install
