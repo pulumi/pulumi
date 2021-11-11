@@ -26,11 +26,40 @@ export interface HelmReleaseSettingsArgs {
 /**
  * helmReleaseSettingsArgsProvideDefaults sets the appropriate defaults for HelmReleaseSettingsArgs
  */
-export function helmReleaseSettingsArgsProvideDefaults(val: pulumi.Input<HelmReleaseSettingsArgs | undefined>): pulumi.Output<HelmReleaseSettingsArgs | undefined> {
-    const def = (val: HelmReleaseSettingsArgs | undefined) => val ? {
+export function helmReleaseSettingsArgsProvideDefaults(val: pulumi.Input<HelmReleaseSettingsArgs> | undefined): pulumi.Output<HelmReleaseSettingsArgs> | undefined {
+    const def = (val: HelmReleaseSettingsArgs) => ({
         ...val,
         driver: (val.driver) ?? (utilities.getEnv("PULUMI_K8S_HELM_DRIVER") || "secret"),
         pluginsPath: (val.pluginsPath) ?? utilities.getEnv("PULUMI_K8S_HELM_PLUGINS_PATH"),
-    } : undefined;
-    return pulumi.output(val).apply(def);
+    });
+    return val ? pulumi.output(val).apply(def) : undefined;
+}
+
+/**
+ * Make sure that defaults propagate through types
+ */
+export interface LayeredTypeArgs {
+    /**
+     * The answer to the question
+     */
+    answer?: pulumi.Input<number>;
+    other?: pulumi.Input<inputs.HelmReleaseSettingsArgs>;
+    /**
+     * The question already answered
+     */
+    question?: pulumi.Input<string>;
+    recursive?: pulumi.Input<inputs.LayeredTypeArgs>;
+}
+/**
+ * layeredTypeArgsProvideDefaults sets the appropriate defaults for LayeredTypeArgs
+ */
+export function layeredTypeArgsProvideDefaults(val: pulumi.Input<LayeredTypeArgs> | undefined): pulumi.Output<LayeredTypeArgs> | undefined {
+    const def = (val: LayeredTypeArgs) => ({
+        ...val,
+        answer: (val.answer) ?? 42,
+        other: inputs.helmReleaseSettingsArgsProvideDefaults(val.other),
+        question: (val.question) ?? (utilities.getEnv("PULUMI_THE_QUESTION") || "<unknown>"),
+        recursive: inputs.layeredTypeArgsProvideDefaults(val.recursive),
+    });
+    return val ? pulumi.output(val).apply(def) : undefined;
 }

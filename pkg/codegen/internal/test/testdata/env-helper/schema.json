@@ -21,7 +21,7 @@
           "plain": true
         },
         "settings": {
-          "$ref": "#/types/example:index:HelmReleaseSettings",
+          "$ref": "#/types/example:index:LayeredType",
           "description": "describing things"
         }
       }
@@ -53,6 +53,31 @@
       },
       "required": ["requiredArg"],
       "type": "object"
+    },
+    "example:index:LayeredType": {
+      "description": "Make sure that defaults propagate through types",
+      "type": "object",
+      "properties": {
+        "answer": {
+          "description": "The answer to the question",
+          "type": "number",
+          "default": 42
+        },
+        "question": {
+          "description": "The question already answered",
+          "type": "string",
+          "default": "<unknown>",
+          "defaultInfo": {
+            "environment": ["PULUMI_THE_QUESTION"]
+          }
+        },
+        "other": {
+          "$ref": "#/types/example:index:HelmReleaseSettings"
+        },
+        "recursive": {
+          "$ref": "#/types/example:index:LayeredType"
+        }
+      }
     }
   },
   "language": {

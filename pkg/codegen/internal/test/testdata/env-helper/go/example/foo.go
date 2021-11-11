@@ -56,14 +56,14 @@ func (FooState) ElementType() reflect.Type {
 type fooArgs struct {
 	Argument *string `pulumi:"argument"`
 	// describing things
-	Settings *HelmReleaseSettings `pulumi:"settings"`
+	Settings *LayeredType `pulumi:"settings"`
 }
 
 // The set of arguments for constructing a Foo resource.
 type FooArgs struct {
 	Argument *string
 	// describing things
-	Settings HelmReleaseSettingsPtrInput
+	Settings LayeredTypePtrInput
 }
 
 func (FooArgs) ElementType() reflect.Type {
