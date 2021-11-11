@@ -19,6 +19,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -105,7 +106,7 @@ func NewFrom(dir string) (W, error) {
 
 	err = w.readSettings()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to read workspace settings")
+		return nil, fmt.Errorf("unable to read workspace settings: %w", err)
 	}
 
 	upsertIntoCache(dir, w)
