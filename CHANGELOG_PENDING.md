@@ -14,3 +14,6 @@
 
 - [engine] - Compute dependents correctly during targeted deletes.
   [#8360](https://github.com/pulumi/pulumi/pull/8360)
+
+- [codegen/typescript] - Respect default values in Pulumi object types.
+  [#8400](https://github.com/pulumi/pulumi/pull/8400)
