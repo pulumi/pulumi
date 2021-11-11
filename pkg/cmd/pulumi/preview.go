@@ -234,8 +234,8 @@ func newPreviewCmd() *cobra.Command {
 		&configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVar(
-		&planFilePath, "plan", "",
-		"Save the operations proposed by the preview to a plan file at the given path")
+		&planFilePath, "save-constaints", "",
+		"Save the operations proposed by the preview to a constraints file at the given path")
 	cmd.Flags().BoolVarP(
 		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in the plan file. Defaults to `false`")
 

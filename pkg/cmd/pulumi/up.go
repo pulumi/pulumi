@@ -523,8 +523,8 @@ func newUpCmd() *cobra.Command {
 		"Automatically approve and perform the update after previewing it")
 
 	cmd.PersistentFlags().StringVar(
-		&planFilePath, "plan", "",
-		"Path to a plan file to use for the update. The update will use property values from the plan, and will not "+
+		&planFilePath, "constraints-file", "",
+		"Path to a constraints file to use for the update. The update will not "+
 			"perform operations that exceed its constraints (e.g. replacements instead of updates, or updates instead"+
 			"of sames).")
 
