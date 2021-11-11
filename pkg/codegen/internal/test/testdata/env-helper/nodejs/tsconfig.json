@@ -13,6 +13,7 @@
         "strict": true
     },
     "files": [
+        "foo.ts",
         "index.ts",
         "provider.ts",
         "types/index.ts",

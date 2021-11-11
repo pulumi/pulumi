@@ -39,24 +39,24 @@ export class StaticPage extends pulumi.ComponentResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args: StaticPageArgs, opts?: pulumi.ComponentResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
             if ((!args || args.indexContent === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'indexContent'");
             }
-            inputs["foo"] = args ? args.foo : undefined;
-            inputs["indexContent"] = args ? args.indexContent : undefined;
-            inputs["bucket"] = undefined /*out*/;
-            inputs["websiteUrl"] = undefined /*out*/;
+            resourceInputs["foo"] = args ? args.foo : undefined;
+            resourceInputs["indexContent"] = args ? args.indexContent : undefined;
+            resourceInputs["bucket"] = undefined /*out*/;
+            resourceInputs["websiteUrl"] = undefined /*out*/;
         } else {
-            inputs["bucket"] = undefined /*out*/;
-            inputs["websiteUrl"] = undefined /*out*/;
+            resourceInputs["bucket"] = undefined /*out*/;
+            resourceInputs["websiteUrl"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(StaticPage.__pulumiType, name, inputs, opts, true /*remote*/);
+        super(StaticPage.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 }
 

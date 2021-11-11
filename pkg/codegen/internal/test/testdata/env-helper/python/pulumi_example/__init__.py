@@ -5,11 +5,21 @@
 from . import _utilities
 import typing
 # Export this package's modules as members:
+from .foo import *
 from .provider import *
 from ._inputs import *
 _utilities.register(
     resource_modules="""
-[]
+[
+ {
+  "pkg": "example",
+  "mod": "index",
+  "fqn": "pulumi_example",
+  "classes": {
+   "example:index:Foo": "Foo"
+  }
+ }
+]
 """,
     resource_packages="""
 [
