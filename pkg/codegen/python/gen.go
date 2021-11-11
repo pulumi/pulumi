@@ -533,6 +533,9 @@ func (mod *modContext) gen(fs fs) error {
 }
 
 func (mod *modContext) hasTypes(input bool) bool {
+	if allTypesAreOverlays(mod.types) {
+		return false
+	}
 	for _, t := range mod.types {
 		if input && mod.details(t).inputType {
 			return true
@@ -885,18 +888,20 @@ func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, err
 	return w.String(), nil
 }
 
+func allTypesAreOverlays(types []*schema.ObjectType) bool {
+	for _, t := range types {
+		if !t.IsOverlay {
+			return false
+		}
+	}
+	return true
+}
+
 func (mod *modContext) genTypes(dir string, fs fs) error {
 	genTypes := func(file string, input bool) error {
 		w := &bytes.Buffer{}
 
-		allTypesAreOverlays := true
-		for _, t := range mod.types {
-			if !t.IsOverlay {
-				allTypesAreOverlays = false
-				break
-			}
-		}
-		if allTypesAreOverlays {
+		if allTypesAreOverlays(mod.types) {
 			// If all resources in this module are overlays, skip further code generation.
 			return nil
 		}
