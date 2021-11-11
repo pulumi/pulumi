@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -151,18 +152,16 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
+			if targets != nil && len(*targets) > 0 && excludeProtected {
+				return result.FromError(errors.New("You cannot specify --target and --exclude-protected"))
+			}
+
 			var protectedCount int
 			if excludeProtected {
-				snapshot, err := s.Snapshot(commandContext())
+				protectedCount, err = handleExcludeProtected(s, targetUrns)
 				if err != nil {
 					return result.FromError(err)
-				} else if snapshot == nil {
-					return result.FromError(errors.New("Failed to find the stack snapshot. Are you in a stack?"))
-				}
-				var unprotected []*resource.State
-				unprotected, protected := seperateProtected(snapshot.Resources)
-				protectedCount = len(protected)
-				if len(unprotected) == 0 && protectedCount > 0 {
+				} else if protectedCount > 0 && len(targetUrns) == 0 {
 					fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
 						" protected resources associated with this stack.\n", protectedCount)
 					// We need to return now. Otherwise the update will conclude
@@ -170,14 +169,8 @@ func newDestroyCmd() *cobra.Command {
 					// destroy a protected resource.
 					return nil
 				}
-				for _, r := range unprotected {
-					targetUrns = append(targetUrns, r.URN)
-				}
 			}
 
-			if targets != nil && len(*targets) > 0 && excludeProtected {
-				return result.FromError(errors.New("You cannot specify --target and --exclude-protected"))
-			}
 			opts.Engine = engine.UpdateOptions{
 				Parallel:                  parallel,
 				Debug:                     debug,
@@ -370,4 +363,21 @@ func markProtected(urn resource.URN, urns map[resource.URN]*node, protectedProvi
 type node struct {
 	protected bool
 	resource  *resource.State
+}
+
+// Returns the number of protected resources that remain. Appends all unprotected resources to `targetUrns`.
+func handleExcludeProtected(s backend.Stack, targetUrns []resource.URN) (int, error) {
+	contract.Assert(len(targetUrns) == 0)
+	// Get snapshot
+	snapshot, err := s.Snapshot(commandContext())
+	if err != nil {
+		return 0, err
+	} else if snapshot == nil {
+		return 0, errors.New("Failed to find the stack snapshot. Are you in a stack?")
+	}
+	unprotected, protected := seperateProtected(snapshot.Resources)
+	for _, r := range unprotected {
+		targetUrns = append(targetUrns, r.URN)
+	}
+	return len(protected), nil
 }
