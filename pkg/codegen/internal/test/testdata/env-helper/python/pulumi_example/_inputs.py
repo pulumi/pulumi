@@ -10,6 +10,7 @@ from . import _utilities
 
 __all__ = [
     'HelmReleaseSettingsArgs',
+    'LayeredTypeArgs',
 ]
 
 @pulumi.input_type
@@ -69,5 +70,73 @@ class HelmReleaseSettingsArgs:
     @plugins_path.setter
     def plugins_path(self, value: Optional[pulumi.Input[str]]):
         pulumi.set(self, "plugins_path", value)
+
+
+@pulumi.input_type
+class LayeredTypeArgs:
+    def __init__(__self__, *,
+                 answer: Optional[pulumi.Input[float]] = None,
+                 other: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None,
+                 question: Optional[pulumi.Input[str]] = None,
+                 recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None):
+        """
+        Make sure that defaults propagate through types
+        :param pulumi.Input[float] answer: The answer to the question
+        :param pulumi.Input[str] question: The question already answered
+        """
+        if answer is None:
+            answer = 42
+        if answer is not None:
+            pulumi.set(__self__, "answer", answer)
+        if other is not None:
+            pulumi.set(__self__, "other", other)
+        if question is None:
+            question = (_utilities.get_env('PULUMI_THE_QUESTION') or '<unknown>')
+        if question is not None:
+            pulumi.set(__self__, "question", question)
+        if recursive is not None:
+            pulumi.set(__self__, "recursive", recursive)
+
+    @property
+    @pulumi.getter
+    def answer(self) -> Optional[pulumi.Input[float]]:
+        """
+        The answer to the question
+        """
+        return pulumi.get(self, "answer")
+
+    @answer.setter
+    def answer(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "answer", value)
+
+    @property
+    @pulumi.getter
+    def other(self) -> Optional[pulumi.Input['HelmReleaseSettingsArgs']]:
+        return pulumi.get(self, "other")
+
+    @other.setter
+    def other(self, value: Optional[pulumi.Input['HelmReleaseSettingsArgs']]):
+        pulumi.set(self, "other", value)
+
+    @property
+    @pulumi.getter
+    def question(self) -> Optional[pulumi.Input[str]]:
+        """
+        The question already answered
+        """
+        return pulumi.get(self, "question")
+
+    @question.setter
+    def question(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "question", value)
+
+    @property
+    @pulumi.getter
+    def recursive(self) -> Optional[pulumi.Input['LayeredTypeArgs']]:
+        return pulumi.get(self, "recursive")
+
+    @recursive.setter
+    def recursive(self, value: Optional[pulumi.Input['LayeredTypeArgs']]):
+        pulumi.set(self, "recursive", value)
 
 

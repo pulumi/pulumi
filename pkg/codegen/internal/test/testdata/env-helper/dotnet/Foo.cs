@@ -66,7 +66,7 @@ namespace Pulumi.Example
         /// describing things
         /// </summary>
         [Input("settings")]
-        public Input<Inputs.HelmReleaseSettingsArgs>? Settings { get; set; }
+        public Input<Inputs.LayeredTypeArgs>? Settings { get; set; }
 
         public FooArgs()
         {

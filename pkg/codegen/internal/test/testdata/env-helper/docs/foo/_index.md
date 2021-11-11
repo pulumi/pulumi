@@ -30,7 +30,7 @@ test new feature with resoruces
 <span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
         <span class="nx">argument</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
-        <span class="nx">settings</span><span class="p">:</span> <span class="nx">Optional[HelmReleaseSettingsArgs]</span> = None<span class="p">)</span>
+        <span class="nx">settings</span><span class="p">:</span> <span class="nx">Optional[LayeredTypeArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[FooArgs]</a></span> = None<span class="p">,</span>
@@ -172,7 +172,7 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#settings_csharp" style="color: inherit; text-decoration: inherit;">Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}describing things{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -192,7 +192,7 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#settings_go" style="color: inherit; text-decoration: inherit;">Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}describing things{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -212,7 +212,7 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#settings_nodejs" style="color: inherit; text-decoration: inherit;">settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}describing things{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -232,7 +232,7 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#settings_python" style="color: inherit; text-decoration: inherit;">settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}describing things{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -414,6 +414,152 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">str</span>
     </dt>
     <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+<h4 id="layeredtype">Layered<wbr>Type</h4>
+
+{{% choosable language csharp %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="answer_csharp">
+<a href="#answer_csharp" style="color: inherit; text-decoration: inherit;">Answer</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">double</span>
+    </dt>
+    <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="other_csharp">
+<a href="#other_csharp" style="color: inherit; text-decoration: inherit;">Other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="question_csharp">
+<a href="#question_csharp" style="color: inherit; text-decoration: inherit;">Question</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}The question already answered{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="recursive_csharp">
+<a href="#recursive_csharp" style="color: inherit; text-decoration: inherit;">Recursive</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language go %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="answer_go">
+<a href="#answer_go" style="color: inherit; text-decoration: inherit;">Answer</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">float64</span>
+    </dt>
+    <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="other_go">
+<a href="#other_go" style="color: inherit; text-decoration: inherit;">Other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="question_go">
+<a href="#question_go" style="color: inherit; text-decoration: inherit;">Question</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}The question already answered{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="recursive_go">
+<a href="#recursive_go" style="color: inherit; text-decoration: inherit;">Recursive</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language nodejs %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="answer_nodejs">
+<a href="#answer_nodejs" style="color: inherit; text-decoration: inherit;">answer</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">number</span>
+    </dt>
+    <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="other_nodejs">
+<a href="#other_nodejs" style="color: inherit; text-decoration: inherit;">other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="question_nodejs">
+<a href="#question_nodejs" style="color: inherit; text-decoration: inherit;">question</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}The question already answered{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="recursive_nodejs">
+<a href="#recursive_nodejs" style="color: inherit; text-decoration: inherit;">recursive</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language python %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="answer_python">
+<a href="#answer_python" style="color: inherit; text-decoration: inherit;">answer</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">float</span>
+    </dt>
+    <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="other_python">
+<a href="#other_python" style="color: inherit; text-decoration: inherit;">other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="question_python">
+<a href="#question_python" style="color: inherit; text-decoration: inherit;">question</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">str</span>
+    </dt>
+    <dd>{{% md %}}The question already answered{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="recursive_python">
+<a href="#recursive_python" style="color: inherit; text-decoration: inherit;">recursive</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 

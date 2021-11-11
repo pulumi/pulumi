@@ -15,10 +15,10 @@ __all__ = ['FooArgs', 'Foo']
 class FooArgs:
     def __init__(__self__, *,
                  argument: Optional[str] = None,
-                 settings: Optional[pulumi.Input['HelmReleaseSettingsArgs']] = None):
+                 settings: Optional[pulumi.Input['LayeredTypeArgs']] = None):
         """
         The set of arguments for constructing a Foo resource.
-        :param pulumi.Input['HelmReleaseSettingsArgs'] settings: describing things
+        :param pulumi.Input['LayeredTypeArgs'] settings: describing things
         """
         if argument is not None:
             pulumi.set(__self__, "argument", argument)
@@ -36,14 +36,14 @@ class FooArgs:
 
     @property
     @pulumi.getter
-    def settings(self) -> Optional[pulumi.Input['HelmReleaseSettingsArgs']]:
+    def settings(self) -> Optional[pulumi.Input['LayeredTypeArgs']]:
         """
         describing things
         """
         return pulumi.get(self, "settings")
 
     @settings.setter
-    def settings(self, value: Optional[pulumi.Input['HelmReleaseSettingsArgs']]):
+    def settings(self, value: Optional[pulumi.Input['LayeredTypeArgs']]):
         pulumi.set(self, "settings", value)
 
 
@@ -53,14 +53,14 @@ class Foo(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[str] = None,
-                 settings: Optional[pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']]] = None,
+                 settings: Optional[pulumi.Input[pulumi.InputType['LayeredTypeArgs']]] = None,
                  __props__=None):
         """
         test new feature with resoruces
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']] settings: describing things
+        :param pulumi.Input[pulumi.InputType['LayeredTypeArgs']] settings: describing things
         """
         ...
     @overload
@@ -87,7 +87,7 @@ class Foo(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[str] = None,
-                 settings: Optional[pulumi.Input[pulumi.InputType['HelmReleaseSettingsArgs']]] = None,
+                 settings: Optional[pulumi.Input[pulumi.InputType['LayeredTypeArgs']]] = None,
                  __props__=None):
         if opts is None:
             opts = pulumi.ResourceOptions()

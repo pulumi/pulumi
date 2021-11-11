@@ -48,7 +48,7 @@ export class Foo extends pulumi.CustomResource {
         opts = opts || {};
         if (!opts.id) {
             resourceInputs["argument"] = args ? args.argument : undefined;
-            resourceInputs["settings"] = args ? inputs.helmReleaseSettingsArgsProvideDefaults(args.settings) : undefined;
+            resourceInputs["settings"] = args ? inputs.layeredTypeArgsProvideDefaults(args.settings) : undefined;
         } else {
         }
         if (!opts.version) {
@@ -66,5 +66,5 @@ export interface FooArgs {
     /**
      * describing things
      */
-    settings?: pulumi.Input<inputs.HelmReleaseSettingsArgs>;
+    settings?: pulumi.Input<inputs.LayeredTypeArgs>;
 }

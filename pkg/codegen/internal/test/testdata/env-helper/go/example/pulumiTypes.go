@@ -188,9 +188,202 @@ func (o HelmReleaseSettingsPtrOutput) RequiredArg() pulumi.StringPtrOutput {
 	}).(pulumi.StringPtrOutput)
 }
 
+// Make sure that defaults propagate through types
+type LayeredType struct {
+	// The answer to the question
+	Answer *float64             `pulumi:"answer"`
+	Other  *HelmReleaseSettings `pulumi:"other"`
+	// The question already answered
+	Question  *string      `pulumi:"question"`
+	Recursive *LayeredType `pulumi:"recursive"`
+}
+
+// LayeredTypeInput is an input type that accepts LayeredTypeArgs and LayeredTypeOutput values.
+// You can construct a concrete instance of `LayeredTypeInput` via:
+//
+//          LayeredTypeArgs{...}
+type LayeredTypeInput interface {
+	pulumi.Input
+
+	ToLayeredTypeOutput() LayeredTypeOutput
+	ToLayeredTypeOutputWithContext(context.Context) LayeredTypeOutput
+}
+
+// Make sure that defaults propagate through types
+type LayeredTypeArgs struct {
+	// The answer to the question
+	Answer pulumi.Float64PtrInput      `pulumi:"answer"`
+	Other  HelmReleaseSettingsPtrInput `pulumi:"other"`
+	// The question already answered
+	Question  pulumi.StringPtrInput `pulumi:"question"`
+	Recursive LayeredTypePtrInput   `pulumi:"recursive"`
+}
+
+func (LayeredTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*LayeredType)(nil)).Elem()
+}
+
+func (i LayeredTypeArgs) ToLayeredTypeOutput() LayeredTypeOutput {
+	return i.ToLayeredTypeOutputWithContext(context.Background())
+}
+
+func (i LayeredTypeArgs) ToLayeredTypeOutputWithContext(ctx context.Context) LayeredTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(LayeredTypeOutput)
+}
+
+func (i LayeredTypeArgs) ToLayeredTypePtrOutput() LayeredTypePtrOutput {
+	return i.ToLayeredTypePtrOutputWithContext(context.Background())
+}
+
+func (i LayeredTypeArgs) ToLayeredTypePtrOutputWithContext(ctx context.Context) LayeredTypePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(LayeredTypeOutput).ToLayeredTypePtrOutputWithContext(ctx)
+}
+
+// LayeredTypePtrInput is an input type that accepts LayeredTypeArgs, LayeredTypePtr and LayeredTypePtrOutput values.
+// You can construct a concrete instance of `LayeredTypePtrInput` via:
+//
+//          LayeredTypeArgs{...}
+//
+//  or:
+//
+//          nil
+type LayeredTypePtrInput interface {
+	pulumi.Input
+
+	ToLayeredTypePtrOutput() LayeredTypePtrOutput
+	ToLayeredTypePtrOutputWithContext(context.Context) LayeredTypePtrOutput
+}
+
+type layeredTypePtrType LayeredTypeArgs
+
+func LayeredTypePtr(v *LayeredTypeArgs) LayeredTypePtrInput {
+	return (*layeredTypePtrType)(v)
+}
+
+func (*layeredTypePtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**LayeredType)(nil)).Elem()
+}
+
+func (i *layeredTypePtrType) ToLayeredTypePtrOutput() LayeredTypePtrOutput {
+	return i.ToLayeredTypePtrOutputWithContext(context.Background())
+}
+
+func (i *layeredTypePtrType) ToLayeredTypePtrOutputWithContext(ctx context.Context) LayeredTypePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(LayeredTypePtrOutput)
+}
+
+// Make sure that defaults propagate through types
+type LayeredTypeOutput struct{ *pulumi.OutputState }
+
+func (LayeredTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*LayeredType)(nil)).Elem()
+}
+
+func (o LayeredTypeOutput) ToLayeredTypeOutput() LayeredTypeOutput {
+	return o
+}
+
+func (o LayeredTypeOutput) ToLayeredTypeOutputWithContext(ctx context.Context) LayeredTypeOutput {
+	return o
+}
+
+func (o LayeredTypeOutput) ToLayeredTypePtrOutput() LayeredTypePtrOutput {
+	return o.ToLayeredTypePtrOutputWithContext(context.Background())
+}
+
+func (o LayeredTypeOutput) ToLayeredTypePtrOutputWithContext(ctx context.Context) LayeredTypePtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v LayeredType) *LayeredType {
+		return &v
+	}).(LayeredTypePtrOutput)
+}
+
+// The answer to the question
+func (o LayeredTypeOutput) Answer() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v LayeredType) *float64 { return v.Answer }).(pulumi.Float64PtrOutput)
+}
+
+func (o LayeredTypeOutput) Other() HelmReleaseSettingsPtrOutput {
+	return o.ApplyT(func(v LayeredType) *HelmReleaseSettings { return v.Other }).(HelmReleaseSettingsPtrOutput)
+}
+
+// The question already answered
+func (o LayeredTypeOutput) Question() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v LayeredType) *string { return v.Question }).(pulumi.StringPtrOutput)
+}
+
+func (o LayeredTypeOutput) Recursive() LayeredTypePtrOutput {
+	return o.ApplyT(func(v LayeredType) *LayeredType { return v.Recursive }).(LayeredTypePtrOutput)
+}
+
+type LayeredTypePtrOutput struct{ *pulumi.OutputState }
+
+func (LayeredTypePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**LayeredType)(nil)).Elem()
+}
+
+func (o LayeredTypePtrOutput) ToLayeredTypePtrOutput() LayeredTypePtrOutput {
+	return o
+}
+
+func (o LayeredTypePtrOutput) ToLayeredTypePtrOutputWithContext(ctx context.Context) LayeredTypePtrOutput {
+	return o
+}
+
+func (o LayeredTypePtrOutput) Elem() LayeredTypeOutput {
+	return o.ApplyT(func(v *LayeredType) LayeredType {
+		if v != nil {
+			return *v
+		}
+		var ret LayeredType
+		return ret
+	}).(LayeredTypeOutput)
+}
+
+// The answer to the question
+func (o LayeredTypePtrOutput) Answer() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *LayeredType) *float64 {
+		if v == nil {
+			return nil
+		}
+		return v.Answer
+	}).(pulumi.Float64PtrOutput)
+}
+
+func (o LayeredTypePtrOutput) Other() HelmReleaseSettingsPtrOutput {
+	return o.ApplyT(func(v *LayeredType) *HelmReleaseSettings {
+		if v == nil {
+			return nil
+		}
+		return v.Other
+	}).(HelmReleaseSettingsPtrOutput)
+}
+
+// The question already answered
+func (o LayeredTypePtrOutput) Question() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *LayeredType) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Question
+	}).(pulumi.StringPtrOutput)
+}
+
+func (o LayeredTypePtrOutput) Recursive() LayeredTypePtrOutput {
+	return o.ApplyT(func(v *LayeredType) *LayeredType {
+		if v == nil {
+			return nil
+		}
+		return v.Recursive
+	}).(LayeredTypePtrOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*HelmReleaseSettingsInput)(nil)).Elem(), HelmReleaseSettingsArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*HelmReleaseSettingsPtrInput)(nil)).Elem(), HelmReleaseSettingsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LayeredTypeInput)(nil)).Elem(), LayeredTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*LayeredTypePtrInput)(nil)).Elem(), LayeredTypeArgs{})
 	pulumi.RegisterOutputType(HelmReleaseSettingsOutput{})
 	pulumi.RegisterOutputType(HelmReleaseSettingsPtrOutput{})
+	pulumi.RegisterOutputType(LayeredTypeOutput{})
+	pulumi.RegisterOutputType(LayeredTypePtrOutput{})
 }

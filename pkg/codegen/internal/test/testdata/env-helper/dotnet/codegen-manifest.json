@@ -2,6 +2,7 @@
   "emittedFiles": [
     "Foo.cs",
     "Inputs/HelmReleaseSettingsArgs.cs",
+    "Inputs/LayeredTypeArgs.cs",
     "Provider.cs",
     "Pulumi.Example.csproj",
     "README.md",

@@ -423,6 +423,9 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 				return err
 			}
 			defaults = append(defaults, fmt.Sprintf("%s: (val.%s) ?? %s", p.Name, p.Name, dv))
+		} else if funcName := mod.provideDefaultsFuncName(p.Type); funcName != "" {
+			compositeObject := fmt.Sprintf("%[1]s: %[2]s(val.%[1]s)", p.Name, funcName)
+			defaults = append(defaults, compositeObject)
 		}
 
 		typ := mod.typeString(propertyType, input, p.ConstValue)
@@ -432,26 +435,38 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 
 	// Generate an object type with a default value constructor.
 	if len(defaults) != 0 && plain {
-		defaultProvderName := provideDefaultsFuncName(name)
+		// Generates a function header that looks like this:
+		// export function %sProvideDefaults(val: pulumi.Input<%s> | undefined): pulumi.Output<%s> | undefined {
+		//     const def = (val: LayeredTypeArgs) => ({
+		//         ...val,
+		defaultProvderName := provideDefaultsFuncNameFromName(name)
 		printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s",
 			defaultProvderName, name), "", indent)
-		fmt.Fprintf(w, "%sexport function %s(val: pulumi.Input<%s | undefined>): "+
-			"pulumi.Output<%s | undefined> {\n", indent, defaultProvderName, name, name)
-		fmt.Fprintf(w, "%s    const def = (val: %s | undefined) => val ? {\n", indent, name)
+		fmt.Fprintf(w, "%sexport function %s(val: pulumi.Input<%s> | undefined): "+
+			"pulumi.Output<%s> | undefined {\n", indent, defaultProvderName, name, name)
+		fmt.Fprintf(w, "%s    const def = (val: %s) => ({\n", indent, name)
 		fmt.Fprintf(w, "%s        ...val,\n", indent)
+
+		// Fields look as follows
+		// %s: (val.%s) ?? devValue,
 		for _, val := range defaults {
 			fmt.Fprintf(w, "%s        %s,\n", indent, val)
 		}
-		fmt.Fprintf(w, "%s    } : undefined;\n", indent)
-		fmt.Fprintf(w, "%s    return pulumi.output(val).apply(def);\n", indent)
+
+		// Function footer looks as follows.
+		// });
+		// return val ? pulumi.output(val).apply(def) : undefined;
+		fmt.Fprintf(w, "%s    });\n", indent)
+		fmt.Fprintf(w, "%s    return val ? pulumi.output(val).apply(def) : undefined;\n", indent)
 		fmt.Fprintf(w, "%s}\n", indent)
 	}
 	return nil
 }
 
 // The name of the helper function used to provide default values to plain
-// types.
-func provideDefaultsFuncName(typeName string) string {
+// types, derived purely from the name of the enclosing type. Prefer to use
+// provideDefaultsFuncName when full type information is available.
+func provideDefaultsFuncNameFromName(typeName string) string {
 	var i int
 	if in := strings.LastIndex(typeName, "."); in != -1 {
 		i = in
@@ -460,16 +475,34 @@ func provideDefaultsFuncName(typeName string) string {
 	return typeName[:i] + camel(typeName[i:]) + "ProvideDefaults"
 }
 
-// If a helper function needs to be invoked to provide devault values for a
-// plain type.
+// The name of the function used to set defaults on the plain type.
+func (mod *modContext) provideDefaultsFuncName(typ schema.Type) string {
+	if !isProvideDefaultsFuncRequired(typ) {
+		return ""
+	}
+	requiredType := codegen.UnwrapType(typ)
+	typeName := mod.typeString(requiredType, true, nil)
+	return provideDefaultsFuncNameFromName(typeName)
+}
+
+// If a helper function needs to be invoked to provide default values for a
+// plain type. The provided map cannot be reused.
 func isProvideDefaultsFuncRequired(t schema.Type) bool {
+	return isProvideDefaultsFuncRequiredHelper(t, map[string]bool{})
+}
+
+func isProvideDefaultsFuncRequiredHelper(t schema.Type, seen map[string]bool) bool {
+	if seen[t.String()] {
+		return false
+	}
+	seen[t.String()] = true
 	t = codegen.UnwrapType(t)
 	object, ok := t.(*schema.ObjectType)
 	if !ok {
 		return false
 	}
 	for _, p := range object.Properties {
-		if p.DefaultValue != nil {
+		if p.DefaultValue != nil || isProvideDefaultsFuncRequiredHelper(p.Type, seen) {
 			return true
 		}
 	}
@@ -717,10 +750,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		for _, prop := range r.InputProperties {
 			var arg string
 			applyDefaults := func(arg string) string {
-				if isProvideDefaultsFuncRequired(prop.Type) {
-					requiredType := codegen.UnwrapType(prop.Type)
-					typeName := mod.typeString(requiredType, true, nil)
-					name := provideDefaultsFuncName(typeName)
+				if name := mod.provideDefaultsFuncName(prop.Type); name != "" {
 					arg = fmt.Sprintf("%s(%s)", name, arg)
 				}
 				return arg
