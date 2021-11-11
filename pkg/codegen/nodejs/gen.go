@@ -429,6 +429,8 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
+
+	// Generate an object type with a default value constructor.
 	if len(defaults) != 0 && plain {
 		defaultProvderName := provideDefaultsFuncName(name)
 		printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s",
@@ -450,7 +452,12 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 // The name of the helper function used to provide default values to plain
 // types.
 func provideDefaultsFuncName(typeName string) string {
-	return camel(typeName + "ProvideDefaults")
+	var i int
+	if in := strings.LastIndex(typeName, "."); in != -1 {
+		i = in
+	}
+	// path + camel(name) + ProvideDefaults suffix
+	return typeName[:i] + camel(typeName[i:]) + "ProvideDefaults"
 }
 
 // If a helper function needs to be invoked to provide devault values for a
@@ -711,9 +718,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			var arg string
 			applyDefaults := func(arg string) string {
 				if isProvideDefaultsFuncRequired(prop.Type) {
-					obj := codegen.UnwrapType(prop.Type).(*schema.ObjectType)
-					name := mod.getObjectName(obj, true)
-					arg = fmt.Sprintf("inputs.%s(%s)", provideDefaultsFuncName(name), arg)
+					requiredType := codegen.UnwrapType(prop.Type)
+					typeName := mod.typeString(requiredType, true, nil)
+					name := provideDefaultsFuncName(typeName)
+					arg = fmt.Sprintf("%s(%s)", name, arg)
 				}
 				return arg
 			}
