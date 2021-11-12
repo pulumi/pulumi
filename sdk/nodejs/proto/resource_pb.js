@@ -1285,7 +1285,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     remote: jspb.Message.getBooleanFieldWithDefault(msg, 20, false),
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
-    replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f
+    replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
+    hasoutputs: jspb.Message.getBooleanFieldWithDefault(msg, 24, false)
   };
 
   if (includeInstance) {
@@ -1419,6 +1420,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 23:
       var value = /** @type {string} */ (reader.readString());
       msg.addReplaceonchanges(value);
+      break;
+    case 24:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setHasoutputs(value);
       break;
     default:
       reader.skipField();
@@ -1603,6 +1608,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeRepeatedString(
       23,
+      f
+    );
+  }
+  f = message.getHasoutputs();
+  if (f) {
+    writer.writeBool(
+      24,
       f
     );
   }
@@ -2507,6 +2519,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addReplaceonchanges = function
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearReplaceonchangesList = function() {
   return this.setReplaceonchangesList([]);
+};
+
+
+/**
+ * optional bool hasOutputs = 24;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getHasoutputs = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 24, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setHasoutputs = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 24, value);
 };
 
 
