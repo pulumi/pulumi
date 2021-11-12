@@ -33,6 +33,7 @@ import (
 
 func newLoginCmd() *cobra.Command {
 	var cloudURL string
+	var defaultOrg string
 	var localMode bool
 
 	cmd := &cobra.Command{
@@ -55,6 +56,9 @@ func newLoginCmd() *cobra.Command {
 			"to log in to a self-hosted Pulumi service running at the api.pulumi.acmecorp.com domain.\n" +
 			"\n" +
 			"For `https://` URLs, the CLI will speak REST to a service that manages state and concurrency control.\n" +
+			"You can specify a default org to use when logging into the Pulumi service backend or a " +
+			"self-hosted Pulumi service.\n" +
+			"\n" +
 			"[PREVIEW] If you prefer to operate Pulumi independently of a service, and entirely local to your computer,\n" +
 			"pass `file://<path>`, where `<path>` will be where state checkpoints will be stored. For instance,\n" +
 			"\n" +
@@ -127,8 +131,21 @@ func newLoginCmd() *cobra.Command {
 			var err error
 			if filestate.IsFileStateBackendURL(cloudURL) {
 				be, err = filestate.Login(cmdutil.Diag(), cloudURL)
+				if defaultOrg != "" {
+					return fmt.Errorf("unable to set default org for this type of backend")
+				}
 			} else {
 				be, err = httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
+				// if the user has specified a default org to associate with the backend
+				if defaultOrg != "" {
+					cloudURL, err := workspace.GetCurrentCloudURL()
+					if err != nil {
+						return err
+					}
+					if err := httpstate.SetDefaultOrg(cloudURL, defaultOrg); err != nil {
+						return err
+					}
+				}
 			}
 			if err != nil {
 				return errors.Wrapf(err, "problem logging in")
@@ -145,6 +162,8 @@ func newLoginCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to log in to")
+	cmd.PersistentFlags().StringVar(&defaultOrg, "default-org", "", "A default org to associate with the login. "+
+		"Please note, currently, only the managed and self-hosted backends support organizations")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
 
 	return cmd
