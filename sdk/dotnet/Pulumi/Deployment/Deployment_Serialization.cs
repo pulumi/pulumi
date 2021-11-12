@@ -29,11 +29,11 @@ namespace Pulumi
         }
 
         private static async Task<Struct> SerializeAllPropertiesAsync(
-            string label, IDictionary<string, object?> args, bool keepResources)
+            string label, IDictionary<string, object?> args, bool keepResources, bool keepOutputValues = false)
         {
             var result = await SerializeFilteredPropertiesAsync(
                 label, args, _ => true,
-                keepResources, keepOutputValues: false).ConfigureAwait(false);
+                keepResources, keepOutputValues).ConfigureAwait(false);
             return result.Serialized;
         }
 
