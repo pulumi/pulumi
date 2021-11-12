@@ -40,7 +40,7 @@ func (s ResourceSet) Intersect(other ResourceSet) ResourceSet {
 func (s ResourceSet) ToArray() []*resource.State {
 	arr := make([]*resource.State, len(s))
 	i := 0
-	for r, _ := range s {
+	for r := range s {
 		arr[i] = r
 		i++
 	}

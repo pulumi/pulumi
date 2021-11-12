@@ -229,3 +229,29 @@ func TestDependenciesOfRemoteComponentsNoCycle(t *testing.T) {
 	assert.True(t, rDependencies[parent])
 	assert.False(t, rDependencies[child])
 }
+
+func TestTransitiveDependenciesOf(t *testing.T) {
+	aws := NewProviderResource("aws", "default", "0")
+	parent := NewResource("parent", aws)
+	greatUncle := NewResource("greatUncle", aws)
+	uncle := NewResource("r", aws)
+	uncle.Parent = greatUncle.URN
+	child := NewResource("child", aws, uncle.URN)
+	child.Parent = parent.URN
+	baby := NewResource("baby", aws)
+	baby.Parent = child.URN
+
+	dg := NewDependencyGraph([]*resource.State{
+		aws,
+		parent,
+		greatUncle,
+		uncle,
+		child,
+		baby,
+	})
+	// <(relation)- as an alias for depends on via relation
+	// baby <(Parent)- child <(Dependency)- uncle <(Parent)- greatUncle <(Provider)- aws
+	set := dg.TransitiveDependenciesOf(baby)
+	assert.True(t, set[aws], "everything should depend on the provider")
+	assert.True(t, set[greatUncle], "child depends on greatUncle")
+}

@@ -159,7 +159,7 @@ func newDestroyCmd() *cobra.Command {
 
 			var protectedCount int
 			if excludeProtected {
-				protectedCount, err = handleExcludeProtected(s, targetUrns)
+				protectedCount, err = handleExcludeProtected(s, &targetUrns)
 				if err != nil {
 					return result.FromError(err)
 				} else if protectedCount > 0 && len(targetUrns) == 0 {
@@ -308,44 +308,13 @@ func seperateProtected(resources []*resource.State) (
 	transitiveProtected := graph.ResourceSet{}
 	for _, r := range resources {
 		if r.Protect {
-			rProtected := graph.NewResourceSetFromArray(dg.DependingOn(r, map[resource.URN]bool{}))
+			rProtected := dg.TransitiveDependenciesOf(r)
+			rProtected[r] = true
 			transitiveProtected.UnionWith(rProtected)
 		}
 	}
 	allResources := graph.NewResourceSetFromArray(resources)
 	return allResources.SetMinus(transitiveProtected).ToArray(), transitiveProtected.ToArray()
-	// protectedProviders := make(map[string]struct{})
-
-	// urns := make(map[resource.URN]*node, len(resources))
-
-	// for _, resource := range resources {
-	// 	urns[resource.URN] = &node{resource.Protect, resource}
-	// 	if resource.Protect {
-	// 		markProtected(resource.URN, urns, protectedProviders)
-	// 	}
-	// }
-
-	// // This will only trigger if (urn, node) is a provider. The check is implicit
-	// // in the set lookup.
-	// for urn, node := range urns {
-	// 	asProvider := fmt.Sprintf("%s::%s", string(urn), string(node.resource.ID))
-	// 	if _, ok := protectedProviders[asProvider]; ok {
-	// 		markProtected(urn, urns, protectedProviders)
-	// 	}
-	// }
-
-	// unprotected := make([]*resource.State, 0)
-	// protected := make([]*resource.State, 0)
-	// for _, r := range urns {
-	// 	// Default providers do not have a reasonable place in the resource DAG.
-	// 	// We ignore them.
-	// 	if !r.protected {
-	// 		unprotected = append(unprotected, r.resource)
-	// 	} else {
-	// 		protected = append(protected, r.resource)
-	// 	}
-	// }
-	// return unprotected, protected
 }
 
 // Mark a resource and its parents as protected.
@@ -377,8 +346,8 @@ type node struct {
 }
 
 // Returns the number of protected resources that remain. Appends all unprotected resources to `targetUrns`.
-func handleExcludeProtected(s backend.Stack, targetUrns []resource.URN) (int, error) {
-	contract.Assert(len(targetUrns) == 0)
+func handleExcludeProtected(s backend.Stack, targetUrns *[]resource.URN) (int, error) {
+	contract.Assert(len(*targetUrns) == 0)
 	// Get snapshot
 	snapshot, err := s.Snapshot(commandContext())
 	if err != nil {
@@ -388,7 +357,7 @@ func handleExcludeProtected(s backend.Stack, targetUrns []resource.URN) (int, er
 	}
 	unprotected, protected := seperateProtected(snapshot.Resources)
 	for _, r := range unprotected {
-		targetUrns = append(targetUrns, r.URN)
+		*targetUrns = append(*targetUrns, r.URN)
 	}
 	return len(protected), nil
 }
