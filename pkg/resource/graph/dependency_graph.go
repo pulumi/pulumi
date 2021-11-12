@@ -153,6 +153,8 @@ func (dg *DependencyGraph) TransitiveDependenciesOf(r *resource.State) ResourceS
 			dependencies[r.resource] = true
 		}
 	}
+	// We don't want to include `r` as it's own dependency.
+	delete(dependencies, r)
 	return dependencies
 
 }
@@ -162,9 +164,11 @@ func markAsDependency(urn resource.URN, urns map[resource.URN]*node, dependedPro
 	r := urns[urn]
 	for {
 		r.marked = true
-		ref, err := providers.ParseReference(r.resource.Provider)
-		contract.AssertNoError(err)
-		dependedProviders[ref.URN()] = struct{}{}
+		if r.resource.Provider != "" {
+			ref, err := providers.ParseReference(r.resource.Provider)
+			contract.AssertNoError(err)
+			dependedProviders[ref.URN()] = struct{}{}
+		}
 		for _, dep := range r.resource.Dependencies {
 			markAsDependency(dep, urns, dependedProviders)
 		}
