@@ -1,3 +1,6 @@
 ### Improvements
 
+- [schema] Add IsOverlay option to disable codegen for particular types
+  [#8338](https://github.com/pulumi/pulumi/pull/8338)
+
 ### Bug Fixes
