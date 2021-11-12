@@ -176,11 +176,18 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
                     builder.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig);
                     if (isKnown)
+                    {
                         builder.Add(Constants.ValueName, value);
+                    }
                     if (isSecret)
+                    {
                         builder.Add(Constants.SecretName, isSecret);
+                    }
                     if (dependencies.Count > 0)
-                        builder.Add(Constants.DependenciesName, dependencies.ToImmutableArray().Sort(StringComparer.Ordinal));
+                    {
+                        builder.Add(Constants.DependenciesName,
+                            dependencies.OrderBy(x => x, StringComparer.Ordinal).ToImmutableArray<object>());
+                    }
                     return builder.ToImmutable();
                 }
 
