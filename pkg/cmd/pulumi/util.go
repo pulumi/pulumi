@@ -862,3 +862,20 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	// the default functionality right now is to always skip a refresh
 	return false, nil
 }
+
+func buildStackName(stackName string) (string, error) {
+	if strings.Count(stackName, "/") == 2 {
+		return stackName, nil
+	}
+
+	defaultOrg, err := workspace.GetBackendConfigDefaultOrg()
+	if err != nil {
+		return "", err
+	}
+
+	if defaultOrg != "" {
+		return fmt.Sprintf("%s/%s", defaultOrg, stackName), nil
+	}
+
+	return stackName, nil
+}
