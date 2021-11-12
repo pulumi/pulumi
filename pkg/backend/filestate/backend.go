@@ -17,6 +17,7 @@ package filestate
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -28,7 +29,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/pkg/errors"
+
 	user "github.com/tweekmonster/luser"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
@@ -103,7 +104,7 @@ const FilePathPrefix = "file://"
 
 func New(d diag.Sink, originalURL string) (Backend, error) {
 	if !IsFileStateBackendURL(originalURL) {
-		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
+		return nil, fmt.Errorf("local URL %s has an illegal prefix; expected one of: %s",
 			originalURL, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
@@ -130,7 +131,7 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 
 	bucket, err := blobmux.OpenBucket(context.TODO(), u)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
+		return nil, fmt.Errorf("unable to open bucket %s: %w", u, err)
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
@@ -178,7 +179,7 @@ func massageBlobPath(path string) (string, error) {
 	if strings.HasPrefix(path, "~") {
 		usr, err := user.Current()
 		if err != nil {
-			return "", errors.Wrap(err, "Could not determine current user to resolve `file://~` path.")
+			return "", fmt.Errorf("Could not determine current user to resolve `file://~` path.: %w", err)
 		}
 
 		if path == "~" {
@@ -191,7 +192,7 @@ func massageBlobPath(path string) (string, error) {
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err := filepath.Abs(path)
 	if err != nil {
-		return "", errors.Wrap(err, "An IO error occurred while building the absolute path")
+		return "", fmt.Errorf("An IO error occurred while building the absolute path: %w", err)
 	}
 
 	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket
@@ -300,10 +301,10 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 
 	tags, err := backend.GetEnvironmentTagsForCurrentStack()
 	if err != nil {
-		return nil, errors.Wrap(err, "getting stack tags")
+		return nil, fmt.Errorf("getting stack tags: %w", err)
 	}
 	if err = validation.ValidateStackProperties(string(stackName), tags); err != nil {
-		return nil, errors.Wrap(err, "validating stack properties")
+		return nil, fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	file, err := b.saveStack(stackName, nil, nil)
@@ -321,7 +322,7 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	stackName := stackRef.Name()
 	snapshot, path, err := b.getStack(stackName)
 	switch {
-	case gcerrors.Code(errors.Cause(err)) == gcerrors.NotFound:
+	case gcerrors.Code(legacyErrorCause(err)) == gcerrors.NotFound:
 		return nil, nil
 	case err != nil:
 		return nil, err
@@ -410,7 +411,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 		return nil, err
 	}
 	if hasExisting {
-		return nil, errors.Errorf("a stack named %s already exists", newName)
+		return nil, fmt.Errorf("a stack named %s already exists", newName)
 	}
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
@@ -663,11 +664,11 @@ func (b *localBackend) apply(
 
 	if saveErr != nil {
 		// We swallow backupErr as it is less important than the saveErr.
-		return changes, result.FromError(errors.Wrap(saveErr, "saving update info"))
+		return changes, result.FromError(fmt.Errorf("saving update info: %w", saveErr))
 	}
 
 	if backupErr != nil {
-		return changes, result.FromError(errors.Wrap(backupErr, "saving backup"))
+		return changes, result.FromError(fmt.Errorf("saving backup: %w", backupErr))
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
@@ -776,7 +777,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 
 	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager /* showSecrsts */, false)
 	if err != nil {
-		return nil, errors.Wrap(err, "serializing deployment")
+		return nil, fmt.Errorf("serializing deployment: %w", err)
 	}
 
 	data, err := json.Marshal(sdep)
@@ -840,7 +841,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 
 	files, err := listBucket(b.bucket, path)
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing stacks")
+		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
 
 	for _, file := range files {

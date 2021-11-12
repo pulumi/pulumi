@@ -21,6 +21,7 @@ package nodejs
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -30,8 +31,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/tstypes"
@@ -443,7 +442,7 @@ func tsPrimitiveValue(value interface{}) (string, error) {
 	case reflect.String:
 		return fmt.Sprintf("%q", v.String()), nil
 	default:
-		return "", errors.Errorf("unsupported default value of type %T", value)
+		return "", fmt.Errorf("unsupported default value of type %T", value)
 	}
 }
 

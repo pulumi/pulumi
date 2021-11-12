@@ -31,8 +31,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -1283,7 +1281,7 @@ func goPrimitiveValue(value interface{}) (string, error) {
 	case reflect.String:
 		return fmt.Sprintf("%q", v.String()), nil
 	default:
-		return "", errors.Errorf("unsupported default value of type %T", value)
+		return "", fmt.Errorf("unsupported default value of type %T", value)
 	}
 }
 
@@ -3130,14 +3128,14 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	setFile := func(relPath, contents string) {
 		relPath = path.Join(pathPrefix, relPath)
 		if _, ok := files[relPath]; ok {
-			panic(errors.Errorf("duplicate file: %s", relPath))
+			panic(fmt.Errorf("duplicate file: %s", relPath))
 		}
 
 		// Run Go formatter on the code before saving to disk
 		formattedSource, err := format.Source([]byte(contents))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Invalid content:\n%s\n%s\n", relPath, contents)
-			panic(errors.Wrapf(err, "invalid Go source code:\n\n%s\n", relPath))
+			panic(fmt.Errorf("invalid Go source code:\n\n%s\n: %w", relPath, err))
 		}
 
 		files[relPath] = formattedSource

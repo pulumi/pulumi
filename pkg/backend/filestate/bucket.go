@@ -2,11 +2,11 @@ package filestate
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"path"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gocloud.dev/blob"
 )
@@ -77,7 +77,7 @@ func listBucket(bucket Bucket, dir string) ([]*blob.ListObject, error) {
 			break
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, "could not list bucket")
+			return nil, fmt.Errorf("could not list bucket: %w", err)
 		}
 		files = append(files, file)
 	}
@@ -95,7 +95,7 @@ func objectName(obj *blob.ListObject) string {
 func removeAllByPrefix(bucket Bucket, dir string) error {
 	files, err := listBucket(bucket, dir)
 	if err != nil {
-		return errors.Wrap(err, "unable to list bucket objects for removal")
+		return fmt.Errorf("unable to list bucket objects for removal: %w", err)
 	}
 
 	for _, file := range files {
@@ -113,7 +113,7 @@ func removeAllByPrefix(bucket Bucket, dir string) error {
 func renameObject(bucket Bucket, source string, dest string) error {
 	err := bucket.Copy(context.TODO(), dest, source, nil)
 	if err != nil {
-		return errors.Wrapf(err, "copying %s to %s", source, dest)
+		return fmt.Errorf("copying %s to %s: %w", source, dest, err)
 	}
 
 	err = bucket.Delete(context.TODO(), source)

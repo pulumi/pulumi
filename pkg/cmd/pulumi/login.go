@@ -15,12 +15,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -114,7 +114,7 @@ func newLoginCmd() *cobra.Command {
 				var err error
 				cloudURL, err = workspace.GetCurrentCloudURL()
 				if err != nil {
-					return errors.Wrap(err, "could not determine current cloud")
+					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
 			} else {
 				// Ensure we have the correct cloudurl type before logging in
@@ -131,7 +131,7 @@ func newLoginCmd() *cobra.Command {
 				be, err = httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
 			}
 			if err != nil {
-				return errors.Wrapf(err, "problem logging in")
+				return fmt.Errorf("problem logging in: %w", err)
 			}
 
 			if currentUser, err := be.CurrentUser(); err == nil {
@@ -158,9 +158,8 @@ func validateCloudBackendType(typ string) error {
 			return nil
 		}
 	}
-	return errors.Errorf(
-		"unknown backend cloudUrl format '%s' (supported Url formats are: "+
-			"azblob://, gs://, s3://, file://, https:// and http://)",
-		kind,
-	)
+	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
+		"azblob://, gs://, s3://, file://, https:// and http://)",
+		kind)
+
 }

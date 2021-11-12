@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -23,7 +24,7 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -96,7 +97,7 @@ func (src *evalSource) Iterate(
 	// Decrypt the configuration.
 	config, err := src.runinfo.Target.Config.Decrypt(src.runinfo.Target.Decrypter)
 	if err != nil {
-		return nil, result.FromError(errors.Wrap(err, "failed to decrypt config"))
+		return nil, result.FromError(fmt.Errorf("failed to decrypt config: %w", err))
 	}
 
 	// Keep track of any config keys that have secure values.
@@ -109,7 +110,7 @@ func (src *evalSource) Iterate(
 	mon, err := newResourceMonitor(
 		src, providers, regChan, regOutChan, regReadChan, opts, config, configSecretKeys, tracingSpan)
 	if err != nil {
-		return nil, result.FromError(errors.Wrap(err, "failed to start resource monitor"))
+		return nil, result.FromError(fmt.Errorf("failed to start resource monitor: %w", err))
 	}
 
 	// Create a new iterator with appropriate channels, and gear up to go!
@@ -197,7 +198,7 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 			rt := iter.src.runinfo.Proj.Runtime.Name()
 			langhost, err := iter.src.plugctx.Host.LanguageRuntime(rt)
 			if err != nil {
-				return result.FromError(errors.Wrapf(err, "failed to launch language host %s", rt))
+				return result.FromError(fmt.Errorf("failed to launch language host %s: %w", rt, err))
 			}
 			contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
@@ -226,7 +227,7 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 
 			if err == nil && progerr != "" {
 				// If the program had an unhandled error; propagate it to the caller.
-				err = errors.Errorf("an unhandled error occurred: %v", progerr)
+				err = fmt.Errorf("an unhandled error occurred: %v", progerr)
 			}
 			return result.WrapIfNonNil(err)
 		}
@@ -486,7 +487,7 @@ func getProviderReference(defaultProviders *defaultProviders, req providers.Prov
 	if rawProviderRef != "" {
 		ref, err := providers.ParseReference(rawProviderRef)
 		if err != nil {
-			return providers.Reference{}, errors.Errorf("could not parse provider reference: %v", err)
+			return providers.Reference{}, fmt.Errorf("could not parse provider reference: %v", err)
 		}
 		return ref, nil
 	}
@@ -511,7 +512,7 @@ func getProviderFromSource(
 	}
 	provider, ok := providers.GetProvider(providerRef)
 	if !ok {
-		return nil, errors.Errorf("unknown provider '%v'", rawProviderRef)
+		return nil, fmt.Errorf("unknown provider '%v'", rawProviderRef)
 	}
 	return provider, nil
 }
@@ -575,14 +576,14 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 			KeepResources: true,
 		})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
+		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
 
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	ret, failures, err := prov.Invoke(tok, args)
 	if err != nil {
-		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
+		return nil, fmt.Errorf("invocation of %v returned an error: %w", tok, err)
 	}
 	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
 		Label:         label,
@@ -590,7 +591,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 		KeepResources: true,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
+		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
 	}
 	var chkfails []*pulumirpc.CheckFailure
 	for _, failure := range failures {
@@ -628,7 +629,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 			KeepOutputValues: true,
 		})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
+		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
 
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
@@ -657,7 +658,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 		"ResourceMonitor.Call received: tok=%v #args=%v #info=%v #options=%v", tok, len(args), info, options)
 	ret, err := prov.Call(tok, args, info, options)
 	if err != nil {
-		return nil, errors.Wrapf(err, "call of %v returned an error", tok)
+		return nil, fmt.Errorf("call of %v returned an error: %w", tok, err)
 	}
 	mret, err := plugin.MarshalProperties(ret.Return, plugin.MarshalOptions{
 		Label:         label,
@@ -666,7 +667,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 		KeepResources: true,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
+		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
 	}
 
 	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
@@ -711,7 +712,7 @@ func (rm *resmon) StreamInvoke(
 			KeepResources: true,
 		})
 	if err != nil {
-		return errors.Wrapf(err, "failed to unmarshal %v args", tok)
+		return fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
 
 	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
@@ -724,13 +725,13 @@ func (rm *resmon) StreamInvoke(
 			KeepResources: req.GetAcceptResources(),
 		})
 		if err != nil {
-			return errors.Wrapf(err, "failed to marshal return")
+			return fmt.Errorf("failed to marshal return: %w", err)
 		}
 
 		return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
 	})
 	if err != nil {
-		return errors.Wrapf(err, "streaming invocation of %v returned an error", tok)
+		return fmt.Errorf("streaming invocation of %v returned an error: %w", tok, err)
 	}
 
 	var chkfails []*pulumirpc.CheckFailure
@@ -829,7 +830,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		KeepResources: req.GetAcceptResources(),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal %s return state", result.State.URN)
+		return nil, fmt.Errorf("failed to marshal %s return state: %w", result.State.URN, err)
 	}
 
 	return &pulumirpc.ReadResourceResponse{
@@ -988,7 +989,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if remote {
 		provider, ok := rm.providers.GetProvider(providerRef)
 		if !ok {
-			return nil, errors.Errorf("unknown provider '%v'", providerRef)
+			return nil, fmt.Errorf("unknown provider '%v'", providerRef)
 		}
 
 		// Invoke the provider's Construct RPC method.
@@ -1108,7 +1109,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 			KeepResources:      true,
 		})
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot unmarshal output properties")
+		return nil, fmt.Errorf("cannot unmarshal output properties: %w", err)
 	}
 	logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs received: urn=%v, #outs=%v", urn, len(outs))
 
@@ -1213,7 +1214,7 @@ func (g *readResourceEvent) Done(result *ReadResult) {
 func generateTimeoutInSeconds(timeout string) (float64, error) {
 	duration, err := time.ParseDuration(timeout)
 	if err != nil {
-		return 0, errors.Errorf("unable to parse customTimeout Value %s", timeout)
+		return 0, fmt.Errorf("unable to parse customTimeout Value %s", timeout)
 	}
 
 	return duration.Seconds(), nil

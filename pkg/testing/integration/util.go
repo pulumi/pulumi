@@ -16,7 +16,6 @@ package integration
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -28,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -42,8 +41,9 @@ func DecodeMapString(val string) (map[string]string, error) {
 		for _, overrideClause := range strings.Split(val, ":") {
 			data := strings.Split(overrideClause, "=")
 			if len(data) != 2 {
-				return nil, errors.Errorf(
-					"could not decode %s as an override, should be of the form <package>=<version>", overrideClause)
+				return nil, fmt.Errorf(
+					"could not decode %s as an override, should be of the form <package>=<version>",
+					overrideClause)
 			}
 			packageName := data[0]
 			packageVersion := data[1]
@@ -73,7 +73,7 @@ func getCmdBin(loc *string, bin, def string) (string, error) {
 			var err error
 			*loc, err = exec.LookPath(bin)
 			if err != nil {
-				return "", errors.Wrapf(err, "Expected to find `%s` binary on $PATH", bin)
+				return "", fmt.Errorf("Expected to find `%s` binary on $PATH: %w", bin, err)
 			}
 		}
 	}
@@ -95,13 +95,13 @@ const (
 func writeCommandOutput(commandName, runDir string, output []byte) (string, error) {
 	logFileDir := filepath.Join(runDir, commandOutputFolderName)
 	if err := os.MkdirAll(logFileDir, 0700); err != nil {
-		return "", errors.Wrapf(err, "Failed to create '%s'", logFileDir)
+		return "", fmt.Errorf("Failed to create '%s': %w", logFileDir, err)
 	}
 
 	logFile := filepath.Join(logFileDir, commandName+uniqueSuffix()+".log")
 
 	if err := ioutil.WriteFile(logFile, output, 0600); err != nil {
-		return "", errors.Wrapf(err, "Failed to write '%s'", logFile)
+		return "", fmt.Errorf("Failed to write '%s': %w", logFile, err)
 	}
 
 	return logFile, nil
