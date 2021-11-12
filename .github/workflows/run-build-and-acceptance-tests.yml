@@ -82,13 +82,15 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
+      - run: mkdir -p ${{ runner.temp }}/opt/pulumi/nuget
       - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
       - name: Set up Node ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
       - name: Install pipenv
-        uses: dschep/install-pipenv-action@v1
+        run: |
+          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -169,13 +171,15 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
+      - run: mkdir -p ${{ runner.temp }}/opt/pulumi/nuget
       - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
       - name: Set up Node ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
       - name: Install pipenv
-        uses: dschep/install-pipenv-action@v1
+        run: |
+          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -219,6 +223,9 @@ jobs:
       - name: Install
         run: |
           make install_all
+          # Install Pulumi Python SDK globally (on CI only) to workaround a
+          # problem a sub-process in a test failing to find it.
+          python -m pip install -e sdk/python/env/src
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
@@ -274,6 +281,9 @@ jobs:
         run: |
           pip3 install pyenv-win
           pip3 install pipenv
+      - name: Create Local Nuget
+        run: mkdir -p "${{ env.PULUMI_LOCAL_NUGET }}"
+        shell: bash
       - run: dotnet nuget add source ${{ env.PULUMI_LOCAL_NUGET }}
       - name: Set Build Env Vars
         shell: bash

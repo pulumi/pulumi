@@ -16,13 +16,16 @@ package integration
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/pkg/errors"
@@ -164,4 +167,75 @@ func CopyDir(src, dst string) error {
 		}
 	}
 	return nil
+}
+
+// AssertHTTPResultWithRetry attempts to assert that an HTTP endpoint exists
+// and evaluate its response.
+func AssertHTTPResultWithRetry(
+	t *testing.T,
+	output interface{},
+	headers map[string]string,
+	maxWait time.Duration,
+	check func(string) bool,
+) bool {
+	hostname, ok := output.(string)
+	if !assert.True(t, ok, fmt.Sprintf("expected `%s` output", output)) {
+		return false
+	}
+	if !(strings.HasPrefix(hostname, "http://") || strings.HasPrefix(hostname, "https://")) {
+		hostname = fmt.Sprintf("http://%s", hostname)
+	}
+	var err error
+	var resp *http.Response
+	startTime := time.Now()
+	count, sleep := 0, 0
+	for true {
+		now := time.Now()
+		req, err := http.NewRequest("GET", hostname, nil)
+		if !assert.NoError(t, err, "error reading request: %v", err) {
+			return false
+		}
+
+		for k, v := range headers {
+			// Host header cannot be set via req.Header.Set(), and must be set
+			// directly.
+			if strings.ToLower(k) == "host" {
+				req.Host = v
+				continue
+			}
+			req.Header.Set(k, v)
+		}
+
+		client := &http.Client{Timeout: time.Second * 10}
+		resp, err = client.Do(req)
+
+		if err == nil && resp.StatusCode == 200 {
+			break
+		}
+		if now.Sub(startTime) >= maxWait {
+			t.Logf("Timeout after %v. Unable to http.get %v successfully.", maxWait, hostname)
+			break
+		}
+		count++
+		// delay 10s, 20s, then 30s and stay at 30s
+		if sleep > 30 {
+			sleep = 30
+		} else {
+			sleep += 10
+		}
+		time.Sleep(time.Duration(sleep) * time.Second)
+		t.Logf("Http Error: %v\n", err)
+		t.Logf("  Retry: %v, elapsed wait: %v, max wait %v\n", count, now.Sub(startTime), maxWait)
+	}
+	if !assert.NoError(t, err) {
+		return false
+	}
+	// Read the body
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if !assert.NoError(t, err) {
+		return false
+	}
+	// Verify it matches expectations
+	return check(string(body))
 }
