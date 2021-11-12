@@ -163,8 +163,10 @@ func newDestroyCmd() *cobra.Command {
 				if err != nil {
 					return result.FromError(err)
 				} else if protectedCount > 0 && len(targetUrns) == 0 {
-					fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
-						" protected resources associated with this stack.\n", protectedCount)
+					if !jsonDisplay {
+						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
+							" protected resources associated with this stack.\n", protectedCount)
+					}
 					// We need to return now. Otherwise the update will conclude
 					// we tried to destroy everything and error for trying to
 					// destroy a protected resource.
