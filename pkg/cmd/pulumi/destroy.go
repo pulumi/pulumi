@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -303,38 +304,48 @@ func newDestroyCmd() *cobra.Command {
 // topological sort.
 func seperateProtected(resources []*resource.State) (
 	/*unprotected*/ []*resource.State /*protected*/, []*resource.State) {
-	protectedProviders := make(map[string]struct{})
-
-	urns := make(map[resource.URN]*node, len(resources))
-
-	for _, resource := range resources {
-		urns[resource.URN] = &node{resource.Protect, resource}
-		if resource.Protect {
-			markProtected(resource.URN, urns, protectedProviders)
+	dg := graph.NewDependencyGraph(resources)
+	transitiveProtected := graph.ResourceSet{}
+	for _, r := range resources {
+		if r.Protect {
+			rProtected := graph.NewResourceSetFromArray(dg.DependingOn(r, map[resource.URN]bool{}))
+			transitiveProtected.UnionWith(rProtected)
 		}
 	}
+	allResources := graph.NewResourceSetFromArray(resources)
+	return allResources.SetMinus(transitiveProtected).ToArray(), transitiveProtected.ToArray()
+	// protectedProviders := make(map[string]struct{})
 
-	// This will only trigger if (urn, node) is a provider. The check is implicit
-	// in the set lookup.
-	for urn, node := range urns {
-		asProvider := fmt.Sprintf("%s::%s", string(urn), string(node.resource.ID))
-		if _, ok := protectedProviders[asProvider]; ok {
-			markProtected(urn, urns, protectedProviders)
-		}
-	}
+	// urns := make(map[resource.URN]*node, len(resources))
 
-	unprotected := make([]*resource.State, 0)
-	protected := make([]*resource.State, 0)
-	for _, r := range urns {
-		// Default providers do not have a reasonable place in the resource DAG.
-		// We ignore them.
-		if !r.protected {
-			unprotected = append(unprotected, r.resource)
-		} else {
-			protected = append(protected, r.resource)
-		}
-	}
-	return unprotected, protected
+	// for _, resource := range resources {
+	// 	urns[resource.URN] = &node{resource.Protect, resource}
+	// 	if resource.Protect {
+	// 		markProtected(resource.URN, urns, protectedProviders)
+	// 	}
+	// }
+
+	// // This will only trigger if (urn, node) is a provider. The check is implicit
+	// // in the set lookup.
+	// for urn, node := range urns {
+	// 	asProvider := fmt.Sprintf("%s::%s", string(urn), string(node.resource.ID))
+	// 	if _, ok := protectedProviders[asProvider]; ok {
+	// 		markProtected(urn, urns, protectedProviders)
+	// 	}
+	// }
+
+	// unprotected := make([]*resource.State, 0)
+	// protected := make([]*resource.State, 0)
+	// for _, r := range urns {
+	// 	// Default providers do not have a reasonable place in the resource DAG.
+	// 	// We ignore them.
+	// 	if !r.protected {
+	// 		unprotected = append(unprotected, r.resource)
+	// 	} else {
+	// 		protected = append(protected, r.resource)
+	// 	}
+	// }
+	// return unprotected, protected
 }
 
 // Mark a resource and its parents as protected.
