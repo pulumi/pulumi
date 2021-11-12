@@ -321,8 +321,15 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackName := stackRef.Name()
 	snapshot, path, err := b.getStack(stackName)
+	drillError := func(err error) error {
+		e := err
+		for errors.Unwrap(e) != nil {
+			e = errors.Unwrap(e)
+		}
+		return e
+	}
 	switch {
-	case gcerrors.Code(errors.Unwrap(err)) == gcerrors.NotFound:
+	case gcerrors.Code(drillError(err)) == gcerrors.NotFound:
 		return nil, nil
 	case err != nil:
 		return nil, err
