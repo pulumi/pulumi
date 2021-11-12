@@ -317,34 +317,6 @@ func seperateProtected(resources []*resource.State) (
 	return allResources.SetMinus(transitiveProtected).ToArray(), transitiveProtected.ToArray()
 }
 
-// Mark a resource and its parents as protected.
-func markProtected(urn resource.URN, urns map[resource.URN]*node, protectedProviders map[string]struct{}) {
-	r := urns[urn]
-	for {
-		r.protected = true
-		protectedProviders[r.resource.Provider] = struct{}{}
-		for _, dep := range r.resource.Dependencies {
-			markProtected(dep, urns, protectedProviders)
-		}
-
-		// If p is already protected, we don't need to continue to traverse.
-		// All nodes above p will have already been marked as protected.
-		// This is a property of `resources` being topologically sorted.
-		if p, ok := urns[r.resource.Parent]; ok && !p.protected {
-			r = p
-		} else {
-			break
-		}
-	}
-}
-
-// We create a wrapper because we don't want to mutate the contents of
-// `resources`.
-type node struct {
-	protected bool
-	resource  *resource.State
-}
-
 // Returns the number of protected resources that remain. Appends all unprotected resources to `targetUrns`.
 func handleExcludeProtected(s backend.Stack, targetUrns *[]resource.URN) (int, error) {
 	contract.Assert(len(*targetUrns) == 0)
