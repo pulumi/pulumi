@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -105,7 +106,7 @@ func NewFrom(dir string) (W, error) {
 
 	err = w.readSettings()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to read workspace settings: %w", err)
 	}
 
 	upsertIntoCache(dir, w)
@@ -139,8 +140,30 @@ func (pw *projectWorkspace) Save() error {
 	if err != nil {
 		return err
 	}
+	return atomicWriteFile(settingsFile, b)
+}
 
-	return ioutil.WriteFile(settingsFile, b, 0600)
+// atomicWriteFile provides a rename based atomic write through a temporary file.
+func atomicWriteFile(path string, b []byte) error {
+	tmp, err := ioutil.TempFile(filepath.Dir(path), filepath.Base(path))
+	if err != nil {
+		return errors.Wrapf(err, "failed to create temporary file %s", path)
+	}
+	defer func() { contract.Ignore(os.Remove(tmp.Name())) }()
+
+	if err = tmp.Chmod(0600); err != nil {
+		return errors.Wrap(err, "failed to set temporary file permission")
+	}
+	if _, err = tmp.Write(b); err != nil {
+		return errors.Wrap(err, "failed to write to temporary file")
+	}
+	if err = tmp.Sync(); err != nil {
+		return err
+	}
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
 }
 
 func (pw *projectWorkspace) readSettings() error {
@@ -159,7 +182,7 @@ func (pw *projectWorkspace) readSettings() error {
 
 	err = json.Unmarshal(b, &settings)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not parse file %s", settingsPath)
 	}
 
 	pw.settings = &settings

@@ -16,22 +16,11 @@
 
     "remoteUser": "user",
 
-    "extensions": ["golang.go", "ms-dotnettools.csharp", "ms-python.python"],
+    "extensions": ["golang.go", "ms-dotnettools.csharp", "ms-python.python", "formulahendry.dotnet-test-explorer"],
 
-    // We want to dotnet restore all projects on startup so that omnisharp doesn't complain about lots of missing types on startup.
-    "postCreateCommand": "find -name \"*.??proj\" | xargs -L1 dotnet restore",
+    "postCreateCommand": "make ensure",
 
     "settings": {
-        "gopls": {
-            // A couple of modules get copied as part of builds and this confuse gopls as it sees the module name twice, just ignore the copy in the build folders.
-            "build.directoryFilters": [
-                "-sdk/dotnet/Pulumi.Automation.Tests/bin",
-                "-sdk/nodejs/bin",
-                "-sdk/python/env"
-            ],
-            // Experimental but seems to work and means we don't need a vscode instance per go.mod file.
-            "experimentalWorkspaceModule": true,
-        },
         "extensions.ignoreRecommendations": true
     }
 }

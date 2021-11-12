@@ -93,6 +93,12 @@ jobs:
           # If generating docs for more providers here, be sure to update
           # the description of the draft PR that is opened in the next step.
           pushd docs
+
+          pushd tools/resourcedocsgen
+          go mod edit -replace github.com/pulumi/pulumi/pkg/v3=../../../pulumi/pkg
+          go mod edit -replace github.com/pulumi/pulumi/sdk/v3=../../../pulumi/sdk
+          popd
+
           ./scripts/gen_resource_docs.sh aws true
           ./scripts/gen_resource_docs.sh kubernetes true
           popd

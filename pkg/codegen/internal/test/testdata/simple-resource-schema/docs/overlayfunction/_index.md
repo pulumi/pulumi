@@ -1,8 +1,8 @@
 
 ---
-title: "argFunction"
-title_tag: "example.argFunction"
-meta_desc: "Documentation for the example.argFunction function with examples, input properties, output properties, and supporting types."
+title: "overlayFunction"
+title_tag: "example.overlayFunction"
+meta_desc: "Documentation for the example.overlayFunction function with examples, input properties, output properties, and supporting types."
 layout: api
 no_edit_this_page: true
 ---
@@ -15,7 +15,7 @@ no_edit_this_page: true
 
 
 
-## Using argFunction {#using}
+## Using overlayFunction {#using}
 
 Two invocation forms are available. The direct form accepts plain
 arguments and either blocks until the result value is available, or
@@ -28,41 +28,41 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{% choosable language nodejs %}}
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
-><span class="k">function </span>argFunction<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ArgFunctionArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">ArgFunctionResult</a></span>></span
+><span class="k">function </span>overlayFunction<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">OverlayFunctionArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">OverlayFunctionResult</a></span>></span
 ><span class="k">
-function </span>argFunctionOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ArgFunctionOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">ArgFunctionResult</a></span>></span
+function </span>overlayFunctionOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">OverlayFunctionOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">OverlayFunctionResult</a></span>></span
 ></code></pre></div>
 {{% /choosable %}}
 
 
 {{% choosable language python %}}
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
-><span class="k">def </span>arg_function<span class="p">(</span><span class="nx">arg1</span><span class="p">:</span> <span class="nx">Optional[Resource]</span> = None<span class="p">,</span>
-                 <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>ArgFunctionResult</span
+><span class="k">def </span>overlay_function<span class="p">(</span><span class="nx">arg1</span><span class="p">:</span> <span class="nx">Optional[Resource]</span> = None<span class="p">,</span>
+                     <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>OverlayFunctionResult</span
 ><span class="k">
-def </span>arg_function_output<span class="p">(</span><span class="nx">arg1</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Resource]]</span> = None<span class="p">,</span>
-                 <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[ArgFunctionResult]</span
+def </span>overlay_function_output<span class="p">(</span><span class="nx">arg1</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Resource]]</span> = None<span class="p">,</span>
+                     <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[OverlayFunctionResult]</span
 ></code></pre></div>
 {{% /choosable %}}
 
 
 {{% choosable language go %}}
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
-><span class="k">func </span>ArgFunction<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ArgFunctionArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">ArgFunctionResult</a></span>, error)</span
+><span class="k">func </span>OverlayFunction<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">OverlayFunctionArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">OverlayFunctionResult</a></span>, error)</span
 ><span class="k">
-func </span>ArgFunctionOutput<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ArgFunctionOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) ArgFunctionResultOutput</span
+func </span>OverlayFunctionOutput<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">OverlayFunctionOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) OverlayFunctionResultOutput</span
 ></code></pre></div>
 
-&gt; Note: This function is named `ArgFunction` in the Go SDK.
+&gt; Note: This function is named `OverlayFunction` in the Go SDK.
 
 {{% /choosable %}}
 
 
 {{% choosable language csharp %}}
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">ArgFunction </span><span class="p">
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">OverlayFunction </span><span class="p">
 {</span><span class="k">
-    public static </span>Task&lt;<span class="nx"><a href="#result">ArgFunctionResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">ArgFunctionArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
-    public static </span>Output&lt;<span class="nx"><a href="#result">ArgFunctionResult</a></span>> <span class="p">Invoke(</span><span class="nx">ArgFunctionInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
+    public static </span>Task&lt;<span class="nx"><a href="#result">OverlayFunctionResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">OverlayFunctionArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
+    public static </span>Output&lt;<span class="nx"><a href="#result">OverlayFunctionResult</a></span>> <span class="p">Invoke(</span><span class="nx">OverlayFunctionInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
 {{% /choosable %}}
 
@@ -122,7 +122,7 @@ The following arguments are supported:
 
 
 
-## argFunction Result {#result}
+## overlayFunction Result {#result}
 
 The following output properties are available:
 

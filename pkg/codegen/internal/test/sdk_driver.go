@@ -151,7 +151,9 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "hyphen-url",
 		Description: "A resource url with a hyphen in its path",
-		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
+		// TODO[pulumi/pulumi#8370]: Re-enable compiling for Go.
+		SkipCompileCheck: codegen.NewStringSet(golang),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "output-funcs",
@@ -215,11 +217,11 @@ type SDKCodegenOptions struct {
 	Checks map[string]CodegenCheck
 }
 
-// `TestSDKCodegen` runs the complete set of SDK code generation tests
+// TestSDKCodegen runs the complete set of SDK code generation tests
 // against a particular language's code generator. It also verifies
 // that the generated code is structurally sound.
 //
-// The tests files live in `pkg/codegen/internal/test/testdata` and
+// The test files live in `pkg/codegen/internal/test/testdata` and
 // are registered in `var sdkTests` in `sdk_driver.go`.
 //
 // An SDK code generation test files consists of a schema and a set of
@@ -243,7 +245,7 @@ type SDKCodegenOptions struct {
 //      PULUMI_ACCEPT=true go test ./...
 //
 // This will rebuild subfolders such as `go/` from scratch and store
-// the set of code-generated file names in `go/codegen-manfiest.json`.
+// the set of code-generated file names in `go/codegen-manifest.json`.
 // If these outputs look correct, they need to be checked into git and
 // will then serve as the expected values for the normal test runs:
 //
