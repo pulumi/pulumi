@@ -33,15 +33,21 @@ func TestDestroyTarget(t *testing.T) {
 	destroySpecificTargets(
 		t, []string{"A"}, true, /*targetDependents*/
 		func(urns []resource.URN, deleted map[resource.URN]bool) {
-			// when deleting 'A' we expect A, B, C, E, F, and K to be deleted
+			// when deleting 'A' we expect A, B, C, D, E, F, G, H, I, J, K, and L to be deleted
 			names := complexTestDependencyGraphNames
 			assert.Equal(t, map[resource.URN]bool{
 				pickURN(t, urns, names, "A"): true,
 				pickURN(t, urns, names, "B"): true,
 				pickURN(t, urns, names, "C"): true,
+				pickURN(t, urns, names, "D"): true,
 				pickURN(t, urns, names, "E"): true,
 				pickURN(t, urns, names, "F"): true,
+				pickURN(t, urns, names, "G"): true,
+				pickURN(t, urns, names, "H"): true,
+				pickURN(t, urns, names, "I"): true,
+				pickURN(t, urns, names, "J"): true,
 				pickURN(t, urns, names, "K"): true,
+				pickURN(t, urns, names, "L"): true,
 			}, deleted)
 		})
 
