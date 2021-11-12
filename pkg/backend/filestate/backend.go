@@ -322,7 +322,7 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	stackName := stackRef.Name()
 	snapshot, path, err := b.getStack(stackName)
 	switch {
-	case gcerrors.Code(legacyErrorCause(err)) == gcerrors.NotFound:
+	case gcerrors.Code(errors.Unwrap(err)) == gcerrors.NotFound:
 		return nil, nil
 	case err != nil:
 		return nil, err

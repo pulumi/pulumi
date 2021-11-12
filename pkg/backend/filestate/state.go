@@ -323,7 +323,7 @@ func (b *localBackend) getHistory(name tokens.QName, pageSize int, page int) ([]
 	allFiles, err := listBucket(b.bucket, dir)
 	if err != nil {
 		// History doesn't exist until a stack has been updated.
-		if gcerrors.Code(legacyErrorCause(err)) == gcerrors.NotFound {
+		if gcerrors.Code(errors.Unwrap(err)) == gcerrors.NotFound {
 			return nil, nil
 		}
 		return nil, err
@@ -391,7 +391,7 @@ func (b *localBackend) renameHistory(oldName tokens.QName, newName tokens.QName)
 	allFiles, err := listBucket(b.bucket, oldHistory)
 	if err != nil {
 		// if there's nothing there, we don't really need to do a rename.
-		if gcerrors.Code(legacyErrorCause(err)) == gcerrors.NotFound {
+		if gcerrors.Code(errors.Unwrap(err)) == gcerrors.NotFound {
 			return nil
 		}
 		return err
@@ -440,35 +440,4 @@ func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo
 	// Make a copy of the checkpoint file. (Assuming it already exists.)
 	checkpointFile := fmt.Sprintf("%s.checkpoint.json", pathPrefix)
 	return b.bucket.Copy(context.TODO(), checkpointFile, b.stackPath(name), nil)
-}
-
-// This was copied from
-// https://github.com/pkg/errors/blob/5dd12d0cfe7f152f80558d591504ce685299311e/errors.go#L264-L288.
-func legacyErrorCause(err error) error {
-	// Cause returns the underlying cause of the error, if possible.
-	// An error value has a cause if it implements the following
-	// interface:
-	//
-	//     type causer interface {
-	//            Cause() error
-	//     }
-	//
-	// If the error does not implement Cause, the original error will
-	// be returned. If the error is nil, nil will be returned without further
-	// investigation.
-	cause := func(err error) error {
-		type causer interface {
-			Cause() error
-		}
-
-		for err != nil {
-			cause, ok := err.(causer)
-			if !ok {
-				break
-			}
-			err = cause.Cause()
-		}
-		return err
-	}
-	return cause(err)
 }
