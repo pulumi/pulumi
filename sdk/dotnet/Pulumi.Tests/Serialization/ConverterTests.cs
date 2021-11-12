@@ -19,7 +19,7 @@ namespace Pulumi.Tests.Serialization
                     Fields =
                     {
                         { Constants.SpecialSigKey, new Value { StringValue = Constants.SpecialSecretSig } },
-                        { Constants.SecretValueName, value },
+                        { Constants.ValueName, value },
                     }
                 }
             };
