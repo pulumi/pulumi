@@ -20,7 +20,8 @@ type DependencyGraph struct {
 // order with respect to the snapshot dependency graph.
 //
 // The time complexity of DependingOn is linear with respect to the number of resources.
-func (dg *DependencyGraph) DependingOn(res *resource.State, ignore map[resource.URN]bool) []*resource.State {
+func (dg *DependencyGraph) DependingOn(res *resource.State,
+	ignore map[resource.URN]bool, includeChildren bool) []*resource.State {
 	// This implementation relies on the detail that snapshots are stored in a valid
 	// topological order.
 	var dependents []*resource.State
@@ -34,15 +35,18 @@ func (dg *DependencyGraph) DependingOn(res *resource.State, ignore map[resource.
 		if ignore[candidate.URN] {
 			return false
 		}
+		if includeChildren && candidate.Parent == res.URN {
+			return true
+		}
+		for _, dependency := range candidate.Dependencies {
+			if dependentSet[dependency] {
+				return true
+			}
+		}
 		if candidate.Provider != "" {
 			ref, err := providers.ParseReference(candidate.Provider)
 			contract.Assert(err == nil)
 			if dependentSet[ref.URN()] {
-				return true
-			}
-		}
-		for _, dependency := range candidate.Dependencies {
-			if dependentSet[dependency] {
 				return true
 			}
 		}
