@@ -321,13 +321,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackName := stackRef.Name()
 	snapshot, path, err := b.getStack(stackName)
-	drillError := func(err error) error {
-		e := err
-		for errors.Unwrap(e) != nil {
-			e = errors.Unwrap(e)
-		}
-		return e
-	}
+
 	switch {
 	case gcerrors.Code(drillError(err)) == gcerrors.NotFound:
 		return nil, nil
@@ -887,4 +881,13 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 
 	// The local backend does not currently persist tags.
 	return errors.New("stack tags not supported in --local mode")
+}
+
+// Returns the original error in the chain. If `err` is nil, nil is returned.
+func drillError(err error) error {
+	e := err
+	for errors.Unwrap(e) != nil {
+		e = errors.Unwrap(e)
+	}
+	return e
 }
