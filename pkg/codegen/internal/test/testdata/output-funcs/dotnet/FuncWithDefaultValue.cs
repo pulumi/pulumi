@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Utilities;
 
 namespace Pulumi.Mypkg
 {
@@ -16,6 +17,12 @@ namespace Pulumi.Mypkg
         /// </summary>
         public static Task<FuncWithDefaultValueResult> InvokeAsync(FuncWithDefaultValueArgs args, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueArgs(), options.WithVersion());
+
+        /// <summary>
+        /// Check codegen of functions with default values.
+        /// </summary>
+        public static Output<FuncWithDefaultValueResult> Invoke(FuncWithDefaultValueInvokeArgs args, InvokeOptions? options = null)
+            => Pulumi.Deployment.Instance.Invoke<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueInvokeArgs(), options.WithVersion());
     }
 
 
@@ -28,6 +35,20 @@ namespace Pulumi.Mypkg
         public string? B { get; set; }
 
         public FuncWithDefaultValueArgs()
+        {
+            B = "b-default";
+        }
+    }
+
+    public sealed class FuncWithDefaultValueInvokeArgs : Pulumi.InvokeArgs
+    {
+        [Input("a", required: true)]
+        public Input<string> A { get; set; } = null!;
+
+        [Input("b")]
+        public Input<string>? B { get; set; }
+
+        public FuncWithDefaultValueInvokeArgs()
         {
             B = "b-default";
         }

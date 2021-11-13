@@ -16,6 +16,7 @@ package codegentest
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -74,6 +75,67 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 		return resource.NewPropertyMapFromMap(outputs), nil
 	}
 
+	if args.Token == "mypkg::getAmiIds" {
+		// NOTE: only subset of possible fields are tested here in the smoke-test.
+
+		targs := mypkg.GetAmiIdsArgs{}
+		for k, v := range args.Args {
+			switch k {
+			case "owners":
+				x := v.V.([]resource.PropertyValue)
+				for _, owner := range x {
+					targs.Owners = append(targs.Owners, owner.V.(string))
+				}
+			case "nameRegex":
+				x := v.V.(string)
+				targs.NameRegex = &x
+			case "sortAscending":
+				x := v.V.(bool)
+				targs.SortAscending = &x
+			case "filters":
+				filters := v.V.([]resource.PropertyValue)
+				for _, filter := range filters {
+					propMap := filter.V.(resource.PropertyMap)
+					name := propMap["name"].V.(string)
+					values := propMap["values"].V.([]resource.PropertyValue)
+					var theValues []string
+					for _, v := range values {
+						theValues = append(theValues, v.V.(string))
+					}
+					targs.Filters = append(targs.Filters, mypkg.GetAmiIdsFilter{
+						Name:   name,
+						Values: theValues,
+					})
+				}
+			}
+		}
+
+		var filterStrings []string
+		for _, f := range targs.Filters {
+			fs := fmt.Sprintf("name=%s values=[%s]", f.Name, strings.Join(f.Values, ", "))
+			filterStrings = append(filterStrings, fs)
+		}
+
+		var id string = fmt.Sprintf("my-id [owners: %s] [filters: %s]",
+			strings.Join(targs.Owners, ", "),
+			strings.Join(filterStrings, ", "))
+
+		result := mypkg.GetAmiIdsResult{
+			Id:            id,
+			NameRegex:     targs.NameRegex,
+			SortAscending: targs.SortAscending,
+		}
+
+		outputs := map[string]interface{}{
+			"id":            result.Id,
+			"nameRegex":     result.NameRegex,
+			"sortAscending": result.SortAscending,
+		}
+
+		return resource.NewPropertyMapFromMap(outputs), nil
+
+	}
+
 	panic(fmt.Errorf("Unknown token: %s", args.Token))
 }
 
@@ -105,6 +167,51 @@ func TestListStorageAccountKeysOutput(t *testing.T) {
 		assert.Equal(t, "permissions", keys[0].Permissions)
 		assert.Equal(t, "accountName=my-account-name, resourceGroupName=my-resource-group-name, expand=my-expand",
 			keys[0].Value)
+
+		return nil
+	})
+}
+
+func TestGetAmiIdsWorks(t *testing.T) {
+
+	makeFilter := func(n int) mypkg.GetAmiIdsFilterInput {
+		return &mypkg.GetAmiIdsFilterArgs{
+			Name: pulumi.String(fmt.Sprintf("filter-%d-name", n)),
+			Values: pulumi.StringArray{
+				pulumi.String(fmt.Sprintf("value-%d-1", n)),
+				pulumi.String(fmt.Sprintf("value-%d-2", n)),
+			},
+		}
+	}
+
+	pulumiTest(t, func(ctx *pulumi.Context) error {
+		output := mypkg.GetAmiIdsOutput(ctx, mypkg.GetAmiIdsOutputArgs{
+			NameRegex:     pulumi.String("[a-z]").ToStringPtrOutput(),
+			SortAscending: pulumi.Bool(true).ToBoolPtrOutput(),
+			Owners: pulumi.StringArray{
+				pulumi.String("owner-1"),
+				pulumi.String("owner-2"),
+			}.ToStringArrayOutput(),
+			Filters: mypkg.GetAmiIdsFilterArray{
+				makeFilter(1),
+				makeFilter(2),
+			}.ToGetAmiIdsFilterArrayOutput(),
+		})
+
+		result := waitOut(t, output).(mypkg.GetAmiIdsResult)
+
+		assert.Equal(t, *result.NameRegex, "[a-z]")
+
+		expectId := strings.Join([]string{
+			"my-id ",
+			"[owners: owner-1, owner-2] ",
+			"[filters: ",
+			"name=filter-1-name values=[value-1-1, value-1-2], ",
+			"name=filter-2-name values=[value-2-1, value-2-2]",
+			"]",
+		}, "")
+
+		assert.Equal(t, result.Id, expectId)
 
 		return nil
 	})

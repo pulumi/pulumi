@@ -170,6 +170,12 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
   </ItemGroup>
 
   <ItemGroup>
+    {{- range $projdir := .ProjectReferences}}
+    <ProjectReference Include="{{$projdir}}"  />
+    {{- end}}
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="logo.png">
       <Pack>True</Pack>
       <PackagePath></PackagePath>
@@ -194,5 +200,6 @@ type csharpProjectFileTemplateContext struct {
 	XMLDoc            string
 	Package           *schema.Package
 	PackageReferences map[string]string
+	ProjectReferences []string
 	Version           string
 }

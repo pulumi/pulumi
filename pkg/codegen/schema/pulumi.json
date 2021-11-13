@@ -10,6 +10,10 @@
             "type": "string",
             "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*$"
         },
+        "displayName": {
+            "description": "The human-friendly name of the package.",
+            "type": "string"
+        },
         "version": {
             "description": "The version of the package. The version must be valid semver.",
             "type": "string",
@@ -48,6 +52,10 @@
         },
         "pluginDownloadUrl": {
             "description": "The URL to use when downloading the provider plugin binary.",
+            "type": "string"
+        },
+        "publisher": {
+            "description": "The name of the person or organization that authored and published the package.",
             "type": "string"
         },
         "meta": {
@@ -130,7 +138,7 @@
             "title": "Token",
             "type": "string",
             "$comment": "In the regex below, the 'module' portion of the token is optional. However, a missing module component creates a '::', which breaks URNs ('::' is the URN delimiter). We have many test schemas that use an empty module component successfully, as they never create URNs; while these are _probably_ the only places that need updating, it might be possible that there are module-less type tokens in the wild elsewhere and we may need to remain compatible with those tokens.",
-            "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/]*)?:[^0-9][a-zA-Z0-9._/]*$"
+            "pattern": "^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/]*$"
         },
         "typeSpec": {
             "title": "Type Reference",

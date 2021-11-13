@@ -1,14 +1,15 @@
 package dotnet
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
@@ -16,7 +17,7 @@ import (
 
 func TestGenerateProgram(t *testing.T) {
 	test.TestProgramCodegen(t,
-		test.ProgramLangConfig{
+		test.ProgramCodegenOptions{
 			Language:   "dotnet",
 			Extension:  "cs",
 			OutputFile: "MyStack.cs",
@@ -26,7 +27,7 @@ func TestGenerateProgram(t *testing.T) {
 	)
 }
 
-func checkDotnet(t *testing.T, path string) {
+func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet) {
 	var err error
 	dir := filepath.Dir(path)
 
@@ -46,13 +47,15 @@ func checkDotnet(t *testing.T, path string) {
 		[]string{ex, "new", "console"}, dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err, "Failed to create C# project")
 
-	// Add dependencies (based on directory name)
-	if pkg, pkgVersion := packagesFromTestName(dir); pkg != "" {
-		err = integration.RunCommand(t, "Add package",
-			[]string{ex, "add", "package", pkg, "--version", pkgVersion},
-			dir, &integration.ProgramTestOptions{})
-		require.NoError(t, err, "Failed to add dependency %q %q", pkg, pkgVersion)
+	// Add dependencies
+	pkgs := dotnetDependencies(dependencies)
+	if len(pkgs) != 0 {
+		for _, pkg := range pkgs {
+			pkg.install(t, ex, dir)
+		}
 	} else {
+		// We would like this regardless of other dependencies, but dotnet
+		// packages do not play well with package references.
 		err = integration.RunCommand(t, "add sdk ref",
 			[]string{ex, "add", "reference", "../../../../../../../sdk/dotnet/Pulumi"},
 			dir, &integration.ProgramTestOptions{})
@@ -71,28 +74,45 @@ func checkDotnet(t *testing.T, path string) {
 	require.NoError(t, err, "Failed to build dotnet project")
 }
 
-// packagesFromName attempts to figure out what package should be imported from
-// the name of a test.
+type dep struct {
+	Name    string
+	Version string
+}
+
+func (pkg dep) install(t *testing.T, ex, dir string) {
+	args := []string{ex, "add", "package", pkg.Name}
+	if pkg.Version != "" {
+		args = append(args, "--version", pkg.Version)
+	}
+	err := integration.RunCommand(t, "Add package",
+		args, dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err, "Failed to add dependency %q %q", pkg.Name, pkg.Version)
+
+}
+
+// Converts from the hcl2 dependency format to the dotnet format.
 //
 // Example:
-// 	"aws-eks-pp" => ("Pulumi.Aws", 4.21.1)
-// 	"azure-sa-pp" => ("Pulumi.Azure", 4.21.1)
-// 	"resource-options-pp" => ("","")
+// 	"aws" => {"Pulumi.Aws", 4.21.1}
+// 	"azure" => {"Pulumi.Azure", 4.21.1}
 //
-// TODO[pulumi/pulumi#8080]
-// Note: While we could instead do this by using the generateMetaData function
-// for each language, we are trying not to expand the functionality under test.
-func packagesFromTestName(name string) (string, string) {
-	if strings.Contains(name, "aws") {
-		return "Pulumi.Aws", test.AwsSchema
-	} else if strings.Contains(name, "azure-native") {
-		return "Pulumi.AzureNative", test.AzureNativeSchema
-	} else if strings.Contains(name, "azure") {
-		return "Pulumi.Azure", test.AzureSchema
-	} else if strings.Contains(name, "kubernetes") {
-		return "Pulumi.Kubernetes", test.KubernetesSchema
-	} else if strings.Contains(name, "random") {
-		return "Pulumi.Random", test.RandomSchema
+func dotnetDependencies(deps codegen.StringSet) []dep {
+	result := make([]dep, len(deps))
+	for i, d := range deps.SortedValues() {
+		switch d {
+		case "aws":
+			result[i] = dep{"Pulumi.Aws", test.AwsSchema}
+		case "azure-native":
+			result[i] = dep{"Pulumi.AzureNative", test.AzureNativeSchema}
+		case "azure":
+			result[i] = dep{"Pulumi.Azure", test.AzureSchema}
+		case "kubernetes":
+			result[i] = dep{"Pulumi.Kubernetes", test.KubernetesSchema}
+		case "random":
+			result[i] = dep{"Pulumi.Random", test.RandomSchema}
+		default:
+			result[i] = dep{fmt.Sprintf("Pulumi.%s", Title(d)), ""}
+		}
 	}
-	return "", ""
+	return result
 }

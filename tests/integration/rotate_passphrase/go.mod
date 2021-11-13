@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/tests/empty/go
+module github.com/pulumi/pulumi/tests/rotate_passphrase
 
 go 1.16
 

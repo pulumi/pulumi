@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
@@ -93,7 +93,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	// Run Go formatter on the code before saving to disk
 	formattedSource, err := gofmt.Source(index.Bytes())
 	if err != nil {
-		panic(errors.Errorf("invalid Go source code:\n\n%s", index.String()))
+		panic(fmt.Errorf("invalid Go source code:\n\n%s", index.String()))
 	}
 
 	files := map[string][]byte{
@@ -287,7 +287,7 @@ func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, er
 		}
 	}
 
-	return "", errors.Errorf("could not find package version information for pkg: %s", pkg)
+	return "", fmt.Errorf("could not find package version information for pkg: %s", pkg)
 
 }
 
@@ -431,7 +431,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
-	resName := makeValidIdentifier(r.Name())
+	resName, resNameVar := r.Name(), makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
 	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
 		mod = pkg
@@ -487,7 +487,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		rangeExpr, temps := g.lowerExpression(r.Options.Range, rangeType)
 		g.genTemps(w, temps)
 
-		g.Fgenf(w, "var %s []*%s.%s\n", resName, modOrAlias, typ)
+		g.Fgenf(w, "var %s []*%s.%s\n", resNameVar, modOrAlias, typ)
 
 		// ahead of range statement declaration generate the resource instantiation
 		// to detect and removed unused k,v variables
@@ -502,11 +502,11 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 		g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
 		g.Fgen(w, instantiation)
-		g.Fgenf(w, "%s = append(%s, __res)\n", resName, resName)
+		g.Fgenf(w, "%[1]s = append(%[1]s, __res)\n", resNameVar)
 		g.Fgenf(w, "}\n")
 
 	} else {
-		instantiate(resName, fmt.Sprintf("%q", resName), w)
+		instantiate(resNameVar, fmt.Sprintf("%q", resName), w)
 	}
 
 }

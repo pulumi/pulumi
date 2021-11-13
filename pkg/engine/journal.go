@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"

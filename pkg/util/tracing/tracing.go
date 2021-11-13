@@ -14,7 +14,9 @@
 
 package tracing
 
-import "context"
+import (
+	"context"
+)
 
 // tracingOptionsKey is the value used as the context key for TracingOptions.
 var tracingOptionsKey struct{}

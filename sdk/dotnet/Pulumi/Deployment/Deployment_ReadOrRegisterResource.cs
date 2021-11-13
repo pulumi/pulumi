@@ -119,7 +119,7 @@ namespace Pulumi
                             dependencies = ImmutableHashSet<Resource>.Empty;
                         }
 
-                        var converted = Converter.ConvertValue($"{resource.GetType().FullName}.{fieldName}", value,
+                        var converted = Converter.ConvertValue(err => Log.Warn(err, resource), $"{resource.GetType().FullName}.{fieldName}", value,
                             completionSource.TargetType, dependencies);
                         completionSource.SetValue(converted);
                     }

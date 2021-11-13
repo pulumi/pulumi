@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Utilities;
 
 namespace Pulumi.Myedgeorder
 {
@@ -17,6 +18,13 @@ namespace Pulumi.Myedgeorder
         /// </summary>
         public static Task<ListConfigurationsResult> InvokeAsync(ListConfigurationsArgs args, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsArgs(), options.WithVersion());
+
+        /// <summary>
+        /// The list of configurations.
+        /// API Version: 2020-12-01-preview.
+        /// </summary>
+        public static Output<ListConfigurationsResult> Invoke(ListConfigurationsInvokeArgs args, InvokeOptions? options = null)
+            => Pulumi.Deployment.Instance.Invoke<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsInvokeArgs(), options.WithVersion());
     }
 
 
@@ -47,6 +55,37 @@ namespace Pulumi.Myedgeorder
         public string? SkipToken { get; set; }
 
         public ListConfigurationsArgs()
+        {
+        }
+    }
+
+    public sealed class ListConfigurationsInvokeArgs : Pulumi.InvokeArgs
+    {
+        [Input("configurationFilters", required: true)]
+        private InputList<Inputs.ConfigurationFiltersArgs>? _configurationFilters;
+
+        /// <summary>
+        /// Holds details about product hierarchy information and filterable property.
+        /// </summary>
+        public InputList<Inputs.ConfigurationFiltersArgs> ConfigurationFilters
+        {
+            get => _configurationFilters ?? (_configurationFilters = new InputList<Inputs.ConfigurationFiltersArgs>());
+            set => _configurationFilters = value;
+        }
+
+        /// <summary>
+        /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
+        /// </summary>
+        [Input("customerSubscriptionDetails")]
+        public Input<Inputs.CustomerSubscriptionDetailsArgs>? CustomerSubscriptionDetails { get; set; }
+
+        /// <summary>
+        /// $skipToken is supported on list of configurations, which provides the next page in the list of configurations.
+        /// </summary>
+        [Input("skipToken")]
+        public Input<string>? SkipToken { get; set; }
+
+        public ListConfigurationsInvokeArgs()
         {
         }
     }

@@ -22,6 +22,8 @@ package docs
 
 import (
 	"bytes"
+	"embed"
+	"errors"
 	"fmt"
 	"html"
 	"html/template"
@@ -30,7 +32,6 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
@@ -41,110 +42,106 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// Populated in auto-generated `packaged.go`
-var packagedTemplates map[string][]byte
+//go:embed templates/*.tmpl
+var packagedTemplates embed.FS
 
-func init() {
-	packagedTemplates = map[string][]byte{}
-}
-
-// TODO[pulumi/pulumi#7813]: Remove this lookup once display name is available in
-// the Pulumi schema.
+// NOTE: This lookup map can be removed when all Pulumi-managed packages
+// have a DisplayName in their schema. See pulumi/pulumi#7813.
+// This lookup table no longer needs to be updated for new providers
+// and is considered stale.
 //
-// NOTE: For the time being this lookup map and the one used by the resourcedocsgen
-// tool in `pulumi/docs` must be kept up-to-date.
-//
-// titleLookup is a map of package name to the desired display name
-// for display in the TOC menu under API Reference.
+// titleLookup is a map of package name to the desired display name.
 func titleLookup(shortName string) (string, bool) {
 	v, ok := map[string]string{
-		"aiven":                               "Aiven",
-		"akamai":                              "Akamai",
-		"alicloud":                            "Alibaba Cloud",
-		"auth0":                               "Auth0",
-		"aws":                                 "AWS Classic",
-		"aws-api-gateway":                     "AWS API Gateway",
-		"aws-miniflux":                        "Miniflux",
-		"aws-native":                          "AWS Native",
-		"aws-quickstart-aurora-mysql":         "AWS QuickStart Aurora MySQL",
-		"aws-quickstart-aurora-postgresql":    "AWS QuickStart Aurora PostgreSQL",
-		"aws-quickstart-redshift":             "AWS QuickStart Redshift",
-		"aws-serverless":                      "AWS Serverless",
-		"aws-quickstart-vpc":                  "AWS QuickStart VPC",
-		"aws-s3-replicated-bucket":            "AWS S3 Replicated Bucket",
-		"azure":                               "Azure Classic",
-		"azure-native":                        "Azure Native",
-		"azure-quickstart-acr-geo-replicated": "Azure QuickStart ACR Geo Replicated",
-		"azure-quickstart-aks":                "Azure QuickStart AKS",
-		"azure-quickstart-compute":            "Azure QuickStart Compute",
-		"azure-quickstart-sql":                "Azure QuickStart SQL",
-		"azuread":                             "Azure Active Directory",
-		"azuredevops":                         "Azure DevOps",
-		"azuresel":                            "Azure",
-		"civo":                                "Civo",
-		"cloudamqp":                           "CloudAMQP",
-		"cloudflare":                          "Cloudflare",
-		"cloudinit":                           "cloud-init",
-		"confluent":                           "Confluent Cloud",
-		"consul":                              "Consul",
-		"coredns-helm":                        "CoreDNS (Helm)",
-		"datadog":                             "Datadog",
-		"digitalocean":                        "DigitalOcean",
-		"dnsimple":                            "DNSimple",
-		"docker":                              "Docker",
-		"docker-buildkit":                     "Docker BuildKit",
-		"eks":                                 "Amazon EKS",
-		"equinix-metal":                       "Equinix Metal",
-		"f5bigip":                             "f5 BIG-IP",
-		"fastly":                              "Fastly",
-		"gcp":                                 "Google Cloud Classic",
-		"gcp-cloudrun-multi-region":           "Google Cloud Run Multi-Region",
-		"gcp-project-scaffold":                "Google Project Scaffolding",
-		"google-native":                       "Google Cloud Native",
-		"github":                              "GitHub",
-		"github-serverless-webhook":           "GitHub Serverless Webhook",
-		"gitlab":                              "GitLab",
-		"hcloud":                              "Hetzner Cloud",
-		"istio-helm":                          "Istio (Helm)",
-		"jaeger-helm":                         "Jaeger (Helm)",
-		"kafka":                               "Kafka",
-		"keycloak":                            "Keycloak",
-		"kong":                                "Kong",
-		"kubernetes":                          "Kubernetes",
-		"libvirt":                             "libvirt",
-		"linode":                              "Linode",
-		"mailgun":                             "Mailgun",
-		"minio":                               "MinIO",
-		"mongodbatlas":                        "MongoDB Atlas",
-		"mysql":                               "MySQL",
-		"newrelic":                            "New Relic",
-		"nginx-ingress-controller-helm":       "NGINX Ingress Controller (Helm)",
-		"nomad":                               "Nomad",
-		"ns1":                                 "NS1",
-		"okta":                                "Okta",
-		"openstack":                           "OpenStack",
-		"opsgenie":                            "Opsgenie",
-		"packet":                              "Packet",
-		"pagerduty":                           "PagerDuty",
-		"postgresql":                          "PostgreSQL",
-		"prometheus-helm":                     "Prometheus (Helm)",
-		"rabbitmq":                            "RabbitMQ",
-		"rancher2":                            "Rancher 2",
-		"random":                              "random",
-		"rke":                                 "Rancher RKE",
-		"run-my-darn-container":               "Run My Darn Container",
-		"shipa":                               "Shipa",
-		"signalfx":                            "SignalFx",
-		"snowflake":                           "Snowflake",
-		"splunk":                              "Splunk",
-		"spotinst":                            "Spotinst",
-		"sumologic":                           "Sumo Logic",
-		"tls":                                 "TLS",
-		"vault":                               "Vault",
-		"venafi":                              "Venafi",
-		"vsphere":                             "vSphere",
-		"wavefront":                           "Wavefront",
-		"yandex":                              "Yandex",
+		"aiven":                                "Aiven",
+		"akamai":                               "Akamai",
+		"alicloud":                             "Alibaba Cloud",
+		"auth0":                                "Auth0",
+		"aws":                                  "AWS Classic",
+		"aws-apigateway":                       "AWS API Gateway",
+		"aws-miniflux":                         "Miniflux",
+		"aws-native":                           "AWS Native",
+		"aws-quickstart-aurora-mysql":          "AWS QuickStart Aurora MySQL",
+		"aws-quickstart-aurora-postgres":       "AWS QuickStart Aurora PostgreSQL",
+		"aws-quickstart-redshift":              "AWS QuickStart Redshift",
+		"aws-serverless":                       "AWS Serverless",
+		"aws-quickstart-vpc":                   "AWS QuickStart VPC",
+		"aws-s3-replicated-bucket":             "AWS S3 Replicated Bucket",
+		"azure":                                "Azure Classic",
+		"azure-native":                         "Azure Native",
+		"azure-quickstart-acr-geo-replication": "Azure QuickStart ACR Geo Replication",
+		"azure-quickstart-aks":                 "Azure QuickStart AKS",
+		"azure-quickstart-compute":             "Azure QuickStart Compute",
+		"azure-quickstart-sql":                 "Azure QuickStart SQL",
+		"azuread":                              "Azure Active Directory",
+		"azuredevops":                          "Azure DevOps",
+		"azuresel":                             "Azure",
+		"civo":                                 "Civo",
+		"cloudamqp":                            "CloudAMQP",
+		"cloudflare":                           "Cloudflare",
+		"cloudinit":                            "cloud-init",
+		"confluent":                            "Confluent Cloud",
+		"consul":                               "Consul",
+		"coredns-helm":                         "CoreDNS (Helm)",
+		"datadog":                              "Datadog",
+		"digitalocean":                         "DigitalOcean",
+		"dnsimple":                             "DNSimple",
+		"docker":                               "Docker",
+		"docker-buildkit":                      "Docker BuildKit",
+		"eks":                                  "Amazon EKS",
+		"equinix-metal":                        "Equinix Metal",
+		"f5bigip":                              "f5 BIG-IP",
+		"fastly":                               "Fastly",
+		"gcp":                                  "Google Cloud Classic",
+		"gcp-global-cloudrun":                  "Google Global Cloud Run",
+		"gcp-project-scaffold":                 "Google Project Scaffolding",
+		"google-native":                        "Google Cloud Native",
+		"github":                               "GitHub",
+		"github-serverless-webhook":            "GitHub Serverless Webhook",
+		"gitlab":                               "GitLab",
+		"hcloud":                               "Hetzner Cloud",
+		"istio-helm":                           "Istio (Helm)",
+		"jaeger-helm":                          "Jaeger (Helm)",
+		"kafka":                                "Kafka",
+		"keycloak":                             "Keycloak",
+		"kong":                                 "Kong",
+		"kubernetes":                           "Kubernetes",
+		"libvirt":                              "libvirt",
+		"linode":                               "Linode",
+		"mailgun":                              "Mailgun",
+		"minio":                                "MinIO",
+		"mongodbatlas":                         "MongoDB Atlas",
+		"mysql":                                "MySQL",
+		"newrelic":                             "New Relic",
+		"kubernetes-ingress-nginx":             "NGINX Ingress Controller (Helm)",
+		"kubernetes-coredns":                   "CoreDNS (Helm)",
+		"kubernetes-cert-manager":              "Jetstack Cert Manager (Helm)",
+		"nomad":                                "Nomad",
+		"ns1":                                  "NS1",
+		"okta":                                 "Okta",
+		"openstack":                            "OpenStack",
+		"opsgenie":                             "Opsgenie",
+		"packet":                               "Packet",
+		"pagerduty":                            "PagerDuty",
+		"postgresql":                           "PostgreSQL",
+		"prometheus-helm":                      "Prometheus (Helm)",
+		"rabbitmq":                             "RabbitMQ",
+		"rancher2":                             "Rancher 2",
+		"random":                               "random",
+		"rke":                                  "Rancher RKE",
+		"run-my-darn-container":                "Run My Darn Container",
+		"shipa":                                "Shipa",
+		"signalfx":                             "SignalFx",
+		"snowflake":                            "Snowflake",
+		"splunk":                               "Splunk",
+		"spotinst":                             "Spotinst",
+		"sumologic":                            "Sumo Logic",
+		"tls":                                  "TLS",
+		"vault":                                "Vault",
+		"venafi":                               "Venafi",
+		"vsphere":                              "vSphere",
+		"wavefront":                            "Wavefront",
+		"yandex":                               "Yandex",
 	}[shortName]
 	return v, ok
 }
@@ -434,7 +431,7 @@ func (dctx *docGenContext) getLanguageDocHelper(lang string) codegen.DocLanguage
 	if h, ok := dctx.docHelpers[lang]; ok {
 		return h
 	}
-	panic(errors.Errorf("could not find a doc lang helper for %s", lang))
+	panic(fmt.Errorf("could not find a doc lang helper for %s", lang))
 }
 
 type propertyCharacteristics struct {
@@ -1177,7 +1174,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 
 			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, resourceTypeName)
 		default:
-			panic(errors.Errorf("cannot generate constructor info for unhandled language %q", lang))
+			panic(fmt.Errorf("cannot generate constructor info for unhandled language %q", lang))
 		}
 
 		parts := strings.Split(resourceTypeName, ".")
@@ -1653,8 +1650,6 @@ type indexData struct {
 	Title              string
 	TitleTag           string
 	PackageDescription string
-	// Menu indicates if an index page should be part of the TOC menu.
-	Menu bool
 
 	Functions      []indexEntry
 	Resources      []indexEntry
@@ -1706,11 +1701,14 @@ func (mod *modContext) genIndex() indexData {
 
 	modName := mod.getModuleFileName()
 	title := modName
-	menu := false
+
+	// An empty string indicates that this is the root module.
 	if title == "" {
-		title = formatTitleText(mod.pkg.Name)
-		// Flag top-level entries for inclusion in the table-of-contents menu.
-		menu = true
+		if mod.pkg.DisplayName != "" {
+			title = mod.pkg.DisplayName
+		} else {
+			title = getPackageDisplayName(mod.pkg.Name)
+		}
 	}
 
 	// If there are submodules, list them.
@@ -1762,7 +1760,7 @@ func (mod *modContext) genIndex() indexData {
 	// assume top level package index page when formatting title tags otherwise, if contains modules, assume modules
 	// top level page when generating title tags.
 	if len(modules) > 0 {
-		titleTag = fmt.Sprintf("%s Package", formatTitleText(title))
+		titleTag = fmt.Sprintf("%s Package", getPackageDisplayName(title))
 	} else {
 		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, title)
 		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s.%s module.", mod.pkg.Name, title)
@@ -1773,7 +1771,6 @@ func (mod *modContext) genIndex() indexData {
 		PackageDescription: packageDescription,
 		Title:              title,
 		TitleTag:           titleTag,
-		Menu:               menu,
 		Resources:          resources,
 		Functions:          functions,
 		Modules:            modules,
@@ -1788,7 +1785,9 @@ func (mod *modContext) genIndex() indexData {
 	return data
 }
 
-func formatTitleText(title string) string {
+// getPackageDisplayName uses the title lookup map to look for a
+// display name for the given title.
+func getPackageDisplayName(title string) string {
 	// If title not found in titleLookup map, default back to title given.
 	if val, ok := titleLookup(title); ok {
 		return val
@@ -1940,12 +1939,8 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 
 	defer glog.Flush()
 
-	if len(packagedTemplates) == 0 {
-		glog.Fatal(`packagedTemplates is empty. Did you run "make generate" first?`)
-	}
-
-	for name, b := range packagedTemplates {
-		template.Must(dctx.templates.New(name).Parse(string(b)))
+	if _, err := dctx.templates.ParseFS(packagedTemplates, "templates/*.tmpl"); err != nil {
+		glog.Fatalf("initializing templates: %v", err)
 	}
 
 	// Generate the modules from the schema, and for every module

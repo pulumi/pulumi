@@ -117,7 +117,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "simple-methods-schema",
 		Description:      "Simple schema with methods",
-		SkipCompileCheck: codegen.NewStringSet(nodejs, dotnet, golang),
+		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
 		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
@@ -151,7 +151,9 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "hyphen-url",
 		Description: "A resource url with a hyphen in its path",
-		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
+		// TODO[pulumi/pulumi#8370]: Re-enable compiling for Go.
+		SkipCompileCheck: codegen.NewStringSet(golang),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "output-funcs",
@@ -166,7 +168,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "output-funcs-tfbridge20",
 		Description:      "Similar to output-funcs, but with compatibility: tfbridge20, to simulate pulumi-aws use case",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, golang, python),
+		SkipCompileCheck: codegen.NewStringSet(dotnet, python),
 	},
 	{
 		Directory:   "cyclic-types",
@@ -182,6 +184,12 @@ var sdkTests = []sdkTest{
 		Directory:   "dashed-import-schema",
 		Description: "Ensure that we handle all valid go import paths",
 		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
+	},
+	{
+		Directory:        "plain-and-default",
+		Description:      "Ensure that a resource with a plain default property works correctly",
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
+		SkipCompileCheck: codegen.NewStringSet(nodejs),
 	},
 }
 
@@ -209,11 +217,11 @@ type SDKCodegenOptions struct {
 	Checks map[string]CodegenCheck
 }
 
-// `TestSDKCodegen` runs the complete set of SDK code generation tests
+// TestSDKCodegen runs the complete set of SDK code generation tests
 // against a particular language's code generator. It also verifies
 // that the generated code is structurally sound.
 //
-// The tests files live in `pkg/codegen/internal/test/testdata` and
+// The test files live in `pkg/codegen/internal/test/testdata` and
 // are registered in `var sdkTests` in `sdk_driver.go`.
 //
 // An SDK code generation test files consists of a schema and a set of
@@ -237,7 +245,7 @@ type SDKCodegenOptions struct {
 //      PULUMI_ACCEPT=true go test ./...
 //
 // This will rebuild subfolders such as `go/` from scratch and store
-// the set of code-generated file names in `go/codegen-manfiest.json`.
+// the set of code-generated file names in `go/codegen-manifest.json`.
 // If these outputs look correct, they need to be checked into git and
 // will then serve as the expected values for the normal test runs:
 //

@@ -28,8 +28,8 @@ namespace Pulumi
             var urn = await resource.Urn.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
             var props = await outputs.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
 
-            var serialized = await SerializeAllPropertiesAsync(
-                opLabel, props, await MonitorSupportsResourceReferences().ConfigureAwait(false)).ConfigureAwait(false);
+            var keepResources = await MonitorSupportsResourceReferences().ConfigureAwait(false);
+            var serialized = await SerializeAllPropertiesAsync(opLabel, props, keepResources).ConfigureAwait(false);
             Log.Debug($"RegisterResourceOutputs RPC prepared: urn={urn}" +
                 (_excessiveDebugOutput ? $", outputs={JsonFormatter.Default.Format(serialized)}" : ""));
 

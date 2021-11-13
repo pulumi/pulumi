@@ -2,6 +2,7 @@
   "emittedFiles": [
     "GetAmiIds.cs",
     "Inputs/GetAmiIdsFilter.cs",
+    "Inputs/GetAmiIdsFilterArgs.cs",
     "ListStorageAccountKeys.cs",
     "Outputs/GetAmiIdsFilterResult.cs",
     "Outputs/StorageAccountKeyResponseResult.cs",

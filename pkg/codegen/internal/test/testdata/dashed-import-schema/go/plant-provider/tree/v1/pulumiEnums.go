@@ -763,6 +763,16 @@ func (o TreeSizeMapOutput) MapIndex(k pulumi.StringInput) TreeSizeOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*DiameterInput)(nil)).Elem(), Diameter(6))
+	pulumi.RegisterInputType(reflect.TypeOf((*DiameterPtrInput)(nil)).Elem(), Diameter(6))
+	pulumi.RegisterInputType(reflect.TypeOf((*FarmInput)(nil)).Elem(), Farm("Pulumi Planters Inc."))
+	pulumi.RegisterInputType(reflect.TypeOf((*FarmPtrInput)(nil)).Elem(), Farm("Pulumi Planters Inc."))
+	pulumi.RegisterInputType(reflect.TypeOf((*RubberTreeVarietyInput)(nil)).Elem(), RubberTreeVariety("Burgundy"))
+	pulumi.RegisterInputType(reflect.TypeOf((*RubberTreeVarietyPtrInput)(nil)).Elem(), RubberTreeVariety("Burgundy"))
+	pulumi.RegisterInputType(reflect.TypeOf((*RubberTreeVarietyArrayInput)(nil)).Elem(), RubberTreeVarietyArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TreeSizeInput)(nil)).Elem(), TreeSize("small"))
+	pulumi.RegisterInputType(reflect.TypeOf((*TreeSizePtrInput)(nil)).Elem(), TreeSize("small"))
+	pulumi.RegisterInputType(reflect.TypeOf((*TreeSizeMapInput)(nil)).Elem(), TreeSizeMap{})
 	pulumi.RegisterOutputType(DiameterOutput{})
 	pulumi.RegisterOutputType(DiameterPtrOutput{})
 	pulumi.RegisterOutputType(FarmOutput{})

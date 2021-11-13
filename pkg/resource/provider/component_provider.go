@@ -15,7 +15,7 @@
 package provider
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -87,7 +87,7 @@ func (p *componentProvider) GetPluginInfo(context.Context, *pbempty.Empty) (*pul
 func (p *componentProvider) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
 	if v := req.GetVersion(); v != 0 {
-		return nil, errors.Errorf("unsupported schema version %d", v)
+		return nil, fmt.Errorf("unsupported schema version %d", v)
 	}
 	schema := string(p.schema)
 	if schema == "" {

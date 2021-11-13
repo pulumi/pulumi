@@ -66,6 +66,15 @@
       },
       "type": "object"
     },
+    "example::ConfigMapOverlay": {
+      "isOverlay": true,
+      "properties": {
+        "config": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "example::ObjectWithNodeOptionalInputs": {
       "properties": {
         "foo": {
@@ -114,6 +123,20 @@
       },
       "type": "object"
     },
+    "example::OverlayResource": {
+      "isOverlay": true,
+      "properties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        }
+      },
+      "type": "object"
+    },
     "example::TypeUses": {
       "properties": {
         "foo": {
@@ -156,12 +179,32 @@
           }
         }
       }
+    },
+    "example::overlayFunction": {
+      "isOverlay": true,
+      "inputs": {
+        "properties": {
+          "arg1": {
+            "$ref": "#/resources/example::Resource"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "$ref": "#/resources/example::Resource"
+          }
+        }
+      }
     }
   },
   "language": {
     "csharp": {
+      "projectReferences": [
+         "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ],
       "packageReferences": {
-        "Pulumi": "3.12"
+        "Pulumi": "3.13"
       }
     },
     "go": {

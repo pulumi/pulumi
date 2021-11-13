@@ -1,6 +1,8 @@
 package codegen
 
-import "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+import (
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+)
 
 func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen Set) {
 	if seen.Has(t) {
@@ -85,6 +87,19 @@ func UnwrapType(t schema.Type) schema.Type {
 			t = typ.ElementType
 		default:
 			return t
+		}
+	}
+}
+
+func IsNOptionalInput(t schema.Type) bool {
+	for {
+		switch typ := t.(type) {
+		case *schema.InputType:
+			return true
+		case *schema.OptionalType:
+			t = typ.ElementType
+		default:
+			return false
 		}
 	}
 }

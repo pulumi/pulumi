@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
@@ -60,11 +60,29 @@ type functionDocArgs struct {
 	NestedTypes []docNestedType
 
 	PackageDetails packageDetails
+
+	// Check if the function supports an `Output` version that is
+	// automatically lifted to accept `Input` values and return an
+	// `Output` (per language).
+	HasOutputVersion map[string]bool
+
+	// True if any of the entries in `HasOutputVersion` are true.
+	AnyLanguageHasOutputVersion bool
+
+	// Same as FunctionArgs, but specific to the Output version of
+	// the function.
+	FunctionArgsOutputVersion map[string]string
+
+	// Same as FunctionResult, but specific to the Output version
+	// of the function. In languages like Go, `Output<Result>`
+	// gets a dedicated nominal type to emulate generics, which
+	// will be passed in here.
+	FunctionResultOutputVersion map[string]propertyType
 }
 
 // getFunctionResourceInfo returns a map of per-language information about
 // the resource being looked-up using a static "getter" function.
-func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]propertyType {
+func (mod *modContext) getFunctionResourceInfo(f *schema.Function, outputVersion bool) map[string]propertyType {
 	dctx := mod.docGenContext
 	resourceMap := make(map[string]propertyType)
 
@@ -76,6 +94,9 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 		case "go":
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
+			if outputVersion {
+				resultTypeName = fmt.Sprintf("%sOutput", resultTypeName)
+			}
 		case "csharp":
 			namespace := title(mod.pkg.Name, lang)
 			if ns, ok := dctx.csharpPkgInfo.Namespaces[mod.pkg.Name]; ok {
@@ -91,7 +112,7 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 		case "python":
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 		default:
-			panic(errors.Errorf("cannot generate function resource info for unhandled language %q", lang))
+			panic(fmt.Errorf("cannot generate function resource info for unhandled language %q", lang))
 		}
 
 		parts := strings.Split(resultTypeName, ".")
@@ -106,9 +127,16 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 	return resourceMap
 }
 
-func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []formalParam {
+func (mod *modContext) genFunctionTS(f *schema.Function, funcName string, outputVersion bool) []formalParam {
 	dctx := mod.docGenContext
-	argsType := title(funcName+"Args", "nodejs")
+
+	argsTypeSuffix := "Args"
+	if outputVersion {
+		argsTypeSuffix = "OutputArgs"
+	}
+
+	argsType := title(fmt.Sprintf("%s%s", funcName, argsTypeSuffix), "nodejs")
+
 	docLangHelper := dctx.getLanguageDocHelper("nodejs")
 	var params []formalParam
 	if f.Inputs != nil {
@@ -132,8 +160,13 @@ func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []form
 	return params
 }
 
-func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []formalParam {
-	argsType := funcName + "Args"
+func (mod *modContext) genFunctionGo(f *schema.Function, funcName string, outputVersion bool) []formalParam {
+	argsTypeSuffix := "Args"
+	if outputVersion {
+		argsTypeSuffix = "OutputArgs"
+	}
+
+	argsType := fmt.Sprintf("%s%s", funcName, argsTypeSuffix)
 
 	params := []formalParam{
 		{
@@ -167,9 +200,16 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 	return params
 }
 
-func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []formalParam {
+func (mod *modContext) genFunctionCS(f *schema.Function, funcName string, outputVersion bool) []formalParam {
 	dctx := mod.docGenContext
-	argsType := funcName + "Args"
+
+	argsTypeSuffix := "Args"
+	if outputVersion {
+		argsTypeSuffix = "InvokeArgs"
+
+	}
+
+	argsType := funcName + argsTypeSuffix
 	docLangHelper := dctx.getLanguageDocHelper("csharp")
 	var params []formalParam
 	if f.Inputs != nil {
@@ -195,7 +235,7 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []form
 	return params
 }
 
-func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string) []formalParam {
+func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string, outputVersion bool) []formalParam {
 	dctx := mod.docGenContext
 	docLanguageHelper := dctx.getLanguageDocHelper("python")
 	var params []formalParam
@@ -203,9 +243,24 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 	// Some functions don't have any inputs other than the InvokeOptions.
 	// For example, the `get_billing_service_account` function.
 	if f.Inputs != nil {
-		params = make([]formalParam, 0, len(f.Inputs.Properties))
-		for _, prop := range f.Inputs.Properties {
-			typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, codegen.PlainType(codegen.OptionalType(prop)), true /*input*/)
+
+		inputs := f.Inputs
+		if outputVersion {
+			inputs = inputs.InputShape
+		}
+
+		params = make([]formalParam, 0, len(inputs.Properties))
+		for _, prop := range inputs.Properties {
+
+			var schemaType schema.Type
+			if outputVersion {
+				schemaType = codegen.OptionalType(prop)
+			} else {
+				schemaType = codegen.PlainType(codegen.OptionalType(prop))
+			}
+
+			typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod,
+				schemaType, true /*input*/)
 			params = append(params, formalParam{
 				Name:         python.PyName(prop.Name),
 				DefaultValue: " = None",
@@ -232,7 +287,7 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 
 // genFunctionArgs generates the arguments string for a given Function that can be
 // rendered directly into a template.
-func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[string]string) map[string]string {
+func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[string]string, outputVersion bool) map[string]string {
 	dctx := mod.docGenContext
 	functionParams := make(map[string]string)
 
@@ -248,16 +303,16 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 
 		switch lang {
 		case "nodejs":
-			params = mod.genFunctionTS(f, funcNameMap["nodejs"])
+			params = mod.genFunctionTS(f, funcNameMap["nodejs"], outputVersion)
 			paramTemplate = "ts_formal_param"
 		case "go":
-			params = mod.genFunctionGo(f, funcNameMap["go"])
+			params = mod.genFunctionGo(f, funcNameMap["go"], outputVersion)
 			paramTemplate = "go_formal_param"
 		case "csharp":
-			params = mod.genFunctionCS(f, funcNameMap["csharp"])
+			params = mod.genFunctionCS(f, funcNameMap["csharp"], outputVersion)
 			paramTemplate = "csharp_formal_param"
 		case "python":
-			params = mod.genFunctionPython(f, funcNameMap["python"])
+			params = mod.genFunctionPython(f, funcNameMap["python"], outputVersion)
 			paramTemplate = "py_formal_param"
 			paramSeparatorTemplate = "py_param_separator"
 
@@ -309,6 +364,19 @@ func (mod *modContext) genFunctionHeader(f *schema.Function) header {
 	}
 }
 
+func (mod *modContext) genFunctionOutputVersionMap(f *schema.Function) map[string]bool {
+	dctx := mod.docGenContext
+	result := map[string]bool{}
+	for _, lang := range dctx.supportedLanguages {
+		hasOutputVersion := f.NeedsOutputVersion()
+		if lang == "go" {
+			hasOutputVersion = go_gen.NeedsGoOutputVersion(f)
+		}
+		result[lang] = hasOutputVersion
+	}
+	return result
+}
+
 // genFunction is the main entrypoint for generating docs for a Function.
 // Returns args type that can be used to execute the `function.tmpl` doc template.
 func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
@@ -346,8 +414,8 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		Tool: mod.tool,
 
 		FunctionName:   funcNameMap,
-		FunctionArgs:   mod.genFunctionArgs(f, funcNameMap),
-		FunctionResult: mod.getFunctionResourceInfo(f),
+		FunctionArgs:   mod.genFunctionArgs(f, funcNameMap, false /*outputVersion*/),
+		FunctionResult: mod.getFunctionResourceInfo(f, false /*outputVersion*/),
 
 		Comment:            docInfo.description,
 		DeprecationMessage: f.DeprecationMessage,
@@ -359,6 +427,20 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		NestedTypes: nestedTypes,
 
 		PackageDetails: packageDetails,
+	}
+
+	args.HasOutputVersion = mod.genFunctionOutputVersionMap(f)
+
+	for _, hasOutputVersion := range args.HasOutputVersion {
+		if hasOutputVersion {
+			args.AnyLanguageHasOutputVersion = true
+			continue
+		}
+	}
+
+	if f.NeedsOutputVersion() {
+		args.FunctionArgsOutputVersion = mod.genFunctionArgs(f, funcNameMap, true /*outputVersion*/)
+		args.FunctionResultOutputVersion = mod.getFunctionResourceInfo(f, true /*outputVersion*/)
 	}
 
 	return args

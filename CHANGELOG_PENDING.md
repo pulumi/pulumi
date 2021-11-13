@@ -1,40 +1,19 @@
 ### Improvements
 
-- [automation/python] - Use `rstrip` rather than `strip` for the sake of indentation
-  [#8160](https://github.com/pulumi/pulumi/pull/8160)
-- [codegen/nodejs] - Add helper function forms `$fnOutput` that accept
-  `Input`s, return an `Output`, and wrap the underlying `$fn` call.
-  This change addreses
-  [#5758](https://github.com/pulumi/pulumi/issues/5758) for NodeJS,
-  making it easier to compose functions/datasources with Pulumi
-  resources.
-  [#8047](https://github.com/pulumi/pulumi/pull/8047)
+- [CLI] Adding the ability to use `pulumi org set [name]` to set a default org
+  to use when creating a stacks in the Pulumi Service backend or Self -hosted Service
+  [#8352](https://github.com/pulumi/pulumi/pull/8352)
 
-- [sdk/dotnet] - Update SDK to support the upcoming codegen feature that
-  will enable functions to accept Outputs
-  ([5758](https://github.com/pulumi/pulumi/issues/5758)). Specifically
-  add `Pulumi.DeploymentInstance.Invoke` and remove the now redundant
-  `Pulumi.Utilities.CodegenUtilities`.
-  [#8142](https://github.com/pulumi/pulumi/pull/8142)
+- [schema] Add IsOverlay option to disable codegen for particular types
+  [#8338](https://github.com/pulumi/pulumi/pull/8338)
 
-- [cli] - Upgrade CLI to go1.17
-  [#8171](https://github.com/pulumi/pulumi/pull/8171)
-
-- [codegen/go] Register input types for schema object types.
-  [#7959](https://github.com/pulumi/pulumi/pull/7959)
-
-- [codegen/go] Add schema flag to disable registering input types.
-  [#8198](https://github.com/pulumi/pulumi/pull/8198)
+- [sdk/dotnet] - Marshal output values.
+  [#8316](https://github.com/pulumi/pulumi/pull/8316)
 
 - [sdk/python] - Unmarshal output values in component provider.
   [#8212](https://github.com/pulumi/pulumi/pull/8212)
 
 ### Bug Fixes
 
-- [codegen/go] - Use `importBasePath` before `name` if specified for name 
-  and path.
-  [#8159](https://github.com/pulumi/pulumi/pull/8159)
-  [#8187](https://github.com/pulumi/pulumi/pull/8187)
-
-- [auto/go] - Mark entire exported map as secret if key in map is secret.
-  [#8179](https://github.com/pulumi/pulumi/pull/8179)
+- [engine] - Compute dependents correctly during targeted deletes.
+  [#8360](https://github.com/pulumi/pulumi/pull/8360)

@@ -22,7 +22,7 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
+
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -53,7 +53,7 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 
 	reg, err := providers.NewRegistry(plugctx.Host, nil, false, builtins)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to start resource monitor")
+		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
 
 	// Allows queryResmon to communicate errors loading providers.
@@ -67,7 +67,7 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 	mon, err := newQueryResourceMonitor(builtins, defaultProviderVersions, provs, reg, plugctx,
 		providerRegErrChan, opentracing.SpanFromContext(cancel), runinfo)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to start resource monitor")
+		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
 
 	// Create a new iterator with appropriate channels, and gear up to go!
@@ -144,7 +144,7 @@ func runLangPlugin(src *querySource) result.Result {
 	rt := src.runinfo.Proj.Runtime.Name()
 	langhost, err := src.plugctx.Host.LanguageRuntime(rt)
 	if err != nil {
-		return result.FromError(errors.Wrapf(err, "failed to launch language host %s", rt))
+		return result.FromError(fmt.Errorf("failed to launch language host %s: %w", rt, err))
 	}
 	contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
@@ -187,7 +187,7 @@ func runLangPlugin(src *querySource) result.Result {
 
 	if err == nil && progerr != "" {
 		// If the program had an unhandled error; propagate it to the caller.
-		err = errors.Errorf("an unhandled error occurred: %v", progerr)
+		err = fmt.Errorf("an unhandled error occurred: %v", progerr)
 	}
 	return result.WrapIfNonNil(err)
 }
@@ -342,14 +342,14 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 			KeepResources: true,
 		})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
+		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
 
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("QueryResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	ret, failures, err := prov.Invoke(tok, args)
 	if err != nil {
-		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
+		return nil, fmt.Errorf("invocation of %v returned an error: %w", tok, err)
 	}
 	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
 		Label:         label,
@@ -357,7 +357,7 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 		KeepResources: req.GetAcceptResources(),
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal return")
+		return nil, fmt.Errorf("failed to marshal return: %w", err)
 	}
 
 	var chkfails []*pulumirpc.CheckFailure
@@ -389,7 +389,7 @@ func (rm *queryResmon) StreamInvoke(
 	args, err := plugin.UnmarshalProperties(
 		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 	if err != nil {
-		return errors.Wrapf(err, "failed to unmarshal %v args", tok)
+		return fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
 
 	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
@@ -398,13 +398,13 @@ func (rm *queryResmon) StreamInvoke(
 	failures, err := prov.StreamInvoke(tok, args, func(event resource.PropertyMap) error {
 		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 		if err != nil {
-			return errors.Wrapf(err, "failed to marshal return")
+			return fmt.Errorf("failed to marshal return: %w", err)
 		}
 
 		return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
 	})
 	if err != nil {
-		return errors.Wrapf(err, "streaming invocation of %v returned an error", tok)
+		return fmt.Errorf("streaming invocation of %v returned an error: %w", tok, err)
 	}
 
 	var chkfails []*pulumirpc.CheckFailure
@@ -443,7 +443,7 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 			KeepResources: true,
 		})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
+		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
 
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
@@ -463,7 +463,7 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 		"QueryResourceMonitor.Call received: tok=%v #args=%v #info=%v #options=%v", tok, len(args), rm.callInfo, options)
 	ret, err := prov.Call(tok, args, rm.callInfo, options)
 	if err != nil {
-		return nil, errors.Wrapf(err, "call of %v returned an error", tok)
+		return nil, fmt.Errorf("call of %v returned an error: %w", tok, err)
 	}
 	mret, err := plugin.MarshalProperties(ret.Return, plugin.MarshalOptions{
 		Label:         label,
@@ -472,7 +472,7 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 		KeepResources: true,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal return")
+		return nil, fmt.Errorf("failed to marshal return: %w", err)
 	}
 
 	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}

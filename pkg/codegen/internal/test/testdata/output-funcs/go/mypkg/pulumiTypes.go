@@ -10,6 +10,106 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Bastion Shareable Link.
+type BastionShareableLink struct {
+	// Reference of the virtual machine resource.
+	Vm string `pulumi:"vm"`
+}
+
+// BastionShareableLinkInput is an input type that accepts BastionShareableLinkArgs and BastionShareableLinkOutput values.
+// You can construct a concrete instance of `BastionShareableLinkInput` via:
+//
+//          BastionShareableLinkArgs{...}
+type BastionShareableLinkInput interface {
+	pulumi.Input
+
+	ToBastionShareableLinkOutput() BastionShareableLinkOutput
+	ToBastionShareableLinkOutputWithContext(context.Context) BastionShareableLinkOutput
+}
+
+// Bastion Shareable Link.
+type BastionShareableLinkArgs struct {
+	// Reference of the virtual machine resource.
+	Vm pulumi.StringInput `pulumi:"vm"`
+}
+
+func (BastionShareableLinkArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BastionShareableLink)(nil)).Elem()
+}
+
+func (i BastionShareableLinkArgs) ToBastionShareableLinkOutput() BastionShareableLinkOutput {
+	return i.ToBastionShareableLinkOutputWithContext(context.Background())
+}
+
+func (i BastionShareableLinkArgs) ToBastionShareableLinkOutputWithContext(ctx context.Context) BastionShareableLinkOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BastionShareableLinkOutput)
+}
+
+// BastionShareableLinkArrayInput is an input type that accepts BastionShareableLinkArray and BastionShareableLinkArrayOutput values.
+// You can construct a concrete instance of `BastionShareableLinkArrayInput` via:
+//
+//          BastionShareableLinkArray{ BastionShareableLinkArgs{...} }
+type BastionShareableLinkArrayInput interface {
+	pulumi.Input
+
+	ToBastionShareableLinkArrayOutput() BastionShareableLinkArrayOutput
+	ToBastionShareableLinkArrayOutputWithContext(context.Context) BastionShareableLinkArrayOutput
+}
+
+type BastionShareableLinkArray []BastionShareableLinkInput
+
+func (BastionShareableLinkArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BastionShareableLink)(nil)).Elem()
+}
+
+func (i BastionShareableLinkArray) ToBastionShareableLinkArrayOutput() BastionShareableLinkArrayOutput {
+	return i.ToBastionShareableLinkArrayOutputWithContext(context.Background())
+}
+
+func (i BastionShareableLinkArray) ToBastionShareableLinkArrayOutputWithContext(ctx context.Context) BastionShareableLinkArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BastionShareableLinkArrayOutput)
+}
+
+// Bastion Shareable Link.
+type BastionShareableLinkOutput struct{ *pulumi.OutputState }
+
+func (BastionShareableLinkOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BastionShareableLink)(nil)).Elem()
+}
+
+func (o BastionShareableLinkOutput) ToBastionShareableLinkOutput() BastionShareableLinkOutput {
+	return o
+}
+
+func (o BastionShareableLinkOutput) ToBastionShareableLinkOutputWithContext(ctx context.Context) BastionShareableLinkOutput {
+	return o
+}
+
+// Reference of the virtual machine resource.
+func (o BastionShareableLinkOutput) Vm() pulumi.StringOutput {
+	return o.ApplyT(func(v BastionShareableLink) string { return v.Vm }).(pulumi.StringOutput)
+}
+
+type BastionShareableLinkArrayOutput struct{ *pulumi.OutputState }
+
+func (BastionShareableLinkArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BastionShareableLink)(nil)).Elem()
+}
+
+func (o BastionShareableLinkArrayOutput) ToBastionShareableLinkArrayOutput() BastionShareableLinkArrayOutput {
+	return o
+}
+
+func (o BastionShareableLinkArrayOutput) ToBastionShareableLinkArrayOutputWithContext(ctx context.Context) BastionShareableLinkArrayOutput {
+	return o
+}
+
+func (o BastionShareableLinkArrayOutput) Index(i pulumi.IntInput) BastionShareableLinkOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BastionShareableLink {
+		return vs[0].([]BastionShareableLink)[vs[1].(int)]
+	}).(BastionShareableLinkOutput)
+}
+
 // Ssis environment reference.
 type SsisEnvironmentReferenceResponse struct {
 	// Environment folder name.
@@ -1048,6 +1148,8 @@ func (o StorageAccountKeyResponseArrayOutput) Index(i pulumi.IntInput) StorageAc
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*BastionShareableLinkInput)(nil)).Elem(), BastionShareableLinkArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BastionShareableLinkArrayInput)(nil)).Elem(), BastionShareableLinkArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*SsisEnvironmentReferenceResponseInput)(nil)).Elem(), SsisEnvironmentReferenceResponseArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*SsisEnvironmentReferenceResponseArrayInput)(nil)).Elem(), SsisEnvironmentReferenceResponseArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*SsisEnvironmentResponseInput)(nil)).Elem(), SsisEnvironmentResponseArgs{})
@@ -1060,6 +1162,8 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*SsisVariableResponseArrayInput)(nil)).Elem(), SsisVariableResponseArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*StorageAccountKeyResponseInput)(nil)).Elem(), StorageAccountKeyResponseArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*StorageAccountKeyResponseArrayInput)(nil)).Elem(), StorageAccountKeyResponseArray{})
+	pulumi.RegisterOutputType(BastionShareableLinkOutput{})
+	pulumi.RegisterOutputType(BastionShareableLinkArrayOutput{})
 	pulumi.RegisterOutputType(SsisEnvironmentReferenceResponseOutput{})
 	pulumi.RegisterOutputType(SsisEnvironmentReferenceResponseArrayOutput{})
 	pulumi.RegisterOutputType(SsisEnvironmentResponseOutput{})

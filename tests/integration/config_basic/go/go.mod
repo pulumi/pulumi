@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/tests/config_secrets_warn
+module github.com/pulumi/pulumi/tests/config_basic
 
 go 1.16
 

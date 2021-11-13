@@ -1,12 +1,13 @@
 package python
 
 import (
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"fmt"
 	"io"
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 )
 
 // isLegalIdentifierStart returns true if it is legal for c to be the first character of a Python identifier as per
@@ -66,7 +67,7 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 
 	// If the name is one illegal character, return an error.
 	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
-		return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
+		return "", fmt.Errorf("enum name %s is not a valid identifier", safeName)
 	}
 
 	// If it's camelCase, change it to snake_case.

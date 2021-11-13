@@ -26,7 +26,7 @@ namespace Pulumi
             var (result, deps) = await CallRawAsync(token, args, self, options).ConfigureAwait(false);
             if (convertResult)
             {
-                var converted = Converter.ConvertValue<T>($"{token} result", new Value { StructValue = result });
+                var converted = Converter.ConvertValue<T>(err => Log.Warn(err, self), $"{token} result", new Value { StructValue = result });
                 return new OutputData<T>(deps, converted.Value, converted.IsKnown, converted.IsSecret);
             }
 
@@ -53,8 +53,10 @@ namespace Pulumi
             }
 
             var (serialized, argDependencies) = await SerializeFilteredPropertiesAsync(
-    				$"call:{token}",
-    				argsDict, _ => true, keepResources: true).ConfigureAwait(false);
+                    $"call:{token}",
+                    argsDict, _ => true,
+                    keepResources: true,
+                    keepOutputValues: await MonitorSupportsOutputValues().ConfigureAwait(false)).ConfigureAwait(false);
             Log.Debug($"Call RPC prepared: token={token}" +
                 (_excessiveDebugOutput ? $", obj={serialized}" : ""));
 

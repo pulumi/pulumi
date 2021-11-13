@@ -33,7 +33,8 @@ namespace Pulumi
                 await SerializeResourcePropertiesAsync(
                         label,
                         dictionary,
-                        await this.MonitorSupportsResourceReferences().ConfigureAwait(false)).ConfigureAwait(false);
+                        await this.MonitorSupportsResourceReferences().ConfigureAwait(false),
+                        keepOutputValues: remote && await MonitorSupportsOutputValues().ConfigureAwait(false)).ConfigureAwait(false);
             LogExcessive($"Serialized properties: t={type}, name={name}, custom={custom}, remote={remote}");
 
             // Wait for the parent to complete.
@@ -123,7 +124,7 @@ namespace Pulumi
         private static Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
             => resources.ToOutput().GetValueAsync(whenUnknown: ImmutableArray<Resource>.Empty);
 
-        private static async Task<HashSet<string>> GetAllTransitivelyReferencedResourceUrnsAsync(
+        internal static async Task<HashSet<string>> GetAllTransitivelyReferencedResourceUrnsAsync(
             HashSet<Resource> resources)
         {
             // Go through 'resources', but transitively walk through **Component** resources, collecting any
@@ -152,8 +153,10 @@ namespace Pulumi
             // * Comp3 and Cust5 because Comp3 is a child of a remote component resource
             var transitivelyReachableResources = GetTransitivelyReferencedChildResourcesOfComponentResources(resources);
 
-            var transitivelyReachableCustomResources = transitivelyReachableResources.Where(res => {
-                switch (res) {
+            var transitivelyReachableCustomResources = transitivelyReachableResources.Where(res =>
+            {
+                switch (res)
+                {
                     case CustomResource _: return true;
                     case ComponentResource component: return component.remote;
                     default: return false; // Unreachable
