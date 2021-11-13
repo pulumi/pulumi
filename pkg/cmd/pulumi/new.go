@@ -172,7 +172,11 @@ func runNew(args newArgs) error {
 	// created via the web app.
 	var s backend.Stack
 	if args.stack != "" && strings.Count(args.stack, "/") == 2 {
-		existingStack, existingName, existingDesc, err := getStack(args.stack, opts)
+		stackName, err := buildStackName(args.stack)
+		if err != nil {
+			return err
+		}
+		existingStack, existingName, existingDesc, err := getStack(stackName, opts)
 		if err != nil {
 			return err
 		}
@@ -518,7 +522,11 @@ func promptAndCreateStack(prompt promptForValueFunc,
 	}
 
 	if stack != "" {
-		s, err := stackInit(b, stack, setCurrent, secretsProvider)
+		stackName, err := buildStackName(stack)
+		if err != nil {
+			return nil, err
+		}
+		s, err := stackInit(b, stackName, setCurrent, secretsProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -536,7 +544,14 @@ func promptAndCreateStack(prompt promptForValueFunc,
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(b, stackName, setCurrent, secretsProvider)
+		formattedStackName, err := buildStackName(stackName)
+		if err != nil {
+			return nil, err
+		}
+		if err != nil {
+			return nil, err
+		}
+		s, err := stackInit(b, formattedStackName, setCurrent, secretsProvider)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
