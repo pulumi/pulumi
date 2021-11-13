@@ -43,7 +43,7 @@ export interface LayeredTypeArgs {
      * The answer to the question
      */
     answer?: pulumi.Input<number>;
-    other?: pulumi.Input<inputs.HelmReleaseSettingsArgs>;
+    other: pulumi.Input<inputs.HelmReleaseSettingsArgs>;
     /**
      * The question already answered
      */
@@ -57,7 +57,7 @@ export function layeredTypeArgsProvideDefaults(val: pulumi.Input<LayeredTypeArgs
     const def = (val: LayeredTypeArgs) => ({
         ...val,
         answer: (val.answer) ?? 42,
-        other: inputs.helmReleaseSettingsArgsProvideDefaults(val.other),
+        other: inputs.helmReleaseSettingsArgsProvideDefaults(val.other)!,
         question: (val.question) ?? (utilities.getEnv("PULUMI_THE_QUESTION") || "<unknown>"),
         recursive: inputs.layeredTypeArgsProvideDefaults(val.recursive),
     });

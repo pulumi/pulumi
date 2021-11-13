@@ -21,8 +21,8 @@ namespace Pulumi.Example.Inputs
         [Input("answer")]
         public Input<double>? Answer { get; set; }
 
-        [Input("other")]
-        public Input<Inputs.HelmReleaseSettingsArgs>? Other { get; set; }
+        [Input("other", required: true)]
+        public Input<Inputs.HelmReleaseSettingsArgs> Other { get; set; } = null!;
 
         /// <summary>
         /// The question already answered
