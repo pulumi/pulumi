@@ -10,6 +10,9 @@
 - [sdk/dotnet] - Marshal output values.
   [#8316](https://github.com/pulumi/pulumi/pull/8316)
 
+- Deprecate use of dependencies maps when sending output values.
+  [#8410](https://github.com/pulumi/pulumi/pull/8410)
+
 ### Bug Fixes
 
 - [engine] - Compute dependents correctly during targeted deletes.
