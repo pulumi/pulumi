@@ -424,7 +424,14 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 			}
 			defaults = append(defaults, fmt.Sprintf("%s: (val.%s) ?? %s", p.Name, p.Name, dv))
 		} else if funcName := mod.provideDefaultsFuncName(p.Type); funcName != "" {
-			compositeObject := fmt.Sprintf("%[1]s: %[2]s(val.%[1]s)", p.Name, funcName)
+			// ProvideDefaults functions have the form `(Input<shape> | undefined) ->
+			// Output<shape> | undefined`. We need to disallow the undefined. This is safe
+			// because val.%arg existed in the input (type system enforced).
+			symbol := ""
+			if p.IsRequired() {
+				symbol = "!"
+			}
+			compositeObject := fmt.Sprintf("%[1]s: %[2]s(val.%[1]s)%[3]s", p.Name, funcName, symbol)
 			defaults = append(defaults, compositeObject)
 		}
 

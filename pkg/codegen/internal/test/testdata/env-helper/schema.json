@@ -77,7 +77,8 @@
         "recursive": {
           "$ref": "#/types/example:index:LayeredType"
         }
-      }
+      },
+      "required": ["other"]
     }
   },
   "language": {
