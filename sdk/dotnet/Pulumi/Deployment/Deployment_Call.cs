@@ -52,11 +52,13 @@ namespace Pulumi
                 argsDict = argsDict.SetItem("__self__", self);
             }
 
+            var keepOutputs = await MonitorSupportsOutputValues().ConfigureAwait(false);
+
             var (serialized, argDependencies) = await SerializeFilteredPropertiesAsync(
                     $"call:{token}",
                     argsDict, _ => true,
                     keepResources: true,
-                    keepOutputValues: await MonitorSupportsOutputValues().ConfigureAwait(false)).ConfigureAwait(false);
+                    keepOutputValues: keepOutputs).ConfigureAwait(false);
             Log.Debug($"Call RPC prepared: token={token}" +
                 (_excessiveDebugOutput ? $", obj={serialized}" : ""));
 
@@ -84,13 +86,17 @@ namespace Pulumi
                 Args = serialized,
             };
 
-            // Add arg dependencies to the request.
-            foreach (var (argName, directDependencies) in argDependencies)
+		    // Only include the arg dependencies map in the request when *not* keeping output values.
+		    // When keeping output values, the dependencies will already exist within the args.
+            if (!keepOutputs)
             {
-                var urns = await GetAllTransitivelyReferencedResourceUrnsAsync(directDependencies).ConfigureAwait(false);
-                var deps = new CallRequest.Types.ArgumentDependencies();
-                deps.Urns.AddRange(urns);
-                request.ArgDependencies.Add(argName, deps);
+                foreach (var (argName, directDependencies) in argDependencies)
+                {
+                    var urns = await GetAllTransitivelyReferencedResourceUrnsAsync(directDependencies).ConfigureAwait(false);
+                    var deps = new CallRequest.Types.ArgumentDependencies();
+                    deps.Urns.AddRange(urns);
+                    request.ArgDependencies.Add(argName, deps);
+                }
             }
 
             // Kick off the call.
