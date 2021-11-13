@@ -403,21 +403,25 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			return nil, fmt.Errorf("marshaling args: %w", err)
 		}
 
-		// Convert the arg dependencies map for RPC and remove duplicates.
-		rpcArgDeps := make(map[string]*pulumirpc.CallRequest_ArgumentDependencies)
-		for k, deps := range argDeps {
-			sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
+		// Only include the arg dependencies map in the request when the monitor does *not* support output values.
+		// When the monitor *does* support output values, the dependencies will already exist within the args.
+		var rpcArgDeps map[string]*pulumirpc.CallRequest_ArgumentDependencies
+		if !ctx.keepOutputValues {
+			rpcArgDeps = make(map[string]*pulumirpc.CallRequest_ArgumentDependencies, len(argDeps))
+			for k, deps := range argDeps {
+				sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
 
-			urns := make([]string, 0, len(deps))
-			for i, d := range deps {
-				if i > 0 && urns[i-1] == string(d) {
-					continue
+				urns := make([]string, 0, len(deps))
+				for i, d := range deps {
+					if i > 0 && urns[i-1] == string(d) {
+						continue
+					}
+					urns = append(urns, string(d))
 				}
-				urns = append(urns, string(d))
-			}
 
-			rpcArgDeps[k] = &pulumirpc.CallRequest_ArgumentDependencies{
-				Urns: urns,
+				rpcArgDeps[k] = &pulumirpc.CallRequest_ArgumentDependencies{
+					Urns: urns,
+				}
 			}
 		}
 
@@ -822,6 +826,7 @@ func (ctx *Context) registerResource(
 				Version:                 inputs.version,
 				Remote:                  remote,
 				ReplaceOnChanges:        inputs.replaceOnChanges,
+				HasOutputs:              inputs.hasOutputs,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -1165,6 +1170,7 @@ type resourceInputs struct {
 	additionalSecretOutputs []string
 	version                 string
 	replaceOnChanges        []string
+	hasOutputs              bool
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
@@ -1184,15 +1190,17 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
 
+	// To initially scope the use of this new feature, we only keep output values when
+	// remote is true (for multi-lang components).
+	keepOutputs := remote && ctx.keepOutputValues
+
 	// Marshal all properties for the RPC call.
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
 		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
-			KeepSecrets:   true,
-			KeepResources: ctx.keepResources,
-			// To initially scope the use of this new feature, we only keep output values when
-			// remote is true (for multi-lang components).
-			KeepOutputValues: remote && ctx.keepOutputValues,
+			KeepSecrets:      true,
+			KeepResources:    ctx.keepResources,
+			KeepOutputValues: keepOutputs,
 		}))
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
@@ -1250,6 +1258,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
 		replaceOnChanges:        resOpts.replaceOnChanges,
+		hasOutputs:              keepOutputs,
 	}, nil
 }
 
