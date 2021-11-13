@@ -10,7 +10,7 @@ import (
 
 	"github.com/blang/semver"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -110,15 +110,15 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 	if !workspace.HasPlugin(pkgPlugin) {
 		tarball, err := downloadToFileWithRetry()
 		if err != nil {
-			return errors.Wrapf(err, "failed to download plugin: %s", pkgPlugin)
+			return fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
 		}
 		defer os.Remove(tarball)
 		reader, err := os.Open(tarball)
 		if err != nil {
-			return errors.Wrapf(err, "failed to open downloaded plugin: %s", pkgPlugin)
+			return fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
 		}
 		if err := pkgPlugin.Install(reader); err != nil {
-			return errors.Wrapf(err, "failed to install plugin %s", pkgPlugin)
+			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
 		}
 	}
 

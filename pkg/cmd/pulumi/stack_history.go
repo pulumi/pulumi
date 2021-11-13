@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -47,13 +47,13 @@ This command displays data about previous updates for a stack.`,
 			b := s.Backend()
 			updates, err := b.GetHistory(commandContext(), s.Ref(), pageSize, page)
 			if err != nil {
-				return errors.Wrap(err, "getting history")
+				return fmt.Errorf("getting history: %w", err)
 			}
 			var decrypter config.Decrypter
 			if showSecrets {
 				crypter, err := getStackDecrypter(s)
 				if err != nil {
-					return errors.Wrap(err, "decrypting secrets")
+					return fmt.Errorf("decrypting secrets: %w", err)
 				}
 				decrypter = crypter
 			}

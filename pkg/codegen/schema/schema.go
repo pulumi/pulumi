@@ -30,7 +30,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pkg/errors"
+
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"gopkg.in/yaml.v3"
 
@@ -440,7 +440,7 @@ func (r *Resource) ReplaceOnChanges() (changes [][]*Property, err []error) {
 		}
 	}
 	for i, e := range err {
-		err[i] = errors.Wrapf(e, "Failed to genereate full `ReplaceOnChanges`")
+		err[i] = fmt.Errorf("Failed to genereate full `ReplaceOnChanges`: %w", e)
 	}
 	return changes, err
 }
@@ -467,7 +467,7 @@ func replaceOnChangesType(t Type, stack *map[string]struct{}) ([][]*Property, []
 
 				delete(*stack, p.Type.String())
 			} else {
-				err = append(err, errors.Errorf("Found recursive object %q", p.Name))
+				err = append(err, fmt.Errorf("Found recursive object %q", p.Name))
 			}
 		}
 		// We don't want to emit errors where replaceOnChanges is not used.
@@ -632,7 +632,7 @@ func importDefaultLanguages(def *DefaultValue, languages map[string]Language) er
 			if lang, ok := languages[name]; ok {
 				val, err := lang.ImportDefaultSpec(def, raw)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
 				def.Language[name] = val
 			}
@@ -644,7 +644,7 @@ func importDefaultLanguages(def *DefaultValue, languages map[string]Language) er
 func importPropertyLanguages(property *Property, languages map[string]Language) error {
 	if property.DefaultValue != nil {
 		if err := importDefaultLanguages(property.DefaultValue, languages); err != nil {
-			return errors.Wrapf(err, "importing default value")
+			return fmt.Errorf("importing default value: %w", err)
 		}
 	}
 
@@ -654,7 +654,7 @@ func importPropertyLanguages(property *Property, languages map[string]Language) 
 			if lang, ok := languages[name]; ok {
 				val, err := lang.ImportPropertySpec(property, raw)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
 				property.Language[name] = val
 			}
@@ -666,7 +666,7 @@ func importPropertyLanguages(property *Property, languages map[string]Language) 
 func importObjectTypeLanguages(object *ObjectType, languages map[string]Language) error {
 	for _, property := range object.Properties {
 		if err := importPropertyLanguages(property, languages); err != nil {
-			return errors.Wrapf(err, "importing property %v", property.Name)
+			return fmt.Errorf("importing property %v: %w", property.Name, err)
 		}
 	}
 
@@ -676,7 +676,7 @@ func importObjectTypeLanguages(object *ObjectType, languages map[string]Language
 			if lang, ok := languages[name]; ok {
 				val, err := lang.ImportObjectTypeSpec(object, raw)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
 				object.Language[name] = val
 			}
@@ -688,20 +688,20 @@ func importObjectTypeLanguages(object *ObjectType, languages map[string]Language
 func importResourceLanguages(resource *Resource, languages map[string]Language) error {
 	for _, property := range resource.InputProperties {
 		if err := importPropertyLanguages(property, languages); err != nil {
-			return errors.Wrapf(err, "importing input property %v", property.Name)
+			return fmt.Errorf("importing input property %v: %w", property.Name, err)
 		}
 	}
 
 	for _, property := range resource.Properties {
 		if err := importPropertyLanguages(property, languages); err != nil {
-			return errors.Wrapf(err, "importing property %v", property.Name)
+			return fmt.Errorf("importing property %v: %w", property.Name, err)
 		}
 	}
 
 	if resource.StateInputs != nil {
 		for _, property := range resource.StateInputs.Properties {
 			if err := importPropertyLanguages(property, languages); err != nil {
-				return errors.Wrapf(err, "importing state input property %v", property.Name)
+				return fmt.Errorf("importing state input property %v: %w", property.Name, err)
 			}
 		}
 	}
@@ -712,7 +712,7 @@ func importResourceLanguages(resource *Resource, languages map[string]Language) 
 			if lang, ok := languages[name]; ok {
 				val, err := lang.ImportResourceSpec(resource, raw)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
 				resource.Language[name] = val
 			}
@@ -724,12 +724,12 @@ func importResourceLanguages(resource *Resource, languages map[string]Language) 
 func importFunctionLanguages(function *Function, languages map[string]Language) error {
 	if function.Inputs != nil {
 		if err := importObjectTypeLanguages(function.Inputs, languages); err != nil {
-			return errors.Wrapf(err, "importing inputs")
+			return fmt.Errorf("importing inputs: %w", err)
 		}
 	}
 	if function.Outputs != nil {
 		if err := importObjectTypeLanguages(function.Outputs, languages); err != nil {
-			return errors.Wrapf(err, "importing outputs")
+			return fmt.Errorf("importing outputs: %w", err)
 		}
 	}
 
@@ -739,7 +739,7 @@ func importFunctionLanguages(function *Function, languages map[string]Language) 
 			if lang, ok := languages[name]; ok {
 				val, err := lang.ImportFunctionSpec(function, raw)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
 				function.Language[name] = val
 			}
@@ -767,32 +767,32 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 	for _, t := range pkg.Types {
 		if object, ok := t.(*ObjectType); ok {
 			if err := importObjectTypeLanguages(object, languages); err != nil {
-				return errors.Wrapf(err, "importing object type %v", object.Token)
+				return fmt.Errorf("importing object type %v: %w", object.Token, err)
 			}
 		}
 	}
 
 	for _, config := range pkg.Config {
 		if err := importPropertyLanguages(config, languages); err != nil {
-			return errors.Wrapf(err, "importing configuration property %v", config.Name)
+			return fmt.Errorf("importing configuration property %v: %w", config.Name, err)
 		}
 	}
 
 	if pkg.Provider != nil {
 		if err := importResourceLanguages(pkg.Provider, languages); err != nil {
-			return errors.Wrapf(err, "importing provider")
+			return fmt.Errorf("importing provider: %w", err)
 		}
 	}
 
 	for _, resource := range pkg.Resources {
 		if err := importResourceLanguages(resource, languages); err != nil {
-			return errors.Wrapf(err, "importing resource %v", resource.Token)
+			return fmt.Errorf("importing resource %v: %w", resource.Token, err)
 		}
 	}
 
 	for _, function := range pkg.Functions {
 		if err := importFunctionLanguages(function, languages); err != nil {
-			return errors.Wrapf(err, "importing function %v", function.Token)
+			return fmt.Errorf("importing function %v: %w", function.Token, err)
 		}
 	}
 
@@ -802,7 +802,7 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 			if lang, ok := languages[name]; ok {
 				val, err := lang.ImportPackageSpec(pkg, raw)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return fmt.Errorf("importing %v metadata: %w", name, err)
 				}
 				pkg.Language[name] = val
 			}
