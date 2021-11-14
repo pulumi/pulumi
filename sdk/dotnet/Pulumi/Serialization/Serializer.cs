@@ -110,7 +110,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                     Log.Debug($"Serialize property[{ctx}]: Recursing into IInput");
                 }
 
-                return await SerializeAsync(ctx, input.ToOutput(), keepResources, keepOutputValues).ConfigureAwait(false);
+                return await SerializeAsync(ctx, input.Value, keepResources, keepOutputValues).ConfigureAwait(false);
             }
 
             if (prop is IUnion union)

@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 namespace Pulumi
 {
@@ -9,7 +9,12 @@ namespace Pulumi
     /// </summary>
     public sealed class InputUnion<T0, T1> : Input<Union<T0, T1>>
     {
-        public InputUnion() : this(Output.Create(default(Union<T0, T1>)))
+        public InputUnion() : this(default(Union<T0, T1>))
+        {
+        }
+
+        private InputUnion(Union<T0, T1> oneOf)
+            : base(oneOf)
         {
         }
 
@@ -21,10 +26,10 @@ namespace Pulumi
         #region common conversions
 
         public static implicit operator InputUnion<T0, T1>(T0 value)
-            => Output.Create(value);
+            => new InputUnion<T0, T1>(Union<T0, T1>.FromT0(value));
 
         public static implicit operator InputUnion<T0, T1>(T1 value)
-            => Output.Create(value);
+            => new InputUnion<T0, T1>(Union<T0, T1>.FromT1(value));
 
         public static implicit operator InputUnion<T0, T1>(Output<T0> value)
             => new InputUnion<T0, T1>(value.Apply(Union<T0, T1>.FromT0));

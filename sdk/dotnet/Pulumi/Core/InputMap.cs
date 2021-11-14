@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
+using OneOf;
 
 namespace Pulumi
 {
@@ -42,20 +43,64 @@ namespace Pulumi
     /// </summary>
     public sealed class InputMap<V> : Input<ImmutableDictionary<string, V>>, IEnumerable, IAsyncEnumerable<Input<KeyValuePair<string, V>>>
     {
-        public InputMap() : this(Output.Create(ImmutableDictionary<string, V>.Empty))
+        private OneOf<ImmutableDictionary<string, Input<V>>, Output<ImmutableDictionary<string, V>>> _value;
+
+        public InputMap() : this(ImmutableDictionary<string, Input<V>>.Empty)
+        {
+        }
+
+        private InputMap(ImmutableDictionary<string, Input<V>> values)
+            : this(OneOf<ImmutableDictionary<string, Input<V>>, Output<ImmutableDictionary<string, V>>>.FromT0(values))
         {
         }
 
         private InputMap(Output<ImmutableDictionary<string, V>> values)
-            : base(values)
+            : this(OneOf<ImmutableDictionary<string, Input<V>>, Output<ImmutableDictionary<string, V>>>.FromT1(values))
         {
         }
 
+        private InputMap(OneOf<ImmutableDictionary<string, Input<V>>, Output<ImmutableDictionary<string, V>>> value)
+            : base(ImmutableDictionary<string, V>.Empty)
+        {
+            _value = value;
+        }
+
+        private protected override Output<ImmutableDictionary<string, V>> ToOutput()
+            => _value.Match(
+                v =>
+                {
+                    var kvps = v.ToImmutableArray();
+                    var keys = kvps.SelectAsArray(kvp => kvp.Key);
+                    var values = kvps.SelectAsArray(kvp => kvp.Value);
+                    return Output.Tuple(Output.Create(keys), Output.All(values)).Apply(x =>
+                    {
+                        var builder = ImmutableDictionary.CreateBuilder<string, V>();
+                        for (int i = 0; i < x.Item1.Length; i++)
+                        {
+                            builder.Add(x.Item1[i], x.Item2[i]);
+                        }
+                        return builder.ToImmutable();
+                    });
+                },
+                v => v);
+
+        private protected override object Value
+            => _value.Value;
+
         public void Add(string key, Input<V> value)
         {
-            var inputDictionary = (Input<ImmutableDictionary<string, V>>)_outputValue;
-            _outputValue = Output.Tuple(inputDictionary, value)
-                                 .Apply(x => x.Item1.Add(key, x.Item2));
+
+            if (_value.IsT0)
+            {
+                var combined = _value.AsT0.Add(key, value);
+                _value = OneOf<ImmutableDictionary<string, Input<V>>, Output<ImmutableDictionary<string, V>>>.FromT0(combined);
+            }
+            else
+            {
+                var combined = Output.Tuple((Input<ImmutableDictionary<string, V>>)_value.AsT1, value)
+                                     .Apply(x => x.Item1.Add(key, x.Item2));
+                _value = OneOf<ImmutableDictionary<string, Input<V>>, Output<ImmutableDictionary<string, V>>>.FromT1(combined);
+            }
         }
 
         public Input<V> this[string key]
@@ -76,25 +121,53 @@ namespace Pulumi
         /// both input maps.</returns>
         public static InputMap<V> Merge(InputMap<V> first, InputMap<V> second)
         {
-            var output = Output.Tuple(first._outputValue, second._outputValue)
-                               .Apply(dicts =>
-                               {
-                                   var result = new Dictionary<string, V>(dicts.Item1);
-                                   // Overwrite keys if duplicates are found
-                                   foreach (var (k, v) in dicts.Item2)
-                                       result[k] = v;
-                                   return result;
-                               });
-            return output;
+            if (first._value.IsT0)
+            {
+                if (second._value.IsT0)
+                {
+                    var result = first._value.AsT0;
+                    // Overwrite keys if duplicates are found
+                    foreach (var (k, v) in second._value.AsT0)
+                        result = result.SetItem(k, v);
+                    return new InputMap<V>(result);
+                }
+                else
+                {
+                    return Output.Tuple(first.ToOutput(), second._value.AsT1)
+                                 .Apply(dicts => Merge(dicts));
+                }
+            }
+            else
+            {
+                if (second._value.IsT0)
+                {
+                    return Output.Tuple(first._value.AsT1, second.ToOutput())
+                                 .Apply(dicts => Merge(dicts));
+                }
+                else
+                {
+                    return Output.Tuple(first._value.AsT1, second._value.AsT1)
+                                 .Apply(dicts => Merge(dicts));
+                }
+            }
+
+            Dictionary<string, V> Merge((ImmutableDictionary<string, V>, ImmutableDictionary<string, V>) dicts)
+            {
+                var result = new Dictionary<string, V>(dicts.Item1);
+                // Overwrite keys if duplicates are found
+                foreach (var (k, v) in dicts.Item2)
+                    result[k] = v;
+                return result;
+            }
         }
 
         #region construct from dictionary types
 
         public static implicit operator InputMap<V>(Dictionary<string, V> values)
-            => Output.Create(values);
+            => new InputMap<V>(ImmutableDictionary.CreateRange(values.Select(kvp => KeyValuePair.Create(kvp.Key, (Input<V>)kvp.Value))));
 
         public static implicit operator InputMap<V>(ImmutableDictionary<string, V> values)
-            => Output.Create(values);
+            => new InputMap<V>(ImmutableDictionary.CreateRange(values.Select(kvp => KeyValuePair.Create(kvp.Key, (Input<V>)kvp.Value))));
 
         public static implicit operator InputMap<V>(Output<Dictionary<string, V>> values)
             => values.Apply(ImmutableDictionary.CreateRange);
@@ -114,11 +187,30 @@ namespace Pulumi
 
         public async IAsyncEnumerator<Input<KeyValuePair<string, V>>> GetAsyncEnumerator(CancellationToken cancellationToken)
         {
-            var data = await _outputValue.GetValueAsync(whenUnknown: ImmutableDictionary<string, V>.Empty)
-                .ConfigureAwait(false);
-            foreach (var value in data)
+            if (_value.IsT0)
             {
-                yield return value;
+                foreach (var value in _value.AsT0)
+                {
+                    var input = (IInput)value.Value;
+                    if (input.Value is IOutput)
+                    {
+                        yield return Output.Tuple((Input<string>)value.Key, value.Value)
+                                           .Apply(x => KeyValuePair.Create(x.Item1, x.Item2));
+                    }
+                    else
+                    {
+                        yield return KeyValuePair.Create(value.Key, (V)input.Value!);
+                    }
+                }
+            }
+            else
+            {
+                var data = await _value.AsT1.GetValueAsync(whenUnknown: ImmutableDictionary<string, V>.Empty)
+                    .ConfigureAwait(false);
+                foreach (var value in data)
+                {
+                    yield return value;
+                }
             }
         }
 

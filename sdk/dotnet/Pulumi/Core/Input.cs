@@ -1,7 +1,8 @@
-// Copyright 2016-2019, Pulumi Corporation
+// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Threading.Tasks;
+using OneOf;
 
 namespace Pulumi
 {
@@ -13,6 +14,7 @@ namespace Pulumi
     internal interface IInput
     {
         IOutput ToOutput();
+        object? Value { get; }
     }
 
     /// <summary>
@@ -21,29 +23,34 @@ namespace Pulumi
     /// </summary>
     public class Input<T> : IInput
     {
-        /// <summary>
-        /// Technically, in .net we can represent Inputs entirely using the Output type (since
-        /// Outputs can wrap values and promises).  However, it would look very weird to state that
-        /// the inputs to a resource *had* to be Outputs. So we basically just come up with this
-        /// wrapper type so things look sensible, even though under the covers we implement things
-        /// using the exact same type
-        /// </summary>
-        private protected Output<T> _outputValue;
+        private readonly OneOf<T, Output<T>> _value;
+
+        private protected Input(T value)
+            => _value = OneOf<T, Output<T>>.FromT0(value);
 
         private protected Input(Output<T> outputValue)
-            => _outputValue = outputValue ?? throw new ArgumentNullException(nameof(outputValue));
+            => _value = OneOf<T, Output<T>>.FromT1(outputValue ?? throw new ArgumentNullException(nameof(outputValue)));
+
+        private protected virtual Output<T> ToOutput()
+            => _value.Match(v => Output.Create(v), v => v);
+
+        private protected virtual object? Value
+            => _value.Value;
 
         public static implicit operator Input<T>(T value)
-            => Output.Create(value);
+            => new Input<T>(value);
 
         public static implicit operator Input<T>(Output<T> value)
             => new Input<T>(value);
 
         public static implicit operator Output<T>(Input<T> input)
-            => input._outputValue;
+            => input.ToOutput();
 
         IOutput IInput.ToOutput()
             => this.ToOutput();
+
+        object? IInput.Value
+            => this.Value;
     }
 
     public static class InputExtensions

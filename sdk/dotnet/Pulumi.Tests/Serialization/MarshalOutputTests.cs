@@ -91,6 +91,21 @@ namespace Pulumi.Tests.Serialization
             },
             new object[]
             {
+                new InputList<string> { "hello" },
+                ImmutableArray<object>.Empty.Add("hello")
+            },
+            new object[]
+            {
+                new InputList<string> { Output.Create("hello") },
+                ImmutableArray<object>.Empty.Add("hello")
+            },
+            new object[]
+            {
+                new InputList<string> { Output.CreateSecret("hello") },
+                ImmutableArray<object>.Empty.Add(CreateOutputValue("hello", isSecret: true))
+            },
+            new object[]
+            {
                 new Dictionary<string, Input<string>> { { "foo", "hello" } },
                 ImmutableDictionary<string, object>.Empty.Add("foo", "hello")
             },
@@ -102,6 +117,21 @@ namespace Pulumi.Tests.Serialization
             new object[]
             {
                 new Dictionary<string, Input<string>> { { "foo", Output.CreateSecret("hello") } },
+                ImmutableDictionary<string, object>.Empty.Add("foo", CreateOutputValue("hello", isSecret: true))
+            },
+            new object[]
+            {
+                new InputMap<string> { { "foo", "hello" } },
+                ImmutableDictionary<string, object>.Empty.Add("foo", "hello")
+            },
+            new object[]
+            {
+                new InputMap<string> { { "foo", Output.Create("hello") } },
+                ImmutableDictionary<string, object>.Empty.Add("foo", "hello")
+            },
+            new object[]
+            {
+                new InputMap<string> { { "foo", Output.CreateSecret("hello") } },
                 ImmutableDictionary<string, object>.Empty.Add("foo", CreateOutputValue("hello", isSecret: true))
             },
             new object[]

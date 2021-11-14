@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
+using OneOf;
 
 namespace Pulumi
 {
@@ -46,20 +47,48 @@ namespace Pulumi
     /// </summary>
     public sealed class InputList<T> : Input<ImmutableArray<T>>, IEnumerable, IAsyncEnumerable<Input<T>>
     {
-        public InputList() : this(Output.Create(ImmutableArray<T>.Empty))
+        private OneOf<ImmutableArray<Input<T>>, Output<ImmutableArray<T>>> _value;
+
+        public InputList() : this(ImmutableArray<Input<T>>.Empty)
+        {
+        }
+
+        private InputList(ImmutableArray<Input<T>> values)
+            : this(OneOf<ImmutableArray<Input<T>>, Output<ImmutableArray<T>>>.FromT0(values))
         {
         }
 
         private InputList(Output<ImmutableArray<T>> values)
-            : base(values)
+            : this(OneOf<ImmutableArray<Input<T>>, Output<ImmutableArray<T>>>.FromT1(values))
         {
         }
 
+        private InputList(OneOf<ImmutableArray<Input<T>>, Output<ImmutableArray<T>>> value)
+            : base(ImmutableArray<T>.Empty)
+        {
+            _value = value;
+        }
+
+        private protected override Output<ImmutableArray<T>> ToOutput()
+            => _value.Match(v => Output.All(v), v => v);
+
+        private protected override object Value
+            => _value.Value;
+
         public void Add(params Input<T>[] inputs)
         {
-            // Make an Output from the values passed in, mix in with our own Output, and combine
-            // both to produce the final array that we will now point at.
-            _outputValue = Output.Concat(_outputValue, Output.All(inputs));
+            if (_value.IsT0)
+            {
+                var combined = _value.AsT0.AddRange(inputs);
+                _value = OneOf<ImmutableArray<Input<T>>, Output<ImmutableArray<T>>>.FromT0(combined);
+            }
+            else
+            {
+                // Make an Output from the values passed in, mix in with our own Output, and combine
+                // both to produce the final array that we will now point at.
+                var combined = Output.Concat(_value.AsT1, Output.All(inputs));
+                _value = OneOf<ImmutableArray<Input<T>>, Output<ImmutableArray<T>>>.FromT1(combined);
+            }
         }
 
         /// <summary>
@@ -67,10 +96,33 @@ namespace Pulumi
         /// returning the concatenated sequence in a new <see cref="InputList{T}"/>.
         /// </summary>
         public InputList<T> Concat(InputList<T> other)
-            => Output.Concat(_outputValue, other._outputValue);
+        {
+            if (_value.IsT0)
+            {
+                if (other._value.IsT0)
+                {
+                    return _value.AsT0.AddRange(other._value.AsT0);
+                }
+                else
+                {
+                    return Output.Concat(Output.All(_value.AsT0), other._value.AsT1);
+                }
+            }
+            else
+            {
+                if (other._value.IsT0)
+                {
+                    return Output.Concat(_value.AsT1, Output.All(other._value.AsT0));
+                }
+                else
+                {
+                    return Output.Concat(_value.AsT1, other._value.AsT1);
+                }
+            }
+        }
 
         internal InputList<T> Clone()
-            => new InputList<T>(_outputValue);
+            => new InputList<T>(_value);
 
         #region construct from unary
 
@@ -120,7 +172,7 @@ namespace Pulumi
             => values.SelectAsArray(v => (Input<T>)v);
 
         public static implicit operator InputList<T>(ImmutableArray<Input<T>> values)
-            => Output.All(values);
+            => new InputList<T>(values);
 
         #endregion
 
@@ -147,11 +199,21 @@ namespace Pulumi
 
         public async IAsyncEnumerator<Input<T>> GetAsyncEnumerator(CancellationToken cancellationToken)
         {
-            var data = await _outputValue.GetValueAsync(whenUnknown: ImmutableArray<T>.Empty)
-                .ConfigureAwait(false);
-            foreach (var value in data)
+            if (_value.IsT0)
             {
-                yield return value;
+                foreach (var value in _value.AsT0)
+                {
+                    yield return value;
+                }
+            }
+            else
+            {
+                var data = await _value.AsT1.GetValueAsync(whenUnknown: ImmutableArray<T>.Empty)
+                    .ConfigureAwait(false);
+                foreach (var value in data)
+                {
+                    yield return value;
+                }
             }
         }
 
