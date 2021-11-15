@@ -952,10 +952,9 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 		componentDir string
 		env          []string
 	}{
-		// TODO[pulumi/pulumi#8155]: Uncomment when unmarshaling output values is enabled in the Node.js provider APIs.
-		// {
-		// 	componentDir: "testcomponent",
-		// },
+		{
+			componentDir: "testcomponent",
+		},
 		{
 			componentDir: "testcomponent-python",
 			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
