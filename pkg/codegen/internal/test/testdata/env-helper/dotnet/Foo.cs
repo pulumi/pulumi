@@ -63,6 +63,12 @@ namespace Pulumi.Example
         public string? Argument { get; set; }
 
         /// <summary>
+        /// Options for tuning the Kubernetes client used by a Provider.
+        /// </summary>
+        [Input("kubeClientSettings")]
+        public Input<Inputs.KubeClientSettingsArgs>? KubeClientSettings { get; set; }
+
+        /// <summary>
         /// describing things
         /// </summary>
         [Input("settings")]

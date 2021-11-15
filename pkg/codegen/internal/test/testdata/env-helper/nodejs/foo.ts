@@ -48,6 +48,7 @@ export class Foo extends pulumi.CustomResource {
         opts = opts || {};
         if (!opts.id) {
             resourceInputs["argument"] = args ? args.argument : undefined;
+            resourceInputs["kubeClientSettings"] = args ? inputs.kubeClientSettingsArgsProvideDefaults(args.kubeClientSettings) : undefined;
             resourceInputs["settings"] = args ? inputs.layeredTypeArgsProvideDefaults(args.settings) : undefined;
         } else {
         }
@@ -63,6 +64,10 @@ export class Foo extends pulumi.CustomResource {
  */
 export interface FooArgs {
     argument?: string;
+    /**
+     * Options for tuning the Kubernetes client used by a Provider.
+     */
+    kubeClientSettings?: pulumi.Input<inputs.KubeClientSettingsArgs>;
     /**
      * describing things
      */

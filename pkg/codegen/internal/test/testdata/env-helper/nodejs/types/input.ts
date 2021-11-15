@@ -36,6 +36,31 @@ export function helmReleaseSettingsArgsProvideDefaults(val: pulumi.Input<HelmRel
 }
 
 /**
+ * Options for tuning the Kubernetes client used by a Provider.
+ */
+export interface KubeClientSettingsArgs {
+    /**
+     * Maximum burst for throttle. Default value is 10.
+     */
+    burst?: pulumi.Input<number>;
+    /**
+     * Maximum queries per second (QPS) to the API server from this client. Default value is 5.
+     */
+    qps?: pulumi.Input<number>;
+}
+/**
+ * kubeClientSettingsArgsProvideDefaults sets the appropriate defaults for KubeClientSettingsArgs
+ */
+export function kubeClientSettingsArgsProvideDefaults(val: pulumi.Input<KubeClientSettingsArgs> | undefined): pulumi.Output<KubeClientSettingsArgs> | undefined {
+    const def = (val: KubeClientSettingsArgs) => ({
+        ...val,
+        burst: (val.burst) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_BURST"),
+        qps: (val.qps) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_QPS"),
+    });
+    return val ? pulumi.output(val).apply(def) : undefined;
+}
+
+/**
  * Make sure that defaults propagate through types
  */
 export interface LayeredTypeArgs {

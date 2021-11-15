@@ -15,13 +15,17 @@ __all__ = ['FooArgs', 'Foo']
 class FooArgs:
     def __init__(__self__, *,
                  argument: Optional[str] = None,
+                 kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
                  settings: Optional[pulumi.Input['LayeredTypeArgs']] = None):
         """
         The set of arguments for constructing a Foo resource.
+        :param pulumi.Input['KubeClientSettingsArgs'] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input['LayeredTypeArgs'] settings: describing things
         """
         if argument is not None:
             pulumi.set(__self__, "argument", argument)
+        if kube_client_settings is not None:
+            pulumi.set(__self__, "kube_client_settings", kube_client_settings)
         if settings is not None:
             pulumi.set(__self__, "settings", settings)
 
@@ -33,6 +37,18 @@ class FooArgs:
     @argument.setter
     def argument(self, value: Optional[str]):
         pulumi.set(self, "argument", value)
+
+    @property
+    @pulumi.getter(name="kubeClientSettings")
+    def kube_client_settings(self) -> Optional[pulumi.Input['KubeClientSettingsArgs']]:
+        """
+        Options for tuning the Kubernetes client used by a Provider.
+        """
+        return pulumi.get(self, "kube_client_settings")
+
+    @kube_client_settings.setter
+    def kube_client_settings(self, value: Optional[pulumi.Input['KubeClientSettingsArgs']]):
+        pulumi.set(self, "kube_client_settings", value)
 
     @property
     @pulumi.getter
@@ -53,6 +69,7 @@ class Foo(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[str] = None,
+                 kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']]] = None,
                  settings: Optional[pulumi.Input[pulumi.InputType['LayeredTypeArgs']]] = None,
                  __props__=None):
         """
@@ -60,6 +77,7 @@ class Foo(pulumi.CustomResource):
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
+        :param pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input[pulumi.InputType['LayeredTypeArgs']] settings: describing things
         """
         ...
@@ -87,6 +105,7 @@ class Foo(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[str] = None,
+                 kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']]] = None,
                  settings: Optional[pulumi.Input[pulumi.InputType['LayeredTypeArgs']]] = None,
                  __props__=None):
         if opts is None:
@@ -101,6 +120,7 @@ class Foo(pulumi.CustomResource):
             __props__ = FooArgs.__new__(FooArgs)
 
             __props__.__dict__["argument"] = argument
+            __props__.__dict__["kube_client_settings"] = kube_client_settings
             __props__.__dict__["settings"] = settings
         super(Foo, __self__).__init__(
             'example:index:Foo',

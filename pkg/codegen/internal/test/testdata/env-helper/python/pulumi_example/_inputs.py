@@ -10,6 +10,7 @@ from . import _utilities
 
 __all__ = [
     'HelmReleaseSettingsArgs',
+    'KubeClientSettingsArgs',
     'LayeredTypeArgs',
 ]
 
@@ -70,6 +71,50 @@ class HelmReleaseSettingsArgs:
     @plugins_path.setter
     def plugins_path(self, value: Optional[pulumi.Input[str]]):
         pulumi.set(self, "plugins_path", value)
+
+
+@pulumi.input_type
+class KubeClientSettingsArgs:
+    def __init__(__self__, *,
+                 burst: Optional[pulumi.Input[int]] = None,
+                 qps: Optional[pulumi.Input[float]] = None):
+        """
+        Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.Input[int] burst: Maximum burst for throttle. Default value is 10.
+        :param pulumi.Input[float] qps: Maximum queries per second (QPS) to the API server from this client. Default value is 5.
+        """
+        if burst is None:
+            burst = _utilities.get_env_int('PULUMI_K8S_CLIENT_BURST')
+        if burst is not None:
+            pulumi.set(__self__, "burst", burst)
+        if qps is None:
+            qps = _utilities.get_env_float('PULUMI_K8S_CLIENT_QPS')
+        if qps is not None:
+            pulumi.set(__self__, "qps", qps)
+
+    @property
+    @pulumi.getter
+    def burst(self) -> Optional[pulumi.Input[int]]:
+        """
+        Maximum burst for throttle. Default value is 10.
+        """
+        return pulumi.get(self, "burst")
+
+    @burst.setter
+    def burst(self, value: Optional[pulumi.Input[int]]):
+        pulumi.set(self, "burst", value)
+
+    @property
+    @pulumi.getter
+    def qps(self) -> Optional[pulumi.Input[float]]:
+        """
+        Maximum queries per second (QPS) to the API server from this client. Default value is 5.
+        """
+        return pulumi.get(self, "qps")
+
+    @qps.setter
+    def qps(self, value: Optional[pulumi.Input[float]]):
+        pulumi.set(self, "qps", value)
 
 
 @pulumi.input_type
