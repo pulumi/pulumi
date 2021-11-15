@@ -352,6 +352,8 @@ type LayeredType struct {
 	// The answer to the question
 	Answer *float64            `pulumi:"answer"`
 	Other  HelmReleaseSettings `pulumi:"other"`
+	// Test how plain types interact
+	PlainOther *HelmReleaseSettings `pulumi:"plainOther"`
 	// The question already answered
 	Question  *string      `pulumi:"question"`
 	Recursive *LayeredType `pulumi:"recursive"`
@@ -375,6 +377,8 @@ type LayeredTypeArgs struct {
 	// The answer to the question
 	Answer pulumi.Float64PtrInput   `pulumi:"answer"`
 	Other  HelmReleaseSettingsInput `pulumi:"other"`
+	// Test how plain types interact
+	PlainOther *HelmReleaseSettingsArgs `pulumi:"plainOther"`
 	// The question already answered
 	Question  pulumi.StringPtrInput `pulumi:"question"`
 	Recursive LayeredTypePtrInput   `pulumi:"recursive"`
@@ -469,6 +473,11 @@ func (o LayeredTypeOutput) Other() HelmReleaseSettingsOutput {
 	return o.ApplyT(func(v LayeredType) HelmReleaseSettings { return v.Other }).(HelmReleaseSettingsOutput)
 }
 
+// Test how plain types interact
+func (o LayeredTypeOutput) PlainOther() HelmReleaseSettingsPtrOutput {
+	return o.ApplyT(func(v LayeredType) *HelmReleaseSettings { return v.PlainOther }).(HelmReleaseSettingsPtrOutput)
+}
+
 // The question already answered
 func (o LayeredTypeOutput) Question() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v LayeredType) *string { return v.Question }).(pulumi.StringPtrOutput)
@@ -523,6 +532,16 @@ func (o LayeredTypePtrOutput) Other() HelmReleaseSettingsPtrOutput {
 			return nil
 		}
 		return &v.Other
+	}).(HelmReleaseSettingsPtrOutput)
+}
+
+// Test how plain types interact
+func (o LayeredTypePtrOutput) PlainOther() HelmReleaseSettingsPtrOutput {
+	return o.ApplyT(func(v *LayeredType) *HelmReleaseSettings {
+		if v == nil {
+			return nil
+		}
+		return v.PlainOther
 	}).(HelmReleaseSettingsPtrOutput)
 }
 

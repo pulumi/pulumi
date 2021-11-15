@@ -83,6 +83,11 @@
         "other": {
           "$ref": "#/types/example:index:HelmReleaseSettings"
         },
+        "plainOther": {
+          "description": "Test how plain types interact",
+          "$ref": "#/types/example:index:HelmReleaseSettings",
+          "plain": true
+        },
         "recursive": {
           "$ref": "#/types/example:index:LayeredType"
         }
