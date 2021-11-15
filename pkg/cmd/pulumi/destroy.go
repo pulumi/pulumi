@@ -159,7 +159,8 @@ func newDestroyCmd() *cobra.Command {
 
 			var protectedCount int
 			if excludeProtected {
-				protectedCount, err = handleExcludeProtected(s, &targetUrns)
+				contract.Assert(len(targetUrns) == 0)
+				targetUrns, protectedCount, err = handleExcludeProtected(s)
 				if err != nil {
 					return result.FromError(err)
 				} else if protectedCount > 0 && len(targetUrns) == 0 {
@@ -287,23 +288,23 @@ func newDestroyCmd() *cobra.Command {
 	return cmd
 }
 
-// seperateProtected returns a list or unprotected and protected resources
-// respectively. This allows us to safely destroy all resources in the
-// unprotected list without invalidating any resource in the protected list.
-// Protection is contravarient.
+// seperateProtected returns a list or unprotected and protected resources respectively. This allows
+// us to safely destroy all resources in the unprotected list without invalidating any resource in
+// the protected list. Protection is contravarient: A < B where A: Protected => B: Protected, A < B
+// where B: Protected !=> A: Protected.
 //
 // A
 // B: Parent = A
 // C: Parent = A, Protect = True
+// D: Parent = C
 //
 // -->
 //
-// Unprotected: B
+// Unprotected: B, D
 // Protected: A, C
 //
-// We rely on the fact that `resources` is topologically sorted with respect to
-// its dependencies. This function understands that providers live outside this
-// topological sort.
+// We rely on the fact that `resources` is topologically sorted with respect to its dependencies.
+// This function understands that providers live outside this topological sort.
 func seperateProtected(resources []*resource.State) (
 	/*unprotected*/ []*resource.State /*protected*/, []*resource.State) {
 	dg := graph.NewDependencyGraph(resources)
@@ -320,18 +321,18 @@ func seperateProtected(resources []*resource.State) (
 }
 
 // Returns the number of protected resources that remain. Appends all unprotected resources to `targetUrns`.
-func handleExcludeProtected(s backend.Stack, targetUrns *[]resource.URN) (int, error) {
-	contract.Assert(len(*targetUrns) == 0)
+func handleExcludeProtected(s backend.Stack) ([]resource.URN, int, error) {
 	// Get snapshot
 	snapshot, err := s.Snapshot(commandContext())
 	if err != nil {
-		return 0, err
+		return nil, 0, err
 	} else if snapshot == nil {
-		return 0, errors.New("Failed to find the stack snapshot. Are you in a stack?")
+		return nil, 0, errors.New("Failed to find the stack snapshot. Are you in a stack?")
 	}
 	unprotected, protected := seperateProtected(snapshot.Resources)
+	targetUrns := []resource.URN{}
 	for _, r := range unprotected {
-		*targetUrns = append(*targetUrns, r.URN)
+		targetUrns = append(targetUrns, r.URN)
 	}
-	return len(protected), nil
+	return targetUrns, len(protected), nil
 }
