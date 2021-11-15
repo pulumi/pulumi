@@ -202,6 +202,24 @@ func TestRapidDependingOnOrdered(t *testing.T) {
 	}
 }
 
+func TestRapidTransitiveDependenciesOf(t *testing.T) {
+	graphCheck(t, func(t *rapid.T, universe []*resource.State) {
+		expectedInTDepsOf := transitively(universe)(expectedDependenciesOf)
+		dg := NewDependencyGraph(universe)
+		for _, a := range universe {
+			tda := dg.TransitiveDependenciesOf(a)
+			for _, b := range universe {
+				assert.Equalf(t,
+					expectedInTDepsOf(a, b),
+					tda[b],
+					"Mismatch on a=%v, b=%b",
+					a.URN,
+					b.URN)
+			}
+		}
+	})
+}
+
 // Generators --------------------------------------------------------------------------------------
 
 // Generates ordered values of type `[]ResourceState` that:
