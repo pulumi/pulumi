@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
@@ -113,7 +112,7 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function, outputVersion
 		case "python":
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 		default:
-			panic(errors.Errorf("cannot generate function resource info for unhandled language %q", lang))
+			panic(fmt.Errorf("cannot generate function resource info for unhandled language %q", lang))
 		}
 
 		parts := strings.Split(resultTypeName, ".")

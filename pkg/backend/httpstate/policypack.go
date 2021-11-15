@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -183,8 +182,7 @@ func (pack *cloudPolicyPack) Publish(
 	if strings.EqualFold(runtime, "nodejs") {
 		packTarball, err = npm.Pack(op.PlugCtx.Pwd, os.Stderr)
 		if err != nil {
-			return result.FromError(
-				errors.Wrap(err, "could not publish policies because of error running npm pack"))
+			return result.FromError(fmt.Errorf("could not publish policies because of error running npm pack: %w", err))
 		}
 	} else {
 		// npm pack puts all the files in a "package" subdirectory inside the .tgz it produces, so we'll do
@@ -192,8 +190,7 @@ func (pack *cloudPolicyPack) Publish(
 		// package directory to determine the runtime of the policy pack.
 		packTarball, err = archive.TGZ(op.PlugCtx.Pwd, "package", true /*useDefaultExcludes*/)
 		if err != nil {
-			return result.FromError(
-				errors.Wrap(err, "could not publish policies because of error creating the .tgz"))
+			return result.FromError(fmt.Errorf("could not publish policies because of error creating the .tgz: %w", err))
 		}
 	}
 
@@ -253,18 +250,18 @@ func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
 	// If part of the directory tree is missing, ioutil.TempDir will return an error, so make sure
 	// the path we're going to create the temporary folder in actually exists.
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0700); err != nil {
-		return errors.Wrap(err, "creating plugin root")
+		return fmt.Errorf("creating plugin root: %w", err)
 	}
 
 	tempDir, err := ioutil.TempDir(filepath.Dir(finalDir), fmt.Sprintf("%s.tmp", filepath.Base(finalDir)))
 	if err != nil {
-		return errors.Wrapf(err, "creating plugin directory %s", tempDir)
+		return fmt.Errorf("creating plugin directory %s: %w", tempDir, err)
 	}
 
 	// The policy pack files are actually in a directory called `package`.
 	tempPackageDir := filepath.Join(tempDir, packageDir)
 	if err := os.MkdirAll(tempPackageDir, 0700); err != nil {
-		return errors.Wrap(err, "creating plugin root")
+		return fmt.Errorf("creating plugin root: %w", err)
 	}
 
 	// If we early out of this function, try to remove the temp folder we created.
@@ -284,13 +281,13 @@ func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
 	// unable to rename the directory. That's OK, just ignore the error. The temp directory created
 	// as part of the install will be cleaned up when we exit by the defer above.
 	if err := os.Rename(tempPackageDir, finalDir); err != nil && !os.IsExist(err) {
-		return errors.Wrap(err, "moving plugin")
+		return fmt.Errorf("moving plugin: %w", err)
 	}
 
 	projPath := filepath.Join(finalDir, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to load policy project at %s", finalDir)
+		return fmt.Errorf("failed to load policy project at %s: %w", finalDir, err)
 	}
 
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
@@ -312,10 +309,9 @@ func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
 
 func completeNodeJSInstall(finalDir string) error {
 	if bin, err := npm.Install(finalDir, false /*production*/, nil, os.Stderr); err != nil {
-		return errors.Wrapf(
-			err,
-			"failed to install dependencies of policy pack; you may need to re-run `%s install` "+
-				"in %q before this policy pack works", bin, finalDir)
+		return fmt.Errorf("failed to install dependencies of policy pack; you may need to re-run `%s install` "+
+			"in %q before this policy pack works"+": %w", bin, finalDir, err)
+
 	}
 
 	return nil
@@ -330,7 +326,7 @@ func completePythonInstall(finalDir, projPath string, proj *workspace.PolicyPack
 	// Save project with venv info.
 	proj.Runtime.SetOption("virtualenv", venvDir)
 	if err := proj.Save(projPath); err != nil {
-		return errors.Wrapf(err, "saving project at %s", projPath)
+		return fmt.Errorf("saving project at %s: %w", projPath, err)
 	}
 
 	return nil

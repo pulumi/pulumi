@@ -15,10 +15,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -110,8 +110,8 @@ func requirePolicyPack(policyPack string) (backend.PolicyPack, error) {
 
 	cloudURL, err := workspace.GetCurrentCloudURL()
 	if err != nil {
-		return nil, errors.Wrap(err,
-			"`pulumi policy` command requires the user to be logged into the Pulumi service")
+		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi service: %w", err)
+
 	}
 
 	displayOptions := display.Options{

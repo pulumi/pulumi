@@ -15,9 +15,8 @@
 package graph
 
 import (
-	"sort"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"sort"
 )
 
 // ResourceSet represents a set of Resources.

@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -79,8 +78,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 				return nil
 			}
 
-			return errors.Errorf(
-				"stack tag '%s' not found for stack '%s'", name, s.Ref())
+			return fmt.Errorf("stack tag '%s' not found for stack '%s'", name, s.Ref())
 		}),
 	}
 }

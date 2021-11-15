@@ -32,7 +32,6 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -1104,8 +1103,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		for _, t := range mod.types {
 			if mod.details(t).inputType {
 				if mod.unqualifiedObjectTypeName(t, true) == resourceArgsName {
-					return "", errors.Errorf(
-						"resource args class named %s in %s conflicts with input type", resourceArgsName, mod.mod)
+					return "", fmt.Errorf("resource args class named %s in %s conflicts with input type", resourceArgsName, mod.mod)
 				}
 			}
 		}
@@ -1883,7 +1881,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 			}
 		}
 	default:
-		return errors.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
+		return fmt.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
 	}
 
 	return nil
@@ -2054,15 +2052,15 @@ func genPackageMetadata(
 		// We expect a specific pattern of ">=version,<version" here.
 		matches := requirementRegex.FindStringSubmatch(pulumiReq)
 		if len(matches) != 2 {
-			return "", errors.Errorf("invalid requirement specifier \"%s\"; expected \">=version1,<version2\"", pulumiReq)
+			return "", fmt.Errorf("invalid requirement specifier \"%s\"; expected \">=version1,<version2\"", pulumiReq)
 		}
 
 		lowerBound, err := pep440VersionToSemver(matches[1])
 		if err != nil {
-			return "", errors.Errorf("invalid version for lower bound: %v", err)
+			return "", fmt.Errorf("invalid version for lower bound: %v", err)
 		}
 		if lowerBound.LT(oldestAllowedPulumi) {
-			return "", errors.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)
+			return "", fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)
 		}
 	} else {
 		if requires == nil {
@@ -2544,7 +2542,7 @@ func getPrimitiveValue(value interface{}) (string, error) {
 	case reflect.String:
 		return fmt.Sprintf("'%s'", v.String()), nil
 	default:
-		return "", errors.Errorf("unsupported default value of type %T", value)
+		return "", fmt.Errorf("unsupported default value of type %T", value)
 	}
 }
 
