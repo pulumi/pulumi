@@ -90,7 +90,9 @@ func (e Event) Payload() interface{} {
 }
 
 func cancelEvent() Event {
-	return Event{Type: CancelEvent}
+	return Event{
+		Type: CancelEvent,
+	}
 }
 
 // DiagEventPayload is the payload for an event with type `diag`
