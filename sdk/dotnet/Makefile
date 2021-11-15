@@ -14,6 +14,10 @@ include ../../build/common.mk
 # `test_all` without the dependencies.
 TEST_ALL_DEPS = install
 
+ensure::
+	# We want to dotnet restore all projects on startup so that omnisharp doesn't complain about lots of missing types on startup.
+	dotnet restore dotnet.sln
+
 build::
 	# From the nuget docs:
 	#

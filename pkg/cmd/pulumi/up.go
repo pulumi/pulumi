@@ -16,12 +16,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -97,17 +97,17 @@ func newUpCmd() *cobra.Command {
 
 		m, err := getUpdateMetadata(message, root, execKind, execAgent)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}
 
 		sm, err := getStackSecretsManager(s)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 		}
 
 		cfg, err := getStackConfiguration(s, sm)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "getting stack configuration"))
+			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 		}
 
 		targetURNs := []resource.URN{}
@@ -225,7 +225,7 @@ func newUpCmd() *cobra.Command {
 
 		// Change the working directory to the "virtual workspace" directory.
 		if err = os.Chdir(temp); err != nil {
-			return result.FromError(errors.Wrap(err, "changing the working directory"))
+			return result.FromError(fmt.Errorf("changing the working directory: %w", err))
 		}
 
 		// If a stack was specified via --stack, see if it already exists.
@@ -273,7 +273,7 @@ func newUpCmd() *cobra.Command {
 		proj.Description = &description
 		proj.Template = nil
 		if err = workspace.SaveProject(proj); err != nil {
-			return result.FromError(errors.Wrap(err, "saving project"))
+			return result.FromError(fmt.Errorf("saving project: %w", err))
 		}
 
 		// Create the stack, if needed.
@@ -297,17 +297,17 @@ func newUpCmd() *cobra.Command {
 
 		m, err := getUpdateMetadata(message, root, execKind, execAgent)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}
 
 		sm, err := getStackSecretsManager(s)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 		}
 
 		cfg, err := getStackConfiguration(s, sm)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "getting stack configuration"))
+			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 		}
 
 		refreshOption, err := getRefreshOption(proj, refresh)
@@ -613,7 +613,7 @@ func handleConfig(
 	// Save the config.
 	if len(c) > 0 {
 		if err = saveConfig(s, c); err != nil {
-			return errors.Wrap(err, "saving config")
+			return fmt.Errorf("saving config: %w", err)
 		}
 
 		fmt.Println("Saved config")

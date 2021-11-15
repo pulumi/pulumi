@@ -17,6 +17,7 @@ package lifecycletest
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -26,7 +27,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -656,7 +657,7 @@ func TestStackReference(t *testing.T) {
 						"foo": "bar",
 					}), nil
 				default:
-					return nil, errors.Errorf("unknown stack \"%s\"", name)
+					return nil, fmt.Errorf("unknown stack \"%s\"", name)
 				}
 			},
 		},
@@ -2104,7 +2105,7 @@ func (ctx *updateContext) Run(_ context.Context, req *pulumirpc.RunRequest) (*pu
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not connect to resource monitor")
+		return nil, fmt.Errorf("could not connect to resource monitor: %w", err)
 	}
 	defer contract.IgnoreClose(conn)
 

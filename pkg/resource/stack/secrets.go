@@ -16,8 +16,8 @@ package stack
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -56,10 +56,10 @@ func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.
 	case cloud.Type:
 		sm, err = cloud.NewCloudSecretsManagerFromState(state)
 	default:
-		return nil, errors.Errorf("no known secrets provider for type %q", ty)
+		return nil, fmt.Errorf("no known secrets provider for type %q", ty)
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "constructing secrets manager of type %q", ty)
+		return nil, fmt.Errorf("constructing secrets manager of type %q: %w", ty, err)
 	}
 
 	return NewCachingSecretsManager(sm), nil

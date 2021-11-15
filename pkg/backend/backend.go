@@ -16,11 +16,10 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -298,7 +297,7 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 		return nil, err
 	}
 	if s == nil {
-		return nil, errors.Errorf("unknown stack %q", name)
+		return nil, fmt.Errorf("unknown stack %q", name)
 	}
 	snap, err := s.Snapshot(ctx)
 	if err != nil {
@@ -306,7 +305,7 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	}
 	res, err := stack.GetRootStackResource(snap)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting root stack resources")
+		return nil, fmt.Errorf("getting root stack resources: %w", err)
 	}
 	if res == nil {
 		return resource.PropertyMap{}, nil
@@ -325,7 +324,7 @@ func (c *backendClient) GetStackResourceOutputs(
 		return nil, err
 	}
 	if s == nil {
-		return nil, errors.Errorf("unknown stack %q", name)
+		return nil, fmt.Errorf("unknown stack %q", name)
 	}
 	snap, err := s.Snapshot(ctx)
 	if err != nil {

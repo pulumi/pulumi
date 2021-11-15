@@ -16,9 +16,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/spf13/cobra"
 
@@ -69,8 +69,7 @@ func newStackExportCmd() *cobra.Command {
 				be := s.Backend()
 				specificExpBE, ok := be.(backend.SpecificDeploymentExporter)
 				if !ok {
-					return errors.Errorf(
-						"the current backend (%s) does not provide the ability to export previous deployments",
+					return fmt.Errorf("the current backend (%s) does not provide the ability to export previous deployments",
 						be.Name())
 				}
 
@@ -85,7 +84,7 @@ func newStackExportCmd() *cobra.Command {
 			if file != "" {
 				writer, err = os.Create(file)
 				if err != nil {
-					return errors.Wrap(err, "could not open file")
+					return fmt.Errorf("could not open file: %w", err)
 				}
 			}
 
@@ -116,7 +115,7 @@ func newStackExportCmd() *cobra.Command {
 			enc.SetIndent("", "    ")
 
 			if err = enc.Encode(deployment); err != nil {
-				return errors.Wrap(err, "could not export deployment")
+				return fmt.Errorf("could not export deployment: %w", err)
 			}
 
 			return nil

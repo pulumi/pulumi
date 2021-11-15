@@ -15,12 +15,14 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/dustin/go-humanize"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -110,14 +112,14 @@ func runStackLS(args stackLSArgs) error {
 		// Ensure we are in a project; if not, we will fail.
 		projPath, err := workspace.DetectProjectPath()
 		if err != nil {
-			return errors.Wrapf(err, "could not detect current project")
+			return fmt.Errorf("could not detect current project: %w", err)
 		} else if projPath == "" {
 			return errors.New("no Pulumi.yaml found; please run this command in a project directory")
 		}
 
 		proj, err := workspace.LoadProject(projPath)
 		if err != nil {
-			return errors.Wrap(err, "could not load current project")
+			return fmt.Errorf("could not load current project: %w", err)
 		}
 		projName := string(proj.Name)
 		filter.Project = &projName

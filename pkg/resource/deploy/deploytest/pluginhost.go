@@ -16,13 +16,14 @@ package deploytest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
+
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -148,7 +149,7 @@ func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty
 	case pulumirpc.LogSeverity_ERROR:
 		sev = diag.Error
 	default:
-		return nil, errors.Errorf("Unrecognized logging severity: %v", req.Severity)
+		return nil, fmt.Errorf("Unrecognized logging severity: %v", req.Severity)
 	}
 
 	if req.Ephemeral {
