@@ -61,7 +61,7 @@ export class RubberTree extends pulumi.CustomResource {
             if ((!args || args.type === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'type'");
             }
-            resourceInputs["container"] = args ? inputs.containerArgsProvideDefaults(args.container) : undefined;
+            resourceInputs["container"] = args ? (args.container ? pulumi.output(args.container).apply(inputs.containerArgsProvideDefaults) : undefined) : undefined;
             resourceInputs["diameter"] = (args ? args.diameter : undefined) ?? 6;
             resourceInputs["farm"] = (args ? args.farm : undefined) ?? "(unknown)";
             resourceInputs["size"] = (args ? args.size : undefined) ?? "medium";

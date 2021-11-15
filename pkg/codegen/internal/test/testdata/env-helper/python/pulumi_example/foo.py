@@ -14,20 +14,39 @@ __all__ = ['FooArgs', 'Foo']
 @pulumi.input_type
 class FooArgs:
     def __init__(__self__, *,
+                 backup_kube_client_settings: pulumi.Input['KubeClientSettingsArgs'],
                  argument: Optional[str] = None,
+                 default_kube_client_settings: Optional['KubeClientSettingsArgs'] = None,
                  kube_client_settings: Optional[pulumi.Input['KubeClientSettingsArgs']] = None,
                  settings: Optional[pulumi.Input['LayeredTypeArgs']] = None):
         """
         The set of arguments for constructing a Foo resource.
+        :param pulumi.Input['KubeClientSettingsArgs'] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param 'KubeClientSettingsArgs' default_kube_client_settings: A test for plain types
         :param pulumi.Input['KubeClientSettingsArgs'] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input['LayeredTypeArgs'] settings: describing things
         """
+        pulumi.set(__self__, "backup_kube_client_settings", backup_kube_client_settings)
         if argument is not None:
             pulumi.set(__self__, "argument", argument)
+        if default_kube_client_settings is not None:
+            pulumi.set(__self__, "default_kube_client_settings", default_kube_client_settings)
         if kube_client_settings is not None:
             pulumi.set(__self__, "kube_client_settings", kube_client_settings)
         if settings is not None:
             pulumi.set(__self__, "settings", settings)
+
+    @property
+    @pulumi.getter(name="backupKubeClientSettings")
+    def backup_kube_client_settings(self) -> pulumi.Input['KubeClientSettingsArgs']:
+        """
+        Options for tuning the Kubernetes client used by a Provider.
+        """
+        return pulumi.get(self, "backup_kube_client_settings")
+
+    @backup_kube_client_settings.setter
+    def backup_kube_client_settings(self, value: pulumi.Input['KubeClientSettingsArgs']):
+        pulumi.set(self, "backup_kube_client_settings", value)
 
     @property
     @pulumi.getter
@@ -37,6 +56,18 @@ class FooArgs:
     @argument.setter
     def argument(self, value: Optional[str]):
         pulumi.set(self, "argument", value)
+
+    @property
+    @pulumi.getter(name="defaultKubeClientSettings")
+    def default_kube_client_settings(self) -> Optional['KubeClientSettingsArgs']:
+        """
+        A test for plain types
+        """
+        return pulumi.get(self, "default_kube_client_settings")
+
+    @default_kube_client_settings.setter
+    def default_kube_client_settings(self, value: Optional['KubeClientSettingsArgs']):
+        pulumi.set(self, "default_kube_client_settings", value)
 
     @property
     @pulumi.getter(name="kubeClientSettings")
@@ -69,6 +100,8 @@ class Foo(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[str] = None,
+                 backup_kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']]] = None,
+                 default_kube_client_settings: Optional[pulumi.InputType['KubeClientSettingsArgs']] = None,
                  kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']]] = None,
                  settings: Optional[pulumi.Input[pulumi.InputType['LayeredTypeArgs']]] = None,
                  __props__=None):
@@ -77,6 +110,8 @@ class Foo(pulumi.CustomResource):
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
+        :param pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']] backup_kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
+        :param pulumi.InputType['KubeClientSettingsArgs'] default_kube_client_settings: A test for plain types
         :param pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']] kube_client_settings: Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input[pulumi.InputType['LayeredTypeArgs']] settings: describing things
         """
@@ -84,7 +119,7 @@ class Foo(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[FooArgs] = None,
+                 args: FooArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         test new feature with resoruces
@@ -105,6 +140,8 @@ class Foo(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  argument: Optional[str] = None,
+                 backup_kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']]] = None,
+                 default_kube_client_settings: Optional[pulumi.InputType['KubeClientSettingsArgs']] = None,
                  kube_client_settings: Optional[pulumi.Input[pulumi.InputType['KubeClientSettingsArgs']]] = None,
                  settings: Optional[pulumi.Input[pulumi.InputType['LayeredTypeArgs']]] = None,
                  __props__=None):
@@ -120,6 +157,10 @@ class Foo(pulumi.CustomResource):
             __props__ = FooArgs.__new__(FooArgs)
 
             __props__.__dict__["argument"] = argument
+            if backup_kube_client_settings is None and not opts.urn:
+                raise TypeError("Missing required property 'backup_kube_client_settings'")
+            __props__.__dict__["backup_kube_client_settings"] = backup_kube_client_settings
+            __props__.__dict__["default_kube_client_settings"] = default_kube_client_settings
             __props__.__dict__["kube_client_settings"] = kube_client_settings
             __props__.__dict__["settings"] = settings
         super(Foo, __self__).__init__(

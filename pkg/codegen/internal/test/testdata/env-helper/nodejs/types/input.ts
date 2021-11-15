@@ -26,13 +26,12 @@ export interface HelmReleaseSettingsArgs {
 /**
  * helmReleaseSettingsArgsProvideDefaults sets the appropriate defaults for HelmReleaseSettingsArgs
  */
-export function helmReleaseSettingsArgsProvideDefaults(val: pulumi.Input<HelmReleaseSettingsArgs> | undefined): pulumi.Output<HelmReleaseSettingsArgs> | undefined {
-    const def = (val: HelmReleaseSettingsArgs) => ({
+export function helmReleaseSettingsArgsProvideDefaults(val: HelmReleaseSettingsArgs): HelmReleaseSettingsArgs {
+    return {
         ...val,
-        driver: (val.driver) ?? (utilities.getEnv("PULUMI_K8S_HELM_DRIVER") || "secret"),
-        pluginsPath: (val.pluginsPath) ?? utilities.getEnv("PULUMI_K8S_HELM_PLUGINS_PATH"),
-    });
-    return val ? pulumi.output(val).apply(def) : undefined;
+    driver: (val.driver) ?? (utilities.getEnv("PULUMI_K8S_HELM_DRIVER") || "secret"),
+    pluginsPath: (val.pluginsPath) ?? utilities.getEnv("PULUMI_K8S_HELM_PLUGINS_PATH"),
+    };
 }
 
 /**
@@ -51,13 +50,12 @@ export interface KubeClientSettingsArgs {
 /**
  * kubeClientSettingsArgsProvideDefaults sets the appropriate defaults for KubeClientSettingsArgs
  */
-export function kubeClientSettingsArgsProvideDefaults(val: pulumi.Input<KubeClientSettingsArgs> | undefined): pulumi.Output<KubeClientSettingsArgs> | undefined {
-    const def = (val: KubeClientSettingsArgs) => ({
+export function kubeClientSettingsArgsProvideDefaults(val: KubeClientSettingsArgs): KubeClientSettingsArgs {
+    return {
         ...val,
-        burst: (val.burst) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_BURST"),
-        qps: (val.qps) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_QPS"),
-    });
-    return val ? pulumi.output(val).apply(def) : undefined;
+    burst: (val.burst) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_BURST"),
+    qps: (val.qps) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_QPS"),
+    };
 }
 
 /**
@@ -86,15 +84,14 @@ export interface LayeredTypeArgs {
 /**
  * layeredTypeArgsProvideDefaults sets the appropriate defaults for LayeredTypeArgs
  */
-export function layeredTypeArgsProvideDefaults(val: pulumi.Input<LayeredTypeArgs> | undefined): pulumi.Output<LayeredTypeArgs> | undefined {
-    const def = (val: LayeredTypeArgs) => ({
+export function layeredTypeArgsProvideDefaults(val: LayeredTypeArgs): LayeredTypeArgs {
+    return {
         ...val,
-        answer: (val.answer) ?? 42,
-        other: inputs.helmReleaseSettingsArgsProvideDefaults(val.other)!,
-        plainOther: inputs.helmReleaseSettingsArgsProvideDefaults(val.plainOther),
-        question: (val.question) ?? (utilities.getEnv("PULUMI_THE_QUESTION") || "<unknown>"),
-        recursive: inputs.layeredTypeArgsProvideDefaults(val.recursive),
-        thinker: (val.thinker) ?? "not a good interaction",
-    });
-    return val ? pulumi.output(val).apply(def) : undefined;
+    answer: (val.answer) ?? 42,
+    other: pulumi.output(val.other).apply(inputs.helmReleaseSettingsArgsProvideDefaults)!,
+    plainOther: (val.plainOther ? inputs.helmReleaseSettingsArgsProvideDefaults(val.plainOther) : undefined),
+    question: (val.question) ?? (utilities.getEnv("PULUMI_THE_QUESTION") || "<unknown>"),
+    recursive: (val.recursive ? pulumi.output(val.recursive).apply(inputs.layeredTypeArgsProvideDefaults) : undefined),
+    thinker: (val.thinker) ?? "not a good interaction",
+    };
 }
