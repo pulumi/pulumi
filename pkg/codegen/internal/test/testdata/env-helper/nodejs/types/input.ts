@@ -49,6 +49,10 @@ export interface LayeredTypeArgs {
      */
     question?: pulumi.Input<string>;
     recursive?: pulumi.Input<inputs.LayeredTypeArgs>;
+    /**
+     * To ask and answer
+     */
+    thinker: pulumi.Input<string>;
 }
 /**
  * layeredTypeArgsProvideDefaults sets the appropriate defaults for LayeredTypeArgs
@@ -60,6 +64,7 @@ export function layeredTypeArgsProvideDefaults(val: pulumi.Input<LayeredTypeArgs
         other: inputs.helmReleaseSettingsArgsProvideDefaults(val.other)!,
         question: (val.question) ?? (utilities.getEnv("PULUMI_THE_QUESTION") || "<unknown>"),
         recursive: inputs.layeredTypeArgsProvideDefaults(val.recursive),
+        thinker: (val.thinker) ?? "not a good interaction",
     });
     return val ? pulumi.output(val).apply(def) : undefined;
 }

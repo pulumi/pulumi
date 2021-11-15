@@ -71,6 +71,11 @@
             "environment": ["PULUMI_THE_QUESTION"]
           }
         },
+        "thinker": {
+          "description": "To ask and answer",
+          "type": "string",
+          "default": "not a good interaction"
+        },
         "other": {
           "$ref": "#/types/example:index:HelmReleaseSettings"
         },
@@ -78,7 +83,7 @@
           "$ref": "#/types/example:index:LayeredType"
         }
       },
-      "required": ["other"]
+      "required": ["other", "thinker"]
     }
   },
   "language": {
