@@ -116,6 +116,9 @@ type pkgContext struct {
 
 	// Determines if we should emit type registration code
 	disableInputTypeRegistrations bool
+
+	// Determines if we should emit object defaults code
+	disableObjectDefaults bool
 }
 
 func (pkg *pkgContext) detailsForType(t schema.Type) *typeDetails {
@@ -2668,6 +2671,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				packages:                      packages,
 				liftSingleValueMethodReturns:  goInfo.LiftSingleValueMethodReturns,
 				disableInputTypeRegistrations: goInfo.DisableInputTypeRegistrations,
+				disableObjectDefaults:         goInfo.DisableObjectDefaults,
 			}
 			packages[mod] = pack
 		}
