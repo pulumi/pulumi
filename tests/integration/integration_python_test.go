@@ -752,6 +752,10 @@ func TestConstructMethodsUnknownPython(t *testing.T) {
 	testConstructMethodsUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
+func TestConstructMethodsResourcesPython(t *testing.T) {
+	testConstructMethodsResources(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
 func TestConstructProviderPython(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {

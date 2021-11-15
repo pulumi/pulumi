@@ -623,6 +623,10 @@ func TestConstructMethodsUnknownGo(t *testing.T) {
 	testConstructMethodsUnknown(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
+func TestConstructMethodsResourcesGo(t *testing.T) {
+	testConstructMethodsResources(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
 func TestConstructProviderGo(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {

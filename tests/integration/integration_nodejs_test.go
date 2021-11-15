@@ -1044,6 +1044,10 @@ func TestConstructMethodsUnknownNode(t *testing.T) {
 	testConstructMethodsUnknown(t, "nodejs", "@pulumi/pulumi")
 }
 
+func TestConstructMethodsResourcesNode(t *testing.T) {
+	testConstructMethodsResources(t, "nodejs", "@pulumi/pulumi")
+}
+
 func TestConstructProviderNode(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {
