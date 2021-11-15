@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 from typing import Dict, Any, Optional, Tuple, List, Set, Callable, Awaitable
 from semver import VersionInfo as Version
 
@@ -24,6 +25,21 @@ from pulumi.resource import CustomResource, ResourceOptions
 from pulumi.runtime.proto.provider_pb2 import ConstructRequest
 from google.protobuf import struct_pb2
 import pulumi.output
+
+
+def pulumi_test(coro):
+    wrapped = pulumi.runtime.test(coro)
+
+    @functools.wraps(wrapped)
+    def wrapper(*args, **kwargs):
+        configure(Settings())
+        rpc._RESOURCE_PACKAGES.clear()
+        rpc._RESOURCE_MODULES.clear()
+        rpc_manager.RPC_MANAGER = rpc_manager.RPCManager()
+
+        wrapped(*args, **kwargs)
+
+    return wrapper
 
 
 @pytest.mark.asyncio
@@ -147,38 +163,23 @@ class UnmarshalOutputTestCase:
         self.expected = expected
         self.assert_ = assert_
 
-    @staticmethod
-    def before():
-        configure(Settings())
-        rpc._RESOURCE_PACKAGES.clear()
-        rpc._RESOURCE_MODULES.clear()
-        rpc_manager.RPC_MANAGER = rpc_manager.RPCManager()
-
-    @staticmethod
-    def after():
-        UnmarshalOutputTestCase.before()
-
     async def run(self):
-        self.before()
-        try:
-            pulumi.runtime.set_mocks(TestMocks(), "project", "stack", True)
-            pulumi.runtime.register_resource_module("test", "index", TestModule())
-            # This registers the resource purely for the purpose of the test.
-            pulumi.runtime.settings.get_monitor().resources[test_urn] = \
-                pulumi.runtime.mocks.MockMonitor.ResourceRegistration(test_urn, test_id, dict())
+        pulumi.runtime.set_mocks(TestMocks(), "project", "stack", True)
+        pulumi.runtime.register_resource_module("test", "index", TestModule())
+        # This registers the resource purely for the purpose of the test.
+        pulumi.runtime.settings.get_monitor().resources[test_urn] = \
+            pulumi.runtime.mocks.MockMonitor.ResourceRegistration(test_urn, test_id, dict())
 
-            inputs = { "value": self.input_ }
-            input_struct = _as_struct(inputs)
-            req = ConstructRequest(inputs=input_struct)
-            result = await ProviderServicer._construct_inputs(
-                req.inputs, MockInputDependencies(self.deps)) # pylint: disable=no-member
-            actual = result["value"]
-            if self.assert_:
-                await self.assert_(actual)
-            else:
-                assert actual == self.expected
-        finally:
-            self.after()
+        inputs = { "value": self.input_ }
+        input_struct = _as_struct(inputs)
+        req = ConstructRequest(inputs=input_struct)
+        result = await ProviderServicer._construct_inputs(
+            req.inputs, MockInputDependencies(self.deps)) # pylint: disable=no-member
+        actual = result["value"]
+        if self.assert_:
+            await self.assert_(actual)
+        else:
+            assert actual == self.expected
 
 
 class Assert:
@@ -224,6 +225,21 @@ class Assert:
             return True
         return check
 
+async def array_nested_resource_ref(actual):
+    async def helper(v: Any):
+        assert isinstance(v, list)
+        assert isinstance(v[0], MockResource)
+        assert await v[0].urn.future() == test_urn
+        assert await v[0].id.future() == test_id
+    await assert_output_equal(helper, True, False, [test_urn])(actual)
+
+async def object_nested_resource_ref(actual):
+    async def helper(v: Any):
+        assert isinstance(v["foo"], MockResource)
+        assert await v["foo"].urn.future() == test_urn
+        assert await v["foo"].id.future() == test_id
+    await assert_output_equal(helper, True, False, [test_urn])(actual)
+
 async def object_nested_resource_ref_and_secret(actual):
     async def helper(v: Any):
         assert isinstance(v["foo"], MockResource)
@@ -254,17 +270,17 @@ deserialization_tests = [
     ),
     UnmarshalOutputTestCase(
         name="unknown output value",
-        input_=create_output_value(),
-        assert_=assert_output_equal(None, False, False),
-    ),
-    UnmarshalOutputTestCase(
-        name="unknown output value deps",
         input_=create_output_value(None, False, ["fakeURN"]),
         deps=["fakeURN"],
         assert_=assert_output_equal(None, False, False, ["fakeURN"]),
     ),
     UnmarshalOutputTestCase(
-        name="array nested unknown output value deps",
+        name="unknown output value (no deps)",
+        input_=create_output_value(),
+        assert_=assert_output_equal(None, False, False),
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested unknown output value",
         input_=[create_output_value(None, False, ["fakeURN"])],
         deps=["fakeURN"],
         assert_=Assert(
@@ -273,7 +289,15 @@ deserialization_tests = [
         ),
     ),
     UnmarshalOutputTestCase(
-        name="object nested unknown output value deps",
+        name="array nested unknown output value (no deps)",
+        input_=[create_output_value(None, False, ["fakeURN"])],
+        assert_=Assert(
+            lambda actual: isinstance(actual, list),
+            lambda actual: assert_output_equal(None, False, False, ["fakeURN"])(actual[0])
+        ),
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested unknown output value",
         input_= { "foo": create_output_value(None, False, ["fakeURN"]) },
         deps=["fakeURN"],
         assert_=Assert(
@@ -282,33 +306,41 @@ deserialization_tests = [
         ),
     ),
     UnmarshalOutputTestCase(
-        name="string value no deps",
+        name="object nested unknown output value (no deps)",
+        input_= { "foo": create_output_value(None, False, ["fakeURN"]) },
+        assert_=Assert(
+            lambda actual: not isinstance(actual, pulumi.Output),
+            lambda actual: assert_output_equal(None, False, False, ["fakeURN"])(actual["foo"]),
+        ),
+    ),
+    UnmarshalOutputTestCase(
+        name="string value (no deps)",
         input_="hi",
         expected="hi",
     ),
     UnmarshalOutputTestCase(
-        name="array nested string value no deps",
+        name="array nested string value (no deps)",
         input_=["hi"],
         expected=["hi"],
     ),
     UnmarshalOutputTestCase(
-        name="object nested string value no deps",
+        name="object nested string value (no deps)",
         input_= { "foo": "hi" },
         expected= { "foo": "hi" },
     ),
     UnmarshalOutputTestCase(
-        name="string output value no deps",
-        input_=create_output_value("hi"),
-        assert_=assert_output_equal("hi", True, False),
-    ),
-    UnmarshalOutputTestCase(
-        name="string output value deps",
+        name="string output value",
         input_=create_output_value("hi", False, ["fakeURN"]),
         deps=["fakeURN"],
         assert_=assert_output_equal("hi", True, False, ["fakeURN"]),
     ),
     UnmarshalOutputTestCase(
-        name="array nested string output value deps",
+        name="string output value (no deps)",
+        input_=create_output_value("hi"),
+        assert_=assert_output_equal("hi", True, False),
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested string output value",
         input_=[create_output_value("hi", False, ["fakeURN"])],
         deps=["fakeURN"],
         assert_=Assert(
@@ -317,7 +349,15 @@ deserialization_tests = [
         ),
     ),
     UnmarshalOutputTestCase(
-        name="object nested string output value deps",
+        name="array nested string output value (no deps)",
+        input_=[create_output_value("hi", False, ["fakeURN"])],
+        assert_=Assert(
+            lambda actual: isinstance(actual, list),
+            lambda actual: assert_output_equal("hi", True, False, ["fakeURN"])(actual[0]),
+        ),
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested string output value",
         input_={ "foo": create_output_value("hi", False, ["fakeURN"])},
         deps=["fakeURN"],
         assert_=Assert(
@@ -326,27 +366,35 @@ deserialization_tests = [
         ),
     ),
     UnmarshalOutputTestCase(
-        name="string secrets",
+        name="object nested string output value (no deps)",
+        input_={ "foo": create_output_value("hi", False, ["fakeURN"])},
+        assert_=Assert(
+            lambda actual: not isinstance(actual, pulumi.Output),
+            lambda actual: assert_output_equal("hi", True, False, ["fakeURN"])(actual["foo"])
+        ),
+    ),
+    UnmarshalOutputTestCase(
+        name="string secrets (no deps)",
         input_=create_secret("shh"),
         assert_=assert_output_equal("shh", True, True),
     ),
     UnmarshalOutputTestCase(
-        name="array nested string secrets",
+        name="array nested string secrets (no deps)",
         input_=[create_secret("shh")],
         assert_=assert_output_equal(["shh"], True, True),
     ),
     UnmarshalOutputTestCase(
-        name="object nested string secrets",
+        name="object nested string secrets (no deps)",
         input_={ "foo": create_secret("shh")},
         assert_=assert_output_equal({"foo": "shh"}, True, True),
     ),
     UnmarshalOutputTestCase(
-        name="string secret output value",
+        name="string secret output value (no deps)",
         input_=create_output_value("shh", True),
         assert_=assert_output_equal("shh", True, True),
     ),
     UnmarshalOutputTestCase(
-        name="array nested string secret output value",
+        name="array nested string secret output value (no deps)",
         input_=[create_output_value("shh", True)],
         assert_=Assert(
             lambda actual: isinstance(actual, list),
@@ -354,7 +402,7 @@ deserialization_tests = [
         ),
     ),
     UnmarshalOutputTestCase(
-        name="object nested string secret output value",
+        name="object nested string secret output value (no deps)",
         input_={"foo": create_output_value("shh", True)},
         assert_=Assert(
             lambda actual: not isinstance(actual, pulumi.Output),
@@ -362,13 +410,18 @@ deserialization_tests = [
             ),
     ),
     UnmarshalOutputTestCase(
-        name="string secret output value deps",
+        name="string secret output value",
         input_=create_output_value("shh", True, ["fakeURN1", "fakeURN2"]),
         deps=["fakeURN1", "fakeURN2"],
         assert_=assert_output_equal("shh", True, True, ["fakeURN1", "fakeURN2"]),
     ),
     UnmarshalOutputTestCase(
-        name="array nested string secret output value deps",
+        name="string secret output value (no deps)",
+        input_=create_output_value("shh", True, ["fakeURN1", "fakeURN2"]),
+        assert_=assert_output_equal("shh", True, True, ["fakeURN1", "fakeURN2"]),
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested string secret output value",
         input_=[create_output_value("shh", True, ["fakeURN1", "fakeURN2"])],
         deps=["fakeURN1", "fakeURN2"],
         assert_=Assert(
@@ -377,9 +430,25 @@ deserialization_tests = [
         ),
     ),
     UnmarshalOutputTestCase(
-        name="object nested string secret output value deps",
+        name="array nested string secret output value (no deps)",
+        input_=[create_output_value("shh", True, ["fakeURN1", "fakeURN2"])],
+        assert_=Assert(
+            lambda actual: isinstance(actual, list),
+            lambda actual: assert_output_equal("shh", True, True, ["fakeURN1", "fakeURN2"])(actual[0]),
+        ),
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested string secret output value",
         input_={ "foo": create_output_value("shh", True, ["fakeURN1", "fakeURN2"])},
         deps=["fakeURN1", "fakeURN2"],
+        assert_=Assert(
+            lambda actual: not isinstance(actual, pulumi.Output),
+            lambda actual: assert_output_equal("shh", True, True, ["fakeURN1", "fakeURN2"])(actual["foo"]),
+        ),
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested string secret output value (no deps)",
+        input_={ "foo": create_output_value("shh", True, ["fakeURN1", "fakeURN2"])},
         assert_=Assert(
             lambda actual: not isinstance(actual, pulumi.Output),
             lambda actual: assert_output_equal("shh", True, True, ["fakeURN1", "fakeURN2"])(actual["foo"]),
@@ -396,9 +465,23 @@ deserialization_tests = [
         ),
     ),
     UnmarshalOutputTestCase(
+        name="resource ref (no deps)",
+        input_=create_resource_ref(test_urn, test_id),
+        assert_=Assert(
+            lambda actual: isinstance(actual, MockResource),
+            Assert.async_equal(lambda actual: actual.urn.future(), test_urn),
+            Assert.async_equal(lambda actual: actual.id.future(), test_id),
+        ),
+    ),
+    UnmarshalOutputTestCase(
         name="array nested resource ref",
         input_=[create_resource_ref(test_urn, test_id)],
         deps=[test_urn],
+        assert_=array_nested_resource_ref
+    ),
+    UnmarshalOutputTestCase(
+        name="array nested resource ref (no deps)",
+        input_=[create_resource_ref(test_urn, test_id)],
         assert_=Assert(
             lambda actual: isinstance(actual, list),
             lambda actual: isinstance(actual[0], MockResource),
@@ -410,6 +493,11 @@ deserialization_tests = [
         name="object nested resource ref",
         input_={ "foo": create_resource_ref(test_urn, test_id) },
         deps=[test_urn],
+        assert_=object_nested_resource_ref
+    ),
+    UnmarshalOutputTestCase(
+        name="object nested resource ref (no deps)",
+        input_={ "foo": create_resource_ref(test_urn, test_id) },
         assert_=Assert(
             lambda actual: isinstance(actual["foo"], MockResource),
             Assert.async_equal(lambda actual: actual["foo"].urn.future(), test_urn),
@@ -440,11 +528,25 @@ deserialization_tests = [
             lambda actual: assert_output_equal("shh", True, True)(actual["bar"]),
         ),
     ),
+    UnmarshalOutputTestCase(
+        name="object nested resource ref and secret output value (no deps)",
+        input_={
+            "foo": create_resource_ref(test_urn, test_id),
+            "bar": create_output_value("shh", True),
+        },
+        assert_=Assert(
+            lambda actual: not isinstance(actual, pulumi.Output),
+            lambda actual: isinstance(actual["foo"], MockResource),
+            Assert.async_equal(lambda actual: actual["foo"].urn.future(), test_urn),
+            Assert.async_equal(lambda actual: actual["foo"].id.future(), test_id),
+            lambda actual: assert_output_equal("shh", True, True)(actual["bar"]),
+        ),
+    ),
 ]
 
 
 @pytest.mark.parametrize(
     "testcase", deserialization_tests, ids=list(map(lambda x: x.name, deserialization_tests)))
-@pytest.mark.asyncio
+@pulumi_test
 async def test_deserialize_correctly(testcase):
     await testcase.run()

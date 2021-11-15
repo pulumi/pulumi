@@ -37,6 +37,7 @@ import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
 
+
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
@@ -110,30 +111,23 @@ class ProviderServicer(ResourceProviderServicer):
                            proto.ConstructRequest.PropertyDependencies()
                        ).urns)
 
-        gathered_prop_deps: Dict[str, Set[str]] = {}
-        # rpc.deserialize_properties mutates gathered_prop_deps
-        props = rpc.deserialize_properties(inputs, keep_unknowns=True, prop_deps=gathered_prop_deps)
         return {
-            k: await ProviderServicer._create_output(
-                the_input, deps(k), gathered_prop_deps[k] if k in gathered_prop_deps else None
-            )
+            k: await ProviderServicer._select_value(the_input, deps=deps(k))
             for k, the_input in
-            props.items()
+            rpc.deserialize_properties(inputs, keep_unknowns=True).items()
         }
 
     @staticmethod
-    async def _create_output(the_input: Any, deps: Set[str], gathered_prop_deps: Optional[Set[str]] = None) -> Any:
+    async def _select_value(the_input: Any, deps: Set[str]) -> Any:
         is_secret = rpc.is_rpc_secret(the_input)
 
-        # If the property dependencies are equal to or a subset of the gathered nested
-        # dependencies, we don't need to create a top-level output for the property
-        # because any nested output values will have already been deserialized as outputs.
-        if gathered_prop_deps and not is_secret and gathered_prop_deps.issuperset(deps):
-            return the_input
-
-        # If it's a resource reference or a prompt value, return it directly without wrapping
-        # it as an output.
-        if await _is_resource_reference(the_input, deps) or (not is_secret and len(deps) == 0):
+        # If the input isn't a secret and either doesn't have any dependencies, already contains Outputs (from
+        # deserialized output values), or is a resource reference, then return it directly without wrapping it
+        # as an output.
+        if not is_secret and (
+                len(deps) == 0 or
+                _contains_outputs(the_input) or
+                await _is_resource_reference(the_input, deps)):
             return the_input
 
         # Otherwise, wrap it as an output so we can handle secrets
@@ -230,7 +224,7 @@ class ProviderServicer(ResourceProviderServicer):
                        ).urns)
 
         return {
-            k: await ProviderServicer._create_output(the_input, deps=deps(k))
+            k: await ProviderServicer._select_value(the_input, deps=deps(k))
             for k, the_input in
             # We need to keep_internal, to keep the `__self__` that would normally be filtered because
             # it starts with "__".
@@ -339,6 +333,25 @@ async def _is_resource_reference(the_input: Any, deps: Set[str]) -> bool:
     return (known_types.is_resource(the_input)
         and len(deps) == 1
         and next(iter(deps)) == await cast(Resource, the_input).urn.future())
+
+
+def _contains_outputs(the_input: Any) -> bool:
+    """
+    Returns true if the input contains Outputs (deeply).
+    """
+    if known_types.is_output(the_input):
+        return True
+
+    if isinstance(the_input, list):
+        for e in the_input:
+            if _contains_outputs(e):
+                return True
+    elif isinstance(the_input, dict):
+        for k in the_input:
+            if _contains_outputs(the_input[k]):
+                return True
+
+    return False
 
 
 def _create_provider_resource(ref: str) -> ProviderResource:
