@@ -35,6 +35,8 @@ func TestEmptyNodeJS(t *testing.T) {
 
 // Tests emitting many engine events doesn't result in a performance problem.
 func TestEngineEventPerf(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7883]
+
 	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
 	// Since then, it should now be down to ~4s, with additional padding,
 	// since some Travis machines (especially the macOS ones) seem quite slow
