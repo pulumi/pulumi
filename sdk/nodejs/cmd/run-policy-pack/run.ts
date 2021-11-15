@@ -181,10 +181,10 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
             skipProject: skipProject,
             compilerOptions: {
                 target: "es6",
-                module: "commonjs",
                 moduleResolution: "node",
                 sourceMap: "true",
                 ...compilerOptions,
+                module: "commonjs"
             },
         });
     }

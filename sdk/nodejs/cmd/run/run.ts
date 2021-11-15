@@ -168,10 +168,10 @@ export function run(argv: minimist.ParsedArgs,
             skipProject: skipProject,
             compilerOptions: {
                 target: "es6",
-                module: "commonjs",
                 moduleResolution: "node",
                 sourceMap: "true",
                 ...compilerOptions,
+                module: "commonjs"
             },
         });
     }

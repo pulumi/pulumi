@@ -10,6 +10,9 @@
 - [sdk/dotnet] - Marshal output values.
   [#8316](https://github.com/pulumi/pulumi/pull/8316)
 
+- [sdk/nodejs] - Always use `"module": "commonjs"` TypeScript option when compiling `pulumi.ts`
+  []()
+
 ### Bug Fixes
 
 - [engine] - Compute dependents correctly during targeted deletes.
