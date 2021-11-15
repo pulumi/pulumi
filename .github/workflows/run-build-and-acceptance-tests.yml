@@ -245,7 +245,6 @@ jobs:
         run: |
           goteststats -statistic test-time test-results/*.json | head -n 100
 
-
   windows-build:
     name: Windows Build + Test
     strategy:
@@ -337,3 +336,6 @@ jobs:
         run: |
           cd src\github.com\${{ github.repository }}
           dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
+
+  cross-platform-build:
+    uses: pulumi/pulumi/.github/workflows/build.yml@dae78945d657d176f918fadcfc80840215ffcb89
