@@ -27,8 +27,18 @@
         "kubeClientSettings": {
           "$ref": "#/types/example:index:KubeClientSettings",
           "description": "Options for tuning the Kubernetes client used by a Provider."
+        },
+        "defaultKubeClientSettings": {
+          "$ref": "#/types/example:index:KubeClientSettings",
+          "description": "A test for plain types",
+          "plain": true
+        },
+        "backupKubeClientSettings": {
+          "$ref": "#/types/example:index:KubeClientSettings",
+          "description": "Options for tuning the Kubernetes client used by a Provider."
         }
-      }
+      },
+      "requiredInputs": ["backupKubeClientSettings"]
     }
   },
   "types": {

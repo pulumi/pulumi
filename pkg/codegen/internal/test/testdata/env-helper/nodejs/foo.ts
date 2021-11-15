@@ -43,13 +43,18 @@ export class Foo extends pulumi.CustomResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: FooArgs, opts?: pulumi.CustomResourceOptions) {
+    constructor(name: string, args: FooArgs, opts?: pulumi.CustomResourceOptions) {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
+            if ((!args || args.backupKubeClientSettings === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'backupKubeClientSettings'");
+            }
             resourceInputs["argument"] = args ? args.argument : undefined;
-            resourceInputs["kubeClientSettings"] = args ? inputs.kubeClientSettingsArgsProvideDefaults(args.kubeClientSettings) : undefined;
-            resourceInputs["settings"] = args ? inputs.layeredTypeArgsProvideDefaults(args.settings) : undefined;
+            resourceInputs["backupKubeClientSettings"] = args ? (args.backupKubeClientSettings ? pulumi.output(args.backupKubeClientSettings).apply(inputs.kubeClientSettingsArgsProvideDefaults) : undefined) : undefined;
+            resourceInputs["defaultKubeClientSettings"] = args ? (args.defaultKubeClientSettings ? inputs.kubeClientSettingsArgsProvideDefaults(args.defaultKubeClientSettings) : undefined) : undefined;
+            resourceInputs["kubeClientSettings"] = args ? (args.kubeClientSettings ? pulumi.output(args.kubeClientSettings).apply(inputs.kubeClientSettingsArgsProvideDefaults) : undefined) : undefined;
+            resourceInputs["settings"] = args ? (args.settings ? pulumi.output(args.settings).apply(inputs.layeredTypeArgsProvideDefaults) : undefined) : undefined;
         } else {
         }
         if (!opts.version) {
@@ -64,6 +69,14 @@ export class Foo extends pulumi.CustomResource {
  */
 export interface FooArgs {
     argument?: string;
+    /**
+     * Options for tuning the Kubernetes client used by a Provider.
+     */
+    backupKubeClientSettings: pulumi.Input<inputs.KubeClientSettingsArgs>;
+    /**
+     * A test for plain types
+     */
+    defaultKubeClientSettings?: inputs.KubeClientSettingsArgs;
     /**
      * Options for tuning the Kubernetes client used by a Provider.
      */

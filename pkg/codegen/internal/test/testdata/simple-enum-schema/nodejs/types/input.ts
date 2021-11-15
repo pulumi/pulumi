@@ -15,10 +15,9 @@ export interface ContainerArgs {
 /**
  * containerArgsProvideDefaults sets the appropriate defaults for ContainerArgs
  */
-export function containerArgsProvideDefaults(val: pulumi.Input<ContainerArgs> | undefined): pulumi.Output<ContainerArgs> | undefined {
-    const def = (val: ContainerArgs) => ({
+export function containerArgsProvideDefaults(val: ContainerArgs): ContainerArgs {
+    return {
         ...val,
-        brightness: (val.brightness) ?? 1,
-    });
-    return val ? pulumi.output(val).apply(def) : undefined;
+    brightness: (val.brightness) ?? 1,
+    };
 }

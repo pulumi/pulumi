@@ -22,7 +22,7 @@ test new feature with resoruces
 
 
 {{% choosable language nodejs %}}
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -30,20 +30,22 @@ test new feature with resoruces
 <span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
         <span class="nx">argument</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
+        <span class="nx">backup_kube_client_settings</span><span class="p">:</span> <span class="nx">Optional[KubeClientSettingsArgs]</span> = None<span class="p">,</span>
+        <span class="nx">default_kube_client_settings</span><span class="p">:</span> <span class="nx">Optional[KubeClientSettingsArgs]</span> = None<span class="p">,</span>
         <span class="nx">kube_client_settings</span><span class="p">:</span> <span class="nx">Optional[KubeClientSettingsArgs]</span> = None<span class="p">,</span>
         <span class="nx">settings</span><span class="p">:</span> <span class="nx">Optional[LayeredTypeArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
-        <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[FooArgs]</a></span> = None<span class="p">,</span>
+        <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
 {{% /choosable %}}
 
 {{% choosable language go %}}
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewFoo</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Foo</span>, error)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewFoo</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Foo</span>, error)</span></code></pre></div>
 {{% /choosable %}}
 
 {{% choosable language csharp %}}
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -55,7 +57,7 @@ test new feature with resoruces
         <span class="property-type">string</span>
     </dt>
     <dd>The unique name of the resource.</dd><dt
-        class="property-optional" title="Optional">
+        class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#inputs">FooArgs</a></span>
@@ -79,7 +81,7 @@ test new feature with resoruces
         <span class="property-type">str</span>
     </dt>
     <dd>The unique name of the resource.</dd><dt
-        class="property-optional" title="Optional">
+        class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#inputs">FooArgs</a></span>
@@ -109,7 +111,7 @@ test new feature with resoruces
         <span class="property-type">string</span>
     </dt>
     <dd>The unique name of the resource.</dd><dt
-        class="property-optional" title="Optional">
+        class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#inputs">FooArgs</a></span>
@@ -133,7 +135,7 @@ test new feature with resoruces
         <span class="property-type">string</span>
     </dt>
     <dd>The unique name of the resource.</dd><dt
-        class="property-optional" title="Optional">
+        class="property-required" title="Required">
         <span>args</span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#inputs">FooArgs</a></span>
@@ -159,7 +161,15 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 
 
 {{% choosable language csharp %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="backupkubeclientsettings_csharp">
+<a href="#backupkubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Backup<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="argument_csharp">
 <a href="#argument_csharp" style="color: inherit; text-decoration: inherit;">Argument</a>
@@ -168,6 +178,14 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-type">string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="defaultkubeclientsettings_csharp">
+<a href="#defaultkubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Default<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}A test for plain types{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="kubeclientsettings_csharp">
 <a href="#kubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Kube<wbr>Client<wbr>Settings</a>
@@ -187,7 +205,15 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 {{% /choosable %}}
 
 {{% choosable language go %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="backupkubeclientsettings_go">
+<a href="#backupkubeclientsettings_go" style="color: inherit; text-decoration: inherit;">Backup<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="argument_go">
 <a href="#argument_go" style="color: inherit; text-decoration: inherit;">Argument</a>
@@ -196,6 +222,14 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-type">string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="defaultkubeclientsettings_go">
+<a href="#defaultkubeclientsettings_go" style="color: inherit; text-decoration: inherit;">Default<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}A test for plain types{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="kubeclientsettings_go">
 <a href="#kubeclientsettings_go" style="color: inherit; text-decoration: inherit;">Kube<wbr>Client<wbr>Settings</a>
@@ -215,7 +249,15 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="backupkubeclientsettings_nodejs">
+<a href="#backupkubeclientsettings_nodejs" style="color: inherit; text-decoration: inherit;">backup<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="argument_nodejs">
 <a href="#argument_nodejs" style="color: inherit; text-decoration: inherit;">argument</a>
@@ -224,6 +266,14 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-type">string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="defaultkubeclientsettings_nodejs">
+<a href="#defaultkubeclientsettings_nodejs" style="color: inherit; text-decoration: inherit;">default<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}A test for plain types{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="kubeclientsettings_nodejs">
 <a href="#kubeclientsettings_nodejs" style="color: inherit; text-decoration: inherit;">kube<wbr>Client<wbr>Settings</a>
@@ -243,7 +293,15 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 {{% /choosable %}}
 
 {{% choosable language python %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="backup_kube_client_settings_python">
+<a href="#backup_kube_client_settings_python" style="color: inherit; text-decoration: inherit;">backup_<wbr>kube_<wbr>client_<wbr>settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="argument_python">
 <a href="#argument_python" style="color: inherit; text-decoration: inherit;">argument</a>
@@ -252,6 +310,14 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-type">str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="default_kube_client_settings_python">
+<a href="#default_kube_client_settings_python" style="color: inherit; text-decoration: inherit;">default_<wbr>kube_<wbr>client_<wbr>settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+    </dt>
+    <dd>{{% md %}}A test for plain types{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="kube_client_settings_python">
 <a href="#kube_client_settings_python" style="color: inherit; text-decoration: inherit;">kube_<wbr>client_<wbr>settings</a>

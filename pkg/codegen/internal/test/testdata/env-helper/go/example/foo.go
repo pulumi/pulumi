@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -19,9 +20,12 @@ type Foo struct {
 func NewFoo(ctx *pulumi.Context,
 	name string, args *FooArgs, opts ...pulumi.ResourceOption) (*Foo, error) {
 	if args == nil {
-		args = &FooArgs{}
+		return nil, errors.New("missing one or more required arguments")
 	}
 
+	if args.BackupKubeClientSettings == nil {
+		return nil, errors.New("invalid value for required argument 'BackupKubeClientSettings'")
+	}
 	var resource Foo
 	err := ctx.RegisterResource("example:index:Foo", name, args, &resource, opts...)
 	if err != nil {
@@ -56,6 +60,10 @@ func (FooState) ElementType() reflect.Type {
 type fooArgs struct {
 	Argument *string `pulumi:"argument"`
 	// Options for tuning the Kubernetes client used by a Provider.
+	BackupKubeClientSettings KubeClientSettings `pulumi:"backupKubeClientSettings"`
+	// A test for plain types
+	DefaultKubeClientSettings *KubeClientSettings `pulumi:"defaultKubeClientSettings"`
+	// Options for tuning the Kubernetes client used by a Provider.
 	KubeClientSettings *KubeClientSettings `pulumi:"kubeClientSettings"`
 	// describing things
 	Settings *LayeredType `pulumi:"settings"`
@@ -64,6 +72,10 @@ type fooArgs struct {
 // The set of arguments for constructing a Foo resource.
 type FooArgs struct {
 	Argument *string
+	// Options for tuning the Kubernetes client used by a Provider.
+	BackupKubeClientSettings KubeClientSettingsInput
+	// A test for plain types
+	DefaultKubeClientSettings *KubeClientSettingsArgs
 	// Options for tuning the Kubernetes client used by a Provider.
 	KubeClientSettings KubeClientSettingsPtrInput
 	// describing things

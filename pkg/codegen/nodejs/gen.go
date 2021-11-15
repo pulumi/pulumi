@@ -427,12 +427,18 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 			// ProvideDefaults functions have the form `(Input<shape> | undefined) ->
 			// Output<shape> | undefined`. We need to disallow the undefined. This is safe
 			// because val.%arg existed in the input (type system enforced).
-			symbol := ""
-			if p.IsRequired() {
-				symbol = "!"
+			var compositeObject string
+			if codegen.IsNOptionalInput(p.Type) {
+				compositeObject = fmt.Sprintf("pulumi.output(val.%s).apply(%s)", p.Name, funcName)
+			} else {
+				compositeObject = fmt.Sprintf("%s(val.%s)", funcName, p.Name)
 			}
-			compositeObject := fmt.Sprintf("%[1]s: %[2]s(val.%[1]s)%[3]s", p.Name, funcName, symbol)
-			defaults = append(defaults, compositeObject)
+			if p.IsRequired() {
+				compositeObject = compositeObject + "!"
+			} else {
+				compositeObject = fmt.Sprintf("(val.%s ? %s : undefined)", p.Name, compositeObject)
+			}
+			defaults = append(defaults, fmt.Sprintf("%s: %s", p.Name, compositeObject))
 		}
 
 		typ := mod.typeString(propertyType, input, p.ConstValue)
@@ -449,22 +455,17 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 		defaultProvderName := provideDefaultsFuncNameFromName(name)
 		printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s",
 			defaultProvderName, name), "", indent)
-		fmt.Fprintf(w, "%sexport function %s(val: pulumi.Input<%s> | undefined): "+
-			"pulumi.Output<%s> | undefined {\n", indent, defaultProvderName, name, name)
-		fmt.Fprintf(w, "%s    const def = (val: %s) => ({\n", indent, name)
+		fmt.Fprintf(w, "%sexport function %s(val: %s): "+
+			"%s {\n", indent, defaultProvderName, name, name)
+		fmt.Fprintf(w, "%s    return {\n", indent)
 		fmt.Fprintf(w, "%s        ...val,\n", indent)
 
 		// Fields look as follows
 		// %s: (val.%s) ?? devValue,
 		for _, val := range defaults {
-			fmt.Fprintf(w, "%s        %s,\n", indent, val)
+			fmt.Fprintf(w, "%s    %s,\n", indent, val)
 		}
-
-		// Function footer looks as follows.
-		// });
-		// return val ? pulumi.output(val).apply(def) : undefined;
-		fmt.Fprintf(w, "%s    });\n", indent)
-		fmt.Fprintf(w, "%s    return val ? pulumi.output(val).apply(def) : undefined;\n", indent)
+		fmt.Fprintf(w, "%s    };\n", indent)
 		fmt.Fprintf(w, "%s}\n", indent)
 	}
 	return nil
@@ -758,7 +759,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			var arg string
 			applyDefaults := func(arg string) string {
 				if name := mod.provideDefaultsFuncName(prop.Type); name != "" {
-					arg = fmt.Sprintf("%s(%s)", name, arg)
+					var body string
+					if codegen.IsNOptionalInput(prop.Type) {
+						body = fmt.Sprintf("pulumi.output(%[2]s).apply(%[1]s)", name, arg)
+					} else {
+						body = fmt.Sprintf("%s(%s)", name, arg)
+					}
+					return fmt.Sprintf("(%s ? %s : undefined)", arg, body)
 				}
 				return arg
 			}

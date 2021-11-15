@@ -35,7 +35,7 @@ export class Provider extends pulumi.ProviderResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         {
-            resourceInputs["helmReleaseSettings"] = pulumi.output(args ? inputs.helmReleaseSettingsArgsProvideDefaults(args.helmReleaseSettings) : undefined).apply(JSON.stringify);
+            resourceInputs["helmReleaseSettings"] = pulumi.output(args ? (args.helmReleaseSettings ? pulumi.output(args.helmReleaseSettings).apply(inputs.helmReleaseSettingsArgsProvideDefaults) : undefined) : undefined).apply(JSON.stringify);
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});

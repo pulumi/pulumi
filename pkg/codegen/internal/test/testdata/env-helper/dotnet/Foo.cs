@@ -22,7 +22,7 @@ namespace Pulumi.Example
         /// <param name="name">The unique name of the resource</param>
         /// <param name="args">The arguments used to populate this resource's properties</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
-        public Foo(string name, FooArgs? args = null, CustomResourceOptions? options = null)
+        public Foo(string name, FooArgs args, CustomResourceOptions? options = null)
             : base("example:index:Foo", name, args ?? new FooArgs(), MakeResourceOptions(options, ""))
         {
         }
@@ -61,6 +61,18 @@ namespace Pulumi.Example
     {
         [Input("argument")]
         public string? Argument { get; set; }
+
+        /// <summary>
+        /// Options for tuning the Kubernetes client used by a Provider.
+        /// </summary>
+        [Input("backupKubeClientSettings", required: true)]
+        public Input<Inputs.KubeClientSettingsArgs> BackupKubeClientSettings { get; set; } = null!;
+
+        /// <summary>
+        /// A test for plain types
+        /// </summary>
+        [Input("defaultKubeClientSettings")]
+        public Inputs.KubeClientSettingsArgs? DefaultKubeClientSettings { get; set; }
 
         /// <summary>
         /// Options for tuning the Kubernetes client used by a Provider.
