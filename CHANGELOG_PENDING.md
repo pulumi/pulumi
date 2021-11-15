@@ -11,7 +11,7 @@
   [#8316](https://github.com/pulumi/pulumi/pull/8316)
 
 - [sdk/nodejs] - Always use `"module": "commonjs"` TypeScript option when compiling `pulumi.ts`
-  []()
+  [#8416](https://github.com/pulumi/pulumi/pull/8416)
 
 ### Bug Fixes
 
