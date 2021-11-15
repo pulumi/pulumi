@@ -1,0 +1,31 @@
+name: Builds CLI and SDK binaries.
+
+on:
+  workflow_call:
+    inputs: {}
+    secrets: {}
+
+jobs:
+  build_pulumi_cli:
+    name: Builds `pulumi` binary
+    runs-on: ubuntu-latest
+    matrix:
+      go-version: [ 1.17.x ]
+    steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Build `pulumi` CLI
+        run: |
+          make install
+        env:
+          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
