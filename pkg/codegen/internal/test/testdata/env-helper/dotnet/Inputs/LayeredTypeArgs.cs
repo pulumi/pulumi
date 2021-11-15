@@ -33,10 +33,17 @@ namespace Pulumi.Example.Inputs
         [Input("recursive")]
         public Input<Inputs.LayeredTypeArgs>? Recursive { get; set; }
 
+        /// <summary>
+        /// To ask and answer
+        /// </summary>
+        [Input("thinker", required: true)]
+        public Input<string> Thinker { get; set; } = null!;
+
         public LayeredTypeArgs()
         {
             Answer = 42;
             Question = Utilities.GetEnv("PULUMI_THE_QUESTION") ?? "<unknown>";
+            Thinker = "not a good interaction";
         }
     }
 }

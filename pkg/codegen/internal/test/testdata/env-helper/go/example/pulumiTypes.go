@@ -196,6 +196,8 @@ type LayeredType struct {
 	// The question already answered
 	Question  *string      `pulumi:"question"`
 	Recursive *LayeredType `pulumi:"recursive"`
+	// To ask and answer
+	Thinker string `pulumi:"thinker"`
 }
 
 // LayeredTypeInput is an input type that accepts LayeredTypeArgs and LayeredTypeOutput values.
@@ -217,6 +219,8 @@ type LayeredTypeArgs struct {
 	// The question already answered
 	Question  pulumi.StringPtrInput `pulumi:"question"`
 	Recursive LayeredTypePtrInput   `pulumi:"recursive"`
+	// To ask and answer
+	Thinker pulumi.StringInput `pulumi:"thinker"`
 }
 
 func (LayeredTypeArgs) ElementType() reflect.Type {
@@ -315,6 +319,11 @@ func (o LayeredTypeOutput) Recursive() LayeredTypePtrOutput {
 	return o.ApplyT(func(v LayeredType) *LayeredType { return v.Recursive }).(LayeredTypePtrOutput)
 }
 
+// To ask and answer
+func (o LayeredTypeOutput) Thinker() pulumi.StringOutput {
+	return o.ApplyT(func(v LayeredType) string { return v.Thinker }).(pulumi.StringOutput)
+}
+
 type LayeredTypePtrOutput struct{ *pulumi.OutputState }
 
 func (LayeredTypePtrOutput) ElementType() reflect.Type {
@@ -375,6 +384,16 @@ func (o LayeredTypePtrOutput) Recursive() LayeredTypePtrOutput {
 		}
 		return v.Recursive
 	}).(LayeredTypePtrOutput)
+}
+
+// To ask and answer
+func (o LayeredTypePtrOutput) Thinker() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *LayeredType) *string {
+		if v == nil {
+			return nil
+		}
+		return &v.Thinker
+	}).(pulumi.StringPtrOutput)
 }
 
 func init() {
