@@ -398,7 +398,7 @@ func printComment(w io.Writer, comment, deprecationMessage, indent string) {
 }
 
 func (mod *modContext) genPlainType(w io.Writer, name, comment string,
-	properties []*schema.Property, input, readonly, plain bool, level int) error {
+	properties []*schema.Property, input, readonly, plainType bool, level int) error {
 	indent := strings.Repeat("    ", level)
 
 	printComment(w, comment, "", indent)
@@ -441,7 +441,7 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 	fmt.Fprintf(w, "%s}\n", indent)
 
 	// Generate an object type with a default value constructor.
-	if len(defaults) != 0 && plain {
+	if len(defaults) != 0 && plainType {
 		// Generates a function header that looks like this:
 		// export function %sProvideDefaults(val: pulumi.Input<%s> | undefined): pulumi.Output<%s> | undefined {
 		//     const def = (val: LayeredTypeArgs) => ({

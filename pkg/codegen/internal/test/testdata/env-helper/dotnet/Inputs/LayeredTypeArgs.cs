@@ -25,6 +25,12 @@ namespace Pulumi.Example.Inputs
         public Input<Inputs.HelmReleaseSettingsArgs> Other { get; set; } = null!;
 
         /// <summary>
+        /// Test how plain types interact
+        /// </summary>
+        [Input("plainOther")]
+        public Inputs.HelmReleaseSettingsArgs? PlainOther { get; set; }
+
+        /// <summary>
         /// The question already answered
         /// </summary>
         [Input("question")]

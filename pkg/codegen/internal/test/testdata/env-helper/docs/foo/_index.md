@@ -560,6 +560,14 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
+        <span id="plainother_csharp">
+<a href="#plainother_csharp" style="color: inherit; text-decoration: inherit;">Plain<wbr>Other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}Test how plain types interact{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
         <span id="question_csharp">
 <a href="#question_csharp" style="color: inherit; text-decoration: inherit;">Question</a>
 </span>
@@ -603,6 +611,14 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">float64</span>
     </dt>
     <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="plainother_go">
+<a href="#plainother_go" style="color: inherit; text-decoration: inherit;">Plain<wbr>Other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}Test how plain types interact{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="question_go">
 <a href="#question_go" style="color: inherit; text-decoration: inherit;">Question</a>
@@ -648,6 +664,14 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
+        <span id="plainother_nodejs">
+<a href="#plainother_nodejs" style="color: inherit; text-decoration: inherit;">plain<wbr>Other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}Test how plain types interact{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
         <span id="question_nodejs">
 <a href="#question_nodejs" style="color: inherit; text-decoration: inherit;">question</a>
 </span>
@@ -691,6 +715,14 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">float</span>
     </dt>
     <dd>{{% md %}}The answer to the question{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="plain_other_python">
+<a href="#plain_other_python" style="color: inherit; text-decoration: inherit;">plain_<wbr>other</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}Test how plain types interact{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="question_python">
 <a href="#question_python" style="color: inherit; text-decoration: inherit;">question</a>
