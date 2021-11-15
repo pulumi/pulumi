@@ -765,3 +765,7 @@ func TestAboutGo(t *testing.T) {
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "github.com/BurntSushi/toml")
 }
+
+func TestConstructOutputValuesGo(t *testing.T) {
+	testConstructOutputValues(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
