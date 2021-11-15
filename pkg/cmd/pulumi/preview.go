@@ -237,7 +237,7 @@ func newPreviewCmd() *cobra.Command {
 		"Config keys contain a path to a property in a map or list to set")
 	if hasExperimentalCommands() {
 		cmd.PersistentFlags().StringVar(
-			&planFilePath, "save-constaints", "",
+			&planFilePath, "save-constraints", "",
 			"Save the operations proposed by the preview to a constraints file at the given path")
 	}
 	cmd.Flags().BoolVarP(
