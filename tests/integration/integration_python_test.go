@@ -358,6 +358,7 @@ func TestResourceWithSecretSerializationPython(t *testing.T) {
 // Tests that we issue an error if we fail to locate the Python command when running
 // a Python example.
 func TestPython3NotInstalled(t *testing.T) {
+	// TODO[pulumi/pulumi#6304]
 	t.Skip("Temporarily skipping failing test - pulumi/pulumi#6304")
 	stderr := &bytes.Buffer{}
 	badPython := "python3000"

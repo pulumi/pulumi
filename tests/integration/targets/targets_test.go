@@ -18,6 +18,8 @@ import (
 )
 
 func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#4149]
+
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
