@@ -90,8 +90,9 @@ func (e Event) Payload() interface{} {
 }
 
 func cancelEvent() Event {
+	typ := CancelEvent
 	return Event{
-		Type: CancelEvent,
+		Type: typ,
 	}
 }
 
