@@ -522,11 +522,13 @@ func newUpCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
 
-	cmd.PersistentFlags().StringVar(
-		&planFilePath, "constraints-file", "",
-		"Path to a constraints file to use for the update. The update will not "+
-			"perform operations that exceed its constraints (e.g. replacements instead of updates, or updates instead"+
-			"of sames).")
+	if hasExperimentalCommands() {
+		cmd.PersistentFlags().StringVar(
+			&planFilePath, "constraints-file", "",
+			"Path to a constraints file to use for the update. The update will not "+
+				"perform operations that exceed its constraints (e.g. replacements instead of updates, or updates instead"+
+				"of sames).")
+	}
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(
