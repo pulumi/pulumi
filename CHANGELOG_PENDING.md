@@ -11,6 +11,9 @@
 - [sdk/dotnet] - Marshal output values.
   [#8316](https://github.com/pulumi/pulumi/pull/8316)
 
+- [sdk/python] - Unmarshal output values in component provider.
+  [#8212](https://github.com/pulumi/pulumi/pull/8212)
+
 ### Bug Fixes
 
 - [engine] - Compute dependents correctly during targeted deletes.
