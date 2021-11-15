@@ -23,6 +23,10 @@
         "settings": {
           "$ref": "#/types/example:index:LayeredType",
           "description": "describing things"
+        },
+        "kubeClientSettings": {
+          "$ref": "#/types/example:index:KubeClientSettings",
+          "description": "Options for tuning the Kubernetes client used by a Provider."
         }
       }
     }
@@ -84,6 +88,26 @@
         }
       },
       "required": ["other", "thinker"]
+    },
+    "example:index:KubeClientSettings": {
+      "description": "Options for tuning the Kubernetes client used by a Provider.",
+      "properties": {
+        "burst": {
+          "type": "integer",
+          "description": "Maximum burst for throttle. Default value is 10.",
+          "defaultInfo": {
+            "environment": ["PULUMI_K8S_CLIENT_BURST"]
+          }
+        },
+        "qps": {
+          "type": "number",
+          "description": "Maximum queries per second (QPS) to the API server from this client. Default value is 5.",
+          "defaultInfo": {
+            "environment": ["PULUMI_K8S_CLIENT_QPS"]
+          }
+        }
+      },
+      "type": "object"
     }
   },
   "language": {

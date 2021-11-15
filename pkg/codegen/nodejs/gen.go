@@ -573,7 +573,7 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 		}
 
 		cast := ""
-		if t != schema.StringType {
+		if t != schema.StringType && getType == "" {
 			cast = "<any>"
 		}
 

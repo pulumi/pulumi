@@ -55,6 +55,8 @@ func (FooState) ElementType() reflect.Type {
 
 type fooArgs struct {
 	Argument *string `pulumi:"argument"`
+	// Options for tuning the Kubernetes client used by a Provider.
+	KubeClientSettings *KubeClientSettings `pulumi:"kubeClientSettings"`
 	// describing things
 	Settings *LayeredType `pulumi:"settings"`
 }
@@ -62,6 +64,8 @@ type fooArgs struct {
 // The set of arguments for constructing a Foo resource.
 type FooArgs struct {
 	Argument *string
+	// Options for tuning the Kubernetes client used by a Provider.
+	KubeClientSettings KubeClientSettingsPtrInput
 	// describing things
 	Settings LayeredTypePtrInput
 }
