@@ -14,6 +14,9 @@
 - [sdk/python] - Unmarshal output values in component provider.
   [#8212](https://github.com/pulumi/pulumi/pull/8212)
 
+- [sdk/nodejs] - Unmarshal output values in component provider.
+  [#8205](https://github.com/pulumi/pulumi/pull/8205)
+
 ### Bug Fixes
 
 - [engine] - Compute dependents correctly during targeted deletes.
