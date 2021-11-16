@@ -25,6 +25,7 @@ import sys
 import grpc
 import grpc.aio
 
+from google.protobuf import struct_pb2
 from pulumi.provider.provider import Provider, CallResult, ConstructResult
 from pulumi.resource import ProviderResource, Resource, DependencyResource, DependencyProviderResource, \
     _parse_resource_reference
@@ -81,8 +82,7 @@ class ProviderServicer(ResourceProviderServicer):
             preview=request.dryRun)
 
         pulumi.runtime.config.set_all_config(dict(request.config), request.configSecretKeys)
-
-        inputs = await self._construct_inputs(request)
+        inputs = await self._construct_inputs(request.inputs, request.inputDependencies)
 
         result = self.provider.construct(name=request.name,
                                          resource_type=request.type,
@@ -102,28 +102,32 @@ class ProviderServicer(ResourceProviderServicer):
         return response
 
     @staticmethod
-    async def _construct_inputs(request: proto.ConstructRequest) -> Dict[str, pulumi.Input[Any]]:
+    async def _construct_inputs(inputs: struct_pb2.Struct, input_dependencies: Any) -> Dict[str, pulumi.Input[Any]]:
 
         def deps(key: str) -> Set[str]:
             return set(urn for urn in
-                       request.inputDependencies.get(
+                       input_dependencies.get(
                            key,
                            proto.ConstructRequest.PropertyDependencies()
                        ).urns)
 
         return {
-            k: await ProviderServicer._create_output(the_input, deps=deps(k))
+            k: await ProviderServicer._select_value(the_input, deps=deps(k))
             for k, the_input in
-            rpc.deserialize_properties(request.inputs, keep_unknowns=True).items()
+            rpc.deserialize_properties(inputs, keep_unknowns=True).items()
         }
 
     @staticmethod
-    async def _create_output(the_input: Any, deps: Set[str]) -> Any:
+    async def _select_value(the_input: Any, deps: Set[str]) -> Any:
         is_secret = rpc.is_rpc_secret(the_input)
 
-        # If it's a resource reference or a prompt value, return it directly without wrapping
-        # it as an output.
-        if await _is_resource_reference(the_input, deps) or (not is_secret and len(deps) == 0):
+        # If the input isn't a secret and either doesn't have any dependencies, already contains Outputs (from
+        # deserialized output values), or is a resource reference, then return it directly without wrapping it
+        # as an output.
+        if not is_secret and (
+                len(deps) == 0 or
+                _contains_outputs(the_input) or
+                await _is_resource_reference(the_input, deps)):
             return the_input
 
         # Otherwise, wrap it as an output so we can handle secrets
@@ -220,7 +224,7 @@ class ProviderServicer(ResourceProviderServicer):
                        ).urns)
 
         return {
-            k: await ProviderServicer._create_output(the_input, deps=deps(k))
+            k: await ProviderServicer._select_value(the_input, deps=deps(k))
             for k, the_input in
             # We need to keep_internal, to keep the `__self__` that would normally be filtered because
             # it starts with "__".
@@ -249,7 +253,7 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.CallResponse(**resp)
 
     async def Configure(self, request, context) -> proto.ConfigureResponse:  # pylint: disable=invalid-overridden-method
-        return proto.ConfigureResponse(acceptSecrets=True, acceptResources=True)
+        return proto.ConfigureResponse(acceptSecrets=True, acceptResources=True, acceptOutputs=True)
 
     async def GetPluginInfo(self, request, context) -> proto.PluginInfo:  # pylint: disable=invalid-overridden-method
         return proto.PluginInfo(version=self.provider.version)
@@ -329,6 +333,25 @@ async def _is_resource_reference(the_input: Any, deps: Set[str]) -> bool:
     return (known_types.is_resource(the_input)
         and len(deps) == 1
         and next(iter(deps)) == await cast(Resource, the_input).urn.future())
+
+
+def _contains_outputs(the_input: Any) -> bool:
+    """
+    Returns true if the input contains Outputs (deeply).
+    """
+    if known_types.is_output(the_input):
+        return True
+
+    if isinstance(the_input, list):
+        for e in the_input:
+            if _contains_outputs(e):
+                return True
+    elif isinstance(the_input, dict):
+        for k in the_input:
+            if _contains_outputs(the_input[k]):
+                return True
+
+    return False
 
 
 def _create_provider_resource(ref: str) -> ProviderResource:

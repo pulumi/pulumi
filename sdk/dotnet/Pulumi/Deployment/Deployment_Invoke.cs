@@ -148,7 +148,8 @@ namespace Pulumi
                 label: $"invoke:{token}",
                 args: argsDict,
                 acceptKey: key => true,
-                keepResources: keepResources
+                keepResources: keepResources,
+                keepOutputValues: false
             ).ConfigureAwait(false);
         }
 

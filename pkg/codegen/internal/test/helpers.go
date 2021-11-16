@@ -17,6 +17,7 @@ package test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -26,7 +27,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -442,7 +442,7 @@ func currentVersion(path string) (string, error) {
 	}
 	json, ok := data.(map[string]interface{})
 	if !ok {
-		return "", errors.Errorf("%s could not be read", path)
+		return "", fmt.Errorf("%s could not be read", path)
 	}
 	version, ok := json["version"]
 	if !ok {
@@ -468,7 +468,7 @@ func replaceSchema(c chan error, path, version, url string) {
 
 	err = os.Remove(path)
 	if !os.IsNotExist(err) && err != nil {
-		c <- errors.Wrap(err, "failed to replace schema")
+		c <- fmt.Errorf("failed to replace schema: %w", err)
 		return
 	}
 	schemaFile, err := os.Create(path)

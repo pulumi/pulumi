@@ -15,12 +15,12 @@
 package providers
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -44,7 +44,7 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 
 	sv, err := semver.ParseTolerant(versionProp.StringValue())
 	if err != nil {
-		return nil, errors.Errorf("could not parse provider version: %v", err)
+		return nil, fmt.Errorf("could not parse provider version: %v", err)
 	}
 	return &sv, nil
 }
@@ -104,13 +104,13 @@ func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool,
 
 		// Ensure that this provider has a known ID.
 		if res.ID == "" || res.ID == UnknownID {
-			return nil, errors.Errorf("provider '%v' has an unknown ID", urn)
+			return nil, fmt.Errorf("provider '%v' has an unknown ID", urn)
 		}
 
 		// Ensure that we have no duplicates.
 		ref := mustNewReference(urn, res.ID)
 		if _, ok := r.providers[ref]; ok {
-			return nil, errors.Errorf("duplicate provider found in old state: '%v'", ref)
+			return nil, fmt.Errorf("duplicate provider found in old state: '%v'", ref)
 		}
 
 		providerPkg := GetProviderPackage(urn.Type())
@@ -118,19 +118,19 @@ func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool,
 		// Parse the provider version, then load, configure, and register the provider.
 		version, err := GetProviderVersion(res.Inputs)
 		if err != nil {
-			return nil, errors.Errorf("could not parse version for %v provider '%v': %v", providerPkg, urn, err)
+			return nil, fmt.Errorf("could not parse version for %v provider '%v': %v", providerPkg, urn, err)
 		}
 		provider, err := loadProvider(providerPkg, version, host, builtins)
 		if err != nil {
-			return nil, errors.Errorf("could not load plugin for %v provider '%v': %v", providerPkg, urn, err)
+			return nil, fmt.Errorf("could not load plugin for %v provider '%v': %v", providerPkg, urn, err)
 		}
 		if provider == nil {
-			return nil, errors.Errorf("could not find plugin for %v provider '%v' at version %v", providerPkg, urn, version)
+			return nil, fmt.Errorf("could not find plugin for %v provider '%v' at version %v", providerPkg, urn, version)
 		}
 		if err := provider.Configure(res.Inputs); err != nil {
 			closeErr := host.CloseProvider(provider)
 			contract.IgnoreError(closeErr)
-			return nil, errors.Errorf("could not configure provider '%v': %v", urn, err)
+			return nil, fmt.Errorf("could not configure provider '%v': %v", urn, err)
 		}
 
 		logging.V(7).Infof("loaded provider %v", ref)

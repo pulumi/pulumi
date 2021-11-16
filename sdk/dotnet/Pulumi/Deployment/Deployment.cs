@@ -192,7 +192,7 @@ namespace Pulumi
         {
             if (!this._featureSupport.ContainsKey(feature))
             {
-                var request = new SupportsFeatureRequest {Id = feature };
+                var request = new SupportsFeatureRequest { Id = feature };
                 var response = await this.Monitor.SupportsFeatureAsync(request).ConfigureAwait(false);
                 this._featureSupport[feature] = response.HasSupport;
             }
@@ -203,5 +203,16 @@ namespace Pulumi
         {
             return MonitorSupportsFeature("resourceReferences");
         }
+
+        /// <summary>
+        /// Check if the monitor supports the "outputValues" feature.
+        /// </summary>
+        internal Task<bool> MonitorSupportsOutputValues()
+        {
+            return MonitorSupportsFeature("outputValues");
+        }
+
+        // Because the secrets feature predates the Pulumi .NET SDK, we assume
+        // that the monitor supports secrets.
     }
 }

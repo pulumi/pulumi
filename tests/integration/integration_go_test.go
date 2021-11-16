@@ -1,4 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+//go:build go || all
 // +build go all
 
 package ints
@@ -623,6 +624,14 @@ func TestConstructMethodsUnknownGo(t *testing.T) {
 	testConstructMethodsUnknown(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
+func TestConstructMethodsResourcesGo(t *testing.T) {
+	testConstructMethodsResources(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
+func TestConstructMethodsErrorsGo(t *testing.T) {
+	testConstructMethodsErrors(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
 func TestConstructProviderGo(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {
@@ -760,4 +769,8 @@ func TestAboutGo(t *testing.T) {
 
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "github.com/BurntSushi/toml")
+}
+
+func TestConstructOutputValuesGo(t *testing.T) {
+	testConstructOutputValues(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
