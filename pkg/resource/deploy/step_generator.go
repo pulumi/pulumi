@@ -79,14 +79,20 @@ func (sg *stepGenerator) isTargetedForUpdate(
 	urn, parent resource.URN, provider string, dependencies []resource.URN) bool {
 	if sg.updateTargetsOpt == nil || sg.updateTargetsOpt[urn] {
 		return true
+	} else if !sg.opts.TargetDependents {
+		return false
 	}
 	if provider != "" {
 		res, err := providers.ParseReference(provider)
 		contract.AssertNoError(err)
-		dependencies = append(dependencies, res.URN())
+		if sg.updateTargetsOpt[res.URN()] {
+			return true
+		}
 	}
 	if parent != "" {
-		dependencies = append(dependencies, parent)
+		if sg.updateTargetsOpt[parent] {
+			return true
+		}
 	}
 	for _, dep := range dependencies {
 		if dep != "" && sg.updateTargetsOpt[dep] {
@@ -94,29 +100,6 @@ func (sg *stepGenerator) isTargetedForUpdate(
 		}
 	}
 	return false
-}
-
-// targetDependentsForUpdate sets the dependents of urn to be updated, if performing a targeted
-// update.
-func (sg *stepGenerator) targetDependentsForUpdate(
-	urn, parent resource.URN, provider string, dependencies []resource.URN) {
-	if sg.updateTargetsOpt == nil {
-		// We are not doing a targeted update.
-		return
-	}
-	if provider != "" {
-		res, err := providers.ParseReference(provider)
-		contract.AssertNoError(err)
-		dependencies = append(dependencies, res.URN())
-	}
-	if parent != "" {
-		dependencies = append(dependencies, parent)
-	}
-	for _, dep := range dependencies {
-		if dep != "" && sg.updateTargetsOpt[dep] {
-			sg.updateTargetsOpt[urn] = true
-		}
-	}
 }
 
 func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
@@ -464,6 +447,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}, nil
 	}
 
+	isTargeted := sg.isTargetedForUpdate(urn, goal.Parent, goal.Provider, goal.Dependencies)
+	if isTargeted {
+		sg.updateTargetsOpt[urn] = true
+	}
+
 	// Case 3: hasOld
 	//  In this case, the resource we are operating upon now exists in the old snapshot.
 	//  It must be an update or a replace. Which operation we do depends on the the specific change made to the
@@ -483,11 +471,10 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then do nothing but create a SameStep for it.
-		if !sg.isTargetedForUpdate(urn, goal.Parent, goal.Provider, goal.Dependencies) {
+		if !isTargeted {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
-			sg.targetDependentsForUpdate(urn, goal.Parent, goal.Provider, goal.Dependencies)
 			updateSteps, res := sg.generateStepsFromDiff(
 				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
 
@@ -534,10 +521,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// We will also not record this non-created resource into the checkpoint as it doesn't actually
 	// exist.
 
-	isTargeted := sg.isTargetedForUpdate(urn, goal.Parent, goal.Provider, goal.Dependencies)
-	if isTargeted {
-		sg.targetDependentsForUpdate(urn, goal.Parent, goal.Provider, goal.Dependencies)
-	}
 	if !isTargeted && !providers.IsProviderType(goal.Type) {
 		sg.sames[urn] = true
 		sg.skippedCreates[urn] = true
