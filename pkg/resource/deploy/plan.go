@@ -7,6 +7,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -18,10 +19,32 @@ import (
 // exactly.
 type Plan map[resource.URN]*ResourcePlan
 
+// Goal is a desired state for a resource object.  Normally it represents a subset of the resource's state expressed by
+// a program, however if Output is true, it represents a more complete, post-deployment view of the state.
+type GoalPlan struct {
+	Type                    tokens.Type                             // the type of resource.
+	Name                    tokens.QName                            // the name for the resource's URN.
+	Custom                  bool                                    // true if this resource is custom, managed by a plugin.
+	Adds                    resource.PropertyMap                    // the resource's properties we expect to add.
+	Deletes                 []resource.PropertyKey                  // the resource's properties we expect to delete.
+	Updates                 resource.PropertyMap                    // the resource's properties we expect to update.
+	Parent                  resource.URN                            // an optional parent URN for this resource.
+	Protect                 bool                                    // true to protect this resource from deletion.
+	Dependencies            []resource.URN                          // dependencies of this resource object.
+	Provider                string                                  // the provider to use for this resource.
+	PropertyDependencies    map[resource.PropertyKey][]resource.URN // the set of dependencies that affect each property.
+	DeleteBeforeReplace     *bool                                   // true if this resource should be deleted prior to replacement.
+	IgnoreChanges           []string                                // a list of property names to ignore during changes.
+	AdditionalSecretOutputs []resource.PropertyKey                  // outputs that should always be treated as secrets.
+	Aliases                 []resource.URN                          // additional URNs that should be aliased to this resource.
+	ID                      resource.ID                             // the expected ID of the resource, if any.
+	CustomTimeouts          resource.CustomTimeouts                 // an optional config object for resource options
+}
+
 // A ResourcePlan represents the planned goal state and resource operations for a single resource. The operations are
 // ordered.
 type ResourcePlan struct {
-	Goal    *resource.Goal
+	Goal    *GoalPlan
 	Ops     []StepOp
 	Outputs resource.PropertyMap
 }
@@ -96,8 +119,9 @@ func (rp *ResourcePlan) diffPropertyDependencies(a, b map[resource.PropertyKey][
 	return nil
 }
 
-func (rp *ResourcePlan) checkGoal(programGoal *resource.Goal) error {
+func (rp *ResourcePlan) checkGoal(oldOutputs resource.PropertyMap, newInputs resource.PropertyMap, programGoal *resource.Goal) error {
 	contract.Assert(programGoal != nil)
+	contract.Assert(newInputs != nil)
 	// rp.Goal may be nil, but if it isn't Type and Name should match
 	contract.Assert(rp.Goal == nil || rp.Goal.Type == programGoal.Type)
 	contract.Assert(rp.Goal == nil || rp.Goal.Name == programGoal.Name)
@@ -196,20 +220,56 @@ func (rp *ResourcePlan) checkGoal(programGoal *resource.Goal) error {
 		return fmt.Errorf("dependencies changed: %v", message)
 	}
 
-	// Check that the properties meet the constraints set in the plan.
-	if diff, constrained := programGoal.Properties.ConstrainedTo(rp.Goal.Properties); !constrained {
-		// TODO(pdg-plan): message!
-		var paths []string
+	// Check that the property diffs meet the constraints set in the plan.
+	changes := []string{}
+	if diff, hasDiff := oldOutputs.DiffIncludeUnknowns(newInputs); hasDiff {
+		// Check that any adds are in the goal for adds
 		for k := range diff.Adds {
-			paths = append(paths, "+"+string(k))
+			if expected, has := rp.Goal.Adds[k]; has {
+				actual := diff.Adds[k]
+				if !expected.IsComputed() && !expected.DeepEquals(actual) {
+					// diff wants to add this with value X but constraint wants to add with value Y
+					changes = append(changes, "+"+string(k))
+				}
+			} else {
+				// diff wants to add this, but not listed as an add in the constraints
+				changes = append(changes, "+"+string(k))
+			}
 		}
+
+		// Check that any removes are in the goal for removes
 		for k := range diff.Deletes {
-			paths = append(paths, "-"+string(k))
+			found := false
+			for i := range rp.Goal.Deletes {
+				if rp.Goal.Deletes[i] == k {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				// diff wants to delete this, but not listed as a delete in the constraints
+				changes = append(changes, "-"+string(k))
+			}
 		}
+
+		// Check that any changes are in the goal for changes
 		for k := range diff.Updates {
-			paths = append(paths, "~"+string(k))
+			if expected, has := rp.Goal.Updates[k]; has {
+				actual := diff.Adds[k]
+				if !expected.IsComputed() && !expected.DeepEquals(actual) {
+					// diff wants to change this with value X but constraint wants to change with value Y
+					changes = append(changes, "~"+string(k))
+				}
+			} else {
+				// diff wants to update this, but not listed as an update in the constraints
+				changes = append(changes, "~"+string(k))
+			}
 		}
-		return fmt.Errorf("properties changed: %v", strings.Join(paths, ", "))
+	}
+
+	if len(changes) > 0 {
+		return fmt.Errorf("properties changed: %v", strings.Join(changes, ", "))
 	}
 
 	// Check that the property dependencies match. Note that because it is legal for a property that is unknown in the

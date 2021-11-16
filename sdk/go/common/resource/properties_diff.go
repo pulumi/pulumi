@@ -304,7 +304,7 @@ func (props PropertyMap) DeepEquals(other PropertyMap) bool {
 	return true
 }
 
-// DeepEquals returns true if this property map is deeply equal to the other property map; and false otherwise.
+// DeepEquals returns true if this property value is deeply equal to the other property value; and false otherwise.
 func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 	// Computed values are always equal.
 	if v.IsComputed() && other.IsComputed() {
@@ -414,12 +414,7 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 	return v.V == other.V
 }
 
-func (props PropertyMap) ConstrainedTo(constraints PropertyMap) (*ObjectDiff, bool) {
+func (props PropertyMap) DiffIncludeUnknowns(constraints PropertyMap) (*ObjectDiff, bool) {
 	diff := constraints.diff(props, true, nil)
-	return diff, diff == nil
-}
-
-func (v PropertyValue) ConstrainedTo(constraint PropertyValue) (*ValueDiff, bool) {
-	diff := constraint.diff(v, true, nil)
-	return diff, diff == nil
+	return diff, diff != nil
 }
