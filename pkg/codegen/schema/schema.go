@@ -972,8 +972,8 @@ func (pkg *Package) MarshalYAML() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (pkg *Package) marshalObjectData(
-	comment string, properties []*Property, language map[string]interface{}, plain, isOverlay bool) (ObjectTypeSpec, error) {
+func (pkg *Package) marshalObjectData(comment string, properties []*Property, language map[string]interface{},
+	plain, isOverlay bool) (ObjectTypeSpec, error) {
 
 	required, props, err := pkg.marshalProperties(properties, plain)
 	if err != nil {
