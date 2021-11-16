@@ -2769,8 +2769,10 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			}
 			populateDetailsForPropertyTypes(seenMap, typ.Properties, false)
 		case *schema.EnumType:
-			pkg := getPkgFromToken(typ.Token)
-			pkg.enums = append(pkg.enums, typ)
+			if !typ.IsOverlay {
+				pkg := getPkgFromToken(typ.Token)
+				pkg.enums = append(pkg.enums, typ)
+			}
 		}
 	}
 

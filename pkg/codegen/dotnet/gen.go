@@ -2352,8 +2352,10 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 			mod := getModFromToken(typ.Token, pkg)
 			mod.types = append(mod.types, typ)
 		case *schema.EnumType:
-			mod := getModFromToken(typ.Token, pkg)
-			mod.enums = append(mod.enums, typ)
+			if !typ.IsOverlay {
+				mod := getModFromToken(typ.Token, pkg)
+				mod.enums = append(mod.enums, typ)
+			}
 		default:
 			continue
 		}

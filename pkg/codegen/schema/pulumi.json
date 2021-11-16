@@ -311,7 +311,7 @@
                     "required": ["environment"]
                 },
                 "deprecationMessage": {
-                    "description": "Indicates whether or not the property is deprecated",
+                    "description": "Indicates whether the property is deprecated",
                     "type": "string"
                 },
                 "language": {
@@ -340,6 +340,10 @@
                 "language": {
                     "description": "Additional language-specific data about the type.",
                     "type": "object"
+                },
+                "isOverlay": {
+                    "description": "Indicates that the implementation of the type should not be generated from the schema, and is instead provided out-of-band by the package author",
+                    "type": "boolean"
                 }
             },
             "oneOf": [
@@ -409,7 +413,7 @@
                                 "type": ["boolean", "integer", "number", "string"]
                             },
                             "deprecationMessage": {
-                                "description": "Indicates whether or not the value is deprecated.",
+                                "description": "Indicates whether the value is deprecated.",
                                 "type": "string"
                             }
                         },
@@ -472,11 +476,11 @@
                     }
                 },
                 "deprecationMessage": {
-                    "description": "Indicates whether or not the resource is deprecated",
+                    "description": "Indicates whether the resource is deprecated",
                     "type": "string"
                 },
                 "isComponent": {
-                    "description": "Indicates whether or not the resource is a component.",
+                    "description": "Indicates whether the resource is a component.",
                     "type": "boolean"
                 },
                 "methods": {
@@ -485,6 +489,10 @@
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "isOverlay": {
+                    "description": "Indicates that the implementation of the resource should not be generated from the schema, and is instead provided out-of-band by the package author",
+                    "type": "boolean"
                 }
             }
         },
@@ -506,12 +514,16 @@
                     "$ref": "#/$defs/objectTypeSpec"
                 },
                 "deprecationMessage": {
-                    "description": "Indicates whether or not the function is deprecated",
+                    "description": "Indicates whether the function is deprecated",
                     "type": "string"
                 },
                 "language": {
                     "description": "Additional language-specific data about the function.",
                     "type": "object"
+                },
+                "isOverlay": {
+                    "description": "Indicates that the implementation of the function should not be generated from the schema, and is instead provided out-of-band by the package author",
+                    "type": "boolean"
                 }
             }
         }
