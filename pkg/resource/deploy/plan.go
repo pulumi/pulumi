@@ -41,6 +41,32 @@ type GoalPlan struct {
 	CustomTimeouts          resource.CustomTimeouts                 // an optional config object for resource options
 }
 
+func NewGoalPlan(oldOutputs resource.PropertyMap, goal *resource.Goal) *GoalPlan {
+	if goal == nil {
+		return nil
+	}
+
+	return &GoalPlan{
+		Type:                    goal.Type,
+		Name:                    goal.Name,
+		Custom:                  goal.Custom,
+		Adds:                    nil,
+		Deletes:                 nil,
+		Updates:                 nil,
+		Parent:                  goal.Parent,
+		Protect:                 goal.Protect,
+		Dependencies:            goal.Dependencies,
+		Provider:                goal.Provider,
+		PropertyDependencies:    goal.PropertyDependencies,
+		DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+		IgnoreChanges:           goal.IgnoreChanges,
+		AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
+		Aliases:                 goal.Aliases,
+		ID:                      goal.ID,
+		CustomTimeouts:          goal.CustomTimeouts,
+	}
+}
+
 // A ResourcePlan represents the planned goal state and resource operations for a single resource. The operations are
 // ordered.
 type ResourcePlan struct {
@@ -119,7 +145,11 @@ func (rp *ResourcePlan) diffPropertyDependencies(a, b map[resource.PropertyKey][
 	return nil
 }
 
-func (rp *ResourcePlan) checkGoal(oldOutputs resource.PropertyMap, newInputs resource.PropertyMap, programGoal *resource.Goal) error {
+func (rp *ResourcePlan) checkGoal(
+	oldOutputs resource.PropertyMap,
+	newInputs resource.PropertyMap,
+	programGoal *resource.Goal) error {
+
 	contract.Assert(programGoal != nil)
 	contract.Assert(newInputs != nil)
 	// rp.Goal may be nil, but if it isn't Type and Name should match

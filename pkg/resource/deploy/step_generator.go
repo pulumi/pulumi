@@ -155,7 +155,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		return nil, res
 	}
 
-	// Check each proposed step against the relevant resource plan, if any, and generate any output resource plans.
+	// Check each proposed step against the relevant resource plan, if any
 	for _, s := range steps {
 		if sg.deployment.plan != nil {
 			if resourcePlan, ok := sg.deployment.plan[s.URN()]; ok {
@@ -175,10 +175,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 
 		resourcePlan, ok := sg.deployment.newPlans.get(s.URN())
 		if !ok {
-			// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
-			// application. However, it is necessary in the face of computed inputs.
-			resourcePlan = &ResourcePlan{Goal: event.Goal()}
-			sg.deployment.newPlans.set(s.URN(), resourcePlan)
+			return nil, result.Errorf("Expected a new resource plan for %v", s.URN())
 		}
 		resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 	}
@@ -275,6 +272,12 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}
 		inputs = processedInputs
 	}
+
+	// Generate the output goal plan
+	// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
+	// application. However, it is necessary in the face of computed inputs.
+	newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(oldOutputs, goal)}
+	sg.deployment.newPlans.set(urn, newResourcePlan)
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
 	if sg.deployment.plan != nil {

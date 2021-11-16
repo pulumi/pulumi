@@ -12,9 +12,19 @@ func SerializeResourcePlan(
 	enc config.Encrypter,
 	showSecrets bool) (apitype.ResourcePlanV1, error) {
 
-	properties, err := SerializeProperties(plan.Goal.Properties, enc, showSecrets)
+	adds, err := SerializeProperties(plan.Goal.Adds, enc, showSecrets)
 	if err != nil {
 		return apitype.ResourcePlanV1{}, err
+	}
+
+	updates, err := SerializeProperties(plan.Goal.Adds, enc, showSecrets)
+	if err != nil {
+		return apitype.ResourcePlanV1{}, err
+	}
+
+	deletes := make([]string, len(plan.Goal.Deletes))
+	for i := range deletes {
+		deletes[i] = string(plan.Goal.Deletes[i])
 	}
 
 	var outputs map[string]interface{}
@@ -30,7 +40,9 @@ func SerializeResourcePlan(
 		Type:                    plan.Goal.Type,
 		Name:                    plan.Goal.Name,
 		Custom:                  plan.Goal.Custom,
-		Properties:              properties,
+		Adds:                    adds,
+		Deletes:                 deletes,
+		Updates:                 updates,
 		Parent:                  plan.Goal.Parent,
 		Protect:                 plan.Goal.Protect,
 		Dependencies:            plan.Goal.Dependencies,
@@ -73,7 +85,12 @@ func DeserializeResourcePlan(
 	dec config.Decrypter,
 	enc config.Encrypter) (*deploy.ResourcePlan, error) {
 
-	properties, err := DeserializeProperties(plan.Goal.Properties, dec, enc)
+	adds, err := DeserializeProperties(plan.Goal.Adds, dec, enc)
+	if err != nil {
+		return nil, err
+	}
+
+	updates, err := DeserializeProperties(plan.Goal.Updates, dec, enc)
 	if err != nil {
 		return nil, err
 	}
@@ -87,11 +104,13 @@ func DeserializeResourcePlan(
 		outputs = outs
 	}
 
-	goal := &resource.Goal{
+	goal := &deploy.GoalPlan{
 		Type:                    plan.Goal.Type,
 		Name:                    plan.Goal.Name,
 		Custom:                  plan.Goal.Custom,
-		Properties:              properties,
+		Adds:                    adds,
+		Deletes:                 nil,
+		Updates:                 updates,
 		Parent:                  plan.Goal.Parent,
 		Protect:                 plan.Goal.Protect,
 		Dependencies:            plan.Goal.Dependencies,

@@ -15,8 +15,12 @@ type GoalV1 struct {
 	Name tokens.QName `json:"name"`
 	// true if this resource is custom, managed by a plugin.
 	Custom bool `json:"custom"`
-	// the resource's input properties.
-	Properties map[string]interface{} `json:"properties,omitempty"`
+	// the resource properties that will be added.
+	Adds map[string]interface{} `json:"adds,omitempty"`
+	// the resource properties that will be deleted.
+	Deletes []string `json:"deletes,omitempty"`
+	// the resource properties that will be updated.
+	Updates map[string]interface{} `json:"updates,omitempty"`
 	// an optional parent URN for this resource.
 	Parent resource.URN `json:"parent,omitempty"`
 	// true to protect this resource from deletion.
