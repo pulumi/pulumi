@@ -10,6 +10,7 @@ from .func_with_all_optional_inputs import *
 from .module_test import *
 from .provider import *
 from ._inputs import *
+from . import outputs
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:

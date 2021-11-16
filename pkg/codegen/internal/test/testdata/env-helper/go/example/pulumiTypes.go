@@ -195,7 +195,8 @@ type KubeClientSettings struct {
 	// Maximum burst for throttle. Default value is 10.
 	Burst *int `pulumi:"burst"`
 	// Maximum queries per second (QPS) to the API server from this client. Default value is 5.
-	Qps *float64 `pulumi:"qps"`
+	Qps     *float64            `pulumi:"qps"`
+	RecTest *KubeClientSettings `pulumi:"recTest"`
 }
 
 // KubeClientSettingsInput is an input type that accepts KubeClientSettingsArgs and KubeClientSettingsOutput values.
@@ -214,7 +215,8 @@ type KubeClientSettingsArgs struct {
 	// Maximum burst for throttle. Default value is 10.
 	Burst pulumi.IntPtrInput `pulumi:"burst"`
 	// Maximum queries per second (QPS) to the API server from this client. Default value is 5.
-	Qps pulumi.Float64PtrInput `pulumi:"qps"`
+	Qps     pulumi.Float64PtrInput     `pulumi:"qps"`
+	RecTest KubeClientSettingsPtrInput `pulumi:"recTest"`
 }
 
 func (KubeClientSettingsArgs) ElementType() reflect.Type {
@@ -305,6 +307,10 @@ func (o KubeClientSettingsOutput) Qps() pulumi.Float64PtrOutput {
 	return o.ApplyT(func(v KubeClientSettings) *float64 { return v.Qps }).(pulumi.Float64PtrOutput)
 }
 
+func (o KubeClientSettingsOutput) RecTest() KubeClientSettingsPtrOutput {
+	return o.ApplyT(func(v KubeClientSettings) *KubeClientSettings { return v.RecTest }).(KubeClientSettingsPtrOutput)
+}
+
 type KubeClientSettingsPtrOutput struct{ *pulumi.OutputState }
 
 func (KubeClientSettingsPtrOutput) ElementType() reflect.Type {
@@ -347,6 +353,15 @@ func (o KubeClientSettingsPtrOutput) Qps() pulumi.Float64PtrOutput {
 		}
 		return v.Qps
 	}).(pulumi.Float64PtrOutput)
+}
+
+func (o KubeClientSettingsPtrOutput) RecTest() KubeClientSettingsPtrOutput {
+	return o.ApplyT(func(v *KubeClientSettings) *KubeClientSettings {
+		if v == nil {
+			return nil
+		}
+		return v.RecTest
+	}).(KubeClientSettingsPtrOutput)
 }
 
 // Make sure that defaults propagate through types

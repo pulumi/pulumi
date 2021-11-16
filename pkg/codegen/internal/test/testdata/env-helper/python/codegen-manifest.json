@@ -11,6 +11,7 @@
     "pulumi_example/mod2/__init__.py",
     "pulumi_example/mod2/_inputs.py",
     "pulumi_example/module_test.py",
+    "pulumi_example/outputs.py",
     "pulumi_example/provider.py",
     "pulumi_example/py.typed",
     "setup.py"

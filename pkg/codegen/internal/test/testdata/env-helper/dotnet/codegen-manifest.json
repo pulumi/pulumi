@@ -12,6 +12,7 @@
     "Mod2/Inputs/TypArgs.cs",
     "Mod2/README.md",
     "ModuleTest.cs",
+    "Outputs/KubeClientSettings.cs",
     "Provider.cs",
     "Pulumi.Example.csproj",
     "README.md",

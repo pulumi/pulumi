@@ -6,6 +6,32 @@ import { input as inputs, output as outputs } from "../types";
 
 import * as utilities from "../utilities";
 
+/**
+ * Options for tuning the Kubernetes client used by a Provider.
+ */
+export interface KubeClientSettings {
+    /**
+     * Maximum burst for throttle. Default value is 10.
+     */
+    burst?: number;
+    /**
+     * Maximum queries per second (QPS) to the API server from this client. Default value is 5.
+     */
+    qps?: number;
+    recTest?: outputs.KubeClientSettings;
+}
+/**
+ * kubeClientSettingsProvideDefaults sets the appropriate defaults for KubeClientSettings
+ */
+export function kubeClientSettingsProvideDefaults(val: KubeClientSettings): KubeClientSettings {
+    return {
+        ...val,
+        burst: (val.burst) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_BURST"),
+        qps: (val.qps) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_QPS"),
+        recTest: (val.recTest ? outputs.kubeClientSettingsProvideDefaults(val.recTest) : undefined),
+    };
+}
+
 export namespace mod1 {
 }
 

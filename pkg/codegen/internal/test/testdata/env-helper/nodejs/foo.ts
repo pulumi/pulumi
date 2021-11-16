@@ -35,6 +35,10 @@ export class Foo extends pulumi.CustomResource {
         return obj['__pulumiType'] === Foo.__pulumiType;
     }
 
+    /**
+     * A test for plain types
+     */
+    public /*out*/ readonly defaultKubeClientSettings!: pulumi.Output<outputs.KubeClientSettings | undefined>;
 
     /**
      * Create a Foo resource with the given unique name, arguments, and options.
@@ -52,10 +56,11 @@ export class Foo extends pulumi.CustomResource {
             }
             resourceInputs["argument"] = args ? args.argument : undefined;
             resourceInputs["backupKubeClientSettings"] = args ? (args.backupKubeClientSettings ? pulumi.output(args.backupKubeClientSettings).apply(inputs.kubeClientSettingsArgsProvideDefaults) : undefined) : undefined;
-            resourceInputs["defaultKubeClientSettings"] = args ? (args.defaultKubeClientSettings ? inputs.kubeClientSettingsArgsProvideDefaults(args.defaultKubeClientSettings) : undefined) : undefined;
             resourceInputs["kubeClientSettings"] = args ? (args.kubeClientSettings ? pulumi.output(args.kubeClientSettings).apply(inputs.kubeClientSettingsArgsProvideDefaults) : undefined) : undefined;
             resourceInputs["settings"] = args ? (args.settings ? pulumi.output(args.settings).apply(inputs.layeredTypeArgsProvideDefaults) : undefined) : undefined;
+            resourceInputs["defaultKubeClientSettings"] = undefined /*out*/;
         } else {
+            resourceInputs["defaultKubeClientSettings"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
@@ -73,10 +78,6 @@ export interface FooArgs {
      * Options for tuning the Kubernetes client used by a Provider.
      */
     backupKubeClientSettings: pulumi.Input<inputs.KubeClientSettingsArgs>;
-    /**
-     * A test for plain types
-     */
-    defaultKubeClientSettings?: inputs.KubeClientSettingsArgs;
     /**
      * Options for tuning the Kubernetes client used by a Provider.
      */

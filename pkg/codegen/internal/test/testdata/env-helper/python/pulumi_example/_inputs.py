@@ -140,7 +140,8 @@ class HelmReleaseSettingsArgs:
 class KubeClientSettingsArgs:
     def __init__(__self__, *,
                  burst: Optional[pulumi.Input[int]] = None,
-                 qps: Optional[pulumi.Input[float]] = None):
+                 qps: Optional[pulumi.Input[float]] = None,
+                 rec_test: Optional[pulumi.Input['KubeClientSettingsArgs']] = None):
         """
         Options for tuning the Kubernetes client used by a Provider.
         :param pulumi.Input[int] burst: Maximum burst for throttle. Default value is 10.
@@ -154,6 +155,8 @@ class KubeClientSettingsArgs:
             qps = _utilities.get_env_float('PULUMI_K8S_CLIENT_QPS')
         if qps is not None:
             pulumi.set(__self__, "qps", qps)
+        if rec_test is not None:
+            pulumi.set(__self__, "rec_test", rec_test)
 
     @property
     @pulumi.getter
@@ -178,6 +181,15 @@ class KubeClientSettingsArgs:
     @qps.setter
     def qps(self, value: Optional[pulumi.Input[float]]):
         pulumi.set(self, "qps", value)
+
+    @property
+    @pulumi.getter(name="recTest")
+    def rec_test(self) -> Optional[pulumi.Input['KubeClientSettingsArgs']]:
+        return pulumi.get(self, "rec_test")
+
+    @rec_test.setter
+    def rec_test(self, value: Optional[pulumi.Input['KubeClientSettingsArgs']]):
+        pulumi.set(self, "rec_test", value)
 
 
 @pulumi.input_type

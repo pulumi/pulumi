@@ -74,6 +74,7 @@ export interface KubeClientSettingsArgs {
      * Maximum queries per second (QPS) to the API server from this client. Default value is 5.
      */
     qps?: pulumi.Input<number>;
+    recTest?: pulumi.Input<inputs.KubeClientSettingsArgs>;
 }
 /**
  * kubeClientSettingsArgsProvideDefaults sets the appropriate defaults for KubeClientSettingsArgs
@@ -83,6 +84,7 @@ export function kubeClientSettingsArgsProvideDefaults(val: KubeClientSettingsArg
         ...val,
         burst: (val.burst) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_BURST"),
         qps: (val.qps) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_QPS"),
+        recTest: (val.recTest ? pulumi.output(val.recTest).apply(inputs.kubeClientSettingsArgsProvideDefaults) : undefined),
     };
 }
 

@@ -31,7 +31,6 @@ test new feature with resoruces
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
         <span class="nx">argument</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
         <span class="nx">backup_kube_client_settings</span><span class="p">:</span> <span class="nx">Optional[KubeClientSettingsArgs]</span> = None<span class="p">,</span>
-        <span class="nx">default_kube_client_settings</span><span class="p">:</span> <span class="nx">Optional[KubeClientSettingsArgs]</span> = None<span class="p">,</span>
         <span class="nx">kube_client_settings</span><span class="p">:</span> <span class="nx">Optional[KubeClientSettingsArgs]</span> = None<span class="p">,</span>
         <span class="nx">settings</span><span class="p">:</span> <span class="nx">Optional[LayeredTypeArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
@@ -179,14 +178,6 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
-        <span id="defaultkubeclientsettings_csharp">
-<a href="#defaultkubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Default<wbr>Kube<wbr>Client<wbr>Settings</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
-    </dt>
-    <dd>{{% md %}}A test for plain types{{% /md %}}</dd><dt class="property-optional"
-            title="Optional">
         <span id="kubeclientsettings_csharp">
 <a href="#kubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Kube<wbr>Client<wbr>Settings</a>
 </span>
@@ -222,14 +213,6 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
         <span class="property-type">string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
-            title="Optional">
-        <span id="defaultkubeclientsettings_go">
-<a href="#defaultkubeclientsettings_go" style="color: inherit; text-decoration: inherit;">Default<wbr>Kube<wbr>Client<wbr>Settings</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
-    </dt>
-    <dd>{{% md %}}A test for plain types{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="kubeclientsettings_go">
 <a href="#kubeclientsettings_go" style="color: inherit; text-decoration: inherit;">Kube<wbr>Client<wbr>Settings</a>
@@ -267,14 +250,6 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
-        <span id="defaultkubeclientsettings_nodejs">
-<a href="#defaultkubeclientsettings_nodejs" style="color: inherit; text-decoration: inherit;">default<wbr>Kube<wbr>Client<wbr>Settings</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
-    </dt>
-    <dd>{{% md %}}A test for plain types{{% /md %}}</dd><dt class="property-optional"
-            title="Optional">
         <span id="kubeclientsettings_nodejs">
 <a href="#kubeclientsettings_nodejs" style="color: inherit; text-decoration: inherit;">kube<wbr>Client<wbr>Settings</a>
 </span>
@@ -311,14 +286,6 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
-        <span id="default_kube_client_settings_python">
-<a href="#default_kube_client_settings_python" style="color: inherit; text-decoration: inherit;">default_<wbr>kube_<wbr>client_<wbr>settings</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
-    </dt>
-    <dd>{{% md %}}A test for plain types{{% /md %}}</dd><dt class="property-optional"
-            title="Optional">
         <span id="kube_client_settings_python">
 <a href="#kube_client_settings_python" style="color: inherit; text-decoration: inherit;">kube_<wbr>client_<wbr>settings</a>
 </span>
@@ -352,7 +319,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="defaultkubeclientsettings_csharp">
+<a href="#defaultkubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Default<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}A test for plain types{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -364,7 +339,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="defaultkubeclientsettings_go">
+<a href="#defaultkubeclientsettings_go" style="color: inherit; text-decoration: inherit;">Default<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}A test for plain types{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -376,7 +359,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="defaultkubeclientsettings_nodejs">
+<a href="#defaultkubeclientsettings_nodejs" style="color: inherit; text-decoration: inherit;">default<wbr>Kube<wbr>Client<wbr>Settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}A test for plain types{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -388,7 +379,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="default_kube_client_settings_python">
+<a href="#default_kube_client_settings_python" style="color: inherit; text-decoration: inherit;">default_<wbr>kube_<wbr>client_<wbr>settings</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}A test for plain types{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 
@@ -534,7 +533,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="rectest_csharp">
+<a href="#rectest_csharp" style="color: inherit; text-decoration: inherit;">Rec<wbr>Test</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -554,7 +561,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="rectest_go">
+<a href="#rectest_go" style="color: inherit; text-decoration: inherit;">Rec<wbr>Test</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -574,7 +589,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="rectest_nodejs">
+<a href="#rectest_nodejs" style="color: inherit; text-decoration: inherit;">rec<wbr>Test</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -594,7 +617,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}Maximum queries per second (QPS) to the API server from this client. Default value is 5.{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="rec_test_python">
+<a href="#rec_test_python" style="color: inherit; text-decoration: inherit;">rec_<wbr>test</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 <h4 id="layeredtype">Layered<wbr>Type</h4>

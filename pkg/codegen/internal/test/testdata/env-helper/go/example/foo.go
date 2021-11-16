@@ -14,6 +14,9 @@ import (
 // test new feature with resoruces
 type Foo struct {
 	pulumi.CustomResourceState
+
+	// A test for plain types
+	DefaultKubeClientSettings KubeClientSettingsPtrOutput `pulumi:"defaultKubeClientSettings"`
 }
 
 // NewFoo registers a new resource with the given unique name, arguments, and options.
@@ -61,8 +64,6 @@ type fooArgs struct {
 	Argument *string `pulumi:"argument"`
 	// Options for tuning the Kubernetes client used by a Provider.
 	BackupKubeClientSettings KubeClientSettings `pulumi:"backupKubeClientSettings"`
-	// A test for plain types
-	DefaultKubeClientSettings *KubeClientSettings `pulumi:"defaultKubeClientSettings"`
 	// Options for tuning the Kubernetes client used by a Provider.
 	KubeClientSettings *KubeClientSettings `pulumi:"kubeClientSettings"`
 	// describing things
@@ -74,8 +75,6 @@ type FooArgs struct {
 	Argument *string
 	// Options for tuning the Kubernetes client used by a Provider.
 	BackupKubeClientSettings KubeClientSettingsInput
-	// A test for plain types
-	DefaultKubeClientSettings *KubeClientSettingsArgs
 	// Options for tuning the Kubernetes client used by a Provider.
 	KubeClientSettings KubeClientSettingsPtrInput
 	// describing things
