@@ -9,6 +9,34 @@ import * as utilities from "../utilities";
 /**
  * BETA FEATURE - Options to configure the Helm Release resource.
  */
+export interface HelmReleaseSettings {
+    /**
+     * The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
+     */
+    driver?: string;
+    /**
+     * The path to the helm plugins directory.
+     */
+    pluginsPath?: string;
+    /**
+     * to test required args
+     */
+    requiredArg: string;
+}
+/**
+ * helmReleaseSettingsProvideDefaults sets the appropriate defaults for HelmReleaseSettings
+ */
+export function helmReleaseSettingsProvideDefaults(val: HelmReleaseSettings): HelmReleaseSettings {
+    return {
+        ...val,
+    driver: (val.driver) ?? (utilities.getEnv("PULUMI_K8S_HELM_DRIVER") || "secret"),
+    pluginsPath: (val.pluginsPath) ?? utilities.getEnv("PULUMI_K8S_HELM_PLUGINS_PATH"),
+    };
+}
+
+/**
+ * BETA FEATURE - Options to configure the Helm Release resource.
+ */
 export interface HelmReleaseSettingsArgs {
     /**
      * The backend storage driver for Helm. Values are: configmap, secret, memory, sql.

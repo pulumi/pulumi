@@ -12,6 +12,7 @@
       }
     }
   },
+
   "resources": {
     "example:index:Foo": {
       "description": "test new feature with resoruces",
@@ -41,6 +42,7 @@
       "requiredInputs": ["backupKubeClientSettings"]
     }
   },
+
   "types": {
     "example:index:HelmReleaseSettings": {
       "description": "BETA FEATURE - Options to configure the Helm Release resource.",
@@ -125,6 +127,36 @@
       "type": "object"
     }
   },
+
+  "functions": {
+    "mypkg::funcWithAllOptionalInputs": {
+      "description": "Check codegen of functions with all optional inputs.",
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "$ref": "#/types/example:index:HelmReleaseSettings",
+            "description": "Property A"
+          },
+          "b": {
+            "type": "string",
+            "description": "Property B",
+            "default": "defValue"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "r": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": ["r"]
+      }
+    }
+  },
+
   "language": {
     "csharp": {
       "packageReferences": {

@@ -1,6 +1,8 @@
 {
   "emittedFiles": [
     "Foo.cs",
+    "FuncWithAllOptionalInputs.cs",
+    "Inputs/HelmReleaseSettings.cs",
     "Inputs/HelmReleaseSettingsArgs.cs",
     "Inputs/KubeClientSettingsArgs.cs",
     "Inputs/LayeredTypeArgs.cs",
