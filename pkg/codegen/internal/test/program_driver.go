@@ -49,8 +49,7 @@ var programTests = []programTest{
 	{
 		Name:        "aws-fargate",
 		Description: "AWS Fargate",
-		SkipCompile: codegen.NewStringSet("go"),
-		Skip:        codegen.NewStringSet("go", "dotnet"),
+		Skip:        codegen.NewStringSet("dotnet"),
 	},
 	{
 		Name:        "aws-s3-logging",
@@ -127,7 +126,7 @@ var programTests = []programTest{
 	{
 		Name:        "output-funcs-aws",
 		Description: "Output Versioned Functions",
-		Skip:        codegen.NewStringSet("go", "dotnet"),
+		Skip:        codegen.NewStringSet("dotnet"),
 	},
 }
 
