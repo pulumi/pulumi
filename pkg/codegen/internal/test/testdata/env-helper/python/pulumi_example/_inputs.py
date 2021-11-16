@@ -7,12 +7,15 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
+from . import mod1 as _mod1
+from . import mod2 as _mod2
 
 __all__ = [
     'HelmReleaseSettings',
     'HelmReleaseSettingsArgs',
     'KubeClientSettingsArgs',
     'LayeredTypeArgs',
+    'TypArgs',
 ]
 
 @pulumi.input_type
@@ -275,5 +278,51 @@ class LayeredTypeArgs:
     @recursive.setter
     def recursive(self, value: Optional[pulumi.Input['LayeredTypeArgs']]):
         pulumi.set(self, "recursive", value)
+
+
+@pulumi.input_type
+class TypArgs:
+    def __init__(__self__, *,
+                 mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
+                 mod2: Optional[pulumi.Input['_mod2.TypArgs']] = None,
+                 val: Optional[pulumi.Input[str]] = None):
+        """
+        A test for namespaces (mod main)
+        """
+        if mod1 is not None:
+            pulumi.set(__self__, "mod1", mod1)
+        if mod2 is not None:
+            pulumi.set(__self__, "mod2", mod2)
+        if val is None:
+            val = 'mod main'
+        if val is not None:
+            pulumi.set(__self__, "val", val)
+
+    @property
+    @pulumi.getter
+    def mod1(self) -> Optional[pulumi.Input['_mod1.TypArgs']]:
+        return pulumi.get(self, "mod1")
+
+    @mod1.setter
+    def mod1(self, value: Optional[pulumi.Input['_mod1.TypArgs']]):
+        pulumi.set(self, "mod1", value)
+
+    @property
+    @pulumi.getter
+    def mod2(self) -> Optional[pulumi.Input['_mod2.TypArgs']]:
+        return pulumi.get(self, "mod2")
+
+    @mod2.setter
+    def mod2(self, value: Optional[pulumi.Input['_mod2.TypArgs']]):
+        pulumi.set(self, "mod2", value)
+
+    @property
+    @pulumi.getter
+    def val(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "val")
+
+    @val.setter
+    def val(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "val", value)
 
 

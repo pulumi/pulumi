@@ -29,8 +29,8 @@ export interface HelmReleaseSettings {
 export function helmReleaseSettingsProvideDefaults(val: HelmReleaseSettings): HelmReleaseSettings {
     return {
         ...val,
-    driver: (val.driver) ?? (utilities.getEnv("PULUMI_K8S_HELM_DRIVER") || "secret"),
-    pluginsPath: (val.pluginsPath) ?? utilities.getEnv("PULUMI_K8S_HELM_PLUGINS_PATH"),
+        driver: (val.driver) ?? (utilities.getEnv("PULUMI_K8S_HELM_DRIVER") || "secret"),
+        pluginsPath: (val.pluginsPath) ?? utilities.getEnv("PULUMI_K8S_HELM_PLUGINS_PATH"),
     };
 }
 
@@ -57,8 +57,8 @@ export interface HelmReleaseSettingsArgs {
 export function helmReleaseSettingsArgsProvideDefaults(val: HelmReleaseSettingsArgs): HelmReleaseSettingsArgs {
     return {
         ...val,
-    driver: (val.driver) ?? (utilities.getEnv("PULUMI_K8S_HELM_DRIVER") || "secret"),
-    pluginsPath: (val.pluginsPath) ?? utilities.getEnv("PULUMI_K8S_HELM_PLUGINS_PATH"),
+        driver: (val.driver) ?? (utilities.getEnv("PULUMI_K8S_HELM_DRIVER") || "secret"),
+        pluginsPath: (val.pluginsPath) ?? utilities.getEnv("PULUMI_K8S_HELM_PLUGINS_PATH"),
     };
 }
 
@@ -81,8 +81,8 @@ export interface KubeClientSettingsArgs {
 export function kubeClientSettingsArgsProvideDefaults(val: KubeClientSettingsArgs): KubeClientSettingsArgs {
     return {
         ...val,
-    burst: (val.burst) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_BURST"),
-    qps: (val.qps) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_QPS"),
+        burst: (val.burst) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_BURST"),
+        qps: (val.qps) ?? utilities.getEnvNumber("PULUMI_K8S_CLIENT_QPS"),
     };
 }
 
@@ -115,11 +115,68 @@ export interface LayeredTypeArgs {
 export function layeredTypeArgsProvideDefaults(val: LayeredTypeArgs): LayeredTypeArgs {
     return {
         ...val,
-    answer: (val.answer) ?? 42,
-    other: pulumi.output(val.other).apply(inputs.helmReleaseSettingsArgsProvideDefaults)!,
-    plainOther: (val.plainOther ? inputs.helmReleaseSettingsArgsProvideDefaults(val.plainOther) : undefined),
-    question: (val.question) ?? (utilities.getEnv("PULUMI_THE_QUESTION") || "<unknown>"),
-    recursive: (val.recursive ? pulumi.output(val.recursive).apply(inputs.layeredTypeArgsProvideDefaults) : undefined),
-    thinker: (val.thinker) ?? "not a good interaction",
+        answer: (val.answer) ?? 42,
+        other: pulumi.output(val.other).apply(inputs.helmReleaseSettingsArgsProvideDefaults)!,
+        plainOther: (val.plainOther ? inputs.helmReleaseSettingsArgsProvideDefaults(val.plainOther) : undefined),
+        question: (val.question) ?? (utilities.getEnv("PULUMI_THE_QUESTION") || "<unknown>"),
+        recursive: (val.recursive ? pulumi.output(val.recursive).apply(inputs.layeredTypeArgsProvideDefaults) : undefined),
+        thinker: (val.thinker) ?? "not a good interaction",
     };
+}
+
+/**
+ * A test for namespaces (mod main)
+ */
+export interface TypArgs {
+    mod1?: pulumi.Input<inputs.mod1.TypArgs>;
+    mod2?: pulumi.Input<inputs.mod2.TypArgs>;
+    val?: pulumi.Input<string>;
+}
+/**
+ * typArgsProvideDefaults sets the appropriate defaults for TypArgs
+ */
+export function typArgsProvideDefaults(val: TypArgs): TypArgs {
+    return {
+        ...val,
+        mod1: (val.mod1 ? pulumi.output(val.mod1).apply(inputs.mod1.typArgsProvideDefaults) : undefined),
+        mod2: (val.mod2 ? pulumi.output(val.mod2).apply(inputs.mod2.typArgsProvideDefaults) : undefined),
+        val: (val.val) ?? "mod main",
+    };
+}
+export namespace mod1 {
+    /**
+     * A test for namespaces (mod 1)
+     */
+    export interface TypArgs {
+        val?: pulumi.Input<string>;
+    }
+    /**
+     * typArgsProvideDefaults sets the appropriate defaults for TypArgs
+     */
+    export function typArgsProvideDefaults(val: TypArgs): TypArgs {
+        return {
+            ...val,
+            val: (val.val) ?? "mod1",
+        };
+    }
+}
+
+export namespace mod2 {
+    /**
+     * A test for namespaces (mod 2)
+     */
+    export interface TypArgs {
+        mod1?: pulumi.Input<inputs.mod1.TypArgs>;
+        val?: pulumi.Input<string>;
+    }
+    /**
+     * typArgsProvideDefaults sets the appropriate defaults for TypArgs
+     */
+    export function typArgsProvideDefaults(val: TypArgs): TypArgs {
+        return {
+            ...val,
+            mod1: (val.mod1 ? pulumi.output(val.mod1).apply(inputs.mod1.typArgsProvideDefaults) : undefined),
+            val: (val.val) ?? "mod2",
+        };
+    }
 }

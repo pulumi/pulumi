@@ -18,7 +18,7 @@ export interface Container {
 export function containerProvideDefaults(val: Container): Container {
     return {
         ...val,
-    brightness: (val.brightness) ?? 1,
+        brightness: (val.brightness) ?? 1,
     };
 }
 

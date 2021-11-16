@@ -7,6 +7,8 @@ import (
 	"context"
 	"reflect"
 
+	"env-helper/example/mod1"
+	"env-helper/example/mod2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -574,6 +576,172 @@ func (o LayeredTypePtrOutput) Thinker() pulumi.StringPtrOutput {
 	}).(pulumi.StringPtrOutput)
 }
 
+// A test for namespaces (mod main)
+type Typ struct {
+	Mod1 *mod1.Typ `pulumi:"mod1"`
+	Mod2 *mod2.Typ `pulumi:"mod2"`
+	Val  *string   `pulumi:"val"`
+}
+
+// TypInput is an input type that accepts TypArgs and TypOutput values.
+// You can construct a concrete instance of `TypInput` via:
+//
+//          TypArgs{...}
+type TypInput interface {
+	pulumi.Input
+
+	ToTypOutput() TypOutput
+	ToTypOutputWithContext(context.Context) TypOutput
+}
+
+// A test for namespaces (mod main)
+type TypArgs struct {
+	Mod1 mod1.TypPtrInput      `pulumi:"mod1"`
+	Mod2 mod2.TypPtrInput      `pulumi:"mod2"`
+	Val  pulumi.StringPtrInput `pulumi:"val"`
+}
+
+func (TypArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*Typ)(nil)).Elem()
+}
+
+func (i TypArgs) ToTypOutput() TypOutput {
+	return i.ToTypOutputWithContext(context.Background())
+}
+
+func (i TypArgs) ToTypOutputWithContext(ctx context.Context) TypOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TypOutput)
+}
+
+func (i TypArgs) ToTypPtrOutput() TypPtrOutput {
+	return i.ToTypPtrOutputWithContext(context.Background())
+}
+
+func (i TypArgs) ToTypPtrOutputWithContext(ctx context.Context) TypPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TypOutput).ToTypPtrOutputWithContext(ctx)
+}
+
+// TypPtrInput is an input type that accepts TypArgs, TypPtr and TypPtrOutput values.
+// You can construct a concrete instance of `TypPtrInput` via:
+//
+//          TypArgs{...}
+//
+//  or:
+//
+//          nil
+type TypPtrInput interface {
+	pulumi.Input
+
+	ToTypPtrOutput() TypPtrOutput
+	ToTypPtrOutputWithContext(context.Context) TypPtrOutput
+}
+
+type typPtrType TypArgs
+
+func TypPtr(v *TypArgs) TypPtrInput {
+	return (*typPtrType)(v)
+}
+
+func (*typPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**Typ)(nil)).Elem()
+}
+
+func (i *typPtrType) ToTypPtrOutput() TypPtrOutput {
+	return i.ToTypPtrOutputWithContext(context.Background())
+}
+
+func (i *typPtrType) ToTypPtrOutputWithContext(ctx context.Context) TypPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TypPtrOutput)
+}
+
+// A test for namespaces (mod main)
+type TypOutput struct{ *pulumi.OutputState }
+
+func (TypOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Typ)(nil)).Elem()
+}
+
+func (o TypOutput) ToTypOutput() TypOutput {
+	return o
+}
+
+func (o TypOutput) ToTypOutputWithContext(ctx context.Context) TypOutput {
+	return o
+}
+
+func (o TypOutput) ToTypPtrOutput() TypPtrOutput {
+	return o.ToTypPtrOutputWithContext(context.Background())
+}
+
+func (o TypOutput) ToTypPtrOutputWithContext(ctx context.Context) TypPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Typ) *Typ {
+		return &v
+	}).(TypPtrOutput)
+}
+
+func (o TypOutput) Mod1() mod1.TypPtrOutput {
+	return o.ApplyT(func(v Typ) *mod1.Typ { return v.Mod1 }).(mod1.TypPtrOutput)
+}
+
+func (o TypOutput) Mod2() mod2.TypPtrOutput {
+	return o.ApplyT(func(v Typ) *mod2.Typ { return v.Mod2 }).(mod2.TypPtrOutput)
+}
+
+func (o TypOutput) Val() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v Typ) *string { return v.Val }).(pulumi.StringPtrOutput)
+}
+
+type TypPtrOutput struct{ *pulumi.OutputState }
+
+func (TypPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**Typ)(nil)).Elem()
+}
+
+func (o TypPtrOutput) ToTypPtrOutput() TypPtrOutput {
+	return o
+}
+
+func (o TypPtrOutput) ToTypPtrOutputWithContext(ctx context.Context) TypPtrOutput {
+	return o
+}
+
+func (o TypPtrOutput) Elem() TypOutput {
+	return o.ApplyT(func(v *Typ) Typ {
+		if v != nil {
+			return *v
+		}
+		var ret Typ
+		return ret
+	}).(TypOutput)
+}
+
+func (o TypPtrOutput) Mod1() mod1.TypPtrOutput {
+	return o.ApplyT(func(v *Typ) *mod1.Typ {
+		if v == nil {
+			return nil
+		}
+		return v.Mod1
+	}).(mod1.TypPtrOutput)
+}
+
+func (o TypPtrOutput) Mod2() mod2.TypPtrOutput {
+	return o.ApplyT(func(v *Typ) *mod2.Typ {
+		if v == nil {
+			return nil
+		}
+		return v.Mod2
+	}).(mod2.TypPtrOutput)
+}
+
+func (o TypPtrOutput) Val() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *Typ) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Val
+	}).(pulumi.StringPtrOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*HelmReleaseSettingsInput)(nil)).Elem(), HelmReleaseSettingsArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*HelmReleaseSettingsPtrInput)(nil)).Elem(), HelmReleaseSettingsArgs{})
@@ -581,10 +749,14 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*KubeClientSettingsPtrInput)(nil)).Elem(), KubeClientSettingsArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*LayeredTypeInput)(nil)).Elem(), LayeredTypeArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*LayeredTypePtrInput)(nil)).Elem(), LayeredTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TypInput)(nil)).Elem(), TypArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TypPtrInput)(nil)).Elem(), TypArgs{})
 	pulumi.RegisterOutputType(HelmReleaseSettingsOutput{})
 	pulumi.RegisterOutputType(HelmReleaseSettingsPtrOutput{})
 	pulumi.RegisterOutputType(KubeClientSettingsOutput{})
 	pulumi.RegisterOutputType(KubeClientSettingsPtrOutput{})
 	pulumi.RegisterOutputType(LayeredTypeOutput{})
 	pulumi.RegisterOutputType(LayeredTypePtrOutput{})
+	pulumi.RegisterOutputType(TypOutput{})
+	pulumi.RegisterOutputType(TypPtrOutput{})
 }

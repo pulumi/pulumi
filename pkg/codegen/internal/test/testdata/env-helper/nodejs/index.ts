@@ -7,6 +7,7 @@ import * as utilities from "./utilities";
 // Export members:
 export * from "./foo";
 export * from "./funcWithAllOptionalInputs";
+export * from "./moduleTest";
 export * from "./provider";
 
 // Export sub-modules:
@@ -18,6 +19,7 @@ export {
 
 // Import resources to register:
 import { Foo } from "./foo";
+import { ModuleTest } from "./moduleTest";
 
 const _module = {
     version: utilities.getVersion(),
@@ -25,6 +27,8 @@ const _module = {
         switch (type) {
             case "example:index:Foo":
                 return new Foo(name, <any>undefined, { urn })
+            case "example:index:moduleTest":
+                return new ModuleTest(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }

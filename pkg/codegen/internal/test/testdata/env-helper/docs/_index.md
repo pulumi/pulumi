@@ -1,6 +1,6 @@
 ---
 title: "example"
-title_tag: "example.example"
+title_tag: "example Package"
 meta_desc: ""
 layout: api
 no_edit_this_page: true
@@ -11,9 +11,16 @@ no_edit_this_page: true
 
 
 
+<h2 id="modules">Modules</h2>
+<ul class="api">
+    <li><a href="mod1/" title="mod1"><span class="api-symbol api-symbol--module"></span>mod1</a></li>
+    <li><a href="mod2/" title="mod2"><span class="api-symbol api-symbol--module"></span>mod2</a></li>
+</ul>
+
 <h2 id="resources">Resources</h2>
 <ul class="api">
     <li><a href="foo" title="Foo"><span class="api-symbol api-symbol--resource"></span>Foo</a></li>
+    <li><a href="moduletest" title="ModuleTest"><span class="api-symbol api-symbol--resource"></span>ModuleTest</a></li>
     <li><a href="provider" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
 </ul>
 

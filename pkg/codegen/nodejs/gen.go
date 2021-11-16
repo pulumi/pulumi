@@ -478,7 +478,7 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name, comment stri
 	// Fields look as follows
 	// %s: (val.%s) ?? devValue,
 	for _, val := range defaults {
-		fmt.Fprintf(w, "%s    %s,\n", indent, val)
+		fmt.Fprintf(w, "%s        %s,\n", indent, val)
 	}
 	fmt.Fprintf(w, "%s    };\n", indent)
 	fmt.Fprintf(w, "%s}\n", indent)
