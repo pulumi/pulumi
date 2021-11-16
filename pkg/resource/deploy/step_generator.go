@@ -72,29 +72,28 @@ func (sg *stepGenerator) isTargetedUpdate() bool {
 	return sg.updateTargetsOpt != nil || sg.replaceTargetsOpt != nil
 }
 
-// isTargetedForUpdate returns if urn is target for update. The function accommodates
+// isTargetedForUpdate returns if `res` is targeted for update. The function accommodates
 // `--target-dependents`. `targetDependentsForUpdate` should probably be called if this function
 // returns true.
-func (sg *stepGenerator) isTargetedForUpdate(
-	urn, parent resource.URN, provider string, dependencies []resource.URN) bool {
-	if sg.updateTargetsOpt == nil || sg.updateTargetsOpt[urn] {
+func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
+	if sg.updateTargetsOpt == nil || sg.updateTargetsOpt[res.URN] {
 		return true
 	} else if !sg.opts.TargetDependents {
 		return false
 	}
-	if provider != "" {
-		res, err := providers.ParseReference(provider)
+	if res.Provider != "" {
+		res, err := providers.ParseReference(res.Provider)
 		contract.AssertNoError(err)
 		if sg.updateTargetsOpt[res.URN()] {
 			return true
 		}
 	}
-	if parent != "" {
-		if sg.updateTargetsOpt[parent] {
+	if res.Parent != "" {
+		if sg.updateTargetsOpt[res.Parent] {
 			return true
 		}
 	}
-	for _, dep := range dependencies {
+	for _, dep := range res.Dependencies {
 		if dep != "" && sg.updateTargetsOpt[dep] {
 			return true
 		}
@@ -447,7 +446,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}, nil
 	}
 
-	isTargeted := sg.isTargetedForUpdate(urn, goal.Parent, goal.Provider, goal.Dependencies)
+	isTargeted := sg.isTargetedForUpdate(new)
 	if isTargeted {
 		sg.updateTargetsOpt[urn] = true
 	}
