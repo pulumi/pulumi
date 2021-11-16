@@ -123,6 +123,11 @@ var programTests = []programTest{
 		//   TODO[pulumi/pulumi#8078]
 		//   TODO[pulumi/pulumi#8079]
 	},
+	{
+		Name:        "output-funcs-aws",
+		Description: "Output Versioned Functions",
+		SkipCompile: codegen.NewStringSet("go", "nodejs", "dotnet"),
+	},
 }
 
 // Checks that a generated program is correct

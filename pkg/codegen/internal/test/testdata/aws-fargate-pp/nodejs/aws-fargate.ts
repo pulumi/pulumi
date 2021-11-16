@@ -4,9 +4,9 @@ import * as aws from "@pulumi/aws";
 const vpc = aws.ec2.getVpc({
     "default": true,
 });
-const subnets = vpc.then(vpc => aws.ec2.getSubnetIds({
-    vpcId: vpc.id,
-}));
+const subnets = aws.ec2.getSubnetIdsOutput({
+    vpcId: vpc.then(vpc => vpc.id),
+});
 // Create a security group that permits HTTP ingress and unrestricted egress.
 const webSecurityGroup = new aws.ec2.SecurityGroup("webSecurityGroup", {
     vpcId: vpc.then(vpc => vpc.id),
@@ -43,7 +43,7 @@ const taskExecRolePolicyAttachment = new aws.iam.RolePolicyAttachment("taskExecR
 });
 // Create a load balancer to listen for HTTP traffic on port 80.
 const webLoadBalancer = new aws.elasticloadbalancingv2.LoadBalancer("webLoadBalancer", {
-    subnets: subnets.then(subnets => subnets.ids),
+    subnets: subnets.ids,
     securityGroups: [webSecurityGroup.id],
 });
 const webTargetGroup = new aws.elasticloadbalancingv2.TargetGroup("webTargetGroup", {
@@ -85,7 +85,7 @@ const appService = new aws.ecs.Service("appService", {
     taskDefinition: appTask.arn,
     networkConfiguration: {
         assignPublicIp: true,
-        subnets: subnets.then(subnets => subnets.ids),
+        subnets: subnets.ids,
         securityGroups: [webSecurityGroup.id],
     },
     loadBalancers: [{
