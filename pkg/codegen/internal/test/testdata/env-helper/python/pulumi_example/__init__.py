@@ -7,8 +7,20 @@ import typing
 # Export this package's modules as members:
 from .foo import *
 from .func_with_all_optional_inputs import *
+from .module_test import *
 from .provider import *
 from ._inputs import *
+
+# Make subpackages available:
+if typing.TYPE_CHECKING:
+    import pulumi_example.mod1 as __mod1
+    mod1 = __mod1
+    import pulumi_example.mod2 as __mod2
+    mod2 = __mod2
+else:
+    mod1 = _utilities.lazy_import('pulumi_example.mod1')
+    mod2 = _utilities.lazy_import('pulumi_example.mod2')
+
 _utilities.register(
     resource_modules="""
 [
@@ -17,7 +29,8 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_example",
   "classes": {
-   "example:index:Foo": "Foo"
+   "example:index:Foo": "Foo",
+   "example:index:moduleTest": "ModuleTest"
   }
  }
 ]

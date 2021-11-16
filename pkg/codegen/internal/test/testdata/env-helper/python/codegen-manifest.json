@@ -6,6 +6,11 @@
     "pulumi_example/_utilities.py",
     "pulumi_example/foo.py",
     "pulumi_example/func_with_all_optional_inputs.py",
+    "pulumi_example/mod1/__init__.py",
+    "pulumi_example/mod1/_inputs.py",
+    "pulumi_example/mod2/__init__.py",
+    "pulumi_example/mod2/_inputs.py",
+    "pulumi_example/module_test.py",
     "pulumi_example/provider.py",
     "pulumi_example/py.typed",
     "setup.py"

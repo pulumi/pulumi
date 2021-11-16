@@ -16,6 +16,7 @@
         "foo.ts",
         "funcWithAllOptionalInputs.ts",
         "index.ts",
+        "moduleTest.ts",
         "provider.ts",
         "types/index.ts",
         "types/input.ts",

@@ -18,6 +18,6 @@ export interface ContainerArgs {
 export function containerArgsProvideDefaults(val: ContainerArgs): ContainerArgs {
     return {
         ...val,
-    brightness: (val.brightness) ?? 1,
+        brightness: (val.brightness) ?? 1,
     };
 }

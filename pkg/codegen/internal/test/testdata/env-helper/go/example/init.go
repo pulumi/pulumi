@@ -22,6 +22,8 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 	switch typ {
 	case "example:index:Foo":
 		r = &Foo{}
+	case "example:index:moduleTest":
+		r = &ModuleTest{}
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", typ)
 	}

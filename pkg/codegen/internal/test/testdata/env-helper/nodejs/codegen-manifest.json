@@ -4,6 +4,7 @@
     "foo.ts",
     "funcWithAllOptionalInputs.ts",
     "index.ts",
+    "moduleTest.ts",
     "package.json",
     "provider.ts",
     "tsconfig.json",

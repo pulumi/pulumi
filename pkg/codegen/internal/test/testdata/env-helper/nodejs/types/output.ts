@@ -6,3 +6,8 @@ import { input as inputs, output as outputs } from "../types";
 
 import * as utilities from "../utilities";
 
+export namespace mod1 {
+}
+
+export namespace mod2 {
+}

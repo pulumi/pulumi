@@ -40,10 +40,60 @@
         }
       },
       "requiredInputs": ["backupKubeClientSettings"]
+    },
+    "example:index:moduleTest": {
+      "inputProperties": {
+        "val": {
+          "$ref": "#/types/example:index:typ"
+        },
+        "mod1": {
+          "$ref": "#/types/example:mod1:typ"
+        }
+      }
     }
   },
 
   "types": {
+    "example:mod1:typ": {
+      "description": "A test for namespaces (mod 1)",
+      "properties": {
+        "val": {
+          "type": "string",
+          "default": "mod1"
+        }
+      },
+      "type": "object"
+    },
+    "example:mod2:typ": {
+      "description": "A test for namespaces (mod 2)",
+      "properties": {
+        "val": {
+          "type": "string",
+          "default": "mod2"
+        },
+        "mod1": {
+          "$ref": "#/types/example:mod1:typ"
+        }
+      },
+      "type": "object"
+    },
+    "example:index:typ": {
+      "description": "A test for namespaces (mod main)",
+      "properties": {
+        "val": {
+          "type": "string",
+          "default": "mod main"
+        },
+        "mod1": {
+          "$ref": "#/types/example:mod1:typ"
+        },
+        "mod2": {
+          "$ref": "#/types/example:mod2:typ"
+        }
+      },
+      "type": "object"
+    },
+
     "example:index:HelmReleaseSettings": {
       "description": "BETA FEATURE - Options to configure the Helm Release resource.",
       "properties": {
