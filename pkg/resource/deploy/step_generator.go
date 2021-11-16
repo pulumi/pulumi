@@ -72,28 +72,41 @@ func (sg *stepGenerator) isTargetedUpdate() bool {
 	return sg.updateTargetsOpt != nil || sg.replaceTargetsOpt != nil
 }
 
-// isTargetedForUpdate checks if a urn is target for update.
-//
-// Note: to accommodate the `--target-dependents` flag,
-// `isTargetedForUpdateOrAddIfDep` should probably be called instead.
-func (sg *stepGenerator) isTargetedForUpdate(urn resource.URN) bool {
-	return sg.updateTargetsOpt == nil || sg.updateTargetsOpt[urn]
-}
-
-// isTargetedForUpdateOrAddIfDep checks if a target should be updated, updating
-// `sg.isTargetedForUpdateOrAddIfDep` as necessary for `--target-dependents` to be
-// accurate.
-func (sg *stepGenerator) isTargetedForUpdateOrAddIfDep(urn resource.URN,
-	parent resource.URN, provider string, dependencies []resource.URN) bool {
-	if sg.isTargetedForUpdate(urn) {
+// isTargetedForUpdate returns if urn is target for update. The function accommodates
+// `--target-dependents`. `targetDependentsForUpdate` should probably be called if this function
+// returns true.
+func (sg *stepGenerator) isTargetedForUpdate(
+	urn, parent resource.URN, provider string, dependencies []resource.URN) bool {
+	if sg.updateTargetsOpt == nil || sg.updateTargetsOpt[urn] {
 		return true
-	}
-	if !sg.opts.TargetDependents || dependencies == nil {
-		return false
 	}
 	if provider != "" {
 		res, err := providers.ParseReference(provider)
-		contract.AssertNoErrorf(err, "Failed to parse provider reference: %q", provider)
+		contract.AssertNoError(err)
+		dependencies = append(dependencies, res.URN())
+	}
+	if parent != "" {
+		dependencies = append(dependencies, parent)
+	}
+	for _, dep := range dependencies {
+		if dep != "" && sg.updateTargetsOpt[dep] {
+			return true
+		}
+	}
+	return false
+}
+
+// targetDependentsForUpdate sets the dependents of urn to be updated, if performing a targeted
+// update.
+func (sg *stepGenerator) targetDependentsForUpdate(
+	urn, parent resource.URN, provider string, dependencies []resource.URN) {
+	if sg.updateTargetsOpt == nil {
+		// We are not doing a targeted update.
+		return
+	}
+	if provider != "" {
+		res, err := providers.ParseReference(provider)
+		contract.AssertNoError(err)
 		dependencies = append(dependencies, res.URN())
 	}
 	if parent != "" {
@@ -102,10 +115,8 @@ func (sg *stepGenerator) isTargetedForUpdateOrAddIfDep(urn resource.URN,
 	for _, dep := range dependencies {
 		if dep != "" && sg.updateTargetsOpt[dep] {
 			sg.updateTargetsOpt[urn] = true
-			return true
 		}
 	}
-	return false
 }
 
 func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
@@ -471,11 +482,12 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		contract.Assert(old != nil)
 
 		// If the user requested only specific resources to update, and this resource was not in
-		// that set, then do nothin but create a SameStep for it.
-		if !sg.isTargetedForUpdateOrAddIfDep(urn, goal.Parent, goal.Provider, goal.Dependencies) {
+		// that set, then do nothing but create a SameStep for it.
+		if !sg.isTargetedForUpdate(urn, goal.Parent, goal.Provider, goal.Dependencies) {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
+			sg.targetDependentsForUpdate(urn, goal.Parent, goal.Provider, goal.Dependencies)
 			updateSteps, res := sg.generateStepsFromDiff(
 				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
 
@@ -522,9 +534,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// We will also not record this non-created resource into the checkpoint as it doesn't actually
 	// exist.
 
-	if !sg.isTargetedForUpdateOrAddIfDep(urn, goal.Parent, goal.Provider, goal.Dependencies) &&
-		!providers.IsProviderType(goal.Type) {
-
+	isTargeted := sg.isTargetedForUpdate(urn, goal.Parent, goal.Provider, goal.Dependencies)
+	if isTargeted {
+		sg.targetDependentsForUpdate(urn, goal.Parent, goal.Provider, goal.Dependencies)
+	}
+	if !isTargeted && !providers.IsProviderType(goal.Type) {
 		sg.sames[urn] = true
 		sg.skippedCreates[urn] = true
 		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
