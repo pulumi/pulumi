@@ -428,7 +428,7 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 }
 
 // Generate a provide defaults function for an associated plain object.
-func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name, comment string,
+func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	properties []*schema.Property, input, readonly bool, level int) error {
 	indent := strings.Repeat("    ", level)
 	defaults := []string{}
@@ -500,36 +500,12 @@ func provideDefaultsFuncNameFromName(typeName string) string {
 // `type` is the type which the function applies to.
 // `input` indicates whither `type` is an input type.
 func (mod *modContext) provideDefaultsFuncName(typ schema.Type, input bool) string {
-	if !isProvideDefaultsFuncRequired(typ) {
+	if !codegen.IsProvideDefaultsFuncRequired(typ) {
 		return ""
 	}
 	requiredType := codegen.UnwrapType(typ)
 	typeName := mod.typeString(requiredType, input, nil)
 	return provideDefaultsFuncNameFromName(typeName)
-}
-
-// If a helper function needs to be invoked to provide default values for a
-// plain type. The provided map cannot be reused.
-func isProvideDefaultsFuncRequired(t schema.Type) bool {
-	return isProvideDefaultsFuncRequiredHelper(t, map[string]bool{})
-}
-
-func isProvideDefaultsFuncRequiredHelper(t schema.Type, seen map[string]bool) bool {
-	if seen[t.String()] {
-		return false
-	}
-	seen[t.String()] = true
-	t = codegen.UnwrapType(t)
-	object, ok := t.(*schema.ObjectType)
-	if !ok {
-		return false
-	}
-	for _, p := range object.Properties {
-		if p.DefaultValue != nil || isProvideDefaultsFuncRequiredHelper(p.Type, seen) {
-			return true
-		}
-	}
-	return false
 }
 
 func tsPrimitiveValue(value interface{}) (string, error) {
@@ -1259,7 +1235,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 	if err != nil {
 		return err
 	}
-	return mod.genPlainObjectDefaultFunc(w, name, obj.Comment, properties, input, false, level)
+	return mod.genPlainObjectDefaultFunc(w, name, properties, input, false, level)
 }
 
 // getObjectName recovers the name of `obj` as a type.
@@ -1568,7 +1544,7 @@ func (mod *modContext) genTypes() (string, string, error) {
 		}
 
 		mod.getImports(t, externalImports, imports)
-		if isProvideDefaultsFuncRequired(t) {
+		if codegen.IsProvideDefaultsFuncRequired(t) {
 			hasDefaultObjects = true
 		}
 	}

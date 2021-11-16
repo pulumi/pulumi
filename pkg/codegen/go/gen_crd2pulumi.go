@@ -43,7 +43,9 @@ func CRDTypes(tool string, pkg *schema.Package) (map[string]*bytes.Buffer, error
 
 		if len(pkg.types) > 0 {
 			for _, t := range pkg.types {
-				pkg.genType(buffer, t)
+				if err := pkg.genType(buffer, t); err != nil {
+					return nil, err
+				}
 			}
 			pkg.genTypeRegistrations(buffer, pkg.types)
 		}

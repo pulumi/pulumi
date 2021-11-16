@@ -15,6 +15,12 @@ type Typ struct {
 	Val *string `pulumi:"val"`
 }
 
+// TypProvideDefaults sets the appropriate defaults for Typ
+func (val Typ) TypProvideDefaults() Typ {
+	val.Val = "mod1"
+	return val
+}
+
 // TypInput is an input type that accepts TypArgs and TypOutput values.
 // You can construct a concrete instance of `TypInput` via:
 //

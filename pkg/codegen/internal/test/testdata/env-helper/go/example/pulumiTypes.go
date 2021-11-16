@@ -22,6 +22,13 @@ type HelmReleaseSettings struct {
 	RequiredArg string `pulumi:"requiredArg"`
 }
 
+// HelmReleaseSettingsProvideDefaults sets the appropriate defaults for HelmReleaseSettings
+func (val HelmReleaseSettings) HelmReleaseSettingsProvideDefaults() HelmReleaseSettings {
+	val.Driver = getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string)
+	val.PluginsPath = getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string)
+	return val
+}
+
 // HelmReleaseSettingsInput is an input type that accepts HelmReleaseSettingsArgs and HelmReleaseSettingsOutput values.
 // You can construct a concrete instance of `HelmReleaseSettingsInput` via:
 //
@@ -197,6 +204,14 @@ type KubeClientSettings struct {
 	// Maximum queries per second (QPS) to the API server from this client. Default value is 5.
 	Qps     *float64            `pulumi:"qps"`
 	RecTest *KubeClientSettings `pulumi:"recTest"`
+}
+
+// KubeClientSettingsProvideDefaults sets the appropriate defaults for KubeClientSettings
+func (val KubeClientSettings) KubeClientSettingsProvideDefaults() KubeClientSettings {
+	val.Burst = getEnvOrDefault("", nil, "PULUMI_K8S_CLIENT_BURST").(string)
+	val.Qps = getEnvOrDefault("", nil, "PULUMI_K8S_CLIENT_QPS").(string)
+	val.RecTest = KubeClientSettingsProvideDefaults(val.RecTest)
+	return val
 }
 
 // KubeClientSettingsInput is an input type that accepts KubeClientSettingsArgs and KubeClientSettingsOutput values.
@@ -376,6 +391,17 @@ type LayeredType struct {
 	Recursive *LayeredType `pulumi:"recursive"`
 	// To ask and answer
 	Thinker string `pulumi:"thinker"`
+}
+
+// LayeredTypeProvideDefaults sets the appropriate defaults for LayeredType
+func (val LayeredType) LayeredTypeProvideDefaults() LayeredType {
+	val.Answer = 42.0
+	val.Other = HelmReleaseSettingsProvideDefaults(val.Other)
+	val.PlainOther = HelmReleaseSettingsProvideDefaults(val.PlainOther)
+	val.Question = getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string)
+	val.Recursive = LayeredTypeProvideDefaults(val.Recursive)
+	val.Thinker = "not a good interaction"
+	return val
 }
 
 // LayeredTypeInput is an input type that accepts LayeredTypeArgs and LayeredTypeOutput values.
@@ -596,6 +622,14 @@ type Typ struct {
 	Mod1 *mod1.Typ `pulumi:"mod1"`
 	Mod2 *mod2.Typ `pulumi:"mod2"`
 	Val  *string   `pulumi:"val"`
+}
+
+// TypProvideDefaults sets the appropriate defaults for Typ
+func (val Typ) TypProvideDefaults() Typ {
+	val.Mod1 = mod1.TypProvideDefaults(val.Mod1)
+	val.Mod2 = mod2.TypProvideDefaults(val.Mod2)
+	val.Val = "mod main"
+	return val
 }
 
 // TypInput is an input type that accepts TypArgs and TypOutput values.
