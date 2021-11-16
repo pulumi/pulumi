@@ -1,5 +1,6 @@
 ### Improvements
-* Adds CI detector for Buildkite [#7933](https://github.com/pulumi/pulumi/pull/7933)
+- Adds CI detector for Buildkite
+  [#7933](https://github.com/pulumi/pulumi/pull/7933)
 
 - [cli] - Add `--exclude-protected` flag to `pulumi destroy`.
   [#8359](https://github.com/pulumi/pulumi/pull/8359)
@@ -24,3 +25,6 @@
 
 - [engine] - Compute dependents correctly during targeted deletes.
   [#8360](https://github.com/pulumi/pulumi/pull/8360)
+
+- [docs] - Fix broken lists in dotnet docs
+  [docs#6558](https://github.com/pulumi/docs/issues/6558)
