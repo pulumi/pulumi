@@ -139,17 +139,20 @@ func TestUpdateTarget(t *testing.T) {
 		// limit to up to 3 resources to destroy.  This keeps the test running time under
 		// control as it only generates a few hundred combinations instead of several thousand.
 		if len(subset) <= 3 {
-			updateSpecificTargets(t, subset)
+			updateSpecificTargets(t, subset, false /*targetDependents*/)
 		}
 	}
 
-	updateSpecificTargets(t, []string{"A"})
+	updateSpecificTargets(t, []string{"A"}, false /*targetDependents*/)
 
 	// Also update a target that doesn't exist to make sure we don't crash or otherwise go off the rails.
 	updateInvalidTarget(t)
+
+	// We want to check that targetDependents is respected
+	updateSpecificTargets(t, []string{"C"}, true /*targetDependents*/)
 }
 
-func updateSpecificTargets(t *testing.T, targets []string) {
+func updateSpecificTargets(t *testing.T, targets []string, targetDependents bool) {
 	//             A
 	//    _________|_________
 	//    B        C        D
@@ -187,6 +190,7 @@ func updateSpecificTargets(t *testing.T, targets []string) {
 	}
 
 	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.TargetDependents = targetDependents
 
 	updateTargets := []resource.URN{}
 	for _, target := range targets {
@@ -222,6 +226,28 @@ func updateSpecificTargets(t *testing.T, targets []string) {
 				assert.Contains(t, updated, target)
 			}
 
+			if !targetDependents {
+				// We should only perform updates on the entries we have targeted.
+				for _, target := range p.Options.UpdateTargets {
+					assert.Contains(t, targets, target.Name().String())
+				}
+			} else {
+				// We expect to find at least one other resource updates.
+
+				// NOTE: The test is limited to only passing a subset valid behavior. By specifying
+				// a URN with no dependents, no other urns will be updated and the test will fail
+				// (incorrectly).
+				found := false
+				updateList := []string{}
+				for target := range updated {
+					updateList = append(updateList, target.Name().String())
+					if !contains(targets, target.Name().String()) {
+						found = true
+					}
+				}
+				assert.True(t, found, "Updates: %v", updateList)
+			}
+
 			for _, target := range p.Options.UpdateTargets {
 				assert.NotContains(t, sames, target)
 			}
@@ -230,6 +256,15 @@ func updateSpecificTargets(t *testing.T, targets []string) {
 		},
 	}}
 	p.Run(t, old)
+}
+
+func contains(list []string, entry string) bool {
+	for _, e := range list {
+		if e == entry {
+			return true
+		}
+	}
+	return false
 }
 
 func updateInvalidTarget(t *testing.T) {
