@@ -83,16 +83,24 @@ func (sg *stepGenerator) isTargetedForUpdate(urn resource.URN) bool {
 // isTargetedForUpdateOrAddIfDep checks if a target should be updated, updating
 // `sg.isTargetedForUpdateOrAddIfDep` as necessary for `--target-dependents` to be
 // accurate.
-func (sg *stepGenerator) isTargetedForUpdateOrAddIfDep(urn resource.URN, dependencies []resource.URN) bool {
+func (sg *stepGenerator) isTargetedForUpdateOrAddIfDep(urn resource.URN,
+	parent resource.URN, provider string, dependencies []resource.URN) bool {
 	if sg.isTargetedForUpdate(urn) {
 		return true
 	}
-	// TODO; does sg.opts.TrustDependencies play a role here?
 	if !sg.opts.TargetDependents || dependencies == nil {
 		return false
 	}
+	if provider != "" {
+		res, err := providers.ParseReference(provider)
+		contract.AssertNoErrorf(err, "Failed to parse provider reference: %q", provider)
+		dependencies = append(dependencies, res.URN())
+	}
+	if parent != "" {
+		dependencies = append(dependencies, parent)
+	}
 	for _, dep := range dependencies {
-		if sg.updateTargetsOpt[dep] {
+		if dep != "" && sg.updateTargetsOpt[dep] {
 			sg.updateTargetsOpt[urn] = true
 			return true
 		}
@@ -464,7 +472,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then do nothin but create a SameStep for it.
-		if !sg.isTargetedForUpdateOrAddIfDep(urn, goal.Dependencies) {
+		if !sg.isTargetedForUpdateOrAddIfDep(urn, goal.Parent, goal.Provider, goal.Dependencies) {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
@@ -514,7 +522,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// We will also not record this non-created resource into the checkpoint as it doesn't actually
 	// exist.
 
-	if !sg.isTargetedForUpdateOrAddIfDep(urn, goal.Dependencies) &&
+	if !sg.isTargetedForUpdateOrAddIfDep(urn, goal.Parent, goal.Provider, goal.Dependencies) &&
 		!providers.IsProviderType(goal.Type) {
 
 		sg.sames[urn] = true
