@@ -66,6 +66,16 @@
       },
       "type": "object"
     },
+    "example::EnumOverlay": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "SomeEnumValue",
+          "value": "SOME_ENUM_VALUE"
+        }
+      ],
+      "isOverlay": true
+    },
     "example::ConfigMapOverlay": {
       "isOverlay": true,
       "properties": {
@@ -128,11 +138,17 @@
       "properties": {
         "foo": {
           "$ref": "#/types/example::ConfigMapOverlay"
+        },
+        "bar": {
+          "$ref": "#/types/example::EnumOverlay"
         }
       },
       "inputProperties": {
         "foo": {
           "$ref": "#/types/example::ConfigMapOverlay"
+        },
+        "bar": {
+          "$ref": "#/types/example::EnumOverlay"
         }
       },
       "type": "object"
