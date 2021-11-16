@@ -397,14 +397,16 @@ func printComment(w io.Writer, comment, deprecationMessage, indent string) {
 	fmt.Fprintf(w, "%s */\n", indent)
 }
 
+// Generates a plain interface type.
+//
+// We use this to represent both argument and plain object types.
 func (mod *modContext) genPlainType(w io.Writer, name, comment string,
-	properties []*schema.Property, input, readonly, plainType bool, level int) error {
+	properties []*schema.Property, input, readonly bool, level int) error {
 	indent := strings.Repeat("    ", level)
 
 	printComment(w, comment, "", indent)
 
 	fmt.Fprintf(w, "%sexport interface %s {\n", indent, name)
-	defaults := make([]string, 0)
 	for _, p := range properties {
 		printComment(w, p.Comment, p.DeprecationMessage, indent+"    ")
 
@@ -417,6 +419,21 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 		if !p.IsRequired() {
 			sigil, propertyType = "?", codegen.RequiredType(p)
 		}
+
+		typ := mod.typeString(propertyType, input, p.ConstValue)
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
+	}
+	fmt.Fprintf(w, "%s}\n", indent)
+	return nil
+}
+
+// Generate a provide defaults function for an associated plain object.
+func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name, comment string,
+	properties []*schema.Property, input, readonly bool, level int) error {
+	indent := strings.Repeat("    ", level)
+	defaults := []string{}
+	for _, p := range properties {
+
 		if p.DefaultValue != nil {
 			dv, err := mod.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
 			if err != nil {
@@ -440,34 +457,31 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 			}
 			defaults = append(defaults, fmt.Sprintf("%s: %s", p.Name, compositeObject))
 		}
-
-		typ := mod.typeString(propertyType, input, p.ConstValue)
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
 	}
+
+	// There are no defaults, so don't generate a default function.
+	if len(defaults) == 0 {
+		return nil
+	}
+	// Generates a function header that looks like this:
+	// export function %sProvideDefaults(val: pulumi.Input<%s> | undefined): pulumi.Output<%s> | undefined {
+	//     const def = (val: LayeredTypeArgs) => ({
+	//         ...val,
+	defaultProvderName := provideDefaultsFuncNameFromName(name)
+	printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s",
+		defaultProvderName, name), "", indent)
+	fmt.Fprintf(w, "%sexport function %s(val: %s): "+
+		"%s {\n", indent, defaultProvderName, name, name)
+	fmt.Fprintf(w, "%s    return {\n", indent)
+	fmt.Fprintf(w, "%s        ...val,\n", indent)
+
+	// Fields look as follows
+	// %s: (val.%s) ?? devValue,
+	for _, val := range defaults {
+		fmt.Fprintf(w, "%s    %s,\n", indent, val)
+	}
+	fmt.Fprintf(w, "%s    };\n", indent)
 	fmt.Fprintf(w, "%s}\n", indent)
-
-	// Generate an object type with a default value constructor.
-	if len(defaults) != 0 && plainType {
-		// Generates a function header that looks like this:
-		// export function %sProvideDefaults(val: pulumi.Input<%s> | undefined): pulumi.Output<%s> | undefined {
-		//     const def = (val: LayeredTypeArgs) => ({
-		//         ...val,
-		defaultProvderName := provideDefaultsFuncNameFromName(name)
-		printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s",
-			defaultProvderName, name), "", indent)
-		fmt.Fprintf(w, "%sexport function %s(val: %s): "+
-			"%s {\n", indent, defaultProvderName, name, name)
-		fmt.Fprintf(w, "%s    return {\n", indent)
-		fmt.Fprintf(w, "%s        ...val,\n", indent)
-
-		// Fields look as follows
-		// %s: (val.%s) ?? devValue,
-		for _, val := range defaults {
-			fmt.Fprintf(w, "%s    %s,\n", indent, val)
-		}
-		fmt.Fprintf(w, "%s    };\n", indent)
-		fmt.Fprintf(w, "%s}\n", indent)
-	}
 	return nil
 }
 
@@ -1008,7 +1022,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Emit the state type for get methods.
 	if r.StateInputs != nil {
 		fmt.Fprintf(w, "\n")
-		if err := mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, false, false, 0); err != nil {
+		if err := mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, false, 0); err != nil {
 			return err
 		}
 	}
@@ -1016,7 +1030,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Emit the argument type for construction.
 	fmt.Fprintf(w, "\n")
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
-	if err := mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, false, false, 0); err != nil {
+	if err := mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, false, 0); err != nil {
 		return err
 	}
 
@@ -1038,7 +1052,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				if comment == "" {
 					comment = fmt.Sprintf("The set of arguments for the %s.%s method.", name, method.Name)
 				}
-				if err := mod.genPlainType(w, methodName+"Args", comment, args, true, false, false, 1); err != nil {
+				if err := mod.genPlainType(w, methodName+"Args", comment, args, true, false, 1); err != nil {
 					return err
 				}
 				fmt.Fprintf(w, "\n")
@@ -1049,7 +1063,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			if comment == "" {
 				comment = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
 			}
-			if err := mod.genPlainType(w, methodName+"Result", comment, fun.Outputs.Properties, false, true, false, 1); err != nil {
+			if err := mod.genPlainType(w, methodName+"Result", comment, fun.Outputs.Properties, false, true, 1); err != nil {
 				return err
 			}
 			fmt.Fprintf(w, "\n")
@@ -1116,8 +1130,16 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	if fun.Inputs != nil {
 		for _, p := range fun.Inputs.Properties {
 			// Pass the argument to the invocation.
-			// TODO: handle const and default values
-			fmt.Fprintf(w, "        \"%[1]s\": args.%[1]s,\n", p.Name)
+			body := fmt.Sprintf("args.%s", p.Name)
+			if name := mod.provideDefaultsFuncName(p.Type); name != "" {
+				if codegen.IsNOptionalInput(p.Type) {
+					body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
+				} else {
+					body = fmt.Sprintf("%s(%s)", name, body)
+				}
+				body = fmt.Sprintf("args.%s ? %s : undefined", p.Name, body)
+			}
+			fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
 		}
 	}
 	fmt.Fprintf(w, "    }, opts);\n")
@@ -1126,13 +1148,13 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil {
 		fmt.Fprintf(w, "\n")
-		if err := mod.genPlainType(w, title(name)+"Args", fun.Inputs.Comment, fun.Inputs.Properties, true, false, false, 0); err != nil {
+		if err := mod.genPlainType(w, title(name)+"Args", fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0); err != nil {
 			return err
 		}
 	}
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "\n")
-		if err := mod.genPlainType(w, title(name)+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, true, false, 0); err != nil {
+		if err := mod.genPlainType(w, title(name)+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0); err != nil {
 			return err
 		}
 	}
@@ -1190,7 +1212,6 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 		fun.Inputs.InputShape.Properties,
 		true,  /* input */
 		false, /* readonly */
-		false, /* plain */
 		0 /* level */)
 }
 
@@ -1233,7 +1254,11 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 	}
 
 	name := mod.getObjectName(obj, input)
-	return mod.genPlainType(w, name, obj.Comment, properties, input, false, true, level)
+	err := mod.genPlainType(w, name, obj.Comment, properties, input, false, level)
+	if err != nil {
+		return err
+	}
+	return mod.genPlainObjectDefaultFunc(w, name, obj.Comment, properties, input, false, level)
 }
 
 // getObjectName recovers the name of `obj` as a type.

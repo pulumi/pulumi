@@ -2,6 +2,7 @@
   "emittedFiles": [
     "README.md",
     "foo.ts",
+    "funcWithAllOptionalInputs.ts",
     "index.ts",
     "package.json",
     "provider.ts",

@@ -5,6 +5,7 @@
     "pulumi_example/_inputs.py",
     "pulumi_example/_utilities.py",
     "pulumi_example/foo.py",
+    "pulumi_example/func_with_all_optional_inputs.py",
     "pulumi_example/provider.py",
     "pulumi_example/py.typed",
     "setup.py"

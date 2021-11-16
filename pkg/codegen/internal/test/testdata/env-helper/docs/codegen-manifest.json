@@ -2,6 +2,7 @@
   "emittedFiles": [
     "_index.md",
     "foo/_index.md",
+    "funcwithalloptionalinputs/_index.md",
     "provider/_index.md"
   ]
 }

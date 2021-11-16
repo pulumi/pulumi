@@ -9,10 +9,70 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
+    'HelmReleaseSettings',
     'HelmReleaseSettingsArgs',
     'KubeClientSettingsArgs',
     'LayeredTypeArgs',
 ]
+
+@pulumi.input_type
+class HelmReleaseSettings:
+    def __init__(__self__, *,
+                 required_arg: str,
+                 driver: Optional[str] = None,
+                 plugins_path: Optional[str] = None):
+        """
+        BETA FEATURE - Options to configure the Helm Release resource.
+        :param str required_arg: to test required args
+        :param str driver: The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
+        :param str plugins_path: The path to the helm plugins directory.
+        """
+        pulumi.set(__self__, "required_arg", required_arg)
+        if driver is None:
+            driver = (_utilities.get_env('PULUMI_K8S_HELM_DRIVER') or 'secret')
+        if driver is not None:
+            pulumi.set(__self__, "driver", driver)
+        if plugins_path is None:
+            plugins_path = _utilities.get_env('PULUMI_K8S_HELM_PLUGINS_PATH')
+        if plugins_path is not None:
+            pulumi.set(__self__, "plugins_path", plugins_path)
+
+    @property
+    @pulumi.getter(name="requiredArg")
+    def required_arg(self) -> str:
+        """
+        to test required args
+        """
+        return pulumi.get(self, "required_arg")
+
+    @required_arg.setter
+    def required_arg(self, value: str):
+        pulumi.set(self, "required_arg", value)
+
+    @property
+    @pulumi.getter
+    def driver(self) -> Optional[str]:
+        """
+        The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
+        """
+        return pulumi.get(self, "driver")
+
+    @driver.setter
+    def driver(self, value: Optional[str]):
+        pulumi.set(self, "driver", value)
+
+    @property
+    @pulumi.getter(name="pluginsPath")
+    def plugins_path(self) -> Optional[str]:
+        """
+        The path to the helm plugins directory.
+        """
+        return pulumi.get(self, "plugins_path")
+
+    @plugins_path.setter
+    def plugins_path(self, value: Optional[str]):
+        pulumi.set(self, "plugins_path", value)
+
 
 @pulumi.input_type
 class HelmReleaseSettingsArgs:

@@ -6,6 +6,7 @@ import * as utilities from "./utilities";
 
 // Export members:
 export * from "./foo";
+export * from "./funcWithAllOptionalInputs";
 export * from "./provider";
 
 // Export sub-modules:
