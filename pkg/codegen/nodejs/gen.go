@@ -450,9 +450,7 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name, comment stri
 			} else {
 				compositeObject = fmt.Sprintf("%s(val.%s)", funcName, p.Name)
 			}
-			if p.IsRequired() {
-				compositeObject = compositeObject + "!"
-			} else {
+			if !p.IsRequired() {
 				compositeObject = fmt.Sprintf("(val.%s ? %s : undefined)", p.Name, compositeObject)
 			}
 			defaults = append(defaults, fmt.Sprintf("%s: %s", p.Name, compositeObject))

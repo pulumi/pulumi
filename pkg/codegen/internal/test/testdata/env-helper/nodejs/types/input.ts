@@ -118,7 +118,7 @@ export function layeredTypeArgsProvideDefaults(val: LayeredTypeArgs): LayeredTyp
     return {
         ...val,
         answer: (val.answer) ?? 42,
-        other: pulumi.output(val.other).apply(inputs.helmReleaseSettingsArgsProvideDefaults)!,
+        other: pulumi.output(val.other).apply(inputs.helmReleaseSettingsArgsProvideDefaults),
         plainOther: (val.plainOther ? inputs.helmReleaseSettingsArgsProvideDefaults(val.plainOther) : undefined),
         question: (val.question) ?? (utilities.getEnv("PULUMI_THE_QUESTION") || "<unknown>"),
         recursive: (val.recursive ? pulumi.output(val.recursive).apply(inputs.layeredTypeArgsProvideDefaults) : undefined),
