@@ -146,7 +146,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		if opts.RefreshOnly {
 			return nil
 		}
-	} else if len(ex.deployment.prev.PendingOperations) != 0 && !preview {
+	} else if ex.deployment.prev != nil && len(ex.deployment.prev.PendingOperations) != 0 && !preview {
 		return result.FromError(PlanPendingOperationsError{ex.deployment.prev.PendingOperations})
 	}
 
