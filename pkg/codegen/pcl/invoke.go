@@ -201,7 +201,9 @@ func RecognizeTypedObjectCons(theExpr model.Expression) (bool, *model.ObjectCons
 // Pattern matches to recognize an encoded call to an output-versioned
 // invoke, such as `invoke(token, __convert(objCons(..)))`. If
 // matching, returns the `args` expression and its schema-bound type.
-func RecognizeOutputVersionedInvoke(expr *model.FunctionCallExpression) (bool, *model.ObjectConsExpression, model.Type) {
+func RecognizeOutputVersionedInvoke(
+	expr *model.FunctionCallExpression,
+) (bool, *model.ObjectConsExpression, model.Type) {
 	if !IsOutputVersionInvokeCall(expr) {
 		return false, nil, nil
 	}
