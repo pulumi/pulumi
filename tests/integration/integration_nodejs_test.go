@@ -1,4 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+//go:build nodejs || all
 // +build nodejs all
 
 package ints
@@ -1048,6 +1049,10 @@ func TestConstructMethodsUnknownNode(t *testing.T) {
 
 func TestConstructMethodsResourcesNode(t *testing.T) {
 	testConstructMethodsResources(t, "nodejs", "@pulumi/pulumi")
+}
+
+func TestConstructMethodsErrorsNode(t *testing.T) {
+	testConstructMethodsErrors(t, "nodejs", "@pulumi/pulumi")
 }
 
 func TestConstructProviderNode(t *testing.T) {

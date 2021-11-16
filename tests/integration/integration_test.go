@@ -860,6 +860,48 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 	}
 }
 
+// Test failures returned from methods are observed.
+// nolint: unused,deadcode
+func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_methods_errors"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			stderr := &bytes.Buffer{}
+			expectedError := "the failure reason (the failure property)"
+
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:           append(test.env, pathEnv),
+				Dir:           filepath.Join(testDir, lang),
+				Dependencies:  dependencies,
+				Quick:         true,
+				NoParallel:    true, // avoid contention for Dir
+				Stderr:        stderr,
+				ExpectFailure: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					output := stderr.String()
+					assert.Contains(t, output, expectedError)
+				},
+			})
+		})
+	}
+}
+
 func TestRotatePassphrase(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {

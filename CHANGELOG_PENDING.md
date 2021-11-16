@@ -21,6 +21,12 @@
 - [sdk/nodejs] - Unmarshal output values in component provider.
   [#8205](https://github.com/pulumi/pulumi/pull/8205)
 
+- [sdk/nodejs] - Allow returning failures from Call in the provider without setting result outputs.
+  [#8424](https://github.com/pulumi/pulumi/pull/8424)
+
+- [sdk/go] - Allow specifying Call failures from the provider.
+  [#8424](https://github.com/pulumi/pulumi/pull/8424)
+
 ### Bug Fixes
 
 - [engine] - Compute dependents correctly during targeted deletes.

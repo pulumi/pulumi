@@ -1,4 +1,5 @@
 // Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build python || all
 // +build python all
 
 package ints
@@ -755,6 +756,10 @@ func TestConstructMethodsUnknownPython(t *testing.T) {
 
 func TestConstructMethodsResourcesPython(t *testing.T) {
 	testConstructMethodsResources(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
+func TestConstructMethodsErrorsPython(t *testing.T) {
+	testConstructMethodsErrors(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
 func TestConstructProviderPython(t *testing.T) {

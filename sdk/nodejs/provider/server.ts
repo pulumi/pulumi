@@ -391,14 +391,17 @@ class Server implements grpc.UntypedServiceImplementation {
 
             const resp = new provproto.CallResponse();
 
-            const [ret, retDependencies] = await runtime.serializeResourceProperties(`call(${req.getTok()})`, result.outputs);
-            const returnDependenciesMap = resp.getReturndependenciesMap();
-            for (const [key, resources] of retDependencies) {
-                const deps = new provproto.CallResponse.ReturnDependencies();
-                deps.setUrnsList(await Promise.all(Array.from(resources).map(r => r.urn.promise())));
-                returnDependenciesMap.set(key, deps);
+            if (result.outputs) {
+                const [ret, retDependencies] =
+                    await runtime.serializeResourceProperties(`call(${req.getTok()})`, result.outputs);
+                const returnDependenciesMap = resp.getReturndependenciesMap();
+                for (const [key, resources] of retDependencies) {
+                    const deps = new provproto.CallResponse.ReturnDependencies();
+                    deps.setUrnsList(await Promise.all(Array.from(resources).map(r => r.urn.promise())));
+                    returnDependenciesMap.set(key, deps);
+                }
+                resp.setReturn(structproto.Struct.fromJavaScript(ret));
             }
-            resp.setReturn(structproto.Struct.fromJavaScript(ret));
 
             if ((result.failures || []).length !== 0) {
                 const failureList = [];

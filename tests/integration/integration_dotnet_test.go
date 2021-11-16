@@ -533,6 +533,10 @@ func TestConstructMethodsUnknownDotnet(t *testing.T) {
 	testConstructMethodsUnknown(t, "dotnet", "Pulumi")
 }
 
+func TestConstructMethodsErrorsDotnet(t *testing.T) {
+	testConstructMethodsErrors(t, "dotnet", "Pulumi")
+}
+
 func TestConstructProviderDotnet(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {
