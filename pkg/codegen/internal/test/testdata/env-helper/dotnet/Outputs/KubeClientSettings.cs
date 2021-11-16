@@ -7,33 +7,36 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Example.Inputs
+namespace Pulumi.Example.Outputs
 {
 
     /// <summary>
     /// Options for tuning the Kubernetes client used by a Provider.
     /// </summary>
-    public sealed class KubeClientSettingsArgs : Pulumi.ResourceArgs
+    [OutputType]
+    public sealed class KubeClientSettings
     {
         /// <summary>
         /// Maximum burst for throttle. Default value is 10.
         /// </summary>
-        [Input("burst")]
-        public Input<int>? Burst { get; set; }
-
+        public readonly int? Burst;
         /// <summary>
         /// Maximum queries per second (QPS) to the API server from this client. Default value is 5.
         /// </summary>
-        [Input("qps")]
-        public Input<double>? Qps { get; set; }
+        public readonly double? Qps;
+        public readonly Outputs.KubeClientSettings? RecTest;
 
-        [Input("recTest")]
-        public Input<Inputs.KubeClientSettingsArgs>? RecTest { get; set; }
+        [OutputConstructor]
+        private KubeClientSettings(
+            int? burst,
 
-        public KubeClientSettingsArgs()
+            double? qps,
+
+            Outputs.KubeClientSettings? recTest)
         {
-            Burst = Utilities.GetEnvInt32("PULUMI_K8S_CLIENT_BURST");
-            Qps = Utilities.GetEnvDouble("PULUMI_K8S_CLIENT_QPS");
+            Burst = burst;
+            Qps = qps;
+            RecTest = recTest;
         }
     }
 }

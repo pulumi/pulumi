@@ -29,14 +29,16 @@
           "$ref": "#/types/example:index:KubeClientSettings",
           "description": "Options for tuning the Kubernetes client used by a Provider."
         },
+        "backupKubeClientSettings": {
+          "$ref": "#/types/example:index:KubeClientSettings",
+          "description": "Options for tuning the Kubernetes client used by a Provider."
+        }
+      },
+      "properties": {
         "defaultKubeClientSettings": {
           "$ref": "#/types/example:index:KubeClientSettings",
           "description": "A test for plain types",
           "plain": true
-        },
-        "backupKubeClientSettings": {
-          "$ref": "#/types/example:index:KubeClientSettings",
-          "description": "Options for tuning the Kubernetes client used by a Provider."
         }
       },
       "requiredInputs": ["backupKubeClientSettings"]
@@ -172,6 +174,9 @@
           "defaultInfo": {
             "environment": ["PULUMI_K8S_CLIENT_QPS"]
           }
+        },
+        "recTest": {
+          "$ref": "#/types/example:index:KubeClientSettings"
         }
       },
       "type": "object"

@@ -16,6 +16,13 @@ namespace Pulumi.Example
     public partial class Foo : Pulumi.CustomResource
     {
         /// <summary>
+        /// A test for plain types
+        /// </summary>
+        [Output("defaultKubeClientSettings")]
+        public Output<Outputs.KubeClientSettings?> DefaultKubeClientSettings { get; private set; } = null!;
+
+
+        /// <summary>
         /// Create a Foo resource with the given unique name, arguments, and options.
         /// </summary>
         ///
@@ -67,12 +74,6 @@ namespace Pulumi.Example
         /// </summary>
         [Input("backupKubeClientSettings", required: true)]
         public Input<Inputs.KubeClientSettingsArgs> BackupKubeClientSettings { get; set; } = null!;
-
-        /// <summary>
-        /// A test for plain types
-        /// </summary>
-        [Input("defaultKubeClientSettings")]
-        public Inputs.KubeClientSettingsArgs? DefaultKubeClientSettings { get; set; }
 
         /// <summary>
         /// Options for tuning the Kubernetes client used by a Provider.
