@@ -49,7 +49,11 @@ var programTests = []programTest{
 	{
 		Name:        "aws-fargate",
 		Description: "AWS Fargate",
-		Skip:        codegen.NewStringSet("dotnet"),
+
+		// TODO[pulumi/pulumi#8440]
+		SkipCompile: codegen.NewStringSet("go"),
+
+		Skip: codegen.NewStringSet("dotnet"),
 	},
 	{
 		Name:        "aws-s3-logging",
