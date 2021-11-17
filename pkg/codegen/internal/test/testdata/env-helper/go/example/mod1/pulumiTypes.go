@@ -15,8 +15,8 @@ type Typ struct {
 	Val *string `pulumi:"val"`
 }
 
-// TypProvideDefaults sets the appropriate defaults for Typ
-func (val Typ) TypProvideDefaults() *Typ {
+// Defaults sets the appropriate defaults for Typ
+func (val Typ) Defaults() *Typ {
 	val_ := "mod1"
 	val.Val = &val_
 	return &val

@@ -1155,9 +1155,8 @@ func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 		return nil
 	}
 
-	provideDefaultsFunc := provideDefaultsFuncNameFromName(name)
-	printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s", provideDefaultsFunc, name), false)
-	fmt.Fprintf(w, "func (val %[1]s) %[2]s() *%[1]s {\n", name, provideDefaultsFunc)
+	printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s", ProvideDefaultsMethodName, name), false)
+	fmt.Fprintf(w, "func (val %[1]s) %[2]s() *%[1]s {\n", name, ProvideDefaultsMethodName)
 	for _, p := range defaults {
 		// TODO: right now these are assignments, not actual defaults
 		if p.DefaultValue != nil {
@@ -1188,19 +1187,14 @@ func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	return nil
 }
 
-func provideDefaultsFuncNameFromName(typename string) string {
-	return typename + "ProvideDefaults"
-}
+// The name of the method used to instantiate defaults.
+const ProvideDefaultsMethodName = "Defaults"
 
 func (pkg *pkgContext) provideDefaultsFuncName(typ schema.Type) string {
 	if !codegen.IsProvideDefaultsFuncRequired(typ) {
 		return ""
 	}
-	requiredType := codegen.UnwrapType(typ)
-	typeName := pkg.typeString(requiredType)
-	// If "." is not in typeName, then this devolves to a no-op.
-	typeName = typeName[strings.LastIndex(typeName, ".")+1:]
-	return provideDefaultsFuncNameFromName(typeName)
+	return ProvideDefaultsMethodName
 }
 
 func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details *typeDetails) {

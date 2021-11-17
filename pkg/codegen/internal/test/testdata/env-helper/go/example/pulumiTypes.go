@@ -22,8 +22,8 @@ type HelmReleaseSettings struct {
 	RequiredArg string `pulumi:"requiredArg"`
 }
 
-// HelmReleaseSettingsProvideDefaults sets the appropriate defaults for HelmReleaseSettings
-func (val HelmReleaseSettings) HelmReleaseSettingsProvideDefaults() *HelmReleaseSettings {
+// Defaults sets the appropriate defaults for HelmReleaseSettings
+func (val HelmReleaseSettings) Defaults() *HelmReleaseSettings {
 	driver_ := getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string)
 	val.Driver = &driver_
 	pluginsPath_ := getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string)
@@ -208,13 +208,13 @@ type KubeClientSettings struct {
 	RecTest *KubeClientSettings `pulumi:"recTest"`
 }
 
-// KubeClientSettingsProvideDefaults sets the appropriate defaults for KubeClientSettings
-func (val KubeClientSettings) KubeClientSettingsProvideDefaults() *KubeClientSettings {
+// Defaults sets the appropriate defaults for KubeClientSettings
+func (val KubeClientSettings) Defaults() *KubeClientSettings {
 	burst_ := getEnvOrDefault(0, parseEnvInt, "PULUMI_K8S_CLIENT_BURST").(int)
 	val.Burst = &burst_
 	qps_ := getEnvOrDefault(0.0, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS").(float64)
 	val.Qps = &qps_
-	val.RecTest = val.RecTest.KubeClientSettingsProvideDefaults()
+	val.RecTest = val.RecTest.Defaults()
 
 	return &val
 }
@@ -398,17 +398,17 @@ type LayeredType struct {
 	Thinker string `pulumi:"thinker"`
 }
 
-// LayeredTypeProvideDefaults sets the appropriate defaults for LayeredType
-func (val LayeredType) LayeredTypeProvideDefaults() *LayeredType {
+// Defaults sets the appropriate defaults for LayeredType
+func (val LayeredType) Defaults() *LayeredType {
 	answer_ := 42.0
 	val.Answer = &answer_
-	val.Other = *val.Other.HelmReleaseSettingsProvideDefaults()
+	val.Other = *val.Other.Defaults()
 
-	val.PlainOther = val.PlainOther.HelmReleaseSettingsProvideDefaults()
+	val.PlainOther = val.PlainOther.Defaults()
 
 	question_ := getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string)
 	val.Question = &question_
-	val.Recursive = val.Recursive.LayeredTypeProvideDefaults()
+	val.Recursive = val.Recursive.Defaults()
 
 	val.Thinker = "not a good interaction"
 	return &val
@@ -634,11 +634,11 @@ type Typ struct {
 	Val  *string   `pulumi:"val"`
 }
 
-// TypProvideDefaults sets the appropriate defaults for Typ
-func (val Typ) TypProvideDefaults() *Typ {
-	val.Mod1 = val.Mod1.TypProvideDefaults()
+// Defaults sets the appropriate defaults for Typ
+func (val Typ) Defaults() *Typ {
+	val.Mod1 = val.Mod1.Defaults()
 
-	val.Mod2 = val.Mod2.TypProvideDefaults()
+	val.Mod2 = val.Mod2.Defaults()
 
 	val_ := "mod main"
 	val.Val = &val_
