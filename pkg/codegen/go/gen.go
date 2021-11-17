@@ -632,6 +632,9 @@ func (pkg *pkgContext) outputType(t schema.Type) string {
 		}
 		// TODO(pdg): union types
 		return "pulumi.AnyOutput"
+	case *schema.InputType:
+		// We can't make output types for input types. We instead strip the input and try again.
+		return pkg.outputType(t.ElementType)
 	default:
 		switch t {
 		case schema.BoolType:
@@ -1520,8 +1523,17 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "\tif args.%s == %s {\n", Title(p.Name), defaultComp)
 			assign(p, dv)
 			fmt.Fprintf(w, "\t}\n")
-		} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" {
-			fmt.Fprintf(w, "args.%[1]s = args.%[1]s.%[2]s()\n", Title(p.Name), name)
+		} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" && !pkg.disableObjectDefaults {
+			var value string
+			if codegen.IsNOptionalInput(p.Type) {
+				innerFuncType := strings.TrimSuffix(pkg.typeString(codegen.UnwrapType(p.Type)), "Args")
+				applyBody := fmt.Sprintf("func(v *%[1]s) *%[1]s { return v.%[2]s() }", innerFuncType, name)
+				outputValue := pkg.convertToOutput(fmt.Sprintf("args.%s", Title(p.Name)), p.Type)
+				value = fmt.Sprintf("%s.ApplyT(%s).(%s)", outputValue, applyBody, pkg.typeString(p.Type))
+			} else {
+				value = fmt.Sprintf("args.%[1]s.%[2]s()", Title(p.Name), name)
+			}
+			fmt.Fprintf(w, "args.%[1]s = %s\n", Title(p.Name), value)
 		}
 	}
 
@@ -1828,6 +1840,25 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	pkg.genResourceRegistrations(w, r, generateResourceContainerTypes)
 
 	return nil
+}
+
+// Takes an expression and type, and returns a string that converts that expression to an Output type.
+//
+// Examples:
+// ("bar", Foo of ObjectType) => "bar.ToFooOutput()"
+// ("id", FooOutput) => "id"
+// ("ptr", FooInput of ObjectType) => "ptr.ToFooPtrOutput().Elem()"
+func (pkg *pkgContext) convertToOutput(expr string, typ schema.Type) string {
+	elemConversion := ""
+	switch typ.(type) {
+	case *schema.OptionalType:
+		elemConversion = ".Elem()"
+	}
+	outputType := pkg.outputType(typ)
+	if strings.HasSuffix(outputType, "ArgsOutput") {
+		outputType = strings.TrimSuffix(outputType, "ArgsOutput") + "Output"
+	}
+	return fmt.Sprintf("%s.To%s()%s", expr, outputType, elemConversion)
 }
 
 func NeedsGoOutputVersion(f *schema.Function) bool {
