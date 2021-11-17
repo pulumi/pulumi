@@ -18,10 +18,16 @@ type Container struct {
 }
 
 // Defaults sets the appropriate defaults for Container
-func (val Container) Defaults() *Container {
-	brightness_ := ContainerBrightness(1.0)
-	val.Brightness = &brightness_
-	return &val
+func (val *Container) Defaults() *Container {
+	if val == nil {
+		return nil
+	}
+	tmp := *val
+	if tmp.Brightness == nil {
+		brightness_ := ContainerBrightness(1.0)
+		tmp.Brightness = &brightness_
+	}
+	return &tmp
 }
 
 // ContainerInput is an input type that accepts ContainerArgs and ContainerOutput values.

@@ -1157,34 +1157,41 @@ func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	}
 
 	printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s", ProvideDefaultsMethodName, name), false)
-	fmt.Fprintf(w, "func (val %[1]s) %[2]s() *%[1]s {\n", name, ProvideDefaultsMethodName)
+	fmt.Fprintf(w, "func (val *%[1]s) %[2]s() *%[1]s {\n", name, ProvideDefaultsMethodName)
+	fmt.Fprint(w, "if val == nil {\n return nil\n}\n")
+	fmt.Fprint(w, "tmp := *val\n")
 	for _, p := range defaults {
-		// TODO: right now these are assignments, not actual defaults
 		if p.DefaultValue != nil {
 			dv, err := pkg.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
 			if err != nil {
 				return err
 			}
-			pkg.assignProperty(w, p, "val", dv, !p.IsRequired())
+			defaultComp := "nil"
+			if !codegen.IsNOptionalInput(p.Type) && !isNilType(p.Type) {
+				defaultComp = primitiveNilValue(p.Type)
+			}
+			fmt.Fprintf(w, "if tmp.%s == %s {\n", Title(p.Name), defaultComp)
+			pkg.assignProperty(w, p, "tmp", dv, !p.IsRequired())
+			fmt.Fprintf(w, "}\n")
 		} else if funcName := pkg.provideDefaultsFuncName(p.Type); funcName != "" {
 			var member string
 			if codegen.IsNOptionalInput(p.Type) {
 				f := fmt.Sprintf("func(v %[1]s) %[1]s { return v.%[2]s*() }", name, funcName)
-				member = fmt.Sprintf("val.%[1]s.ApplyT(%[2]s)\n", Title(p.Name), f)
+				member = fmt.Sprintf("tmp.%[1]s.ApplyT(%[2]s)\n", Title(p.Name), f)
 			} else {
-				member = fmt.Sprintf("val.%[1]s.%[2]s()\n", Title(p.Name), funcName)
+				member = fmt.Sprintf("tmp.%[1]s.%[2]s()\n", Title(p.Name), funcName)
 			}
 			sigil := ""
 			if p.IsRequired() {
 				sigil = "*"
 			}
-			pkg.assignProperty(w, p, "val", sigil+member, false)
+			pkg.assignProperty(w, p, "tmp", sigil+member, false)
 		} else {
 			panic(fmt.Sprintf("Property %s[%s] should not be in the default list", p.Name, p.Type.String()))
 		}
 	}
 
-	fmt.Fprintf(w, "return &val\n}\n")
+	fmt.Fprintf(w, "return &tmp\n}\n")
 	return nil
 }
 
