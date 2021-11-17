@@ -46,13 +46,31 @@ func NewGoalPlan(oldOutputs resource.PropertyMap, goal *resource.Goal) *GoalPlan
 		return nil
 	}
 
+	var adds resource.PropertyMap
+	var deletes []resource.PropertyKey
+	var updates resource.PropertyMap
+
+	if diff, hasDiff := oldOutputs.DiffIncludeUnknowns(goal.Properties); hasDiff {
+		adds = diff.Adds
+		updates = make(resource.PropertyMap)
+		for k := range diff.Updates {
+			updates[k] = diff.Updates[k].New
+		}
+		deletes = make([]resource.PropertyKey, len(diff.Deletes))
+		i := 0
+		for k := range diff.Deletes {
+			deletes[i] = k
+			i = i + 1
+		}
+	}
+
 	return &GoalPlan{
 		Type:                    goal.Type,
 		Name:                    goal.Name,
 		Custom:                  goal.Custom,
-		Adds:                    nil,
-		Deletes:                 nil,
-		Updates:                 nil,
+		Adds:                    adds,
+		Deletes:                 deletes,
+		Updates:                 updates,
 		Parent:                  goal.Parent,
 		Protect:                 goal.Protect,
 		Dependencies:            goal.Dependencies,
@@ -252,12 +270,14 @@ func (rp *ResourcePlan) checkGoal(
 
 	// Check that the property diffs meet the constraints set in the plan.
 	changes := []string{}
-	if diff, hasDiff := oldOutputs.DiffIncludeUnknowns(newInputs); hasDiff {
+	var diff *resource.ObjectDiff
+	var hasDiff bool
+	if diff, hasDiff = oldOutputs.DiffIncludeUnknowns(newInputs); hasDiff {
 		// Check that any adds are in the goal for adds
 		for k := range diff.Adds {
 			if expected, has := rp.Goal.Adds[k]; has {
 				actual := diff.Adds[k]
-				if !expected.IsComputed() && !expected.DeepEquals(actual) {
+				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to add this with value X but constraint wants to add with value Y
 					changes = append(changes, "+"+string(k))
 				}
@@ -283,16 +303,98 @@ func (rp *ResourcePlan) checkGoal(
 			}
 		}
 
-		// Check that any changes are in the goal for changes
+		// Check that any changes are in the goal for changes or adds
+		// "or adds" is because if our constraint says to add K=V and someone has already added K=W we don't consider it
+		// a constraint violation to update K to V. This is similar to how if we have a Create resource constraint we don't consider it
+		// a violation to just update it instead of creating it.
 		for k := range diff.Updates {
+			actual := diff.Updates[k].New
 			if expected, has := rp.Goal.Updates[k]; has {
-				actual := diff.Adds[k]
-				if !expected.IsComputed() && !expected.DeepEquals(actual) {
+				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to change this with value X but constraint wants to change with value Y
+					changes = append(changes, "~"+string(k))
+				}
+			} else if expected, has := rp.Goal.Adds[k]; has {
+				if !expected.DeepEqualsIncludeUnknowns(actual) {
+					// diff wants to change this with value X but constraint wants to add with value Y
 					changes = append(changes, "~"+string(k))
 				}
 			} else {
 				// diff wants to update this, but not listed as an update in the constraints
+				changes = append(changes, "~"+string(k))
+			}
+		}
+	} else {
+		// No diff, just new up an empty ObjectDiff for checks below
+		diff = &resource.ObjectDiff{}
+	}
+
+	// Symmetric check, check that the constraints didn't expect things to happen that aren't in the new inputs
+
+	for k := range rp.Goal.Adds {
+		// We expected an add, make sure the value is in the new inputs. That means it's either an add, update, or a same, both are ok for an add constraint.
+		expected := rp.Goal.Adds[k]
+
+		// If this is in diff.Adds or diff.Updates we'll of already checked it
+		_, inAdds := diff.Adds[k]
+		_, inUpdates := diff.Updates[k]
+
+		if !inAdds && !inUpdates {
+			// It wasn't in the diff as an add or update so check we have a same
+			if actual, has := newInputs[k]; has {
+				if !expected.DeepEqualsIncludeUnknowns(actual) {
+					// diff wants to same this with value X but constraint wants to add with value Y
+					changes = append(changes, "~"+string(k))
+				}
+			} else {
+				// Not a same, update or an add but constraint wants to add it
+				changes = append(changes, "-"+string(k))
+			}
+		}
+	}
+
+	for k := range rp.Goal.Updates {
+		// We expected an update, make sure the value is in the new inputs as an update (not an add)
+		expected := rp.Goal.Updates[k]
+
+		// If this is in diff.Updates we'll of already checked it
+		_, inUpdates := diff.Updates[k]
+
+		if !inUpdates {
+			// Check if this was in adds, it's not ok to have an update constraint but actually do an add
+			_, inAdds := diff.Adds[k]
+			if inAdds {
+				// Constraint wants to update it, but diff wants to add it
+				changes = append(changes, "+"+string(k))
+			} else if actual, has := newInputs[k]; has {
+				// It wasn't in the diff as an add so check we have a same
+				if !expected.DeepEqualsIncludeUnknowns(actual) {
+					// diff wants to same this with value X but constraint wants to update with value Y
+					changes = append(changes, "~"+string(k))
+				}
+			} else {
+				// Not a same or an update but constraint wants to update it
+				changes = append(changes, "-"+string(k))
+			}
+		}
+	}
+
+	for i := range rp.Goal.Deletes {
+		// We expected a delete, make sure its not present
+		k := rp.Goal.Deletes[i]
+
+		// If this is in diff.Deletes we'll of already checked it
+		_, inDeletes := diff.Deletes[k]
+		if !inDeletes {
+			// See if this is an add, update, or same
+			if _, has := diff.Adds[k]; has {
+				// Constraint wants to delete this but diff wants to add it
+				changes = append(changes, "+"+string(k))
+			} else if _, has := diff.Updates[k]; has {
+				// Constraint wants to delete this but diff wants to update it
+				changes = append(changes, "~"+string(k))
+			} else if _, has := diff.Sames[k]; has {
+				// Constraint wants to delete this but diff wants to leave it same
 				changes = append(changes, "~"+string(k))
 			}
 		}

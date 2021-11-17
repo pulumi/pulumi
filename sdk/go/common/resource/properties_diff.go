@@ -280,13 +280,12 @@ func (v PropertyValue) Diff(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *V
 	return v.diff(other, false, ignoreKeys)
 }
 
-// DeepEquals returns true if this property map is deeply equal to the other property map; and false otherwise.
-func (props PropertyMap) DeepEquals(other PropertyMap) bool {
+func (props PropertyMap) deepEquals(other PropertyMap, includeUnknowns bool) bool {
 	// If any in props either doesn't exist, or is of a different value, return false.
 	for _, k := range props.StableKeys() {
 		v := props[k]
 		if p, has := other[k]; has {
-			if !v.DeepEquals(p) {
+			if !v.deepEquals(p, includeUnknowns) {
 				return false
 			}
 		} else if v.HasValue() {
@@ -304,11 +303,17 @@ func (props PropertyMap) DeepEquals(other PropertyMap) bool {
 	return true
 }
 
-// DeepEquals returns true if this property value is deeply equal to the other property value; and false otherwise.
-func (v PropertyValue) DeepEquals(other PropertyValue) bool {
+func (v PropertyValue) deepEquals(other PropertyValue, includeUnknowns bool) bool {
 	// Computed values are always equal.
 	if v.IsComputed() && other.IsComputed() {
 		return true
+	}
+
+	// If includeUnknowns is true then anything is equal to a computed
+	if includeUnknowns {
+		if v.IsComputed() || other.IsComputed() {
+			return true
+		}
 	}
 
 	// Arrays are equal if they are both of the same size and elements are deeply equal.
@@ -322,7 +327,7 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 			return false
 		}
 		for i, elem := range va {
-			if !elem.DeepEquals(oa[i]) {
+			if !elem.deepEquals(oa[i], includeUnknowns) {
 				return false
 			}
 		}
@@ -349,7 +354,7 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 		}
 		vo := v.ObjectValue()
 		oa := other.ObjectValue()
-		return vo.DeepEquals(oa)
+		return vo.deepEquals(oa, includeUnknowns)
 	}
 
 	// Secret are equal if the value they wrap are equal.
@@ -360,7 +365,7 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 		vs := v.SecretValue()
 		os := other.SecretValue()
 
-		return vs.Element.DeepEquals(os.Element)
+		return vs.Element.deepEquals(os.Element, includeUnknowns)
 	}
 
 	// Resource references are equal if they refer to the same resource. The package version is ignored.
@@ -379,7 +384,7 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 		if vid.IsComputed() && oid.IsComputed() {
 			return true
 		}
-		return vid.DeepEquals(oid)
+		return vid.deepEquals(oid, includeUnknowns)
 	}
 
 	// Outputs are equal if each of their fields is deeply equal.
@@ -407,14 +412,28 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 			}
 		}
 
-		return vo.Element.DeepEquals(oo.Element)
+		return vo.Element.deepEquals(oo.Element, includeUnknowns)
 	}
 
 	// For all other cases, primitives are equal if their values are equal.
 	return v.V == other.V
 }
 
-func (props PropertyMap) DiffIncludeUnknowns(constraints PropertyMap) (*ObjectDiff, bool) {
-	diff := constraints.diff(props, true, nil)
+// DeepEquals returns true if this property map is deeply equal to the other property map; and false otherwise.
+func (props PropertyMap) DeepEquals(other PropertyMap) bool {
+	return props.deepEquals(other, false)
+}
+
+// DeepEquals returns true if this property value is deeply equal to the other property value; and false otherwise.
+func (v PropertyValue) DeepEquals(other PropertyValue) bool {
+	return v.deepEquals(other, false)
+}
+
+func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap) (*ObjectDiff, bool) {
+	diff := props.diff(other, true, nil)
 	return diff, diff != nil
+}
+
+func (v PropertyValue) DeepEqualsIncludeUnknowns(other PropertyValue) bool {
+	return v.deepEquals(other, true)
 }
