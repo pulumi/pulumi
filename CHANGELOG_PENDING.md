@@ -36,5 +36,8 @@
 - [engine] - Compute dependents correctly during targeted deletes.
   [#8360](https://github.com/pulumi/pulumi/pull/8360)
 
+- [cli/engine] - Update command respects `--target-dependents`
+  [#8395](https://github.com/pulumi/pulumi/pull/8395)
+
 - [docs] - Fix broken lists in dotnet docs
   [docs#6558](https://github.com/pulumi/docs/issues/6558)
