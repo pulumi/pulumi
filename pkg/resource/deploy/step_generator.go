@@ -447,7 +447,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 
 	isTargeted := sg.isTargetedForUpdate(new)
-	if isTargeted {
+	if isTargeted && sg.updateTargetsOpt != nil {
 		sg.updateTargetsOpt[urn] = true
 	}
 
