@@ -2670,6 +2670,7 @@ func TestPlannedUpdate(t *testing.T) {
 			"beta",
 			24,
 		},
+		"zed": "grr",
 	})
 	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
@@ -2689,6 +2690,7 @@ func TestPlannedUpdate(t *testing.T) {
 			"beta",
 			24,
 		},
+		"zed": "grr",
 	})
 	assert.Equal(t, expected, snap.Resources[1].Outputs)
 }
