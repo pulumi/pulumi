@@ -41,7 +41,7 @@ We use `make` as our build system, so you'll want to install that as well, if yo
 We build Pulumi in `$PULUMI_ROOT`, which defaults to `$HOME/.pulumi`. If you would like to build Pulumi in another location, you do so by setting `$PULUMI_ROOT`. 
 
 ```bash
-export PATH=$HOME/.pulumi:$HOME/.pulumi/bin:$PATH
+export PATH=$HOME/.pulumi/bin:$PATH
 ```
 
 You'll also need to make sure your maximum open file descriptor limit is set to 5000 at a minimum.
