@@ -17,9 +17,9 @@ type Container struct {
 	Size       ContainerSize        `pulumi:"size"`
 }
 
-// ContainerProvideDefaults sets the appropriate defaults for Container
-func (val Container) ContainerProvideDefaults() *Container {
-	brightness_ := 1.0
+// Defaults sets the appropriate defaults for Container
+func (val Container) Defaults() *Container {
+	brightness_ := ContainerBrightness(1.0)
 	val.Brightness = &brightness_
 	return &val
 }

@@ -1110,14 +1110,17 @@ func (pkg *pkgContext) assignProperty(w io.Writer, p *schema.Property, object, v
 	t := strings.TrimSuffix(pkg.typeString(p.Type), "Input")
 	switch codegen.UnwrapType(p.Type).(type) {
 	case *schema.EnumType:
-		t = strings.TrimSuffix(t, "Ptr")
+		t = ""
 	}
 	if t == "pulumi." {
 		t = "pulumi.Any"
 	}
 
 	if codegen.IsNOptionalInput(p.Type) {
-		fmt.Fprintf(w, "\targs.%s = %s(%s)\n", Title(p.Name), t, value)
+		if t != "" {
+			value = fmt.Sprintf("%s(%s)", t, value)
+		}
+		fmt.Fprintf(w, "\targs.%s = %s\n", Title(p.Name), value)
 	} else if indirectAssign {
 		tmpName := camel(p.Name) + "_"
 		fmt.Fprintf(w, "%s := %s\n", tmpName, value)
@@ -1386,6 +1389,14 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 			return "", err
 		}
 		val = v
+		switch t.(type) {
+		case *schema.EnumType:
+			typeName := strings.TrimSuffix(strings.TrimSuffix(pkg.typeString(t), "Input"), "Ptr")
+			if typeName == "pulumi." {
+				typeName = "pulumi.Any"
+			}
+			val = fmt.Sprintf("%s(%s)", typeName, val)
+		}
 	}
 
 	if len(dv.Environment) > 0 {
