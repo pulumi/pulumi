@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -57,7 +56,7 @@ func newStackOutputCmd() *cobra.Command {
 
 			outputs, err := getStackOutputs(snap, showSecrets)
 			if err != nil {
-				return errors.Wrap(err, "getting outputs")
+				return fmt.Errorf("getting outputs: %w", err)
 			}
 			if outputs == nil {
 				outputs = make(map[string]interface{})
@@ -76,7 +75,7 @@ func newStackOutputCmd() *cobra.Command {
 						fmt.Printf("%v\n", stringifyOutput(v))
 					}
 				} else {
-					return errors.Errorf("current stack does not have output property '%v'", name)
+					return fmt.Errorf("current stack does not have output property '%v'", name)
 				}
 			} else if jsonOut {
 				if err := printJSON(outputs); err != nil {

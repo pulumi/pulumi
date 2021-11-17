@@ -14,7 +14,9 @@
 
 package model
 
-import "github.com/hashicorp/hcl/v2"
+import (
+	"github.com/hashicorp/hcl/v2"
+)
 
 // unwrapIterableSourceType removes any eventual types that wrap a type intended for iteration.
 func unwrapIterableSourceType(t Type) Type {

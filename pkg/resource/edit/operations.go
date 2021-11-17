@@ -15,7 +15,7 @@
 package edit
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -147,7 +147,7 @@ func RenameStack(snap *deploy.Snapshot, newName tokens.QName, newProject tokens.
 	}
 
 	if err := snap.VerifyIntegrity(); err != nil {
-		return errors.Wrap(err, "checkpoint is invalid")
+		return fmt.Errorf("checkpoint is invalid: %w", err)
 	}
 
 	for _, res := range snap.Resources {

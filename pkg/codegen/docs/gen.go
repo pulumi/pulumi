@@ -23,6 +23,7 @@ package docs
 import (
 	"bytes"
 	"embed"
+	"errors"
 	"fmt"
 	"html"
 	"html/template"
@@ -31,7 +32,6 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
@@ -431,7 +431,7 @@ func (dctx *docGenContext) getLanguageDocHelper(lang string) codegen.DocLanguage
 	if h, ok := dctx.docHelpers[lang]; ok {
 		return h
 	}
-	panic(errors.Errorf("could not find a doc lang helper for %s", lang))
+	panic(fmt.Errorf("could not find a doc lang helper for %s", lang))
 }
 
 type propertyCharacteristics struct {
@@ -1174,7 +1174,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 
 			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, resourceTypeName)
 		default:
-			panic(errors.Errorf("cannot generate constructor info for unhandled language %q", lang))
+			panic(fmt.Errorf("cannot generate constructor info for unhandled language %q", lang))
 		}
 
 		parts := strings.Split(resourceTypeName, ".")

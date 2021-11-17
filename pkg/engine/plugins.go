@@ -20,7 +20,7 @@ import (
 	"sort"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
+
 	"golang.org/x/sync/errgroup"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -183,8 +183,9 @@ func installPlugin(plugin workspace.PluginInfo) error {
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
 	if err := plugin.Install(stream); err != nil {
-		return errors.Wrapf(err, "installing plugin; run `pulumi plugin install %s %s v%s` to retry manually",
-			plugin.Kind, plugin.Name, plugin.Version)
+		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",
+			plugin.Kind, plugin.Name, plugin.Version, err)
+
 	}
 
 	logging.V(7).Infof("installPlugin(%s, %s): successfully installed", plugin.Name, plugin.Version)

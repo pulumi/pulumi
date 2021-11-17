@@ -20,10 +20,11 @@ package docs
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 const (

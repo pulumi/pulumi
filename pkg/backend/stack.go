@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -178,7 +176,7 @@ func GetEnvironmentTagsForCurrentStack() (map[apitype.StackTagName]string, error
 	if projPath != "" {
 		proj, err := workspace.LoadProject(projPath)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error loading project %q", projPath)
+			return nil, fmt.Errorf("error loading project %q: %w", projPath, err)
 		}
 		tags[apitype.ProjectNameTag] = proj.Name.String()
 		tags[apitype.ProjectRuntimeTag] = proj.Runtime.Name()
@@ -219,7 +217,7 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 		tags[apitype.VCSRepositoryNameTag] = vcsInfo.Repo
 		tags[apitype.VCSRepositoryKindTag] = vcsInfo.Kind
 	} else {
-		return errors.Wrapf(err, "detecting VCS info for stack tags for remote %v", remoteURL)
+		return fmt.Errorf("detecting VCS info for stack tags for remote %v: %w", remoteURL, err)
 	}
 	// Set the old stack tags keys as GitHub so that the UI will continue to work,
 	// regardless of whether the remote URL is a GitHub URL or not.

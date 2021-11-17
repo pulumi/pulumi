@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +16,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -808,6 +809,99 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 	}
 }
 
+// Test methods that create resources.
+// nolint: unused,deadcode
+func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_methods_resources"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          append(test.env, pathEnv),
+				Dir:          filepath.Join(testDir, lang),
+				Dependencies: dependencies,
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.NotNil(t, stackInfo.Deployment)
+					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
+					var hasExpectedResource bool
+					var result string
+					for _, res := range stackInfo.Deployment.Resources {
+						if res.URN.Name().String() == "myrandom" {
+							hasExpectedResource = true
+							result = res.Outputs["result"].(string)
+							assert.Equal(t, float64(10), res.Inputs["length"])
+							assert.Equal(t, 10, len(result))
+						}
+					}
+					assert.True(t, hasExpectedResource)
+					assert.Equal(t, result, stackInfo.Outputs["result"])
+				},
+			})
+		})
+	}
+}
+
+// Test failures returned from methods are observed.
+// nolint: unused,deadcode
+func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_methods_errors"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			stderr := &bytes.Buffer{}
+			expectedError := "the failure reason (the failure property)"
+
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:           append(test.env, pathEnv),
+				Dir:           filepath.Join(testDir, lang),
+				Dependencies:  dependencies,
+				Quick:         true,
+				NoParallel:    true, // avoid contention for Dir
+				Stderr:        stderr,
+				ExpectFailure: true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					output := stderr.String()
+					assert.Contains(t, output, expectedError)
+				},
+			})
+		})
+	}
+}
+
 func TestRotatePassphrase(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
@@ -891,4 +985,64 @@ func TestJSONOutputWithStreamingPreview(t *testing.T) {
 			}
 		},
 	})
+}
+
+func TestExcludeProtected(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory("exclude_protected")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	stdout, _ := e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected")
+	assert.Contains(t, stdout, "All unprotected resources were destroyed. There are still 7 protected resources")
+	// We run the command again, but this time there are not unprotected resources to destroy.
+	stdout, _ = e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected")
+	assert.Contains(t, stdout, "There were no unprotected resources to destroy. There are still 7")
+}
+
+// nolint: unused,deadcode
+func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_output_values"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          append(test.env, pathEnv),
+				Dir:          filepath.Join(testDir, lang),
+				Dependencies: dependencies,
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+			})
+		})
+	}
 }

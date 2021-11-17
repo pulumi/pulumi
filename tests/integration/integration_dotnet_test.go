@@ -245,6 +245,7 @@ func TestConfigSecretsWarnDotNet(t *testing.T) {
 
 // Tests that stack references work in .NET.
 func TestStackReferenceDotnet(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7869] flaky
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
 	}
@@ -311,6 +312,7 @@ func TestStackReferenceSecretsDotnet(t *testing.T) {
 
 // Tests a resource with a large (>4mb) string prop in .Net
 func TestLargeResourceDotNet(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7832]
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dependencies: []string{"Pulumi"},
 		Dir:          filepath.Join("large_resource", "dotnet"),
@@ -319,6 +321,7 @@ func TestLargeResourceDotNet(t *testing.T) {
 
 // Test remote component construction in .NET.
 func TestConstructDotnet(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7355] flaky test
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -528,6 +531,10 @@ func TestConstructMethodsDotnet(t *testing.T) {
 
 func TestConstructMethodsUnknownDotnet(t *testing.T) {
 	testConstructMethodsUnknown(t, "dotnet", "Pulumi")
+}
+
+func TestConstructMethodsErrorsDotnet(t *testing.T) {
+	testConstructMethodsErrors(t, "dotnet", "Pulumi")
 }
 
 func TestConstructProviderDotnet(t *testing.T) {

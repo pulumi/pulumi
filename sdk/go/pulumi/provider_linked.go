@@ -69,3 +69,8 @@ func linkedCallArgsSelf(ctx *Context, source map[string]interface{}) (Resource, 
 func linkedNewCallResult(result interface{}) (Input, error) {
 	return newCallResult(result)
 }
+
+//go:linkname linkedNewCallFailure github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedNewCallFailure
+func linkedNewCallFailure(property, reason string) interface{} {
+	return newCallFailure(property, reason)
+}

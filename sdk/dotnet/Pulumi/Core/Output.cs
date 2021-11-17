@@ -127,8 +127,8 @@ namespace Pulumi
     /// created, these are represented using the special <see cref="Output{T}"/>s type, which
     /// internally represents two things:
     /// <list type="number">
-    /// <item>An eventually available value of the output</item>
-    /// <item>The dependency on the source(s) of the output value</item>
+    /// <item><description>An eventually available value of the output</description></item>
+    /// <item><description>The dependency on the source(s) of the output value</description></item>
     /// </list>
     /// In fact, <see cref="Output{T}"/>s is quite similar to <see cref="Task{TResult}"/>.
     /// Additionally, they carry along dependency information.

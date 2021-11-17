@@ -16,11 +16,11 @@ package deploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -172,7 +172,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			// clients of stepExecutor to do work on worker threads by e.g. scheduling arbitrary callbacks
 			// or 2) promote RRE to be step-like so that it can be scheduled as if it were a step. Neither
 			// of these are particularly appealing right now.
-			outErr := errors.Wrap(eventerr, "resource complete event returned an error")
+			outErr := fmt.Errorf("resource complete event returned an error: %w", eventerr)
 			diagMsg := diag.RawMessage(reg.URN(), outErr.Error())
 			se.deployment.Diag().Errorf(diagMsg)
 			se.cancelDueToError()
@@ -263,7 +263,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		payload, err = events.OnResourceStepPre(step)
 		if err != nil {
 			se.log(workerID, "step %v on %v failed pre-resource step: %v", step.Op(), step.URN(), err)
-			return errors.Wrap(err, "pre-step event returned an error")
+			return fmt.Errorf("pre-step event returned an error: %w", err)
 		}
 	}
 
@@ -274,8 +274,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
 			if prior, has := se.pendingNews.Load(step.URN()); has {
-				return errors.Errorf(
-					"resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
+				return fmt.Errorf("resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
 			}
 
 			se.pendingNews.Store(step.URN(), step)
@@ -301,7 +300,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	if events != nil {
 		if postErr := events.OnResourceStepPost(payload, step, status, err); postErr != nil {
 			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
-			return errors.Wrap(postErr, "post-step event returned an error")
+			return fmt.Errorf("post-step event returned an error: %w", postErr)
 		}
 	}
 

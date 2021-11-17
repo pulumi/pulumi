@@ -15,9 +15,9 @@
 package deploy
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -72,8 +72,33 @@ func (sg *stepGenerator) isTargetedUpdate() bool {
 	return sg.updateTargetsOpt != nil || sg.replaceTargetsOpt != nil
 }
 
-func (sg *stepGenerator) isTargetedForUpdate(urn resource.URN) bool {
-	return sg.updateTargetsOpt == nil || sg.updateTargetsOpt[urn]
+// isTargetedForUpdate returns if `res` is targeted for update. The function accommodates
+// `--target-dependents`. `targetDependentsForUpdate` should probably be called if this function
+// returns true.
+func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
+	if sg.updateTargetsOpt == nil || sg.updateTargetsOpt[res.URN] {
+		return true
+	} else if !sg.opts.TargetDependents {
+		return false
+	}
+	if res.Provider != "" {
+		res, err := providers.ParseReference(res.Provider)
+		contract.AssertNoError(err)
+		if sg.updateTargetsOpt[res.URN()] {
+			return true
+		}
+	}
+	if res.Parent != "" {
+		if sg.updateTargetsOpt[res.Parent] {
+			return true
+		}
+	}
+	for _, dep := range res.Dependencies {
+		if dep != "" && sg.updateTargetsOpt[dep] {
+			return true
+		}
+	}
+	return false
 }
 
 func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
@@ -158,7 +183,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		return steps, nil
 	}
 
-	// We got a set of steps to perfom during a targeted update. If any of the steps are not same steps and depend on
+	// We got a set of steps to perform during a targeted update. If any of the steps are not same steps and depend on
 	// creates we skipped because they were not in the --target list, issue an error that that the create was necessary
 	// and that the user must target the resource to create.
 	for _, step := range steps {
@@ -421,6 +446,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}, nil
 	}
 
+	isTargeted := sg.isTargetedForUpdate(new)
+	if isTargeted && sg.updateTargetsOpt != nil {
+		sg.updateTargetsOpt[urn] = true
+	}
+
 	// Case 3: hasOld
 	//  In this case, the resource we are operating upon now exists in the old snapshot.
 	//  It must be an update or a replace. Which operation we do depends on the the specific change made to the
@@ -439,8 +469,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		contract.Assert(old != nil)
 
 		// If the user requested only specific resources to update, and this resource was not in
-		// that set, then do nothin but create a SameStep for it.
-		if !sg.isTargetedForUpdate(urn) {
+		// that set, then do nothing but create a SameStep for it.
+		if !isTargeted {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
@@ -490,9 +520,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// We will also not record this non-created resource into the checkpoint as it doesn't actually
 	// exist.
 
-	if !sg.isTargetedForUpdate(urn) &&
-		!providers.IsProviderType(goal.Type) {
-
+	if !isTargeted && !providers.IsProviderType(goal.Type) {
 		sg.sames[urn] = true
 		sg.skippedCreates[urn] = true
 		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
@@ -1027,7 +1055,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	// performance problem, this result can be cached.
 	newProv, ok := sg.deployment.providers.GetProvider(newRef)
 	if !ok {
-		return false, errors.Errorf("failed to resolve provider reference: %q", oldRef.String())
+		return false, fmt.Errorf("failed to resolve provider reference: %q", oldRef.String())
 	}
 
 	oldRes, ok := sg.deployment.olds[oldRef.URN()]

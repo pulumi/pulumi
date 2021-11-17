@@ -703,7 +703,13 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 	return resource.URN(), state, nil
 }
 
-type callFunc func(ctx *Context, tok string, args map[string]interface{}) (Input, error)
+// callFailure indicates that a call to Call failed; it contains the property and reason for the failure.
+type callFailure struct {
+	Property string
+	Reason   string
+}
+
+type callFunc func(ctx *Context, tok string, args map[string]interface{}) (Input, []interface{}, error)
 
 // call adapts the gRPC CallRequest/CallResponse to/from the Pulumi Go SDK programming model.
 func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
@@ -755,7 +761,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 		}
 	}
 
-	result, err := callF(pulumiCtx, req.GetTok(), args)
+	result, failures, err := callF(pulumiCtx, req.GetTok(), args)
 	if err != nil {
 		return nil, err
 	}
@@ -798,9 +804,22 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 		}
 	}
 
+	var rpcFailures []*pulumirpc.CheckFailure
+	if len(failures) > 0 {
+		rpcFailures = make([]*pulumirpc.CheckFailure, len(failures))
+		for i, v := range failures {
+			failure := v.(callFailure)
+			rpcFailures[i] = &pulumirpc.CheckFailure{
+				Property: failure.Property,
+				Reason:   failure.Reason,
+			}
+		}
+	}
+
 	return &pulumirpc.CallResponse{
 		Return:             rpcProps,
 		ReturnDependencies: rpcPropertyDeps,
+		Failures:           rpcFailures,
 	}, nil
 }
 
@@ -878,4 +897,12 @@ func newCallResult(result interface{}) (Input, error) {
 	}
 
 	return ret, nil
+}
+
+// newCallFailure creates a call failure.
+func newCallFailure(property, reason string) interface{} {
+	return callFailure{
+		Property: property,
+		Reason:   reason,
+	}
 }

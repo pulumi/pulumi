@@ -16,12 +16,12 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync"
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -198,7 +198,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 		if !ok {
 			inputs, err := target.GetPackageConfig(pkg)
 			if err != nil {
-				return errors.Errorf("could not fetch configuration for default provider '%v'", pkg)
+				return fmt.Errorf("could not fetch configuration for default provider '%v'", pkg)
 			}
 			if version, ok := defaultProviderVersions[pkg]; ok {
 				inputs["version"] = resource.NewStringProperty(version.String())
@@ -282,7 +282,7 @@ func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[reso
 
 		urn := oldres.URN
 		if olds[urn] != nil {
-			return nil, nil, errors.Errorf("unexpected duplicate resource '%s'", urn)
+			return nil, nil, fmt.Errorf("unexpected duplicate resource '%s'", urn)
 		}
 		olds[urn] = oldres
 	}

@@ -1,6 +1,8 @@
 package codegen
 
-import "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+import (
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+)
 
 func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen Set) {
 	if seen.Has(t) {

@@ -15,13 +15,12 @@
 package dotnet
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-
-	"github.com/pkg/errors"
 )
 
 // isReservedWord returns true if s is a C# reserved word as per
@@ -97,7 +96,7 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 
 	// If the name is one illegal character, return an error.
 	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
-		return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
+		return "", fmt.Errorf("enum name %s is not a valid identifier", safeName)
 	}
 
 	// Capitalize and make a valid identifier.

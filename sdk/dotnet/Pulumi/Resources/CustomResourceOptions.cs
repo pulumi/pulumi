@@ -51,18 +51,18 @@ namespace Pulumi
         /// <para/>
         /// Conceptually property merging follows these basic rules:
         /// <list type="number">
-        /// <item>
+        /// <item><description>
         /// If the property is a collection, the final value will be a collection containing the
         /// values from each options object.
-        /// </item>
-        /// <item>
+        /// </description></item>
+        /// <item><description>
         /// Simple scalar values from <paramref name="options2"/> (i.e. <see cref="string"/>s,
         /// <see cref="int"/>s, <see cref="bool"/>s) will replace the values of <paramref
         /// name="options1"/>.
-        /// </item>
-        /// <item>
+        /// </description></item>
+        /// <item><description>
         /// <see langword="null"/> values in <paramref name="options2"/> will be ignored.
-        /// </item>
+        /// </description></item>
         /// </list>
         /// </summary>
         public static CustomResourceOptions Merge(CustomResourceOptions? options1, CustomResourceOptions? options2)

@@ -15,7 +15,9 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -65,7 +67,7 @@ func newLogoutCmd() *cobra.Command {
 				var err error
 				cloudURL, err = workspace.GetCurrentCloudURL()
 				if err != nil {
-					return errors.Wrap(err, "could not determine current cloud")
+					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
 			}
 
