@@ -23,10 +23,12 @@ type HelmReleaseSettings struct {
 }
 
 // HelmReleaseSettingsProvideDefaults sets the appropriate defaults for HelmReleaseSettings
-func (val HelmReleaseSettings) HelmReleaseSettingsProvideDefaults() HelmReleaseSettings {
-	val.Driver = getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string)
-	val.PluginsPath = getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string)
-	return val
+func (val HelmReleaseSettings) HelmReleaseSettingsProvideDefaults() *HelmReleaseSettings {
+	driver_ := getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string)
+	val.Driver = &driver_
+	pluginsPath_ := getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string)
+	val.PluginsPath = &pluginsPath_
+	return &val
 }
 
 // HelmReleaseSettingsInput is an input type that accepts HelmReleaseSettingsArgs and HelmReleaseSettingsOutput values.
@@ -207,11 +209,14 @@ type KubeClientSettings struct {
 }
 
 // KubeClientSettingsProvideDefaults sets the appropriate defaults for KubeClientSettings
-func (val KubeClientSettings) KubeClientSettingsProvideDefaults() KubeClientSettings {
-	val.Burst = getEnvOrDefault("", nil, "PULUMI_K8S_CLIENT_BURST").(string)
-	val.Qps = getEnvOrDefault("", nil, "PULUMI_K8S_CLIENT_QPS").(string)
-	val.RecTest = KubeClientSettingsProvideDefaults(val.RecTest)
-	return val
+func (val KubeClientSettings) KubeClientSettingsProvideDefaults() *KubeClientSettings {
+	burst_ := getEnvOrDefault(0, parseEnvInt, "PULUMI_K8S_CLIENT_BURST").(int)
+	val.Burst = &burst_
+	qps_ := getEnvOrDefault(0.0, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS").(float64)
+	val.Qps = &qps_
+	val.RecTest = val.RecTest.KubeClientSettingsProvideDefaults()
+
+	return &val
 }
 
 // KubeClientSettingsInput is an input type that accepts KubeClientSettingsArgs and KubeClientSettingsOutput values.
@@ -394,14 +399,19 @@ type LayeredType struct {
 }
 
 // LayeredTypeProvideDefaults sets the appropriate defaults for LayeredType
-func (val LayeredType) LayeredTypeProvideDefaults() LayeredType {
-	val.Answer = 42.0
-	val.Other = HelmReleaseSettingsProvideDefaults(val.Other)
-	val.PlainOther = HelmReleaseSettingsProvideDefaults(val.PlainOther)
-	val.Question = getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string)
-	val.Recursive = LayeredTypeProvideDefaults(val.Recursive)
+func (val LayeredType) LayeredTypeProvideDefaults() *LayeredType {
+	answer_ := 42.0
+	val.Answer = &answer_
+	val.Other = *val.Other.HelmReleaseSettingsProvideDefaults()
+
+	val.PlainOther = val.PlainOther.HelmReleaseSettingsProvideDefaults()
+
+	question_ := getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string)
+	val.Question = &question_
+	val.Recursive = val.Recursive.LayeredTypeProvideDefaults()
+
 	val.Thinker = "not a good interaction"
-	return val
+	return &val
 }
 
 // LayeredTypeInput is an input type that accepts LayeredTypeArgs and LayeredTypeOutput values.
@@ -625,11 +635,14 @@ type Typ struct {
 }
 
 // TypProvideDefaults sets the appropriate defaults for Typ
-func (val Typ) TypProvideDefaults() Typ {
-	val.Mod1 = mod1.TypProvideDefaults(val.Mod1)
-	val.Mod2 = mod2.TypProvideDefaults(val.Mod2)
-	val.Val = "mod main"
-	return val
+func (val Typ) TypProvideDefaults() *Typ {
+	val.Mod1 = val.Mod1.TypProvideDefaults()
+
+	val.Mod2 = val.Mod2.TypProvideDefaults()
+
+	val_ := "mod main"
+	val.Val = &val_
+	return &val
 }
 
 // TypInput is an input type that accepts TypArgs and TypOutput values.

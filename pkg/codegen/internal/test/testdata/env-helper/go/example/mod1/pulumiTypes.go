@@ -16,9 +16,10 @@ type Typ struct {
 }
 
 // TypProvideDefaults sets the appropriate defaults for Typ
-func (val Typ) TypProvideDefaults() Typ {
-	val.Val = "mod1"
-	return val
+func (val Typ) TypProvideDefaults() *Typ {
+	val_ := "mod1"
+	val.Val = &val_
+	return &val
 }
 
 // TypInput is an input type that accepts TypArgs and TypOutput values.

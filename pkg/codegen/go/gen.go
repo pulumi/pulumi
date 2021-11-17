@@ -1108,6 +1108,27 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 	fmt.Fprintln(w)
 }
 
+func (pkg *pkgContext) assignProperty(w io.Writer, p *schema.Property, object, value string, indirectAssign bool) {
+	t := strings.TrimSuffix(pkg.typeString(p.Type), "Input")
+	switch codegen.UnwrapType(p.Type).(type) {
+	case *schema.EnumType:
+		t = strings.TrimSuffix(t, "Ptr")
+	}
+	if t == "pulumi." {
+		t = "pulumi.Any"
+	}
+
+	if codegen.IsNOptionalInput(p.Type) {
+		fmt.Fprintf(w, "\targs.%s = %s(%s)\n", Title(p.Name), t, value)
+	} else if indirectAssign {
+		tmpName := camel(p.Name) + "_"
+		fmt.Fprintf(w, "%s := %s\n", tmpName, value)
+		fmt.Fprintf(w, "%s.%s = &%s\n", object, Title(p.Name), tmpName)
+	} else {
+		fmt.Fprintf(w, "%s.%s = %s\n", object, Title(p.Name), value)
+	}
+}
+
 func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,
 	properties []*schema.Property) {
 
@@ -1122,22 +1143,10 @@ func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessa
 
 func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	properties []*schema.Property) error {
-	defaults := []string{}
+	defaults := []*schema.Property{}
 	for _, p := range properties {
-		if p.DefaultValue != nil {
-			dv, err := pkg.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
-			if err != nil {
-				return err
-			}
-			defaults = append(defaults, fmt.Sprintf("val.%s = %s", Title(p.Name), dv))
-		} else if funcName := pkg.provideDefaultsFuncName(p.Type); funcName != "" {
-			var member string
-			if codegen.IsNOptionalInput(p.Type) {
-				member = fmt.Sprintf("val.%[1]s = val.%[1]s.ApplyT(func(x interface{}) interface{} { /* unimplimented*/ return 0 })", p.Name)
-			} else {
-				member = fmt.Sprintf("val.%[1]s = %[2]s(val.%[1]s)", Title(p.Name), funcName)
-			}
-			defaults = append(defaults, member)
+		if p.DefaultValue != nil || codegen.IsProvideDefaultsFuncRequired(p.Type) {
+			defaults = append(defaults, p)
 		}
 	}
 
@@ -1148,11 +1157,34 @@ func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 
 	provideDefaultsFunc := provideDefaultsFuncNameFromName(name)
 	printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s", provideDefaultsFunc, name), false)
-	fmt.Fprintf(w, "func (val %[1]s) %[2]s() %[1]s {\n", name, provideDefaultsFunc)
-	for _, def := range defaults {
-		fmt.Fprintf(w, "%s\n", def)
+	fmt.Fprintf(w, "func (val %[1]s) %[2]s() *%[1]s {\n", name, provideDefaultsFunc)
+	for _, p := range defaults {
+		// TODO: right now these are assignments, not actual defaults
+		if p.DefaultValue != nil {
+			dv, err := pkg.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
+			if err != nil {
+				return err
+			}
+			pkg.assignProperty(w, p, "val", dv, !p.IsRequired())
+		} else if funcName := pkg.provideDefaultsFuncName(p.Type); funcName != "" {
+			var member string
+			if codegen.IsNOptionalInput(p.Type) {
+				f := fmt.Sprintf("func(v %[1]s) %[1]s { return v.%[2]s*() }", name, funcName)
+				member = fmt.Sprintf("val.%[1]s.ApplyT(%[2]s)\n", Title(p.Name), f)
+			} else {
+				member = fmt.Sprintf("val.%[1]s.%[2]s()\n", Title(p.Name), funcName)
+			}
+			sigil := ""
+			if p.IsRequired() {
+				sigil = "*"
+			}
+			pkg.assignProperty(w, p, "val", sigil+member, false)
+		} else {
+			panic(fmt.Sprintf("Property %s[%s] should not be in the default list", p.Name, p.Type.String()))
+		}
 	}
-	fmt.Fprintf(w, "return val\n}\n")
+
+	fmt.Fprintf(w, "return &val\n}\n")
 	return nil
 }
 
@@ -1166,6 +1198,8 @@ func (pkg *pkgContext) provideDefaultsFuncName(typ schema.Type) string {
 	}
 	requiredType := codegen.UnwrapType(typ)
 	typeName := pkg.typeString(requiredType)
+	// If "." is not in typeName, then this devolves to a no-op.
+	typeName = typeName[strings.LastIndex(typeName, ".")+1:]
 	return provideDefaultsFuncNameFromName(typeName)
 }
 
@@ -1451,26 +1485,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		}
 	}
 
-	assign := func(p *schema.Property, value string, indentation int) {
-		ind := strings.Repeat("\t", indentation)
-		t := strings.TrimSuffix(pkg.typeString(p.Type), "Input")
-		switch codegen.UnwrapType(p.Type).(type) {
-		case *schema.EnumType:
-			t = strings.TrimSuffix(t, "Ptr")
-		}
-		if t == "pulumi." {
-			t = "pulumi.Any"
-		}
-
-		if codegen.IsNOptionalInput(p.Type) {
-			fmt.Fprintf(w, "\targs.%s = %s(%s)\n", Title(p.Name), t, value)
-		} else if isNilType(p.Type) {
-			tmpName := camel(p.Name) + "_"
-			fmt.Fprintf(w, "%s%s := %s\n", ind, tmpName, value)
-			fmt.Fprintf(w, "%sargs.%s = &%s\n", ind, Title(p.Name), tmpName)
-		} else {
-			fmt.Fprintf(w, "%sargs.%s = %s\n", ind, Title(p.Name), value)
-		}
+	assign := func(p *schema.Property, value string) {
+		pkg.assignProperty(w, p, "args", value, isNilType(p.Type))
 	}
 
 	for _, p := range r.InputProperties {
@@ -1479,9 +1495,9 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			if err != nil {
 				return err
 			}
-			assign(p, v, 1)
+			assign(p, v)
 		} else if p.DefaultValue != nil {
-			v, err := pkg.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
+			dv, err := pkg.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
 			if err != nil {
 				return err
 			}
@@ -1490,7 +1506,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 				defaultComp = primitiveNilValue(p.Type)
 			}
 			fmt.Fprintf(w, "\tif args.%s == %s {\n", Title(p.Name), defaultComp)
-			assign(p, v, 2)
+			assign(p, dv)
 			fmt.Fprintf(w, "\t}\n")
 
 		}

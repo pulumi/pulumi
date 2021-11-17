@@ -17,6 +17,13 @@ type Container struct {
 	Size       ContainerSize        `pulumi:"size"`
 }
 
+// ContainerProvideDefaults sets the appropriate defaults for Container
+func (val Container) ContainerProvideDefaults() *Container {
+	brightness_ := 1.0
+	val.Brightness = &brightness_
+	return &val
+}
+
 // ContainerInput is an input type that accepts ContainerArgs and ContainerOutput values.
 // You can construct a concrete instance of `ContainerInput` via:
 //
