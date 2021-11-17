@@ -179,7 +179,7 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(id, prop["id"])
 
         res = rpc.deserialize_properties(prop)
-        self.assertTrue(isinstance(res, MyCustomResource))
+        self.assertIsInstance(res, MyCustomResource)
 
         rpc._RESOURCE_MODULES.clear()
         res = rpc.deserialize_properties(prop)
@@ -209,7 +209,7 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(id, prop["id"])
 
         res = rpc.deserialize_properties(prop)
-        self.assertTrue(isinstance(res, MyCustomResource))
+        self.assertIsInstance(res, MyCustomResource)
 
         rpc._RESOURCE_MODULES.clear()
         res = rpc.deserialize_properties(prop)

@@ -54,9 +54,10 @@ var programTests = []programTest{
 	{
 		Name:        "aws-s3-logging",
 		Description: "AWS S3 with logging",
-		SkipCompile: codegen.NewStringSet("dotnet", "nodejs"),
+		SkipCompile: codegen.NewStringSet("dotnet", "nodejs", "go"),
 		// Blocked on dotnet: TODO[pulumi/pulumi#8069]
 		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
+		// Flaky in go: TODO[pulumi/pulumi#8123]
 	},
 	{
 		Name:        "aws-webserver",

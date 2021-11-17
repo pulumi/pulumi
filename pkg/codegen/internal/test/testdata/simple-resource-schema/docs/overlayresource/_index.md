@@ -27,6 +27,7 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">OverlayResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                     <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
+                    <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[EnumOverlay]</span> = None<span class="p">,</span>
                     <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[ConfigMapOverlayArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">OverlayResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
@@ -157,6 +158,14 @@ The OverlayResource resource accepts the following [input]({{< relref "/docs/int
 {{% choosable language csharp %}}
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
+        <span id="bar_csharp">
+<a href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumoverlay">Pulumi.<wbr>Example.<wbr>Enum<wbr>Overlay</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
         <span id="foo_csharp">
 <a href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
@@ -168,6 +177,14 @@ The OverlayResource resource accepts the following [input]({{< relref "/docs/int
 
 {{% choosable language go %}}
 <dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="bar_go">
+<a href="#bar_go" style="color: inherit; text-decoration: inherit;">Bar</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumoverlay">Enum<wbr>Overlay</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_go">
 <a href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
@@ -181,6 +198,14 @@ The OverlayResource resource accepts the following [input]({{< relref "/docs/int
 {{% choosable language nodejs %}}
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
+        <span id="bar_nodejs">
+<a href="#bar_nodejs" style="color: inherit; text-decoration: inherit;">bar</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumoverlay">Enum<wbr>Overlay</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
         <span id="foo_nodejs">
 <a href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
@@ -192,6 +217,14 @@ The OverlayResource resource accepts the following [input]({{< relref "/docs/int
 
 {{% choosable language python %}}
 <dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="bar_python">
+<a href="#bar_python" style="color: inherit; text-decoration: inherit;">bar</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#enumoverlay">Enum<wbr>Overlay</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_python">
 <a href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
@@ -315,6 +348,28 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type">str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+<h4 id="enumoverlay">Enum<wbr>Overlay</h4>
+
+{{% choosable language csharp %}}
+<dl class="tabular"><dt>Some<wbr>Enum<wbr>Value</dt>
+    <dd>SOME_ENUM_VALUE</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language go %}}
+<dl class="tabular"><dt>Enum<wbr>Overlay<wbr>Some<wbr>Enum<wbr>Value</dt>
+    <dd>SOME_ENUM_VALUE</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language nodejs %}}
+<dl class="tabular"><dt>Some<wbr>Enum<wbr>Value</dt>
+    <dd>SOME_ENUM_VALUE</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language python %}}
+<dl class="tabular"><dt>SOME_ENUM_VALUE</dt>
+    <dd>SOME_ENUM_VALUE</dd></dl>
 {{% /choosable %}}
 
 

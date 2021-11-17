@@ -408,6 +408,7 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 }
 
 func TestLocalStateLocking(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7269] flaky test
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {

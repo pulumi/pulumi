@@ -1248,7 +1248,8 @@ namespace Pulumi.Automation.Tests
                 () => upTaskWithOutput);
         }
 
-        [Fact]
+        // TODO[pulumi/pulumi#8228]: fix flakiness
+        [Fact(Skip="flaky")]
         public async Task InlineProgramExceptionPropagatesToCallerWithServiceProvider()
         {
             await using var provider = new ServiceCollection()
@@ -1434,6 +1435,7 @@ namespace Pulumi.Automation.Tests
             }
         }
 
+        // TODO[pulumi/pulumi#7467]
         [Fact(Skip = "Flakey test - https://github.com/pulumi/pulumi/issues/7467")]
         public async Task WorkspaceStackSupportsCancel()
         {

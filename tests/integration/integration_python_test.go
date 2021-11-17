@@ -1,4 +1,5 @@
 // Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build python || all
 // +build python all
 
 package ints
@@ -358,6 +359,7 @@ func TestResourceWithSecretSerializationPython(t *testing.T) {
 // Tests that we issue an error if we fail to locate the Python command when running
 // a Python example.
 func TestPython3NotInstalled(t *testing.T) {
+	// TODO[pulumi/pulumi#6304]
 	t.Skip("Temporarily skipping failing test - pulumi/pulumi#6304")
 	stderr := &bytes.Buffer{}
 	badPython := "python3000"
@@ -752,6 +754,14 @@ func TestConstructMethodsUnknownPython(t *testing.T) {
 	testConstructMethodsUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
+func TestConstructMethodsResourcesPython(t *testing.T) {
+	testConstructMethodsResources(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
+func TestConstructMethodsErrorsPython(t *testing.T) {
+	testConstructMethodsErrors(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
 func TestConstructProviderPython(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {
@@ -1106,4 +1116,8 @@ func TestAboutPython(t *testing.T) {
 	stdout, _ := e.RunCommand("pulumi", "about", "--json")
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "pulumi-kubernetes")
+}
+
+func TestConstructOutputValuesPython(t *testing.T) {
+	testConstructOutputValues(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
