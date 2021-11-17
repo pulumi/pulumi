@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -44,7 +43,7 @@ func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not connect to resource monitor")
+		return nil, fmt.Errorf("could not connect to resource monitor: %w", err)
 	}
 	resmon := pulumirpc.NewResourceMonitorClient(conn)
 

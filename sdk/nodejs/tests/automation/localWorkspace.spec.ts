@@ -194,7 +194,8 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(typeof (info), "undefined");
         await ws.removeStack(stackName);
     }));
-    it(`runs through the stack lifecycle with a local program`, asyncTest(async () => {
+    // TODO[pulumi/pulumi#8220] understand why this test was flaky
+    xit(`runs through the stack lifecycle with a local program`, asyncTest(async () => {
         const stackName = fullyQualifiedStackName(getTestOrg(), "testproj", `int_test${getTestSuffix()}`);
         const workDir = upath.joinSafe(__dirname, "data", "testproj");
         const stack = await LocalWorkspace.createStack({ stackName, workDir });
@@ -536,7 +537,8 @@ describe("LocalWorkspace", () => {
             await stack.workspace.removeStack(stackName);
         }
     }));
-    it(`supports stack outputs`, asyncTest(async () => {
+    // TODO[pulumi/pulumi#8061] flaky test
+    xit(`supports stack outputs`, asyncTest(async () => {
         const program = async () => {
             const config = new Config();
             return {

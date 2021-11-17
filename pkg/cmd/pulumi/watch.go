@@ -16,8 +16,9 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -101,17 +102,17 @@ func newWatchCmd() *cobra.Command {
 
 			m, err := getUpdateMetadata(message, root, execKind, "" /* execAgent */)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
 			sm, err := getStackSecretsManager(s)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
 			cfg, err := getStackConfiguration(s, sm)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
 			opts.Engine = engine.UpdateOptions{

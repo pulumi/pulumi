@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
@@ -93,7 +93,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	// Run Go formatter on the code before saving to disk
 	formattedSource, err := gofmt.Source(index.Bytes())
 	if err != nil {
-		panic(errors.Errorf("invalid Go source code:\n\n%s", index.String()))
+		panic(fmt.Errorf("invalid Go source code:\n\n%s", index.String()))
 	}
 
 	files := map[string][]byte{
@@ -287,7 +287,7 @@ func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, er
 		}
 	}
 
-	return "", errors.Errorf("could not find package version information for pkg: %s", pkg)
+	return "", fmt.Errorf("could not find package version information for pkg: %s", pkg)
 
 }
 

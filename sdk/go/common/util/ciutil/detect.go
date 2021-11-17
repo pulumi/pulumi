@@ -48,9 +48,11 @@ var detectors = map[SystemName]system{
 			EnvVarsToDetect: []string{"TF_BUILD"},
 		},
 	},
-	Buildkite: baseCI{
-		Name:            Buildkite,
-		EnvVarsToDetect: []string{"BUILDKITE"},
+	Buildkite: buildkiteCI{
+		baseCI: baseCI{
+			Name:            Buildkite,
+			EnvVarsToDetect: []string{"BUILDKITE"},
+		},
 	},
 	CircleCI: circleCICI{
 		baseCI: baseCI{

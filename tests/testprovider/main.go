@@ -187,7 +187,11 @@ func (k *testproviderProvider) Read(ctx context.Context, req *rpc.ReadRequest) (
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
 	}
 
-	panic("Read not implemented for 'testprovider:index:Random'")
+	// Just return back the input state.
+	return &rpc.ReadResponse{
+		Id:         req.Id,
+		Properties: req.Properties,
+	}, nil
 }
 
 // Update updates an existing resource with new values.

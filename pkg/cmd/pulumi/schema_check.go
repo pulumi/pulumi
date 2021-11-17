@@ -16,13 +16,14 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 

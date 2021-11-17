@@ -15,9 +15,9 @@
 package deploy
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -1027,7 +1027,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	// performance problem, this result can be cached.
 	newProv, ok := sg.deployment.providers.GetProvider(newRef)
 	if !ok {
-		return false, errors.Errorf("failed to resolve provider reference: %q", oldRef.String())
+		return false, fmt.Errorf("failed to resolve provider reference: %q", oldRef.String())
 	}
 
 	oldRes, ok := sg.deployment.olds[oldRef.URN()]

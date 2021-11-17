@@ -15,9 +15,9 @@
 package providers
 
 import (
+	"errors"
+	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -59,11 +59,11 @@ func GetProviderPackage(typ tokens.Type) tokens.Package {
 
 func validateURN(urn resource.URN) error {
 	if !urn.IsValid() {
-		return errors.Errorf("%s is not a valid URN", urn)
+		return fmt.Errorf("%s is not a valid URN", urn)
 	}
 	typ := urn.Type()
 	if typ.Module() != "pulumi:providers" {
-		return errors.Errorf("invalid module in type: expected 'pulumi:providers', got '%v'", typ.Module())
+		return fmt.Errorf("invalid module in type: expected 'pulumi:providers', got '%v'", typ.Module())
 	}
 	if typ.Name() == "" {
 		return errors.New("provider URNs must specify a type name")
@@ -117,7 +117,7 @@ func ParseReference(s string) (Reference, error) {
 	// of the reference.
 	lastSep := strings.LastIndex(s, resource.URNNameDelimiter)
 	if lastSep == -1 {
-		return Reference{}, errors.Errorf("expected '%v' in provider reference '%v'", resource.URNNameDelimiter, s)
+		return Reference{}, fmt.Errorf("expected '%v' in provider reference '%v'", resource.URNNameDelimiter, s)
 	}
 	urn, id := resource.URN(s[:lastSep]), resource.ID(s[lastSep+len(resource.URNNameDelimiter):])
 	if err := validateURN(urn); err != nil {

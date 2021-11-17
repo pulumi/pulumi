@@ -15,11 +15,11 @@
 package backend
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -603,14 +603,14 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 func (sm *SnapshotManager) saveSnapshot() error {
 	snap := sm.snap()
 	if err := snap.NormalizeURNReferences(); err != nil {
-		return errors.Wrap(err, "failed to normalize URN references")
+		return fmt.Errorf("failed to normalize URN references: %w", err)
 	}
 	if err := sm.persister.Save(snap); err != nil {
-		return errors.Wrap(err, "failed to save snapshot")
+		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
 	if sm.doVerify {
 		if err := snap.VerifyIntegrity(); err != nil {
-			return errors.Wrapf(err, "failed to verify snapshot")
+			return fmt.Errorf("failed to verify snapshot: %w", err)
 		}
 	}
 	return nil

@@ -32,7 +32,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -767,7 +766,7 @@ func primitiveValue(value interface{}) (string, error) {
 	case reflect.String:
 		return fmt.Sprintf("%q", v.String()), nil
 	default:
-		return "", errors.Errorf("unsupported default value of type %T", value)
+		return "", fmt.Errorf("unsupported default value of type %T", value)
 	}
 }
 
@@ -796,7 +795,7 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 				break
 			}
 			if val == "" {
-				return "", errors.Errorf("default value '%v' not found in enum '%s'", dv.Value, enumName)
+				return "", fmt.Errorf("default value '%v' not found in enum '%s'", dv.Value, enumName)
 			}
 		default:
 			v, err := primitiveValue(dv.Value)
@@ -2353,8 +2352,10 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 			mod := getModFromToken(typ.Token, pkg)
 			mod.types = append(mod.types, typ)
 		case *schema.EnumType:
-			mod := getModFromToken(typ.Token, pkg)
-			mod.enums = append(mod.enums, typ)
+			if !typ.IsOverlay {
+				mod := getModFromToken(typ.Token, pkg)
+				mod.enums = append(mod.enums, typ)
+			}
 		default:
 			continue
 		}
