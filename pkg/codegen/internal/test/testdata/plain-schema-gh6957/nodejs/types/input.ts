@@ -5,5 +5,5 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "../types";
 
 export interface FooArgs {
-    a?: pulumi.Input<boolean>;
+    a?: pulumi.Input<boolean | undefined>;
 }

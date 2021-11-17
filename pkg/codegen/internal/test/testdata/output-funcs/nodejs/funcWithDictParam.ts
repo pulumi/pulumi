@@ -34,6 +34,6 @@ export function funcWithDictParamOutput(args?: FuncWithDictParamOutputArgs, opts
 }
 
 export interface FuncWithDictParamOutputArgs {
-    a?: pulumi.Input<{[key: string]: pulumi.Input<string>}>;
-    b?: pulumi.Input<string>;
+    a?: pulumi.Input<{[key: string]: pulumi.Input<string>} | undefined>;
+    b?: pulumi.Input<string | undefined>;
 }

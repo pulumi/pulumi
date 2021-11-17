@@ -68,6 +68,14 @@ func Union(t ...TypeAst) TypeAst {
 	return &unionType{t[0], t[1], t[2:]}
 }
 
+// IsUnion returns true if the AST node is a union.
+func IsUnion(t TypeAst) ([]TypeAst, bool) {
+	if union, ok := t.(*unionType); ok {
+		return union.all(), true
+	}
+	return nil, false
+}
+
 // Normalizes by unnesting unions `A | (B | C) => A | B | C`.
 func Normalize(ast TypeAst) TypeAst {
 	return transform(ast, func(t TypeAst) TypeAst {

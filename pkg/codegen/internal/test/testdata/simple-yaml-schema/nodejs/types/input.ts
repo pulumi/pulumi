@@ -7,28 +7,28 @@ import { input as inputs, output as outputs, enums } from "../types";
 import {Resource} from "..";
 
 export interface ConfigMapArgs {
-    config?: pulumi.Input<string>;
+    config?: pulumi.Input<string | undefined>;
 }
 
 export interface ObjectArgs {
-    bar?: pulumi.Input<string>;
-    configs?: pulumi.Input<pulumi.Input<inputs.ConfigMapArgs>[]>;
-    foo?: pulumi.Input<Resource>;
+    bar?: pulumi.Input<string | undefined>;
+    configs?: pulumi.Input<pulumi.Input<inputs.ConfigMapArgs>[] | undefined>;
+    foo?: pulumi.Input<Resource | undefined>;
     /**
      * List of lists of other objects
      */
-    others?: pulumi.Input<pulumi.Input<pulumi.Input<inputs.SomeOtherObjectArgs>[]>[]>;
+    others?: pulumi.Input<pulumi.Input<pulumi.Input<inputs.SomeOtherObjectArgs>[]>[] | undefined>;
     /**
      * Mapping from string to list of some other object
      */
-    stillOthers?: pulumi.Input<{[key: string]: pulumi.Input<pulumi.Input<inputs.SomeOtherObjectArgs>[]>}>;
+    stillOthers?: pulumi.Input<{[key: string]: pulumi.Input<pulumi.Input<inputs.SomeOtherObjectArgs>[]>} | undefined>;
 }
 
 export interface ObjectWithNodeOptionalInputsArgs {
-    bar?: pulumi.Input<number>;
-    foo?: pulumi.Input<string>;
+    bar?: pulumi.Input<number | undefined>;
+    foo?: pulumi.Input<string | undefined>;
 }
 
 export interface SomeOtherObjectArgs {
-    baz?: pulumi.Input<string>;
+    baz?: pulumi.Input<string | undefined>;
 }

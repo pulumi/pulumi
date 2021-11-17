@@ -5,5 +5,5 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "../types";
 
 export interface TopLevelArgs {
-    buzz?: pulumi.Input<string>;
+    buzz?: pulumi.Input<string | undefined>;
 }

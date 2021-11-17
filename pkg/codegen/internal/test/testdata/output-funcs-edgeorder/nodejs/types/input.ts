@@ -11,7 +11,7 @@ export interface ConfigurationFiltersArgs {
     /**
      * Filters specific to product
      */
-    filterableProperty?: pulumi.Input<pulumi.Input<inputs.FilterablePropertyArgs>[]>;
+    filterableProperty?: pulumi.Input<pulumi.Input<inputs.FilterablePropertyArgs>[] | undefined>;
     /**
      * Product hierarchy information
      */
@@ -57,7 +57,7 @@ export interface CustomerSubscriptionDetailsArgs {
     /**
      * Location placement Id of a subscription
      */
-    locationPlacementId?: pulumi.Input<string>;
+    locationPlacementId?: pulumi.Input<string | undefined>;
     /**
      * Quota ID of a subscription
      */
@@ -65,7 +65,7 @@ export interface CustomerSubscriptionDetailsArgs {
     /**
      * List of registered feature flags for subscription
      */
-    registeredFeatures?: pulumi.Input<pulumi.Input<inputs.CustomerSubscriptionRegisteredFeaturesArgs>[]>;
+    registeredFeatures?: pulumi.Input<pulumi.Input<inputs.CustomerSubscriptionRegisteredFeaturesArgs>[] | undefined>;
 }
 
 /**
@@ -89,11 +89,11 @@ export interface CustomerSubscriptionRegisteredFeaturesArgs {
     /**
      * Name of subscription registered feature
      */
-    name?: pulumi.Input<string>;
+    name?: pulumi.Input<string | undefined>;
     /**
      * State of subscription registered feature
      */
-    state?: pulumi.Input<string>;
+    state?: pulumi.Input<string | undefined>;
 }
 
 /**
@@ -153,18 +153,18 @@ export interface HierarchyInformationArgs {
     /**
      * Represents configuration name that uniquely identifies configuration
      */
-    configurationName?: pulumi.Input<string>;
+    configurationName?: pulumi.Input<string | undefined>;
     /**
      * Represents product family name that uniquely identifies product family
      */
-    productFamilyName?: pulumi.Input<string>;
+    productFamilyName?: pulumi.Input<string | undefined>;
     /**
      * Represents product line name that uniquely identifies product line
      */
-    productLineName?: pulumi.Input<string>;
+    productLineName?: pulumi.Input<string | undefined>;
     /**
      * Represents product name that uniquely identifies product
      */
-    productName?: pulumi.Input<string>;
+    productName?: pulumi.Input<string | undefined>;
 }
 

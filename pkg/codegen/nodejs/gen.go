@@ -436,13 +436,15 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 			prefix = "readonly "
 		}
 
-		sigil, propertyType := "", p.Type
-		if !p.IsRequired() {
-			sigil, propertyType = "?", codegen.RequiredType(p)
+		sigil, typ := "", mod.typeAst(p.Type, input, p.ConstValue)
+		if types, ok := tstypes.IsUnion(typ); ok {
+			if id, ok := tstypes.IsIdentifier(types[len(types)-1]); ok && id == "undefined" {
+				sigil, typ = "?", tstypes.Union(types[:len(types)-1]...)
+			}
 		}
 
-		typ := mod.typeString(propertyType, input, p.ConstValue)
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
+		typLit := tstypes.TypeLiteral(tstypes.Normalize(typ))
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typLit)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 	return nil
