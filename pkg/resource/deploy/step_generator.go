@@ -173,9 +173,14 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			}
 		}
 
-		resourcePlan, ok := sg.deployment.newPlans.get(s.URN())
+		// Resource plan might be aliased
+		urn, isAliased := sg.aliased[s.URN()]
+		if !isAliased {
+			urn = s.URN()
+		}
+		resourcePlan, ok := sg.deployment.newPlans.get(urn)
 		if !ok {
-			return nil, result.Errorf("Expected a new resource plan for %v", s.URN())
+			return nil, result.Errorf("Expected a new resource plan for %v", urn)
 		}
 		resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 	}
