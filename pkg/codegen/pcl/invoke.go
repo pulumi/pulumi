@@ -114,20 +114,33 @@ func (b *binder) zeroSignature() model.StaticFunctionSignature {
 }
 
 func (b *binder) signatureForArgs(fn *schema.Function, args model.Expression) (model.StaticFunctionSignature, error) {
-	useOutputVersion := false
-	if fn.NeedsOutputVersion() {
-		outputVersionType := b.schemaTypeToType(fn.Inputs.InputShape)
-		regularVersionType := b.schemaTypeToType(fn.Inputs)
-		callsiteType := args.Type()
-		if regularVersionType.ConversionFrom(callsiteType) == model.NoConversion &&
-			outputVersionType.ConversionFrom(callsiteType) == model.SafeConversion {
-			useOutputVersion = true
-		}
-	}
-	if useOutputVersion {
+	if b.useOutputVersion(fn, args) {
 		return b.outputVersionSignature(fn)
 	}
 	return b.regularSignature(fn), nil
+}
+
+// Heuristic to decide when to use `fnOutput` form of a function. Will
+// conservatively prefer `false`. It only decides to return `true` if
+// doing so avoids the need to introduce an `apply` form to
+// accommodate `Output` args (`Promise` args do not count).
+func (b *binder) useOutputVersion(fn *schema.Function, args model.Expression) bool {
+	if !fn.NeedsOutputVersion() {
+		// No code emitted for an `fnOutput` form, impossible.
+		return false
+	}
+
+	outputFormParamType := b.schemaTypeToType(fn.Inputs.InputShape)
+	regularFormParamType := b.schemaTypeToType(fn.Inputs)
+	argsType := args.Type()
+
+	if regularFormParamType.ConversionFrom(argsType) == model.NoConversion &&
+		outputFormParamType.ConversionFrom(argsType) == model.SafeConversion &&
+		model.ContainsOutputs(argsType) {
+		return true
+	}
+
+	return false
 }
 
 func (b *binder) regularSignature(fn *schema.Function) model.StaticFunctionSignature {
