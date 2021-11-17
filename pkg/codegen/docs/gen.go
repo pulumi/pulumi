@@ -1957,8 +1957,14 @@ func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (ma
 
 	glog.V(3).Infoln("generating package docs now...")
 	files := fs{}
-	for _, mod := range dctx.modules() {
-		if err := mod.gen(files); err != nil {
+	modules := []string{}
+	modMap := dctx.modules()
+	for k := range modMap {
+		modules = append(modules, k)
+	}
+	sort.Strings(modules)
+	for _, mod := range modules {
+		if err := modMap[mod].gen(files); err != nil {
 			return nil, err
 		}
 	}
