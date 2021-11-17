@@ -11,10 +11,10 @@ class MyStack : Stack
         {
             Default = true,
         }));
-        var subnets = Aws.Ec2.GetSubnetIds.Invoke(new Aws.Ec2.GetSubnetIdsInvokeArgs
+        var subnets = vpc.Apply(vpc => Output.Create(Aws.Ec2.GetSubnetIds.InvokeAsync(new Aws.Ec2.GetSubnetIdsArgs
         {
-            VpcId = vpc.Apply(vpc => vpc.Id),
-        });
+            VpcId = vpc.Id,
+        })));
         // Create a security group that permits HTTP ingress and unrestricted egress.
         var webSecurityGroup = new Aws.Ec2.SecurityGroup("webSecurityGroup", new Aws.Ec2.SecurityGroupArgs
         {
