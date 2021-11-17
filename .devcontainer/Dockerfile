@@ -28,8 +28,8 @@ RUN groupadd --gid $USER_GID $USER_NAME \
 
 RUN mkdir -p /go/bin \
     && chown -R $USER_NAME: /go \
-    && mkdir -p /opt/pulumi/bin \
-    && chown -R $USER_NAME: /opt/pulumi
+    && mkdir -p $HOME/.pulumi/bin \
+    && chown -R $USER_NAME: $HOME/.pulumi
 
 USER $USER_NAME
 
@@ -38,7 +38,7 @@ USER $USER_NAME
 ENV XDG_CONFIG_HOME=/home/$USER_NAME/.config
 ENV XDG_CACHE_HOME=/home/$USER_NAME/.cache
 
-RUN echo "export PATH=/opt/pulumi:/opt/pulumi/bin:$GOPATH/bin:/usr/local/go/bin:$PATH" >> ~/.bashrc \
+RUN echo "export PATH=$HOME/.pulumi:$HOME/.pulumi/bin:$GOPATH/bin:/usr/local/go/bin:$PATH" >> ~/.bashrc \
     && echo "alias l='ls -aF'" >> ~/.bash_aliases \
     && echo "alias ll='ls -ahlF'" >> ~/.bash_aliases \
     && echo "alias ls='ls --color=auto --group-directories-first'" >> ~/.bash_aliases

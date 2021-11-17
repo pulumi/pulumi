@@ -5,7 +5,7 @@ image:
 tasks:
   - before: >
       mkdir -p /workspace/opt-pulumi &&
-      sudo ln -s /workspace/opt-pulumi /opt/pulumi
+      sudo ln -s /workspace/opt-pulumi $HOME/.pulumi
     init: >
       make ensure &&
       make install
