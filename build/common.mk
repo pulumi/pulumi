@@ -96,9 +96,9 @@ SHELL       := /bin/bash
 STEP_MESSAGE = @echo -e "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):\033[0m"
 
 # Our install targets place items item into $PULUMI_ROOT, if it's
-# unset, default to /opt/pulumi.
+# unset, default to `$HOME/.pulumi`.
 ifeq ($(PULUMI_ROOT),)
-	PULUMI_ROOT:=/opt/pulumi
+	PULUMI_ROOT:=$(shell realpath "$$HOME/.pulumi")
 endif
 
 # Use Python 3 explicitly vs expecting that `python` will resolve to a python 3
@@ -168,6 +168,7 @@ test_fast::
 
 install::
 	$(call STEP_MESSAGE)
+	# Implicitly creates PULUMI_ROOT.
 	@mkdir -p $(PULUMI_BIN)
 	@mkdir -p $(PULUMI_NODE_MODULES)
 	@mkdir -p $(PULUMI_NUGET)
