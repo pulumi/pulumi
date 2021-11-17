@@ -22,6 +22,7 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
+	args.HelmReleaseSettings = args.HelmReleaseSettings.Defaults()
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:example", name, args, &resource, opts...)
 	if err != nil {

@@ -29,6 +29,9 @@ func NewFoo(ctx *pulumi.Context,
 	if args.BackupKubeClientSettings == nil {
 		return nil, errors.New("invalid value for required argument 'BackupKubeClientSettings'")
 	}
+	args.BackupKubeClientSettings = args.BackupKubeClientSettings.Defaults()
+	args.KubeClientSettings = args.KubeClientSettings.Defaults()
+	args.Settings = args.Settings.Defaults()
 	var resource Foo
 	err := ctx.RegisterResource("example:index:Foo", name, args, &resource, opts...)
 	if err != nil {

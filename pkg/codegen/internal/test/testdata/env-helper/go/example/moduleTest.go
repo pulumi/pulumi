@@ -22,6 +22,8 @@ func NewModuleTest(ctx *pulumi.Context,
 		args = &ModuleTestArgs{}
 	}
 
+	args.Mod1 = args.Mod1.Defaults()
+	args.Val = args.Val.Defaults()
 	var resource ModuleTest
 	err := ctx.RegisterResource("example:index:moduleTest", name, args, &resource, opts...)
 	if err != nil {

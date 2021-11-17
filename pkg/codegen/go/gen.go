@@ -1487,6 +1487,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	fmt.Fprintf(w, "\t}\n\n")
 
 	// Produce the inputs.
+
+	// Check all required inputs are present
 	for _, p := range r.InputProperties {
 		if p.IsRequired() && isNilType(p.Type) && p.DefaultValue == nil {
 			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
@@ -1518,7 +1520,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "\tif args.%s == %s {\n", Title(p.Name), defaultComp)
 			assign(p, dv)
 			fmt.Fprintf(w, "\t}\n")
-
+		} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" {
+			fmt.Fprintf(w, "args.%[1]s = args.%[1]s.%[2]s()\n", Title(p.Name), name)
 		}
 	}
 
