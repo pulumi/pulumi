@@ -1527,9 +1527,15 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			var value string
 			if codegen.IsNOptionalInput(p.Type) {
 				innerFuncType := strings.TrimSuffix(pkg.typeString(codegen.UnwrapType(p.Type)), "Args")
-				applyBody := fmt.Sprintf("func(v *%[1]s) *%[1]s { return v.%[2]s() }", innerFuncType, name)
+				applyName := fmt.Sprintf("%sApplier", camel(p.Name))
+				fmt.Fprintf(w, "%[3]s := func(v %[1]s) *%[1]s { return v.%[2]s() }\n", innerFuncType, name, applyName)
+
 				outputValue := pkg.convertToOutput(fmt.Sprintf("args.%s", Title(p.Name)), p.Type)
-				value = fmt.Sprintf("%s.ApplyT(%s).(%s)", outputValue, applyBody, pkg.typeString(p.Type))
+				outputType := pkg.typeString(p.Type)
+				if strings.HasSuffix(outputType, "Input") {
+					outputType = strings.TrimSuffix(outputType, "Input") + "Output"
+				}
+				value = fmt.Sprintf("%s.ApplyT(%s).(%s)", outputValue, applyName, outputType)
 			} else {
 				value = fmt.Sprintf("args.%[1]s.%[2]s()", Title(p.Name), name)
 			}
@@ -1855,8 +1861,13 @@ func (pkg *pkgContext) convertToOutput(expr string, typ schema.Type) string {
 		elemConversion = ".Elem()"
 	}
 	outputType := pkg.outputType(typ)
+	// Remove any element before the last .
+	outputType = outputType[strings.LastIndex(outputType, ".")+1:]
 	if strings.HasSuffix(outputType, "ArgsOutput") {
 		outputType = strings.TrimSuffix(outputType, "ArgsOutput") + "Output"
+	}
+	if elemConversion != "" {
+		outputType = strings.TrimSuffix(outputType, "Output") + "PtrOutput"
 	}
 	return fmt.Sprintf("%s.To%s()%s", expr, outputType, elemConversion)
 }
