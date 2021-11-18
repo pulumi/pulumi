@@ -52,8 +52,6 @@ var programTests = []programTest{
 
 		// TODO[pulumi/pulumi#8440]
 		SkipCompile: codegen.NewStringSet("go"),
-
-		Skip: codegen.NewStringSet("dotnet"),
 	},
 	{
 		Name:        "aws-s3-logging",
@@ -130,7 +128,6 @@ var programTests = []programTest{
 	{
 		Name:        "output-funcs-aws",
 		Description: "Output Versioned Functions",
-		Skip:        codegen.NewStringSet("dotnet"),
 	},
 }
 

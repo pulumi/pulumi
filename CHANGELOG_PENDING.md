@@ -8,6 +8,10 @@
   appropriate, simplifying auto-generated examples.
   [#8431](https://github.com/pulumi/pulumi/pull/8431)
 
+- [codegen/dotnet] - Program generator now uses `Invoke` forms where
+  appropriate, simplifying auto-generated examples.
+  [#8432](https://github.com/pulumi/pulumi/pull/8432)
+
 ### Bug Fixes
 
 - [codegen/typescript] - Respect default values in Pulumi object types.
