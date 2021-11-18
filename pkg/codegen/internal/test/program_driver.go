@@ -50,6 +50,7 @@ var programTests = []programTest{
 		Name:        "aws-fargate",
 		Description: "AWS Fargate",
 		SkipCompile: codegen.NewStringSet("go"),
+		Skip:        codegen.NewStringSet("go", "python", "dotnet"),
 	},
 	{
 		Name:        "aws-s3-logging",
@@ -122,6 +123,11 @@ var programTests = []programTest{
 		// Blocked on dotnet:
 		//   TODO[pulumi/pulumi#8078]
 		//   TODO[pulumi/pulumi#8079]
+	},
+	{
+		Name:        "output-funcs-aws",
+		Description: "Output Versioned Functions",
+		Skip:        codegen.NewStringSet("go", "python", "dotnet"),
 	},
 }
 

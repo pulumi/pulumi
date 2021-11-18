@@ -36,7 +36,7 @@ At the moment, we only support building on macOS and Linux, where standard GNU t
 To build the SDK, simply run `make` from the root directory (where this `README` lives, at `sdk/nodejs/` from the repo's
 root).  This will build the code, run tests, and install the package and its supporting artifacts.
 
-At the moment, for local development, we install everything into `/opt/pulumi`.  You will want this on your `$PATH`.
+At the moment, for local development, we install everything into `$HOME/.pulumi`.  You will want this on your `$PATH`.
 
 The tests will verify that everything works, but feel free to try running `pulumi preview` and/or `pulumi up` from
 the `examples/minimal/` directory.  Remember to run `tsc` first, since `pulumi` expects JavaScript, not TypeScript.
