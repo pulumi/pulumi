@@ -858,6 +858,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	isInput := false
 	retType := g.argumentTypeName(nil, then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
+	// TODO[pulumi/pulumi#8453] incomplete pattern code below.
 	var typeAssertion string
 	if retType == "[]string" {
 		typeAssertion = ".(pulumi.StringArrayOutput)"
