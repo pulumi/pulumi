@@ -784,16 +784,14 @@ type genInputImplementationArgs struct {
 	elementType     string
 	ptrMethods      bool
 	toOutputMethods bool
-	resourceType    bool
 }
 
-func genInputImplementation(w io.Writer, name, receiverType, elementType string, ptrMethods, resourceType bool) {
+func genInputImplementation(w io.Writer, name, receiverType, elementType string, ptrMethods bool) {
 	genInputImplementationWithArgs(w, genInputImplementationArgs{
 		name:            name,
 		receiverType:    receiverType,
 		elementType:     elementType,
 		ptrMethods:      ptrMethods,
-		resourceType:    resourceType,
 		toOutputMethods: true,
 	})
 }
@@ -802,14 +800,9 @@ func genInputImplementationWithArgs(w io.Writer, genArgs genInputImplementationA
 	name := genArgs.name
 	receiverType := genArgs.receiverType
 	elementType := genArgs.elementType
-	resourceType := genArgs.resourceType
 
 	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", receiverType)
-	if resourceType {
-		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil))\n", elementType)
-	} else {
-		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil)).Elem()\n", elementType)
-	}
+	fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil)).Elem()\n", elementType)
 	fmt.Fprintf(w, "}\n\n")
 
 	if genArgs.toOutputMethods {
@@ -837,15 +830,11 @@ func genInputImplementationWithArgs(w io.Writer, genArgs genInputImplementationA
 	}
 }
 
-func genOutputType(w io.Writer, baseName, elementType string, ptrMethods, resourceType bool) {
+func genOutputType(w io.Writer, baseName, elementType string, ptrMethods bool) {
 	fmt.Fprintf(w, "type %sOutput struct { *pulumi.OutputState }\n\n", baseName)
 
 	fmt.Fprintf(w, "func (%sOutput) ElementType() reflect.Type {\n", baseName)
-	if resourceType {
-		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil))\n", elementType)
-	} else {
-		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil)).Elem()\n", elementType)
-	}
+	fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil)).Elem()\n", elementType)
 	fmt.Fprintf(w, "}\n\n")
 
 	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sOutput() %[1]sOutput {\n", baseName, Title(baseName))
@@ -869,8 +858,8 @@ func genOutputType(w io.Writer, baseName, elementType string, ptrMethods, resour
 	}
 }
 
-func genArrayOutput(w io.Writer, baseName, elementType string, resourceType bool) {
-	genOutputType(w, baseName+"Array", "[]"+elementType, false, resourceType)
+func genArrayOutput(w io.Writer, baseName, elementType string) {
+	genOutputType(w, baseName+"Array", "[]"+elementType, false)
 
 	fmt.Fprintf(w, "func (o %[1]sArrayOutput) Index(i pulumi.IntInput) %[1]sOutput {\n", baseName)
 	fmt.Fprintf(w, "\treturn pulumi.All(o, i).ApplyT(func (vs []interface{}) %s {\n", elementType)
@@ -879,8 +868,8 @@ func genArrayOutput(w io.Writer, baseName, elementType string, resourceType bool
 	fmt.Fprintf(w, "}\n\n")
 }
 
-func genMapOutput(w io.Writer, baseName, elementType string, resourceType bool) {
-	genOutputType(w, baseName+"Map", "map[string]"+elementType, false, resourceType)
+func genMapOutput(w io.Writer, baseName, elementType string) {
+	genOutputType(w, baseName+"Map", "map[string]"+elementType, false)
 
 	fmt.Fprintf(w, "func (o %[1]sMapOutput) MapIndex(k pulumi.StringInput) %[1]sOutput {\n", baseName)
 	fmt.Fprintf(w, "\treturn pulumi.All(o, k).ApplyT(func (vs []interface{}) %s{\n", elementType)
@@ -889,8 +878,8 @@ func genMapOutput(w io.Writer, baseName, elementType string, resourceType bool) 
 	fmt.Fprintf(w, "}\n\n")
 }
 
-func genPtrOutput(w io.Writer, baseName, elementType string, resourceType bool) {
-	genOutputType(w, baseName+"Ptr", "*"+elementType, false, resourceType)
+func genPtrOutput(w io.Writer, baseName, elementType string) {
+	genOutputType(w, baseName+"Ptr", "*"+elementType, false)
 
 	fmt.Fprintf(w, "func (o %[1]sPtrOutput) Elem() %[1]sOutput {\n", baseName)
 	fmt.Fprintf(w, "\treturn o.ApplyT(func(v *%[1]s) %[1]s {\n", baseName)
@@ -956,7 +945,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType) error {
 
 		fmt.Fprintf(w, "type %[1]sArray []%[1]s\n\n", name)
 
-		genInputImplementation(w, name+"Array", name+"Array", "[]"+name, false, false)
+		genInputImplementation(w, name+"Array", name+"Array", "[]"+name, false)
 	}
 
 	// Generate the map input.
@@ -965,24 +954,24 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType) error {
 
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]s\n\n", name)
 
-		genInputImplementation(w, name+"Map", name+"Map", "map[string]"+name, false, false)
+		genInputImplementation(w, name+"Map", name+"Map", "map[string]"+name, false)
 	}
 
 	// Generate the array output
 	if details.arrayElement {
-		genArrayOutput(w, name, name, false)
+		genArrayOutput(w, name, name)
 	}
 
 	// Generate the map output.
 	if details.mapElement {
-		genMapOutput(w, name, name, false)
+		genMapOutput(w, name, name)
 	}
 
 	return nil
 }
 
 func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name, elementArgsType, elementGoType, asFuncName string) {
-	genOutputType(w, name, name, true, false)
+	genOutputType(w, name, name, true)
 
 	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sOutput() %[3]sOutput {\n", name, asFuncName, elementArgsType)
 	fmt.Fprintf(w, "return o.To%sOutputWithContext(context.Background())\n", asFuncName)
@@ -1005,7 +994,7 @@ func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name, elementArgsType, el
 	fmt.Fprintf(w, "}).(%sPtrOutput)\n", elementArgsType)
 	fmt.Fprint(w, "}\n\n")
 
-	genPtrOutput(w, name, name, false)
+	genPtrOutput(w, name, name)
 
 	fmt.Fprintf(w, "func (o %[1]sPtrOutput) To%[2]sPtrOutput() %[3]sPtrOutput {\n", name, asFuncName, elementArgsType)
 	fmt.Fprintf(w, "return o.To%sPtrOutputWithContext(context.Background())\n", asFuncName)
@@ -1129,7 +1118,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 	pkg.genInputArgsStruct(w, name+"Args", t)
 
-	genInputImplementation(w, name, name+"Args", name, details.ptrElement, false)
+	genInputImplementation(w, name, name+"Args", name, details.ptrElement)
 
 	// Generate the pointer input.
 	if details.ptrElement {
@@ -1143,7 +1132,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 		fmt.Fprintf(w, "\treturn (*%s)(v)\n", ptrTypeName)
 		fmt.Fprintf(w, "}\n\n")
 
-		genInputImplementation(w, name+"Ptr", "*"+ptrTypeName, "*"+name, false, false)
+		genInputImplementation(w, name+"Ptr", "*"+ptrTypeName, "*"+name, false)
 	}
 
 	// Generate the array input.
@@ -1152,7 +1141,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 		fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
 
-		genInputImplementation(w, name+"Array", name+"Array", "[]"+name, false, false)
+		genInputImplementation(w, name+"Array", name+"Array", "[]"+name, false)
 	}
 
 	// Generate the map input.
@@ -1161,7 +1150,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
 
-		genInputImplementation(w, name+"Map", name+"Map", "map[string]"+name, false, false)
+		genInputImplementation(w, name+"Map", name+"Map", "map[string]"+name, false)
 	}
 }
 
@@ -1200,7 +1189,6 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 		name,               /* baseName */
 		name,               /* elementType */
 		details.ptrElement, /* ptrMethods */
-		false,              /* resourceType */
 	)
 
 	for _, p := range t.Properties {
@@ -1219,7 +1207,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 	}
 
 	if details.ptrElement {
-		genPtrOutput(w, name, name, false)
+		genPtrOutput(w, name, name)
 
 		for _, p := range t.Properties {
 			printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
@@ -1252,11 +1240,11 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 	}
 
 	if details.arrayElement {
-		genArrayOutput(w, name, name, false)
+		genArrayOutput(w, name, name)
 	}
 
 	if details.mapElement {
-		genMapOutput(w, name, name, false)
+		genMapOutput(w, name, name)
 	}
 }
 
@@ -1708,42 +1696,26 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	fmt.Fprintf(w, "\tTo%[1]sOutputWithContext(ctx context.Context) %[1]sOutput\n", name)
 	fmt.Fprintf(w, "}\n\n")
 
-	genInputImplementation(w, name, "*"+name, name, generateResourceContainerTypes, true)
+	genInputImplementation(w, name, "*"+name, "*"+name, false)
 
-	if generateResourceContainerTypes {
-		// Emit the resource pointer input type.
-		fmt.Fprintf(w, "type %sPtrInput interface {\n", name)
-		fmt.Fprintf(w, "\tpulumi.Input\n\n")
-		fmt.Fprintf(w, "\tTo%[1]sPtrOutput() %[1]sPtrOutput\n", name)
-		fmt.Fprintf(w, "\tTo%[1]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput\n", name)
-		fmt.Fprintf(w, "}\n\n")
-		ptrTypeName := camel(name) + "PtrType"
-		fmt.Fprintf(w, "type %s %sArgs\n\n", ptrTypeName, name)
-		genInputImplementation(w, name+"Ptr", "*"+ptrTypeName, "*"+name, false, true)
+	if generateResourceContainerTypes && !r.IsProvider {
+		// Generate the resource array input.
+		pkg.genInputInterface(w, name+"Array")
+		fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
+		genInputImplementation(w, name+"Array", name+"Array", "[]*"+name, false)
 
-		if !r.IsProvider {
-			// Generate the resource array input.
-			pkg.genInputInterface(w, name+"Array")
-			fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
-			genInputImplementation(w, name+"Array", name+"Array", "[]*"+name, false, false)
-
-			// Generate the resource map input.
-			pkg.genInputInterface(w, name+"Map")
-			fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
-			genInputImplementation(w, name+"Map", name+"Map", "map[string]*"+name, false, false)
-		}
+		// Generate the resource map input.
+		pkg.genInputInterface(w, name+"Map")
+		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
+		genInputImplementation(w, name+"Map", name+"Map", "map[string]*"+name, false)
 	}
 
 	// Emit the resource output type.
-	genOutputType(w, name, name, generateResourceContainerTypes, true)
+	genOutputType(w, name, "*"+name, false)
 
-	if generateResourceContainerTypes {
-		genPtrOutput(w, name, name, true)
-
-		if !r.IsProvider {
-			genArrayOutput(w, name, name, true)
-			genMapOutput(w, name, name, true)
-		}
+	if generateResourceContainerTypes && !r.IsProvider {
+		genArrayOutput(w, name, "*"+name)
+		genMapOutput(w, name, "*"+name)
 	}
 
 	pkg.genResourceRegistrations(w, r, generateResourceContainerTypes)
@@ -2100,16 +2072,16 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]ma
 			names = append(names, name)
 			if strings.HasSuffix(name, "Array") {
 				fmt.Fprintf(w, "type %s []%sInput\n\n", name, elementTypeName)
-				genInputImplementation(w, name, name, elementTypeName, false, false)
+				genInputImplementation(w, name, name, elementTypeName, false)
 
-				genArrayOutput(w, strings.TrimSuffix(name, "Array"), elementTypeName, false)
+				genArrayOutput(w, strings.TrimSuffix(name, "Array"), elementTypeName)
 			}
 
 			if strings.HasSuffix(name, "Map") {
 				fmt.Fprintf(w, "type %s map[string]%sInput\n\n", name, elementTypeName)
-				genInputImplementation(w, name, name, elementTypeName, false, false)
+				genInputImplementation(w, name, name, elementTypeName, false)
 
-				genMapOutput(w, strings.TrimSuffix(name, "Map"), elementTypeName, false)
+				genMapOutput(w, strings.TrimSuffix(name, "Map"), elementTypeName)
 			}
 			pkg.genInputInterface(w, name)
 		}
@@ -2236,18 +2208,13 @@ func (pkg *pkgContext) genResourceRegistrations(w io.Writer, r *schema.Resource,
 		fmt.Fprintf(w,
 			"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), &%[1]s{})\n",
 			name)
-		if generateResourceContainerTypes {
+		if generateResourceContainerTypes && !r.IsProvider {
 			fmt.Fprintf(w,
-				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), &%[1]s{})\n",
+				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n",
 				name)
-			if !r.IsProvider {
-				fmt.Fprintf(w,
-					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n",
-					name)
-				fmt.Fprintf(w,
-					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n",
-					name)
-			}
+			fmt.Fprintf(w,
+				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sMapInput)(nil)).Elem(), %[1]sMap{})\n",
+				name)
 		}
 	}
 	// Register all output types
@@ -2262,12 +2229,9 @@ func (pkg *pkgContext) genResourceRegistrations(w io.Writer, r *schema.Resource,
 		}
 	}
 
-	if generateResourceContainerTypes {
-		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
-		if !r.IsProvider {
-			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
-			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
-		}
+	if generateResourceContainerTypes && !r.IsProvider {
+		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
+		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
 	}
 	fmt.Fprintf(w, "}\n\n")
 }
