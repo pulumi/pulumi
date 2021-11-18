@@ -145,6 +145,7 @@ jobs:
           cd sdk/dotnet && make lint
   build_and_test:
     name: Build & Test
+    needs: build-pulumi-binaries
     strategy:
       matrix:
         platform: [ ubuntu-latest, macos-latest ]
@@ -232,26 +233,6 @@ jobs:
         with:
           repo: t0yv0/goteststats
           tag: v0.0.7
-      - name: Ensure
-        run: |
-          make ensure
-      - name: Dist
-        run: |
-          make dist
-        env:
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: Install
-        run: |
-          make install_all
-          # Install Pulumi Python SDK globally (on CI only) to workaround a
-          # problem a sub-process in a test failing to find it.
-          python -m pip install -e sdk/python/env/src
-        env:
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Test
         run: make TEST_ALL_DEPS= test_all
         env:
