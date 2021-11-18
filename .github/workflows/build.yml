@@ -13,6 +13,11 @@ on:
         default: '3.9.x'
         required: false
         type: string
+      node-version:
+        description: 'Version of the Node toolchain for the build'
+        default: '14.x'
+        required: false
+        type: string
       goreleaser-flags:
         description: 'Command-line flags to pass to goreleaser'
         default: '-p 3 -f .goreleaser.build.yml --snapshot --skip-validate'
@@ -96,9 +101,6 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
-      # - name: Install python3
-      #   run: |
-      #      DEBIAN_FRONTEND=noninteractive apt-get install python3 python3-venv --yes
       - name: Set up Python ${{ inputs.python-version }}
         uses: actions/setup-python@v1
         with:
@@ -122,3 +124,48 @@ jobs:
         with:
             name: pulumi.whl
             path: sdk/python/lib/dist/*.whl
+
+  build_node_sdk:
+    name: Build Pulumi Node SDK tarball
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Set up Node ${{ inputs.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: Install yarn
+        run: |
+          npm install -g yarn
+      - name: Make no-op Go command to avoid Go builds
+        run: |
+          cd sdk/nodejs
+          mkdir -p bin
+          ln -s $(which echo) bin/go
+      - name: Ensure installed dependencies
+        run: |
+          cd sdk/nodejs
+          PATH=./bin:$PATH make ensure
+      - name: Build the Node SDK package
+        run: |
+          cd sdk/nodejs
+          PATH=./bin:$PATH make build_package
+      - name: Pack the Node SDK
+        run: |
+          cd sdk/nodejs/bin
+          npm pack
+      - name: Upload pulumi-node-sdk.tgz
+        uses: actions/upload-artifact@v2
+        with:
+            name: pulumi-node-sdk.tgz
+            path: sdk/nodejs/bin/*.tgz

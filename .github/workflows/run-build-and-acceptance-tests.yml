@@ -35,7 +35,7 @@ concurrency:
 jobs:
 
   build-pulumi-binaries:
-    uses: pulumi/pulumi/.github/workflows/build.yml@2707167992b611c01c8ac3b56aa98c84864c8c25
+    uses: pulumi/pulumi/.github/workflows/build.yml@51473aeeda85822d476ecfa04d25b45c3d66480e
 
   inspect-pulumi-binaries:
     runs-on: ubuntu-latest
