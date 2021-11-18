@@ -1170,9 +1170,11 @@ func (op StepOp) Suffix() string {
 func (op StepOp) ConstrainedTo(constraint StepOp) bool {
 	var allowed []StepOp
 	switch constraint {
-	case OpSame, OpCreate, OpDelete, OpRead, OpReadReplacement, OpRefresh, OpReadDiscard, OpDiscardReplaced,
+	case OpSame, OpDelete, OpRead, OpReadReplacement, OpRefresh, OpReadDiscard, OpDiscardReplaced,
 		OpRemovePendingReplace, OpImport, OpImportReplacement:
 		allowed = []StepOp{constraint}
+	case OpCreate:
+		allowed = []StepOp{OpSame, OpCreate}
 	case OpUpdate:
 		allowed = []StepOp{OpSame, OpUpdate}
 	case OpReplace, OpCreateReplacement, OpDeleteReplaced:

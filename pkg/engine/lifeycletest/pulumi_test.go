@@ -3210,11 +3210,11 @@ func TestResoucesWithSames(t *testing.T) {
 	expected = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"X": "Y",
 	})
-	assert.Equal(t, expected, snap.Resources[1].Outputs)
+	assert.Equal(t, expected, snap.Resources[2].Outputs)
 
 	expected = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 		"zed": 24,
 	})
-	assert.Equal(t, expected, snap.Resources[2].Outputs)
+	assert.Equal(t, expected, snap.Resources[1].Outputs)
 }

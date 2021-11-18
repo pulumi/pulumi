@@ -194,7 +194,9 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 				}
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 			} else {
-				return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+				if !s.Op().ConstrainedTo(OpSame) {
+					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+				}
 			}
 		}
 
@@ -310,13 +312,17 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	sg.deployment.newPlans.set(urn, newResourcePlan)
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
+	// If theres no plan for this resource check that nothing has been changed.
 	if sg.deployment.plan != nil {
 		resourcePlan, ok := sg.deployment.plan[urn]
 		if !ok {
-			return nil, result.Errorf("resource not found in plan")
-		}
-		if err := resourcePlan.checkGoal(oldOutputs, inputs, goal); err != nil {
-			return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
+			if err := checkMissingPlan(old, inputs, goal); err != nil {
+				return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
+			}
+		} else {
+			if err := resourcePlan.checkGoal(oldOutputs, inputs, goal); err != nil {
+				return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
+			}
 		}
 	}
 

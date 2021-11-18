@@ -163,6 +163,37 @@ func (rp *ResourcePlan) diffPropertyDependencies(a, b map[resource.PropertyKey][
 	return nil
 }
 
+// This is similar to ResourcePlan.checkGoal but for the case we're we don't have a goal saved. This simple checks that we're not changing anything.
+func checkMissingPlan(
+	oldState *resource.State,
+	newInputs resource.PropertyMap,
+	programGoal *resource.Goal) error {
+
+	// We new up a fake ResourcePlan that matches the old state and then simply call checkGoal on it.
+	goal := &GoalPlan{
+		Type:                    oldState.Type,
+		Name:                    oldState.URN.Name(),
+		Custom:                  oldState.Custom,
+		Adds:                    nil,
+		Deletes:                 nil,
+		Updates:                 nil,
+		Parent:                  oldState.Parent,
+		Protect:                 oldState.Protect,
+		Dependencies:            oldState.Dependencies,
+		Provider:                oldState.Provider,
+		PropertyDependencies:    oldState.PropertyDependencies,
+		DeleteBeforeReplace:     nil,
+		IgnoreChanges:           nil,
+		AdditionalSecretOutputs: oldState.AdditionalSecretOutputs,
+		Aliases:                 oldState.Aliases,
+		ID:                      "",
+		CustomTimeouts:          oldState.CustomTimeouts,
+	}
+
+	rp := ResourcePlan{Goal: goal}
+	return rp.checkGoal(oldState.Outputs, newInputs, programGoal)
+}
+
 func (rp *ResourcePlan) checkGoal(
 	oldOutputs resource.PropertyMap,
 	newInputs resource.PropertyMap,
