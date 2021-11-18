@@ -41,20 +41,20 @@ export class Nursery extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args: NurseryArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
             if ((!args || args.varieties === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'varieties'");
             }
-            inputs["sizes"] = args ? args.sizes : undefined;
-            inputs["varieties"] = args ? args.varieties : undefined;
+            resourceInputs["sizes"] = args ? args.sizes : undefined;
+            resourceInputs["varieties"] = args ? args.varieties : undefined;
         } else {
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(Nursery.__pulumiType, name, inputs, opts);
+        super(Nursery.__pulumiType, name, resourceInputs, opts);
     }
 }
 

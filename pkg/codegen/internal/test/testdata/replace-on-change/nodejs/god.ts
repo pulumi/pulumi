@@ -43,17 +43,17 @@ export class God extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: GodArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["backwards"] = undefined /*out*/;
+            resourceInputs["backwards"] = undefined /*out*/;
         } else {
-            inputs["backwards"] = undefined /*out*/;
+            resourceInputs["backwards"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(God.__pulumiType, name, inputs, opts);
+        super(God.__pulumiType, name, resourceInputs, opts);
     }
 }
 

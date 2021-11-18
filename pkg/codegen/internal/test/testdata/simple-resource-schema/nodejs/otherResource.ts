@@ -31,17 +31,17 @@ export class OtherResource extends pulumi.ComponentResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: OtherResourceArgs, opts?: pulumi.ComponentResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["foo"] = args ? args.foo : undefined;
+            resourceInputs["foo"] = args ? args.foo : undefined;
         } else {
-            inputs["foo"] = undefined /*out*/;
+            resourceInputs["foo"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(OtherResource.__pulumiType, name, inputs, opts, true /*remote*/);
+        super(OtherResource.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 }
 

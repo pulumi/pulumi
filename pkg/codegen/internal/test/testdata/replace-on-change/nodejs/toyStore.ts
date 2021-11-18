@@ -47,25 +47,25 @@ export class ToyStore extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: ToyStoreArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["chew"] = undefined /*out*/;
-            inputs["laser"] = undefined /*out*/;
-            inputs["stuff"] = undefined /*out*/;
-            inputs["wanted"] = undefined /*out*/;
+            resourceInputs["chew"] = undefined /*out*/;
+            resourceInputs["laser"] = undefined /*out*/;
+            resourceInputs["stuff"] = undefined /*out*/;
+            resourceInputs["wanted"] = undefined /*out*/;
         } else {
-            inputs["chew"] = undefined /*out*/;
-            inputs["laser"] = undefined /*out*/;
-            inputs["stuff"] = undefined /*out*/;
-            inputs["wanted"] = undefined /*out*/;
+            resourceInputs["chew"] = undefined /*out*/;
+            resourceInputs["laser"] = undefined /*out*/;
+            resourceInputs["stuff"] = undefined /*out*/;
+            resourceInputs["wanted"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
         const replaceOnChanges = { replaceOnChanges: ["chew.owner", "laser.batteries", "stuff[*].associated.color", "stuff[*].color", "wanted[*]"] };
         opts = pulumi.mergeOptions(opts, replaceOnChanges);
-        super(ToyStore.__pulumiType, name, inputs, opts);
+        super(ToyStore.__pulumiType, name, resourceInputs, opts);
     }
 }
 

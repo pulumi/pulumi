@@ -43,17 +43,17 @@ export class Rec extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: RecArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["rec"] = undefined /*out*/;
+            resourceInputs["rec"] = undefined /*out*/;
         } else {
-            inputs["rec"] = undefined /*out*/;
+            resourceInputs["rec"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(Rec.__pulumiType, name, inputs, opts);
+        super(Rec.__pulumiType, name, resourceInputs, opts);
     }
 }
 

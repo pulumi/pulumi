@@ -4,9 +4,20 @@
 import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs, enums } from "../types";
 
+import * as utilities from "../utilities";
+
 export interface ContainerArgs {
     brightness?: pulumi.Input<enums.ContainerBrightness>;
     color?: pulumi.Input<enums.ContainerColor | string>;
     material?: pulumi.Input<string>;
     size: pulumi.Input<enums.ContainerSize>;
+}
+/**
+ * containerArgsProvideDefaults sets the appropriate defaults for ContainerArgs
+ */
+export function containerArgsProvideDefaults(val: ContainerArgs): ContainerArgs {
+    return {
+        ...val,
+        brightness: (val.brightness) ?? 1,
+    };
 }
