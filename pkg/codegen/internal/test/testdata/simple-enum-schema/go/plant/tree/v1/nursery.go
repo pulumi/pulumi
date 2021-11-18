@@ -83,7 +83,7 @@ type NurseryInput interface {
 }
 
 func (*Nursery) ElementType() reflect.Type {
-	return reflect.TypeOf((*Nursery)(nil))
+	return reflect.TypeOf((**Nursery)(nil)).Elem()
 }
 
 func (i *Nursery) ToNurseryOutput() NurseryOutput {
@@ -97,7 +97,7 @@ func (i *Nursery) ToNurseryOutputWithContext(ctx context.Context) NurseryOutput 
 type NurseryOutput struct{ *pulumi.OutputState }
 
 func (NurseryOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Nursery)(nil))
+	return reflect.TypeOf((**Nursery)(nil)).Elem()
 }
 
 func (o NurseryOutput) ToNurseryOutput() NurseryOutput {

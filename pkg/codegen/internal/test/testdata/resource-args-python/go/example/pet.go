@@ -75,7 +75,7 @@ type PetInput interface {
 }
 
 func (*Pet) ElementType() reflect.Type {
-	return reflect.TypeOf((*Pet)(nil))
+	return reflect.TypeOf((**Pet)(nil)).Elem()
 }
 
 func (i *Pet) ToPetOutput() PetOutput {
@@ -84,35 +84,6 @@ func (i *Pet) ToPetOutput() PetOutput {
 
 func (i *Pet) ToPetOutputWithContext(ctx context.Context) PetOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(PetOutput)
-}
-
-func (i *Pet) ToPetPtrOutput() PetPtrOutput {
-	return i.ToPetPtrOutputWithContext(context.Background())
-}
-
-func (i *Pet) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(PetPtrOutput)
-}
-
-type PetPtrInput interface {
-	pulumi.Input
-
-	ToPetPtrOutput() PetPtrOutput
-	ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput
-}
-
-type petPtrType PetArgs
-
-func (*petPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Pet)(nil))
-}
-
-func (i *petPtrType) ToPetPtrOutput() PetPtrOutput {
-	return i.ToPetPtrOutputWithContext(context.Background())
-}
-
-func (i *petPtrType) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(PetPtrOutput)
 }
 
 // PetArrayInput is an input type that accepts PetArray and PetArrayOutput values.
@@ -168,7 +139,7 @@ func (i PetMap) ToPetMapOutputWithContext(ctx context.Context) PetMapOutput {
 type PetOutput struct{ *pulumi.OutputState }
 
 func (PetOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Pet)(nil))
+	return reflect.TypeOf((**Pet)(nil)).Elem()
 }
 
 func (o PetOutput) ToPetOutput() PetOutput {
@@ -179,44 +150,10 @@ func (o PetOutput) ToPetOutputWithContext(ctx context.Context) PetOutput {
 	return o
 }
 
-func (o PetOutput) ToPetPtrOutput() PetPtrOutput {
-	return o.ToPetPtrOutputWithContext(context.Background())
-}
-
-func (o PetOutput) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Pet) *Pet {
-		return &v
-	}).(PetPtrOutput)
-}
-
-type PetPtrOutput struct{ *pulumi.OutputState }
-
-func (PetPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Pet)(nil))
-}
-
-func (o PetPtrOutput) ToPetPtrOutput() PetPtrOutput {
-	return o
-}
-
-func (o PetPtrOutput) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput {
-	return o
-}
-
-func (o PetPtrOutput) Elem() PetOutput {
-	return o.ApplyT(func(v *Pet) Pet {
-		if v != nil {
-			return *v
-		}
-		var ret Pet
-		return ret
-	}).(PetOutput)
-}
-
 type PetArrayOutput struct{ *pulumi.OutputState }
 
 func (PetArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Pet)(nil))
+	return reflect.TypeOf((*[]*Pet)(nil)).Elem()
 }
 
 func (o PetArrayOutput) ToPetArrayOutput() PetArrayOutput {
@@ -228,15 +165,15 @@ func (o PetArrayOutput) ToPetArrayOutputWithContext(ctx context.Context) PetArra
 }
 
 func (o PetArrayOutput) Index(i pulumi.IntInput) PetOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Pet {
-		return vs[0].([]Pet)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Pet {
+		return vs[0].([]*Pet)[vs[1].(int)]
 	}).(PetOutput)
 }
 
 type PetMapOutput struct{ *pulumi.OutputState }
 
 func (PetMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Pet)(nil))
+	return reflect.TypeOf((*map[string]*Pet)(nil)).Elem()
 }
 
 func (o PetMapOutput) ToPetMapOutput() PetMapOutput {
@@ -248,18 +185,16 @@ func (o PetMapOutput) ToPetMapOutputWithContext(ctx context.Context) PetMapOutpu
 }
 
 func (o PetMapOutput) MapIndex(k pulumi.StringInput) PetOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Pet {
-		return vs[0].(map[string]Pet)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *Pet {
+		return vs[0].(map[string]*Pet)[vs[1].(string)]
 	}).(PetOutput)
 }
 
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*PetInput)(nil)).Elem(), &Pet{})
-	pulumi.RegisterInputType(reflect.TypeOf((*PetPtrInput)(nil)).Elem(), &Pet{})
 	pulumi.RegisterInputType(reflect.TypeOf((*PetArrayInput)(nil)).Elem(), PetArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*PetMapInput)(nil)).Elem(), PetMap{})
 	pulumi.RegisterOutputType(PetOutput{})
-	pulumi.RegisterOutputType(PetPtrOutput{})
 	pulumi.RegisterOutputType(PetArrayOutput{})
 	pulumi.RegisterOutputType(PetMapOutput{})
 }
