@@ -3040,7 +3040,7 @@ func TestExpectedUnneededCreate(t *testing.T) {
 	p.Options.Plan = plan
 	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
-	assert.NotNil(t, res)
+	assert.Nil(t, res)
 
 	// Check resA and the provider are still listed in the snapshot
 	if !assert.Len(t, snap.Resources, 2) {
