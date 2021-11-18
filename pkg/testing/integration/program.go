@@ -2008,7 +2008,8 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 
 	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
 	if localNuget == "" {
-		localNuget = "/opt/pulumi/nuget"
+		home := os.Getenv("HOME")
+		localNuget = filepath.Join(home, ".pulumi", "nuget")
 	}
 
 	for _, dep := range pt.opts.Dependencies {

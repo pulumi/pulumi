@@ -66,5 +66,5 @@ brew::
 
 publish:: build install
 	echo "Publishing .nupkgs to nuget.org:"
-	find /opt/pulumi/nuget -name 'Pulumi*.nupkg' \
+	find $(PULUMI_NUGET) -name 'Pulumi*.nupkg' \
 		-exec dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'
