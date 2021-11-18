@@ -18,6 +18,11 @@ on:
         default: '14.x'
         required: false
         type: string
+      dotnet-version:
+        description: 'Version of the .NET toolchain for the build'
+        default: '3.1.x'
+        required: false
+        type: string
       goreleaser-flags:
         description: 'Command-line flags to pass to goreleaser'
         default: '-p 3 -f .goreleaser.build.yml --snapshot --skip-validate'
@@ -169,3 +174,39 @@ jobs:
         with:
             name: pulumi-node-sdk.tgz
             path: sdk/nodejs/bin/*.tgz
+
+  build_dotnet_sdk:
+    name: Build Pulumi .NET SDK NuGet packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Set up DotNet ${{ inputs.dotnet-version }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+      - name: Compute current version to inform the NuGet package build
+        run: |
+          echo "DOTNET_VERSION=$(pulumictl get version --language dotnet)" >> $GITHUB_ENV
+      - name: Build the .NET SDK package
+        run: |
+          cd sdk/dotnet
+          dotnet build --configuration Release dotnet.sln /p:Version=$DOTNET_VERSION
+      - name: Pack the .NET SDK package
+        run: |
+          cd sdk/dotnet
+          dotnet pack --configuration Release --output nupkgs dotnet.sln /p:Version=$DOTNET_VERSION
+      - name: Upload the NuGet packages
+        uses: actions/upload-artifact@v2
+        with:
+            name: pulumi-nuget-packages
+            path: sdk/dotnet/nupkgs/*.nupkg
