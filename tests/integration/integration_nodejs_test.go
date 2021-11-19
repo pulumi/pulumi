@@ -1180,6 +1180,18 @@ func TestConstructOutputValuesNode(t *testing.T) {
 }
 
 func TestTSConfigOption(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Skip on windows because we lack yarn")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	e.ImportDirectory("tsconfig")
+
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
