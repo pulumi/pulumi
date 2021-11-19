@@ -323,7 +323,7 @@ func (b *localBackend) getHistory(name tokens.QName, pageSize int, page int) ([]
 	allFiles, err := listBucket(b.bucket, dir)
 	if err != nil {
 		// History doesn't exist until a stack has been updated.
-		if gcerrors.Code(drillError(err)) == gcerrors.NotFound {
+		if gcerrors.Code(err) == gcerrors.NotFound {
 			return nil, nil
 		}
 		return nil, err
@@ -391,7 +391,7 @@ func (b *localBackend) renameHistory(oldName tokens.QName, newName tokens.QName)
 	allFiles, err := listBucket(b.bucket, oldHistory)
 	if err != nil {
 		// if there's nothing there, we don't really need to do a rename.
-		if gcerrors.Code(drillError(err)) == gcerrors.NotFound {
+		if gcerrors.Code(err) == gcerrors.NotFound {
 			return nil
 		}
 		return err
