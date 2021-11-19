@@ -52,8 +52,8 @@ func TestParseGitRepoURL(t *testing.T) {
 	// Gists.
 	pre = "https://gist.github.com/user/1c8c6e43daf20924287c0d476e17de9a"
 	exp = "https://gist.github.com/1c8c6e43daf20924287c0d476e17de9a.git"
-	test(exp, "", "", pre)
-	test(exp, "", "", pre+"/")
+	test(exp, "", pre)
+	test(exp, "", pre+"/")
 
 	testError := func(rawurl string) {
 		_, _, err := ParseGitRepoURL(rawurl)
