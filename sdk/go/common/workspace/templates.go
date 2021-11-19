@@ -365,7 +365,7 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 
 // RetrieveGitFolder downloads the repo to path and returns the full path on disk.
 func RetrieveGitFolder(rawurl string, path string) (string, error) {
-	url, urlPath, branch, err := gitutil.ParseGitRepoURL(rawurl)
+	url, urlPath, err := gitutil.ParseGitRepoURL(rawurl)
 	if err != nil {
 		return "", err
 	}
@@ -377,21 +377,13 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 	if ref != "" {
 
 		// Different reference attempts to cycle through
-		var refAttempts []plumbing.ReferenceName
+		// We default to master then main in that order. We need to order them to avoid breaking
+		// already existing processes for repos that already have a master and main branch.
+		refAttempts := []plumbing.ReferenceName{plumbing.Master, plumbing.NewBranchReferenceName("main")}
+
 		if ref != plumbing.HEAD {
 			// If we have a non-default reference, we just use it
 			refAttempts = []plumbing.ReferenceName{ref}
-		} else if branch != "" {
-			// If the branch is specified, we use that instead
-			ref = plumbing.ReferenceName(branch)
-			if len(strings.Split(branch, "/")) == 1 {
-				ref = plumbing.NewBranchReferenceName(branch)
-			}
-			refAttempts = []plumbing.ReferenceName{ref}
-		} else {
-			// We default to master then main in that order. We need to order them to avoid breaking
-			// already existing processes for repos that already have a master and main branch.
-			refAttempts = []plumbing.ReferenceName{plumbing.Master, plumbing.NewBranchReferenceName("main")}
 		}
 
 		var cloneErr error
