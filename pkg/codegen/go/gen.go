@@ -2149,8 +2149,10 @@ func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType) error {
 
 	plainName := pkg.tokenToType(obj.Token)
 	pkg.genPlainType(w, plainName, obj.Comment, "", obj.Properties)
-	if err := pkg.genPlainObjectDefaultFunc(w, plainName, obj.Properties); err != nil {
-		return err
+	if !pkg.disableObjectDefaults {
+		if err := pkg.genPlainObjectDefaultFunc(w, plainName, obj.Properties); err != nil {
+			return err
+		}
 	}
 
 	pkg.genInputTypes(w, obj.InputShape, pkg.detailsForType(obj))
