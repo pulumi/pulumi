@@ -39,7 +39,7 @@ func TestArrayOutputIndex(t *testing.T) {
 
 		pulumi.All(u1, u2).ApplyT(func(all []interface{}) int {
 			urn1 := all[0].(pulumi.URN)
-			urn2 := all[2].(pulumi.URN)
+			urn2 := all[1].(pulumi.URN)
 			assert.Equal(t, urn1, urn2)
 			wg.Done()
 			return 0
