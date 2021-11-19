@@ -701,6 +701,6 @@ func validateVersion(virtualEnvPath string) {
 	} else if parsed.LT(eolPythonVersion) {
 		fmt.Fprintf(os.Stderr, "Python %d.%d is approaching EOL and will not be supported in Pulumi soon."+
 			" Check %s for more details\n", parsed.Major,
-			eolPythonVersion.Minor, eolPythonVersionIssue)
+			parsed.Minor, eolPythonVersionIssue)
 	}
 }
