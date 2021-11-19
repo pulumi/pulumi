@@ -703,7 +703,8 @@ func (sg *stepGenerator) generateStepsFromDiff(
 						}
 
 						if _, ok := sg.deployment.newPlans.get(dependentResource.URN); !ok {
-							// We haven't see this resource before, create a new resource plan for it with no goal (because it's going to be a delete)
+							// We haven't see this resource before, create a new
+							// resource plan for it with no goal (because it's going to be a delete)
 							resourcePlan := &ResourcePlan{}
 							sg.deployment.newPlans.set(dependentResource.URN, resourcePlan)
 						}
