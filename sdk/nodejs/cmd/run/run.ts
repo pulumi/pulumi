@@ -234,7 +234,7 @@ ${defaultMessage}`);
     programStarted();
 
     // This needs to occur after `programStarted` to ensure execution of the parent process stops.
-    if (skipProject && tsConfigPath != defaultTsConfigPath) {
+    if (skipProject && tsConfigPath !== defaultTsConfigPath) {
         return new Promise(() => {
             const e = new Error(`tsconfig path was set to ${tsConfigPath} but the file was not found`);
             e.stack = undefined;
