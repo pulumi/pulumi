@@ -219,7 +219,7 @@
       }
     },
     "go": {
-      "importBasePath": "env-helper/example"
+      "importBasePath": "plain-object-defaults/example"
     },
     "nodejs": {
       "dependencies": {

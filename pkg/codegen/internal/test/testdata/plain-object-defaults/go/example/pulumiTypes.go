@@ -7,9 +7,9 @@ import (
 	"context"
 	"reflect"
 
-	"env-helper/example/mod1"
-	"env-helper/example/mod2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-object-defaults/example/mod1"
+	"plain-object-defaults/example/mod2"
 )
 
 // BETA FEATURE - Options to configure the Helm Release resource.

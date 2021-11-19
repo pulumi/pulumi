@@ -7,8 +7,8 @@ import (
 	"context"
 	"reflect"
 
-	"env-helper/example/mod1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-object-defaults/example/mod1"
 )
 
 // A test for namespaces (mod 2)
