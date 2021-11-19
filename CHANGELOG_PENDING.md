@@ -1,6 +1,7 @@
 ### Improvements
 
-- [cli] - Allow specifying branch with `#branch` in `pulumi new`.
+- [cli] - When running `pulumi new https://github.com/name/repo`, check 
+  for branch `main` if branch `master` doesn't exist.
   [#8463](https://github.com/pulumi/pulumi/pull/8463)
 
 - [codegen/python] - Program generator now uses `fn_output` forms where
