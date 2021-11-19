@@ -447,7 +447,7 @@ func TestSerializePropertyValue(t *testing.T) {
 		v := gen.Draw(t, "property value").(resource.PropertyValue)
 		t.Logf("Drawn v resource.PropertyValue: %v\n", spew.Sdump(v))
 		_, err := SerializePropertyValue(v, config.NopEncrypter, false)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 }
 
