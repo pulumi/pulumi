@@ -296,63 +296,71 @@ func GitCloneOrPull(url string, referenceName plumbing.ReferenceName, path strin
 	return nil
 }
 
-// ParseGitRepoURL returns the URL to the Git repository and path from a raw URL.
-// For example, an input of "https://github.com/pulumi/templates/templates/javascript" returns
-// "https://github.com/pulumi/templates.git" and "templates/javascript".
-func ParseGitRepoURL(rawurl string) (string, string, error) {
-	u, err := url.Parse(rawurl)
-	if err != nil {
-		return "", "", err
-	}
-
-	if u.Scheme != "https" {
-		return "", "", errors.New("invalid URL scheme")
-	}
-
-	path := strings.TrimPrefix(u.Path, "/")
-
-	// Special case Gists.
-	if u.Hostname() == "gist.github.com" {
-		// We currently accept Gist URLs in the form: https://gist.github.com/owner/id.
-		// We may want to consider supporting https://gist.github.com/id at some point,
-		// as well as arbitrary revisions, e.g. https://gist.github.com/owner/id/commit.
-		path = strings.TrimSuffix(path, "/")
-		paths := strings.Split(path, "/")
-		if len(paths) != 2 {
-			return "", "", errors.New("invalid Gist URL")
-		}
-
-		owner := paths[0]
-		if owner == "" {
-			return "", "", errors.New("invalid Gist URL; no owner")
-		}
-
-		id := paths[1]
-		if id == "" {
-			return "", "", errors.New("invalid Gist URL; no id")
-		}
-
-		if !strings.HasSuffix(id, ".git") {
-			id = id + ".git"
-		}
-
-		resultURL := u.Scheme + "://" + u.Host + "/" + id
-		return resultURL, "", nil
-	}
-
+// We currently accept Gist URLs in the form: https://gist.github.com/owner/id.
+// We may want to consider supporting https://gist.github.com/id at some point,
+// as well as arbitrary revisions, e.g. https://gist.github.com/owner/id/commit.
+func parseGistURL(u *url.URL) (string, error) {
+	path := strings.Trim(u.Path, "/")
 	paths := strings.Split(path, "/")
-	if len(paths) < 2 {
-		return "", "", errors.New("invalid Git URL")
+	if len(paths) != 2 {
+		return "", errors.New("invalid Gist URL")
 	}
 
 	owner := paths[0]
 	if owner == "" {
-		return "", "", errors.New("invalid Git URL; no owner")
+		return "", errors.New("invalid Gist URL; no owner")
+	}
+
+	id := paths[1]
+	if id == "" {
+		return "", errors.New("invalid Gist URL; no id")
+	}
+
+	if !strings.HasSuffix(id, ".git") {
+		id = id + ".git"
+	}
+
+	resultURL := u.Scheme + "://" + u.Host + "/" + id
+	return resultURL, nil
+
+}
+
+// ParseGitRepoURL returns the URL to the Git repository and path from a raw URL.
+// For example, an input of "https://github.com/pulumi/templates/templates/javascript" returns
+// "https://github.com/pulumi/templates.git" and "templates/javascript".
+func ParseGitRepoURL(rawurl string) (string, string, string, error) {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	if u.Scheme != "https" {
+		return "", "", "", errors.New("invalid URL scheme")
+	}
+
+	// Special case Gists.
+	if u.Hostname() == "gist.github.com" {
+		repo, err := parseGistURL(u)
+		if err != nil {
+			return "", "", "", err
+		}
+		return repo, "", "", nil
+	}
+
+	path := strings.TrimPrefix(u.Path, "/")
+	paths := strings.Split(path, "/")
+	if len(paths) < 2 {
+		return "", "", "", errors.New("invalid Git URL")
+	}
+
+	owner := paths[0]
+	if owner == "" {
+		return "", "", "", errors.New("invalid Git URL; no owner")
 	}
 
 	repo := paths[1]
 	if repo == "" {
-		return "", "", errors.New("invalid Git URL; no repository")
+		return "", "", "", errors.New("invalid Git URL; no repository")
 	}
 
 	if !strings.HasSuffix(repo, ".git") {
@@ -360,8 +368,10 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 	}
 
 	resultURL := u.Scheme + "://" + u.Host + "/" + owner + "/" + repo
+	branch := u.Fragment
 	resultPath := strings.TrimSuffix(strings.Join(paths[2:], "/"), "/")
-	return resultURL, resultPath, nil
+
+	return resultURL, resultPath, branch, nil
 }
 
 var gitSHARegex = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)

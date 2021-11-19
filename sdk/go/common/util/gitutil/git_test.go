@@ -25,38 +25,41 @@ import (
 )
 
 func TestParseGitRepoURL(t *testing.T) {
-	test := func(expectedURL string, expectedURLPath string, rawurl string) {
-		actualURL, actualURLPath, err := ParseGitRepoURL(rawurl)
+	test := func(expectedURL, expectedURLPath, expectedBranch string, rawurl string) {
+		actualURL, actualURLPath, actualBranch, err := ParseGitRepoURL(rawurl)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedURL, actualURL)
 		assert.Equal(t, expectedURLPath, actualURLPath)
+		assert.Equal(t, expectedBranch, actualBranch)
 	}
 
 	// GitHub.
 	pre := "https://github.com/pulumi/templates"
 	exp := pre + ".git"
-	test(exp, "", pre+".git")
-	test(exp, "", pre)
-	test(exp, "", pre+"/")
-	test(exp, "templates", pre+"/templates")
-	test(exp, "templates", pre+"/templates/")
-	test(exp, "templates/javascript", pre+"/templates/javascript")
-	test(exp, "templates/javascript", pre+"/templates/javascript/")
-	test(exp, "tree/master/templates", pre+"/tree/master/templates")
-	test(exp, "tree/master/templates/python", pre+"/tree/master/templates/python")
-	test(exp, "tree/929b6e4c5c39196ae2482b318f145e0d765e9608/templates",
+	test(exp, "", "", pre+".git")
+	test(exp, "", "", pre)
+	test(exp, "", "", pre+"/")
+	test(exp, "templates", "", pre+"/templates")
+	test(exp, "templates", "", pre+"/templates/")
+	test(exp, "templates/javascript", "", pre+"/templates/javascript")
+	test(exp, "templates/javascript", "", pre+"/templates/javascript/")
+	test(exp, "tree/master/templates", "", pre+"/tree/master/templates")
+	test(exp, "tree/master/templates/python", "", pre+"/tree/master/templates/python")
+	test(exp, "tree/929b6e4c5c39196ae2482b318f145e0d765e9608/templates", "",
 		pre+"/tree/929b6e4c5c39196ae2482b318f145e0d765e9608/templates")
-	test(exp, "tree/929b6e4c5c39196ae2482b318f145e0d765e9608/templates/python",
+	test(exp, "tree/929b6e4c5c39196ae2482b318f145e0d765e9608/templates/python", "",
 		pre+"/tree/929b6e4c5c39196ae2482b318f145e0d765e9608/templates/python")
+	test(exp, "foo", "bar", pre+"/foo"+"#bar")
+	//TODO: test branches
 
 	// Gists.
 	pre = "https://gist.github.com/user/1c8c6e43daf20924287c0d476e17de9a"
 	exp = "https://gist.github.com/1c8c6e43daf20924287c0d476e17de9a.git"
-	test(exp, "", pre)
-	test(exp, "", pre+"/")
+	test(exp, "", "", pre)
+	test(exp, "", "", pre+"/")
 
 	testError := func(rawurl string) {
-		_, _, err := ParseGitRepoURL(rawurl)
+		_, _, _, err := ParseGitRepoURL(rawurl)
 		assert.Error(t, err)
 	}
 

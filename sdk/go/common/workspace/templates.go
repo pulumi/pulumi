@@ -287,7 +287,7 @@ func retrieveURLTemplates(rawurl string, offline bool, templateKind TemplateKind
 
 	var fullPath string
 	if fullPath, err = RetrieveGitFolder(rawurl, temp); err != nil {
-		return TemplateRepository{}, err
+		return TemplateRepository{}, fmt.Errorf("Failed to retrieve git folder: %w", err)
 	}
 
 	return TemplateRepository{
@@ -365,23 +365,28 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 
 // RetrieveGitFolder downloads the repo to path and returns the full path on disk.
 func RetrieveGitFolder(rawurl string, path string) (string, error) {
-	url, urlPath, err := gitutil.ParseGitRepoURL(rawurl)
+	url, urlPath, branch, err := gitutil.ParseGitRepoURL(rawurl)
 	if err != nil {
 		return "", err
 	}
 
 	ref, commit, subDirectory, err := gitutil.GetGitReferenceNameOrHashAndSubDirectory(url, urlPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get git ref: %w", err)
 	}
-
 	if ref != "" {
+		if branch != "" {
+			ref = plumbing.ReferenceName(branch)
+			if len(strings.Split(branch, "/")) == 1 {
+				ref = plumbing.ReferenceName("refs/heads/" + branch)
+			}
+		}
 		if cloneErr := gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/); cloneErr != nil {
-			return "", cloneErr
+			return "", fmt.Errorf("failed to clone ref '%s': %w", ref, cloneErr)
 		}
 	} else {
 		if cloneErr := gitutil.GitCloneAndCheckoutCommit(url, commit, path); cloneErr != nil {
-			return "", cloneErr
+			return "", fmt.Errorf("failed to clone and checkout %s(%s): %w", url, commit, cloneErr)
 		}
 	}
 
