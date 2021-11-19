@@ -1178,3 +1178,11 @@ func TestAboutNodeJS(t *testing.T) {
 func TestConstructOutputValuesNode(t *testing.T) {
 	testConstructOutputValues(t, "nodejs", "@pulumi/pulumi")
 }
+
+func TestTSConfigOption(t *testing.T) {
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
+	e.RunCommand("pulumi", "preview")
+}
