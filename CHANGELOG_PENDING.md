@@ -16,3 +16,6 @@
 
 - [codegen/typescript] - Respect default values in Pulumi object types.
   [#8400](https://github.com/pulumi/pulumi/pull/8400)
+
+- [cli] - Catch expected errors in filestate backend stacks.
+  [#8455](https://github.com/pulumi/pulumi/pull/8455)
