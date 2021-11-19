@@ -3300,3 +3300,82 @@ func TestPlannedPreviews(t *testing.T) {
 	_, res = TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.Nil(t, res)
 }
+
+func TestPlannedUpdateChangedStack(t *testing.T) {
+	// This tests the case that we run a planned update against a stack that has changed between preview and update
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	var ins resource.PropertyMap
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Set initial data for foo and zed
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"zed": 24,
+	})
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Generate a plan that we want to change foo
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+		"zed": 24,
+	})
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Change zed in the stack
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"zed": 26,
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Attempt to run an update using the plan but where we haven't updated our program for the change of zed
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+		"zed": 24,
+	})
+	p.Options.Plan = ClonePlan(t, plan)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+
+	// Check the resource's state we shouldn't of changed anything because the update failed
+	if !assert.Len(t, snap.Resources, 2) {
+		return
+	}
+
+	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"zed": 26,
+	})
+	assert.Equal(t, expected, snap.Resources[1].Outputs)
+}
