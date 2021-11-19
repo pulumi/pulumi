@@ -271,11 +271,13 @@ func TestGetRefreshOption(t *testing.T) {
 	tests := []struct {
 		name                 string
 		refresh              string
+		planFile             string
 		project              workspace.Project
 		expectedRefreshState bool
 	}{
 		{
 			"No options specified means no refresh",
+			"",
 			"",
 			workspace.Project{},
 			false,
@@ -283,17 +285,20 @@ func TestGetRefreshOption(t *testing.T) {
 		{
 			"Passing --refresh=true causes a refresh",
 			"true",
+			"",
 			workspace.Project{},
 			true,
 		},
 		{
 			"Passing --refresh=false causes no refresh",
 			"false",
+			"",
 			workspace.Project{},
 			false,
 		},
 		{
 			"Setting Refresh at a project level via Pulumi.yaml and no CLI args",
+			"",
 			"",
 			workspace.Project{
 				Name:    "auto-refresh",
@@ -307,6 +312,7 @@ func TestGetRefreshOption(t *testing.T) {
 		{
 			"Setting Refresh at a project level via Pulumi.yaml and --refresh=false",
 			"false",
+			"",
 			workspace.Project{
 				Name:    "auto-refresh",
 				Runtime: workspace.ProjectRuntimeInfo{},
@@ -316,10 +322,24 @@ func TestGetRefreshOption(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"Passing a plan file causes a refresh",
+			"",
+			"plan.json",
+			workspace.Project{},
+			true,
+		},
+		{
+			"Passing --refresh=false and a plan file causes no refresh",
+			"false",
+			"plan.json",
+			workspace.Project{},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			shouldRefresh, err := getRefreshOption(&tt.project, tt.refresh)
+			shouldRefresh, err := getRefreshOption(&tt.project, tt.refresh, tt.planFile)
 			if err != nil {
 				t.Errorf("getRefreshOption() error = %v", err)
 			}
