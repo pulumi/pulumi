@@ -678,7 +678,7 @@ func validateVersion(virtualEnvPath string) {
 	var versionCmd *exec.Cmd
 	var err error
 	versionArgs := []string{"--version"}
-	if virtualEnvPath == "" {
+	if virtualEnvPath != "" {
 		versionCmd = python.VirtualEnvCommand(virtualEnvPath, "python", versionArgs...)
 	} else if versionCmd, err = python.Command(versionArgs...); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to find python executable\n")
