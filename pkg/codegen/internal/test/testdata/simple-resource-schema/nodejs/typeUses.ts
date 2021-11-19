@@ -46,21 +46,21 @@ export class TypeUses extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: TypeUsesArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["bar"] = args ? args.bar : undefined;
-            inputs["baz"] = args ? args.baz : undefined;
-            inputs["foo"] = args ? args.foo : undefined;
+            resourceInputs["bar"] = args ? args.bar : undefined;
+            resourceInputs["baz"] = args ? args.baz : undefined;
+            resourceInputs["foo"] = args ? args.foo : undefined;
         } else {
-            inputs["bar"] = undefined /*out*/;
-            inputs["baz"] = undefined /*out*/;
-            inputs["foo"] = undefined /*out*/;
+            resourceInputs["bar"] = undefined /*out*/;
+            resourceInputs["baz"] = undefined /*out*/;
+            resourceInputs["foo"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(TypeUses.__pulumiType, name, inputs, opts);
+        super(TypeUses.__pulumiType, name, resourceInputs, opts);
     }
 }
 

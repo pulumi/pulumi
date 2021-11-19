@@ -48,20 +48,20 @@ export class Cat extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: CatArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["foes"] = undefined /*out*/;
-            inputs["friends"] = undefined /*out*/;
-            inputs["name"] = undefined /*out*/;
-            inputs["other"] = undefined /*out*/;
-            inputs["toy"] = undefined /*out*/;
+            resourceInputs["foes"] = undefined /*out*/;
+            resourceInputs["friends"] = undefined /*out*/;
+            resourceInputs["name"] = undefined /*out*/;
+            resourceInputs["other"] = undefined /*out*/;
+            resourceInputs["toy"] = undefined /*out*/;
         } else {
-            inputs["foes"] = undefined /*out*/;
-            inputs["friends"] = undefined /*out*/;
-            inputs["name"] = undefined /*out*/;
-            inputs["other"] = undefined /*out*/;
-            inputs["toy"] = undefined /*out*/;
+            resourceInputs["foes"] = undefined /*out*/;
+            resourceInputs["friends"] = undefined /*out*/;
+            resourceInputs["name"] = undefined /*out*/;
+            resourceInputs["other"] = undefined /*out*/;
+            resourceInputs["toy"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
@@ -70,7 +70,7 @@ export class Cat extends pulumi.CustomResource {
         opts = pulumi.mergeOptions(opts, secretOpts);
         const replaceOnChanges = { replaceOnChanges: ["foes.*.associated.color", "foes.*.color", "friends[*].associated.color", "friends[*].color", "name", "toy.color"] };
         opts = pulumi.mergeOptions(opts, replaceOnChanges);
-        super(Cat.__pulumiType, name, inputs, opts);
+        super(Cat.__pulumiType, name, resourceInputs, opts);
     }
 }
 

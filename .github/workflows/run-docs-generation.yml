@@ -101,6 +101,13 @@ jobs:
 
           ./scripts/gen_resource_docs.sh aws true
           ./scripts/gen_resource_docs.sh kubernetes true
+
+          # Undo the changes to the go.mod and go.sum files since we don't want the PR
+          # to contain local overrides or the PR build in docs repo would fail.
+          pushd tools/resourcedocsgen
+          git checkout .
+          popd
+
           popd
 
           echo "::set-output name=branchName::${BRANCH_NAME}"

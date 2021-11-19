@@ -48,11 +48,11 @@ export class RubberTree extends pulumi.CustomResource {
      */
     constructor(name: string, args: RubberTreeArgs, opts?: pulumi.CustomResourceOptions)
     constructor(name: string, argsOrState?: RubberTreeArgs | RubberTreeState, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (opts.id) {
             const state = argsOrState as RubberTreeState | undefined;
-            inputs["farm"] = state ? state.farm : undefined;
+            resourceInputs["farm"] = state ? state.farm : undefined;
         } else {
             const args = argsOrState as RubberTreeArgs | undefined;
             if ((!args || args.diameter === undefined) && !opts.urn) {
@@ -61,16 +61,16 @@ export class RubberTree extends pulumi.CustomResource {
             if ((!args || args.type === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'type'");
             }
-            inputs["container"] = args ? args.container : undefined;
-            inputs["diameter"] = (args ? args.diameter : undefined) ?? 6;
-            inputs["farm"] = (args ? args.farm : undefined) ?? "(unknown)";
-            inputs["size"] = (args ? args.size : undefined) ?? "medium";
-            inputs["type"] = (args ? args.type : undefined) ?? "Burgundy";
+            resourceInputs["container"] = args ? (args.container ? pulumi.output(args.container).apply(inputs.containerArgsProvideDefaults) : undefined) : undefined;
+            resourceInputs["diameter"] = (args ? args.diameter : undefined) ?? 6;
+            resourceInputs["farm"] = (args ? args.farm : undefined) ?? "(unknown)";
+            resourceInputs["size"] = (args ? args.size : undefined) ?? "medium";
+            resourceInputs["type"] = (args ? args.type : undefined) ?? "Burgundy";
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(RubberTree.__pulumiType, name, inputs, opts);
+        super(RubberTree.__pulumiType, name, resourceInputs, opts);
     }
 }
 

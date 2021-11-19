@@ -42,17 +42,17 @@ export class ModuleResource extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: ModuleResourceArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["thing"] = args ? args.thing : undefined;
+            resourceInputs["thing"] = args ? args.thing : undefined;
         } else {
-            inputs["thing"] = undefined /*out*/;
+            resourceInputs["thing"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(ModuleResource.__pulumiType, name, inputs, opts);
+        super(ModuleResource.__pulumiType, name, resourceInputs, opts);
     }
 }
 
