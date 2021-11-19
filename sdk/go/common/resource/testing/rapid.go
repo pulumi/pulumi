@@ -71,39 +71,45 @@ func (ctx *StackContext) ResourceReferencePropertyGenerator() *rapid.Generator {
 	return resourceReferencePropertyGenerator(ctx)
 }
 
-// ArrayPropertyGenerator generates array resource.PropertyValues. The maxDepth parameter controls the maximum
-// depth of the elements of the array.
+// ArrayPropertyGenerator generates array resource.PropertyValues. The
+// maxDepth parameter controls the maximum depth of the elements of
+// the array.
 func (ctx *StackContext) ArrayPropertyGenerator(maxDepth int) *rapid.Generator {
-	return arrayPropertyGenerator(ctx, maxDepth)
+	return arrayPropertyGenerator(ctx.PropertyValueGenerator(maxDepth - 1))
 }
 
-// PropertyMapGenerator generates resource.PropertyMap values. The maxDepth parameter controls the maximum
-// depth of the elements of the map.
+// PropertyMapGenerator generates resource.PropertyMap values. The
+// maxDepth parameter controls the maximum depth of the elements of
+// the map.
 func (ctx *StackContext) PropertyMapGenerator(maxDepth int) *rapid.Generator {
-	return propertyMapGenerator(ctx, maxDepth)
+	return propertyMapGenerator(ctx.PropertyValueGenerator(maxDepth))
 }
 
-// ObjectPropertyGenerator generates object resource.PropertyValues. The maxDepth parameter controls the maximum
-// depth of the elements of the object.
+// ObjectPropertyGenerator generates object resource.PropertyValues.
+// The maxDepth parameter controls the maximum depth of the elements
+// of the object.
 func (ctx *StackContext) ObjectPropertyGenerator(maxDepth int) *rapid.Generator {
-	return objectPropertyGenerator(ctx, maxDepth)
+	return objectPropertyGenerator(ctx.PropertyValueGenerator(maxDepth - 1))
 }
 
-// OutputPropertyGenerator generates output resource.PropertyValues. The maxDepth parameter controls the maximum
-// depth of the resolved value of the output, if any. The output's dependencies will only refer to resources in
-// the context.
+// OutputPropertyGenerator generates output resource.PropertyValues.
+// The maxDepth parameter controls the maximum depth of the resolved
+// value of the output, if any. The output's dependencies will only
+// refer to resources in the context.
 func (ctx *StackContext) OutputPropertyGenerator(maxDepth int) *rapid.Generator {
-	return outputPropertyGenerator(ctx, maxDepth)
+	return outputPropertyGenerator(ctx, ctx.PropertyValueGenerator(maxDepth-1))
 }
 
-// SecretPropertyGenerator generates secret resource.PropertyValues. The maxDepth parameter controls the maximum
-// depth of the plaintext value of the secret, if any.
+// SecretPropertyGenerator generates secret resource.PropertyValues.
+// The maxDepth parameter controls the maximum depth of the plaintext
+// value of the secret, if any.
 func (ctx *StackContext) SecretPropertyGenerator(maxDepth int) *rapid.Generator {
-	return secretPropertyGenerator(ctx, maxDepth)
+	return secretPropertyGenerator(ctx.PropertyValueGenerator(maxDepth - 1))
 }
 
-// PropertyValueGenerator generates arbitrary resource.PropertyValues. The maxDepth parameter controls the maximum
-// number of times the generator may recur.
+// PropertyValueGenerator generates arbitrary resource.PropertyValues.
+// The maxDepth parameter controls the maximum number of times the
+// generator may recur.
 func (ctx *StackContext) PropertyValueGenerator(maxDepth int) *rapid.Generator {
 	return propertyValueGenerator(ctx, maxDepth)
 }
@@ -208,18 +214,29 @@ func AssetPropertyGenerator() *rapid.Generator {
 	})
 }
 
-// LiteralArchiveGenerator generates *resource.Archive values with literal archive contents.
+// LiteralArchiveGenerator generates *resource.Archive values with
+// literal archive contents.
 func LiteralArchiveGenerator(maxDepth int) *rapid.Generator {
-	return rapid.Custom(func(t *rapid.T) *resource.Archive {
-		var contentsGenerator *rapid.Generator
-		if maxDepth > 0 {
-			contentsGenerator = rapid.MapOfN(rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`), rapid.OneOf(AssetGenerator(), ArchiveGenerator(maxDepth-1)), 0, 16)
-		} else {
-			contentsGenerator = rapid.Just(map[string]interface{}{})
-		}
-		archive, err := resource.NewAssetArchive(contentsGenerator.Draw(t, "literal archive contents").(map[string]interface{}))
-		require.NoError(t, err)
-		return archive
+	emptyContentsGen := rapid.Just(map[string]interface{}{})
+	return treeGen(treeGenOptions{
+		maxHeight: maxDepth,
+		gen0: rapid.Custom(func(t *rapid.T) *resource.Archive {
+			contents := emptyContentsGen.Draw(t, "literal archive contents").(map[string]interface{})
+			archive, err := resource.NewAssetArchive(contents)
+			require.NoError(t, err)
+			return archive
+		}),
+		gen1: func(self *rapid.Generator) *rapid.Generator {
+			keyGen := rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`)
+			valueGen := rapid.OneOf(AssetGenerator(), self)
+			contentsGen := rapid.MapOfN(keyGen, valueGen, 0, 16)
+			return rapid.Custom(func(t *rapid.T) *resource.Archive {
+				content := contentsGen.Draw(t, "literal archive contents").(map[string]interface{})
+				archive, err := resource.NewAssetArchive(content)
+				require.NoError(t, err)
+				return archive
+			})
+		},
 	})
 }
 
@@ -230,8 +247,9 @@ func ArchiveGenerator(maxDepth int) *rapid.Generator {
 
 // ArchivePropertyGenerator generates archive resource.PropertyValues.
 func ArchivePropertyGenerator(maxDepth int) *rapid.Generator {
+	g := ArchiveGenerator(maxDepth)
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewArchiveProperty(ArchiveGenerator(maxDepth).Draw(t, "archives").(*resource.Archive))
+		return resource.NewArchiveProperty(g.Draw(t, "archives").(*resource.Archive))
 	})
 }
 
@@ -288,15 +306,17 @@ func resourceReferencePropertyGenerator(ctx *StackContext) *rapid.Generator {
 	})
 }
 
-// ArrayPropertyGenerator generates array resource.PropertyValues. The maxDepth parameter controls the maximum
-// depth of the elements of the array.
+// ArrayPropertyGenerator generates array resource.PropertyValues. The
+// maxDepth parameter controls the maximum depth of the elements of
+// the array.
 func ArrayPropertyGenerator(maxDepth int) *rapid.Generator {
-	return arrayPropertyGenerator(nil, maxDepth)
+	return arrayPropertyGenerator(PropertyValueGenerator(maxDepth - 1))
 }
 
-func arrayPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
+func arrayPropertyGenerator(propGen *rapid.Generator) *rapid.Generator {
+	g := rapid.SliceOfN(propGen, 0, 32)
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewArrayProperty(rapid.SliceOfN(propertyValueGenerator(ctx, maxDepth-1), 0, 32).Draw(t, "array elements").([]resource.PropertyValue))
+		return resource.NewArrayProperty(g.Draw(t, "array elements").([]resource.PropertyValue))
 	})
 }
 
@@ -307,38 +327,42 @@ func PropertyKeyGenerator() *rapid.Generator {
 	})
 }
 
-// PropertyMapGenerator generates resource.PropertyMap values. The maxDepth parameter controls the maximum
-// depth of the elements of the map.
+// PropertyMapGenerator generates resource.PropertyMap values. The
+// maxDepth parameter controls the maximum depth of the elements of
+// the map.
 func PropertyMapGenerator(maxDepth int) *rapid.Generator {
-	return propertyMapGenerator(nil, maxDepth)
+	return propertyMapGenerator(PropertyValueGenerator(maxDepth - 1))
 }
 
-func propertyMapGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
+func propertyMapGenerator(propGen *rapid.Generator) *rapid.Generator {
+	g := rapid.MapOfN(PropertyKeyGenerator(), propGen, 0, 32)
 	return rapid.Custom(func(t *rapid.T) resource.PropertyMap {
-		return resource.PropertyMap(rapid.MapOfN(PropertyKeyGenerator(), propertyValueGenerator(ctx, maxDepth-1), 0, 32).Draw(t, "property map").(map[resource.PropertyKey]resource.PropertyValue))
+		return resource.PropertyMap(g.Draw(t, "property map").(map[resource.PropertyKey]resource.PropertyValue))
 	})
 }
 
-// ObjectPropertyGenerator generates object resource.PropertyValues. The maxDepth parameter controls the maximum
-// depth of the elements of the object.
+// ObjectPropertyGenerator generates object resource.PropertyValues.
+// The maxDepth parameter controls the maximum depth of the elements
+// of the object.
 func ObjectPropertyGenerator(maxDepth int) *rapid.Generator {
-	return objectPropertyGenerator(nil, maxDepth)
+	return objectPropertyGenerator(PropertyValueGenerator(maxDepth - 1))
 }
 
-func objectPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
+func objectPropertyGenerator(propGen *rapid.Generator) *rapid.Generator {
+	g := propertyMapGenerator(propGen)
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewObjectProperty(propertyMapGenerator(ctx, maxDepth).Draw(t, "object contents").(resource.PropertyMap))
+		return resource.NewObjectProperty(g.Draw(t, "object contents").(resource.PropertyMap))
 	})
 }
 
-// OutputPropertyGenerator generates output resource.PropertyValues. The maxDepth parameter controls the maximum
-// depth of the resolved value of the output, if any. If a StackContext, the output's dependencies will only refer to
-// resources in the context.
+// OutputPropertyGenerator generates output resource.PropertyValues.
+// The maxDepth parameter controls the maximum depth of the resolved
+// value of the output, if any.
 func OutputPropertyGenerator(maxDepth int) *rapid.Generator {
-	return outputPropertyGenerator(nil, maxDepth)
+	return outputPropertyGenerator(nil, PropertyValueGenerator(maxDepth-1))
 }
 
-func outputPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
+func outputPropertyGenerator(ctx *StackContext, propGen *rapid.Generator) *rapid.Generator {
 	var urnGenerator *rapid.Generator
 	var dependenciesUpperBound int
 	if ctx == nil {
@@ -351,64 +375,87 @@ func outputPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
 		}
 	}
 
+	urnsGen := rapid.SliceOfN(urnGenerator, 0, dependenciesUpperBound)
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
 		var element resource.PropertyValue
 
 		known := rapid.Bool().Draw(t, "known").(bool)
 		if known {
-			element = propertyValueGenerator(ctx, maxDepth-1).Draw(t, "output element").(resource.PropertyValue)
+			element = propGen.Draw(t, "output element").(resource.PropertyValue)
 		}
 
 		return resource.NewOutputProperty(resource.Output{
 			Element:      element,
 			Known:        known,
 			Secret:       rapid.Bool().Draw(t, "secret").(bool),
-			Dependencies: rapid.SliceOfN(urnGenerator, 0, dependenciesUpperBound).Draw(t, "dependencies").([]resource.URN),
+			Dependencies: urnsGen.Draw(t, "dependencies").([]resource.URN),
 		})
 	})
 }
 
-// SecretPropertyGenerator generates secret resource.PropertyValues. The maxDepth parameter controls the maximum
-// depth of the plaintext value of the secret, if any.
+// SecretPropertyGenerator generates secret resource.PropertyValues.
+// The maxDepth parameter controls the maximum depth of the plaintext
+// value of the secret, if any.
 func SecretPropertyGenerator(maxDepth int) *rapid.Generator {
-	return secretPropertyGenerator(nil, maxDepth)
+	return secretPropertyGenerator(PropertyValueGenerator(maxDepth - 1))
 }
 
-func secretPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
+func secretPropertyGenerator(propGen *rapid.Generator) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
 		return resource.NewSecretProperty(&resource.Secret{
-			Element: propertyValueGenerator(ctx, maxDepth-1).Draw(t, "secret element").(resource.PropertyValue),
+			Element: propGen.Draw(t, "secret element").(resource.PropertyValue),
 		})
 	})
 }
 
-// PropertyValueGenerator generates arbitrary resource.PropertyValues. The maxDepth parameter controls the maximum
-// number of times the generator may recur.
+// PropertyValueGenerator generates arbitrary resource.PropertyValues.
+// The maxDepth parameter controls the maximum number of times the
+// generator may recur.
 func PropertyValueGenerator(maxDepth int) *rapid.Generator {
 	return propertyValueGenerator(nil, maxDepth)
 }
 
 func propertyValueGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
-	choices := []*rapid.Generator{
-		UnknownPropertyGenerator(),
-		NullPropertyGenerator(),
-		BoolPropertyGenerator(),
-		NumberPropertyGenerator(),
-		StringPropertyGenerator(),
-		AssetPropertyGenerator(),
-	}
+	archivePropGen := ArchivePropertyGenerator(maxDepth)
+	return treeGen(treeGenOptions{
+		maxHeight: maxDepth,
+		gen0: rapid.OneOf(
+			UnknownPropertyGenerator(),
+			NullPropertyGenerator(),
+			BoolPropertyGenerator(),
+			NumberPropertyGenerator(),
+			StringPropertyGenerator(),
+			AssetPropertyGenerator(),
+		),
+		gen1: func(self *rapid.Generator) *rapid.Generator {
+			return rapid.OneOf(
+				archivePropGen,
+				arrayPropertyGenerator(self),
+				objectPropertyGenerator(self),
+				outputPropertyGenerator(ctx, self),
+				secretPropertyGenerator(self),
+			)
+		},
+	})
+}
 
-	if ctx == nil || len(ctx.Resources()) > 0 {
-		choices = append(choices, resourceReferencePropertyGenerator(ctx))
+// Generating tree-like structures from the base case and inductive
+// case, with max height specified. The implementation carefully takes
+// advantage of rapid shrinking `OneOf` to the left: if a property is
+// invalid, shrinking will continue to try smaller trees. Also it only
+// uses `maxHeight` distinct generator values.
+func treeGen(opts treeGenOptions) *rapid.Generator {
+	var gens []*rapid.Generator
+	g := opts.gen0
+	for i := 0; i < opts.maxHeight; i++ {
+		gens = append(gens, g)
+		g = opts.gen1(g)
 	}
+	return rapid.OneOf(gens...)
+}
 
-	if maxDepth > 0 {
-		choices = append(choices,
-			ArchivePropertyGenerator(maxDepth),
-			arrayPropertyGenerator(ctx, maxDepth),
-			objectPropertyGenerator(ctx, maxDepth),
-			outputPropertyGenerator(ctx, maxDepth),
-			secretPropertyGenerator(ctx, maxDepth))
-	}
-	return rapid.OneOf(choices...)
+type treeGenOptions struct {
+	maxHeight int
+	gen0      *rapid.Generator
+	gen1      func(*rapid.Generator) *rapid.Generator
 }

@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
@@ -441,10 +442,12 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 }
 
 func TestSerializePropertyValue(t *testing.T) {
+	gen := resource_testing.PropertyValueGenerator(6)
 	rapid.Check(t, func(t *rapid.T) {
-		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue)
+		v := gen.Draw(t, "property value").(resource.PropertyValue)
+		t.Logf("Drawn v resource.PropertyValue: %v\n", spew.Sdump(v))
 		_, err := SerializePropertyValue(v, config.NopEncrypter, false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
