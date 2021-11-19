@@ -29,12 +29,6 @@ func NewFoo(ctx *pulumi.Context,
 	if args.BackupKubeClientSettings == nil {
 		return nil, errors.New("invalid value for required argument 'BackupKubeClientSettings'")
 	}
-	backupKubeClientSettingsApplier := func(v KubeClientSettings) *KubeClientSettings { return v.Defaults() }
-	args.BackupKubeClientSettings = args.BackupKubeClientSettings.ToKubeClientSettingsOutput().ApplyT(backupKubeClientSettingsApplier).(KubeClientSettingsOutput)
-	kubeClientSettingsApplier := func(v KubeClientSettings) *KubeClientSettings { return v.Defaults() }
-	args.KubeClientSettings = args.KubeClientSettings.ToKubeClientSettingsPtrOutput().Elem().ApplyT(kubeClientSettingsApplier).(KubeClientSettingsPtrOutput)
-	settingsApplier := func(v LayeredType) *LayeredType { return v.Defaults() }
-	args.Settings = args.Settings.ToLayeredTypePtrOutput().Elem().ApplyT(settingsApplier).(LayeredTypePtrOutput)
 	var resource Foo
 	err := ctx.RegisterResource("example:index:Foo", name, args, &resource, opts...)
 	if err != nil {

@@ -22,23 +22,6 @@ type HelmReleaseSettings struct {
 	RequiredArg string `pulumi:"requiredArg"`
 }
 
-// Defaults sets the appropriate defaults for HelmReleaseSettings
-func (val *HelmReleaseSettings) Defaults() *HelmReleaseSettings {
-	if val == nil {
-		return nil
-	}
-	tmp := *val
-	if tmp.Driver == nil {
-		driver_ := getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string)
-		tmp.Driver = &driver_
-	}
-	if tmp.PluginsPath == nil {
-		pluginsPath_ := getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string)
-		tmp.PluginsPath = &pluginsPath_
-	}
-	return &tmp
-}
-
 // HelmReleaseSettingsInput is an input type that accepts HelmReleaseSettingsArgs and HelmReleaseSettingsOutput values.
 // You can construct a concrete instance of `HelmReleaseSettingsInput` via:
 //
@@ -214,25 +197,6 @@ type KubeClientSettings struct {
 	// Maximum queries per second (QPS) to the API server from this client. Default value is 5.
 	Qps     *float64            `pulumi:"qps"`
 	RecTest *KubeClientSettings `pulumi:"recTest"`
-}
-
-// Defaults sets the appropriate defaults for KubeClientSettings
-func (val *KubeClientSettings) Defaults() *KubeClientSettings {
-	if val == nil {
-		return nil
-	}
-	tmp := *val
-	if tmp.Burst == nil {
-		burst_ := getEnvOrDefault(0, parseEnvInt, "PULUMI_K8S_CLIENT_BURST").(int)
-		tmp.Burst = &burst_
-	}
-	if tmp.Qps == nil {
-		qps_ := getEnvOrDefault(0.0, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS").(float64)
-		tmp.Qps = &qps_
-	}
-	tmp.RecTest = tmp.RecTest.Defaults()
-
-	return &tmp
 }
 
 // KubeClientSettingsInput is an input type that accepts KubeClientSettingsArgs and KubeClientSettingsOutput values.
@@ -412,32 +376,6 @@ type LayeredType struct {
 	Recursive *LayeredType `pulumi:"recursive"`
 	// To ask and answer
 	Thinker string `pulumi:"thinker"`
-}
-
-// Defaults sets the appropriate defaults for LayeredType
-func (val *LayeredType) Defaults() *LayeredType {
-	if val == nil {
-		return nil
-	}
-	tmp := *val
-	if tmp.Answer == nil {
-		answer_ := 42.0
-		tmp.Answer = &answer_
-	}
-	tmp.Other = *tmp.Other.Defaults()
-
-	tmp.PlainOther = tmp.PlainOther.Defaults()
-
-	if tmp.Question == nil {
-		question_ := getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string)
-		tmp.Question = &question_
-	}
-	tmp.Recursive = tmp.Recursive.Defaults()
-
-	if tmp.Thinker == "" {
-		tmp.Thinker = "not a good interaction"
-	}
-	return &tmp
 }
 
 // LayeredTypeInput is an input type that accepts LayeredTypeArgs and LayeredTypeOutput values.
@@ -658,23 +596,6 @@ type Typ struct {
 	Mod1 *mod1.Typ `pulumi:"mod1"`
 	Mod2 *mod2.Typ `pulumi:"mod2"`
 	Val  *string   `pulumi:"val"`
-}
-
-// Defaults sets the appropriate defaults for Typ
-func (val *Typ) Defaults() *Typ {
-	if val == nil {
-		return nil
-	}
-	tmp := *val
-	tmp.Mod1 = tmp.Mod1.Defaults()
-
-	tmp.Mod2 = tmp.Mod2.Defaults()
-
-	if tmp.Val == nil {
-		val_ := "mod main"
-		tmp.Val = &val_
-	}
-	return &tmp
 }
 
 // TypInput is an input type that accepts TypArgs and TypOutput values.

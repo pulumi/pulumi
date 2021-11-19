@@ -220,7 +220,7 @@
     },
     "go": {
       "importBasePath": "plain-object-disable-defaults/example",
-      "disableObjectDefaults ": true
+      "disableObjectDefaults": true
     },
     "nodejs": {
       "dependencies": {
