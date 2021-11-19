@@ -164,7 +164,7 @@ func newPreviewCmd() *cobra.Command {
 				replaceURNs = append(replaceURNs, resource.URN(tr))
 			}
 
-			refreshOption, err := getRefreshOption(proj, refresh)
+			refreshOption, err := getRefreshOption(proj, refresh, planFilePath)
 			if err != nil {
 				return result.FromError(err)
 			}
