@@ -882,14 +882,3 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 	// The local backend does not currently persist tags.
 	return errors.New("stack tags not supported in --local mode")
 }
-
-// Returns the original error in the chain. If `err` is nil, nil is returned.
-func drillError(err error) error {
-	e := err
-	for errors.Unwrap(e) != nil {
-		if u := errors.Unwrap(e); u != nil {
-			e = u
-		}
-	}
-	return e
-}
