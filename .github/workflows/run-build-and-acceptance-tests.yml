@@ -35,7 +35,7 @@ concurrency:
 jobs:
 
   build-pulumi-binaries:
-    uses: pulumi/pulumi/.github/workflows/build.yml@0306cb1b34f3fddeca4e06ea580e3e59f1400b95
+    uses: pulumi/pulumi/.github/workflows/build.yml@e596407a346826b210cadd743a40a5c2b1e5336e
 
   inspect-pulumi-binaries:
     runs-on: ubuntu-latest
@@ -197,9 +197,12 @@ jobs:
       - run: mkdir -p ${{ runner.temp }}/opt/pulumi/nuget
       - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
       - name: Set up Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Install yarn
+        run: |
+          npm install -g yarn
       - name: Install pipenv
         run: |
           python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
@@ -233,6 +236,59 @@ jobs:
         with:
           repo: t0yv0/goteststats
           tag: v0.0.7
+      - name: Download Pulumi Go Binaries (linux-x64)
+        if: ${{ matrix.platform == 'ubuntu-latest' }}
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-x64.tar.gz
+          path: artifacts/go
+      - name: Download Pulumi Go Binaries (darwin-x64)
+        if: ${{ matrix.platform == 'macos-latest' }}
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-x64.tar.gz
+          path: artifacts/go
+      - name: Install Pulumi Go Binaries
+        run: |
+          mkdir -p bin
+          tar -xf artifacts/go/*.tar.gz -C bin
+          echo "$PWD/bin/pulumi" >> $GITHUB_PATH
+      - name: Download Pulumi .NET NuGet packages
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-nuget-packages
+          # path set to match PULUMI_LOCAL_NUGET
+          path: ${{ runner.temp }}/opt/pulumi/nuget
+      - name: Verify Pulumi Version
+        run: |
+          which pulumi
+          pulumi version
+          find ./bin
+      - name: Inspect downloaded artifacts
+        run: |
+          find artifacts
+          echo "PULUMI_LOCAL_NUGET=$PULUMI_LOCAL_NUGET"
+          ls $PULUMI_LOCAL_NUGET
+        env:
+          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
+      - name: Ensure dependencies for the Node SDK
+        run: |
+          cd sdk/nodejs
+          make ensure
+      - name: Build the Node SDK
+        run: |
+          cd sdk/nodejs
+          make build_package
+          cd bin
+          yarn link
+      - name: Ensure dependencies for the Python SDK
+        run: |
+           cd sdk/python
+           make ensure
+      - name: Install Python SDK
+        run: |
+           cd sdk/python
+           make build_package
       - name: Test
         run: make TEST_ALL_DEPS= test_all
         env:

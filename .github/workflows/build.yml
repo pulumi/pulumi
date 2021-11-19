@@ -40,7 +40,8 @@ jobs:
     # Due to the use of CGO in `pulumi` this cross-compilation step
     # cannot proceed on `ubuntu-latest`, which would have been
     # preferable.
-    runs-on: macos-latest
+    # runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
@@ -115,7 +116,7 @@ jobs:
           echo "PYPY_VERSION=$(pulumictl get version --language python)" >> $GITHUB_ENV
       - name: Build Pulumi Python SDK wheel
         run: |
-            # TODO unify with sdk/python/Makefile once that does not use pyenv
+            # TODO unify with sdk/python/Makefile once that does not use pipenv
             cp README.md sdk/python/lib
             cd sdk/python/lib
             sed -i.bak "s/\${VERSION}/$PYPY_VERSION/g" setup.py
