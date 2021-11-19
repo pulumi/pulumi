@@ -3117,8 +3117,9 @@ func TestExpectedUnneededDelete(t *testing.T) {
 }
 
 func TestResoucesWithSames(t *testing.T) {
-	// This test checks that if between generating a constriant and running the update that if new resources have been added to the stack
-	// that the update doesn't change those resources in any way that they don't cause constraint errors
+	// This test checks that if between generating a constriant and running the update that if new resources have been
+	// added to the stack that the update doesn't change those resources in any way that they don't cause constraint
+	// errors.
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {

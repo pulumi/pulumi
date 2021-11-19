@@ -22,23 +22,40 @@ type Plan map[resource.URN]*ResourcePlan
 // Goal is a desired state for a resource object.  Normally it represents a subset of the resource's state expressed by
 // a program, however if Output is true, it represents a more complete, post-deployment view of the state.
 type GoalPlan struct {
-	Type                    tokens.Type                             // the type of resource.
-	Name                    tokens.QName                            // the name for the resource's URN.
-	Custom                  bool                                    // true if this resource is custom, managed by a plugin.
-	Adds                    resource.PropertyMap                    // the resource's properties we expect to add.
-	Deletes                 []resource.PropertyKey                  // the resource's properties we expect to delete.
-	Updates                 resource.PropertyMap                    // the resource's properties we expect to update.
-	Parent                  resource.URN                            // an optional parent URN for this resource.
-	Protect                 bool                                    // true to protect this resource from deletion.
-	Dependencies            []resource.URN                          // dependencies of this resource object.
-	Provider                string                                  // the provider to use for this resource.
-	PropertyDependencies    map[resource.PropertyKey][]resource.URN // the set of dependencies that affect each property.
-	DeleteBeforeReplace     *bool                                   // true if this resource should be deleted prior to replacement.
-	IgnoreChanges           []string                                // a list of property names to ignore during changes.
-	AdditionalSecretOutputs []resource.PropertyKey                  // outputs that should always be treated as secrets.
-	Aliases                 []resource.URN                          // additional URNs that should be aliased to this resource.
-	ID                      resource.ID                             // the expected ID of the resource, if any.
-	CustomTimeouts          resource.CustomTimeouts                 // an optional config object for resource options
+	// the type of resource.
+	Type tokens.Type
+	// the name for the resource's URN.
+	Name tokens.QName
+	// true if this resource is custom, managed by a plugin.
+	Custom bool
+	// the resource's properties we expect to add.
+	Adds resource.PropertyMap
+	// the resource's properties we expect to delete.
+	Deletes []resource.PropertyKey
+	// the resource's properties we expect to update.
+	Updates resource.PropertyMap
+	// an optional parent URN for this resource.
+	Parent resource.URN
+	// true to protect this resource from deletion.
+	Protect bool
+	// dependencies of this resource object.
+	Dependencies []resource.URN
+	// the provider to use for this resource.
+	Provider string
+	// the set of dependencies that affect each property.
+	PropertyDependencies map[resource.PropertyKey][]resource.URN
+	// true if this resource should be deleted prior to replacement.
+	DeleteBeforeReplace *bool
+	// a list of property names to ignore during changes.
+	IgnoreChanges []string
+	// outputs that should always be treated as secrets.
+	AdditionalSecretOutputs []resource.PropertyKey
+	// additional URNs that should be aliased to this resource.
+	Aliases []resource.URN
+	// the expected ID of the resource, if any.
+	ID resource.ID
+	// an optional config object for resource options
+	CustomTimeouts resource.CustomTimeouts
 }
 
 func NewGoalPlan(oldOutputs resource.PropertyMap, goal *resource.Goal) *GoalPlan {
@@ -163,7 +180,8 @@ func (rp *ResourcePlan) diffPropertyDependencies(a, b map[resource.PropertyKey][
 	return nil
 }
 
-// This is similar to ResourcePlan.checkGoal but for the case we're we don't have a goal saved. This simple checks that we're not changing anything.
+// This is similar to ResourcePlan.checkGoal but for the case we're we don't have a goal saved.
+// This simple checks that we're not changing anything.
 func checkMissingPlan(
 	oldState *resource.State,
 	newInputs resource.PropertyMap,
@@ -335,8 +353,9 @@ func (rp *ResourcePlan) checkGoal(
 		}
 
 		// Check that any changes are in the goal for changes or adds
-		// "or adds" is because if our constraint says to add K=V and someone has already added K=W we don't consider it
-		// a constraint violation to update K to V. This is similar to how if we have a Create resource constraint we don't consider it
+		// "or adds" is because if our constraint says to add K=V and someone has already
+		// added K=W we don't consider it a constraint violation to update K to V.
+		// This is similar to how if we have a Create resource constraint we don't consider it
 		// a violation to just update it instead of creating it.
 		for k := range diff.Updates {
 			actual := diff.Updates[k].New
@@ -363,7 +382,8 @@ func (rp *ResourcePlan) checkGoal(
 	// Symmetric check, check that the constraints didn't expect things to happen that aren't in the new inputs
 
 	for k := range rp.Goal.Adds {
-		// We expected an add, make sure the value is in the new inputs. That means it's either an add, update, or a same, both are ok for an add constraint.
+		// We expected an add, make sure the value is in the new inputs.
+		// That means it's either an add, update, or a same, both are ok for an add constraint.
 		expected := rp.Goal.Adds[k]
 
 		// If this is in diff.Adds or diff.Updates we'll of already checked it
