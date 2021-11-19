@@ -678,7 +678,7 @@ func TestCanceledRefresh(t *testing.T) {
 		Parallel: 1,
 		Host:     deploytest.NewPluginHost(nil, nil, nil, loaders...),
 	}
-	project, target := p.GetProject(), p.GetTarget(old)
+	project, target := p.GetProject(), p.GetTarget(t, old)
 	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
 		_ []Event, res result.Result) result.Result {
 

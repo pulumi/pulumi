@@ -84,12 +84,12 @@ func TestImportOption(t *testing.T) {
 	// Run the initial update. The import should fail due to a mismatch in inputs between the program and the
 	// actual resource state.
 	project := p.GetProject()
-	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, res)
 
 	// Run a second update after fixing the inputs. The import should succeed.
 	inputs["foo"] = resource.NewStringProperty("bar")
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -107,7 +107,7 @@ func TestImportOption(t *testing.T) {
 	assert.Len(t, snap.Resources, 2)
 
 	// Now, run another update. The update should succeed and there should be no diffs.
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -123,7 +123,7 @@ func TestImportOption(t *testing.T) {
 
 	// Change a property value and run a third update. The update should succeed.
 	inputs["foo"] = resource.NewStringProperty("rab")
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -141,11 +141,11 @@ func TestImportOption(t *testing.T) {
 
 	// Change the property value s.t. the resource requires replacement. The update should fail.
 	inputs["foo"] = resource.NewStringProperty("replace")
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, res)
 
 	// Finally, destroy the stack. The `Delete` function should be called.
-	_, res = TestOp(Destroy).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
+	_, res = TestOp(Destroy).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -161,7 +161,7 @@ func TestImportOption(t *testing.T) {
 
 	// Now clear the ID to import and run an initial update to create a resource that we will import-replace.
 	importID, inputs["foo"] = "", resource.NewStringProperty("bar")
-	snap, res = TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -182,7 +182,7 @@ func TestImportOption(t *testing.T) {
 			importID = r.ID
 		}
 	}
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -199,7 +199,7 @@ func TestImportOption(t *testing.T) {
 	// Then set the import ID and run another update. The update should succeed and should show an import-replace and
 	// a delete-replaced.
 	importID = "id"
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -222,7 +222,7 @@ func TestImportOption(t *testing.T) {
 
 	// Change the program to read a resource rather than creating one.
 	readID = "id"
-	snap, res = TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -241,7 +241,7 @@ func TestImportOption(t *testing.T) {
 
 	// Now have the program import the resource. We should see an import-replace and a read-discard.
 	readID, importID = "", readID
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -327,7 +327,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 
 	// Run the initial update. The import should succeed.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient,
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -345,7 +345,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 	assert.Len(t, snap.Resources, 2)
 
 	// Now, run another update. The update should succeed and there should be no diffs.
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient,
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -483,7 +483,7 @@ func TestImportPlan(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Run an import.
@@ -491,7 +491,7 @@ func TestImportPlan(t *testing.T) {
 		Type: "pkgA:m:typA",
 		Name: "resB",
 		ID:   "imported-id",
-	}}).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 
 	assert.Nil(t, res)
 	assert.Len(t, snap.Resources, 4)
@@ -552,7 +552,7 @@ func TestImportIgnoreChanges(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	assert.Len(t, snap.Resources, 2)

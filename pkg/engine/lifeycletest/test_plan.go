@@ -186,7 +186,7 @@ func (p *TestPlan) GetProject() workspace.Project {
 	}
 }
 
-func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
+func (p *TestPlan) GetTarget(t *testing.T, snapshot *deploy.Snapshot) deploy.Target {
 	stack, _, _ := p.getNames()
 
 	cfg := p.Config
@@ -198,12 +198,27 @@ func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
 		Name:      stack,
 		Config:    cfg,
 		Decrypter: p.Decrypter,
-		Snapshot:  snapshot,
+		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
+		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
+		// cause state changes from the preview to persist even when doing an update.
+		Snapshot: CloneSnapshot(t, snapshot),
 	}
 }
 
 func assertIsErrorOrBailResult(t *testing.T, res result.Result) {
 	assert.NotNil(t, res)
+}
+
+// ClonePlan makes a deep copy of the given snapshot and returns a pointer to the clone.
+func ClonePlan(t *testing.T, plan deploy.Plan) deploy.Plan {
+	t.Helper()
+	if plan != nil {
+		copiedPlan := copystructure.Must(copystructure.Copy(plan)).(deploy.Plan)
+		assert.True(t, reflect.DeepEqual(plan, copiedPlan))
+		return copiedPlan
+	}
+
+	return plan
 }
 
 // CloneSnapshot makes a deep copy of the given snapshot and returns a pointer to the clone.
@@ -222,12 +237,8 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 	project := p.GetProject()
 	snap := snapshot
 	for _, step := range p.Steps {
-		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
-		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
-		// cause state changes from the preview to persist even when doing an update.
 		if !step.SkipPreview {
-			previewSnap := CloneSnapshot(t, snap)
-			previewTarget := p.GetTarget(previewSnap)
+			previewTarget := p.GetTarget(t, snap)
 			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, step.Validate)
 			if step.ExpectFailure {
 				assertIsErrorOrBailResult(t, res)
@@ -238,7 +249,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		}
 
 		var res result.Result
-		target := p.GetTarget(snap)
+		target := p.GetTarget(t, snap)
 		snap, res = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
 		if step.ExpectFailure {
 			assertIsErrorOrBailResult(t, res)

@@ -147,11 +147,11 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Now run a preview. Expect a warning because the diff is unavailable.
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -473,7 +473,7 @@ func TestProviderCancellation(t *testing.T) {
 		Parallel: resourceCount,
 		Host:     deploytest.NewPluginHost(nil, nil, program, loaders...),
 	}
-	project, target := p.GetProject(), p.GetTarget(nil)
+	project, target := p.GetProject(), p.GetTarget(t, nil)
 
 	_, res := op.RunWithContext(ctx, project, target, options, false, nil, nil)
 	assertIsErrorOrBailResult(t, res)
@@ -526,7 +526,7 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 
 	op := TestOp(Update)
 	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
-	project, target := p.GetProject(), p.GetTarget(old)
+	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// A preview should succeed despite the pending operations.
 	_, res := op.Run(project, target, options, true, nil, nil)
@@ -836,7 +836,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 	op := TestOp(Update)
 	sink := diag.DefaultSink(sinkWriter, sinkWriter, diag.FormatOptions{Color: colors.Raw})
 	options := UpdateOptions{Host: deploytest.NewPluginHost(sink, sink, program, loaders...)}
-	project, target := p.GetProject(), p.GetTarget(old)
+	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	_, res := op.Run(project, target, options, true, nil, nil)
 	assertIsErrorOrBailResult(t, res)
@@ -1461,12 +1461,12 @@ func TestPersistentDiff(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -1487,7 +1487,7 @@ func TestPersistentDiff(t *testing.T) {
 
 	// Next, enable legacy diff behavior. We should see no changes to the resource.
 	p.Options.UseLegacyDiff = true
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -1542,12 +1542,12 @@ func TestDetailedDiffReplace(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -1785,19 +1785,19 @@ func TestProviderPreview(t *testing.T) {
 
 	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
 	preview, sawPreview = true, false
-	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
 	preview, sawPreview = true, false
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 }
@@ -1870,19 +1870,19 @@ func TestProviderPreviewGrpc(t *testing.T) {
 
 	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
 	preview, sawPreview = true, false
-	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
 	preview, sawPreview = true, false
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 }
@@ -1964,20 +1964,20 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 	// Run a preview. The inputs should not be propagated to the outputs by the provider during the create because the
 	// provider has unknown inputs.
 	preview, sawPreview = true, false
-	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	require.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	require.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should not be propagated to the outputs during the update because the provider
 	// has unknown inputs.
 	preview, sawPreview = true, false
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
 	require.Nil(t, res)
 	assert.False(t, sawPreview)
 }
@@ -2045,7 +2045,7 @@ type updateContext struct {
 	updateResult chan result.Result
 }
 
-func startUpdate(host plugin.Host) (*updateContext, error) {
+func startUpdate(t *testing.T, host plugin.Host) (*updateContext, error) {
 	ctx := &updateContext{
 		resmon:       make(chan *deploytest.ResourceMonitor),
 		programErr:   make(chan error),
@@ -2073,7 +2073,7 @@ func startUpdate(host plugin.Host) (*updateContext, error) {
 	}
 
 	go func() {
-		snap, res := TestOp(Update).Run(p.GetProject(), p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+		snap, res := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 		ctx.snap <- snap
 		close(ctx.snap)
 		ctx.updateResult <- res
@@ -2133,7 +2133,7 @@ func TestLanguageClient(t *testing.T) {
 		}),
 	}
 
-	update, err := startUpdate(deploytest.NewPluginHost(nil, nil, nil, loaders...))
+	update, err := startUpdate(t, deploytest.NewPluginHost(nil, nil, nil, loaders...))
 	if err != nil {
 		t.Fatalf("failed to start update: %v", err)
 	}
@@ -2255,7 +2255,7 @@ func TestConfigSecrets(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	if !assert.Len(t, snap.Resources, 2) {
@@ -2636,7 +2636,7 @@ func TestPlannedUpdate(t *testing.T) {
 		},
 		"zed": computed,
 	})
-	plan, res := TestOp(Update).Plan(project, p.GetTarget(nil), p.Options, p.BackendClient, nil)
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Attempt to run an update using the plan.
@@ -2646,8 +2646,8 @@ func TestPlannedUpdate(t *testing.T) {
 			24,
 		},
 	})
-	p.Options.Plan = plan
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	p.Options.Plan = ClonePlan(t, plan)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, res)
 
 	// Check the resource's state.
@@ -2672,7 +2672,8 @@ func TestPlannedUpdate(t *testing.T) {
 		},
 		"zed": "grr",
 	})
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	p.Options.Plan = ClonePlan(t, plan)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Check the resource's state.
@@ -2729,13 +2730,13 @@ func TestUnplannedCreate(t *testing.T) {
 	project := p.GetProject()
 
 	// Create a plan to do nothing
-	plan, res := TestOp(Update).Plan(project, p.GetTarget(nil), p.Options, p.BackendClient, nil)
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Now set the flag for the language runtime to create a resource, and run update with the plan
 	createResource = true
-	p.Options.Plan = plan
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	p.Options.Plan = ClonePlan(t, plan)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, res)
 
 	// Check nothing was was created
@@ -2792,18 +2793,18 @@ func TestUnplannedDelete(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial snapshot that resA and resB exist
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Create a plan that resA and resB won't change
-	plan, res := TestOp(Update).Plan(project, p.GetTarget(snap), p.Options, p.BackendClient, nil)
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Now set the flag for the language runtime to not create resB and run an update with
 	// the no-op plan, this should block the delete
 	createAllResources = false
-	p.Options.Plan = plan
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	p.Options.Plan = ClonePlan(t, plan)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.NotNil(t, res)
 
@@ -2860,21 +2861,21 @@ func TestExpectedDelete(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial snapshot that resA and resB exist
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
 
 	// Create a plan that resA is same and resB is deleted
 	createAllResources = false
-	plan, res := TestOp(Update).Plan(project, p.GetTarget(snap), p.Options, p.BackendClient, nil)
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
 	assert.Nil(t, res)
 
 	// Now run but set the runtime to return resA and resB, given we expected resB to be deleted
 	// this should be an error
 	createAllResources = true
-	p.Options.Plan = plan
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	p.Options.Plan = ClonePlan(t, plan)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.NotNil(t, res)
 
@@ -2924,21 +2925,21 @@ func TestExpectedCreate(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial snapshot that resA exists
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
 
 	// Create a plan that resA is same and resB is created
 	createAllResources = true
-	plan, res := TestOp(Update).Plan(project, p.GetTarget(snap), p.Options, p.BackendClient, nil)
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
 	assert.Nil(t, res)
 
 	// Now run but set the runtime to return resA, given we expected resB to be created
 	// this should be an error
 	createAllResources = false
-	p.Options.Plan = plan
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	p.Options.Plan = ClonePlan(t, plan)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.NotNil(t, res)
 
@@ -2981,7 +2982,7 @@ func TestPropertySetChange(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial plan to create resA
-	plan, res := TestOp(Update).Plan(project, p.GetTarget(nil), p.Options, p.BackendClient, nil)
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
 	assert.Nil(t, res)
 
@@ -2989,8 +2990,8 @@ func TestPropertySetChange(t *testing.T) {
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 	})
-	p.Options.Plan = plan
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	p.Options.Plan = ClonePlan(t, plan)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.NotNil(t, res)
 }
@@ -3027,18 +3028,18 @@ func TestExpectedUnneededCreate(t *testing.T) {
 	project := p.GetProject()
 
 	// Create a plan that resA needs creating
-	plan, res := TestOp(Update).Plan(project, p.GetTarget(nil), p.Options, p.BackendClient, nil)
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.NotNil(t, plan)
 	assert.Nil(t, res)
 
 	// Create an a snapshot that resA exists
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
 
 	// Now run again with the plan set but the snapshot that resA already exists
-	p.Options.Plan = plan
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	p.Options.Plan = ClonePlan(t, plan)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
 
@@ -3090,23 +3091,23 @@ func TestExpectedUnneededDelete(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial snapshot that resA exists
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Create a plan that resA is deleted
 	createResource = false
-	plan, res := TestOp(Update).Plan(project, p.GetTarget(snap), p.Options, p.BackendClient, nil)
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Now run to delete resA
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
 
 	// Now run again with the plan set but the snapshot that resA is already deleted
 	createResource = true
-	p.Options.Plan = plan
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	p.Options.Plan = ClonePlan(t, plan)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.NotNil(t, res)
 
@@ -3173,13 +3174,13 @@ func TestResoucesWithSames(t *testing.T) {
 		"foo": "bar",
 		"zed": computed,
 	})
-	plan, res := TestOp(Update).Plan(project, p.GetTarget(nil), p.Options, p.BackendClient, nil)
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Run an update that creates B
 	createA = false
 	createB = true
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Check the resource's state.
@@ -3199,8 +3200,8 @@ func TestResoucesWithSames(t *testing.T) {
 		"foo": "bar",
 		"zed": 24,
 	})
-	p.Options.Plan = plan
-	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+	p.Options.Plan = ClonePlan(t, plan)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Check the resource's state.
