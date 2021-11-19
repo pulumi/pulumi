@@ -197,6 +197,12 @@ var sdkTests = []sdkTest{
 		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
+	{
+		Directory:        "plain-object-disable-defaults",
+		Description:      "Ensure that we can still compile safely when defaults are disabled",
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+	},
 }
 
 var genSDKOnly bool
