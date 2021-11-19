@@ -323,7 +323,7 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	snapshot, path, err := b.getStack(stackName)
 
 	switch {
-	case gcerrors.Code(drillError(err)) == gcerrors.NotFound:
+	case gcerrors.Code(err) == gcerrors.NotFound:
 		return nil, nil
 	case err != nil:
 		return nil, err
@@ -887,7 +887,9 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 func drillError(err error) error {
 	e := err
 	for errors.Unwrap(e) != nil {
-		e = errors.Unwrap(e)
+		if u := errors.Unwrap(e); u != nil {
+			e = u
+		}
 	}
 	return e
 }
