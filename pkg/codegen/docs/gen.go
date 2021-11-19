@@ -902,8 +902,14 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
 
-	var typs []docNestedType
+	var sortedTokens []string
 	for token := range tokens {
+		sortedTokens = append(sortedTokens, token)
+	}
+	sort.Strings(sortedTokens)
+
+	var typs []docNestedType
+	for _, token := range sortedTokens {
 		for _, t := range mod.pkg.Types {
 			switch typ := t.(type) {
 			case *schema.ObjectType:
