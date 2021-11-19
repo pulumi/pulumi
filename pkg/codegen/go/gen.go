@@ -574,6 +574,10 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 		}
 		return name
 	}
+	return pkg.contextForExternalReferenceType(t).typeString(t)
+}
+
+func (pkg *pkgContext) contextForExternalReferenceType(t *schema.ObjectType) *pkgContext {
 	extPkg := t.Package
 	var goInfo GoPackageInfo
 
@@ -587,7 +591,7 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 		pkgImportAliases: goInfo.PackageImportAliases,
 		modToPkg:         goInfo.ModuleToPackage,
 	}
-	return extPkgCtx.typeString(t)
+	return extPkgCtx
 }
 
 func (pkg *pkgContext) outputType(t schema.Type) string {

@@ -305,56 +305,6 @@ All [input](#inputs) properties are implicitly available as output properties. A
 {{% choosable language csharp %}}
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
-        <span id="val_csharp">
-<a href="#val_csharp" style="color: inherit; text-decoration: inherit;">Val</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type">string</span>
-    </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
-
-{{% choosable language go %}}
-<dl class="resources-properties"><dt class="property-optional"
-            title="Optional">
-        <span id="val_go">
-<a href="#val_go" style="color: inherit; text-decoration: inherit;">Val</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type">string</span>
-    </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
-
-{{% choosable language nodejs %}}
-<dl class="resources-properties"><dt class="property-optional"
-            title="Optional">
-        <span id="val_nodejs">
-<a href="#val_nodejs" style="color: inherit; text-decoration: inherit;">val</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type">string</span>
-    </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
-
-{{% choosable language python %}}
-<dl class="resources-properties"><dt class="property-optional"
-            title="Optional">
-        <span id="val_python">
-<a href="#val_python" style="color: inherit; text-decoration: inherit;">val</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type">str</span>
-    </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
-
-<h4 id="typ">Typ</h4>
-
-{{% choosable language csharp %}}
-<dl class="resources-properties"><dt class="property-optional"
-            title="Optional">
         <span id="mod1_csharp">
 <a href="#mod1_csharp" style="color: inherit; text-decoration: inherit;">Mod1</a>
 </span>
@@ -454,6 +404,56 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#typ">Typ</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="val_python">
+<a href="#val_python" style="color: inherit; text-decoration: inherit;">val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">str</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+<h4 id="typ">Typ</h4>
+
+{{% choosable language csharp %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="val_csharp">
+<a href="#val_csharp" style="color: inherit; text-decoration: inherit;">Val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language go %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="val_go">
+<a href="#val_go" style="color: inherit; text-decoration: inherit;">Val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language nodejs %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="val_nodejs">
+<a href="#val_nodejs" style="color: inherit; text-decoration: inherit;">val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language python %}}
+<dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="val_python">
 <a href="#val_python" style="color: inherit; text-decoration: inherit;">val</a>
