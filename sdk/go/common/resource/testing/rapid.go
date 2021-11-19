@@ -2,6 +2,9 @@
 package testing
 
 import (
+	"math/rand"
+	"sort"
+
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
@@ -19,6 +22,15 @@ type StackContext struct {
 // NewStackContext creates a new stack context with the given project name, stack name, and list of resources.
 func NewStackContext(projectName, stackName string, resources ...*resource.State) *StackContext {
 	ctx := &StackContext{projectName: projectName, stackName: stackName}
+
+	if len(resources) == 0 {
+		stack := &resource.State{
+			Type: "pulumi:pulumi:Stack",
+			URN:  resource.NewURN(tokens.QName(stackName), tokens.PackageName(projectName), "", "pulumi:pulumi:Stack", tokens.QName(stackName)),
+		}
+		resources = []*resource.State{stack}
+	}
+
 	return ctx.Append(resources...)
 }
 
@@ -48,7 +60,7 @@ func (ctx *StackContext) Append(r ...*resource.State) *StackContext {
 // URNGenerator generates URNs that are valid within the context (i.e. the project name and stack name portions of the
 // generated URNs will always be taken from the context).
 func (ctx *StackContext) URNGenerator() *rapid.Generator {
-	return urnGenerator(ctx)
+	return urnGenerator(ctx, "", "")
 }
 
 // URNSampler samples URNs from the stack's resources.
@@ -108,23 +120,55 @@ func (ctx *StackContext) PropertyValueGenerator(maxDepth int) *rapid.Generator {
 	return propertyValueGenerator(ctx, maxDepth)
 }
 
+// ResourceStateGenerator generates arbitrary *resource.State values. The maxDepth parameter controls the maximum
+// number of times the generator may recur when generating input and output properties.
+//
+// This generator can be used iteratively in order to generate a list of resources that forms a valid topological sort
+// of a dependency graph:
+//
+//     context := NewStackContext("test", "test")
+//
+//     // seed the context with a provider
+//     context = context.Append(context.ResourceStateGenerator(true, 6).Draw(t, "provider").(*resource.State))
+//
+//     // then generate some resources!
+//     count := rapid.IntRange(1, 16).Draw(t, "resource count").(int)
+//     for i := 0; i < count; i++ {
+//         isProvider := rapid.Bool().Draw(t, "is provider").(bool)
+//         context = context.Append(context.ResourceStateGenerator(isProvider, 6).Draw(t, fmt.Sprintf("resource %v", i)).(*resource.State))
+//     }
+//
+func (ctx *StackContext) ResourceStateGenerator(isProvider bool, maxDepth int) *rapid.Generator {
+	return resourceStateGenerator(ctx, isProvider, maxDepth)
+}
+
 // TypeGenerator generates legal tokens.Type values.
 func TypeGenerator() *rapid.Generator {
+	return typeGenerator("")
+}
+
+func typeGenerator(pkg tokens.Package) *rapid.Generator {
+	if pkg == "" {
+		return rapid.Custom(func(t *rapid.T) tokens.Type {
+			return tokens.Type(rapid.StringMatching(`^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/]*)?:[^0-9][a-zA-Z0-9._/]*$`).Draw(t, "type token").(string))
+		})
+	}
+
 	return rapid.Custom(func(t *rapid.T) tokens.Type {
-		return tokens.Type(rapid.StringMatching(`^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/]*)?:[^0-9][a-zA-Z0-9._/]*$`).Draw(t, "type token").(string))
+		return tokens.Type(string(pkg) + ":" + rapid.StringMatching(`^([^0-9][a-zA-Z0-9._/]*)?:[^0-9][a-zA-Z0-9._/]*$`).Draw(t, "type token").(string))
 	})
 }
 
 // URNGenerator generates legal resource.URN values.
 func URNGenerator() *rapid.Generator {
-	return urnGenerator(nil)
+	return urnGenerator(nil, "", "")
 }
 
-func urnGenerator(ctx *StackContext) *rapid.Generator {
+func urnGenerator(ctx *StackContext, parentType, resourceType tokens.Type) *rapid.Generator {
 	var stackNameGenerator, projectNameGenerator *rapid.Generator
 	if ctx == nil {
-		stackNameGenerator = rapid.StringMatching(`^((:[^:])[^:]*)*:?$`)
-		projectNameGenerator = rapid.StringMatching(`^((:[^:])[^:]*)*:?$`)
+		stackNameGenerator = rapid.StringMatching(`^[^:]((:[^:])[^:]*)*$`)
+		projectNameGenerator = rapid.StringMatching(`^[^:]((:[^:])[^:]*)*$`)
 	} else {
 		stackNameGenerator = rapid.Just(ctx.StackName())
 		projectNameGenerator = rapid.Just(ctx.ProjectName())
@@ -133,9 +177,13 @@ func urnGenerator(ctx *StackContext) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) resource.URN {
 		stackName := tokens.QName(stackNameGenerator.Draw(t, "stack name").(string))
 		projectName := tokens.PackageName(projectNameGenerator.Draw(t, "project name").(string))
-		parentType := TypeGenerator().Draw(t, "parent type").(tokens.Type)
-		resourceType := TypeGenerator().Draw(t, "resource type").(tokens.Type)
-		resourceName := tokens.QName(rapid.StringMatching(`^((:[^:])[^:]*)*:?$`).Draw(t, "resource name").(string))
+		if parentType == "" {
+			parentType = TypeGenerator().Draw(t, "parent type").(tokens.Type)
+		}
+		if resourceType == "" {
+			resourceType = TypeGenerator().Draw(t, "resource type").(tokens.Type)
+		}
+		resourceName := tokens.QName(rapid.StringMatching(`^[^:]((:[^:])[^:]*)*$`).Draw(t, "resource name").(string))
 		return resource.NewURN(stackName, projectName, parentType, resourceType, resourceName)
 	})
 }
@@ -411,4 +459,236 @@ func propertyValueGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
 			secretPropertyGenerator(ctx, maxDepth))
 	}
 	return rapid.OneOf(choices...)
+}
+
+// ResourceStateGenerator generates arbitrary *resource.State values. The maxDepth parameter controls the maximum
+// number of times the generator may recur when generating input and output properties.
+func ResourceStateGenerator(maxDepth int) *rapid.Generator {
+	return rapid.Custom(func(t *rapid.T) *resource.State {
+		return resourceStateGenerator(nil, rapid.Bool().Draw(t, "is provider").(bool), maxDepth).Draw(t, "resource state").(*resource.State)
+	})
+}
+
+func getValueDependencies(deps map[resource.URN]bool, v resource.PropertyValue) {
+	switch {
+	case v.IsArray():
+		for _, v := range v.ArrayValue() {
+			getValueDependencies(deps, v)
+		}
+	case v.IsObject():
+		for _, v := range v.ObjectValue() {
+			getValueDependencies(deps, v)
+		}
+	case v.IsOutput():
+		output := v.OutputValue()
+		for _, d := range output.Dependencies {
+			deps[d] = true
+		}
+		getValueDependencies(deps, output.Element)
+	case v.IsSecret():
+		getValueDependencies(deps, v.SecretValue().Element)
+	}
+}
+
+func sortedDeps(deps map[resource.URN]bool) []resource.URN {
+	sorted := make([]resource.URN, 0, len(deps))
+	for urn := range deps {
+		sorted = append(sorted, urn)
+	}
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	return sorted
+}
+
+func unionDeps(dest, src map[resource.URN]bool) {
+	for k := range src {
+		dest[k] = true
+	}
+}
+
+func removeOutputDeps(v resource.PropertyValue) {
+	switch {
+	case v.IsArray():
+		for _, v := range v.ArrayValue() {
+			removeOutputDeps(v)
+		}
+	case v.IsObject():
+		for _, v := range v.ObjectValue() {
+			removeOutputDeps(v)
+		}
+	case v.IsOutput():
+		output := v.OutputValue()
+		output.Dependencies = nil
+		v.V = output
+	case v.IsSecret():
+		removeOutputDeps(v.SecretValue().Element)
+	}
+}
+
+func resourceStateGenerator(ctx *StackContext, isProvider bool, maxDepth int) *rapid.Generator {
+	// otherURNGenerator either generates arbitrary URNs (if no StackContext is available) or samples a URN from the
+	// context's list of resources.
+	var otherURNGenerator *rapid.Generator
+	if ctx == nil {
+		otherURNGenerator = URNGenerator()
+	} else {
+		otherURNGenerator = ctx.URNSampler()
+	}
+
+	var dependenciesUpperBound int
+	if ctx == nil {
+		dependenciesUpperBound = 32
+	} else {
+		dependenciesUpperBound = len(ctx.Resources())
+		if dependenciesUpperBound > 32 {
+			dependenciesUpperBound = 32
+		}
+	}
+
+	// providerGenerator generates a provider resource for the purposes of determining the generated resource's package
+	// and provider reference. If no context is provided, a provider resource is synthesized. Otherwise, it is sampled
+	// from the context's resources.
+	var providerGenerator *rapid.Generator
+	if !isProvider {
+		if ctx == nil {
+			providerGenerator = rapid.Custom(func(t *rapid.T) *resource.State {
+				pkg := rapid.StringMatching(`[^0-9][a-zA-Z0-9._/]*`).Draw(t, "provider package").(string)
+				urn := urnGenerator(nil, "", tokens.Type("pulumi:providers:"+pkg)).Draw(t, "provider URN").(resource.URN)
+				return &resource.State{
+					Type: urn.Type(),
+					URN:  urn,
+					ID:   IDGenerator().Draw(t, "provider ID").(resource.ID),
+				}
+			})
+		} else {
+			providers := make([]*resource.State, 0, len(ctx.Resources()))
+			for _, r := range ctx.Resources() {
+				if r.Type.Module() == "pulumi:providers" {
+					providers = append(providers, r)
+				}
+			}
+			if len(providers) == 0 {
+				providerGenerator = rapid.SampledFrom([]*resource.State{nil})
+			} else {
+				providerGenerator = rapid.SampledFrom(providers)
+			}
+		}
+	}
+
+	return rapid.Custom(func(t *rapid.T) *resource.State {
+		custom := isProvider || rapid.Bool().Draw(t, "custom").(bool)
+
+		var providerResource *resource.State
+		var typ tokens.Type
+		switch {
+		case isProvider:
+			typ = "pulumi:providers:" + tokens.Type(rapid.StringMatching(`[^0-9:][a-zA-Z0-9._/]*`).Draw(t, "provider package").(string))
+		case custom:
+			providerResource = providerGenerator.Draw(t, "provider resource").(*resource.State)
+			if providerResource == nil {
+				panic("stack has no providers")
+			}
+			typ = typeGenerator(tokens.Package(providerResource.Type.Name())).Draw(t, "type").(tokens.Type)
+		default:
+			typ = TypeGenerator().Draw(t, "type").(tokens.Type)
+		}
+
+		parent := otherURNGenerator.Draw(t, "parent").(resource.URN)
+
+		// NOTE: this generator does not ensure that the generated URN is unique within the stack context, if one
+		// exists. There is a slim chance that this could generate duplicate resources within a stack, which is not
+		// valid.
+		urn := urnGenerator(ctx, parent.QualifiedType(), typ).Draw(t, "URN").(resource.URN)
+
+		del := rapid.Bool().Draw(t, "delete").(bool)
+		protect := rapid.Bool().Draw(t, "protect").(bool)
+		external := rapid.Bool().Draw(t, "external").(bool)
+		pendingReplacement := rapid.Bool().Draw(t, "pending replacement").(bool)
+
+		id := resource.ID("")
+		importID := resource.ID("")
+		if custom {
+			id = IDGenerator().Draw(t, "id").(resource.ID)
+
+			// A resource's import ID may be the empty string if the resource was not imported. If the resource was
+			// imported, the import ID is non-empty, but may or may not be the same as the actual ID, even if both IDs
+			// refer to the same resource.
+			if !isProvider {
+				importID = rapid.OneOf(rapid.Just(resource.ID("")), rapid.Just(id), IDGenerator()).Draw(t, "import ID").(resource.ID)
+			}
+		}
+
+		dependencySet := rapid.MapOfN(otherURNGenerator, rapid.SampledFrom([]bool{true}), 0, dependenciesUpperBound).Draw(t, "dependencies").(map[resource.URN]bool)
+
+		// Draw inputs and calculate property dependencies from any nested output values therein.
+		inputs := propertyMapGenerator(ctx, maxDepth).Draw(t, "inputs").(resource.PropertyMap)
+		propertyDependencies := map[resource.PropertyKey][]resource.URN{}
+		for k, v := range inputs {
+			propertyDependencySet := map[resource.URN]bool{}
+			getValueDependencies(propertyDependencySet, v)
+			unionDeps(dependencySet, propertyDependencySet)
+			if len(propertyDependencySet) > 0 {
+				propertyDependencies[k] = sortedDeps(propertyDependencySet)
+			}
+		}
+
+		// Draw outputs. If this is a custom resource, remove nested deps and sample secret outputs.
+		outputs := propertyMapGenerator(ctx, maxDepth).Draw(t, "outputs").(resource.PropertyMap)
+		var additionalSecretOutputs []resource.PropertyKey
+		if custom {
+			removeOutputDeps(resource.NewObjectProperty(outputs))
+
+			additionalSecretOutputs = make([]resource.PropertyKey, 0, len(outputs))
+			for k := range outputs {
+				additionalSecretOutputs = append(additionalSecretOutputs, k)
+			}
+
+			count := rapid.IntRange(0, len(additionalSecretOutputs)).Draw(t, "additionalSecretOutputs").(int)
+			additionalSecretOutputs = additionalSecretOutputs[:count]
+
+			rand.Shuffle(len(additionalSecretOutputs), func(i, j int) {
+				additionalSecretOutputs[i], additionalSecretOutputs[j] = additionalSecretOutputs[j], additionalSecretOutputs[i]
+			})
+		}
+
+		// If this is a custom resource, generate init errors.
+		var initErrors []string
+		if custom && !isProvider {
+			initErrors = rapid.SliceOfN(rapid.String(), 0, 4).Draw(t, "init errors").([]string)
+		}
+
+		// If this is a non-provider custom resource, generate a provider reference.
+		var provider string
+		if custom && !isProvider {
+			provider = string(providerResource.URN) + "::" + string(providerResource.ID)
+		}
+
+		// If this is a custom resource, generate custom timeouts.
+		var timeouts resource.CustomTimeouts
+		if custom && rapid.Bool().Draw(t, "custom timeouts").(bool) {
+			timeouts.Create = rapid.OneOf(rapid.Just(0.0), rapid.Float64Max(100000)).Draw(t, "create timeout").(float64)
+			timeouts.Update = rapid.OneOf(rapid.Just(0.0), rapid.Float64Max(100000)).Draw(t, "update timeout").(float64)
+			timeouts.Delete = rapid.OneOf(rapid.Just(0.0), rapid.Float64Max(100000)).Draw(t, "delete timeout").(float64)
+		}
+
+		return &resource.State{
+			Type:                    urn.Type(),
+			URN:                     urn,
+			Custom:                  custom,
+			Delete:                  del,
+			ID:                      id,
+			Inputs:                  inputs,
+			Outputs:                 outputs,
+			Parent:                  parent,
+			Protect:                 protect,
+			External:                external,
+			Dependencies:            sortedDeps(dependencySet),
+			InitErrors:              initErrors,
+			Provider:                provider,
+			PropertyDependencies:    propertyDependencies,
+			PendingReplacement:      pendingReplacement,
+			AdditionalSecretOutputs: additionalSecretOutputs,
+			CustomTimeouts:          timeouts,
+			ImportID:                importID,
+		}
+	})
 }

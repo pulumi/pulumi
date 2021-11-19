@@ -25,6 +25,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -452,6 +454,38 @@ func TestDeserializePropertyValue(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		v := ObjectValueGenerator(6).Draw(t, "property value")
 		_, err := DeserializePropertyValue(v, config.NopDecrypter, config.NopEncrypter)
+		assert.NoError(t, err)
+	})
+}
+
+func TestSerializeResource(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		r := resource_testing.ResourceStateGenerator(6).Draw(t, "resource").(*resource.State)
+		_, err := SerializeResource(r, config.NopEncrypter, false)
+		assert.NoError(t, err)
+	})
+}
+
+func TestSerializeDeployment(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		context := resource_testing.NewStackContext("test", "test")
+
+		// start things off with a provider
+		context = context.Append(context.ResourceStateGenerator(true, 6).Draw(t, "provider").(*resource.State))
+
+		// then generate some resources!
+		count := rapid.IntRange(1, 16).Draw(t, "resource count").(int)
+		for i := 0; i < count; i++ {
+			isProvider := rapid.Bool().Draw(t, "is provider").(bool)
+			context = context.Append(context.ResourceStateGenerator(isProvider, 6).Draw(t, fmt.Sprintf("resource %v", i)).(*resource.State))
+		}
+
+		// finally, serialize the resources as a deployment
+		snap := deploy.Snapshot{
+			SecretsManager: b64.NewBase64SecretsManager(),
+			Resources:      context.Resources(),
+		}
+		_, err := SerializeDeployment(&snap, nil, false)
 		assert.NoError(t, err)
 	})
 }
