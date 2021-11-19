@@ -524,9 +524,9 @@ func newUpCmd() *cobra.Command {
 
 	if hasExperimentalCommands() {
 		cmd.PersistentFlags().StringVar(
-			&planFilePath, "constraints-file", "",
-			"Path to a constraints file to use for the update. The update will not "+
-				"perform operations that exceed its constraints (e.g. replacements instead of updates, or updates instead"+
+			&planFilePath, "plan", "",
+			"Path to a plan file to use for the update. The update will not "+
+				"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
 				"of sames).")
 	}
 
