@@ -341,7 +341,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			"as it is currently marked for protection. To unprotect the resource, "+
 			"either remove the `protect` flag from the resource in your Pulumi"+
 			"program and run `pulumi up` or use the command:\n"+
-			"`pulumi state unprotect `%s``", s.old.URN, s.old.URN)
+			"`pulumi state unprotect '%s'`", s.old.URN, s.old.URN)
 	}
 
 	// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
