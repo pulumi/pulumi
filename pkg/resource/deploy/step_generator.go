@@ -702,6 +702,12 @@ func (sg *stepGenerator) generateStepsFromDiff(
 							continue
 						}
 
+						if _, ok := sg.deployment.newPlans.get(dependentResource.URN); !ok {
+							// We haven't see this resource before, create a new resource plan for it with no goal (because it's going to be a delete)
+							resourcePlan := &ResourcePlan{}
+							sg.deployment.newPlans.set(dependentResource.URN, resourcePlan)
+						}
+
 						sg.dependentReplaceKeys[dependentResource.URN] = toReplace[i].keys
 
 						logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
@@ -809,19 +815,25 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 
 	// Check each proposed delete against the relevant resource plan
 	for _, s := range dels {
-		if resourcePlan, ok := sg.deployment.plan[s.URN()]; ok {
-			if len(resourcePlan.Ops) == 0 {
-				return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
-			}
+		if sg.deployment.plan != nil {
+			if resourcePlan, ok := sg.deployment.plan[s.URN()]; ok {
+				if len(resourcePlan.Ops) == 0 {
+					return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
+				}
 
-			constraint := resourcePlan.Ops[0]
-			// We remove the Op from the list before doing the constraint check.
-			// This is because we look at Ops at the end to see if any expected operations didn't attempt to happen.
-			// This op has been attempted, it just might fail its constraint.
-			resourcePlan.Ops = resourcePlan.Ops[1:]
+				constraint := resourcePlan.Ops[0]
+				// We remove the Op from the list before doing the constraint check.
+				// This is because we look at Ops at the end to see if any expected operations didn't attempt to happen.
+				// This op has been attempted, it just might fail its constraint.
+				resourcePlan.Ops = resourcePlan.Ops[1:]
 
-			if !s.Op().ConstrainedTo(constraint) {
-				return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+				if !s.Op().ConstrainedTo(constraint) {
+					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+				}
+			} else {
+				if !s.Op().ConstrainedTo(OpSame) {
+					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+				}
 			}
 		}
 
