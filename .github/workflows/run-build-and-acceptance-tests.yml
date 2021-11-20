@@ -359,45 +359,86 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
-      - name: Check out code into the Go module directory
+      - name: Checkout Repo
         uses: actions/checkout@v2
         with:
-          path: ./src/github.com/${{ github.repository }}
           ref: ${{ env.PR_COMMIT_SHA }}
-      - name: Fetch Tags
+      - name: Test Make
         run: |
-          cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow --tags
-      - name: Clean
-        run: dotnet nuget locals all --clear
-      - name: Create Local Nuget
-        run: mkdir -p "D:\\Pulumi\\nuget"
-        shell: bash
-      - name: Get dependencies
-        run: |
-          cd src\github.com\${{ github.repository }}
-          pushd .
-          cd sdk
-          go mod download
-          popd
-          pushd .
-          cd pkg
-          go mod download
-          popd
-          pushd .
-          cd tests
-          go mod download
-          popd
-      - name: Build Pulumi
-        run: |
-          cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
-      - run: |
-          which pulumi
-          pulumi version
-        shell: bash
-      - name: Run Pulumi Tests
-        env:
-            PYTHON_VERSION: ${{ matrix.python-version }}
-        run: |
-          cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
+          make -n ensure
+      # - name: Install DotNet ${{ matrix.dotnet }}
+      #   uses: actions/setup-dotnet@v1
+      #   with:
+      #     dotnet-version: ${{ matrix.dotnet }}
+      # - name: Use Node.js ${{ matrix.node-version }}
+      #   uses: actions/setup-node@v1
+      #   with:
+      #     node-version: ${{ matrix.node-version }}
+      # - name: Set up Go ${{ matrix.go-version }}
+      #   uses: actions/setup-go@v1
+      #   with:
+      #     go-version: ${{ matrix.go-version }}
+      # - name: Set up Python ${{ matrix.python-version }}
+      #   uses: actions/setup-python@v2
+      #   with:
+      #     python-version: ${{ matrix.python-version }}
+      # - name: Install Python Deps
+      #   run: |
+      #     pip3 install pyenv-win
+      #     pip3 install pipenv
+      # - name: Create Local Nuget
+      #   run: mkdir -p "${{ env.PULUMI_LOCAL_NUGET }}"
+      #   shell: bash
+      # - run: dotnet nuget add source ${{ env.PULUMI_LOCAL_NUGET }}
+      # - name: Set Build Env Vars
+      #   shell: bash
+      #   run: |
+      #     echo "D:\\Pulumi\\bin" >> $GITHUB_PATH
+      # - name: Install AWS CLI Tools
+      #   uses: chrislennon/action-aws-cli@v1.1
+      # - name: Install pulumictl
+      #   uses: jaxxstorm/action-install-gh-release@v1.2.0
+      #   with:
+      #     repo: pulumi/pulumictl
+      # - name: Check out code into the Go module directory
+      #   uses: actions/checkout@v2
+      #   with:
+      #     path: ./src/github.com/${{ github.repository }}
+      #     ref: ${{ env.PR_COMMIT_SHA }}
+      # - name: Fetch Tags
+      #   run: |
+      #     cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow --tags
+      # - name: Clean
+      #   run: dotnet nuget locals all --clear
+      # - name: Create Local Nuget
+      #   run: mkdir -p "D:\\Pulumi\\nuget"
+      #   shell: bash
+      # - name: Get dependencies
+      #   run: |
+      #     cd src\github.com\${{ github.repository }}
+      #     pushd .
+      #     cd sdk
+      #     go mod download
+      #     popd
+      #     pushd .
+      #     cd pkg
+      #     go mod download
+      #     popd
+      #     pushd .
+      #     cd tests
+      #     go mod download
+      #     popd
+      # - name: Build Pulumi
+      #   run: |
+      #     cd src\github.com\${{ github.repository }}
+      #     dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
+      # - run: |
+      #     which pulumi
+      #     pulumi version
+      #   shell: bash
+      # - name: Run Pulumi Tests
+      #   env:
+      #       PYTHON_VERSION: ${{ matrix.python-version }}
+      #   run: |
+      #     cd src\github.com\${{ github.repository }}
+      #     dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
