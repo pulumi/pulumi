@@ -196,22 +196,19 @@ class KubeClientSettingsArgs:
 class LayeredTypeArgs:
     def __init__(__self__, *,
                  other: pulumi.Input['HelmReleaseSettingsArgs'],
-                 thinker: pulumi.Input[str],
                  answer: Optional[pulumi.Input[float]] = None,
                  plain_other: Optional['HelmReleaseSettingsArgs'] = None,
                  question: Optional[pulumi.Input[str]] = None,
-                 recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None):
+                 recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None,
+                 thinker: Optional[pulumi.Input[str]] = None):
         """
         Make sure that defaults propagate through types
-        :param pulumi.Input[str] thinker: To ask and answer
         :param pulumi.Input[float] answer: The answer to the question
         :param 'HelmReleaseSettingsArgs' plain_other: Test how plain types interact
         :param pulumi.Input[str] question: The question already answered
+        :param pulumi.Input[str] thinker: To ask and answer
         """
         pulumi.set(__self__, "other", other)
-        if thinker is None:
-            thinker = 'not a good interaction'
-        pulumi.set(__self__, "thinker", thinker)
         if answer is None:
             answer = 42
         if answer is not None:
@@ -224,6 +221,10 @@ class LayeredTypeArgs:
             pulumi.set(__self__, "question", question)
         if recursive is not None:
             pulumi.set(__self__, "recursive", recursive)
+        if thinker is None:
+            thinker = 'not a good interaction'
+        if thinker is not None:
+            pulumi.set(__self__, "thinker", thinker)
 
     @property
     @pulumi.getter
@@ -233,18 +234,6 @@ class LayeredTypeArgs:
     @other.setter
     def other(self, value: pulumi.Input['HelmReleaseSettingsArgs']):
         pulumi.set(self, "other", value)
-
-    @property
-    @pulumi.getter
-    def thinker(self) -> pulumi.Input[str]:
-        """
-        To ask and answer
-        """
-        return pulumi.get(self, "thinker")
-
-    @thinker.setter
-    def thinker(self, value: pulumi.Input[str]):
-        pulumi.set(self, "thinker", value)
 
     @property
     @pulumi.getter
@@ -290,6 +279,18 @@ class LayeredTypeArgs:
     @recursive.setter
     def recursive(self, value: Optional[pulumi.Input['LayeredTypeArgs']]):
         pulumi.set(self, "recursive", value)
+
+    @property
+    @pulumi.getter
+    def thinker(self) -> Optional[pulumi.Input[str]]:
+        """
+        To ask and answer
+        """
+        return pulumi.get(self, "thinker")
+
+    @thinker.setter
+    def thinker(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "thinker", value)
 
 
 @pulumi.input_type

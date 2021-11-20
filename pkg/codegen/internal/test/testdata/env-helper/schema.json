@@ -156,7 +156,7 @@
           "$ref": "#/types/example:index:LayeredType"
         }
       },
-      "required": ["other", "thinker"]
+      "required": ["other"]
     },
     "example:index:KubeClientSettings": {
       "description": "Options for tuning the Kubernetes client used by a Provider.",

@@ -109,7 +109,7 @@ export interface LayeredTypeArgs {
     /**
      * To ask and answer
      */
-    thinker: pulumi.Input<string>;
+    thinker?: pulumi.Input<string>;
 }
 /**
  * layeredTypeArgsProvideDefaults sets the appropriate defaults for LayeredTypeArgs

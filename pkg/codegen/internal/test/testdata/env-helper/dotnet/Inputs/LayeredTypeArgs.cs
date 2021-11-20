@@ -42,8 +42,8 @@ namespace Pulumi.Example.Inputs
         /// <summary>
         /// To ask and answer
         /// </summary>
-        [Input("thinker", required: true)]
-        public Input<string> Thinker { get; set; } = null!;
+        [Input("thinker")]
+        public Input<string>? Thinker { get; set; }
 
         public LayeredTypeArgs()
         {

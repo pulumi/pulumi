@@ -375,7 +375,7 @@ type LayeredType struct {
 	Question  *string      `pulumi:"question"`
 	Recursive *LayeredType `pulumi:"recursive"`
 	// To ask and answer
-	Thinker string `pulumi:"thinker"`
+	Thinker *string `pulumi:"thinker"`
 }
 
 // LayeredTypeInput is an input type that accepts LayeredTypeArgs and LayeredTypeOutput values.
@@ -400,7 +400,7 @@ type LayeredTypeArgs struct {
 	Question  pulumi.StringPtrInput `pulumi:"question"`
 	Recursive LayeredTypePtrInput   `pulumi:"recursive"`
 	// To ask and answer
-	Thinker pulumi.StringInput `pulumi:"thinker"`
+	Thinker pulumi.StringPtrInput `pulumi:"thinker"`
 }
 
 func (LayeredTypeArgs) ElementType() reflect.Type {
@@ -505,8 +505,8 @@ func (o LayeredTypeOutput) Recursive() LayeredTypePtrOutput {
 }
 
 // To ask and answer
-func (o LayeredTypeOutput) Thinker() pulumi.StringOutput {
-	return o.ApplyT(func(v LayeredType) string { return v.Thinker }).(pulumi.StringOutput)
+func (o LayeredTypeOutput) Thinker() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v LayeredType) *string { return v.Thinker }).(pulumi.StringPtrOutput)
 }
 
 type LayeredTypePtrOutput struct{ *pulumi.OutputState }
@@ -587,7 +587,7 @@ func (o LayeredTypePtrOutput) Thinker() pulumi.StringPtrOutput {
 		if v == nil {
 			return nil
 		}
-		return &v.Thinker
+		return v.Thinker
 	}).(pulumi.StringPtrOutput)
 }
 

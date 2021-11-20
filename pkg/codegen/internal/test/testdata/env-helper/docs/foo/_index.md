@@ -639,15 +639,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
-            title="Required">
-        <span id="thinker_csharp">
-<a href="#thinker_csharp" style="color: inherit; text-decoration: inherit;">Thinker</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type">string</span>
-    </dt>
-    <dd>{{% md %}}To ask and answer{{% /md %}}</dd><dt class="property-optional"
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="answer_csharp">
 <a href="#answer_csharp" style="color: inherit; text-decoration: inherit;">Answer</a>
@@ -679,7 +671,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="thinker_csharp">
+<a href="#thinker_csharp" style="color: inherit; text-decoration: inherit;">Thinker</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}To ask and answer{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -691,15 +691,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
-            title="Required">
-        <span id="thinker_go">
-<a href="#thinker_go" style="color: inherit; text-decoration: inherit;">Thinker</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type">string</span>
-    </dt>
-    <dd>{{% md %}}To ask and answer{{% /md %}}</dd><dt class="property-optional"
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="answer_go">
 <a href="#answer_go" style="color: inherit; text-decoration: inherit;">Answer</a>
@@ -731,7 +723,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="thinker_go">
+<a href="#thinker_go" style="color: inherit; text-decoration: inherit;">Thinker</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}To ask and answer{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -743,15 +743,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
-            title="Required">
-        <span id="thinker_nodejs">
-<a href="#thinker_nodejs" style="color: inherit; text-decoration: inherit;">thinker</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type">string</span>
-    </dt>
-    <dd>{{% md %}}To ask and answer{{% /md %}}</dd><dt class="property-optional"
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="answer_nodejs">
 <a href="#answer_nodejs" style="color: inherit; text-decoration: inherit;">answer</a>
@@ -783,7 +775,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="thinker_nodejs">
+<a href="#thinker_nodejs" style="color: inherit; text-decoration: inherit;">thinker</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}To ask and answer{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -795,15 +795,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
-            title="Required">
-        <span id="thinker_python">
-<a href="#thinker_python" style="color: inherit; text-decoration: inherit;">thinker</a>
-</span>
-        <span class="property-indicator"></span>
-        <span class="property-type">str</span>
-    </dt>
-    <dd>{{% md %}}To ask and answer{{% /md %}}</dd><dt class="property-optional"
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="answer_python">
 <a href="#answer_python" style="color: inherit; text-decoration: inherit;">answer</a>
@@ -835,7 +827,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="thinker_python">
+<a href="#thinker_python" style="color: inherit; text-decoration: inherit;">thinker</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">str</span>
+    </dt>
+    <dd>{{% md %}}To ask and answer{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 
