@@ -223,6 +223,8 @@ jobs:
       - name: Install gotestsum from source
         run: |
           go install gotest.tools/gotestsum@latest
+        env:
+          GOBIN: ${{ runner.temp }}/opt/pulumi/bin
       - name: Check gotestsum
         run: |
           gotestsum --help
