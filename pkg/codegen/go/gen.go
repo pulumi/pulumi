@@ -272,6 +272,7 @@ func rawResourceName(r *schema.Resource) string {
 	return tokenToName(r.Token)
 }
 
+// If `nil` is a valid value of type `t`.
 func isNilType(t schema.Type) bool {
 	switch t := t.(type) {
 	case *schema.OptionalType, *schema.ArrayType, *schema.MapType, *schema.ResourceType, *schema.InputType:
@@ -1149,6 +1150,18 @@ func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessa
 	fmt.Fprintf(w, "}\n\n")
 }
 
+// Returns the default value used to perform "is default" checks.
+func (pkg *pkgContext) defaultComparisonValue(t schema.Type) string {
+	switch {
+	case schema.IsPrimitiveType(t):
+		return primitiveNilValue(t)
+	case isNilType(t):
+		return "nil"
+	default:
+		return strings.TrimSuffix(pkg.typeString(t), "Args") + "{}"
+	}
+}
+
 func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	properties []*schema.Property) error {
 	defaults := []*schema.Property{}
@@ -1173,10 +1186,7 @@ func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 			if err != nil {
 				return err
 			}
-			defaultComp := "nil"
-			if !codegen.IsNOptionalInput(p.Type) && !isNilType(p.Type) {
-				defaultComp = primitiveNilValue(p.Type)
-			}
+			defaultComp := pkg.defaultComparisonValue(p.Type)
 			fmt.Fprintf(w, "if tmp.%s == %s {\n", Title(p.Name), defaultComp)
 			pkg.assignProperty(w, p, "tmp", dv, !p.IsRequired())
 			fmt.Fprintf(w, "}\n")
@@ -1520,10 +1530,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			if err != nil {
 				return err
 			}
-			defaultComp := "nil"
-			if !codegen.IsNOptionalInput(p.Type) && !isNilType(p.Type) {
-				defaultComp = primitiveNilValue(p.Type)
-			}
+			defaultComp := pkg.defaultComparisonValue(p.Type)
 			fmt.Fprintf(w, "\tif args.%s == %s {\n", Title(p.Name), defaultComp)
 			assign(p, dv)
 			fmt.Fprintf(w, "\t}\n")

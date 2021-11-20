@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
@@ -209,6 +210,56 @@ func TestPackageNaming(t *testing.T) {
 				}
 				// We should work on a way to assert this is one level higher then it otherwise would be.
 			}
+		})
+	}
+}
+
+func TestDefaultComparison(t *testing.T) {
+	pkg := readSchemaFile(filepath.Join("simple-plain-schema", "schema.json"))
+	context := generatePackageContextMap("test", pkg, GoPackageInfo{})[""]
+	var objectTest schema.Type
+	for _, v := range pkg.Types {
+		if obj, ok := codegen.UnwrapType(v).(*schema.ObjectType); ok && obj.Token == "example::Foo" {
+			objectTest = v
+		}
+	}
+	require.NotNil(t, objectTest, "Failed to setup object test. Could not find expected object")
+	for _, tt := range []struct {
+		Name     string
+		Type     schema.Type
+		Expected string
+	}{
+		{
+			"Integer",
+			schema.IntType,
+			"0",
+		},
+		{
+			"Number",
+			schema.NumberType,
+			"0.0",
+		},
+		{
+			"String",
+			schema.StringType,
+			"\"\"",
+		},
+		{
+			"Object",
+			objectTest,
+			"Foo{}",
+		},
+		{
+			Name: "Optional",
+			Type: &schema.OptionalType{
+				ElementType: schema.StringType,
+			},
+			Expected: "nil",
+		},
+	} {
+		t.Run(tt.Name, func(t *testing.T) {
+			actual := context.defaultComparisonValue(tt.Type)
+			require.Equal(t, tt.Expected, actual)
 		})
 	}
 }
