@@ -224,6 +224,7 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: gotestyourself/gotestsum
+          tag: v1.7.0
       - name: Install goteststats
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
