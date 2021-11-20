@@ -138,7 +138,7 @@ jobs:
 
   test:
     name: Test
-    # needs: build
+    needs: build
     strategy:
       matrix:
         platform: [ ubuntu-latest, macos-latest, windows-latest ]
@@ -263,13 +263,13 @@ jobs:
         with:
           name: pulumi-windows-x64.zip
           path: artifacts/go
-      - name: Install Pulumi Go Binaries
+      - name: Install Pulumi Go Binaries (non-windows)
         if: ${{ matrix.platform != 'windows-latest' }}
         run: |
           mkdir -p bin
           tar -xf artifacts/go/*.tar.gz -C bin
           echo "$PWD/bin/pulumi" >> $GITHUB_PATH
-      - name: Install Pulumi Go Binaries
+      - name: Install Pulumi Go Binaries (windows)
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
           mkdir -p bin
