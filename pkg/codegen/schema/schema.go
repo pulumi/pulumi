@@ -2253,10 +2253,11 @@ func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Typ
 	return dv, diags
 }
 
-// bindProperties binds the map of property specs and list of required properties into a sorted list of properties and
-// a lookup table.
-func (t *types) bindProperties(rootPath string, properties map[string]PropertySpec, requiredPath string, required []string,
-	inputShape bool) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
+// bindProperties binds the map of property specs and list of required properties into a sorted list
+// of properties and a lookup table.
+func (t *types) bindProperties(rootPath string, properties map[string]PropertySpec,
+	requiredPath string, required []string, inputShape bool) (
+	[]*Property, map[string]*Property, hcl.Diagnostics, error) {
 
 	var diags hcl.Diagnostics
 
