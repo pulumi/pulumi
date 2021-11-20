@@ -134,7 +134,7 @@ jobs:
 
   test:
     name: Test
-    needs: build
+    # needs: build
     strategy:
       matrix:
         platform: [ ubuntu-latest, macos-latest, windows-latest ]
@@ -220,11 +220,21 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
-      - name: Install gotestsum
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
-        with:
-          repo: gotestyourself/gotestsum
-          tag: v1.7.0
+      - name: Install gotestsum from source
+        run: |
+          go get gotest.tools/gotestsum
+      - name: Check gotestsum
+        run: |
+          gotestsum --help
+      # Binary installer for gotestsum does not work because the
+      # project distributes tarballs for Windows instead of zips
+      # expected by the action.
+      #
+      # - name: Install gotestsum
+      #   uses: jaxxstorm/action-install-gh-release@v1.2.0
+      #   with:
+      #     repo: gotestyourself/gotestsum
+      #     tag: v1.7.0
       - name: Install goteststats
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
