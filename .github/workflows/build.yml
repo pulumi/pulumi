@@ -40,8 +40,8 @@ jobs:
     # Due to the use of CGO in `pulumi` this cross-compilation step
     # cannot proceed on `ubuntu-latest`, which would have been
     # preferable.
-    # runs-on: macos-latest
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
+
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
