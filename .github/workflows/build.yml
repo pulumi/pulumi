@@ -69,12 +69,12 @@ jobs:
       - name: Upload pulumi-darwin-arm64.tar.gz
         uses: actions/upload-artifact@v2
         with:
-            name: pulumi-darwin-arm64
+            name: pulumi-darwin-arm64.tar.gz
             path: goreleaser/pulumi*-darwin-arm64.tar.gz
       - name: Upload pulumi-darwin-x64.tar.gz
         uses: actions/upload-artifact@v2
         with:
-            name: pulumi-darwin-x64
+            name: pulumi-darwin-x64.tar.gz
             path: goreleaser/pulumi*-darwin-x64.tar.gz
       - name: Upload pulumi-linux-arm64.tar.gz
         uses: actions/upload-artifact@v2
