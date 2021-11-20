@@ -1,13 +1,28 @@
 ### Improvements
 
+- [cli] - When running `pulumi new https://github.com/name/repo`, check 
+  for branch `main` if branch `master` doesn't exist.
+  [#8463](https://github.com/pulumi/pulumi/pull/8463)
+
+- [codegen/python] - Program generator now uses `fn_output` forms where
+  appropriate, simplifying auto-generated examples.
+  [#8433](https://github.com/pulumi/pulumi/pull/8433)
+
+- [codegen/go] - Program generator now uses fnOutput forms where
+  appropriate, simplifying auto-generated examples.
+  [#8431](https://github.com/pulumi/pulumi/pull/8431)
+
+- [codegen/dotnet] - Program generator now uses `Invoke` forms where
+  appropriate, simplifying auto-generated examples.
+  [#8432](https://github.com/pulumi/pulumi/pull/8432)
+
 ### Bug Fixes
 
-- [sdk/dotnet] - Fixes failing preview for programs that call data
-  sources (`F.Invoke`) with unknown outputs
-  [#8339](https://github.com/pulumi/pulumi/pull/8339)
-
-- [programgen/go] - Don't change imported resource names.
-  [#8353](https://github.com/pulumi/pulumi/pull/8353)
+- [codegen/typescript] - Respect default values in Pulumi object types.
+  [#8400](https://github.com/pulumi/pulumi/pull/8400)
 
 - [codegen] - Forbid nonsensical combinations of schema property flags.
   [#8373](https://github.com/pulumi/pulumi/pull/8373)
+
+- [cli] - Catch expected errors in filestate backend stacks.
+  [#8455](https://github.com/pulumi/pulumi/pull/8455)

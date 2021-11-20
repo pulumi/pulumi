@@ -41,7 +41,7 @@ export class ModuleResource extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args: ModuleResourceArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
             if ((!args || args.plain_required_bool === undefined) && !opts.urn) {
@@ -68,6 +68,7 @@ export class ModuleResource extends pulumi.CustomResource {
             if ((!args || args.required_string === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'required_string'");
             }
+<<<<<<< HEAD
             inputs["default_bool"] = (args ? args.default_bool : undefined) ?? true;
             inputs["default_enum"] = (args ? args.default_enum : undefined) ?? 4;
             inputs["default_number"] = (args ? args.default_number : undefined) ?? 42;
@@ -85,12 +86,31 @@ export class ModuleResource extends pulumi.CustomResource {
             inputs["required_number"] = args ? args.required_number : undefined;
             inputs["required_string"] = args ? args.required_string : undefined;
             inputs["string_const"] = "val";
+=======
+            resourceInputs["optional_bool"] = (args ? args.optional_bool : undefined) ?? true;
+            resourceInputs["optional_const"] = "val";
+            resourceInputs["optional_enum"] = (args ? args.optional_enum : undefined) ?? 8;
+            resourceInputs["optional_number"] = (args ? args.optional_number : undefined) ?? 42;
+            resourceInputs["optional_string"] = (args ? args.optional_string : undefined) ?? "buzzer";
+            resourceInputs["plain_optional_bool"] = (args ? args.plain_optional_bool : undefined) ?? true;
+            resourceInputs["plain_optional_const"] = "val";
+            resourceInputs["plain_optional_number"] = (args ? args.plain_optional_number : undefined) ?? 42;
+            resourceInputs["plain_optional_string"] = (args ? args.plain_optional_string : undefined) ?? "buzzer";
+            resourceInputs["plain_required_bool"] = (args ? args.plain_required_bool : undefined) ?? true;
+            resourceInputs["plain_required_const"] = "val";
+            resourceInputs["plain_required_number"] = (args ? args.plain_required_number : undefined) ?? 42;
+            resourceInputs["plain_required_string"] = (args ? args.plain_required_string : undefined) ?? "buzzer";
+            resourceInputs["required_bool"] = (args ? args.required_bool : undefined) ?? true;
+            resourceInputs["required_enum"] = (args ? args.required_enum : undefined) ?? 4;
+            resourceInputs["required_number"] = (args ? args.required_number : undefined) ?? 42;
+            resourceInputs["required_string"] = (args ? args.required_string : undefined) ?? "buzzer";
+>>>>>>> master
         } else {
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(ModuleResource.__pulumiType, name, inputs, opts);
+        super(ModuleResource.__pulumiType, name, resourceInputs, opts);
     }
 }
 

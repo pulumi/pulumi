@@ -431,7 +431,9 @@ class ResourcePreEvent(BaseEvent):
 
     @classmethod
     def from_json(cls, data: dict) -> 'ResourcePreEvent':
-        return cls(**data)
+        metadata: dict = data.get("metadata", {})
+        return cls(metadata=StepEventMetadata.from_json(metadata),
+                   planning=data.get("planning"))
 
 
 class ResOutputsEvent(BaseEvent):
@@ -446,7 +448,9 @@ class ResOutputsEvent(BaseEvent):
 
     @classmethod
     def from_json(cls, data: dict) -> 'ResOutputsEvent':
-        return cls(**data)
+        metadata: dict = data.get("metadata", {})
+        return cls(metadata=StepEventMetadata.from_json(metadata),
+                   planning=data.get("planning"))
 
 
 class ResOpFailedEvent(BaseEvent):
@@ -464,7 +468,10 @@ class ResOpFailedEvent(BaseEvent):
 
     @classmethod
     def from_json(cls, data: dict) -> 'ResOpFailedEvent':
-        return cls(**data)
+        metadata: dict = data.get("metadata", {})
+        return cls(metadata=StepEventMetadata.from_json(metadata),
+                   status=data.get("status", 0),
+                   steps=data.get("steps", 0))
 
 
 class EngineEvent(BaseEvent):

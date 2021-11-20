@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -68,7 +68,7 @@ func newStackGraphCmd() *cobra.Command {
 
 			// This will prevent a panic when trying to assemble a dependencyGraph when no snapshot is found
 			if snap == nil {
-				return errors.Errorf("unable to find snapshot for stack %q", stackName)
+				return fmt.Errorf("unable to find snapshot for stack %q", stackName)
 			}
 
 			dg := makeDependencyGraph(snap)

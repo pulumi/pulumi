@@ -20,7 +20,7 @@ import (
 	"time"
 
 	mobytime "github.com/docker/docker/api/types/time"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -63,17 +63,17 @@ func newLogsCmd() *cobra.Command {
 
 			sm, err := getStackSecretsManager(s)
 			if err != nil {
-				return errors.Wrap(err, "getting secrets manager")
+				return fmt.Errorf("getting secrets manager: %w", err)
 			}
 
 			cfg, err := getStackConfiguration(s, sm)
 			if err != nil {
-				return errors.Wrap(err, "getting stack configuration")
+				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
 			startTime, err := parseSince(since, time.Now())
 			if err != nil {
-				return errors.Wrapf(err, "failed to parse argument to '--since' as duration or timestamp")
+				return fmt.Errorf("failed to parse argument to '--since' as duration or timestamp: %w", err)
 			}
 			var resourceFilter *operations.ResourceFilter
 			if resource != "" {
@@ -102,7 +102,7 @@ func newLogsCmd() *cobra.Command {
 					ResourceFilter: resourceFilter,
 				})
 				if err != nil {
-					return errors.Wrapf(err, "failed to get logs")
+					return fmt.Errorf("failed to get logs: %w", err)
 				}
 
 				// When we are emitting a fixed number of log entries, and outputing JSON, wrap them in an array.

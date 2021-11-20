@@ -1,7 +1,7 @@
 package docs
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 	"sort"
 )
 
@@ -36,7 +36,7 @@ func generatePackageTree(rootMod modContext) ([]PackageTreeItem, error) {
 
 		children, err := generatePackageTree(*m)
 		if err != nil {
-			return nil, errors.Wrapf(err, "generating children for module %s (mod token: %s)", displayName, m.mod)
+			return nil, fmt.Errorf("generating children for module %s (mod token: %s): %w", displayName, m.mod, err)
 		}
 
 		ti := PackageTreeItem{

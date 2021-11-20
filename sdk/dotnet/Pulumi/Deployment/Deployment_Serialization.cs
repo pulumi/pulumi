@@ -20,16 +20,20 @@ namespace Pulumi
         /// to registerResource.
         /// </summary>
         private static Task<SerializationResult> SerializeResourcePropertiesAsync(
-            string label, IDictionary<string, object?> args, bool keepResources)
+            string label, IDictionary<string, object?> args, bool keepResources, bool keepOutputValues)
         {
             return SerializeFilteredPropertiesAsync(
-                label, args, key => key != Constants.IdPropertyName && key != Constants.UrnPropertyName, keepResources);
+                label, args,
+                key => key != Constants.IdPropertyName && key != Constants.UrnPropertyName,
+                keepResources, keepOutputValues: keepOutputValues);
         }
 
         private static async Task<Struct> SerializeAllPropertiesAsync(
-            string label, IDictionary<string, object?> args, bool keepResources)
+            string label, IDictionary<string, object?> args, bool keepResources, bool keepOutputValues = false)
         {
-            var result = await SerializeFilteredPropertiesAsync(label, args, _ => true, keepResources).ConfigureAwait(false);
+            var result = await SerializeFilteredPropertiesAsync(
+                label, args, _ => true,
+                keepResources, keepOutputValues).ConfigureAwait(false);
             return result.Serialized;
         }
 
@@ -38,10 +42,20 @@ namespace Pulumi
         /// awaiting all interior promises for properties with keys that match the provided filter,
         /// creating a reasonable POCO object that can be remoted over to registerResource.
         /// </summary>
+        ///
+        /// <param name="label">label</param>
+        /// <param name="args">args</param>
+        /// <param name="acceptKey">acceptKey</param>
+        /// <param name="keepResources">keepResources</param>
+        /// <param name="keepOutputValues">
+        /// Specifies if we should marshal output values. It is the callers
+        /// responsibility to ensure that the monitor supports the OutputValues
+        /// feature.
+        /// </param>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
-            string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources)
+            string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources, bool keepOutputValues)
         {
-            var result = await SerializeFilteredPropertiesRawAsync(label, args, acceptKey, keepResources);
+            var result = await SerializeFilteredPropertiesRawAsync(label, args, acceptKey, keepResources, keepOutputValues);
             return result.ToSerializationResult();
         }
 
@@ -50,7 +64,7 @@ namespace Pulumi
         /// last step of encoding the value into a Protobuf form.
         /// </summary>
         private static async Task<RawSerializationResult> SerializeFilteredPropertiesRawAsync(
-            string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources)
+            string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources, bool keepOutputValues)
         {
             var propertyToDependentResources = ImmutableDictionary.CreateBuilder<string, HashSet<Resource>>();
             var result = ImmutableDictionary.CreateBuilder<string, object>();
@@ -61,7 +75,7 @@ namespace Pulumi
                 {
                     // We treat properties with null values as if they do not exist.
                     var serializer = new Serializer(_excessiveDebugOutput);
-                    var v = await serializer.SerializeAsync($"{label}.{key}", val, keepResources).ConfigureAwait(false);
+                    var v = await serializer.SerializeAsync($"{label}.{key}", val, keepResources, keepOutputValues).ConfigureAwait(false);
                     if (v != null)
                     {
                         result[key] = v;

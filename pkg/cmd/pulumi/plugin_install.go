@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -22,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -59,7 +60,7 @@ func newPluginInstallCmd() *cobra.Command {
 			var installs []workspace.PluginInfo
 			if len(args) > 0 {
 				if !workspace.IsPluginKind(args[0]) {
-					return errors.Errorf("unrecognized plugin kind: %s", args[0])
+					return fmt.Errorf("unrecognized plugin kind: %s", args[0])
 				} else if len(args) < 2 {
 					return errors.New("missing plugin name argument")
 				} else if len(args) < 3 {
@@ -67,7 +68,7 @@ func newPluginInstallCmd() *cobra.Command {
 				}
 				version, err := semver.ParseTolerant(args[2])
 				if err != nil {
-					return errors.Wrap(err, "invalid plugin semver")
+					return fmt.Errorf("invalid plugin semver: %w", err)
 				}
 				installs = append(installs, workspace.PluginInfo{
 					Kind:      workspace.PluginKind(args[0]),
@@ -124,19 +125,19 @@ func newPluginInstallCmd() *cobra.Command {
 				if file == "" {
 					var size int64
 					if tarball, size, err = install.Download(); err != nil {
-						return errors.Wrapf(err, "%s downloading from %s", label, install.ServerURL)
+						return fmt.Errorf("%s downloading from %s: %w", label, install.ServerURL, err)
 					}
 					tarball = workspace.ReadCloserProgressBar(tarball, size, "Downloading plugin", displayOpts.Color)
 				} else {
 					source = file
 					logging.V(1).Infof("%s opening tarball from %s", label, file)
 					if tarball, err = os.Open(file); err != nil {
-						return errors.Wrapf(err, "opening file %s", source)
+						return fmt.Errorf("opening file %s: %w", source, err)
 					}
 				}
 				logging.V(1).Infof("%s installing tarball ...", label)
 				if err = install.Install(tarball); err != nil {
-					return errors.Wrapf(err, "installing %s from %s", label, source)
+					return fmt.Errorf("installing %s from %s: %w", label, source, err)
 				}
 			}
 

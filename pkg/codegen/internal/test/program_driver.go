@@ -49,14 +49,17 @@ var programTests = []programTest{
 	{
 		Name:        "aws-fargate",
 		Description: "AWS Fargate",
+
+		// TODO[pulumi/pulumi#8440]
 		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Name:        "aws-s3-logging",
 		Description: "AWS S3 with logging",
-		SkipCompile: codegen.NewStringSet("dotnet", "nodejs"),
+		SkipCompile: codegen.NewStringSet("dotnet", "nodejs", "go"),
 		// Blocked on dotnet: TODO[pulumi/pulumi#8069]
 		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
+		// Flaky in go: TODO[pulumi/pulumi#8123]
 	},
 	{
 		Name:        "aws-webserver",
@@ -121,6 +124,10 @@ var programTests = []programTest{
 		// Blocked on dotnet:
 		//   TODO[pulumi/pulumi#8078]
 		//   TODO[pulumi/pulumi#8079]
+	},
+	{
+		Name:        "output-funcs-aws",
+		Description: "Output Versioned Functions",
 	},
 }
 

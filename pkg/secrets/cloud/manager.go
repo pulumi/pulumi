@@ -19,8 +19,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 
-	"github.com/pkg/errors"
 	gosecrets "gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/awskms"        // support for awskms://
 	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://
@@ -45,7 +45,7 @@ type cloudSecretsManagerState struct {
 func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s cloudSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling state")
+		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
 	return NewCloudSecretsManager(s.URL, s.EncryptedKey)

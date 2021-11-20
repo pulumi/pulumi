@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -25,7 +26,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -187,7 +188,7 @@ func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
 			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
 				"Please update your version of the Pulumi CLI", s.Ref().Name())
 		}
-		return nil, errors.Wrap(err, "could not deserialize deployment")
+		return nil, fmt.Errorf("could not deserialize deployment: %w", err)
 	}
 	return snap, err
 }
@@ -351,7 +352,7 @@ func newImportCmd() *cobra.Command {
 				}
 				f, err := readImportFile(importFilePath)
 				if err != nil {
-					return result.FromError(errors.Wrap(err, "could not read import file"))
+					return result.FromError(fmt.Errorf("could not read import file: %w", err))
 				}
 				importFile = f
 			} else {
@@ -454,17 +455,17 @@ func newImportCmd() *cobra.Command {
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
 			sm, err := getStackSecretsManager(s)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
 			cfg, err := getStackConfiguration(s, sm)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
 			opts.Engine = engine.UpdateOptions{
@@ -493,7 +494,7 @@ func newImportCmd() *cobra.Command {
 				protectResources)
 			if err != nil {
 				if _, ok := err.(*importer.DiagnosticsError); ok {
-					err = errors.Wrap(err, "internal error")
+					err = fmt.Errorf("internal error: %w", err)
 				}
 				return result.FromError(err)
 			}

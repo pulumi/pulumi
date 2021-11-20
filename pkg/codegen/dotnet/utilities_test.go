@@ -1,6 +1,8 @@
 package dotnet
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestMakeSafeEnumName(t *testing.T) {
 	tests := []struct {

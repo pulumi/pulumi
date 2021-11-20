@@ -83,13 +83,20 @@ type CallFunc func(ctx *pulumi.Context, tok string, args CallArgs) (*CallResult,
 func Call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
 	call CallFunc) (*pulumirpc.CallResponse, error) {
 	return linkedCall(ctx, req, engineConn, func(pulumiCtx *pulumi.Context, tok string,
-		args map[string]interface{}) (pulumi.Input, error) {
+		args map[string]interface{}) (pulumi.Input, []interface{}, error) {
 		ca := CallArgs{ctx: pulumiCtx, args: args}
 		result, err := call(pulumiCtx, tok, ca)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return result.Return, nil
+		var failures []interface{}
+		if len(result.Failures) > 0 {
+			failures = make([]interface{}, len(result.Failures))
+			for i, v := range result.Failures {
+				failures[i] = linkedNewCallFailure(v.Property, v.Reason)
+			}
+		}
+		return result.Return, failures, nil
 	})
 }
 
@@ -117,9 +124,18 @@ func (a CallArgs) Self() (pulumi.Resource, error) {
 	return linkedCallArgsSelf(a.ctx, a.args)
 }
 
+// CallFailure indicates that a call to Call failed; it contains the property and reason for the failure.
+type CallFailure struct {
+	Property string // the property that failed checking.
+	Reason   string // the reason the property failed to check.
+}
+
 // CallResult is the result of the Call.
 type CallResult struct {
+	// The returned values, if the call was successful.
 	Return pulumi.Input
+	// The failures if any arguments didn't pass verification.
+	Failures []CallFailure
 }
 
 // NewCallResult creates a CallResult from the given result.
@@ -149,7 +165,7 @@ func linkedConstructInputsCopyTo(ctx *pulumi.Context, inputs map[string]interfac
 // linkedNewConstructResult is made available here from ../provider_linked.go via go:linkname.
 func linkedNewConstructResult(resource pulumi.ComponentResource) (pulumi.URNInput, pulumi.Input, error)
 
-type callFunc func(ctx *pulumi.Context, tok string, args map[string]interface{}) (pulumi.Input, error)
+type callFunc func(ctx *pulumi.Context, tok string, args map[string]interface{}) (pulumi.Input, []interface{}, error)
 
 // linkedCall is made available here from ../provider_linked.go via go:linkname.
 func linkedCall(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
@@ -164,3 +180,6 @@ func linkedCallArgsSelf(ctx *pulumi.Context, source map[string]interface{}) (pul
 
 // linkedNewCallResult is made available here from ../provider_linked.go via go:linkname.
 func linkedNewCallResult(result interface{}) (pulumi.Input, error)
+
+// linkedNewCallFailure is made available here from ../provider_linked.go via go:linkname.
+func linkedNewCallFailure(property, reason string) interface{}

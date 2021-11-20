@@ -22,6 +22,8 @@ package docs
 
 import (
 	"bytes"
+	"embed"
+	"errors"
 	"fmt"
 	"html"
 	"html/template"
@@ -30,7 +32,6 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
@@ -41,18 +42,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// Populated in auto-generated `packaged.go`
-var packagedTemplates map[string][]byte
+//go:embed templates/*.tmpl
+var packagedTemplates embed.FS
 
-func init() {
-	packagedTemplates = map[string][]byte{}
-}
-
-// TODO[pulumi/pulumi#7813]: Remove this lookup once display name is available in
-// the Pulumi schema.
-//
-// NOTE: For the time being this lookup map and the one used by the resourcedocsgen
-// tool in `pulumi/docs` must be kept up-to-date.
+// NOTE: This lookup map can be removed when all Pulumi-managed packages
+// have a DisplayName in their schema. See pulumi/pulumi#7813.
+// This lookup table no longer needs to be updated for new providers
+// and is considered stale.
 //
 // titleLookup is a map of package name to the desired display name.
 func titleLookup(shortName string) (string, bool) {
@@ -435,7 +431,7 @@ func (dctx *docGenContext) getLanguageDocHelper(lang string) codegen.DocLanguage
 	if h, ok := dctx.docHelpers[lang]; ok {
 		return h
 	}
-	panic(errors.Errorf("could not find a doc lang helper for %s", lang))
+	panic(fmt.Errorf("could not find a doc lang helper for %s", lang))
 }
 
 type propertyCharacteristics struct {
@@ -906,8 +902,14 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
 
-	var typs []docNestedType
+	var sortedTokens []string
 	for token := range tokens {
+		sortedTokens = append(sortedTokens, token)
+	}
+	sort.Strings(sortedTokens)
+
+	var typs []docNestedType
+	for _, token := range sortedTokens {
 		for _, t := range mod.pkg.Types {
 			switch typ := t.(type) {
 			case *schema.ObjectType:
@@ -1178,7 +1180,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 
 			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, resourceTypeName)
 		default:
-			panic(errors.Errorf("cannot generate constructor info for unhandled language %q", lang))
+			panic(fmt.Errorf("cannot generate constructor info for unhandled language %q", lang))
 		}
 
 		parts := strings.Split(resourceTypeName, ".")
@@ -1706,8 +1708,13 @@ func (mod *modContext) genIndex() indexData {
 	modName := mod.getModuleFileName()
 	title := modName
 
+	// An empty string indicates that this is the root module.
 	if title == "" {
-		title = formatTitleText(mod.pkg.Name)
+		if mod.pkg.DisplayName != "" {
+			title = mod.pkg.DisplayName
+		} else {
+			title = getPackageDisplayName(mod.pkg.Name)
+		}
 	}
 
 	// If there are submodules, list them.
@@ -1759,7 +1766,7 @@ func (mod *modContext) genIndex() indexData {
 	// assume top level package index page when formatting title tags otherwise, if contains modules, assume modules
 	// top level page when generating title tags.
 	if len(modules) > 0 {
-		titleTag = fmt.Sprintf("%s Package", formatTitleText(title))
+		titleTag = fmt.Sprintf("%s Package", getPackageDisplayName(title))
 	} else {
 		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, title)
 		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s.%s module.", mod.pkg.Name, title)
@@ -1784,7 +1791,9 @@ func (mod *modContext) genIndex() indexData {
 	return data
 }
 
-func formatTitleText(title string) string {
+// getPackageDisplayName uses the title lookup map to look for a
+// display name for the given title.
+func getPackageDisplayName(title string) string {
 	// If title not found in titleLookup map, default back to title given.
 	if val, ok := titleLookup(title); ok {
 		return val
@@ -1936,12 +1945,8 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 
 	defer glog.Flush()
 
-	if len(packagedTemplates) == 0 {
-		glog.Fatal(`packagedTemplates is empty. Did you run "make generate" first?`)
-	}
-
-	for name, b := range packagedTemplates {
-		template.Must(dctx.templates.New(name).Parse(string(b)))
+	if _, err := dctx.templates.ParseFS(packagedTemplates, "templates/*.tmpl"); err != nil {
+		glog.Fatalf("initializing templates: %v", err)
 	}
 
 	// Generate the modules from the schema, and for every module
@@ -1958,8 +1963,14 @@ func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (ma
 
 	glog.V(3).Infoln("generating package docs now...")
 	files := fs{}
-	for _, mod := range dctx.modules() {
-		if err := mod.gen(files); err != nil {
+	modules := []string{}
+	modMap := dctx.modules()
+	for k := range modMap {
+		modules = append(modules, k)
+	}
+	sort.Strings(modules)
+	for _, mod := range modules {
+		if err := modMap[mod].gen(files); err != nil {
 			return nil, err
 		}
 	}

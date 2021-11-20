@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -29,7 +30,6 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/host"
 	"github.com/spf13/cobra"
 
@@ -117,7 +117,7 @@ func getSummaryAbout(transitiveDependencies bool) summaryAbout {
 	}
 	var plugins []pluginAbout
 	addError := func(err error, message string) {
-		err = errors.Wrap(err, message)
+		err = fmt.Errorf("%s: %w", message, err)
 		result.ErrorMessages = append(result.ErrorMessages, err.Error())
 		result.Errors = append(result.Errors, err)
 	}
@@ -439,7 +439,7 @@ func getGoProgramDependencies(transitive bool) ([]programDependencieAbout, error
 	cmd := exec.Command(ex, cmdArgs...)
 	var out []byte
 	if out, err = cmd.Output(); err != nil {
-		return nil, errors.Wrap(err, "Failed to get modules")
+		return nil, fmt.Errorf("Failed to get modules: %w", err)
 	}
 
 	dec := json.NewDecoder(bytes.NewReader(out))
@@ -450,7 +450,7 @@ func getGoProgramDependencies(transitive bool) ([]programDependencieAbout, error
 			if err == io.EOF {
 				break
 			}
-			return nil, errors.Wrapf(err, "Failed to parse \"%s %s\" output", ex, strings.Join(cmdArgs, " "))
+			return nil, fmt.Errorf("Failed to parse \"%s %s\" output: %w", ex, strings.Join(cmdArgs, " "), err)
 		}
 		parsed = append(parsed, m)
 
@@ -525,7 +525,7 @@ func getPythonProgramDependencies(proj *workspace.Project, rootDir string,
 	var result []programDependencieAbout
 	err = json.Unmarshal([]byte(out), &result)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to parse \"python %s\" result", strings.Join(cmdArgs, " "))
+		return nil, fmt.Errorf("Failed to parse \"python %s\" result: %w", strings.Join(cmdArgs, " "), err)
 	}
 
 	return result, nil
@@ -553,7 +553,7 @@ func getDotNetProgramDependencies(proj *workspace.Project, transitive bool) ([]p
 	}
 	cmd := exec.Command(ex, cmdArgs...)
 	if out, err = cmd.Output(); err != nil {
-		return nil, errors.Wrapf(err, "Failed to call \"%s\"", ex)
+		return nil, fmt.Errorf("Failed to call \"%s\": %w", ex, err)
 	}
 	lines := strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n")
 	var packages []programDependencieAbout
@@ -577,7 +577,7 @@ func getDotNetProgramDependencies(proj *workspace.Project, transitive bool) ([]p
 				// Transitive package => name version
 				version = 1
 			} else {
-				return nil, errors.Errorf("Failed to parse \"%s\"", p)
+				return nil, fmt.Errorf("Failed to parse \"%s\"", p)
 			}
 			packages = append(packages, programDependencieAbout{
 				Name:    nameRequiredVersion[0],
@@ -607,18 +607,18 @@ type yarnLockTree struct {
 func parseYarnLockFile(path string) ([]programDependencieAbout, error) {
 	ex, err := executable.FindExecutable("yarn")
 	if err != nil {
-		return nil, errors.Wrapf(err, "Found %s but no yarn executable", path)
+		return nil, fmt.Errorf("Found %s but no yarn executable: %w", path, err)
 	}
 	cmdArgs := []string{"list", "--json"}
 	cmd := exec.Command(ex, cmdArgs...)
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to run \"%s %s\"", ex, strings.Join(cmdArgs, " "))
+		return nil, fmt.Errorf("Failed to run \"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
 	}
 
 	var lock yarnLock
 	if err = json.Unmarshal(out, &lock); err != nil {
-		return nil, errors.Wrapf(err, "Failed to parse\"%s %s\"", ex, strings.Join(cmdArgs, " "))
+		return nil, fmt.Errorf("Failed to parse\"%s %s\": %w", ex, strings.Join(cmdArgs, " "), err)
 	}
 	leafs := lock.Data.Trees
 
@@ -627,11 +627,11 @@ func parseYarnLockFile(path string) ([]programDependencieAbout, error) {
 	// Has the form name@version
 	splitName := func(index int, nameVersion string) (string, string, error) {
 		if nameVersion == "" {
-			return "", "", errors.Errorf("Expected \"name\" in dependency %d", index)
+			return "", "", fmt.Errorf("Expected \"name\" in dependency %d", index)
 		}
 		split := strings.LastIndex(nameVersion, "@")
 		if split == -1 {
-			return "", "", errors.Errorf("Failed to parse name and version from %s", nameVersion)
+			return "", "", fmt.Errorf("Failed to parse name and version from %s", nameVersion)
 		}
 		return nameVersion[:split], nameVersion[split+1:], nil
 	}
@@ -667,17 +667,17 @@ type npmPackage struct {
 func parseNpmLockFile(path string) ([]programDependencieAbout, error) {
 	ex, err := executable.FindExecutable("npm")
 	if err != nil {
-		return nil, errors.Wrapf(err, "Found %s but not npm", path)
+		return nil, fmt.Errorf("Found %s but not npm: %w", path, err)
 	}
 	cmdArgs := []string{"ls", "--json", "--depth=0"}
 	cmd := exec.Command(ex, cmdArgs...)
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Wrapf(err, `Failed to run "%s %s"`, ex, strings.Join(cmdArgs, " "))
+		return nil, fmt.Errorf(`Failed to run "%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
 	}
 	file := npmFile{}
 	if err = json.Unmarshal(out, &file); err != nil {
-		return nil, errors.Wrapf(err, `Failed to parse \"%s %s"`, ex, strings.Join(cmdArgs, " "))
+		return nil, fmt.Errorf(`Failed to parse \"%s %s": %w`, ex, strings.Join(cmdArgs, " "), err)
 	}
 	result := make([]programDependencieAbout, len(file.Dependencies))
 	var i int
@@ -704,7 +704,7 @@ func crossCheckPackageJSONFile(path string, file []byte,
 
 	var body packageJSON
 	if err := json.Unmarshal(file, &body); err != nil {
-		return nil, errors.Wrapf(err, "Could not parse %s", path)
+		return nil, fmt.Errorf("Could not parse %s: %w", path, err)
 	}
 	dependencies := make(map[string]string)
 	for k, v := range body.Dependencies {
@@ -761,19 +761,19 @@ func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDepen
 			return nil, err
 		}
 	} else if os.IsNotExist(err) {
-		return nil, errors.Errorf("Could not find either %s or %s", yarnFile, npmFile)
+		return nil, fmt.Errorf("Could not find either %s or %s", yarnFile, npmFile)
 	} else {
-		return nil, errors.Wrap(err, "Could not get node dependency data")
+		return nil, fmt.Errorf("Could not get node dependency data: %w", err)
 	}
 	if !transitive {
 		file, err := ioutil.ReadFile(packageFile)
 		if os.IsNotExist(err) {
-			return nil, errors.Errorf("Could not find %s. "+
+			return nil, fmt.Errorf("Could not find %s. "+
 				"Please include this in your report and run "+
 				`pulumi about --transitive" to get a list of used packages`,
 				packageFile)
 		} else if err != nil {
-			return nil, errors.Wrapf(err, "Could not read %s", packageFile)
+			return nil, fmt.Errorf("Could not read %s: %w", packageFile, err)
 		}
 		return crossCheckPackageJSONFile(packageFile, file, result)
 	}
@@ -793,7 +793,7 @@ func getProgramDependenciesAbout(proj *workspace.Project, root string,
 	case langDotnet:
 		return getDotNetProgramDependencies(proj, transitive)
 	default:
-		return nil, errors.Errorf("Unknown Language: %s", language)
+		return nil, fmt.Errorf("Unknown Language: %s", language)
 	}
 }
 
@@ -872,11 +872,11 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 	case langNodejs:
 		ex, err = executable.FindExecutable("node")
 		if err != nil {
-			return projectRuntimeAbout{}, errors.Wrap(err, "Could not find node executable")
+			return projectRuntimeAbout{}, fmt.Errorf("Could not find node executable: %w", err)
 		}
 		cmd := exec.Command(ex, "--version")
 		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, errors.Wrap(err, "Failed to get node version")
+			return projectRuntimeAbout{}, fmt.Errorf("Failed to get node version: %w", err)
 		}
 		version = string(out)
 	case langPython:
@@ -889,31 +889,31 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 			return projectRuntimeAbout{}, err
 		}
 		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, errors.Wrap(err, "Failed to get python version")
+			return projectRuntimeAbout{}, fmt.Errorf("Failed to get python version: %w", err)
 		}
 		version = "v" + strings.TrimPrefix(string(out), "Python ")
 	case langGo:
 		ex, err = executable.FindExecutable("go")
 		if err != nil {
-			return projectRuntimeAbout{}, errors.Wrap(err, "Could not find python executable")
+			return projectRuntimeAbout{}, fmt.Errorf("Could not find python executable: %w", err)
 		}
 		cmd := exec.Command(ex, "version")
 		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, errors.Wrap(err, "Failed to get go version")
+			return projectRuntimeAbout{}, fmt.Errorf("Failed to get go version: %w", err)
 		}
 		version = "v" + strings.TrimPrefix(string(out), "go version go")
 	case langDotnet:
 		ex, err = executable.FindExecutable("dotnet")
 		if err != nil {
-			return projectRuntimeAbout{}, errors.Wrap(err, "Could not find dotnet executable")
+			return projectRuntimeAbout{}, fmt.Errorf("Could not find dotnet executable: %w", err)
 		}
 		cmd := exec.Command(ex, "--version")
 		if out, err = cmd.Output(); err != nil {
-			return projectRuntimeAbout{}, errors.Wrap(err, "Failed to get dotnet version")
+			return projectRuntimeAbout{}, fmt.Errorf("Failed to get dotnet version: %w", err)
 		}
 		version = "v" + string(out)
 	default:
-		return projectRuntimeAbout{}, errors.Errorf("Unknown Language: %s", language)
+		return projectRuntimeAbout{}, fmt.Errorf("Unknown Language: %s: %w", language, err)
 	}
 	version = strings.TrimSpace(version)
 	return projectRuntimeAbout{

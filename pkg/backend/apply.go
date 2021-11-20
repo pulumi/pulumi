@@ -21,7 +21,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
@@ -171,7 +170,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			Options: choices,
 			Default: string(no),
 		}, &response, nil); err != nil {
-			return result.FromError(errors.Wrapf(err, "confirmation cancelled, not proceeding with the %s", kind))
+			return result.FromError(fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err))
 		}
 
 		if response == string(no) {

@@ -18,13 +18,13 @@ package passphrase
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -152,12 +152,12 @@ func getConfigPassphrase() (string, bool, error) {
 	if phraseFile, isOk := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); isOk {
 		phraseFilePath, err := filepath.Abs(phraseFile)
 		if err != nil {
-			return "", false, errors.Wrap(err, "unable to detect passphrase path")
+			return "", false, fmt.Errorf("unable to detect passphrase path: %w", err)
 		}
 
 		phraseDetails, err := ioutil.ReadFile(phraseFilePath)
 		if err != nil {
-			return "", false, errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
+			return "", false, fmt.Errorf("unable to read PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
 		}
 
 		return strings.TrimSpace(string(phraseDetails)), true, nil
@@ -171,7 +171,7 @@ func getConfigPassphrase() (string, bool, error) {
 func NewPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s localSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling state")
+		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
 	// This is not ideal, but we don't have a great way to prompt the user in this case, since this may be
@@ -197,7 +197,7 @@ func NewPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager
 	case err == ErrIncorrectPassphrase:
 		return newLockedPasspharseSecretsManager(s), nil
 	case err != nil:
-		return nil, errors.Wrap(err, "constructing secrets manager")
+		return nil, fmt.Errorf("constructing secrets manager: %w", err)
 	default:
 		return sm, nil
 	}

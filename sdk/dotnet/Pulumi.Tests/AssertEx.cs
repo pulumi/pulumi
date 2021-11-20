@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System.Collections.Generic;
+using System.Linq;
 using Xunit;
 
 namespace Pulumi.Tests
