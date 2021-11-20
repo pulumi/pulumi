@@ -222,7 +222,7 @@ jobs:
           repo: pulumi/pulumictl
       - name: Install gotestsum from source
         run: |
-          go install gotest.tools/gotestsum
+          go install gotest.tools/gotestsum@latest
       - name: Check gotestsum
         run: |
           gotestsum --help
