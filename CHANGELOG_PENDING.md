@@ -24,5 +24,8 @@
 - [codegen] - Forbid nonsensical combinations of schema property flags.
   [#8373](https://github.com/pulumi/pulumi/pull/8373)
 
-- [cli] - Catch expected errors in filestate backend stacks.
+- [sdk/python] - Correctly handle version checking python virtual environments.
+  [#8465](https://github.com/pulumi/pulumi/pull/8465)
+
+- [cli] - Catch expected errors in stacks with filestate backends.
   [#8455](https://github.com/pulumi/pulumi/pull/8455)
