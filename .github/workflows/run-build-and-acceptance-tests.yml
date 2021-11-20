@@ -6,6 +6,10 @@ on:
       - 'CHANGELOG.md'
       - 'CHANGELOG_PENDING.md'
 
+defaults:
+  run:
+    shell: bash
+
 env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -165,9 +169,9 @@ jobs:
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ matrix.platform }}
     steps:
-      - name: Update path
+      - name: Add ./bin to PATH
         run: |
-          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
+          echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -176,10 +180,10 @@ jobs:
         run: |
           go install gotest.tools/gotestsum@latest
         env:
-          GOBIN: ${{ runner.temp }}/opt/pulumi/bin
+          GOBIN: ${{ github.workspace }}/bin
       - name: Check gotestsum
         run: |
-          ls "${{ runner.temp }}/opt/pulumi/bin"
+          ls "${{ github.workspace }}/bin"
           gotestsum --help
       - name: Set PULUMI_TEST_SUBSET env var
         run: |
