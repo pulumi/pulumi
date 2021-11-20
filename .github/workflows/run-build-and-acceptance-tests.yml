@@ -165,6 +165,21 @@ jobs:
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install gotestsum from source
+        run: |
+          go install gotest.tools/gotestsum@latest
+        env:
+          GOBIN: bin
+      - name: Add bin to PATH
+        run: |
+          echo "bin" >> $GITHUB_PATH
+      - name: Check gotestsum
+        run: |
+          gotestsum --help
       - name: Set PULUMI_TEST_SUBSET env var
         run: |
           echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV
@@ -220,14 +235,6 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
-      - name: Install gotestsum from source
-        run: |
-          go install gotest.tools/gotestsum@latest
-        env:
-          GOBIN: ${{ runner.temp }}/opt/pulumi/bin
-      - name: Check gotestsum
-        run: |
-          gotestsum --help
       # Binary installer for gotestsum does not work because the
       # project distributes tarballs for Windows instead of zips
       # expected by the action.
