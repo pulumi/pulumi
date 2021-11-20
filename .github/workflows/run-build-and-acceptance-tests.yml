@@ -282,7 +282,7 @@ jobs:
           # path set to match PULUMI_LOCAL_NUGET
           path: ${{ github.workspace }}/nuget
       - run: |
-          dotnet nuget add source ${{ github.workspace }}/nuget
+          dotnet nuget add source $PWD/nuget
       - name: Verify Pulumi Version
         run: |
           which pulumi
