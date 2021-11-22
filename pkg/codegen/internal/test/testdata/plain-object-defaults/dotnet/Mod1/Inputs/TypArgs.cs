@@ -20,7 +20,7 @@ namespace Pulumi.Example.Mod1.Inputs
 
         public TypArgs()
         {
-            Val = "mod1";
+            Val = Utilities.GetEnv("PULUMI_EXAMPLE_MOD1_DEFAULT") ?? "mod1";
         }
     }
 }

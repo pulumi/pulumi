@@ -21,8 +21,8 @@ func (val *Typ) Defaults() *Typ {
 		return nil
 	}
 	tmp := *val
-	if tmp.Val == nil {
-		val_ := "mod1"
+	if isZero(tmp.Val) {
+		val_ := getEnvOrDefault("mod1", nil, "PULUMI_EXAMPLE_MOD1_DEFAULT").(string)
 		tmp.Val = &val_
 	}
 	return &tmp

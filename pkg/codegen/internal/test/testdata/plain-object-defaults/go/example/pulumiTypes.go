@@ -28,11 +28,11 @@ func (val *HelmReleaseSettings) Defaults() *HelmReleaseSettings {
 		return nil
 	}
 	tmp := *val
-	if tmp.Driver == nil {
+	if isZero(tmp.Driver) {
 		driver_ := getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string)
 		tmp.Driver = &driver_
 	}
-	if tmp.PluginsPath == nil {
+	if isZero(tmp.PluginsPath) {
 		pluginsPath_ := getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string)
 		tmp.PluginsPath = &pluginsPath_
 	}
@@ -222,11 +222,11 @@ func (val *KubeClientSettings) Defaults() *KubeClientSettings {
 		return nil
 	}
 	tmp := *val
-	if tmp.Burst == nil {
+	if isZero(tmp.Burst) {
 		burst_ := getEnvOrDefault(0, parseEnvInt, "PULUMI_K8S_CLIENT_BURST").(int)
 		tmp.Burst = &burst_
 	}
-	if tmp.Qps == nil {
+	if isZero(tmp.Qps) {
 		qps_ := getEnvOrDefault(0.0, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS").(float64)
 		tmp.Qps = &qps_
 	}
@@ -420,7 +420,7 @@ func (val *LayeredType) Defaults() *LayeredType {
 		return nil
 	}
 	tmp := *val
-	if tmp.Answer == nil {
+	if isZero(tmp.Answer) {
 		answer_ := 42.0
 		tmp.Answer = &answer_
 	}
@@ -428,13 +428,13 @@ func (val *LayeredType) Defaults() *LayeredType {
 
 	tmp.PlainOther = tmp.PlainOther.Defaults()
 
-	if tmp.Question == nil {
+	if isZero(tmp.Question) {
 		question_ := getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string)
 		tmp.Question = &question_
 	}
 	tmp.Recursive = tmp.Recursive.Defaults()
 
-	if tmp.Thinker == "" {
+	if isZero(tmp.Thinker) {
 		tmp.Thinker = "not a good interaction"
 	}
 	return &tmp
@@ -670,7 +670,7 @@ func (val *Typ) Defaults() *Typ {
 
 	tmp.Mod2 = tmp.Mod2.Defaults()
 
-	if tmp.Val == nil {
+	if isZero(tmp.Val) {
 		val_ := "mod main"
 		tmp.Val = &val_
 	}

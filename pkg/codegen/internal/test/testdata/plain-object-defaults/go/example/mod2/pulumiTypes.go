@@ -25,7 +25,7 @@ func (val *Typ) Defaults() *Typ {
 	tmp := *val
 	tmp.Mod1 = tmp.Mod1.Defaults()
 
-	if tmp.Val == nil {
+	if isZero(tmp.Val) {
 		val_ := "mod2"
 		tmp.Val = &val_
 	}

@@ -23,7 +23,7 @@ func (val *Container) Defaults() *Container {
 		return nil
 	}
 	tmp := *val
-	if tmp.Brightness == nil {
+	if isZero(tmp.Brightness) {
 		brightness_ := ContainerBrightness(1.0)
 		tmp.Brightness = &brightness_
 	}

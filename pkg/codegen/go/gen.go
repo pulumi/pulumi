@@ -1150,18 +1150,6 @@ func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessa
 	fmt.Fprintf(w, "}\n\n")
 }
 
-// Returns the default value used to perform "is default" checks.
-func (pkg *pkgContext) defaultComparisonValue(t schema.Type) string {
-	switch {
-	case schema.IsPrimitiveType(t):
-		return primitiveNilValue(t)
-	case isNilType(t):
-		return "nil"
-	default:
-		return strings.TrimSuffix(pkg.typeString(t), "Args") + "{}"
-	}
-}
-
 func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	properties []*schema.Property) error {
 	defaults := []*schema.Property{}
@@ -1186,8 +1174,8 @@ func (pkg *pkgContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 			if err != nil {
 				return err
 			}
-			defaultComp := pkg.defaultComparisonValue(p.Type)
-			fmt.Fprintf(w, "if tmp.%s == %s {\n", Title(p.Name), defaultComp)
+			pkg.needsUtils = true
+			fmt.Fprintf(w, "if isZero(tmp.%s) {\n", Title(p.Name))
 			pkg.assignProperty(w, p, "tmp", dv, !p.IsRequired())
 			fmt.Fprintf(w, "}\n")
 		} else if funcName := pkg.provideDefaultsFuncName(p.Type); funcName != "" {
@@ -1530,8 +1518,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			if err != nil {
 				return err
 			}
-			defaultComp := pkg.defaultComparisonValue(p.Type)
-			fmt.Fprintf(w, "\tif args.%s == %s {\n", Title(p.Name), defaultComp)
+			pkg.needsUtils = true
+			fmt.Fprintf(w, "\tif isZero(args.%s) {\n", Title(p.Name))
 			assign(p, dv)
 			fmt.Fprintf(w, "\t}\n")
 		} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" && !pkg.disableObjectDefaults {
@@ -3522,5 +3510,13 @@ func PkgVersion() (semver.Version, error) {
 		return semver.MustParse(fmt.Sprintf("%%s.0.0", vStr[2:])), nil
 	}
 	return semver.Version{}, fmt.Errorf("failed to determine the package version from %%s", pkgPath)
+}
+
+// isZero is a null safe check for if a value is it's types zero value.
+func isZero(v interface{}) bool {
+	if v == nil {
+		return true
+	}
+	return reflect.ValueOf(v).IsZero()
 }
 `

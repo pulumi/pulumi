@@ -20,7 +20,7 @@ class TypArgs:
         A test for namespaces (mod 1)
         """
         if val is None:
-            val = 'mod1'
+            val = (_utilities.get_env('PULUMI_EXAMPLE_MOD1_DEFAULT') or 'mod1')
         if val is not None:
             pulumi.set(__self__, "val", val)
 

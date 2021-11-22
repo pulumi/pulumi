@@ -158,7 +158,7 @@ export namespace mod1 {
     export function typArgsProvideDefaults(val: TypArgs): TypArgs {
         return {
             ...val,
-            val: (val.val) ?? "mod1",
+            val: (val.val) ?? (utilities.getEnv("PULUMI_EXAMPLE_MOD1_DEFAULT") || "mod1"),
         };
     }
 }
