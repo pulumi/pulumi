@@ -59,87 +59,90 @@ builds:
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
   main: ./go/pulumi-language-go
+
+
+
 # UNIX builds
-- id: pulumi-unix
-  binary: pulumi
-  dir: pkg
-  goarch:
-    - amd64
-    - arm64
-  goos:
-    - linux
-    - darwin
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./cmd/pulumi
-- id: pulumi-language-nodejs-unix
-  binary: pulumi-language-nodejs
-  dir: sdk
-  goarch:
-    - amd64
-    - arm64
-  goos:
-    - linux
-    - darwin
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./nodejs/cmd/pulumi-language-nodejs
-- id: pulumi-language-python-unix
-  binary: pulumi-language-python
-  dir: sdk
-  goarch:
-    - amd64
-    - arm64
-  goos:
-    - linux
-    - darwin
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./python/cmd/pulumi-language-python
-- id: pulumi-language-dotnet-unix
-  binary: pulumi-language-dotnet
-  dir: sdk
-  goarch:
-    - amd64
-    - arm64
-  goos:
-    - linux
-    - darwin
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./dotnet/cmd/pulumi-language-dotnet
-- id: pulumi-language-go-unix
-  binary: pulumi-language-go
-  dir: sdk
-  goarch:
-    - amd64
-    - arm64
-  goos:
-    - linux
-    - darwin
-  ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
-  main: ./go/pulumi-language-go
+# - id: pulumi-unix
+#   binary: pulumi
+#   dir: pkg
+#   goarch:
+#     - amd64
+#     - arm64
+#   goos:
+#     - linux
+#     - darwin
+#   ldflags:
+#     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+#   main: ./cmd/pulumi
+# - id: pulumi-language-nodejs-unix
+#   binary: pulumi-language-nodejs
+#   dir: sdk
+#   goarch:
+#     - amd64
+#     - arm64
+#   goos:
+#     - linux
+#     - darwin
+#   ldflags:
+#     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+#   main: ./nodejs/cmd/pulumi-language-nodejs
+# - id: pulumi-language-python-unix
+#   binary: pulumi-language-python
+#   dir: sdk
+#   goarch:
+#     - amd64
+#     - arm64
+#   goos:
+#     - linux
+#     - darwin
+#   ldflags:
+#     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+#   main: ./python/cmd/pulumi-language-python
+# - id: pulumi-language-dotnet-unix
+#   binary: pulumi-language-dotnet
+#   dir: sdk
+#   goarch:
+#     - amd64
+#     - arm64
+#   goos:
+#     - linux
+#     - darwin
+#   ldflags:
+#     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+#   main: ./dotnet/cmd/pulumi-language-dotnet
+# - id: pulumi-language-go-unix
+#   binary: pulumi-language-go
+#   dir: sdk
+#   goarch:
+#     - amd64
+#     - arm64
+#   goos:
+#     - linux
+#     - darwin
+#   ldflags:
+#     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+#   main: ./go/pulumi-language-go
 
 
 archives:
-- id: pulumi-unix
-  wrap_in_directory: pulumi
-  builds:
-    - pulumi-language-dotnet-unix
-    - pulumi-language-go-unix
-    - pulumi-language-python-unix
-    - pulumi-language-nodejs-unix
-    - pulumi-unix
-  replacements:
-    amd64: x64
-  files:
-    - pulumi-resource-pulumi-nodejs
-    - pulumi-resource-pulumi-python
-    - pulumi-analyzer-policy
-    - pulumi-analyzer-policy-python
-    - pulumi-language-python-exec
-  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+# - id: pulumi-unix
+#   wrap_in_directory: pulumi
+#   builds:
+#     - pulumi-language-dotnet-unix
+#     - pulumi-language-go-unix
+#     - pulumi-language-python-unix
+#     - pulumi-language-nodejs-unix
+#     - pulumi-unix
+#   replacements:
+#     amd64: x64
+#   files:
+#     - pulumi-resource-pulumi-nodejs
+#     - pulumi-resource-pulumi-python
+#     - pulumi-analyzer-policy
+#     - pulumi-analyzer-policy-python
+#     - pulumi-language-python-exec
+#   name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
 - id: pulumi-windows
   wrap_in_directory: pulumi/bin
   builds:

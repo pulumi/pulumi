@@ -141,7 +141,8 @@ jobs:
     needs: build
     strategy:
       matrix:
-        platform: [ ubuntu-latest, macos-latest, windows-latest ]
+        # platform: [ ubuntu-latest, macos-latest, windows-latest ]
+        platform: [ windows-latest ]
         go-version: [ 1.17.x ]
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
