@@ -902,8 +902,14 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
 
-	var typs []docNestedType
+	var sortedTokens []string
 	for token := range tokens {
+		sortedTokens = append(sortedTokens, token)
+	}
+	sort.Strings(sortedTokens)
+
+	var typs []docNestedType
+	for _, token := range sortedTokens {
 		for _, t := range mod.pkg.Types {
 			switch typ := t.(type) {
 			case *schema.ObjectType:
@@ -1957,8 +1963,14 @@ func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (ma
 
 	glog.V(3).Infoln("generating package docs now...")
 	files := fs{}
-	for _, mod := range dctx.modules() {
-		if err := mod.gen(files); err != nil {
+	modules := []string{}
+	modMap := dctx.modules()
+	for k := range modMap {
+		modules = append(modules, k)
+	}
+	sort.Strings(modules)
+	for _, mod := range modules {
+		if err := modMap[mod].gen(files); err != nil {
 			return nil, err
 		}
 	}

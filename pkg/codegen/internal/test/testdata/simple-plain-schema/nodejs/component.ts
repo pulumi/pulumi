@@ -38,7 +38,7 @@ export class Component extends pulumi.ComponentResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args: ComponentArgs, opts?: pulumi.ComponentResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
             if ((!args || args.a === undefined) && !opts.urn) {
@@ -50,31 +50,31 @@ export class Component extends pulumi.ComponentResource {
             if ((!args || args.e === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'e'");
             }
-            inputs["a"] = args ? args.a : undefined;
-            inputs["b"] = args ? args.b : undefined;
-            inputs["bar"] = args ? args.bar : undefined;
-            inputs["baz"] = args ? args.baz : undefined;
-            inputs["bazMap"] = args ? args.bazMap : undefined;
-            inputs["c"] = args ? args.c : undefined;
-            inputs["d"] = args ? args.d : undefined;
-            inputs["e"] = args ? args.e : undefined;
-            inputs["f"] = args ? args.f : undefined;
-            inputs["foo"] = args ? args.foo : undefined;
+            resourceInputs["a"] = args ? args.a : undefined;
+            resourceInputs["b"] = args ? args.b : undefined;
+            resourceInputs["bar"] = args ? args.bar : undefined;
+            resourceInputs["baz"] = args ? args.baz : undefined;
+            resourceInputs["bazMap"] = args ? args.bazMap : undefined;
+            resourceInputs["c"] = args ? args.c : undefined;
+            resourceInputs["d"] = args ? args.d : undefined;
+            resourceInputs["e"] = args ? args.e : undefined;
+            resourceInputs["f"] = args ? args.f : undefined;
+            resourceInputs["foo"] = args ? args.foo : undefined;
         } else {
-            inputs["a"] = undefined /*out*/;
-            inputs["b"] = undefined /*out*/;
-            inputs["bar"] = undefined /*out*/;
-            inputs["baz"] = undefined /*out*/;
-            inputs["c"] = undefined /*out*/;
-            inputs["d"] = undefined /*out*/;
-            inputs["e"] = undefined /*out*/;
-            inputs["f"] = undefined /*out*/;
-            inputs["foo"] = undefined /*out*/;
+            resourceInputs["a"] = undefined /*out*/;
+            resourceInputs["b"] = undefined /*out*/;
+            resourceInputs["bar"] = undefined /*out*/;
+            resourceInputs["baz"] = undefined /*out*/;
+            resourceInputs["c"] = undefined /*out*/;
+            resourceInputs["d"] = undefined /*out*/;
+            resourceInputs["e"] = undefined /*out*/;
+            resourceInputs["f"] = undefined /*out*/;
+            resourceInputs["foo"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(Component.__pulumiType, name, inputs, opts, true /*remote*/);
+        super(Component.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 }
 

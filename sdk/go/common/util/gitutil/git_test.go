@@ -25,7 +25,7 @@ import (
 )
 
 func TestParseGitRepoURL(t *testing.T) {
-	test := func(expectedURL string, expectedURLPath string, rawurl string) {
+	test := func(expectedURL, expectedURLPath string, rawurl string) {
 		actualURL, actualURLPath, err := ParseGitRepoURL(rawurl)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedURL, actualURL)

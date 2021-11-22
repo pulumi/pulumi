@@ -1,40 +1,28 @@
 ### Improvements
-- Adds CI detector for Buildkite
-  [#7933](https://github.com/pulumi/pulumi/pull/7933)
 
-- [cli] - Add `--exclude-protected` flag to `pulumi destroy`.
-  [#8359](https://github.com/pulumi/pulumi/pull/8359)
+- [cli] - When running `pulumi new https://github.com/name/repo`, check 
+  for branch `main` if branch `master` doesn't exist.
+  [#8463](https://github.com/pulumi/pulumi/pull/8463)
 
-- [cli] Adding the ability to use `pulumi org set [name]` to set a default org
-  to use when creating a stacks in the Pulumi Service backend or self-hosted Service
-  [#8352](https://github.com/pulumi/pulumi/pull/8352)
+- [codegen/python] - Program generator now uses `fn_output` forms where
+  appropriate, simplifying auto-generated examples.
+  [#8433](https://github.com/pulumi/pulumi/pull/8433)
 
-- [schema] Add IsOverlay option to disable codegen for particular types
-  [#8338](https://github.com/pulumi/pulumi/pull/8338)
-  [#8425](https://github.com/pulumi/pulumi/pull/8425)
+- [codegen/go] - Program generator now uses fnOutput forms where
+  appropriate, simplifying auto-generated examples.
+  [#8431](https://github.com/pulumi/pulumi/pull/8431)
 
-- [sdk/dotnet] - Marshal output values.
-  [#8316](https://github.com/pulumi/pulumi/pull/8316)
-
-- [sdk/python] - Unmarshal output values in component provider.
-  [#8212](https://github.com/pulumi/pulumi/pull/8212)
-
-- [sdk/nodejs] - Unmarshal output values in component provider.
-  [#8205](https://github.com/pulumi/pulumi/pull/8205)
-
-- [sdk/nodejs] - Allow returning failures from Call in the provider without setting result outputs.
-  [#8424](https://github.com/pulumi/pulumi/pull/8424)
-
-- [sdk/go] - Allow specifying Call failures from the provider.
-  [#8424](https://github.com/pulumi/pulumi/pull/8424)
+- [codegen/dotnet] - Program generator now uses `Invoke` forms where
+  appropriate, simplifying auto-generated examples.
+  [#8432](https://github.com/pulumi/pulumi/pull/8432)
 
 ### Bug Fixes
 
-- [engine] - Compute dependents correctly during targeted deletes.
-  [#8360](https://github.com/pulumi/pulumi/pull/8360)
+- [codegen/typescript] - Respect default values in Pulumi object types.
+  [#8400](https://github.com/pulumi/pulumi/pull/8400)
 
-- [cli/engine] - Update command respects `--target-dependents`
-  [#8395](https://github.com/pulumi/pulumi/pull/8395)
+- [sdk/python] - Correctly handle version checking python virtual environments.
+  [#8465](https://github.com/pulumi/pulumi/pull/8465)
 
-- [docs] - Fix broken lists in dotnet docs
-  [docs#6558](https://github.com/pulumi/docs/issues/6558)
+- [cli] - Catch expected errors in stacks with filestate backends.
+  [#8455](https://github.com/pulumi/pulumi/pull/8455)

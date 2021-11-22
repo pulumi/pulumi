@@ -187,3 +187,20 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	}
 
 }
+
+func TestDrillError(t *testing.T) {
+	// Login to a temp dir filestate backend
+	tmpDir, err := ioutil.TempDir("", "filestatebackend")
+	assert.NoError(t, err)
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	// Get a non-existent stack and expect a nil error because it won't be found.
+	stackRef, err := b.ParseStackReference("dev")
+	if err != nil {
+		t.Fatalf("unexpected error %v when parsing stack reference", err)
+	}
+	_, err = b.GetStack(ctx, stackRef)
+	assert.Nil(t, err)
+}

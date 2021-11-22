@@ -41,19 +41,19 @@ export class Dog extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: DogArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["bone"] = undefined /*out*/;
+            resourceInputs["bone"] = undefined /*out*/;
         } else {
-            inputs["bone"] = undefined /*out*/;
+            resourceInputs["bone"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
         const replaceOnChanges = { replaceOnChanges: ["bone"] };
         opts = pulumi.mergeOptions(opts, replaceOnChanges);
-        super(Dog.__pulumiType, name, inputs, opts);
+        super(Dog.__pulumiType, name, resourceInputs, opts);
     }
 }
 

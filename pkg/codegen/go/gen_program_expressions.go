@@ -195,7 +195,18 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if module == "" {
 			module = pkg
 		}
-		name := fmt.Sprintf("%s.%s", module, fn)
+		isOut, outArgs, outArgsType := pcl.RecognizeOutputVersionedInvoke(expr)
+		if isOut {
+			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType)
+			if err != nil {
+				panic(fmt.Errorf("Error when generating an output-versioned Invoke: %w", err))
+			}
+			g.Fgenf(w, "%s.%sOutput(ctx, ", module, fn)
+			g.genObjectConsExpressionWithTypeName(w, outArgs, outArgsType, outTypeName)
+		} else {
+			g.Fgenf(w, "%s.%s(ctx, ", module, fn)
+			g.Fgenf(w, "%.v", expr.Args[1])
+		}
 
 		optionsBag := ""
 		var buf bytes.Buffer
@@ -205,9 +216,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.Fgenf(&buf, ", nil")
 		}
 		optionsBag = buf.String()
-
-		g.Fgenf(w, "%s(ctx, ", name)
-		g.Fgenf(w, "%.v", expr.Args[1])
 		g.Fgenf(w, "%v)", optionsBag)
 	case "join":
 		g.Fgenf(w, "strings.Join(%v, %v)", expr.Args[1], expr.Args[0])
@@ -244,6 +252,32 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
+}
+
+// Currently args type for output-versioned invokes are named
+// `FOutputArgs`, but this is not yet understood by `tokenToType`. Use
+// this function to compensate.
+func outputVersionFunctionArgTypeName(t model.Type) (string, error) {
+	schemaType, ok := pcl.GetSchemaForType(t)
+	if !ok {
+		return "", fmt.Errorf("No schema.Type type found for the given model.Type")
+	}
+
+	objType, ok := schemaType.(*schema.ObjectType)
+	if !ok {
+		return "", fmt.Errorf("Expected a schema.ObjectType, got %s", schemaType.String())
+	}
+
+	pkg := &pkgContext{pkg: &schema.Package{Name: "main"}}
+
+	var ty string
+	if pkg.isExternalReference(objType) {
+		ty = pkg.contextForExternalReferenceType(objType).tokenToType(objType.Token)
+	} else {
+		ty = pkg.tokenToType(objType.Token)
+	}
+
+	return fmt.Sprintf("%sOutputArgs", strings.TrimSuffix(ty, "Args")), nil
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
@@ -316,15 +350,10 @@ func (g *generator) genObjectConsExpression(
 	w io.Writer,
 	expr *model.ObjectConsExpression,
 	destType model.Type,
-	isInput bool,
-) {
-	if len(expr.Items) == 0 {
-		g.Fgenf(w, "nil")
-		return
-	}
+	isInput bool) {
 
-	var temps []interface{}
 	isInput = isInput || isInputty(destType)
+
 	typeName := g.argumentTypeName(expr, destType, isInput)
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok {
@@ -334,6 +363,21 @@ func (g *generator) genObjectConsExpression(
 		}
 	}
 
+	g.genObjectConsExpressionWithTypeName(w, expr, destType, typeName)
+}
+
+func (g *generator) genObjectConsExpressionWithTypeName(
+	w io.Writer,
+	expr *model.ObjectConsExpression,
+	destType model.Type,
+	typeName string) {
+
+	if len(expr.Items) == 0 {
+		g.Fgenf(w, "nil")
+		return
+	}
+
+	var temps []interface{}
 	// TODO: @pgavlin --- ineffectual assignment, was there some work in flight here?
 	// if strings.HasSuffix(typeName, "Args") {
 	// 	isInput = true
@@ -360,7 +404,7 @@ func (g *generator) genObjectConsExpression(
 	}
 	g.genTemps(w, temps)
 
-	if isMap || !strings.HasSuffix(typeName, "Args") {
+	if isMap || !strings.HasSuffix(typeName, "Args") || strings.HasSuffix(typeName, "OutputArgs") {
 		g.Fgenf(w, "%s", typeName)
 	} else {
 		g.Fgenf(w, "&%s", typeName)
@@ -814,9 +858,15 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	isInput := false
 	retType := g.argumentTypeName(nil, then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
-	typeAssertion := fmt.Sprintf(".(%sOutput)", retType)
-	if !strings.HasPrefix(retType, "pulumi.") {
-		typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+	// TODO[pulumi/pulumi#8453] incomplete pattern code below.
+	var typeAssertion string
+	if retType == "[]string" {
+		typeAssertion = ".(pulumi.StringArrayOutput)"
+	} else {
+		typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
+		if !strings.HasPrefix(retType, "pulumi.") {
+			typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+		}
 	}
 
 	if len(applyArgs) == 1 {

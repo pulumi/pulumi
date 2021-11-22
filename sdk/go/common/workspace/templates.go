@@ -287,7 +287,7 @@ func retrieveURLTemplates(rawurl string, offline bool, templateKind TemplateKind
 
 	var fullPath string
 	if fullPath, err = RetrieveGitFolder(rawurl, temp); err != nil {
-		return TemplateRepository{}, err
+		return TemplateRepository{}, fmt.Errorf("Failed to retrieve git folder: %w", err)
 	}
 
 	return TemplateRepository{
@@ -372,16 +372,35 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 
 	ref, commit, subDirectory, err := gitutil.GetGitReferenceNameOrHashAndSubDirectory(url, urlPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get git ref: %w", err)
 	}
-
 	if ref != "" {
-		if cloneErr := gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/); cloneErr != nil {
-			return "", cloneErr
+
+		// Different reference attempts to cycle through
+		// We default to master then main in that order. We need to order them to avoid breaking
+		// already existing processes for repos that already have a master and main branch.
+		refAttempts := []plumbing.ReferenceName{plumbing.Master, plumbing.NewBranchReferenceName("main")}
+
+		if ref != plumbing.HEAD {
+			// If we have a non-default reference, we just use it
+			refAttempts = []plumbing.ReferenceName{ref}
 		}
+
+		var cloneErr error
+		for _, ref := range refAttempts {
+			// Attempt the clone. If it succeeds, break
+			cloneErr := gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/)
+			if cloneErr == nil {
+				break
+			}
+		}
+		if cloneErr != nil {
+			return "", fmt.Errorf("failed to clone ref '%s': %w", refAttempts[len(refAttempts)-1], cloneErr)
+		}
+
 	} else {
 		if cloneErr := gitutil.GitCloneAndCheckoutCommit(url, commit, path); cloneErr != nil {
-			return "", cloneErr
+			return "", fmt.Errorf("failed to clone and checkout %s(%s): %w", url, commit, cloneErr)
 		}
 	}
 

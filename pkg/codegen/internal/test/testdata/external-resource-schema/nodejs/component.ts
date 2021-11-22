@@ -46,7 +46,7 @@ export class Component extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args: ComponentArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
             if ((!args || args.requiredMetadata === undefined) && !opts.urn) {
@@ -58,24 +58,24 @@ export class Component extends pulumi.CustomResource {
             if ((!args || args.requiredMetadataMap === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'requiredMetadataMap'");
             }
-            inputs["metadata"] = args ? args.metadata : undefined;
-            inputs["metadataArray"] = args ? args.metadataArray : undefined;
-            inputs["metadataMap"] = args ? args.metadataMap : undefined;
-            inputs["requiredMetadata"] = args ? args.requiredMetadata : undefined;
-            inputs["requiredMetadataArray"] = args ? args.requiredMetadataArray : undefined;
-            inputs["requiredMetadataMap"] = args ? args.requiredMetadataMap : undefined;
-            inputs["provider"] = undefined /*out*/;
-            inputs["securityGroup"] = undefined /*out*/;
-            inputs["storageClasses"] = undefined /*out*/;
+            resourceInputs["metadata"] = args ? args.metadata : undefined;
+            resourceInputs["metadataArray"] = args ? args.metadataArray : undefined;
+            resourceInputs["metadataMap"] = args ? args.metadataMap : undefined;
+            resourceInputs["requiredMetadata"] = args ? args.requiredMetadata : undefined;
+            resourceInputs["requiredMetadataArray"] = args ? args.requiredMetadataArray : undefined;
+            resourceInputs["requiredMetadataMap"] = args ? args.requiredMetadataMap : undefined;
+            resourceInputs["provider"] = undefined /*out*/;
+            resourceInputs["securityGroup"] = undefined /*out*/;
+            resourceInputs["storageClasses"] = undefined /*out*/;
         } else {
-            inputs["provider"] = undefined /*out*/;
-            inputs["securityGroup"] = undefined /*out*/;
-            inputs["storageClasses"] = undefined /*out*/;
+            resourceInputs["provider"] = undefined /*out*/;
+            resourceInputs["securityGroup"] = undefined /*out*/;
+            resourceInputs["storageClasses"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(Component.__pulumiType, name, inputs, opts);
+        super(Component.__pulumiType, name, resourceInputs, opts);
     }
 }
 
