@@ -134,7 +134,7 @@ jobs:
 
   build:
     name: Build
-    uses: pulumi/pulumi/.github/workflows/build.yml@487cbf87b26496dc7f205eb85912689a36830d6c
+    uses: pulumi/pulumi/.github/workflows/build.yml@8e2f80d5147fbf30d06370f87c02c5d361198a55
 
   test:
     name: Test
