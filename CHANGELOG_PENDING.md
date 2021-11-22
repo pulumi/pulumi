@@ -29,3 +29,6 @@
 
 - [cli] - Catch expected errors in stacks with filestate backends.
   [#8455](https://github.com/pulumi/pulumi/pull/8455)
+  
+- [sdk/dotnet] - Do not attempt to serialize unknown values.
+  [#8475](https://github.com/pulumi/pulumi/pull/8475)
