@@ -125,7 +125,7 @@ func newUpCmd() *cobra.Command {
 			replaceURNs = append(replaceURNs, resource.URN(tr))
 		}
 
-		refreshOption, err := getRefreshOption(proj, refresh, planFilePath)
+		refreshOption, err := getRefreshOption(proj, refresh)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -310,7 +310,7 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 		}
 
-		refreshOption, err := getRefreshOption(proj, refresh, planFilePath)
+		refreshOption, err := getRefreshOption(proj, refresh)
 		if err != nil {
 			return result.FromError(err)
 		}

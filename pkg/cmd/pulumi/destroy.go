@@ -148,7 +148,7 @@ func newDestroyCmd() *cobra.Command {
 				targetUrns = append(targetUrns, resource.URN(t))
 			}
 
-			refreshOption, err := getRefreshOption(proj, refresh, "")
+			refreshOption, err := getRefreshOption(proj, refresh)
 			if err != nil {
 				return result.FromError(err)
 			}

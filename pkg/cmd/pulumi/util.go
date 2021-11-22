@@ -846,7 +846,7 @@ func checkDeploymentVersionError(err error, stackName string) error {
 	return fmt.Errorf("could not deserialize deployment: %w", err)
 }
 
-func getRefreshOption(proj *workspace.Project, refresh string, planFilePath string) (bool, error) {
+func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	// we want to check for an explicit --refresh or a --refresh=true or --refresh=false
 	// refresh is assigned the empty string by default to distinguish the difference between
 	// when the user actually interacted with the cli argument (`NoOptDefVal`)
@@ -865,12 +865,7 @@ func getRefreshOption(proj *workspace.Project, refresh string, planFilePath stri
 		return true, nil
 	}
 
-	// if the user has passed a plan file then the default behaviour is to refresh
-	if planFilePath != "" {
-		return true, nil
-	}
-
-	// else the default functionality right now is to always skip a refresh
+	// the default functionality right now is to always skip a refresh
 	return false, nil
 }
 
