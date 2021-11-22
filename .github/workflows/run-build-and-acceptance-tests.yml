@@ -268,6 +268,7 @@ jobs:
         run: |
           mkdir -p bin
           unzip -d bin artifacts/go/*.zip
+          mv $PWD/bin/pulumi/bin/* $PWD/bin/pulumi/
           echo "$PWD/bin/pulumi" >> $GITHUB_PATH
       - name: Download Pulumi .NET NuGet packages
         uses: actions/download-artifact@v2
