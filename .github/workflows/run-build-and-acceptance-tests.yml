@@ -274,8 +274,9 @@ jobs:
           name: pulumi-nuget-packages
           # path set to match PULUMI_LOCAL_NUGET
           path: ${{ github.workspace }}/nuget
-      - run: |
-          dotnet nuget add source $PWD/nuget
+      - name: Add NuGet packages as a local NuGet source
+        run: |
+          dotnet nuget add source $(./scripts/normpath $PWD/nuget)
       - name: Verify Pulumi Version
         run: |
           which pulumi
@@ -320,29 +321,6 @@ jobs:
       - name: Summarize Test Times by Indivudal Test
         run: |
           goteststats -statistic test-time test-results/*.json | head -n 100
-
-  windows-build:
-    name: Debug NuGet issue on Windows
-    runs-on: windows-latest
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ env.PR_COMMIT_SHA }}
-      - name: Set up DotNet ${{ matrix.dotnet-version }}
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: ${{ matrix.dotnet-version }}
-      - run: |
-          echo "PWD=$PWD"
-          mkdir "$PWD/nuget"
-          ls "$PWD/nuget"
-      - run: |
-          echo "PWD: $PWD"
-          echo "github.workspace: ${{ github.workspace }}"
-          P=$(./scripts/normpath $PWD/nuget)
-          echo "normed path: $P"
-          dotnet nuget add source $P
 
   # windows-build:
   #   name: Windows Build + Test
