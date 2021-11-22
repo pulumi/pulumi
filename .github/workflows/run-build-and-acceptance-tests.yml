@@ -188,12 +188,6 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Check Python Version
-        run: |
-           python --version
-      - name: Check Python Version under Make
-        run: |
-           make check_python_version
       - name: Set up DotNet ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v1
         with:
@@ -219,6 +213,12 @@ jobs:
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
+      - name: Check Python Version
+        run: |
+           python --version
+      - name: Check Python Version under Make
+        run: |
+           make check_python_version
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
