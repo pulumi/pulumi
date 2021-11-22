@@ -1,10 +1,8 @@
 package tests
 
 import (
-	"fmt"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -14,56 +12,33 @@ import (
 	"resource-property-overlap/example"
 )
 
+// Tests that XArray{x}.ToXArrayOutput().Index(pulumi.Int(0)) == x.
 func TestArrayOutputIndex(t *testing.T) {
 	err := pulumi.RunErr(func(ctx *pulumi.Context) error {
-		rec, err := example.NewRec(ctx, "rec", &example.RecArgs{})
+
+		r1, err := example.NewRec(ctx, "rec1", &example.RecArgs{})
 		if err != nil {
 			return err
 		}
 
-		var u1, u2 pulumi.URNOutput
+		r1o := r1.ToRecOutput()
 
-		u1 = rec.URN()
-
-		u2 = example.RecArray{rec}.ToRecArrayOutput().
-			Index(pulumi.Int(0)).
-			ApplyT(func(rec2 *example.Rec) pulumi.URNOutput {
-				return rec2.URN()
-			}).
-			ApplyT(func(x interface{}) pulumi.URN {
-				return x.(pulumi.URN)
-			}).(pulumi.URNOutput)
+		r2o := example.RecArray{r1o}.ToRecArrayOutput().
+			Index(pulumi.Int(0))
 
 		wg := &sync.WaitGroup{}
 		wg.Add(1)
 
-		pulumi.All(u1, u2).ApplyT(func(all []interface{}) int {
-			urn1 := all[0].(pulumi.URN)
-			urn2 := all[1].(pulumi.URN)
-			assert.Equal(t, urn1, urn2)
+		pulumi.All(r1o, r2o).ApplyT(func(xs []interface{}) int {
+			assert.Equal(t, xs[0], xs[1])
 			wg.Done()
 			return 0
 		})
 
-		return waitOrTimeout(wg)
-
-	}, pulumi.WithMocks("project", "stack", mocks(1)))
-	assert.NoError(t, err)
-}
-
-func waitOrTimeout(wg *sync.WaitGroup) error {
-	c := make(chan struct{})
-	go func() {
-		defer close(c)
 		wg.Wait()
-	}()
-	select {
-	case <-c:
 		return nil
-	case <-time.After(1 * time.Second):
-		return fmt.Errorf("Timeout")
-	}
-
+	}, pulumi.WithMocks("project", "stack", mocks(0)))
+	assert.NoError(t, err)
 }
 
 type mocks int
