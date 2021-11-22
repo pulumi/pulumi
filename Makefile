@@ -118,3 +118,7 @@ test_build:: $(TEST_ALL_DEPS)
 test_all:: test_build
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
+
+
+check_python_version::
+	python --version
