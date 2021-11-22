@@ -18,7 +18,10 @@
 
 ### Bug Fixes
 
-- [codegen/typescript] - Respect default values in Pulumi object types.
+- [cli/nodejs] - Allow specifying the tsconfig file used in Pulumi.yaml.
+  [#8452](https://github.com/pulumi/pulumi/pull/8452)
+
+- [codegen/nodejs] - Respect default values in Pulumi object types.
   [#8400](https://github.com/pulumi/pulumi/pull/8400)
 
 - [sdk/python] - Correctly handle version checking python virtual environments.
