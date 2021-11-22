@@ -150,7 +150,10 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 var isSecret = data.IsSecret;
 
                 var valueSerializer = new Serializer(_excessiveDebugOutput);
-                var value = await valueSerializer.SerializeAsync($"{ctx}.id", data.Value, keepResources, keepOutputValues: false).ConfigureAwait(false);
+                object? value = isKnown
+                    ? await valueSerializer.SerializeAsync(
+                        $"{ctx}.id", data.Value, keepResources, keepOutputValues: false).ConfigureAwait(false)
+                    : null;
                 var promiseDeps = valueSerializer.DependentResources;
                 DependentResources.UnionWith(promiseDeps);
                 propResources.UnionWith(promiseDeps);
