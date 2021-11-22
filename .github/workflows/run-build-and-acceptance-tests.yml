@@ -339,7 +339,7 @@ jobs:
           ls "$PWD/nuget"
       - run: |
           echo "PWD: $PWD"
-          echo "github.workspace: ${{ github.workspace }"
+          echo "github.workspace: ${{ github.workspace }}"
           P=$(./scripts/normpath $PWD/nuget)
           echo "normed path: $P"
           dotnet nuget add source $P
