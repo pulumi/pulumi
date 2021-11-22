@@ -18,10 +18,10 @@ include ../../build/common.mk
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 lint::
-	./node_modules/.bin/eslint -c .eslintrc.js --ext .ts .
+	eslint -c .eslintrc.js --ext .ts .
 
 build_package::
-	./node_modules/.bin/tsc
+	yarn run tsc
 	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	cp -R tests/automation/data/. bin/tests/automation/data/
