@@ -18,10 +18,10 @@ include ../../build/common.mk
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 lint::
-	./node_modules/.bin/eslint -c .eslintrc.js --ext .ts .
+	eslint -c .eslintrc.js --ext .ts .
 
 build_package::
-	./node_modules/.bin/tsc
+	yarn run tsc
 	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	cp -R tests/automation/data/. bin/tests/automation/data/
@@ -38,8 +38,8 @@ build_plugin::
 build:: build_package build_plugin
 
 install_package:: build
-	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
-	cp dist/pulumi-analyzer-policy "$(PULUMI_BIN)"
+	cp dist/pulumi-resource-pulumi-nodejs* "$(PULUMI_BIN)"
+	cp dist/pulumi-analyzer-policy* "$(PULUMI_BIN)"
 
 install_plugin:: build
 	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
@@ -47,28 +47,37 @@ install_plugin:: build
 install:: install_package install_plugin
 
 unit_tests:: $(TEST_ALL_DEPS)
-	$(RUN_TESTSUITE) unit-nodejs ./node_modules/.bin/nyc -x 'bin/tests/runtime/*ClosureCases*.js' -s mocha --timeout 120000 --exclude 'bin/tests/automation/**/*.spec.js' --exclude 'bin/tests/runtime/closureLoader.spec.js' 'bin/tests/**/*.spec.js'
-	$(RUN_TESTSUITE) unit-nodejs mocha --timeout 120000 'bin/tests/runtime/closureLoader.spec.js'
-	$(RUN_TESTSUITE) unit-with-mocks-nodejs ./node_modules/.bin/nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
+	$(TESTSUITE_SKIPPED) --skip-windows unit-nodejs || \
+		nyc -x 'bin/tests/runtime/*ClosureCases*.js' -s mocha --timeout 120000 \
+			--exclude 'bin/tests/automation/**/*.spec.js' \
+			--exclude 'bin/tests/runtime/closureLoader.spec.js' \
+			'bin/tests/**/*.spec.js'
+	$(TESTSUITE_SKIPPED) --skip-windows unit-nodejs || \
+		mocha --timeout 120000 'bin/tests/runtime/closureLoader.spec.js'
+	$(TESTSUITE_SKIPPED) --skip-windows unit-with-mocks-nodejs || \
+		nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 auto_tests:: $(TEST_ALL_DEPS)
-	$(RUN_TESTSUITE) auto-nodejs ./node_modules/.bin/nyc -s mocha --timeout 120000 'bin/tests/automation/**/*.spec.js'
+	$(TESTSUITE_SKIPPED) --skip-windows auto-nodejs || nyc -s mocha --timeout 120000 'bin/tests/automation/**/*.spec.js'
 
 sxs_tests:: $(TEST_ALL_DEPS)
-	pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd
-	pushd tests/sxs_ts_latest && yarn ; tsc ; popd
+	$(TESTSUITE_SKIPPED) --skip-windows sxs || ( \
+		pushd tests/sxs_ts_3.6    && yarn && tsc && popd && \
+		pushd tests/sxs_ts_latest && yarn && tsc && popd )
 
 test_fast:: sxs_tests unit_tests
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .nyc_output ]; then ./node_modules/.bin/nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
+	if [ -e .nyc_output ]; then nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: sxs_tests unit_tests auto_tests
-ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .nyc_output ]; then ./node_modules/.bin/nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
-endif
+go_tests:: $(TEST_ALL_DEPS)
 	$(GO_TEST) ${PROJECT_PKGS}
+
+test_all:: sxs_tests unit_tests auto_tests go_tests
+ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
+	if [ -e .nyc_output ]; then nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
+endif
 
 dist:: build
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
