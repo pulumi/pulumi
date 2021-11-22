@@ -266,7 +266,7 @@ jobs:
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
           mkdir -p bin
-          unzip -xf artifacts/go/*.zip -d bin
+          unzip -d bin artifacts/go/*.zip
           echo "$PWD/bin/pulumi" >> $GITHUB_PATH
       - name: Download Pulumi .NET NuGet packages
         uses: actions/download-artifact@v2
