@@ -20,6 +20,7 @@ import { parseConfigFileTextToJson } from "typescript";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
+import { Inputs } from "../../output";
 
 import * as mod from ".";
 
@@ -96,7 +97,7 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     const deps = packageObject["dependencies"] || {};
     const devDeps = packageObject["devDependencies"] || {};
     const scripts = packageObject["scripts"] || {};
-    const mainProperty  = packageObject["main"] || "index.js";
+    const mainProperty = packageObject["main"] || "index.js";
 
     // Is there a build script associated with this program? It's a little confusing that the
     // Pulumi CLI doesn't run build scripts before running the program so call that out
@@ -106,7 +107,7 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
         const command = scripts["build"];
         console.error(`  * Your program looks like it has a build script associated with it ('${command}').\n`);
         console.error("Pulumi does not run build scripts before running your program. " +
-                        `Please run '${command}', 'yarn build', or 'npm run build' and try again.`);
+            `Please run '${command}', 'yarn build', or 'npm run build' and try again.`);
         return;
     }
 
@@ -132,10 +133,11 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
 }
 
 /** @internal */
-export function run(argv: minimist.ParsedArgs,
-                    programStarted: () => void,
-                    reportLoggedError: (err: Error) => void,
-                    isErrorReported: (err: Error) => boolean) {
+export function run(
+    argv: minimist.ParsedArgs,
+    programStarted: () => void,
+    reportLoggedError: (err: Error) => void,
+    isErrorReported: (err: Error) => boolean): Promise<Inputs | undefined> {
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
     if (pwd) {
@@ -150,7 +152,8 @@ export function run(argv: minimist.ParsedArgs,
     // find a tsconfig.json. For us, it's reasonable to say that the "root" of the project is the cwd,
     // if there's a tsconfig.json file here. Otherwise, just tell ts-node to not load project options at all.
     // This helps with cases like pulumi/pulumi#1772.
-    const tsConfigPath = "tsconfig.json";
+    const defaultTsConfigPath = "tsconfig.json";
+    const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
 
     let compilerOptions: object;
@@ -184,7 +187,7 @@ export function run(argv: minimist.ParsedArgs,
 
     // Now fake out the process-wide argv, to make the program think it was run normally.
     const programArgs: string[] = argv._.slice(1);
-    process.argv = [ process.argv[0], process.argv[1], ...programArgs ];
+    process.argv = [process.argv[0], process.argv[1], ...programArgs];
 
     // Set up the process uncaught exception, unhandled rejection, and program exit handlers.
     const uncaughtHandler = (err: Error) => {
@@ -229,6 +232,15 @@ ${defaultMessage}`);
     process.on("exit", runtime.disconnectSync);
 
     programStarted();
+
+    // This needs to occur after `programStarted` to ensure execution of the parent process stops.
+    if (skipProject && tsConfigPath !== defaultTsConfigPath) {
+        return new Promise(() => {
+            const e = new Error(`tsconfig path was set to ${tsConfigPath} but the file was not found`);
+            e.stack = undefined;
+            throw e;
+        });
+    }
 
     const runProgram = async () => {
         // We run the program inside this context so that it adopts all resources.

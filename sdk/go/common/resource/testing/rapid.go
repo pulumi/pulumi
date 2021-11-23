@@ -2,7 +2,7 @@
 package testing
 
 import (
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -191,7 +191,7 @@ func StringPropertyGenerator() *rapid.Generator {
 func TextAssetGenerator() *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) *resource.Asset {
 		asset, err := resource.NewTextAsset(rapid.String().Draw(t, "text asset contents").(string))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		return asset
 	})
 }
@@ -218,7 +218,7 @@ func LiteralArchiveGenerator(maxDepth int) *rapid.Generator {
 			contentsGenerator = rapid.Just(map[string]interface{}{})
 		}
 		archive, err := resource.NewAssetArchive(contentsGenerator.Draw(t, "literal archive contents").(map[string]interface{}))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		return archive
 	})
 }
