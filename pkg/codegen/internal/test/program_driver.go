@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -164,6 +165,11 @@ func TestProgramCodegen(
 	testcase ProgramCodegenOptions,
 
 ) {
+
+	if runtime.GOOS == "windows" {
+		t.Skip("TestProgramCodegen is skipped on Windows")
+	}
+
 	ensureValidSchemaVersions(t)
 	for _, tt := range programTests {
 		t.Run(tt.Description, func(t *testing.T) {
