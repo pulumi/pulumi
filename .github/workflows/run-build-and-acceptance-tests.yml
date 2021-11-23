@@ -170,9 +170,15 @@ jobs:
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
       - name: Add ./bin to PATH
         run: |
-          echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+          LOCAL_PATH=$(./scripts/normpath "${{ github.workspace }}/bin")
+          echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
+          echo $LOCAL_PATH >> $GITHUB_PATH
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -206,10 +212,6 @@ jobs:
         run: |
           git config --global user.email "you@example.com"
           git config --global user.name "Your Name"
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ env.PR_COMMIT_SHA }}
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
@@ -268,14 +270,12 @@ jobs:
         run: |
           mkdir -p bin
           tar -xf artifacts/go/*.tar.gz -C bin
-          echo "$PWD/bin/pulumi" >> $GITHUB_PATH
       - name: Install Pulumi Go Binaries (windows)
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
           mkdir -p bin
           unzip -d bin artifacts/go/*.zip
-          mv $PWD/bin/pulumi/bin/* $PWD/bin/pulumi/
-          echo "$PWD/bin/pulumi" >> $GITHUB_PATH
+          mv $PWD/bin/pulumi/bin/* $PWD/bin
       - name: Download Pulumi .NET NuGet packages
         uses: actions/download-artifact@v2
         with:
