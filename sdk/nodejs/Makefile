@@ -47,15 +47,20 @@ install_plugin:: build
 install:: install_package install_plugin
 
 istanbul_tests:: $(TEST_ALL_DEPS)
-	$(TESTSUITE_SKIPPED) istanbul || istanbul test --print none _mocha -- --timeout 120000 --exclude 'bin/tests/automation/**/*.spec.js' 'bin/tests/**/*.spec.js'
-	istanbul report text-summary
-	istanbul report text
-	$(TESTSUITE_SKIPPED) istanbul-with-mocks || istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
+	$(TESTSUITE_SKIPPED) --skip-windows istanbul || ( \
+		istanbul test --print none _mocha -- --timeout 120000 --exclude 'bin/tests/automation/**/*.spec.js' 'bin/tests/**/*.spec.js' && \
+		istanbul report text-summary && \
+		istanbul report text \
+	)
+	$(TESTSUITE_SKIPPED) --skip-windows istanbul-with-mocks || \
+		istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
 
 auto_tests:: $(TEST_ALL_DEPS)
-	$(TESTSUITE_SKIPPED) auto-nodejs || istanbul test --print none _mocha -- --timeout 120000 'bin/tests/automation/**/*.spec.js'
-	istanbul report text-summary
-	istanbul report text
+	$(TESTSUITE_SKIPPED) --skip-windows auto-nodejs || ( \
+		istanbul test --print none _mocha -- --timeout 120000 'bin/tests/automation/**/*.spec.js' && \
+		istanbul report text-summary && \
+		istanbul report text \
+	)
 
 sxs_tests:: $(TEST_ALL_DEPS)
 	echo "SKIP tests/sxs_ts_3.6" # pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd
