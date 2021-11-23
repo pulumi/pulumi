@@ -1,7 +1,10 @@
 package stack
 
 import (
+	"time"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -77,7 +80,19 @@ func SerializePlan(plan deploy.Plan, enc config.Encrypter, showSecrets bool) (ap
 		}
 		resourcePlans[urn] = serializedPlan
 	}
-	return apitype.DeploymentPlanV1{ResourcePlans: resourcePlans}, nil
+
+	// Bit odd this isn't part of deploy.Plan but that's just a map right now. We need to change that to track config and things so we'll move this then.
+	manifest := deploy.Manifest{
+		Time:    time.Now(),
+		Version: version.Version,
+		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
+	}
+	manifest.Magic = manifest.NewMagic()
+
+	return apitype.DeploymentPlanV1{
+		Manifest:      manifest.Serialize(),
+		ResourcePlans: resourcePlans,
+	}, nil
 }
 
 func DeserializeResourcePlan(

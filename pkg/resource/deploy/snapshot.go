@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -42,6 +43,27 @@ type Manifest struct {
 	Magic   string                 // a magic cookie.
 	Version string                 // the pulumi command version.
 	Plugins []workspace.PluginInfo // the plugin versions also loaded.
+}
+
+func (m Manifest) Serialize() apitype.ManifestV1 {
+	manifest := apitype.ManifestV1{
+		Time:    m.Time,
+		Magic:   m.Magic,
+		Version: m.Version,
+	}
+	for _, plug := range m.Plugins {
+		var version string
+		if plug.Version != nil {
+			version = plug.Version.String()
+		}
+		manifest.Plugins = append(manifest.Plugins, apitype.PluginInfoV1{
+			Name:    plug.Name,
+			Path:    plug.Path,
+			Type:    plug.Kind,
+			Version: version,
+		})
+	}
+	return manifest
 }
 
 // NewMagic creates a magic cookie out of a manifest; this can be used to check for tampering.  This ignores

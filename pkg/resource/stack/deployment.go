@@ -105,23 +105,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 	contract.Require(snap != nil, "snap")
 
 	// Capture the version information into a manifest.
-	manifest := apitype.ManifestV1{
-		Time:    snap.Manifest.Time,
-		Magic:   snap.Manifest.Magic,
-		Version: snap.Manifest.Version,
-	}
-	for _, plug := range snap.Manifest.Plugins {
-		var version string
-		if plug.Version != nil {
-			version = plug.Version.String()
-		}
-		manifest.Plugins = append(manifest.Plugins, apitype.PluginInfoV1{
-			Name:    plug.Name,
-			Path:    plug.Path,
-			Type:    plug.Kind,
-			Version: version,
-		})
-	}
+	manifest := snap.Manifest.Serialize()
 
 	// If a specific secrets manager was not provided, use the one in the snapshot, if present.
 	if sm == nil {
