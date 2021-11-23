@@ -273,12 +273,24 @@ jobs:
         run: |
           mkdir -p bin
           tar -xf artifacts/go/*.tar.gz -C bin
+      - name: Uninstall pre-installed Pulumi (windows)
+        if: ${{ matrix.platform == 'windows-latest' }}
+        run: |
+          chocolatey uninstall pulumi
       - name: Install Pulumi Go Binaries (windows)
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
           mkdir -p bin
           unzip -d bin artifacts/go/*.zip
           mv $PWD/bin/pulumi/bin/* $PWD/bin
+      - name: Verify Pulumi Version
+        run: |
+          which pulumi
+          pulumi version
+          find ./bin
+      - name: Diagnose System Path
+        run: |
+          python scripts/path.py
       - name: Download Pulumi .NET NuGet packages
         uses: actions/download-artifact@v2
         with:
@@ -293,11 +305,6 @@ jobs:
           dotnet nuget add source $SOURCE
         env:
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-      - name: Verify Pulumi Version
-        run: |
-          which pulumi
-          pulumi version
-          find ./bin
       - name: Inspect downloaded artifacts
         run: |
           find artifacts
