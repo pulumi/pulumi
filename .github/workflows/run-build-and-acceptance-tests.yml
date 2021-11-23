@@ -207,6 +207,7 @@ jobs:
           mkdir -p $PWD/bin
           unzip -d $PWD/bin artifacts/go/*.zip
           mv $PWD/bin/pulumi/bin/* $PWD/bin
+          rm -rf $PWD/bin/pulumi
           echo "Checking contents of $PWD/bin"
           find $PWD/bin
       - name: Add ./bin to PATH
