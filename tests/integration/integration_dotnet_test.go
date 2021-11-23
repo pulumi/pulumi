@@ -1,5 +1,4 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
-//go:build dotnet || all
 // +build dotnet all
 
 package ints
@@ -11,6 +10,9 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	w "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"os/exec"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -342,6 +344,7 @@ func TestConstructDotnet(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
+			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -351,9 +354,7 @@ func TestConstructDotnet(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
+			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -460,6 +461,7 @@ func TestConstructPlainDotnet(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
+			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -469,11 +471,48 @@ func TestConstructPlainDotnet(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
+
+			extraPath := filepath.Join("construct_component_plain", test.componentDir)
+			t.Logf("Debug extraPath: %v", extraPath)
+
+			pathEnv := pathEnv(t, extraPath)
+			t.Logf("Debug pathEnv: %v", pathEnv)
+
+			filename := (&w.PluginInfo{
+				Kind:    "resource",
+				Name:    "testcomponent",
+				Version: nil,
+			}).FilePrefix()
+
+			err := filepath.Walk(pathEnv,
+				func(path string, info os.FileInfo, err error) error {
+					if err != nil {
+						return err
+					}
+					t.Logf("Found in %s: %s: %d",
+						pathEnv, path, info.Size())
+					return nil
+				})
+			if err != nil {
+				t.Error(err)
+			}
+
+			oldPath := os.Getenv("PATH")
+			os.Setenv("PATH", pathEnv)
+
+			path, err := exec.LookPath(filename)
+			if err != nil {
+				t.Logf("exec.LookPath failed: %v", err)
+			} else {
+				t.Logf("exec.LookPath found: %v", path)
+			}
+
+			os.Setenv("PATH", oldPath)
+
 			integration.ProgramTest(t,
-				optsForConstructPlainDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructPlainDotnet(t,
+					test.expectedResourceCount,
+					append(test.env, pathEnv)...))
 		})
 	}
 }
@@ -502,12 +541,14 @@ func TestConstructUnknownDotnet(t *testing.T) {
 func TestConstructMethodsDotnet(t *testing.T) {
 	tests := []struct {
 		componentDir string
+		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -517,7 +558,7 @@ func TestConstructMethodsDotnet(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
+				Env:          append(test.env, pathEnv),
 				Dir:          filepath.Join("construct_component_methods", "dotnet"),
 				Dependencies: []string{"Pulumi"},
 				Quick:        true,
@@ -542,12 +583,14 @@ func TestConstructProviderDotnet(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {
 		componentDir string
+		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -557,7 +600,7 @@ func TestConstructProviderDotnet(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
+				Env:          append(test.env, pathEnv),
 				Dir:          filepath.Join(testDir, "dotnet"),
 				Dependencies: []string{"Pulumi"},
 				Quick:        true,
