@@ -299,23 +299,6 @@ func isNilType(t schema.Type) bool {
 	return false
 }
 
-// The default value for a Pulumi primitive type.
-func primitiveNilValue(t schema.Type) string {
-	contract.Assert(schema.IsPrimitiveType(t))
-	switch t {
-	case schema.BoolType:
-		return "false"
-	case schema.IntType:
-		return "0"
-	case schema.NumberType:
-		return "0.0"
-	case schema.StringType:
-		return "\"\""
-	default:
-		return "nil"
-	}
-}
-
 func (pkg *pkgContext) inputType(t schema.Type) (result string) {
 	switch t := codegen.SimplifyInputUnion(t).(type) {
 	case *schema.OptionalType:
