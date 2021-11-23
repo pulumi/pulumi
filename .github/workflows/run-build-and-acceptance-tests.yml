@@ -284,7 +284,12 @@ jobs:
           path: ${{ github.workspace }}/nuget
       - name: Add NuGet packages as a local NuGet source
         run: |
-          dotnet nuget add source $(./scripts/normpath $PWD/nuget)
+          echo "PULUMI_LOCAL_NUGET=$PULUMI_LOCAL_NUGET"
+          SOURCE=$(./scripts/normpath $PULUMI_LOCAL_NUGET)
+          echo "SOURCE=$SOURCE"
+          dotnet nuget add source $SOURCE
+        env:
+          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
       - name: Verify Pulumi Version
         run: |
           which pulumi
