@@ -154,6 +154,10 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 }
 
 func TestInstallNoDeps(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on Windows: issues with TEMP dir")
+	}
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 
