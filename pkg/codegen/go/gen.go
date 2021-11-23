@@ -517,7 +517,12 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 }
 
 func (pkg *pkgContext) typeString(t schema.Type) string {
-	return pkg.typeStringImpl(t, false)
+	s := pkg.typeStringImpl(t, false)
+	if s == "pulumi." {
+		return "pulumi.Any"
+	}
+	return s
+
 }
 
 func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
@@ -1120,9 +1125,6 @@ func (pkg *pkgContext) assignProperty(w io.Writer, p *schema.Property, object, v
 	case *schema.EnumType:
 		t = ""
 	}
-	if t == "pulumi." {
-		t = "pulumi.Any"
-	}
 
 	if codegen.IsNOptionalInput(p.Type) {
 		if t != "" {
@@ -1403,10 +1405,7 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 		val = v
 		switch t.(type) {
 		case *schema.EnumType:
-			typeName := strings.TrimSuffix(strings.TrimSuffix(pkg.typeString(t), "Input"), "Ptr")
-			if typeName == "pulumi." {
-				typeName = "pulumi.Any"
-			}
+			typeName := strings.TrimSuffix(pkg.typeString(codegen.UnwrapType(t)), "Input")
 			val = fmt.Sprintf("%s(%s)", typeName, val)
 		}
 	}
