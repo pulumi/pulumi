@@ -174,11 +174,57 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: ${{ env.PR_COMMIT_SHA }}
+      - name: Uninstall pre-installed Pulumi (windows)
+        if: ${{ matrix.platform == 'windows-latest' }}
+        run: |
+          chocolatey uninstall pulumi
+      - name: Download Pulumi Go Binaries (linux-x64)
+        if: ${{ matrix.platform == 'ubuntu-latest' }}
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-x64.tar.gz
+          path: artifacts/go
+      - name: Download Pulumi Go Binaries (darwin-x64)
+        if: ${{ matrix.platform == 'macos-latest' }}
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-x64.tar.gz
+          path: artifacts/go
+      - name: Download Pulumi Go Binaries (windows-x64)
+        if: ${{ matrix.platform == 'windows-latest' }}
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-x64.zip
+          path: artifacts/go
+      - name: Install Pulumi Go Binaries (non-windows)
+        if: ${{ matrix.platform != 'windows-latest' }}
+        run: |
+          mkdir -p bin
+          tar -xf artifacts/go/*.tar.gz -C bin
+      - name: Install Pulumi Go Binaries (windows)
+        if: ${{ matrix.platform == 'windows-latest' }}
+        run: |
+          mkdir -p $PWD/bin
+          unzip -d $PWD/bin artifacts/go/*.zip
+          mv $PWD/bin/pulumi/bin/* $PWD/bin
+          echo "Checking contents of $PWD/bin"
+          find $PWD/bin
       - name: Add ./bin to PATH
         run: |
           LOCAL_PATH=$(./scripts/normpath "${{ github.workspace }}/bin")
           echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
           echo $LOCAL_PATH >> $GITHUB_PATH
+      - name: Verify Pulumi Version
+        run: |
+          which pulumi   || echo "no pulumi"
+          pulumi version || echo "no pulumi"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Diagnose System Path and sub-process Pulumi version
+        run: |
+          python scripts/path.py
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -190,10 +236,6 @@ jobs:
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
           choco install make
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
-        with:
-          python-version: ${{ matrix.python-version }}
       - name: Diagnose System Path
         run: |
           python scripts/path.py
@@ -218,12 +260,6 @@ jobs:
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
-      - name: Check Python Version
-        run: |
-           python --version
-      - name: Check Python Version under Make
-        run: |
-           make check_python_version
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
@@ -250,47 +286,6 @@ jobs:
         with:
           repo: t0yv0/goteststats
           tag: v0.0.7
-      - name: Download Pulumi Go Binaries (linux-x64)
-        if: ${{ matrix.platform == 'ubuntu-latest' }}
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-linux-x64.tar.gz
-          path: artifacts/go
-      - name: Download Pulumi Go Binaries (darwin-x64)
-        if: ${{ matrix.platform == 'macos-latest' }}
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-darwin-x64.tar.gz
-          path: artifacts/go
-      - name: Download Pulumi Go Binaries (windows-x64)
-        if: ${{ matrix.platform == 'windows-latest' }}
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-windows-x64.zip
-          path: artifacts/go
-      - name: Install Pulumi Go Binaries (non-windows)
-        if: ${{ matrix.platform != 'windows-latest' }}
-        run: |
-          mkdir -p bin
-          tar -xf artifacts/go/*.tar.gz -C bin
-      - name: Uninstall pre-installed Pulumi (windows)
-        if: ${{ matrix.platform == 'windows-latest' }}
-        run: |
-          chocolatey uninstall pulumi
-      - name: Install Pulumi Go Binaries (windows)
-        if: ${{ matrix.platform == 'windows-latest' }}
-        run: |
-          mkdir -p bin
-          unzip -d bin artifacts/go/*.zip
-          mv $PWD/bin/pulumi/bin/* $PWD/bin
-      - name: Verify Pulumi Version
-        run: |
-          which pulumi
-          pulumi version
-          find ./bin
-      - name: Diagnose System Path
-        run: |
-          python scripts/path.py
       - name: Download Pulumi .NET NuGet packages
         uses: actions/download-artifact@v2
         with:
