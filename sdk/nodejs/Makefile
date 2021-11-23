@@ -55,8 +55,8 @@ auto_tests:: $(TEST_ALL_DEPS)
 	$(RUN_TESTSUITE) auto-nodejs ./node_modules/.bin/nyc -s mocha --timeout 120000 'bin/tests/automation/**/*.spec.js'
 
 sxs_tests:: $(TEST_ALL_DEPS)
-	pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd
-	pushd tests/sxs_ts_latest && yarn ; tsc ; popd
+	echo "SKIP tests/sxs_ts_3.6" # pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd
+	echo "SKIP tests/sxs_ts_latest" # pushd tests/sxs_ts_latest && yarn ; tsc ; popd
 
 test_fast:: sxs_tests unit_tests
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
