@@ -71,7 +71,7 @@ type DeploymentPlanV1 struct {
 	// Any environment variables that were set when the plan was created. Values are encrypted.
 	EnvironmentVariables map[string][]byte `json:"environmentVariables,omitempty"`
 	// The configuration in use during the plan.
-	Config map[string]ConfigValue `json:"config"`
+	Config map[string]ConfigValue `json:"config,omitempty"`
 
 	// The set of resource plans.
 	ResourcePlans map[resource.URN]ResourcePlanV1 `json:"resourcePlans,omitempty"`
