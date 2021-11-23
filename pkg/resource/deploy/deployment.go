@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -150,9 +151,9 @@ type resourcePlans struct {
 	plans Plan
 }
 
-func newResourcePlan() *resourcePlans {
+func newResourcePlan(config config.Map) *resourcePlans {
 	return &resourcePlans{
-		plans: NewPlan(),
+		plans: NewPlan(config),
 	}
 }
 
@@ -384,7 +385,7 @@ func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Pl
 		providers:            reg,
 		goals:                newGoals,
 		news:                 newResources,
-		newPlans:             newResourcePlan(),
+		newPlans:             newResourcePlan(target.Config),
 	}, nil
 }
 

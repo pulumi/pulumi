@@ -97,7 +97,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 		source:       NewErrorSource(projectName),
 		preview:      preview,
 		providers:    reg,
-		newPlans:     newResourcePlan(),
+		newPlans:     newResourcePlan(target.Config),
 	}, nil
 }
 

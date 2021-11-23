@@ -26,10 +26,10 @@ type Plan struct {
 	// Any environment variables that were set when the plan was created. Values are encrypted.
 	EnvironmentVariables map[string][]byte
 	// The configuration in use during the plan.
-	Config map[string]config.Value
+	Config config.Map
 }
 
-func NewPlan() Plan {
+func NewPlan(config config.Map) Plan {
 	manifest := Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
@@ -40,6 +40,7 @@ func NewPlan() Plan {
 	return Plan{
 		ResourcePlans: make(map[resource.URN]*ResourcePlan),
 		Manifest:      manifest,
+		Config:        config,
 	}
 }
 

@@ -78,6 +78,13 @@ func SerializePlan(plan *deploy.Plan, enc config.Encrypter, showSecrets bool) (a
 		resourcePlans[urn] = serializedPlan
 	}
 
+	config := make(map[string]Value, len(plan.Config))
+	for value := range plan.Config {
+		for k, v := range m {
+			rawMap[k.String()] = v
+		}
+	}
+
 	return apitype.DeploymentPlanV1{
 		Manifest:      plan.Manifest.Serialize(),
 		ResourcePlans: resourcePlans,
