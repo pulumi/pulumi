@@ -76,7 +76,7 @@ type ModuleTestInput interface {
 }
 
 func (*ModuleTest) ElementType() reflect.Type {
-	return reflect.TypeOf((*ModuleTest)(nil))
+	return reflect.TypeOf((**ModuleTest)(nil)).Elem()
 }
 
 func (i *ModuleTest) ToModuleTestOutput() ModuleTestOutput {
@@ -90,7 +90,7 @@ func (i *ModuleTest) ToModuleTestOutputWithContext(ctx context.Context) ModuleTe
 type ModuleTestOutput struct{ *pulumi.OutputState }
 
 func (ModuleTestOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ModuleTest)(nil))
+	return reflect.TypeOf((**ModuleTest)(nil)).Elem()
 }
 
 func (o ModuleTestOutput) ToModuleTestOutput() ModuleTestOutput {

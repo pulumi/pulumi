@@ -13,7 +13,7 @@ namespace Pulumi.Example
     public partial class Rec : Pulumi.CustomResource
     {
         [Output("rec")]
-        public Output<Pulumi.Example.Outputs.Rec?> Rec { get; private set; } = null!;
+        public Output<Pulumi.Example.Rec?> Rec { get; private set; } = null!;
 
 
         /// <summary>

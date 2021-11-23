@@ -65,7 +65,7 @@ type RegistryGeoReplicationInput interface {
 }
 
 func (*RegistryGeoReplication) ElementType() reflect.Type {
-	return reflect.TypeOf((*RegistryGeoReplication)(nil))
+	return reflect.TypeOf((**RegistryGeoReplication)(nil)).Elem()
 }
 
 func (i *RegistryGeoReplication) ToRegistryGeoReplicationOutput() RegistryGeoReplicationOutput {
@@ -74,35 +74,6 @@ func (i *RegistryGeoReplication) ToRegistryGeoReplicationOutput() RegistryGeoRep
 
 func (i *RegistryGeoReplication) ToRegistryGeoReplicationOutputWithContext(ctx context.Context) RegistryGeoReplicationOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(RegistryGeoReplicationOutput)
-}
-
-func (i *RegistryGeoReplication) ToRegistryGeoReplicationPtrOutput() RegistryGeoReplicationPtrOutput {
-	return i.ToRegistryGeoReplicationPtrOutputWithContext(context.Background())
-}
-
-func (i *RegistryGeoReplication) ToRegistryGeoReplicationPtrOutputWithContext(ctx context.Context) RegistryGeoReplicationPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(RegistryGeoReplicationPtrOutput)
-}
-
-type RegistryGeoReplicationPtrInput interface {
-	pulumi.Input
-
-	ToRegistryGeoReplicationPtrOutput() RegistryGeoReplicationPtrOutput
-	ToRegistryGeoReplicationPtrOutputWithContext(ctx context.Context) RegistryGeoReplicationPtrOutput
-}
-
-type registryGeoReplicationPtrType RegistryGeoReplicationArgs
-
-func (*registryGeoReplicationPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**RegistryGeoReplication)(nil))
-}
-
-func (i *registryGeoReplicationPtrType) ToRegistryGeoReplicationPtrOutput() RegistryGeoReplicationPtrOutput {
-	return i.ToRegistryGeoReplicationPtrOutputWithContext(context.Background())
-}
-
-func (i *registryGeoReplicationPtrType) ToRegistryGeoReplicationPtrOutputWithContext(ctx context.Context) RegistryGeoReplicationPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(RegistryGeoReplicationPtrOutput)
 }
 
 // RegistryGeoReplicationArrayInput is an input type that accepts RegistryGeoReplicationArray and RegistryGeoReplicationArrayOutput values.
@@ -158,7 +129,7 @@ func (i RegistryGeoReplicationMap) ToRegistryGeoReplicationMapOutputWithContext(
 type RegistryGeoReplicationOutput struct{ *pulumi.OutputState }
 
 func (RegistryGeoReplicationOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*RegistryGeoReplication)(nil))
+	return reflect.TypeOf((**RegistryGeoReplication)(nil)).Elem()
 }
 
 func (o RegistryGeoReplicationOutput) ToRegistryGeoReplicationOutput() RegistryGeoReplicationOutput {
@@ -169,44 +140,10 @@ func (o RegistryGeoReplicationOutput) ToRegistryGeoReplicationOutputWithContext(
 	return o
 }
 
-func (o RegistryGeoReplicationOutput) ToRegistryGeoReplicationPtrOutput() RegistryGeoReplicationPtrOutput {
-	return o.ToRegistryGeoReplicationPtrOutputWithContext(context.Background())
-}
-
-func (o RegistryGeoReplicationOutput) ToRegistryGeoReplicationPtrOutputWithContext(ctx context.Context) RegistryGeoReplicationPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v RegistryGeoReplication) *RegistryGeoReplication {
-		return &v
-	}).(RegistryGeoReplicationPtrOutput)
-}
-
-type RegistryGeoReplicationPtrOutput struct{ *pulumi.OutputState }
-
-func (RegistryGeoReplicationPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**RegistryGeoReplication)(nil))
-}
-
-func (o RegistryGeoReplicationPtrOutput) ToRegistryGeoReplicationPtrOutput() RegistryGeoReplicationPtrOutput {
-	return o
-}
-
-func (o RegistryGeoReplicationPtrOutput) ToRegistryGeoReplicationPtrOutputWithContext(ctx context.Context) RegistryGeoReplicationPtrOutput {
-	return o
-}
-
-func (o RegistryGeoReplicationPtrOutput) Elem() RegistryGeoReplicationOutput {
-	return o.ApplyT(func(v *RegistryGeoReplication) RegistryGeoReplication {
-		if v != nil {
-			return *v
-		}
-		var ret RegistryGeoReplication
-		return ret
-	}).(RegistryGeoReplicationOutput)
-}
-
 type RegistryGeoReplicationArrayOutput struct{ *pulumi.OutputState }
 
 func (RegistryGeoReplicationArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]RegistryGeoReplication)(nil))
+	return reflect.TypeOf((*[]*RegistryGeoReplication)(nil)).Elem()
 }
 
 func (o RegistryGeoReplicationArrayOutput) ToRegistryGeoReplicationArrayOutput() RegistryGeoReplicationArrayOutput {
@@ -218,15 +155,15 @@ func (o RegistryGeoReplicationArrayOutput) ToRegistryGeoReplicationArrayOutputWi
 }
 
 func (o RegistryGeoReplicationArrayOutput) Index(i pulumi.IntInput) RegistryGeoReplicationOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) RegistryGeoReplication {
-		return vs[0].([]RegistryGeoReplication)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *RegistryGeoReplication {
+		return vs[0].([]*RegistryGeoReplication)[vs[1].(int)]
 	}).(RegistryGeoReplicationOutput)
 }
 
 type RegistryGeoReplicationMapOutput struct{ *pulumi.OutputState }
 
 func (RegistryGeoReplicationMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]RegistryGeoReplication)(nil))
+	return reflect.TypeOf((*map[string]*RegistryGeoReplication)(nil)).Elem()
 }
 
 func (o RegistryGeoReplicationMapOutput) ToRegistryGeoReplicationMapOutput() RegistryGeoReplicationMapOutput {
@@ -238,18 +175,16 @@ func (o RegistryGeoReplicationMapOutput) ToRegistryGeoReplicationMapOutputWithCo
 }
 
 func (o RegistryGeoReplicationMapOutput) MapIndex(k pulumi.StringInput) RegistryGeoReplicationOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) RegistryGeoReplication {
-		return vs[0].(map[string]RegistryGeoReplication)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *RegistryGeoReplication {
+		return vs[0].(map[string]*RegistryGeoReplication)[vs[1].(string)]
 	}).(RegistryGeoReplicationOutput)
 }
 
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*RegistryGeoReplicationInput)(nil)).Elem(), &RegistryGeoReplication{})
-	pulumi.RegisterInputType(reflect.TypeOf((*RegistryGeoReplicationPtrInput)(nil)).Elem(), &RegistryGeoReplication{})
 	pulumi.RegisterInputType(reflect.TypeOf((*RegistryGeoReplicationArrayInput)(nil)).Elem(), RegistryGeoReplicationArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*RegistryGeoReplicationMapInput)(nil)).Elem(), RegistryGeoReplicationMap{})
 	pulumi.RegisterOutputType(RegistryGeoReplicationOutput{})
-	pulumi.RegisterOutputType(RegistryGeoReplicationPtrOutput{})
 	pulumi.RegisterOutputType(RegistryGeoReplicationArrayOutput{})
 	pulumi.RegisterOutputType(RegistryGeoReplicationMapOutput{})
 }

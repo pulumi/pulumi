@@ -79,7 +79,7 @@ type ComponentInput interface {
 }
 
 func (*Component) ElementType() reflect.Type {
-	return reflect.TypeOf((*Component)(nil))
+	return reflect.TypeOf((**Component)(nil)).Elem()
 }
 
 func (i *Component) ToComponentOutput() ComponentOutput {
@@ -93,7 +93,7 @@ func (i *Component) ToComponentOutputWithContext(ctx context.Context) ComponentO
 type ComponentOutput struct{ *pulumi.OutputState }
 
 func (ComponentOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Component)(nil))
+	return reflect.TypeOf((**Component)(nil)).Elem()
 }
 
 func (o ComponentOutput) ToComponentOutput() ComponentOutput {
