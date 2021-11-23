@@ -44,14 +44,10 @@ install:: build install_plugin
 	find . -name '*${VERSION_PREFIX}*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
 
 dotnet_test:: $(TEST_ALL_DEPS)
-	# include the version prefix/suffix to avoid generating a separate nupkg file
-	$(TESTSUITE_SKIPPED) dotnet-test || cd Pulumi.Tests && \
-		dotnet test "/p:Version=${DOTNET_VERSION}"
+	$(TESTSUITE_SKIPPED) dotnet-test || cd Pulumi.Tests && dotnet test
 
 auto_test:: $(TEST_ALL_DEPS)
-	# include the version prefix/suffix to avoid generating a separate nupkg file
-	$(TESTSUITE_SKIPPED) auto-dotnet || cd Pulumi.Automation.Tests && \
-		dotnet test "/p:Version=${DOTNET_VERSION}"
+	$(TESTSUITE_SKIPPED) auto-dotnet || cd Pulumi.Automation.Tests && dotnet test
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
