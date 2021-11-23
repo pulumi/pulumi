@@ -44,10 +44,10 @@ install:: build install_plugin
 	find . -name '*${VERSION_PREFIX}*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
 
 dotnet_test:: $(TEST_ALL_DEPS)
-	$(TESTSUITE_SKIPPED) dotnet-test || cd Pulumi.Tests && dotnet test
+	$(TESTSUITE_SKIPPED) dotnet-test || (cd Pulumi.Tests && dotnet test)
 
 auto_test:: $(TEST_ALL_DEPS)
-	$(TESTSUITE_SKIPPED) auto-dotnet || cd Pulumi.Automation.Tests && dotnet test
+	$(TESTSUITE_SKIPPED) auto-dotnet || (cd Pulumi.Automation.Tests && dotnet test)
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
