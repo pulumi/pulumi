@@ -45,11 +45,13 @@ install:: build install_plugin
 
 dotnet_test:: $(TEST_ALL_DEPS)
 	# include the version prefix/suffix to avoid generating a separate nupkg file
-	$(TESTSUITE_SKIPPED) dotnet-test || dotnet test Pulumi.Tests/Pulumi.Tests.csproj /p:Version=${DOTNET_VERSION}
+	$(TESTSUITE_SKIPPED) dotnet-test || cd Pulumi.Tests && \
+		dotnet test "/p:Version=${DOTNET_VERSION}"
 
 auto_test:: $(TEST_ALL_DEPS)
 	# include the version prefix/suffix to avoid generating a separate nupkg file
-	$(TESTSUITE_SKIPPED) auto-dotnet || dotnet test Pulumi.Automation.Tests/Pulumi.Automation.Tests.csproj /p:Version=${DOTNET_VERSION}
+	$(TESTSUITE_SKIPPED) auto-dotnet || cd Pulumi.Automation.Tests && \
+		dotnet test "/p:Version=${DOTNET_VERSION}"
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
