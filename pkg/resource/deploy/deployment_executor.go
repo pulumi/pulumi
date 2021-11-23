@@ -385,8 +385,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) result.Result
 		steps, res = ex.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received register resource outputs")
-		ex.stepExec.ExecuteRegisterResourceOutputs(e)
-		return nil
+		return ex.stepExec.ExecuteRegisterResourceOutputs(e)
 	}
 
 	if res != nil {
