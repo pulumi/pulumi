@@ -7,8 +7,8 @@ import (
 	"context"
 	"reflect"
 
-	"env-helper/example/mod1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-object-defaults/example/mod1"
 )
 
 type ModuleTest struct {
@@ -22,6 +22,14 @@ func NewModuleTest(ctx *pulumi.Context,
 		args = &ModuleTestArgs{}
 	}
 
+	mod1Applier := func(v mod1.Typ) *mod1.Typ { return v.Defaults() }
+	if args.Mod1 != nil {
+		args.Mod1 = args.Mod1.ToTypPtrOutput().Elem().ApplyT(mod1Applier).(mod1.TypPtrOutput)
+	}
+	valApplier := func(v Typ) *Typ { return v.Defaults() }
+	if args.Val != nil {
+		args.Val = args.Val.ToTypPtrOutput().Elem().ApplyT(valApplier).(TypPtrOutput)
+	}
 	var resource ModuleTest
 	err := ctx.RegisterResource("example:index:moduleTest", name, args, &resource, opts...)
 	if err != nil {

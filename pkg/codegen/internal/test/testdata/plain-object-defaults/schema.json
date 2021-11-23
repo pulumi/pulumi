@@ -61,7 +61,10 @@
       "properties": {
         "val": {
           "type": "string",
-          "default": "mod1"
+          "default": "mod1",
+          "defaultInfo": {
+            "environment": ["PULUMI_EXAMPLE_MOD1_DEFAULT"]
+          }
         }
       },
       "type": "object"
@@ -219,7 +222,7 @@
       }
     },
     "go": {
-      "importBasePath": "env-helper/example"
+      "importBasePath": "plain-object-defaults/example"
     },
     "nodejs": {
       "dependencies": {

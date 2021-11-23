@@ -13,7 +13,7 @@ import (
 // Check codegen of functions with default values.
 func FuncWithDefaultValue(ctx *pulumi.Context, args *FuncWithDefaultValueArgs, opts ...pulumi.InvokeOption) (*FuncWithDefaultValueResult, error) {
 	var rv FuncWithDefaultValueResult
-	err := ctx.Invoke("mypkg::funcWithDefaultValue", args, &rv, opts...)
+	err := ctx.Invoke("mypkg::funcWithDefaultValue", args.Defaults(), &rv, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -23,6 +23,19 @@ func FuncWithDefaultValue(ctx *pulumi.Context, args *FuncWithDefaultValueArgs, o
 type FuncWithDefaultValueArgs struct {
 	A string  `pulumi:"a"`
 	B *string `pulumi:"b"`
+}
+
+// Defaults sets the appropriate defaults for FuncWithDefaultValueArgs
+func (val *FuncWithDefaultValueArgs) Defaults() *FuncWithDefaultValueArgs {
+	if val == nil {
+		return nil
+	}
+	tmp := *val
+	if isZero(tmp.B) {
+		b_ := "b-default"
+		tmp.B = &b_
+	}
+	return &tmp
 }
 
 type FuncWithDefaultValueResult struct {
