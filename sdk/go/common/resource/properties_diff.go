@@ -55,6 +55,12 @@ func (diff *ObjectDiff) Same(k PropertyKey) bool {
 	return !diff.Changed(k)
 }
 
+// Returns true if there are no changes (adds, deletes, updates) in the diff. Also returns true if
+// diff is nil. Otherwise returns false.
+func (diff *ObjectDiff) AnyChanges() bool {
+	return diff != nil && len(diff.Adds)+len(diff.Deletes)+len(diff.Updates) > 0
+}
+
 // Keys returns a stable snapshot of all keys known to this object, across adds, deletes, sames, and updates.
 func (diff *ObjectDiff) Keys() []PropertyKey {
 	var ks []PropertyKey

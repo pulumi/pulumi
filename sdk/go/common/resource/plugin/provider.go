@@ -217,6 +217,27 @@ type DiffResult struct {
 	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
 }
 
+// Transforms a `ObjectDiff` into an equivalent `DiffResult`. Because ObjectDiff has no way of
+// determining what should be changed vs replaced, all operations are added to the ChangedKeys set.
+func NewDiffResultFromObjectDiff(obj *resource.ObjectDiff) DiffResult {
+	result := DiffResult{}
+	if !obj.AnyChanges() {
+		result.Changes = DiffNone
+		return result
+	}
+
+	result.Changes = DiffSome
+	for _, k := range obj.Keys() {
+		if obj.Changed(k) {
+			result.ChangedKeys = append(result.ChangedKeys, k)
+		} else {
+			result.StableKeys = append(result.StableKeys, k)
+		}
+	}
+
+	return result
+}
+
 // Replace returns true if this diff represents a replacement.
 func (r DiffResult) Replace() bool {
 	for _, v := range r.DetailedDiff {
