@@ -37,10 +37,14 @@ const (
 	go19Version = "go1.9"
 )
 
-func TestAssetSerialize(t *testing.T) {
+func skipWindows(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipped on Windows: TODO handle Windows paths in test logic")
 	}
+}
+
+func TestAssetSerialize(t *testing.T) {
+	skipWindows(t)
 
 	// Ensure that asset and archive serialization round trips.
 	{
@@ -295,9 +299,7 @@ func TestDeserializeMissingHash(t *testing.T) {
 }
 
 func TestAssetFile(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: TODO handle Windows paths in test logic")
-	}
+	skipWindows(t)
 
 	asset, err := NewPathAsset("../../../../pkg/resource/testdata/Fox.txt")
 	assert.Nil(t, err)
@@ -311,9 +313,7 @@ asset jumps over the archive.
 }
 
 func TestArchiveDir(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: TODO handle Windows paths in test logic")
-	}
+	skipWindows(t)
 
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir")
 	assert.Nil(t, err)
@@ -328,9 +328,7 @@ func TestArchiveDir(t *testing.T) {
 }
 
 func TestArchiveTar(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: TODO handle Windows paths in test logic")
-	}
+	skipWindows(t)
 
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.tar")
@@ -340,9 +338,7 @@ func TestArchiveTar(t *testing.T) {
 }
 
 func TestArchiveTgz(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: TODO handle Windows paths in test logic")
-	}
+	skipWindows(t)
 
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.tgz")
@@ -352,9 +348,7 @@ func TestArchiveTgz(t *testing.T) {
 }
 
 func TestArchiveZip(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: TODO handle Windows paths in test logic")
-	}
+	skipWindows(t)
 
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.zip")
@@ -364,9 +358,7 @@ func TestArchiveZip(t *testing.T) {
 }
 
 func TestArchiveJar(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: TODO handle Windows paths in test logic")
-	}
+	skipWindows(t)
 
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.jar")
 	assert.Nil(t, err)
@@ -423,9 +415,7 @@ func TestArchiveZipFiles(t *testing.T) {
 
 //nolint: gosec
 func TestNestedArchive(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: TODO handle Windows paths in test logic")
-	}
+	skipWindows(t)
 
 	// Create temp dir and place some files.
 	dirName, err := ioutil.TempDir("", "")
@@ -467,9 +457,7 @@ func TestNestedArchive(t *testing.T) {
 
 //nolint: gosec
 func TestFileReferencedThroughMultiplePaths(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: TODO handle Windows paths in test logic")
-	}
+	skipWindows(t)
 
 	// Create temp dir and place some files.
 	dirName, err := ioutil.TempDir("", "")
