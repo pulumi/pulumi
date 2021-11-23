@@ -329,6 +329,7 @@ jobs:
       - name: Test
         run: make TEST_ALL_DEPS= test_all
         env:
+          PULUMI_HOME: ${{ github.workspace }}/home
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
