@@ -3,6 +3,7 @@ package syntax
 import (
 	"bytes"
 	"io/ioutil"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -212,6 +213,10 @@ func (v *validator) Exit(n hclsyntax.Node) hcl.Diagnostics {
 }
 
 func TestComments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on Windows: TODO newline handling")
+	}
+
 	contents, err := ioutil.ReadFile("./testdata/comments_all.hcl")
 	if err != nil {
 		t.Fatalf("failed to read test data: %v", err)
