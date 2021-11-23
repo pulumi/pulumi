@@ -178,6 +178,10 @@ func TestInstallNoDeps(t *testing.T) {
 }
 
 func TestConcurrentInstalls(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on Windows: issues with TEMP dir")
+	}
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 
