@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +50,7 @@ var pulumiOrg = getTestOrg()
 
 const pName = "testproj"
 const agent = "pulumi/pulumi/test"
+const windows = "windows"
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	ctx := context.Background()
@@ -425,6 +427,10 @@ func rangeIn(low, hi int) int {
 }
 
 func TestNewStackRemoteSource(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -517,6 +523,10 @@ func TestNewStackRemoteSource(t *testing.T) {
 }
 
 func TestUpsertStackRemoteSource(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -609,6 +619,10 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 }
 
 func TestNewStackRemoteSourceWithSetup(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -713,6 +727,10 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 }
 
 func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
