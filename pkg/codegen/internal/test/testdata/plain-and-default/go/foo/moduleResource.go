@@ -155,7 +155,7 @@ type ModuleResourceInput interface {
 }
 
 func (*ModuleResource) ElementType() reflect.Type {
-	return reflect.TypeOf((*ModuleResource)(nil))
+	return reflect.TypeOf((**ModuleResource)(nil)).Elem()
 }
 
 func (i *ModuleResource) ToModuleResourceOutput() ModuleResourceOutput {
@@ -169,7 +169,7 @@ func (i *ModuleResource) ToModuleResourceOutputWithContext(ctx context.Context) 
 type ModuleResourceOutput struct{ *pulumi.OutputState }
 
 func (ModuleResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ModuleResource)(nil))
+	return reflect.TypeOf((**ModuleResource)(nil)).Elem()
 }
 
 func (o ModuleResourceOutput) ToModuleResourceOutput() ModuleResourceOutput {
