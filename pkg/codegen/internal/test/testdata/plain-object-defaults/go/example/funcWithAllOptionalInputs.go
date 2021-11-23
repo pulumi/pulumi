@@ -13,7 +13,7 @@ import (
 // Check codegen of functions with all optional inputs.
 func FuncWithAllOptionalInputs(ctx *pulumi.Context, args *FuncWithAllOptionalInputsArgs, opts ...pulumi.InvokeOption) (*FuncWithAllOptionalInputsResult, error) {
 	var rv FuncWithAllOptionalInputsResult
-	err := ctx.Invoke("mypkg::funcWithAllOptionalInputs", args, &rv, opts...)
+	err := ctx.Invoke("mypkg::funcWithAllOptionalInputs", args.Defaults(), &rv, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -25,6 +25,21 @@ type FuncWithAllOptionalInputsArgs struct {
 	A *HelmReleaseSettings `pulumi:"a"`
 	// Property B
 	B *string `pulumi:"b"`
+}
+
+// Defaults sets the appropriate defaults for FuncWithAllOptionalInputsArgs
+func (val *FuncWithAllOptionalInputsArgs) Defaults() *FuncWithAllOptionalInputsArgs {
+	if val == nil {
+		return nil
+	}
+	tmp := *val
+	tmp.A = tmp.A.Defaults()
+
+	if isZero(tmp.B) {
+		b_ := "defValue"
+		tmp.B = &b_
+	}
+	return &tmp
 }
 
 type FuncWithAllOptionalInputsResult struct {

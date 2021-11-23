@@ -151,16 +151,13 @@ func TestListStorageAccountKeysOutput(t *testing.T) {
 	})
 }
 
-// TODO[pulumi/pulumi#7811]: it seems that default values are not
-// supported by Go codegen yet, hence we do not observe "B" populated
-// to default at all here.
 func TestFuncWithDefaultValueOutput(t *testing.T) {
 	pulumiTest(t, func(ctx *pulumi.Context) error {
 		output := mypkg.FuncWithDefaultValueOutput(ctx, mypkg.FuncWithDefaultValueOutputArgs{
 			A: pulumi.String("my-a"),
 		})
 		r := waitOut(t, output.R())
-		assert.Equal(t, "map[a:{my-a}]", r)
+		assert.Equal(t, "map[a:{my-a} b:{b-default}]", r)
 		return nil
 	})
 }

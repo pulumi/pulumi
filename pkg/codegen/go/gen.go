@@ -1870,7 +1870,7 @@ func NeedsGoOutputVersion(f *schema.Function) bool {
 	return f.NeedsOutputVersion()
 }
 
-func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) string {
+func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 	importsAndAliases := map[string]string{}
 	pkg.getImports(f, importsAndAliases)
 	buffer := &bytes.Buffer{}
@@ -1881,12 +1881,14 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) string {
 	}
 
 	pkg.genHeader(buffer, imports, importsAndAliases)
-	pkg.genFunction(buffer, f)
+	if err := pkg.genFunction(buffer, f); err != nil {
+		return "", err
+	}
 	pkg.genFunctionOutputVersion(buffer, f)
-	return buffer.String()
+	return buffer.String(), nil
 }
 
-func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
+func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 	name := pkg.functionName(f)
 	printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
 
@@ -1907,6 +1909,8 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 	var inputsVar string
 	if f.Inputs == nil {
 		inputsVar = "nil"
+	} else if codegen.IsProvideDefaultsFuncRequired(f.Inputs) && !pkg.disableObjectDefaults {
+		inputsVar = "args.Defaults()"
 	} else {
 		inputsVar = "args"
 	}
@@ -1930,19 +1934,38 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 		fmt.Fprintf(w, "\t}\n")
 
 		// Return the result.
-		fmt.Fprintf(w, "\treturn &rv, nil\n")
+		var retValue string
+		if codegen.IsProvideDefaultsFuncRequired(f.Outputs) && !pkg.disableObjectDefaults {
+			retValue = "rv.Defaults()"
+		} else {
+			retValue = "&rv"
+		}
+		fmt.Fprintf(w, "\treturn %s, nil\n", retValue)
 	}
 	fmt.Fprintf(w, "}\n")
 
 	// If there are argument and/or return types, emit them.
 	if f.Inputs != nil {
 		fmt.Fprintf(w, "\n")
-		pkg.genPlainType(w, pkg.functionArgsTypeName(f), f.Inputs.Comment, "", f.Inputs.Properties)
+		fnInputsName := pkg.functionArgsTypeName(f)
+		pkg.genPlainType(w, fnInputsName, f.Inputs.Comment, "", f.Inputs.Properties)
+		if codegen.IsProvideDefaultsFuncRequired(f.Inputs) && !pkg.disableObjectDefaults {
+			if err := pkg.genPlainObjectDefaultFunc(w, fnInputsName, f.Inputs.Properties); err != nil {
+				return err
+			}
+		}
 	}
 	if f.Outputs != nil {
 		fmt.Fprintf(w, "\n")
-		pkg.genPlainType(w, pkg.functionResultTypeName(f), f.Outputs.Comment, "", f.Outputs.Properties)
+		fnOutputsName := pkg.functionResultTypeName(f)
+		pkg.genPlainType(w, fnOutputsName, f.Outputs.Comment, "", f.Outputs.Properties)
+		if codegen.IsProvideDefaultsFuncRequired(f.Outputs) && !pkg.disableObjectDefaults {
+			if err := pkg.genPlainObjectDefaultFunc(w, fnOutputsName, f.Outputs.Properties); err != nil {
+				return err
+			}
+		}
 	}
+	return nil
 }
 
 func (pkg *pkgContext) functionName(f *schema.Function) string {
@@ -3315,7 +3338,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			}
 
 			fileName := path.Join(mod, camel(tokenToName(f.Token))+".go")
-			code := pkg.genFunctionCodeFile(f)
+			code, err := pkg.genFunctionCodeFile(f)
+			if err != nil {
+				return nil, err
+			}
 			setFile(fileName, code)
 		}
 
