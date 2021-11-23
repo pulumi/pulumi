@@ -17,15 +17,14 @@ include ../../build/common.mk
 TEST_ALL_DEPS = build
 
 ensure::
-	$(PYTHON) -m venv venv
-	venv/bin/python -m pip install -r requirements.txt
+	pipenv install --dev
 	mkdir -p $(PYENVSRC)
 
 build_package::
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak "s/\$${VERSION}/$(PYPI_VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
 	cp ../../README.md $(PYENVSRC)
-	cd $(PYENVSRC) && ../../venv/bin/python setup.py build bdist_wheel --universal
+	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
 
 build_plugin::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
@@ -33,8 +32,8 @@ build_plugin::
 build:: build_package build_plugin
 
 lint::
-	MYPYPATH=./stubs venv/bin/python -m mypy ./lib/pulumi --config-file=mypy.ini
-	venv/bin/python -m pylint ./lib/pulumi --rcfile=.pylintrc
+	MYPYPATH=./stubs pipenv run mypy ./lib/pulumi --config-file=mypy.ini
+	pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
 
 install_package:: build_package
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
@@ -49,22 +48,16 @@ install:: install_package install_plugin
 
 test_fast:: $(TEST_ALL_DEPS)
 	$(GO_TEST) ${PROJECT_PKGS}
-	venv/bin/python -m pip install -e ./env/src
+	pipenv install -e ./env/src
 	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
-	PATH=venv/bin:$$PATH $(RUN_TESTSUITE) python/lib/test coverage run -m pytest lib/test --ignore lib/test/automation --ignore lib/test/langhost/resource_thens/test_resource_thens.py
-	PATH=venv/bin:$$PATH $(RUN_TESTSUITE) python/lib/test/langhost/resource_thens coverage run -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
+	$(TESTSUITE_SKIPPED) python/lib/test || pipenv run pytest lib/test --ignore lib/test/automation --ignore lib/test/langhost/resource_thens/test_resource_thens.py
+	$(TESTSUITE_SKIPPED) python/lib/test/langhost/resource_thens || pipenv run python -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
 	# Using python -m also adds lib/test_with_mocks to sys.path which avoids package resolution issues.
-	pushd lib/test_with_mocks; PATH=../../venv/bin:$$PATH $(RUN_TESTSUITE) python/lib/test_with_mocks coverage run -m pytest; popd
-ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .coverage ]; then PATH=venv/bin:$$PATH coverage xml -o $(PULUMI_TEST_COVERAGE_PATH)/python-fast.xml; fi
-endif
+	pushd lib/test_with_mocks; $(TESTSUITE_SKIPPED) python/lib/test_with_mocks || pipenv run python -m pytest; popd
 
 test_auto:: test_fast $(TEST_ALL_DEPS)
-	# Note that this target depends on test-fast for the call to `pip install`
-	PATH=venv/bin:$$PATH $(RUN_TESTSUITE) auto-python coverage run -m pytest lib/test/automation
-ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .coverage ]; then PATH=venv/bin:$$PATH coverage xml -o $(PULUMI_TEST_COVERAGE_PATH)/python-auto.xml; fi
-endif
+	# Note that this target depends on test-fast for the call to `pipenv run pip install`
+	$(TESTSUITE_SKIPPED) auto-python || pipenv run pytest lib/test/automation
 
 test_all:: test_fast test_auto
 

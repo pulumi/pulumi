@@ -47,13 +47,13 @@ install_plugin:: build
 install:: install_package install_plugin
 
 istanbul_tests:: $(TEST_ALL_DEPS)
-	$(RUN_TESTSUITE) istanbul yarn run istanbul test --print none _mocha -- --timeout 120000 --exclude 'bin/tests/automation/**/*.spec.js' 'bin/tests/**/*.spec.js'
+	$(TESTSUITE_SKIPPED) istanbul || istanbul test --print none _mocha -- --timeout 120000 --exclude 'bin/tests/automation/**/*.spec.js' 'bin/tests/**/*.spec.js'
 	istanbul report text-summary
 	istanbul report text
-	$(RUN_TESTSUITE) istanbul-with-mocks yarn run istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
+	$(TESTSUITE_SKIPPED) istanbul-with-mocks || istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
 
 auto_tests:: $(TEST_ALL_DEPS)
-	$(RUN_TESTSUITE) auto-nodejs yarn run istanbul test --print none _mocha -- --timeout 120000 'bin/tests/automation/**/*.spec.js'
+	$(TESTSUITE_SKIPPED) auto-nodejs || istanbul test --print none _mocha -- --timeout 120000 'bin/tests/automation/**/*.spec.js'
 	istanbul report text-summary
 	istanbul report text
 

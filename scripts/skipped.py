@@ -1,13 +1,11 @@
-"""
-Wraps test suite invocation shell commands to measure time and
-provide awareness of test configurations set by PULUMI_TEST_SUBSET.
+"""Determines if a testsuite is skipped according to
+PULUMI_TEST_SUBSET.
+
 """
 
 from test_subsets import TEST_SUBSETS
 import os
-import subprocess as sp
 import sys
-import timeit
 
 
 testsuite_name = sys.argv[1]
@@ -34,12 +32,5 @@ def should_run():
 if not should_run():
     print(f'TESTSUITE {testsuite_name} skipped according to PULUMI_TEST_SUBSET={test_subset}')
     sys.exit(0)
-
-
-t0 = timeit.timeit()
-try:
-    sp.check_call(testsuite_command, shell=False)
-finally:
-    t1 = timeit.timeit()
-    elapsed = t1 - t0
-    print(f'TESTSUITE {testsuite_name} completed in {elapsed}')
+else:
+    sys.exit(1)
