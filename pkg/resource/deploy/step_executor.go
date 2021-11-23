@@ -165,7 +165,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 
 	// If a plan is present check that these outputs match what we recorded before
 	if se.deployment.plan != nil {
-		resourcePlan, ok := se.deployment.plan[urn]
+		resourcePlan, ok := se.deployment.plan.ResourcePlans[urn]
 		if !ok {
 			return result.FromError(fmt.Errorf("no plan for resource %v", urn))
 		} else {

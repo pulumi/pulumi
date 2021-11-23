@@ -114,7 +114,7 @@ func (ex *deploymentExecutor) reportError(urn resource.URN, err error) {
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview
 // or update.
-func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, preview bool) (Plan, result.Result) {
+func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, preview bool) (*Plan, result.Result) {
 	// Set up a goroutine that will signal cancellation to the deployment's plugins if the caller context is cancelled.
 	// We do not hang this off of the context we create below because we do not want the failure of a single step to
 	// cause other steps to fail.
@@ -270,7 +270,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	// Check that we did operations for everything expected in the plan. We mutate ResourcePlan.Ops as we run
 	// so by the time we get here everything in the map should have an empty ops list
 	if ex.deployment.plan != nil {
-		for urn, resourcePlan := range ex.deployment.plan {
+		for urn, resourcePlan := range ex.deployment.plan.ResourcePlans {
 			if len(resourcePlan.Ops) != 0 {
 				return nil, result.Errorf("Expected resource operations for %v but none were seen.", urn)
 			}
@@ -445,7 +445,7 @@ func (ex *deploymentExecutor) retirePendingDeletes(callerCtx context.Context, op
 func (ex *deploymentExecutor) importResources(
 	callerCtx context.Context,
 	opts Options,
-	preview bool) (Plan, result.Result) {
+	preview bool) (*Plan, result.Result) {
 
 	if len(ex.deployment.imports) == 0 {
 		return nil, nil

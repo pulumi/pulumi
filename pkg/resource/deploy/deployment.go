@@ -152,7 +152,7 @@ type resourcePlans struct {
 
 func newResourcePlan() *resourcePlans {
 	return &resourcePlans{
-		plans: make(Plan),
+		plans: NewPlan(),
 	}
 }
 
@@ -160,19 +160,19 @@ func (m *resourcePlans) set(urn resource.URN, plan *ResourcePlan) {
 	m.m.Lock()
 	defer m.m.Unlock()
 
-	m.plans[urn] = plan
+	m.plans.ResourcePlans[urn] = plan
 }
 
 func (m *resourcePlans) get(urn resource.URN) (*ResourcePlan, bool) {
 	m.m.RLock()
 	defer m.m.RUnlock()
 
-	p, ok := m.plans[urn]
+	p, ok := m.plans.ResourcePlans[urn]
 	return p, ok
 }
 
-func (m *resourcePlans) plan() Plan {
-	return m.plans
+func (m *resourcePlans) plan() *Plan {
+	return &m.plans
 }
 
 // A Deployment manages the iterative computation and execution of a deployment based on a stream of goal states.
@@ -183,7 +183,7 @@ type Deployment struct {
 	target               *Target                          // the deployment target.
 	prev                 *Snapshot                        // the old resource snapshot for comparison.
 	olds                 map[resource.URN]*resource.State // a map of all old resources.
-	plan                 Plan                             // a map of all planned resource changes, if any.
+	plan                 *Plan                            // a map of all planned resource changes, if any.
 	imports              []Import                         // resources to import, if this is an import deployment.
 	isImport             bool                             // true if this is an import deployment.
 	schemaLoader         schema.Loader                    // the schema cache for this deployment, if any.
@@ -331,7 +331,7 @@ func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[reso
 //
 // Note that a deployment uses internal concurrency and parallelism in various ways, so it must be closed if for some
 // reason it isn't carried out to its final conclusion. This will result in cancellation and reclamation of resources.
-func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan Plan, source Source,
+func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Plan, source Source,
 	localPolicyPackPaths []string, preview bool, backendClient BackendClient) (*Deployment, error) {
 
 	contract.Assert(ctx != nil)
@@ -439,7 +439,7 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 }
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview or update.
-func (d *Deployment) Execute(ctx context.Context, opts Options, preview bool) (Plan, result.Result) {
+func (d *Deployment) Execute(ctx context.Context, opts Options, preview bool) (*Plan, result.Result) {
 	deploymentExec := &deploymentExecutor{deployment: d}
 	return deploymentExec.Execute(ctx, opts, preview)
 }

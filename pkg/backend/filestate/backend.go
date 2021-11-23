@@ -461,7 +461,7 @@ func (b *localBackend) PackPolicies(
 }
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (deploy.Plan, engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 
 	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
 		err := b.Lock(ctx, stack.Ref())
@@ -548,7 +548,7 @@ func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (deploy.Plan, engine.ResourceChanges, result.Result) {
+	events chan<- engine.Event) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
@@ -604,7 +604,7 @@ func (b *localBackend) apply(
 
 	// Perform the update
 	start := time.Now().Unix()
-	var plan deploy.Plan
+	var plan *deploy.Plan
 	var changes engine.ResourceChanges
 	var updateRes result.Result
 	switch kind {

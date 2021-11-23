@@ -183,7 +183,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	// Check each proposed step against the relevant resource plan, if any
 	for _, s := range steps {
 		if sg.deployment.plan != nil {
-			if resourcePlan, ok := sg.deployment.plan[s.URN()]; ok {
+			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
 				if len(resourcePlan.Ops) == 0 {
 					return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 				}
@@ -314,7 +314,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
 	// If theres no plan for this resource check that nothing has been changed.
 	if sg.deployment.plan != nil {
-		resourcePlan, ok := sg.deployment.plan[urn]
+		resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
 		if !ok {
 			if old == nil {
 				// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
@@ -817,7 +817,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 	// Check each proposed delete against the relevant resource plan
 	for _, s := range dels {
 		if sg.deployment.plan != nil {
-			if resourcePlan, ok := sg.deployment.plan[s.URN()]; ok {
+			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
 				if len(resourcePlan.Ops) == 0 {
 					return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 				}

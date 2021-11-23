@@ -27,7 +27,7 @@ func Refresh(
 	u UpdateInfo,
 	ctx *Context,
 	opts UpdateOptions,
-	dryRun bool) (deploy.Plan, ResourceChanges, result.Result) {
+	dryRun bool) (*deploy.Plan, ResourceChanges, result.Result) {
 
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")

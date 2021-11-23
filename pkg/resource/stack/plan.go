@@ -1,10 +1,7 @@
 package stack
 
 import (
-	"time"
-
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -71,9 +68,9 @@ func SerializeResourcePlan(
 	}, nil
 }
 
-func SerializePlan(plan deploy.Plan, enc config.Encrypter, showSecrets bool) (apitype.DeploymentPlanV1, error) {
+func SerializePlan(plan *deploy.Plan, enc config.Encrypter, showSecrets bool) (apitype.DeploymentPlanV1, error) {
 	resourcePlans := map[resource.URN]apitype.ResourcePlanV1{}
-	for urn, plan := range plan {
+	for urn, plan := range plan.ResourcePlans {
 		serializedPlan, err := SerializeResourcePlan(plan, enc, showSecrets)
 		if err != nil {
 			return apitype.DeploymentPlanV1{}, err
@@ -81,16 +78,8 @@ func SerializePlan(plan deploy.Plan, enc config.Encrypter, showSecrets bool) (ap
 		resourcePlans[urn] = serializedPlan
 	}
 
-	// Bit odd this isn't part of deploy.Plan but that's just a map right now. We need to change that to track config and things so we'll move this then.
-	manifest := deploy.Manifest{
-		Time:    time.Now(),
-		Version: version.Version,
-		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
-	}
-	manifest.Magic = manifest.NewMagic()
-
 	return apitype.DeploymentPlanV1{
-		Manifest:      manifest.Serialize(),
+		Manifest:      plan.Manifest.Serialize(),
 		ResourcePlans: resourcePlans,
 	}, nil
 }
@@ -151,14 +140,14 @@ func DeserializeResourcePlan(
 	}, nil
 }
 
-func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter, enc config.Encrypter) (deploy.Plan, error) {
-	deserializedPlan := deploy.Plan{}
+func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter, enc config.Encrypter) (*deploy.Plan, error) {
+	deserializedPlan := &deploy.Plan{}
 	for urn, resourcePlan := range plan.ResourcePlans {
 		deserializedResourcePlan, err := DeserializeResourcePlan(resourcePlan, dec, enc)
 		if err != nil {
 			return nil, err
 		}
-		deserializedPlan[urn] = deserializedResourcePlan
+		deserializedPlan.ResourcePlans[urn] = deserializedResourcePlan
 	}
 	return deserializedPlan, nil
 }

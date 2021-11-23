@@ -869,7 +869,7 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	return false, nil
 }
 
-func writePlan(path string, plan deploy.Plan, enc config.Encrypter, showSecrets bool) error {
+func writePlan(path string, plan *deploy.Plan, enc config.Encrypter, showSecrets bool) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return err
@@ -883,7 +883,7 @@ func writePlan(path string, plan deploy.Plan, enc config.Encrypter, showSecrets 
 	return json.NewEncoder(f).Encode(deploymentPlan)
 }
 
-func readPlan(path string, dec config.Decrypter, enc config.Encrypter) (deploy.Plan, error) {
+func readPlan(path string, dec config.Decrypter, enc config.Encrypter) (*deploy.Plan, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err

@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -17,7 +20,28 @@ import (
 // accept any value (including no value) as valid. For operations, a same step is allowed in place of an update or
 // a replace step, and an update is allowed in place of a replace step. All resource options are required to match
 // exactly.
-type Plan map[resource.URN]*ResourcePlan
+type Plan struct {
+	ResourcePlans map[resource.URN]*ResourcePlan
+	Manifest      Manifest
+	// Any environment variables that were set when the plan was created. Values are encrypted.
+	EnvironmentVariables map[string][]byte
+	// The configuration in use during the plan.
+	Config map[string]config.Value
+}
+
+func NewPlan() Plan {
+	manifest := Manifest{
+		Time:    time.Now(),
+		Version: version.Version,
+		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
+	}
+	manifest.Magic = manifest.NewMagic()
+
+	return Plan{
+		ResourcePlans: make(map[resource.URN]*ResourcePlan),
+		Manifest:      manifest,
+	}
+}
 
 // Goal is a desired state for a resource object.  Normally it represents a subset of the resource's state expressed by
 // a program, however if Output is true, it represents a more complete, post-deployment view of the state.
