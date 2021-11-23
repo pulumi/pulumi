@@ -30,11 +30,15 @@ func NewFoo(ctx *pulumi.Context,
 		return nil, errors.New("invalid value for required argument 'BackupKubeClientSettings'")
 	}
 	backupKubeClientSettingsApplier := func(v KubeClientSettings) *KubeClientSettings { return v.Defaults() }
-	args.BackupKubeClientSettings = args.BackupKubeClientSettings.ToKubeClientSettingsOutput().ApplyT(backupKubeClientSettingsApplier).(KubeClientSettingsOutput)
+	args.BackupKubeClientSettings = args.BackupKubeClientSettings.ToKubeClientSettingsOutput().ApplyT(backupKubeClientSettingsApplier).(KubeClientSettingsPtrOutput).Elem()
 	kubeClientSettingsApplier := func(v KubeClientSettings) *KubeClientSettings { return v.Defaults() }
-	args.KubeClientSettings = args.KubeClientSettings.ToKubeClientSettingsPtrOutput().Elem().ApplyT(kubeClientSettingsApplier).(KubeClientSettingsPtrOutput)
+	if args.KubeClientSettings != nil {
+		args.KubeClientSettings = args.KubeClientSettings.ToKubeClientSettingsPtrOutput().Elem().ApplyT(kubeClientSettingsApplier).(KubeClientSettingsPtrOutput)
+	}
 	settingsApplier := func(v LayeredType) *LayeredType { return v.Defaults() }
-	args.Settings = args.Settings.ToLayeredTypePtrOutput().Elem().ApplyT(settingsApplier).(LayeredTypePtrOutput)
+	if args.Settings != nil {
+		args.Settings = args.Settings.ToLayeredTypePtrOutput().Elem().ApplyT(settingsApplier).(LayeredTypePtrOutput)
+	}
 	var resource Foo
 	err := ctx.RegisterResource("example:index:Foo", name, args, &resource, opts...)
 	if err != nil {

@@ -1494,6 +1494,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "\t}\n")
 		} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" && !pkg.disableObjectDefaults {
 			var value string
+			var needsNilCheck bool
 			if codegen.IsNOptionalInput(p.Type) {
 				innerFuncType := strings.TrimSuffix(pkg.typeString(codegen.UnwrapType(p.Type)), "Args")
 				applyName := fmt.Sprintf("%sApplier", camel(p.Name))
@@ -1504,11 +1505,29 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 				if strings.HasSuffix(outputType, "Input") {
 					outputType = strings.TrimSuffix(outputType, "Input") + "Output"
 				}
-				value = fmt.Sprintf("%s.ApplyT(%s).(%s)", outputValue, applyName, outputType)
+
+				// Because applies return pointers, we need to convert to PtrOutput and then call .Elem().
+				var tail string
+				if !strings.HasSuffix(outputType, "PtrOutput") {
+					outputType = strings.TrimSuffix(outputType, "Output") + "PtrOutput"
+					tail = ".Elem()"
+				}
+				needsNilCheck = !p.IsRequired()
+				value = fmt.Sprintf("%s.ApplyT(%s).(%s)%s", outputValue, applyName, outputType, tail)
 			} else {
 				value = fmt.Sprintf("args.%[1]s.%[2]s()", Title(p.Name), name)
 			}
-			fmt.Fprintf(w, "args.%[1]s = %s\n", Title(p.Name), value)
+			v := func() {
+				fmt.Fprintf(w, "args.%[1]s = %s\n", Title(p.Name), value)
+			}
+			if needsNilCheck {
+				fmt.Fprintf(w, "if args.%s != nil {\n", Title(p.Name))
+				v()
+				fmt.Fprint(w, "}\n")
+			} else {
+				v()
+			}
+
 		}
 	}
 
