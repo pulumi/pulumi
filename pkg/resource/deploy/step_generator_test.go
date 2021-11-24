@@ -3,6 +3,7 @@ package deploy
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -193,4 +194,63 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 		})
 	}
 
+}
+
+func TestEngineDiffResource(t *testing.T) {
+	cases := []struct {
+		name                 string
+		oldInputs, newInputs resource.PropertyMap
+		expected             []resource.PropertyKey
+	}{
+		{
+			name: "Empty diff",
+			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewPropertyValue(8),
+				"val2": resource.NewPropertyValue("hello"),
+			}),
+			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewPropertyValue(8),
+				"val2": resource.NewPropertyValue("hello"),
+			}),
+			expected: nil,
+		},
+		{
+			name: "All changes",
+			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val0": resource.NewPropertyValue(3.14),
+			}),
+			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewNumberProperty(42),
+				"val2": resource.NewPropertyValue("world"),
+			}),
+			expected: []resource.PropertyKey{"val0", "val1", "val2"},
+		},
+		{
+			name: "Some changes",
+			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewPropertyValue(42),
+			}),
+			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewNumberProperty(42),
+				"val2": resource.NewPropertyValue("world"),
+			}),
+			expected: []resource.PropertyKey{"val2"},
+		},
+	}
+	urn := resource.URN("urn:pulumi:dev::website-and-lambda::aws:s3/bucket:Bucket::my-bucket")
+	id := resource.ID("someid")
+	var oldOutputs resource.PropertyMap
+	allowUnknowns := false
+	ignoreChanges := []string{}
+	provider := deploytest.Provider{}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			diff, err := diffResource(urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, ignoreChanges)
+			t.Logf("diff.ChangedKeys = %v", diff.ChangedKeys)
+			t.Logf("diff.StableKeys = %v", diff.StableKeys)
+			t.Logf("diff.ReplaceKeys = %v", diff.ReplaceKeys)
+			assert.NoError(t, err)
+			assert.EqualValues(t, c.expected, diff.ChangedKeys)
+		})
+	}
 }

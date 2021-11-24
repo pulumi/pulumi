@@ -80,6 +80,19 @@ func (diff *ObjectDiff) Keys() []PropertyKey {
 	return ks
 }
 
+// All keys where Changed(k) = true.
+func (diff *ObjectDiff) ChangedKeys() []PropertyKey {
+	var ks []PropertyKey
+	if diff != nil {
+		for _, k := range diff.Keys() {
+			if diff.Changed(k) {
+				ks = append(ks, k)
+			}
+		}
+	}
+	return ks
+}
+
 // ValueDiff holds the results of diffing two property values.
 type ValueDiff struct {
 	Old    PropertyValue // the old value.
