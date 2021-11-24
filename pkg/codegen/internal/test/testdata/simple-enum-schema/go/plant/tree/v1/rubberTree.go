@@ -29,16 +29,20 @@ func NewRubberTree(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
-	if args.Diameter == nil {
+	containerApplier := func(v plant.Container) *plant.Container { return v.Defaults() }
+	if args.Container != nil {
+		args.Container = args.Container.ToContainerPtrOutput().Elem().ApplyT(containerApplier).(plant.ContainerPtrOutput)
+	}
+	if isZero(args.Diameter) {
 		args.Diameter = Diameter(6.0)
 	}
-	if args.Farm == nil {
+	if isZero(args.Farm) {
 		args.Farm = pulumi.StringPtr("(unknown)")
 	}
-	if args.Size == nil {
+	if isZero(args.Size) {
 		args.Size = TreeSize("medium")
 	}
-	if args.Type == nil {
+	if isZero(args.Type) {
 		args.Type = RubberTreeVariety("Burgundy")
 	}
 	var resource RubberTree

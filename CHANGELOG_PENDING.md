@@ -12,3 +12,5 @@
   allows the replaceOnChanges feature to be respected for all providers.
   [#8488](https://github.com/pulumi/pulumi/pull/8488)
 
+- [codegen/go] - Respect default values in Pulumi object types.
+  [#8411](https://github.com/pulumi/pulumi/pull/8400)
