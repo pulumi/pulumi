@@ -214,8 +214,9 @@ func TestEngineDiffResource(t *testing.T) {
 	cases := []struct {
 		name                 string
 		oldInputs, newInputs resource.PropertyMap
-		expected             []resource.PropertyKey
 		ignoreChanges        []string
+		expected             []resource.PropertyKey
+		expectedChanges      plugin.DiffChanges
 	}{
 		{
 			name: "Empty diff",
@@ -227,7 +228,8 @@ func TestEngineDiffResource(t *testing.T) {
 				"val1": resource.NewPropertyValue(8),
 				"val2": resource.NewPropertyValue("hello"),
 			}),
-			expected: nil,
+			expected:        nil,
+			expectedChanges: plugin.DiffNone,
 		},
 		{
 			name: "All changes",
@@ -238,7 +240,8 @@ func TestEngineDiffResource(t *testing.T) {
 				"val1": resource.NewNumberProperty(42),
 				"val2": resource.NewPropertyValue("world"),
 			}),
-			expected: []resource.PropertyKey{"val0", "val1", "val2"},
+			expected:        []resource.PropertyKey{"val0", "val1", "val2"},
+			expectedChanges: plugin.DiffSome,
 		},
 		{
 			name: "Some changes",
@@ -249,10 +252,11 @@ func TestEngineDiffResource(t *testing.T) {
 				"val1": resource.NewNumberProperty(42),
 				"val2": resource.NewPropertyValue("world"),
 			}),
-			expected: []resource.PropertyKey{"val2"},
+			expected:        []resource.PropertyKey{"val2"},
+			expectedChanges: plugin.DiffSome,
 		},
 		{
-			name: "Ignore changes",
+			name: "Ignore some changes",
 			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"val1": resource.NewPropertyValue("hello"),
 			}),
@@ -260,8 +264,22 @@ func TestEngineDiffResource(t *testing.T) {
 				"val2": resource.NewPropertyValue(8),
 			}),
 
-			expected:      []resource.PropertyKey{"val2"},
-			ignoreChanges: []string{"val1"},
+			ignoreChanges:   []string{"val1"},
+			expected:        []resource.PropertyKey{"val2"},
+			expectedChanges: plugin.DiffSome,
+		},
+		{
+			name: "Ignore all changes",
+			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewPropertyValue("hello"),
+			}),
+			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val2": resource.NewPropertyValue(8),
+			}),
+
+			ignoreChanges:   []string{"val1", "val2"},
+			expected:        nil,
+			expectedChanges: plugin.DiffNone,
 		},
 	}
 	urn := resource.URN("urn:pulumi:dev::website-and-lambda::aws:s3/bucket:Bucket::my-bucket")
@@ -276,6 +294,7 @@ func TestEngineDiffResource(t *testing.T) {
 			t.Logf("diff.StableKeys = %v", diff.StableKeys)
 			t.Logf("diff.ReplaceKeys = %v", diff.ReplaceKeys)
 			assert.NoError(t, err)
+			assert.Equal(t, c.expectedChanges, diff.Changes)
 			assert.EqualValues(t, c.expected, diff.ChangedKeys)
 		})
 	}
