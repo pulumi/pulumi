@@ -47,7 +47,7 @@ func TestEnumUsage(t *testing.T) {
 				assert.Equal(t, *material, "ceramic", "unexpected material on resource: %v", urn)
 				assert.Equal(t, *color, "red", "unexpected color on resource: %v", urn)
 				assert.Equal(t, *size, plant.ContainerSizeFourInch, "unexpected size on resource: %v", urn)
-				assert.Nil(t, brightness)
+				assert.Equal(t, *brightness, plant.ContainerBrightness(1.0))
 				assert.Equal(t, typ, tree.RubberTreeVarietyRuby, "unexpected type on resource: %v", urn)
 				wg.Done()
 				return nil

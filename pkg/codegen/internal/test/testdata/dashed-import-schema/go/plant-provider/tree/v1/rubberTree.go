@@ -29,16 +29,20 @@ func NewRubberTree(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
-	if args.Diameter == nil {
+	containerApplier := func(v plantprovider.Container) *plantprovider.Container { return v.Defaults() }
+	if args.Container != nil {
+		args.Container = args.Container.ToContainerPtrOutput().Elem().ApplyT(containerApplier).(plantprovider.ContainerPtrOutput)
+	}
+	if isZero(args.Diameter) {
 		args.Diameter = Diameter(6.0)
 	}
-	if args.Farm == nil {
+	if isZero(args.Farm) {
 		args.Farm = pulumi.StringPtr("(unknown)")
 	}
-	if args.Size == nil {
+	if isZero(args.Size) {
 		args.Size = TreeSize("medium")
 	}
-	if args.Type == nil {
+	if isZero(args.Type) {
 		args.Type = RubberTreeVariety("Burgundy")
 	}
 	var resource RubberTree
@@ -103,7 +107,7 @@ type RubberTreeInput interface {
 }
 
 func (*RubberTree) ElementType() reflect.Type {
-	return reflect.TypeOf((*RubberTree)(nil))
+	return reflect.TypeOf((**RubberTree)(nil)).Elem()
 }
 
 func (i *RubberTree) ToRubberTreeOutput() RubberTreeOutput {
@@ -117,7 +121,7 @@ func (i *RubberTree) ToRubberTreeOutputWithContext(ctx context.Context) RubberTr
 type RubberTreeOutput struct{ *pulumi.OutputState }
 
 func (RubberTreeOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*RubberTree)(nil))
+	return reflect.TypeOf((**RubberTree)(nil)).Elem()
 }
 
 func (o RubberTreeOutput) ToRubberTreeOutput() RubberTreeOutput {

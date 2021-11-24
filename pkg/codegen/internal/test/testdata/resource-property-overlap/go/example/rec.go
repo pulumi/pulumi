@@ -13,7 +13,7 @@ import (
 type Rec struct {
 	pulumi.CustomResourceState
 
-	Rec RecPtrOutput `pulumi:"rec"`
+	Rec RecOutput `pulumi:"rec"`
 }
 
 // NewRec registers a new resource with the given unique name, arguments, and options.
@@ -73,7 +73,7 @@ type RecInput interface {
 }
 
 func (*Rec) ElementType() reflect.Type {
-	return reflect.TypeOf((*Rec)(nil))
+	return reflect.TypeOf((**Rec)(nil)).Elem()
 }
 
 func (i *Rec) ToRecOutput() RecOutput {
@@ -82,35 +82,6 @@ func (i *Rec) ToRecOutput() RecOutput {
 
 func (i *Rec) ToRecOutputWithContext(ctx context.Context) RecOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(RecOutput)
-}
-
-func (i *Rec) ToRecPtrOutput() RecPtrOutput {
-	return i.ToRecPtrOutputWithContext(context.Background())
-}
-
-func (i *Rec) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(RecPtrOutput)
-}
-
-type RecPtrInput interface {
-	pulumi.Input
-
-	ToRecPtrOutput() RecPtrOutput
-	ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput
-}
-
-type recPtrType RecArgs
-
-func (*recPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Rec)(nil))
-}
-
-func (i *recPtrType) ToRecPtrOutput() RecPtrOutput {
-	return i.ToRecPtrOutputWithContext(context.Background())
-}
-
-func (i *recPtrType) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(RecPtrOutput)
 }
 
 // RecArrayInput is an input type that accepts RecArray and RecArrayOutput values.
@@ -166,7 +137,7 @@ func (i RecMap) ToRecMapOutputWithContext(ctx context.Context) RecMapOutput {
 type RecOutput struct{ *pulumi.OutputState }
 
 func (RecOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Rec)(nil))
+	return reflect.TypeOf((**Rec)(nil)).Elem()
 }
 
 func (o RecOutput) ToRecOutput() RecOutput {
@@ -177,44 +148,10 @@ func (o RecOutput) ToRecOutputWithContext(ctx context.Context) RecOutput {
 	return o
 }
 
-func (o RecOutput) ToRecPtrOutput() RecPtrOutput {
-	return o.ToRecPtrOutputWithContext(context.Background())
-}
-
-func (o RecOutput) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Rec) *Rec {
-		return &v
-	}).(RecPtrOutput)
-}
-
-type RecPtrOutput struct{ *pulumi.OutputState }
-
-func (RecPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Rec)(nil))
-}
-
-func (o RecPtrOutput) ToRecPtrOutput() RecPtrOutput {
-	return o
-}
-
-func (o RecPtrOutput) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
-	return o
-}
-
-func (o RecPtrOutput) Elem() RecOutput {
-	return o.ApplyT(func(v *Rec) Rec {
-		if v != nil {
-			return *v
-		}
-		var ret Rec
-		return ret
-	}).(RecOutput)
-}
-
 type RecArrayOutput struct{ *pulumi.OutputState }
 
 func (RecArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Rec)(nil))
+	return reflect.TypeOf((*[]*Rec)(nil)).Elem()
 }
 
 func (o RecArrayOutput) ToRecArrayOutput() RecArrayOutput {
@@ -226,15 +163,15 @@ func (o RecArrayOutput) ToRecArrayOutputWithContext(ctx context.Context) RecArra
 }
 
 func (o RecArrayOutput) Index(i pulumi.IntInput) RecOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Rec {
-		return vs[0].([]Rec)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Rec {
+		return vs[0].([]*Rec)[vs[1].(int)]
 	}).(RecOutput)
 }
 
 type RecMapOutput struct{ *pulumi.OutputState }
 
 func (RecMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Rec)(nil))
+	return reflect.TypeOf((*map[string]*Rec)(nil)).Elem()
 }
 
 func (o RecMapOutput) ToRecMapOutput() RecMapOutput {
@@ -246,18 +183,16 @@ func (o RecMapOutput) ToRecMapOutputWithContext(ctx context.Context) RecMapOutpu
 }
 
 func (o RecMapOutput) MapIndex(k pulumi.StringInput) RecOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Rec {
-		return vs[0].(map[string]Rec)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *Rec {
+		return vs[0].(map[string]*Rec)[vs[1].(string)]
 	}).(RecOutput)
 }
 
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*RecInput)(nil)).Elem(), &Rec{})
-	pulumi.RegisterInputType(reflect.TypeOf((*RecPtrInput)(nil)).Elem(), &Rec{})
 	pulumi.RegisterInputType(reflect.TypeOf((*RecArrayInput)(nil)).Elem(), RecArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*RecMapInput)(nil)).Elem(), RecMap{})
 	pulumi.RegisterOutputType(RecOutput{})
-	pulumi.RegisterOutputType(RecPtrOutput{})
 	pulumi.RegisterOutputType(RecArrayOutput{})
 	pulumi.RegisterOutputType(RecMapOutput{})
 }

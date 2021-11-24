@@ -22,53 +22,53 @@ func NewModuleResource(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
-	if args.Optional_bool == nil {
+	if isZero(args.Optional_bool) {
 		args.Optional_bool = pulumi.BoolPtr(true)
 	}
 	args.Optional_const = pulumi.StringPtr("val")
-	if args.Optional_enum == nil {
+	if isZero(args.Optional_enum) {
 		args.Optional_enum = EnumThing(8)
 	}
-	if args.Optional_number == nil {
+	if isZero(args.Optional_number) {
 		args.Optional_number = pulumi.Float64Ptr(42.0)
 	}
-	if args.Optional_string == nil {
+	if isZero(args.Optional_string) {
 		args.Optional_string = pulumi.StringPtr("buzzer")
 	}
-	if args.Plain_optional_bool == nil {
+	if isZero(args.Plain_optional_bool) {
 		plain_optional_bool_ := true
 		args.Plain_optional_bool = &plain_optional_bool_
 	}
 	plain_optional_const_ := "val"
 	args.Plain_optional_const = &plain_optional_const_
-	if args.Plain_optional_number == nil {
+	if isZero(args.Plain_optional_number) {
 		plain_optional_number_ := 42.0
 		args.Plain_optional_number = &plain_optional_number_
 	}
-	if args.Plain_optional_string == nil {
+	if isZero(args.Plain_optional_string) {
 		plain_optional_string_ := "buzzer"
 		args.Plain_optional_string = &plain_optional_string_
 	}
-	if args.Plain_required_bool == false {
+	if isZero(args.Plain_required_bool) {
 		args.Plain_required_bool = true
 	}
 	args.Plain_required_const = "val"
-	if args.Plain_required_number == 0.0 {
+	if isZero(args.Plain_required_number) {
 		args.Plain_required_number = 42.0
 	}
-	if args.Plain_required_string == "" {
+	if isZero(args.Plain_required_string) {
 		args.Plain_required_string = "buzzer"
 	}
-	if args.Required_bool == nil {
+	if isZero(args.Required_bool) {
 		args.Required_bool = pulumi.Bool(true)
 	}
-	if args.Required_enum == nil {
+	if isZero(args.Required_enum) {
 		args.Required_enum = EnumThing(4)
 	}
-	if args.Required_number == nil {
+	if isZero(args.Required_number) {
 		args.Required_number = pulumi.Float64(42.0)
 	}
-	if args.Required_string == nil {
+	if isZero(args.Required_string) {
 		args.Required_string = pulumi.String("buzzer")
 	}
 	var resource ModuleResource
@@ -155,7 +155,7 @@ type ModuleResourceInput interface {
 }
 
 func (*ModuleResource) ElementType() reflect.Type {
-	return reflect.TypeOf((*ModuleResource)(nil))
+	return reflect.TypeOf((**ModuleResource)(nil)).Elem()
 }
 
 func (i *ModuleResource) ToModuleResourceOutput() ModuleResourceOutput {
@@ -169,7 +169,7 @@ func (i *ModuleResource) ToModuleResourceOutputWithContext(ctx context.Context) 
 type ModuleResourceOutput struct{ *pulumi.OutputState }
 
 func (ModuleResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ModuleResource)(nil))
+	return reflect.TypeOf((**ModuleResource)(nil)).Elem()
 }
 
 func (o ModuleResourceOutput) ToModuleResourceOutput() ModuleResourceOutput {

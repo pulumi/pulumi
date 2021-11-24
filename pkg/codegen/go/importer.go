@@ -60,6 +60,10 @@ type GoPackageInfo struct {
 	// Feature flag to disable generating input type registration. This is a
 	// space saving measure.
 	DisableInputTypeRegistrations bool `json:"disableInputTypeRegistrations,omitempty"`
+
+	// Feature flag to disable generating Pulumi object default functions. This is a
+	// space saving measure.
+	DisableObjectDefaults bool `json:"disableObjectDefaults,omitempty"`
 }
 
 // Importer implements schema.Language for Go.
