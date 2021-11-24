@@ -182,8 +182,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// }
 		// g.Fgenf(w, " => new { Key = k, Value = v })")
 	case "fileArchive":
-		g.genNYI(w, "call %v", expr.Name)
-		// g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
+		g.Fgenf(w, "pulumi.NewFileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.NewFileAsset(%.v)", expr.Args[0])
 	case "filebase64":
