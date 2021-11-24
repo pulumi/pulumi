@@ -128,7 +128,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
-				if i := g.getFunctionImports(call); i[0] != "" {
+				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {
 					for _, importPackage := range i {
 						importSet.Add(importPackage)
 					}
