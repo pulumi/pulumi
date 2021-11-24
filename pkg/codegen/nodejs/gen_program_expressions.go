@@ -267,14 +267,14 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 }
 
 var functionImports = map[string][]string{
-	intrinsicInterpolate: []string{"@pulumi/pulumi"},
-	"fileArchive":        []string{"@pulumi/pulumi"},
-	"fileAsset":          []string{"@pulumi/pulumi"},
-	"filebase64":         []string{"fs"},
-	"filebase64sha256":   []string{"fs", "crypto"},
-	"readFile":           []string{"fs"},
-	"readDir":            []string{"fs"},
-	"sha1":               []string{"crypto"},
+	intrinsicInterpolate: {"@pulumi/pulumi"},
+	"fileArchive":        {"@pulumi/pulumi"},
+	"fileAsset":          {"@pulumi/pulumi"},
+	"filebase64":         {"fs"},
+	"filebase64sha256":   {"fs", "crypto"},
+	"readFile":           {"fs"},
+	"readDir":            {"fs"},
+	"sha1":               {"crypto"},
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {

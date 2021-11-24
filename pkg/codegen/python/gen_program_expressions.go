@@ -182,14 +182,14 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 }
 
 var functionImports = map[string][]string{
-	"fileArchive":      []string{"pulumi"},
-	"fileAsset":        []string{"pulumi"},
-	"filebase64":       []string{"base64"},
-	"filebase64sha256": []string{"base64", "hashlib"},
-	"readDir":          []string{"os"},
-	"toBase64":         []string{"base64"},
-	"toJSON":           []string{"json"},
-	"sha1":             []string{"hashlib"},
+	"fileArchive":      {"pulumi"},
+	"fileAsset":        {"pulumi"},
+	"filebase64":       {"base64"},
+	"filebase64sha256": {"base64", "hashlib"},
+	"readDir":          {"os"},
+	"toBase64":         {"base64"},
+	"toJSON":           {"json"},
+	"sha1":             {"hashlib"},
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
