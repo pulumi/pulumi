@@ -38,10 +38,10 @@ build::
 install::
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 else
-build:: build_cover install_covmerge
+build:: build_cover
 	mkdir -p $(PULUMI_TEST_COVERAGE_PATH)
 
-install:: install_cover install_covmerge
+install:: install_cover
 endif
 
 build_debug::
@@ -52,9 +52,6 @@ build_cover::
 
 install_cover:: build_cover
 	cp $(shell go env GOPATH)/bin/pulumi $(PULUMI_BIN)
-
-install_covmerge::
-	cd pkg && go install ./cmd/covmerge
 
 developer_docs::
 	cd developer-docs && make html
