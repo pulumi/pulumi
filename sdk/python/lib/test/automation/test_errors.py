@@ -65,8 +65,6 @@ class TestErrors(unittest.TestCase):
                 self.assertRaises(RuntimeError, stack.up)
                 if lang == "go":
                     self.assertRaisesRegex(RuntimeError, "panic: runtime error", stack.up)
-                elif lang == "dotnet":
-                    self.assertRaisesRegex(RuntimeError, "an unhandled error occurred", stack.up)
                 else:
                     self.assertRaisesRegex(RuntimeError, "failed with an unhandled exception", stack.up)
             finally:
