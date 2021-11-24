@@ -3400,7 +3400,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 		urn, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
-		monitor.RegisterResourceOutputs(urn, outs)
+		err = monitor.RegisterResourceOutputs(urn, outs)
 		assert.NoError(t, err)
 
 		return nil
