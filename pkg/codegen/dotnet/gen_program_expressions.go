@@ -238,12 +238,13 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 }
 
 var functionNamespaces = map[string][]string{
-	"readDir":    {"System.IO", "System.Linq"},
-	"readFile":   {"System.IO"},
-	"filebase64": {"System", "System.IO"},
-	"toJSON":     {"System.Text.Json", "System.Collections.Generic"},
-	"toBase64":   {"System"},
-	"sha1":       {"System.Security.Cryptography", "System.Text"},
+	"readDir":          {"System.IO", "System.Linq"},
+	"readFile":         {"System.IO"},
+	"filebase64":       {"System", "System.IO"},
+	"filebase64sha256": {"System", "System.IO", "System.Security.Cryptography", "System.Text"},
+	"toJSON":           {"System.Text.Json", "System.Collections.Generic"},
+	"toBase64":         {"System"},
+	"sha1":             {"System.Security.Cryptography", "System.Text"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
@@ -313,6 +314,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "filebase64":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "ReadFileBase64(%v)", expr.Args[0])
+	case "filebase64sha256":
+		// Assuming the existence of the following helper method located earlier in the preamble
+		g.Fgenf(w, "ComputeFileBase64Sha256(%v)", expr.Args[0])
 	case pcl.Invoke:
 		_, name := g.functionName(expr.Args[0])
 
