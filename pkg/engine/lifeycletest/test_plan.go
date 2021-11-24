@@ -114,11 +114,11 @@ func (op TestOp) runWithContext(
 	plan, _, res := op(info, ctx, opts, dryRun)
 	contract.IgnoreClose(journal)
 
-	if dryRun {
-		return plan, nil, res
-	}
 	if validate != nil {
 		res = validate(project, target, journal.Entries(), firedEvents, res)
+	}
+	if dryRun {
+		return plan, nil, res
 	}
 
 	snap := journal.Snap(target.Snapshot)

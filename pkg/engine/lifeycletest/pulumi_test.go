@@ -3305,7 +3305,7 @@ func TestPlannedPreviews(t *testing.T) {
 		},
 	})
 	p.Options.Plan = ClonePlan(t, plan)
-	validate := ExpectDiagMessage(t, "Expected resource operations for urn:pulumi:test::test::pkgA:m:typA::resA but none were seen.\n")
+	validate := ExpectDiagMessage(t, "<{%reset%}>resource violates plan: properties changed: -baz, -foo, -zed<{%reset%}>\n")
 	_, res = TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate)
 	assert.Nil(t, res)
 

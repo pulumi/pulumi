@@ -277,7 +277,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 	// Check that we did operations for everything expected in the plan. We mutate ResourcePlan.Ops as we run
 	// so by the time we get here everything in the map should have an empty ops list (except for unneeded deletes)
-	if ex.deployment.plan != nil {
+	if res == nil && ex.deployment.plan != nil {
 		for urn, resourcePlan := range ex.deployment.plan.ResourcePlans {
 			if len(resourcePlan.Ops) != 0 {
 				if len(resourcePlan.Ops) == 1 && resourcePlan.Ops[0] == OpDelete {
