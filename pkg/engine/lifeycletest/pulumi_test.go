@@ -33,6 +33,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -3423,7 +3424,22 @@ func TestPlannedOutputChanges(t *testing.T) {
 		"foo": "bar",
 	})
 	p.Options.Plan = ClonePlan(t, plan)
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, res result.Result) result.Result {
+		assert.NotNil(t, res)
+
+		for i := range events {
+			if events[i].Type == "diag" {
+				payload := events[i].Payload().(engine.DiagEventPayload)
+				if payload.Message == "<{%reset%}>resource violates plan: &{map[] map[frob:{baz}] map[foo:{bar}] map[]}<{%reset%}>\n" {
+					return nil
+				} else {
+					return result.Errorf("Unexpected diag message: %s", payload.Message)
+				}
+			}
+		}
+		return result.Error("Expected diagnostic for plan error")
+	}
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
-	assert.NotNil(t, res)
+	assert.Nil(t, res)
 }
