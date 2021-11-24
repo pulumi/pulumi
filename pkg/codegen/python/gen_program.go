@@ -50,8 +50,11 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
+	// Creating a list to store and later print helper methods if they turn out to be needed
+	preambleHelperMethods := codegen.NewStringSet()
+
 	var main bytes.Buffer
-	g.genPreamble(&main, program)
+	g.genPreamble(&main, program, preambleHelperMethods)
 	for _, n := range nodes {
 		g.genNode(&main, n)
 	}
@@ -112,7 +115,7 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 	}
 }
 
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
 	// Print the pulumi import at the top.
 	g.Fprintln(w, "import pulumi")
 
@@ -125,8 +128,13 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
-				if i := g.getFunctionImports(call); i != "" {
-					importSet.Add(i)
+				if i := g.getFunctionImports(call); i[0] != "" {
+					for _, importPackage := range i {
+						importSet.Add(importPackage)
+					}
+				}
+				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name); ok {
+					preambleHelperMethods.Add(helperMethodBody)
 				}
 			}
 			return n, nil
@@ -152,6 +160,11 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 		g.Fprintln(w, i)
 	}
 	g.Fprint(w, "\n")
+
+	// If we collected any helper methods that should be added, write them just before the main func
+	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
+	}
 }
 
 func (g *generator) genNode(w io.Writer, n pcl.Node) {

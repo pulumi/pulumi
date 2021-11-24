@@ -181,24 +181,25 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
 }
 
-var functionImports = map[string]string{
-	"fileArchive": "pulumi",
-	"fileAsset":   "pulumi",
-	"filebase64":  "base64",
-	"readDir":     "os",
-	"toBase64":    "base64",
-	"toJSON":      "json",
-	"sha1":        "hashlib",
+var functionImports = map[string][]string{
+	"fileArchive":      []string{"pulumi"},
+	"fileAsset":        []string{"pulumi"},
+	"filebase64":       []string{"base64"},
+	"filebase64sha256": []string{"base64", "hashlib"},
+	"readDir":          []string{"os"},
+	"toBase64":         []string{"base64"},
+	"toJSON":           []string{"json"},
+	"sha1":             []string{"hashlib"},
 }
 
-func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
+func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
 	if x.Name != pcl.Invoke {
 		return functionImports[x.Name]
 	}
 
 	pkg, _, _, diags := functionName(x.Args[0])
 	contract.Assert(len(diags) == 0)
-	return "pulumi_" + pkg
+	return []string{"pulumi_" + pkg}
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
@@ -222,6 +223,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.FileAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		g.Fgenf(w, "(lambda path: base64.b64encode(open(path).read().encode()).decode())(%.v)", expr.Args[0])
+	case "filebase64sha256":
+		// Assuming the existence of the following helper method
+		g.Fgenf(w, "computeFilebase64sha256(%v)", expr.Args[0])
 	case pcl.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
