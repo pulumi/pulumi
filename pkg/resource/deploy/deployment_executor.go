@@ -236,7 +236,15 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 				}
 
 				if event.Event == nil {
-					return false, ex.performDeletes(ctx, updateTargetsOpt, destroyTargetsOpt)
+					res := ex.performDeletes(ctx, updateTargetsOpt, destroyTargetsOpt)
+					if res != nil {
+						if resErr := res.Error(); resErr != nil {
+							logging.V(4).Infof("deploymentExecutor.Execute(...): error performing deletes: %v", resErr)
+							ex.reportError("", resErr)
+							return false, result.Bail()
+						}
+					}
+					return false, res
 				}
 
 				if res := ex.handleSingleEvent(event.Event); res != nil {

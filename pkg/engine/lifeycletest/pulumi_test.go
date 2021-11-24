@@ -2826,7 +2826,7 @@ func TestUnplannedDelete(t *testing.T) {
 	// the no-op plan, this should block the delete
 	createAllResources = false
 	p.Options.Plan = ClonePlan(t, plan)
-	validate := ExpectDiagMessage(t, "<{%reset%}>delete is not allowed by the plan: no steps were expected for this resource<{%reset%}>\n")
+	validate := ExpectDiagMessage(t, "<{%reset%}>delete is not allowed by the plan: this resource is constrained to same<{%reset%}>\n")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
