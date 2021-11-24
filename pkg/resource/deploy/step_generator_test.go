@@ -1,3 +1,17 @@
+// Copyright 2016-2021, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package deploy
 
 import (
@@ -201,6 +215,7 @@ func TestEngineDiffResource(t *testing.T) {
 		name                 string
 		oldInputs, newInputs resource.PropertyMap
 		expected             []resource.PropertyKey
+		ignoreChanges        []string
 	}{
 		{
 			name: "Empty diff",
@@ -236,16 +251,27 @@ func TestEngineDiffResource(t *testing.T) {
 			}),
 			expected: []resource.PropertyKey{"val2"},
 		},
+		{
+			name: "Ignore changes",
+			oldInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val1": resource.NewPropertyValue("hello"),
+			}),
+			newInputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"val2": resource.NewPropertyValue(8),
+			}),
+
+			expected:      []resource.PropertyKey{"val2"},
+			ignoreChanges: []string{"val1"},
+		},
 	}
 	urn := resource.URN("urn:pulumi:dev::website-and-lambda::aws:s3/bucket:Bucket::my-bucket")
 	id := resource.ID("someid")
 	var oldOutputs resource.PropertyMap
 	allowUnknowns := false
-	ignoreChanges := []string{}
 	provider := deploytest.Provider{}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			diff, err := diffResource(urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, ignoreChanges)
+			diff, err := diffResource(urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, c.ignoreChanges)
 			t.Logf("diff.ChangedKeys = %v", diff.ChangedKeys)
 			t.Logf("diff.StableKeys = %v", diff.StableKeys)
 			t.Logf("diff.ReplaceKeys = %v", diff.ReplaceKeys)
