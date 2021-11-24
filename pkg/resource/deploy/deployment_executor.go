@@ -268,10 +268,26 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	}
 
 	// Check that we did operations for everything expected in the plan. We mutate ResourcePlan.Ops as we run
-	// so by the time we get here everything in the map should have an empty ops list
+	// so by the time we get here everything in the map should have an empty ops list (except for unneeded deletes)
 	if ex.deployment.plan != nil {
 		for urn, resourcePlan := range ex.deployment.plan.ResourcePlans {
 			if len(resourcePlan.Ops) != 0 {
+				if len(resourcePlan.Ops) == 1 && resourcePlan.Ops[0] == OpDelete {
+					// We haven't done a delete for this resource check if it was in the snapshot, if it's already gone this wasn't done because it wasn't needed
+					found := false
+					for i := range ex.deployment.prev.Resources {
+						if ex.deployment.prev.Resources[i].URN == urn {
+							found = true
+							break
+						}
+					}
+
+					// Didn't find the resource in the old snapshot so this was just an unneeded delete
+					if !found {
+						continue
+					}
+				}
+
 				err := fmt.Errorf("Expected resource operations for %v but none were seen.", urn)
 				logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
 				ex.reportError(urn, err)

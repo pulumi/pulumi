@@ -3131,7 +3131,6 @@ func TestExpectedUnneededDelete(t *testing.T) {
 	assert.Nil(t, res)
 
 	// Now run again with the plan set but the snapshot that resA is already deleted
-	createResource = true
 	p.Options.Plan = ClonePlan(t, plan)
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
