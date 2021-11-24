@@ -2648,8 +2648,23 @@ func TestPlannedUpdate(t *testing.T) {
 		},
 	})
 	p.Options.Plan = ClonePlan(t, plan)
-	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NotNil(t, res)
+	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, res result.Result) result.Result {
+		assert.NotNil(t, res)
+
+		for i := range events {
+			if events[i].Type == "diag" {
+				payload := events[i].Payload().(engine.DiagEventPayload)
+				if payload.Message == "<{%reset%}>resource violates plan: &{map[] map[frob:{baz}] map[foo:{bar}] map[]}<{%reset%}>\n" {
+					return nil
+				} else {
+					return result.Errorf("Unexpected diag message: %s", payload.Message)
+				}
+			}
+		}
+		return result.Error("Expected diagnostic for plan error")
+	}
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	assert.Nil(t, res)
 
 	// Check the resource's state.
 	if !assert.Len(t, snap.Resources, 1) {
