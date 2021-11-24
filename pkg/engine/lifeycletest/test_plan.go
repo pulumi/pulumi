@@ -213,9 +213,9 @@ func assertIsErrorOrBailResult(t *testing.T, res result.Result) {
 func ClonePlan(t *testing.T, plan *deploy.Plan) *deploy.Plan {
 	t.Helper()
 	if plan != nil {
-		copiedPlan := copystructure.Must(copystructure.Copy(plan)).(deploy.Plan)
+		copiedPlan := copystructure.Must(copystructure.Copy(plan)).(*deploy.Plan)
 		assert.True(t, reflect.DeepEqual(plan, copiedPlan))
-		return &copiedPlan
+		return copiedPlan
 	}
 
 	return plan
