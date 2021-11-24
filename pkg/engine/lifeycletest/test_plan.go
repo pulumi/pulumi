@@ -238,15 +238,10 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 	snap := snapshot
 	for _, step := range p.Steps {
 		if !step.SkipPreview {
-<<<<<<< HEAD
-			previewTarget := p.GetTarget(t, snap)
-			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, step.Validate)
-=======
 			previewSnap := CloneSnapshot(t, snap)
-			previewTarget := p.GetTarget(previewSnap)
+			previewTarget := p.GetTarget(t, previewSnap)
 			// Don't run validate on the preview step
 			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
->>>>>>> origin/master
 			if step.ExpectFailure {
 				assertIsErrorOrBailResult(t, res)
 				continue
