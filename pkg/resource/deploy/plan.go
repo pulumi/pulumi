@@ -477,6 +477,8 @@ func (rp *ResourcePlan) checkGoal(
 	}
 
 	if len(changes) > 0 {
+		// Sort changes, mostly so it's easy to write tests against determinstic strings
+		sort.Strings(changes)
 		return fmt.Errorf("properties changed: %v", strings.Join(changes, ", "))
 	}
 
