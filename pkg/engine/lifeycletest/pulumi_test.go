@@ -2605,7 +2605,7 @@ func ExpectDiagMessage(t *testing.T, message string) ValidateFunc {
 				}
 			}
 		}
-		return result.Error("Expected diagnostic for plan error")
+		return result.Error("Expected a diagnostic message, got none")
 	}
 	return validate
 }
@@ -2963,7 +2963,7 @@ func TestExpectedCreate(t *testing.T) {
 	// this should be an error
 	createAllResources = false
 	p.Options.Plan = ClonePlan(t, plan)
-	validate := ExpectDiagMessage(t, "FRASER")
+	validate := ExpectDiagMessage(t, "<{%reset%}>Expected resource operations for urn:pulumi:test::test::pkgA:m:typA::resB but none were seen.<{%reset%}>\n")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)

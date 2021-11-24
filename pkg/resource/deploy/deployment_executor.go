@@ -272,7 +272,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	if ex.deployment.plan != nil {
 		for urn, resourcePlan := range ex.deployment.plan.ResourcePlans {
 			if len(resourcePlan.Ops) != 0 {
-				return nil, result.Errorf("Expected resource operations for %v but none were seen.", urn)
+				err := fmt.Errorf("Expected resource operations for %v but none were seen.", urn)
+				logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+				ex.reportError(urn, err)
+				res = result.Bail()
 			}
 		}
 	}
