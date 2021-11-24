@@ -29,24 +29,21 @@ type genContext struct {
 	pulumiPackage *schema.Package
 	info          GoPackageInfo
 
-	goPackages    map[string]*pkgContext
-	resourceTypes map[string]*schema.ResourceType
-	inputTypes    map[schema.Type]*schema.InputType
-	outputTypes   map[schema.Type]*outputType
+	generateExtraTypes bool
+
+	goPackages map[string]*pkgContext
 
 	notedTypes codegen.StringSet
 }
 
 func newGenContext(tool string, pulumiPackage *schema.Package, info GoPackageInfo) *genContext {
 	return &genContext{
-		tool:          tool,
-		pulumiPackage: pulumiPackage,
-		info:          info,
-		goPackages:    map[string]*pkgContext{},
-		resourceTypes: map[string]*schema.ResourceType{},
-		inputTypes:    map[schema.Type]*schema.InputType{},
-		outputTypes:   map[schema.Type]*outputType{},
-		notedTypes:    codegen.StringSet{},
+		tool:               tool,
+		pulumiPackage:      pulumiPackage,
+		info:               info,
+		generateExtraTypes: true,
+		goPackages:         map[string]*pkgContext{},
+		notedTypes:         codegen.StringSet{},
 	}
 }
 
@@ -99,10 +96,19 @@ func (ctx *genContext) getRepresentativeTypeAndPackage(t schema.Type) (schema.Ty
 	case *schema.MapType:
 		return ctx.getRepresentativeTypeAndPackage(t.ElementType)
 	case *schema.ObjectType:
+		if t.Package != ctx.pulumiPackage {
+			return nil, nil
+		}
 		return t, ctx.getPackageForToken(t.Token)
 	case *schema.EnumType:
+		if t.Package != ctx.pulumiPackage {
+			return nil, nil
+		}
 		return t, ctx.getPackageForToken(t.Token)
 	case *schema.ResourceType:
+		if t.Resource.Package != ctx.pulumiPackage {
+			return nil, nil
+		}
 		return t, ctx.getPackageForToken(t.Token)
 	case *schema.TokenType:
 		return t, ctx.getPackageForToken(t.Token)
@@ -112,33 +118,24 @@ func (ctx *genContext) getRepresentativeTypeAndPackage(t schema.Type) (schema.Ty
 }
 
 func (ctx *genContext) inputType(elementType schema.Type) *schema.InputType {
-	t, ok := ctx.inputTypes[elementType]
-	if !ok {
-		t = &schema.InputType{ElementType: elementType}
-		ctx.inputTypes[elementType] = t
+	if obj, ok := elementType.(*schema.ObjectType); ok && !obj.IsInputShape() {
+		elementType = obj.InputShape
 	}
-	return t
+	return &schema.InputType{ElementType: elementType}
 }
 
 func (ctx *genContext) outputType(elementType schema.Type) *outputType {
-	t, ok := ctx.outputTypes[elementType]
-	if !ok {
-		t = &outputType{elementType: elementType}
-		ctx.outputTypes[elementType] = t
+	if obj, ok := elementType.(*schema.ObjectType); ok && !obj.IsPlainShape() {
+		elementType = obj.PlainShape
 	}
-	return t
+	return &outputType{elementType: elementType}
 }
 
 func (ctx *genContext) resourceType(resource *schema.Resource) *schema.ResourceType {
-	t, ok := ctx.resourceTypes[resource.Token]
-	if !ok {
-		t = &schema.ResourceType{
-			Token:    resource.Token,
-			Resource: resource,
-		}
-		ctx.resourceTypes[resource.Token] = t
+	return &schema.ResourceType{
+		Token:    resource.Token,
+		Resource: resource,
 	}
-	return t
 }
 
 func (ctx *genContext) noteType(t schema.Type) {
@@ -161,8 +158,14 @@ func (ctx *genContext) noteType(t schema.Type) {
 	case *schema.UnionType:
 		ctx.noteUnionType(t)
 	case *schema.ObjectType:
+		if t.Package != ctx.pulumiPackage {
+			return
+		}
 		ctx.noteObjectType(t)
 	case *schema.EnumType:
+		if t.Package != ctx.pulumiPackage || t.IsOverlay {
+			return
+		}
 		pkg := ctx.getPackageForType(t)
 		pkg.enums = append(pkg.enums, t)
 	}
@@ -175,6 +178,11 @@ func (ctx *genContext) foldOptionalInputOutputType(t *schema.OptionalType) bool 
 }
 
 func (ctx *genContext) noteOutputType(t *outputType) {
+	// If the context has been configured to generate extra types, note the corresponding input type.
+	if ctx.generateExtraTypes {
+		ctx.noteType(codegen.InputType(t.elementType))
+	}
+
 	// For optional, array, map, and object output types, we need to note some additional
 	// output types. In the former three cases, we need to note the output of the type's
 	// element type so we can generate element accessors. In the latter case, we need to
