@@ -2657,7 +2657,7 @@ func TestPlannedUpdate(t *testing.T) {
 
 	// Change the provider's planned operation to a same step.
 	// Remove the provider from the plan.
-	plan["urn:pulumi:test::test::pulumi:providers:pkgA::default"].Ops = []deploy.StepOp{deploy.OpSame}
+	plan.ResourcePlans["urn:pulumi:test::test::pulumi:providers:pkgA::default"].Ops = []deploy.StepOp{deploy.OpSame}
 
 	// Attempt to run an update using the plan.
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{

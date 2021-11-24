@@ -168,7 +168,9 @@ func (changes ResourceChanges) HasChanges() bool {
 	return c > 0
 }
 
-func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (*deploy.Plan, ResourceChanges, result.Result) {
+func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
+	*deploy.Plan, ResourceChanges, result.Result) {
+
 	contract.Require(u != nil, "update")
 	contract.Require(ctx != nil, "ctx")
 

@@ -168,10 +168,10 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 		resourcePlan, ok := se.deployment.plan.ResourcePlans[urn]
 		if !ok {
 			return result.FromError(fmt.Errorf("no plan for resource %v", urn))
-		} else {
-			if diffs, has := resourcePlan.Outputs.DiffIncludeUnknowns(outs); has {
-				return result.FromError(fmt.Errorf("resource violates plan: %v", diffs))
-			}
+		}
+
+		if diffs, has := resourcePlan.Outputs.DiffIncludeUnknowns(outs); has {
+			return result.FromError(fmt.Errorf("resource violates plan: %v", diffs))
 		}
 	}
 
