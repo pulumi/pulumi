@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -215,6 +216,53 @@ type DiffResult struct {
 	ChangedKeys         []resource.PropertyKey  // an optional list of keys that changed.
 	DetailedDiff        map[string]PropertyDiff // an optional structured diff
 	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
+}
+
+// Computes the detailed diff of Updated keys.
+func NewDetailedDiffFromObjectDiff(diff *resource.ObjectDiff) map[string]PropertyDiff {
+	return objectDiffToDetailsDiff("", diff)
+}
+
+func objectDiffToDetailsDiff(prefix string, diff *resource.ObjectDiff) map[string]PropertyDiff {
+	ret := map[string]PropertyDiff{}
+	for k, vd := range diff.Updates {
+		var nestedPrefix string
+		if prefix == "" {
+			nestedPrefix = string(k)
+		} else {
+			nestedPrefix = fmt.Sprintf("%s.%s", prefix, string(k))
+		}
+		for kk, pd := range valueDiffToDetailedDiff(nestedPrefix, vd) {
+			ret[kk] = pd
+		}
+	}
+	return ret
+}
+
+func arrayDiffToDetailedDiff(prefix string, d *resource.ArrayDiff) map[string]PropertyDiff {
+	ret := map[string]PropertyDiff{}
+	for i, vd := range d.Updates {
+		for kk, pd := range valueDiffToDetailedDiff(fmt.Sprintf("%s[%d]", prefix, i), vd) {
+			ret[kk] = pd
+		}
+	}
+	return ret
+}
+
+func valueDiffToDetailedDiff(prefix string, vd resource.ValueDiff) map[string]PropertyDiff {
+	ret := map[string]PropertyDiff{}
+	if vd.Object != nil {
+		for kk, pd := range objectDiffToDetailsDiff(prefix, vd.Object) {
+			ret[kk] = pd
+		}
+	} else if vd.Array != nil {
+		for kk, pd := range arrayDiffToDetailedDiff(prefix, vd.Array) {
+			ret[kk] = pd
+		}
+	} else {
+		ret[prefix] = PropertyDiff{Kind: DiffUpdate}
+	}
+	return ret
 }
 
 // Replace returns true if this diff represents a replacement.

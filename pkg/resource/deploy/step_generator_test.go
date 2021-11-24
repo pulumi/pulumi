@@ -210,7 +210,7 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 
 }
 
-func TestEngineDiffResource(t *testing.T) {
+func TestEngineDiff(t *testing.T) {
 	cases := []struct {
 		name                 string
 		oldInputs, newInputs resource.PropertyMap
