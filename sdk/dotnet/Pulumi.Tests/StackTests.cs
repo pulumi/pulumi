@@ -1,7 +1,8 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading.Tasks;
 using Moq;
 using Xunit;
@@ -80,10 +81,12 @@ namespace Pulumi.Tests
             mock.Setup(d => d.RegisterResourceOutputs(It.IsAny<Stack>(), It.IsAny<Output<IDictionary<string, object?>>>()))
                 .Callback((Resource _, Output<IDictionary<string, object?>> o) => outputs = o);
 
+            mock.Setup(d => d.Logger).Returns(new TestDeploymentLogger());
+
             Deployment.Instance = new DeploymentInstance(mock.Object);
 
             // Act
-            var stack = new T();
+            var stack = CreateInstance<T>();
             stack.RegisterPropertyOutputs();
 
             // Assert
@@ -91,5 +94,10 @@ namespace Pulumi.Tests
             var values = await outputs!.DataTask;
             return (stack, values.Value);
         }
+
+        private T CreateInstance<T>()
+            => (T)(typeof(T).GetConstructor(Type.EmptyTypes)!.Invoke(
+                       BindingFlags.DoNotWrapExceptions,
+                       null, null, null)!);
     }
 }
