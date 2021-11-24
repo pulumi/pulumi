@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -71,7 +72,7 @@ type DeploymentPlanV1 struct {
 	// Any environment variables that were set when the plan was created. Values are encrypted.
 	EnvironmentVariables map[string][]byte `json:"environmentVariables,omitempty"`
 	// The configuration in use during the plan.
-	Config map[string]ConfigValue `json:"config,omitempty"`
+	Config config.Map `json:"config,omitempty"`
 
 	// The set of resource plans.
 	ResourcePlans map[resource.URN]ResourcePlanV1 `json:"resourcePlans,omitempty"`

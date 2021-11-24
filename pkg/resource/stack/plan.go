@@ -78,16 +78,10 @@ func SerializePlan(plan *deploy.Plan, enc config.Encrypter, showSecrets bool) (a
 		resourcePlans[urn] = serializedPlan
 	}
 
-	config := make(map[string]Value, len(plan.Config))
-	for value := range plan.Config {
-		for k, v := range m {
-			rawMap[k.String()] = v
-		}
-	}
-
 	return apitype.DeploymentPlanV1{
 		Manifest:      plan.Manifest.Serialize(),
 		ResourcePlans: resourcePlans,
+		Config:        plan.Config,
 	}, nil
 }
 
@@ -148,7 +142,15 @@ func DeserializeResourcePlan(
 }
 
 func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter, enc config.Encrypter) (*deploy.Plan, error) {
-	deserializedPlan := &deploy.Plan{}
+	manifest, err := deploy.DeserializeManifest(plan.Manifest)
+	if err != nil {
+		return nil, err
+	}
+
+	deserializedPlan := &deploy.Plan{
+		Config:   plan.Config,
+		Manifest: *manifest,
+	}
 	for urn, resourcePlan := range plan.ResourcePlans {
 		deserializedResourcePlan, err := DeserializeResourcePlan(resourcePlan, dec, enc)
 		if err != nil {
