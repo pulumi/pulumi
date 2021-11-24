@@ -281,7 +281,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		for urn, resourcePlan := range ex.deployment.plan.ResourcePlans {
 			if len(resourcePlan.Ops) != 0 {
 				if len(resourcePlan.Ops) == 1 && resourcePlan.Ops[0] == OpDelete {
-					// We haven't done a delete for this resource check if it was in the snapshot, if it's already gone this wasn't done because it wasn't needed
+					// We haven't done a delete for this resource check if it was in the snapshot,
+					// if it's already gone this wasn't done because it wasn't needed
 					found := false
 					for i := range ex.deployment.prev.Resources {
 						if ex.deployment.prev.Resources[i].URN == urn {
@@ -296,7 +297,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 					}
 				}
 
-				err := fmt.Errorf("Expected resource operations for %v but none were seen.", urn)
+				err := fmt.Errorf("expected resource operations for %v but none were seen", urn)
 				logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
 				ex.reportError(urn, err)
 				res = result.Bail()

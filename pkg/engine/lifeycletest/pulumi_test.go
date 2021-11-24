@@ -2592,7 +2592,11 @@ func TestComponentDeleteDependencies(t *testing.T) {
 }
 
 func ExpectDiagMessage(t *testing.T, message string) ValidateFunc {
-	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, res result.Result) result.Result {
+	validate := func(
+		project workspace.Project, target deploy.Target,
+		entries JournalEntries, events []Event,
+		res result.Result) result.Result {
+
 		assert.NotNil(t, res)
 
 		for i := range events {
@@ -2600,9 +2604,8 @@ func ExpectDiagMessage(t *testing.T, message string) ValidateFunc {
 				payload := events[i].Payload().(engine.DiagEventPayload)
 				if payload.Message == message {
 					return nil
-				} else {
-					return result.Errorf("Unexpected diag message: %s", payload.Message)
 				}
+				return result.Errorf("Unexpected diag message: %s", payload.Message)
 			}
 		}
 		return result.Error("Expected a diagnostic message, got none")
@@ -2667,7 +2670,8 @@ func TestPlannedUpdate(t *testing.T) {
 		},
 	})
 	p.Options.Plan = ClonePlan(t, plan)
-	validate := ExpectDiagMessage(t, "<{%reset%}>resource violates plan: properties changed: -baz, -foo, -zed<{%reset%}>\n")
+	validate := ExpectDiagMessage(t,
+		"<{%reset%}>resource violates plan: properties changed: -baz, -foo, -zed<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.Nil(t, res)
 
@@ -2757,7 +2761,8 @@ func TestUnplannedCreate(t *testing.T) {
 	// Now set the flag for the language runtime to create a resource, and run update with the plan
 	createResource = true
 	p.Options.Plan = ClonePlan(t, plan)
-	validate := ExpectDiagMessage(t, "<{%reset%}>create is not allowed by the plan: no steps were expected for this resource<{%reset%}>\n")
+	validate := ExpectDiagMessage(t,
+		"<{%reset%}>create is not allowed by the plan: no steps were expected for this resource<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.Nil(t, res)
 
@@ -2826,7 +2831,8 @@ func TestUnplannedDelete(t *testing.T) {
 	// the no-op plan, this should block the delete
 	createAllResources = false
 	p.Options.Plan = ClonePlan(t, plan)
-	validate := ExpectDiagMessage(t, "<{%reset%}>delete is not allowed by the plan: this resource is constrained to same<{%reset%}>\n")
+	validate := ExpectDiagMessage(t,
+		"<{%reset%}>delete is not allowed by the plan: this resource is constrained to same<{%reset%}>\n")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
@@ -2963,7 +2969,9 @@ func TestExpectedCreate(t *testing.T) {
 	// this should be an error
 	createAllResources = false
 	p.Options.Plan = ClonePlan(t, plan)
-	validate := ExpectDiagMessage(t, "<{%reset%}>Expected resource operations for urn:pulumi:test::test::pkgA:m:typA::resB but none were seen.<{%reset%}>\n")
+	validate := ExpectDiagMessage(t,
+		"<{%reset%}>Expected resource operations for "+
+			"urn:pulumi:test::test::pkgA:m:typA::resB but none were seen.<{%reset%}>\n")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
@@ -3305,7 +3313,8 @@ func TestPlannedPreviews(t *testing.T) {
 		},
 	})
 	p.Options.Plan = ClonePlan(t, plan)
-	validate := ExpectDiagMessage(t, "<{%reset%}>resource violates plan: properties changed: -baz, -foo, -zed<{%reset%}>\n")
+	validate := ExpectDiagMessage(t,
+		"<{%reset%}>resource violates plan: properties changed: -baz, -foo, -zed<{%reset%}>\n")
 	_, res = TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate)
 	assert.Nil(t, res)
 
@@ -3450,7 +3459,8 @@ func TestPlannedOutputChanges(t *testing.T) {
 		"foo": "bar",
 	})
 	p.Options.Plan = ClonePlan(t, plan)
-	validate := ExpectDiagMessage(t, "<{%reset%}>resource violates plan: &{map[] map[frob:{baz}] map[foo:{bar}] map[]}<{%reset%}>\n")
+	validate := ExpectDiagMessage(t,
+		"<{%reset%}>resource violates plan: &{map[] map[frob:{baz}] map[foo:{bar}] map[]}<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
