@@ -57,7 +57,7 @@ func (r *simpleResult) String() string {
 	if r.err == nil {
 		return "Bail"
 	}
-	return fmt.Sprintf("Error: %w", r.err)
+	return fmt.Sprintf("Error: %s", r.err)
 }
 func (r *simpleResult) GoString() string {
 	if r.err == nil {
