@@ -219,19 +219,26 @@ type DiffResult struct {
 
 // Transforms a `ObjectDiff` into an equivalent `DiffResult`. Because ObjectDiff has no way of
 // determining what should be changed vs replaced, all operations are added to the ChangedKeys set.
-func NewDiffResultFromObjectDiff(obj *resource.ObjectDiff) DiffResult {
+//
+// Any key in ignoreChanged is treated as stable.
+func NewDiffResultFromObjectDiff(obj *resource.ObjectDiff, ignoreChanged ...string) DiffResult {
 	result := DiffResult{}
 	if !obj.AnyChanges() {
 		result.Changes = DiffNone
 		return result
 	}
 
+	ignoreSet := make(map[string]bool, len(ignoreChanged))
+	for _, v := range ignoreChanged {
+		ignoreSet[v] = true
+	}
+
 	result.Changes = DiffSome
 	for _, k := range obj.Keys() {
-		if obj.Changed(k) {
-			result.ChangedKeys = append(result.ChangedKeys, k)
-		} else {
+		if !obj.Changed(k) || ignoreSet[string(k)] {
 			result.StableKeys = append(result.StableKeys, k)
+		} else {
+			result.ChangedKeys = append(result.ChangedKeys, k)
 		}
 	}
 
