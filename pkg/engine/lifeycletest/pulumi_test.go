@@ -3401,6 +3401,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 		assert.NoError(t, err)
 
 		monitor.RegisterResourceOutputs(urn, outs)
+		assert.NoError(t, err)
 
 		return nil
 	})
