@@ -3110,8 +3110,10 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		pkg.functions = append(pkg.functions, f)
 
 		name := tokenToName(f.Token)
-		originalName := name
-		if pkg.names.Has(name) {
+
+		if pkg.names.Has(name) ||
+			pkg.names.Has(name+"Args") ||
+			pkg.names.Has(name+"Result") {
 			switch {
 			case strings.HasPrefix(name, "New"):
 				name = "Create" + name[3:]
@@ -3124,15 +3126,9 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 
 		if f.Inputs != nil {
 			pkg.names.Add(name + "Args")
-			if originalName != name {
-				pkg.renamed[originalName+"Args"] = name + "Args"
-			}
 		}
 		if f.Outputs != nil {
 			pkg.names.Add(name + "Result")
-			if originalName != name {
-				pkg.renamed[originalName+"Result"] = name + "Result"
-			}
 		}
 	}
 

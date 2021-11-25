@@ -203,6 +203,11 @@ var sdkTests = []sdkTest{
 		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
+	{
+		Directory:        "regress-8403",
+		Description:      "Regress pulumi/pulumi#8403",
+		SkipCompileCheck: codegen.NewStringSet(dotnet, python, nodejs),
+	},
 }
 
 var genSDKOnly bool
