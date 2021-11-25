@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -218,41 +218,66 @@ type DiffResult struct {
 	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
 }
 
-// Computes the detailed diff of Updated keys.
+// Computes the detailed diff of Updated, Added and Deleted keys.
 func NewDetailedDiffFromObjectDiff(diff *resource.ObjectDiff) map[string]PropertyDiff {
-	return objectDiffToDetailsDiff("", diff)
+	if diff == nil {
+		return map[string]PropertyDiff{}
+	}
+	return objectDiffToDetailedDiff("", diff)
 }
 
-func objectDiffToDetailsDiff(prefix string, diff *resource.ObjectDiff) map[string]PropertyDiff {
+func objectDiffToDetailedDiff(prefix string, diff *resource.ObjectDiff) map[string]PropertyDiff {
 	ret := map[string]PropertyDiff{}
-	for k, vd := range diff.Updates {
-		var nestedPrefix string
+
+	getPrefix := func(k resource.PropertyKey) string {
 		if prefix == "" {
-			nestedPrefix = string(k)
-		} else {
-			nestedPrefix = fmt.Sprintf("%s.%s", prefix, string(k))
+			return string(k)
 		}
+		return fmt.Sprintf("%s.%s", prefix, string(k))
+	}
+
+	for k, vd := range diff.Updates {
+		nestedPrefix := getPrefix(k)
 		for kk, pd := range valueDiffToDetailedDiff(nestedPrefix, vd) {
 			ret[kk] = pd
 		}
 	}
+
+	for k := range diff.Adds {
+		nestedPrefix := getPrefix(k)
+		ret[nestedPrefix] = PropertyDiff{Kind: DiffAdd}
+	}
+
+	for k := range diff.Deletes {
+		nestedPrefix := getPrefix(k)
+		ret[nestedPrefix] = PropertyDiff{Kind: DiffDelete}
+	}
+
 	return ret
 }
 
 func arrayDiffToDetailedDiff(prefix string, d *resource.ArrayDiff) map[string]PropertyDiff {
+	nestedPrefix := func(i int) string { return fmt.Sprintf("%s[%d]", prefix, i) }
 	ret := map[string]PropertyDiff{}
 	for i, vd := range d.Updates {
-		for kk, pd := range valueDiffToDetailedDiff(fmt.Sprintf("%s[%d]", prefix, i), vd) {
+		for kk, pd := range valueDiffToDetailedDiff(nestedPrefix(i), vd) {
 			ret[kk] = pd
 		}
 	}
+	for i := range d.Adds {
+		ret[nestedPrefix(i)] = PropertyDiff{Kind: DiffAdd}
+	}
+	for i := range d.Deletes {
+		ret[nestedPrefix(i)] = PropertyDiff{Kind: DiffDelete}
+	}
+
 	return ret
 }
 
 func valueDiffToDetailedDiff(prefix string, vd resource.ValueDiff) map[string]PropertyDiff {
 	ret := map[string]PropertyDiff{}
 	if vd.Object != nil {
-		for kk, pd := range objectDiffToDetailsDiff(prefix, vd.Object) {
+		for kk, pd := range objectDiffToDetailedDiff(prefix, vd.Object) {
 			ret[kk] = pd
 		}
 	} else if vd.Array != nil {
@@ -260,7 +285,14 @@ func valueDiffToDetailedDiff(prefix string, vd resource.ValueDiff) map[string]Pr
 			ret[kk] = pd
 		}
 	} else {
-		ret[prefix] = PropertyDiff{Kind: DiffUpdate}
+		switch {
+		case vd.Old.V == nil && vd.New.V != nil:
+			ret[prefix] = PropertyDiff{Kind: DiffAdd}
+		case vd.Old.V != nil && vd.New.V == nil:
+			ret[prefix] = PropertyDiff{Kind: DiffDelete}
+		default:
+			ret[prefix] = PropertyDiff{Kind: DiffUpdate}
+		}
 	}
 	return ret
 }
