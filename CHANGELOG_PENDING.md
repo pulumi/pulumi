@@ -22,6 +22,9 @@
 - [sdk/go] - Emit `pulumiplugin.json`
   [#8530](https://github.com/pulumi/pulumi/pull/8530)
 
+- [sdk/dotnet] - Improve collection initializers.
+  [#8498](https://github.com/pulumi/pulumi/pull/8498)
+
 ### Bug Fixes
 
 - [codegen/schema] - Error on type token names missing the correct prefix.
