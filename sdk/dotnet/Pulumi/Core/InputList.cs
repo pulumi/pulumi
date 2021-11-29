@@ -55,29 +55,29 @@ namespace Pulumi
         {
         }
 
-        public void Add(Input<T> value)
+        public void Add(params Input<T>[] inputs)
         {
-            _outputValue = Concat(value);
+            _outputValue = Concat(inputs);
         }
 
-        public void Add(InputList<T> values)
+        public void Add(InputList<T> inputs)
         {
-            _outputValue = Concat(values);
+            _outputValue = Concat(inputs);
         }
 
         /// <summary>
-        /// Concatenates the values in this list with the given <paramref name="value"/>,
+        /// Concatenates the values in this list with the value in <paramref name="other"/>,
         /// returning the concatenated sequence in a new <see cref="InputList{T}"/>.
         /// </summary>
-        public InputList<T> Concat(Input<T> value)
-            => Output.Concat(_outputValue, value);
+        public InputList<T> Concat(Input<T> other)
+            => Output.Concat(_outputValue, other);
 
         /// <summary>
-        /// Concatenates the values in this list with the given <paramref name="values"/>,
+        /// Concatenates the values in this list with the values in <paramref name="other"/>,
         /// returning the concatenated sequence in a new <see cref="InputList{T}"/>.
         /// </summary>
-        public InputList<T> Concat(InputList<T> values)
-            => Output.Concat(_outputValue, values._outputValue);
+        public InputList<T> Concat(InputList<T> other)
+            => Output.Concat(_outputValue, other._outputValue);
 
         internal InputList<T> Clone()
             => new InputList<T>(_outputValue);
