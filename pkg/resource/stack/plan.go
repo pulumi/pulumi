@@ -17,7 +17,7 @@ func SerializeResourcePlan(
 		return apitype.ResourcePlanV1{}, err
 	}
 
-	updates, err := SerializeProperties(plan.Goal.Adds, enc, showSecrets)
+	updates, err := SerializeProperties(plan.Goal.Updates, enc, showSecrets)
 	if err != nil {
 		return apitype.ResourcePlanV1{}, err
 	}
