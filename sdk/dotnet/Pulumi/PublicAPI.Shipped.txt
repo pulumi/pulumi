@@ -107,10 +107,10 @@ Pulumi.InputMapExtensions
 Pulumi.InputJson
 Pulumi.InputJson.InputJson() -> void
 Pulumi.InputList<T>
-Pulumi.InputList<T>.Add(Pulumi.Input<T> value) -> void
-Pulumi.InputList<T>.Add(Pulumi.InputList<T> values) -> void
-Pulumi.InputList<T>.Concat(Pulumi.Input<T> value) -> Pulumi.InputList<T>
-Pulumi.InputList<T>.Concat(Pulumi.InputList<T> values) -> Pulumi.InputList<T>
+Pulumi.InputList<T>.Add(params Pulumi.Input<T>[] inputs) -> void
+Pulumi.InputList<T>.Add(Pulumi.InputList<T> inputs) -> void
+Pulumi.InputList<T>.Concat(Pulumi.Input<T> other) -> Pulumi.InputList<T>
+Pulumi.InputList<T>.Concat(Pulumi.InputList<T> other) -> Pulumi.InputList<T>
 Pulumi.InputList<T>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<T>>
 Pulumi.InputList<T>.InputList() -> void
 Pulumi.InputMap<V>
