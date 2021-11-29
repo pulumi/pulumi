@@ -68,7 +68,7 @@ func testGeneratedPackage(t *testing.T, pwd string) {
 	mixinFolder := filepath.Join(filepath.Dir(pwd), "nodejs-extras")
 	if err := filepath.WalkDir(mixinFolder, findTests); !hasMocha && !os.IsNotExist(err) && foundTests {
 		t.Errorf("%s has at least one nodejs-extras/**/*.spec.ts file , but does not have mocha as a dependency."+
-			" Tests were not run. Please add mocha as a dependency in the schema or remove the mixins folder.",
+			" Tests were not run. Please add mocha as a dependency in the schema or remove the *.spec.ts files.",
 			pwd)
 	}
 
