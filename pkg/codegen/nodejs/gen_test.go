@@ -89,7 +89,7 @@ func getYarnCommands(t *testing.T, pwd string) []string {
 	cmd.Dir = pwd
 	out, err := cmd.Output()
 	if err != nil {
-		t.Errorf("Got error determining valid commands: %w", err)
+		t.Errorf("Got error determining valid commands: %s", err)
 	}
 	dec := json.NewDecoder(bytes.NewReader(out))
 	parsed := []map[string]interface{}{}
