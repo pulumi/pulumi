@@ -148,8 +148,9 @@ func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter, enc co
 	}
 
 	deserializedPlan := &deploy.Plan{
-		Config:   plan.Config,
-		Manifest: *manifest,
+		Config:        plan.Config,
+		Manifest:      *manifest,
+		ResourcePlans: make(map[resource.URN]*deploy.ResourcePlan),
 	}
 	for urn, resourcePlan := range plan.ResourcePlans {
 		deserializedResourcePlan, err := DeserializeResourcePlan(resourcePlan, dec, enc)
