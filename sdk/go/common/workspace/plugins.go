@@ -207,6 +207,14 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 	return nil
 }
 
+func interpolateURL(serverURL string, version semver.Version, os, arch string) string {
+	replacer := strings.NewReplacer(
+		"${VERSION}", url.QueryEscape(version.String()),
+		"${OS}", url.QueryEscape(os),
+		"${ARCH}", url.QueryEscape(arch))
+	return replacer.Replace(serverURL)
+}
+
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
 func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	// Figure out the OS/ARCH pair for the download URL.
@@ -225,12 +233,18 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 		return nil, -1, errors.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
 	}
 
+	// The plugin version is necessary for the endpoint. If it's not present, return an error.
+	if info.Version == nil {
+		return nil, -1, errors.Errorf("unknown version for plugin %s", info.Name)
+	}
+
 	// If the plugin has a server, associated with it, download from there.  Otherwise use the "default" location, which
 	// is hosted by Pulumi.
 	serverURL := info.ServerURL
 	if serverURL == "" {
 		serverURL = "https://get.pulumi.com/releases/plugins"
 	}
+	serverURL = interpolateURL(serverURL, *info.Version, os, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
 
 	logging.V(1).Infof("%s downloading from %s", info.Name, serverURL)
