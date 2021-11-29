@@ -6,6 +6,8 @@
   these types virtually unusable in practice.
   [#8449](https://github.com/pulumi/pulumi/pull/8449)
 
+- Allow interpolating plugin custom server URLs.
+  [#8507](https://github.com/pulumi/pulumi/pull/8507)
 ### Bug Fixes
 
 - [codegen/go] - Respect default values in Pulumi object types.
