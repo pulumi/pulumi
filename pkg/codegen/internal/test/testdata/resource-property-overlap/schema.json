@@ -5,7 +5,7 @@
     "example::Rec": {
       "properties": {
         "rec": {
-          "$ref": "#/types/example::Rec"
+          "$ref": "#/resources/example::Rec"
         }
       }
     }

@@ -101,7 +101,7 @@ type ComponentInput interface {
 }
 
 func (*Component) ElementType() reflect.Type {
-	return reflect.TypeOf((*Component)(nil))
+	return reflect.TypeOf((**Component)(nil)).Elem()
 }
 
 func (i *Component) ToComponentOutput() ComponentOutput {
@@ -110,35 +110,6 @@ func (i *Component) ToComponentOutput() ComponentOutput {
 
 func (i *Component) ToComponentOutputWithContext(ctx context.Context) ComponentOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ComponentOutput)
-}
-
-func (i *Component) ToComponentPtrOutput() ComponentPtrOutput {
-	return i.ToComponentPtrOutputWithContext(context.Background())
-}
-
-func (i *Component) ToComponentPtrOutputWithContext(ctx context.Context) ComponentPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ComponentPtrOutput)
-}
-
-type ComponentPtrInput interface {
-	pulumi.Input
-
-	ToComponentPtrOutput() ComponentPtrOutput
-	ToComponentPtrOutputWithContext(ctx context.Context) ComponentPtrOutput
-}
-
-type componentPtrType ComponentArgs
-
-func (*componentPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Component)(nil))
-}
-
-func (i *componentPtrType) ToComponentPtrOutput() ComponentPtrOutput {
-	return i.ToComponentPtrOutputWithContext(context.Background())
-}
-
-func (i *componentPtrType) ToComponentPtrOutputWithContext(ctx context.Context) ComponentPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ComponentPtrOutput)
 }
 
 // ComponentArrayInput is an input type that accepts ComponentArray and ComponentArrayOutput values.
@@ -194,7 +165,7 @@ func (i ComponentMap) ToComponentMapOutputWithContext(ctx context.Context) Compo
 type ComponentOutput struct{ *pulumi.OutputState }
 
 func (ComponentOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Component)(nil))
+	return reflect.TypeOf((**Component)(nil)).Elem()
 }
 
 func (o ComponentOutput) ToComponentOutput() ComponentOutput {
@@ -205,44 +176,10 @@ func (o ComponentOutput) ToComponentOutputWithContext(ctx context.Context) Compo
 	return o
 }
 
-func (o ComponentOutput) ToComponentPtrOutput() ComponentPtrOutput {
-	return o.ToComponentPtrOutputWithContext(context.Background())
-}
-
-func (o ComponentOutput) ToComponentPtrOutputWithContext(ctx context.Context) ComponentPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Component) *Component {
-		return &v
-	}).(ComponentPtrOutput)
-}
-
-type ComponentPtrOutput struct{ *pulumi.OutputState }
-
-func (ComponentPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Component)(nil))
-}
-
-func (o ComponentPtrOutput) ToComponentPtrOutput() ComponentPtrOutput {
-	return o
-}
-
-func (o ComponentPtrOutput) ToComponentPtrOutputWithContext(ctx context.Context) ComponentPtrOutput {
-	return o
-}
-
-func (o ComponentPtrOutput) Elem() ComponentOutput {
-	return o.ApplyT(func(v *Component) Component {
-		if v != nil {
-			return *v
-		}
-		var ret Component
-		return ret
-	}).(ComponentOutput)
-}
-
 type ComponentArrayOutput struct{ *pulumi.OutputState }
 
 func (ComponentArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Component)(nil))
+	return reflect.TypeOf((*[]*Component)(nil)).Elem()
 }
 
 func (o ComponentArrayOutput) ToComponentArrayOutput() ComponentArrayOutput {
@@ -254,15 +191,15 @@ func (o ComponentArrayOutput) ToComponentArrayOutputWithContext(ctx context.Cont
 }
 
 func (o ComponentArrayOutput) Index(i pulumi.IntInput) ComponentOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Component {
-		return vs[0].([]Component)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Component {
+		return vs[0].([]*Component)[vs[1].(int)]
 	}).(ComponentOutput)
 }
 
 type ComponentMapOutput struct{ *pulumi.OutputState }
 
 func (ComponentMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Component)(nil))
+	return reflect.TypeOf((*map[string]*Component)(nil)).Elem()
 }
 
 func (o ComponentMapOutput) ToComponentMapOutput() ComponentMapOutput {
@@ -274,18 +211,16 @@ func (o ComponentMapOutput) ToComponentMapOutputWithContext(ctx context.Context)
 }
 
 func (o ComponentMapOutput) MapIndex(k pulumi.StringInput) ComponentOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Component {
-		return vs[0].(map[string]Component)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *Component {
+		return vs[0].(map[string]*Component)[vs[1].(string)]
 	}).(ComponentOutput)
 }
 
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*ComponentInput)(nil)).Elem(), &Component{})
-	pulumi.RegisterInputType(reflect.TypeOf((*ComponentPtrInput)(nil)).Elem(), &Component{})
 	pulumi.RegisterInputType(reflect.TypeOf((*ComponentArrayInput)(nil)).Elem(), ComponentArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*ComponentMapInput)(nil)).Elem(), ComponentMap{})
 	pulumi.RegisterOutputType(ComponentOutput{})
-	pulumi.RegisterOutputType(ComponentPtrOutput{})
 	pulumi.RegisterOutputType(ComponentArrayOutput{})
 	pulumi.RegisterOutputType(ComponentMapOutput{})
 }

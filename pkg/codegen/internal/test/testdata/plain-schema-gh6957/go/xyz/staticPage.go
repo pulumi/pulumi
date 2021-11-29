@@ -64,7 +64,7 @@ type StaticPageInput interface {
 }
 
 func (*StaticPage) ElementType() reflect.Type {
-	return reflect.TypeOf((*StaticPage)(nil))
+	return reflect.TypeOf((**StaticPage)(nil)).Elem()
 }
 
 func (i *StaticPage) ToStaticPageOutput() StaticPageOutput {
@@ -73,35 +73,6 @@ func (i *StaticPage) ToStaticPageOutput() StaticPageOutput {
 
 func (i *StaticPage) ToStaticPageOutputWithContext(ctx context.Context) StaticPageOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(StaticPageOutput)
-}
-
-func (i *StaticPage) ToStaticPagePtrOutput() StaticPagePtrOutput {
-	return i.ToStaticPagePtrOutputWithContext(context.Background())
-}
-
-func (i *StaticPage) ToStaticPagePtrOutputWithContext(ctx context.Context) StaticPagePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(StaticPagePtrOutput)
-}
-
-type StaticPagePtrInput interface {
-	pulumi.Input
-
-	ToStaticPagePtrOutput() StaticPagePtrOutput
-	ToStaticPagePtrOutputWithContext(ctx context.Context) StaticPagePtrOutput
-}
-
-type staticPagePtrType StaticPageArgs
-
-func (*staticPagePtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**StaticPage)(nil))
-}
-
-func (i *staticPagePtrType) ToStaticPagePtrOutput() StaticPagePtrOutput {
-	return i.ToStaticPagePtrOutputWithContext(context.Background())
-}
-
-func (i *staticPagePtrType) ToStaticPagePtrOutputWithContext(ctx context.Context) StaticPagePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(StaticPagePtrOutput)
 }
 
 // StaticPageArrayInput is an input type that accepts StaticPageArray and StaticPageArrayOutput values.
@@ -157,7 +128,7 @@ func (i StaticPageMap) ToStaticPageMapOutputWithContext(ctx context.Context) Sta
 type StaticPageOutput struct{ *pulumi.OutputState }
 
 func (StaticPageOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*StaticPage)(nil))
+	return reflect.TypeOf((**StaticPage)(nil)).Elem()
 }
 
 func (o StaticPageOutput) ToStaticPageOutput() StaticPageOutput {
@@ -168,44 +139,10 @@ func (o StaticPageOutput) ToStaticPageOutputWithContext(ctx context.Context) Sta
 	return o
 }
 
-func (o StaticPageOutput) ToStaticPagePtrOutput() StaticPagePtrOutput {
-	return o.ToStaticPagePtrOutputWithContext(context.Background())
-}
-
-func (o StaticPageOutput) ToStaticPagePtrOutputWithContext(ctx context.Context) StaticPagePtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v StaticPage) *StaticPage {
-		return &v
-	}).(StaticPagePtrOutput)
-}
-
-type StaticPagePtrOutput struct{ *pulumi.OutputState }
-
-func (StaticPagePtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**StaticPage)(nil))
-}
-
-func (o StaticPagePtrOutput) ToStaticPagePtrOutput() StaticPagePtrOutput {
-	return o
-}
-
-func (o StaticPagePtrOutput) ToStaticPagePtrOutputWithContext(ctx context.Context) StaticPagePtrOutput {
-	return o
-}
-
-func (o StaticPagePtrOutput) Elem() StaticPageOutput {
-	return o.ApplyT(func(v *StaticPage) StaticPage {
-		if v != nil {
-			return *v
-		}
-		var ret StaticPage
-		return ret
-	}).(StaticPageOutput)
-}
-
 type StaticPageArrayOutput struct{ *pulumi.OutputState }
 
 func (StaticPageArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]StaticPage)(nil))
+	return reflect.TypeOf((*[]*StaticPage)(nil)).Elem()
 }
 
 func (o StaticPageArrayOutput) ToStaticPageArrayOutput() StaticPageArrayOutput {
@@ -217,15 +154,15 @@ func (o StaticPageArrayOutput) ToStaticPageArrayOutputWithContext(ctx context.Co
 }
 
 func (o StaticPageArrayOutput) Index(i pulumi.IntInput) StaticPageOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) StaticPage {
-		return vs[0].([]StaticPage)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *StaticPage {
+		return vs[0].([]*StaticPage)[vs[1].(int)]
 	}).(StaticPageOutput)
 }
 
 type StaticPageMapOutput struct{ *pulumi.OutputState }
 
 func (StaticPageMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]StaticPage)(nil))
+	return reflect.TypeOf((*map[string]*StaticPage)(nil)).Elem()
 }
 
 func (o StaticPageMapOutput) ToStaticPageMapOutput() StaticPageMapOutput {
@@ -237,18 +174,16 @@ func (o StaticPageMapOutput) ToStaticPageMapOutputWithContext(ctx context.Contex
 }
 
 func (o StaticPageMapOutput) MapIndex(k pulumi.StringInput) StaticPageOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) StaticPage {
-		return vs[0].(map[string]StaticPage)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *StaticPage {
+		return vs[0].(map[string]*StaticPage)[vs[1].(string)]
 	}).(StaticPageOutput)
 }
 
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*StaticPageInput)(nil)).Elem(), &StaticPage{})
-	pulumi.RegisterInputType(reflect.TypeOf((*StaticPagePtrInput)(nil)).Elem(), &StaticPage{})
 	pulumi.RegisterInputType(reflect.TypeOf((*StaticPageArrayInput)(nil)).Elem(), StaticPageArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*StaticPageMapInput)(nil)).Elem(), StaticPageMap{})
 	pulumi.RegisterOutputType(StaticPageOutput{})
-	pulumi.RegisterOutputType(StaticPagePtrOutput{})
 	pulumi.RegisterOutputType(StaticPageArrayOutput{})
 	pulumi.RegisterOutputType(StaticPageMapOutput{})
 }

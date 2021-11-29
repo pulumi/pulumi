@@ -159,7 +159,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 			for _, e := range events {
 				if e.Type == DiagEvent {
 					p := e.Payload().(DiagEventPayload)
-					if p.URN == resURN && p.Severity == diag.Warning && p.Message == "diff unavailable" {
+					if p.URN == resURN && p.Severity == diag.Warning && p.Message == "<{%reset%}>diff unavailable<{%reset%}>\n" {
 						found = true
 						break
 					}

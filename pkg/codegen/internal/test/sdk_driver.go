@@ -195,10 +195,21 @@ var sdkTests = []sdkTest{
 		SkipCompileCheck: codegen.NewStringSet(nodejs),
 	},
 	{
-		Directory:        "env-helper",
-		Description:      "Ensure that eviromental helpers are generated (repro #8132)",
+		Directory:        "plain-object-defaults",
+		Description:      "Ensure that object defaults are generated (repro #8132)",
 		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
+	},
+	{
+		Directory:        "plain-object-disable-defaults",
+		Description:      "Ensure that we can still compile safely when defaults are disabled",
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+	},
+	{
+		Directory:        "regress-8403",
+		Description:      "Regress pulumi/pulumi#8403",
+		SkipCompileCheck: codegen.NewStringSet(dotnet, python, nodejs),
 	},
 }
 

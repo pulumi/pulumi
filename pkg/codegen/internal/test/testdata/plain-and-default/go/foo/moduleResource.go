@@ -34,30 +34,30 @@ func NewModuleResource(ctx *pulumi.Context,
 	if args.Required_string == nil {
 		return nil, errors.New("invalid value for required argument 'Required_string'")
 	}
-	if args.Default_bool == nil {
+	if isZero(args.Default_bool) {
 		args.Default_bool = pulumi.BoolPtr(true)
 	}
-	if args.Default_enum == nil {
+	if isZero(args.Default_enum) {
 		args.Default_enum = EnumThing(4)
 	}
-	if args.Default_number == nil {
+	if isZero(args.Default_number) {
 		args.Default_number = pulumi.Float64Ptr(42.0)
 	}
-	if args.Default_string == nil {
+	if isZero(args.Default_string) {
 		args.Default_string = pulumi.StringPtr("buzzer")
 	}
-	if args.Optional_enum == nil {
+	if isZero(args.Optional_enum) {
 		args.Optional_enum = EnumThing(8)
 	}
-	if args.Plain_optional_bool == nil {
+	if isZero(args.Plain_optional_bool) {
 		plain_optional_bool_ := true
 		args.Plain_optional_bool = &plain_optional_bool_
 	}
-	if args.Plain_optional_number == nil {
+	if isZero(args.Plain_optional_number) {
 		plain_optional_number_ := 42.0
 		args.Plain_optional_number = &plain_optional_number_
 	}
-	if args.Plain_optional_string == nil {
+	if isZero(args.Plain_optional_string) {
 		plain_optional_string_ := "buzzer"
 		args.Plain_optional_string = &plain_optional_string_
 	}
@@ -146,7 +146,7 @@ type ModuleResourceInput interface {
 }
 
 func (*ModuleResource) ElementType() reflect.Type {
-	return reflect.TypeOf((*ModuleResource)(nil))
+	return reflect.TypeOf((**ModuleResource)(nil)).Elem()
 }
 
 func (i *ModuleResource) ToModuleResourceOutput() ModuleResourceOutput {
@@ -160,7 +160,7 @@ func (i *ModuleResource) ToModuleResourceOutputWithContext(ctx context.Context) 
 type ModuleResourceOutput struct{ *pulumi.OutputState }
 
 func (ModuleResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ModuleResource)(nil))
+	return reflect.TypeOf((**ModuleResource)(nil)).Elem()
 }
 
 func (o ModuleResourceOutput) ToModuleResourceOutput() ModuleResourceOutput {

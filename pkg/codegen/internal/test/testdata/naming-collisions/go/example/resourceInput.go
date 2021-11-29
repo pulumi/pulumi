@@ -73,7 +73,7 @@ type ResourceInputResourceInput interface {
 }
 
 func (*ResourceInputResource) ElementType() reflect.Type {
-	return reflect.TypeOf((*ResourceInputResource)(nil))
+	return reflect.TypeOf((**ResourceInputResource)(nil)).Elem()
 }
 
 func (i *ResourceInputResource) ToResourceInputResourceOutput() ResourceInputResourceOutput {
@@ -87,7 +87,7 @@ func (i *ResourceInputResource) ToResourceInputResourceOutputWithContext(ctx con
 type ResourceInputResourceOutput struct{ *pulumi.OutputState }
 
 func (ResourceInputResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ResourceInputResource)(nil))
+	return reflect.TypeOf((**ResourceInputResource)(nil)).Elem()
 }
 
 func (o ResourceInputResourceOutput) ToResourceInputResourceOutput() ResourceInputResourceOutput {

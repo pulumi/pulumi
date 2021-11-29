@@ -84,7 +84,7 @@ type ToyStoreInput interface {
 }
 
 func (*ToyStore) ElementType() reflect.Type {
-	return reflect.TypeOf((*ToyStore)(nil))
+	return reflect.TypeOf((**ToyStore)(nil)).Elem()
 }
 
 func (i *ToyStore) ToToyStoreOutput() ToyStoreOutput {
@@ -93,35 +93,6 @@ func (i *ToyStore) ToToyStoreOutput() ToyStoreOutput {
 
 func (i *ToyStore) ToToyStoreOutputWithContext(ctx context.Context) ToyStoreOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ToyStoreOutput)
-}
-
-func (i *ToyStore) ToToyStorePtrOutput() ToyStorePtrOutput {
-	return i.ToToyStorePtrOutputWithContext(context.Background())
-}
-
-func (i *ToyStore) ToToyStorePtrOutputWithContext(ctx context.Context) ToyStorePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ToyStorePtrOutput)
-}
-
-type ToyStorePtrInput interface {
-	pulumi.Input
-
-	ToToyStorePtrOutput() ToyStorePtrOutput
-	ToToyStorePtrOutputWithContext(ctx context.Context) ToyStorePtrOutput
-}
-
-type toyStorePtrType ToyStoreArgs
-
-func (*toyStorePtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**ToyStore)(nil))
-}
-
-func (i *toyStorePtrType) ToToyStorePtrOutput() ToyStorePtrOutput {
-	return i.ToToyStorePtrOutputWithContext(context.Background())
-}
-
-func (i *toyStorePtrType) ToToyStorePtrOutputWithContext(ctx context.Context) ToyStorePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ToyStorePtrOutput)
 }
 
 // ToyStoreArrayInput is an input type that accepts ToyStoreArray and ToyStoreArrayOutput values.
@@ -177,7 +148,7 @@ func (i ToyStoreMap) ToToyStoreMapOutputWithContext(ctx context.Context) ToyStor
 type ToyStoreOutput struct{ *pulumi.OutputState }
 
 func (ToyStoreOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ToyStore)(nil))
+	return reflect.TypeOf((**ToyStore)(nil)).Elem()
 }
 
 func (o ToyStoreOutput) ToToyStoreOutput() ToyStoreOutput {
@@ -188,44 +159,10 @@ func (o ToyStoreOutput) ToToyStoreOutputWithContext(ctx context.Context) ToyStor
 	return o
 }
 
-func (o ToyStoreOutput) ToToyStorePtrOutput() ToyStorePtrOutput {
-	return o.ToToyStorePtrOutputWithContext(context.Background())
-}
-
-func (o ToyStoreOutput) ToToyStorePtrOutputWithContext(ctx context.Context) ToyStorePtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v ToyStore) *ToyStore {
-		return &v
-	}).(ToyStorePtrOutput)
-}
-
-type ToyStorePtrOutput struct{ *pulumi.OutputState }
-
-func (ToyStorePtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**ToyStore)(nil))
-}
-
-func (o ToyStorePtrOutput) ToToyStorePtrOutput() ToyStorePtrOutput {
-	return o
-}
-
-func (o ToyStorePtrOutput) ToToyStorePtrOutputWithContext(ctx context.Context) ToyStorePtrOutput {
-	return o
-}
-
-func (o ToyStorePtrOutput) Elem() ToyStoreOutput {
-	return o.ApplyT(func(v *ToyStore) ToyStore {
-		if v != nil {
-			return *v
-		}
-		var ret ToyStore
-		return ret
-	}).(ToyStoreOutput)
-}
-
 type ToyStoreArrayOutput struct{ *pulumi.OutputState }
 
 func (ToyStoreArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]ToyStore)(nil))
+	return reflect.TypeOf((*[]*ToyStore)(nil)).Elem()
 }
 
 func (o ToyStoreArrayOutput) ToToyStoreArrayOutput() ToyStoreArrayOutput {
@@ -237,15 +174,15 @@ func (o ToyStoreArrayOutput) ToToyStoreArrayOutputWithContext(ctx context.Contex
 }
 
 func (o ToyStoreArrayOutput) Index(i pulumi.IntInput) ToyStoreOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) ToyStore {
-		return vs[0].([]ToyStore)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *ToyStore {
+		return vs[0].([]*ToyStore)[vs[1].(int)]
 	}).(ToyStoreOutput)
 }
 
 type ToyStoreMapOutput struct{ *pulumi.OutputState }
 
 func (ToyStoreMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]ToyStore)(nil))
+	return reflect.TypeOf((*map[string]*ToyStore)(nil)).Elem()
 }
 
 func (o ToyStoreMapOutput) ToToyStoreMapOutput() ToyStoreMapOutput {
@@ -257,14 +194,13 @@ func (o ToyStoreMapOutput) ToToyStoreMapOutputWithContext(ctx context.Context) T
 }
 
 func (o ToyStoreMapOutput) MapIndex(k pulumi.StringInput) ToyStoreOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) ToyStore {
-		return vs[0].(map[string]ToyStore)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *ToyStore {
+		return vs[0].(map[string]*ToyStore)[vs[1].(string)]
 	}).(ToyStoreOutput)
 }
 
 func init() {
 	pulumi.RegisterOutputType(ToyStoreOutput{})
-	pulumi.RegisterOutputType(ToyStorePtrOutput{})
 	pulumi.RegisterOutputType(ToyStoreArrayOutput{})
 	pulumi.RegisterOutputType(ToyStoreMapOutput{})
 }

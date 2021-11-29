@@ -78,7 +78,7 @@ type PersonInput interface {
 }
 
 func (*Person) ElementType() reflect.Type {
-	return reflect.TypeOf((*Person)(nil))
+	return reflect.TypeOf((**Person)(nil)).Elem()
 }
 
 func (i *Person) ToPersonOutput() PersonOutput {
@@ -87,35 +87,6 @@ func (i *Person) ToPersonOutput() PersonOutput {
 
 func (i *Person) ToPersonOutputWithContext(ctx context.Context) PersonOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(PersonOutput)
-}
-
-func (i *Person) ToPersonPtrOutput() PersonPtrOutput {
-	return i.ToPersonPtrOutputWithContext(context.Background())
-}
-
-func (i *Person) ToPersonPtrOutputWithContext(ctx context.Context) PersonPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(PersonPtrOutput)
-}
-
-type PersonPtrInput interface {
-	pulumi.Input
-
-	ToPersonPtrOutput() PersonPtrOutput
-	ToPersonPtrOutputWithContext(ctx context.Context) PersonPtrOutput
-}
-
-type personPtrType PersonArgs
-
-func (*personPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Person)(nil))
-}
-
-func (i *personPtrType) ToPersonPtrOutput() PersonPtrOutput {
-	return i.ToPersonPtrOutputWithContext(context.Background())
-}
-
-func (i *personPtrType) ToPersonPtrOutputWithContext(ctx context.Context) PersonPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(PersonPtrOutput)
 }
 
 // PersonArrayInput is an input type that accepts PersonArray and PersonArrayOutput values.
@@ -171,7 +142,7 @@ func (i PersonMap) ToPersonMapOutputWithContext(ctx context.Context) PersonMapOu
 type PersonOutput struct{ *pulumi.OutputState }
 
 func (PersonOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Person)(nil))
+	return reflect.TypeOf((**Person)(nil)).Elem()
 }
 
 func (o PersonOutput) ToPersonOutput() PersonOutput {
@@ -182,44 +153,10 @@ func (o PersonOutput) ToPersonOutputWithContext(ctx context.Context) PersonOutpu
 	return o
 }
 
-func (o PersonOutput) ToPersonPtrOutput() PersonPtrOutput {
-	return o.ToPersonPtrOutputWithContext(context.Background())
-}
-
-func (o PersonOutput) ToPersonPtrOutputWithContext(ctx context.Context) PersonPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Person) *Person {
-		return &v
-	}).(PersonPtrOutput)
-}
-
-type PersonPtrOutput struct{ *pulumi.OutputState }
-
-func (PersonPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Person)(nil))
-}
-
-func (o PersonPtrOutput) ToPersonPtrOutput() PersonPtrOutput {
-	return o
-}
-
-func (o PersonPtrOutput) ToPersonPtrOutputWithContext(ctx context.Context) PersonPtrOutput {
-	return o
-}
-
-func (o PersonPtrOutput) Elem() PersonOutput {
-	return o.ApplyT(func(v *Person) Person {
-		if v != nil {
-			return *v
-		}
-		var ret Person
-		return ret
-	}).(PersonOutput)
-}
-
 type PersonArrayOutput struct{ *pulumi.OutputState }
 
 func (PersonArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Person)(nil))
+	return reflect.TypeOf((*[]*Person)(nil)).Elem()
 }
 
 func (o PersonArrayOutput) ToPersonArrayOutput() PersonArrayOutput {
@@ -231,15 +168,15 @@ func (o PersonArrayOutput) ToPersonArrayOutputWithContext(ctx context.Context) P
 }
 
 func (o PersonArrayOutput) Index(i pulumi.IntInput) PersonOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Person {
-		return vs[0].([]Person)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Person {
+		return vs[0].([]*Person)[vs[1].(int)]
 	}).(PersonOutput)
 }
 
 type PersonMapOutput struct{ *pulumi.OutputState }
 
 func (PersonMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Person)(nil))
+	return reflect.TypeOf((*map[string]*Person)(nil)).Elem()
 }
 
 func (o PersonMapOutput) ToPersonMapOutput() PersonMapOutput {
@@ -251,18 +188,16 @@ func (o PersonMapOutput) ToPersonMapOutputWithContext(ctx context.Context) Perso
 }
 
 func (o PersonMapOutput) MapIndex(k pulumi.StringInput) PersonOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Person {
-		return vs[0].(map[string]Person)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *Person {
+		return vs[0].(map[string]*Person)[vs[1].(string)]
 	}).(PersonOutput)
 }
 
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*PersonInput)(nil)).Elem(), &Person{})
-	pulumi.RegisterInputType(reflect.TypeOf((*PersonPtrInput)(nil)).Elem(), &Person{})
 	pulumi.RegisterInputType(reflect.TypeOf((*PersonArrayInput)(nil)).Elem(), PersonArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*PersonMapInput)(nil)).Elem(), PersonMap{})
 	pulumi.RegisterOutputType(PersonOutput{})
-	pulumi.RegisterOutputType(PersonPtrOutput{})
 	pulumi.RegisterOutputType(PersonArrayOutput{})
 	pulumi.RegisterOutputType(PersonMapOutput{})
 }

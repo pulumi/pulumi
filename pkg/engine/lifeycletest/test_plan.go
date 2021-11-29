@@ -96,11 +96,11 @@ func (op TestOp) RunWithContext(
 	_, res := op(info, ctx, opts, dryRun)
 	contract.IgnoreClose(journal)
 
-	if dryRun {
-		return nil, res
-	}
 	if validate != nil {
 		res = validate(project, target, journal.Entries(), firedEvents, res)
+	}
+	if dryRun {
+		return nil, res
 	}
 
 	snap := journal.Snap(target.Snapshot)
@@ -210,7 +210,8 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		if !step.SkipPreview {
 			previewSnap := CloneSnapshot(t, snap)
 			previewTarget := p.GetTarget(previewSnap)
-			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, step.Validate)
+			// Don't run validate on the preview step
+			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
 			if step.ExpectFailure {
 				assertIsErrorOrBailResult(t, res)
 				continue
