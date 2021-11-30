@@ -384,7 +384,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	var inputDiff *resource.ObjectDiff
 	if recreating || wasExternal || sg.isTargetedReplace(urn) {
-		inputDiff = nil
+		// Diff against empty, everything is adds
+		inputDiff = make(resource.PropertyMap).DiffIncludeUnknowns(inputs)
 	} else {
 		inputDiff = oldInputs.DiffIncludeUnknowns(inputs)
 	}
