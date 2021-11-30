@@ -146,6 +146,9 @@ type modContext struct {
 	compatibility          string
 	dictionaryConstructors bool
 
+	// If types in the Input namespace are used.
+	fullyQualifiedInputs bool
+
 	// Determine whether to lift single-value method return values
 	liftSingleValueMethodReturns bool
 }
@@ -383,6 +386,9 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		typ := namingCtx.tokenToNamespace(t.Token, qualifier)
 		if (typ == namingCtx.namespaceName && qualifier == "") || typ == namingCtx.namespaceName+"."+qualifier {
 			typ = qualifier
+		}
+		if typ == "Inputs" && mod.fullyQualifiedInputs {
+			typ = fmt.Sprintf("%s.Inputs", mod.namespaceName)
 		}
 		if typ != "" {
 			typ += "."
@@ -1278,13 +1284,15 @@ func (mod *modContext) genFunctionFileCode(f *schema.Function) (string, error) {
 	imports := map[string]codegen.StringSet{}
 	mod.getImports(f, imports)
 	buffer := &bytes.Buffer{}
-	importStrings := pulumiImports
+	importStrings := append(pulumiImports, mod.namespaceName)
 	for _, i := range imports {
 		importStrings = append(importStrings, i.SortedValues()...)
 	}
 	if f.NeedsOutputVersion() {
 		importStrings = append(importStrings, "Pulumi.Utilities")
 	}
+	defer func(current bool) { mod.fullyQualifiedInputs = current }(mod.fullyQualifiedInputs)
+	mod.fullyQualifiedInputs = true
 	mod.genHeader(buffer, importStrings)
 	if err := mod.genFunction(buffer, f); err != nil {
 		return "", err
