@@ -3155,13 +3155,17 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// For fnApply function versions, we need to register any
 	// input or output property type metadata, in case they have
 	// types used in array or pointer element positions.
-	for _, f := range pkg.Functions {
-		optional := false
-		if f.Inputs != nil {
-			populateDetailsForPropertyTypes(seenMap, f.Inputs.InputShape.Properties, optional, false, false)
-		}
-		if f.Outputs != nil {
-			populateDetailsForPropertyTypes(seenMap, f.Outputs.Properties, optional, false, true)
+	if !goInfo.DisableFunctionOutputVersions || goInfo.GenerateExtraInputTypes {
+		for _, f := range pkg.Functions {
+			if f.NeedsOutputVersion() || goInfo.GenerateExtraInputTypes {
+				optional := false
+				if f.Inputs != nil {
+					populateDetailsForPropertyTypes(seenMap, f.Inputs.InputShape.Properties, optional, false, false)
+				}
+				if f.Outputs != nil {
+					populateDetailsForPropertyTypes(seenMap, f.Outputs.Properties, optional, false, true)
+				}
+			}
 		}
 	}
 
