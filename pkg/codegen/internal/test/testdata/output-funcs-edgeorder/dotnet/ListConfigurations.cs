@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Myedgeorder;
 using Pulumi.Utilities;
 
 namespace Pulumi.Myedgeorder
@@ -31,14 +32,14 @@ namespace Pulumi.Myedgeorder
     public sealed class ListConfigurationsArgs : Pulumi.InvokeArgs
     {
         [Input("configurationFilters", required: true)]
-        private List<Inputs.ConfigurationFilters>? _configurationFilters;
+        private List<Pulumi.Myedgeorder.Inputs.ConfigurationFilters>? _configurationFilters;
 
         /// <summary>
         /// Holds details about product hierarchy information and filterable property.
         /// </summary>
-        public List<Inputs.ConfigurationFilters> ConfigurationFilters
+        public List<Pulumi.Myedgeorder.Inputs.ConfigurationFilters> ConfigurationFilters
         {
-            get => _configurationFilters ?? (_configurationFilters = new List<Inputs.ConfigurationFilters>());
+            get => _configurationFilters ?? (_configurationFilters = new List<Pulumi.Myedgeorder.Inputs.ConfigurationFilters>());
             set => _configurationFilters = value;
         }
 
@@ -46,7 +47,7 @@ namespace Pulumi.Myedgeorder
         /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
         /// </summary>
         [Input("customerSubscriptionDetails")]
-        public Inputs.CustomerSubscriptionDetails? CustomerSubscriptionDetails { get; set; }
+        public Pulumi.Myedgeorder.Inputs.CustomerSubscriptionDetails? CustomerSubscriptionDetails { get; set; }
 
         /// <summary>
         /// $skipToken is supported on list of configurations, which provides the next page in the list of configurations.
@@ -62,14 +63,14 @@ namespace Pulumi.Myedgeorder
     public sealed class ListConfigurationsInvokeArgs : Pulumi.InvokeArgs
     {
         [Input("configurationFilters", required: true)]
-        private InputList<Inputs.ConfigurationFiltersArgs>? _configurationFilters;
+        private InputList<Pulumi.Myedgeorder.Inputs.ConfigurationFiltersArgs>? _configurationFilters;
 
         /// <summary>
         /// Holds details about product hierarchy information and filterable property.
         /// </summary>
-        public InputList<Inputs.ConfigurationFiltersArgs> ConfigurationFilters
+        public InputList<Pulumi.Myedgeorder.Inputs.ConfigurationFiltersArgs> ConfigurationFilters
         {
-            get => _configurationFilters ?? (_configurationFilters = new InputList<Inputs.ConfigurationFiltersArgs>());
+            get => _configurationFilters ?? (_configurationFilters = new InputList<Pulumi.Myedgeorder.Inputs.ConfigurationFiltersArgs>());
             set => _configurationFilters = value;
         }
 
@@ -77,7 +78,7 @@ namespace Pulumi.Myedgeorder
         /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
         /// </summary>
         [Input("customerSubscriptionDetails")]
-        public Input<Inputs.CustomerSubscriptionDetailsArgs>? CustomerSubscriptionDetails { get; set; }
+        public Input<Pulumi.Myedgeorder.Inputs.CustomerSubscriptionDetailsArgs>? CustomerSubscriptionDetails { get; set; }
 
         /// <summary>
         /// $skipToken is supported on list of configurations, which provides the next page in the list of configurations.

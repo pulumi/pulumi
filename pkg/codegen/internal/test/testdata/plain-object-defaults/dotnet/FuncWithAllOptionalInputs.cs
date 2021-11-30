@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Example;
 using Pulumi.Utilities;
 
 namespace Pulumi.Mypkg
@@ -32,7 +33,7 @@ namespace Pulumi.Mypkg
         /// Property A
         /// </summary>
         [Input("a")]
-        public Inputs.HelmReleaseSettings? A { get; set; }
+        public Pulumi.Example.Inputs.HelmReleaseSettings? A { get; set; }
 
         /// <summary>
         /// Property B
@@ -52,7 +53,7 @@ namespace Pulumi.Mypkg
         /// Property A
         /// </summary>
         [Input("a")]
-        public Input<Inputs.HelmReleaseSettingsArgs>? A { get; set; }
+        public Input<Pulumi.Example.Inputs.HelmReleaseSettingsArgs>? A { get; set; }
 
         /// <summary>
         /// Property B

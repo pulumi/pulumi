@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Mypkg;
 using Pulumi.Utilities;
 
 namespace Pulumi.Mypkg
@@ -43,14 +44,14 @@ namespace Pulumi.Mypkg
         public string ResourceGroupName { get; set; } = null!;
 
         [Input("vms")]
-        private List<Inputs.BastionShareableLink>? _vms;
+        private List<Pulumi.Mypkg.Inputs.BastionShareableLink>? _vms;
 
         /// <summary>
         /// List of VM references.
         /// </summary>
-        public List<Inputs.BastionShareableLink> Vms
+        public List<Pulumi.Mypkg.Inputs.BastionShareableLink> Vms
         {
-            get => _vms ?? (_vms = new List<Inputs.BastionShareableLink>());
+            get => _vms ?? (_vms = new List<Pulumi.Mypkg.Inputs.BastionShareableLink>());
             set => _vms = value;
         }
 
@@ -74,14 +75,14 @@ namespace Pulumi.Mypkg
         public Input<string> ResourceGroupName { get; set; } = null!;
 
         [Input("vms")]
-        private InputList<Inputs.BastionShareableLinkArgs>? _vms;
+        private InputList<Pulumi.Mypkg.Inputs.BastionShareableLinkArgs>? _vms;
 
         /// <summary>
         /// List of VM references.
         /// </summary>
-        public InputList<Inputs.BastionShareableLinkArgs> Vms
+        public InputList<Pulumi.Mypkg.Inputs.BastionShareableLinkArgs> Vms
         {
-            get => _vms ?? (_vms = new InputList<Inputs.BastionShareableLinkArgs>());
+            get => _vms ?? (_vms = new InputList<Pulumi.Mypkg.Inputs.BastionShareableLinkArgs>());
             set => _vms = value;
         }
 
