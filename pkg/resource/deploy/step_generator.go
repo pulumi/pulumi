@@ -1132,10 +1132,17 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 		return diff, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
-		if oldInputs.DeepEquals(newInputs) {
-			diff.Changes = plugin.DiffNone
-		} else {
+		new, res := processIgnoreChanges(newInputs, oldInputs, ignoreChanges)
+		if res != nil {
+			return plugin.DiffResult{}, err
+		}
+		tmp := oldInputs.Diff(new)
+		if tmp.AnyChanges() {
 			diff.Changes = plugin.DiffSome
+			diff.ChangedKeys = tmp.ChangedKeys()
+			diff.DetailedDiff = plugin.NewDetailedDiffFromObjectDiff(tmp)
+		} else {
+			diff.Changes = plugin.DiffNone
 		}
 	}
 	return diff, nil
