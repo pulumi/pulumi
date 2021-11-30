@@ -19,9 +19,9 @@ ensure::
 	dotnet restore dotnet.sln
 
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	TEST_COVERAGE_ARGS := /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
+TEST_COVERAGE_ARGS := /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
 else
-	TEST_COVERAGE_ARGS := /p:CollectCoverage=false /p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
+TEST_COVERAGE_ARGS := /p:CollectCoverage=false /p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
 endif
 
 build::
