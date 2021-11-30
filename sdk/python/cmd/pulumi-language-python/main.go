@@ -365,6 +365,8 @@ func (pkg *pythonPackage) readPulumiPluginJSON() (*plugin.PulumiPluginJSON, erro
 	plugin, err := plugin.LoadPulumiPluginJSON(pulumiPluginFilePath)
 	if os.IsNotExist(err) {
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
 	pkg.plugin = plugin
 	return plugin, nil
@@ -419,7 +421,7 @@ func determinePluginDependency(
 
 	var name, version, server string
 	plugin, err := pkg.readPulumiPluginJSON()
-	if err == nil {
+	if plugin != nil && err == nil {
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
 		// Ignore it.
 		if !plugin.Resource {
