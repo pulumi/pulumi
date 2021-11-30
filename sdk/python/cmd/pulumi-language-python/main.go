@@ -329,9 +329,45 @@ var packagesWithoutPlugins = map[string]struct{}{
 }
 
 type pythonPackage struct {
-	Name     string `json:"name"`
-	Version  string `json:"version"`
-	Location string `json:"location"`
+	Name     string                   `json:"name"`
+	Version  string                   `json:"version"`
+	Location string                   `json:"location"`
+	plugin   *plugin.PulumiPluginJSON `json:"-"`
+}
+
+// Returns if pkg is a pulumi package.
+//
+// We check:
+// 1. If there is a pulumiplugin.json file.
+// 2. If the first segment is "pulumi". This implies a first party package.
+func (pkg *pythonPackage) isPulumiPackage() bool {
+	plugin, err := pkg.readPulumiPluginJSON()
+	if err == nil && plugin != nil {
+		return true
+	}
+
+	return strings.HasPrefix(pkg.Name, "pulumi-")
+}
+
+func (pkg *pythonPackage) readPulumiPluginJSON() (*plugin.PulumiPluginJSON, error) {
+	if pkg.plugin != nil {
+		return pkg.plugin, nil
+	}
+
+	// The name of the module inside the package can be different from the package name.
+	// However, our convention is to always use the same name, e.g. a package name of
+	// "pulumi-aws" will have a module named "pulumi_aws", so we can determine the module
+	// by replacing hyphens with underscores.
+	packageModuleName := strings.ReplaceAll(pkg.Name, "-", "_")
+	pulumiPluginFilePath := filepath.Join(pkg.Location, packageModuleName, "pulumiplugin.json")
+	logging.V(5).Infof("readPulumiPluginJSON: pulumiplugin.json file path: %s", pulumiPluginFilePath)
+
+	plugin, err := plugin.LoadPulumiPluginJSON(pulumiPluginFilePath)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	pkg.plugin = plugin
+	return plugin, nil
 }
 
 func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
@@ -356,8 +392,7 @@ func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
 	// Only return Pulumi packages.
 	var pulumiPackages []pythonPackage
 	for _, pkg := range packages {
-		// We're only interested in packages that start with "pulumi-".
-		if !strings.HasPrefix(pkg.Name, "pulumi-") {
+		if !pkg.isPulumiPackage() {
 			continue
 		}
 
@@ -382,19 +417,8 @@ func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
 func determinePluginDependency(
 	virtualenv, cwd string, pkg pythonPackage) (*pulumirpc.PluginDependency, error) {
 
-	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v", pkg.Name, pkg.Version)
-
-	// The name of the module inside the package can be different from the package name.
-	// However, our convention is to always use the same name, e.g. a package name of
-	// "pulumi-aws" will have a module named "pulumi_aws", so we can determine the module
-	// by replacing hyphens with underscores.
-	packageModuleName := strings.ReplaceAll(pkg.Name, "-", "_")
-
-	pulumiPluginFilePath := filepath.Join(pkg.Location, packageModuleName, "pulumiplugin.json")
-	logging.V(5).Infof("GetRequiredPlugins: pulumiplugin.json file path: %s", pulumiPluginFilePath)
-
 	var name, version, server string
-	plugin, err := plugin.LoadPulumiPluginJSON(pulumiPluginFilePath)
+	plugin, err := pkg.readPulumiPluginJSON()
 	if err == nil {
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
 		// Ignore it.
@@ -404,9 +428,7 @@ func determinePluginDependency(
 		}
 
 		name, version, server = plugin.Name, plugin.Version, plugin.Server
-	} else if !os.IsNotExist(err) {
-		// If the file doesn't exist, the name and version of the plugin will attempt to be determined from the
-		// packageName and packageVersion. If it's some other error, report it.
+	} else if err != nil {
 		logging.V(5).Infof("GetRequiredPlugins: err: %v", err)
 		return nil, err
 	}
@@ -444,30 +466,6 @@ func determinePluginDependency(
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
 	return &result, nil
-}
-
-func parseLocation(packageName, pipShowOutput string) (string, error) {
-	// We want the value of Location from the following output of `python -m pip show <packageName>`:
-	// $ python -m pip show pulumi-aws
-	// Name: pulumi-aws
-	// Version: 3.12.2
-	// Summary: A Pulumi package for creating and managing Amazon Web Services (AWS) cloud resources.
-	// Home-page: https://pulumi.io
-	// Author: None
-	// Author-email: None
-	// License: Apache-2.0
-	// Location: /Users/user/proj/venv/lib/python3.8/site-packages
-	// Requires: parver, pulumi, semver
-	// Required-by:
-	lines := strings.Split(pipShowOutput, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "Location:") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "Location:")), nil
-		}
-	}
-
-	return "", errors.Errorf("determining location of package %s", packageName)
 }
 
 // determinePluginVersion attempts to convert a PEP440 package version into a plugin version.
