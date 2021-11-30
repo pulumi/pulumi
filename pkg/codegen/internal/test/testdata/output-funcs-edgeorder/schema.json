@@ -40,7 +40,9 @@
           }
         },
         "type": "object",
-        "required": ["configurationFilters"]
+        "required": [
+          "configurationFilters"
+        ]
       },
       "outputs": {
         "description": "The list of configurations.",
@@ -59,7 +61,9 @@
           }
         },
         "type": "object",
-        "required": ["value"]
+        "required": [
+          "value"
+        ]
       }
     },
     "myedgeorder::listProductFamilies": {
@@ -92,7 +96,9 @@
           }
         },
         "type": "object",
-        "required": ["filterableProperties"]
+        "required": [
+          "filterableProperties"
+        ]
       },
       "outputs": {
         "description": "The list of product families.",
@@ -111,7 +117,9 @@
           }
         },
         "type": "object",
-        "required": ["value"]
+        "required": [
+          "value"
+        ]
       }
     }
   },
@@ -207,7 +215,9 @@
         }
       },
       "type": "object",
-      "required": ["quotaId"]
+      "required": [
+        "quotaId"
+      ]
     },
     "myedgeorder::ProductFamilyResponse": {
       "description": "Product Family",
@@ -291,7 +301,9 @@
         }
       },
       "type": "object",
-      "required": ["hierarchyInformation"]
+      "required": [
+        "hierarchyInformation"
+      ]
     },
     "myedgeorder::FilterableProperty": {
       "description": "Different types of filters supported and its values.",
@@ -316,7 +328,10 @@
         }
       },
       "type": "object",
-      "required": ["supportedValues", "type"]
+      "required": [
+        "supportedValues",
+        "type"
+      ]
     },
     "myedgeorder::AvailabilityInformationResponse": {
       "description": "Availability information of a product system.",
@@ -358,7 +373,10 @@
         }
       },
       "type": "object",
-      "required": ["billingInfoUrl", "billingMeterDetails"]
+      "required": [
+        "billingInfoUrl",
+        "billingMeterDetails"
+      ]
     },
     "myedgeorder::DescriptionResponse": {
       "description": "Description related properties of a product system.",
@@ -464,7 +482,10 @@
         }
       },
       "type": "object",
-      "required": ["name", "value"]
+      "required": [
+        "name",
+        "value"
+      ]
     },
     "myedgeorder::HierarchyInformation": {
       "description": "Holds details about product hierarchy information",
@@ -515,7 +536,10 @@
         }
       },
       "type": "object",
-      "required": ["imageType", "imageUrl"]
+      "required": [
+        "imageType",
+        "imageUrl"
+      ]
     },
     "myedgeorder::HierarchyInformationResponse": {
       "description": "Holds details about product hierarchy information",
@@ -619,7 +643,10 @@
         }
       },
       "type": "object",
-      "required": ["supportedValues", "type"]
+      "required": [
+        "supportedValues",
+        "type"
+      ]
     },
     "myedgeorder::SupportedFilterTypes": {
       "description": "Type of product filter.",
@@ -672,7 +699,12 @@
         }
       },
       "type": "object",
-      "required": ["frequency", "meterDetails", "meteringType", "name"]
+      "required": [
+        "frequency",
+        "meterDetails",
+        "meteringType",
+        "name"
+      ]
     },
     "myedgeorder::ProductResponse": {
       "description": "List of Products",
@@ -751,7 +783,10 @@
         }
       },
       "type": "object",
-      "required": ["linkType", "linkUrl"]
+      "required": [
+        "linkType",
+        "linkUrl"
+      ]
     },
     "myedgeorder::PurchaseMeterDetailsResponse": {
       "description": "Billing type Purchase meter details",
@@ -814,7 +849,12 @@
         }
       },
       "type": "object",
-      "required": ["billingType", "chargingType", "meterGuid", "multiplier"]
+      "required": [
+        "billingType",
+        "chargingType",
+        "meterGuid",
+        "multiplier"
+      ]
     }
   }
 }
