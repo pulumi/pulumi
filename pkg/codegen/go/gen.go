@@ -2579,11 +2579,11 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 
 		// add input + output types
 		resourceType := ctx.resourceType(r)
-		ctx.noteType(ctx.inputType(resourceType))
+		ctx.noteType(codegen.InputType(resourceType))
 		ctx.noteType(ctx.outputType(resourceType))
 		if ctx.info.GenerateResourceContainerTypes && !r.IsProvider {
-			ctx.noteType(ctx.inputType(&schema.ArrayType{ElementType: resourceType}))
-			ctx.noteType(ctx.inputType(&schema.MapType{ElementType: resourceType}))
+			ctx.noteType(codegen.InputType(&schema.ArrayType{ElementType: resourceType}))
+			ctx.noteType(codegen.InputType(&schema.MapType{ElementType: resourceType}))
 			ctx.noteType(ctx.outputType(&schema.ArrayType{ElementType: resourceType}))
 			ctx.noteType(ctx.outputType(&schema.MapType{ElementType: resourceType}))
 		}
@@ -2663,7 +2663,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 
 			// add types
 			ctx.noteType(t)
-			ctx.noteType(ctx.inputType(t.InputShape))
+			ctx.noteType(codegen.InputType(t.InputShape))
 			ctx.noteType(ctx.outputType(t))
 		case *schema.EnumType:
 			pkg := ctx.getPackageForToken(t.Token)
@@ -2712,9 +2712,9 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			}
 
 			// add input + output types
-			ctx.noteType(ctx.inputType(t))
+			ctx.noteType(codegen.InputType(t))
 			ctx.noteType(ctx.outputType(t))
-			ctx.noteType(ctx.inputType(&schema.OptionalType{ElementType: t}))
+			ctx.noteType(codegen.InputType(&schema.OptionalType{ElementType: t}))
 			ctx.noteType(ctx.outputType(&schema.OptionalType{ElementType: t}))
 		default:
 			return

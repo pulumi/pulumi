@@ -117,13 +117,6 @@ func (ctx *genContext) getRepresentativeTypeAndPackage(t schema.Type) (schema.Ty
 	}
 }
 
-func (ctx *genContext) inputType(elementType schema.Type) *schema.InputType {
-	if obj, ok := elementType.(*schema.ObjectType); ok && !obj.IsInputShape() {
-		elementType = obj.InputShape
-	}
-	return &schema.InputType{ElementType: elementType}
-}
-
 func (ctx *genContext) outputType(elementType schema.Type) *outputType {
 	if obj, ok := elementType.(*schema.ObjectType); ok && !obj.IsPlainShape() {
 		elementType = obj.PlainShape
@@ -144,13 +137,17 @@ func (ctx *genContext) noteType(t schema.Type) {
 	}
 	ctx.notedTypes.Add(t.String())
 
+	isInputOrOutputType := false
 	switch t := t.(type) {
 	case *outputType:
 		ctx.noteOutputType(t)
+		isInputOrOutputType = true
 	case *schema.InputType:
 		ctx.noteInputType(t)
+		isInputOrOutputType = true
 	case *schema.OptionalType:
 		ctx.noteOptionalType(t)
+		_, isInputOrOutputType = t.ElementType.(*schema.InputType)
 	case *schema.ArrayType:
 		ctx.noteType(t.ElementType)
 	case *schema.MapType:
@@ -168,6 +165,10 @@ func (ctx *genContext) noteType(t schema.Type) {
 		}
 		pkg := ctx.getPackageForType(t)
 		pkg.enums = append(pkg.enums, t)
+	}
+
+	if !isInputOrOutputType && ctx.generateExtraTypes {
+		ctx.noteType(codegen.InputType(t))
 	}
 }
 
@@ -212,7 +213,7 @@ func (ctx *genContext) noteOutputType(t *outputType) {
 func (ctx *genContext) noteInputType(t *schema.InputType) {
 	if t, isOptional := t.ElementType.(*schema.OptionalType); isOptional {
 		if ctx.foldOptionalInputOutputType(t) {
-			ctx.noteType(ctx.inputType(t.ElementType))
+			ctx.noteType(codegen.InputType(t.ElementType))
 			return
 		}
 		if pkg := ctx.getPackageForType(t.ElementType); pkg != nil {
