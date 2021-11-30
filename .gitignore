@@ -2,6 +2,7 @@
 **/vendor/
 **/node_modules/
 **/bin
+./bin
 **/.vscode/**/*
 **/.vs/
 **/.ionide/
