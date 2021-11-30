@@ -56,8 +56,9 @@ func testGeneratedPackage(t *testing.T, pwd string) {
 		}
 	}
 
-	// We are attempting to ensure that we don't write tests that are not run. The nodejs-extras
-	// folder exists to mixin tests. We assume that if this folder is present, we want to run tests.
+	// We are attempting to ensure that we don't write tests that are not run. The `nodejs-extras`
+	// folder exists to mixin tests of the form `*.spec.ts`. We assume that if this folder is
+	// present and contains `*.spec.ts` files, we want to run those tests.
 	foundTests := false
 	findTests := func(path string, _ os.DirEntry, _ error) error {
 		if strings.HasSuffix(path, ".spec.ts") {
