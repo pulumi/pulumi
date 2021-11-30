@@ -40,13 +40,20 @@ import (
 )
 
 type typeDetails struct {
+	input      bool
 	ptrInput   bool
 	arrayInput bool
 	mapInput   bool
 
+	output      bool
 	ptrOutput   bool
 	arrayOutput bool
 	mapOutput   bool
+}
+
+func (d *typeDetails) mark(input, output bool) {
+	d.input = d.input || input
+	d.output = d.output || input || output
 }
 
 func (d *typeDetails) markPtr(input, output bool) {
@@ -969,13 +976,19 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType) error {
 	}
 	fmt.Fprintln(w, ")")
 
-	inputType := pkg.inputType(enumType)
-	pkg.genEnumInputFuncs(w, name, enumType, elementArgsType, inputType, asFuncName)
-
-	pkg.genEnumOutputTypes(w, name, elementArgsType, elementGoType, asFuncName)
-	pkg.genEnumInputTypes(w, name, enumType, elementGoType)
-
 	details := pkg.detailsForType(enumType)
+	if details.input || details.ptrInput {
+		inputType := pkg.inputType(enumType)
+		pkg.genEnumInputFuncs(w, name, enumType, elementArgsType, inputType, asFuncName)
+	}
+
+	if details.output || details.ptrOutput {
+		pkg.genEnumOutputTypes(w, name, elementArgsType, elementGoType, asFuncName)
+	}
+	if details.input || details.ptrInput {
+		pkg.genEnumInputTypes(w, name, enumType, elementGoType)
+	}
+
 	// Generate the array input.
 	if details.arrayInput {
 		pkg.genInputInterface(w, name+"Array")
@@ -1232,11 +1245,13 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	name := pkg.tokenToType(t.Token)
 
 	// Generate the plain inputs.
-	pkg.genInputInterface(w, name)
+	if details.input {
+		pkg.genInputInterface(w, name)
 
-	pkg.genInputArgsStruct(w, name+"Args", t)
+		pkg.genInputArgsStruct(w, name+"Args", t)
 
-	genInputImplementation(w, name, name+"Args", name, details.ptrInput)
+		genInputImplementation(w, name, name+"Args", name, details.ptrInput)
+	}
 
 	// Generate the pointer input.
 	if details.ptrInput {
@@ -2280,7 +2295,10 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.Obje
 				continue
 			}
 			name, details := pkg.tokenToType(obj.Token), pkg.detailsForType(obj)
-			fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]sArgs{})\n", name)
+			if details.input {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]sArgs{})\n", name)
+			}
 			if details.ptrInput {
 				fmt.Fprintf(w,
 					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]sArgs{})\n", name)
@@ -2306,7 +2324,9 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.Obje
 			continue
 		}
 		name, details := pkg.tokenToType(obj.Token), pkg.detailsForType(obj)
-		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
+		if details.output {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
+		}
 		if details.ptrOutput {
 			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
 		}
@@ -2334,12 +2354,14 @@ func (pkg *pkgContext) genEnumRegistrations(w io.Writer) {
 			contract.Assert(len(e.Elements) > 0)
 			name, details := pkg.tokenToEnum(e.Token), pkg.detailsForType(e)
 			instance := fmt.Sprintf("%#v", e.Elements[0].Value)
-			fmt.Fprintf(w,
-				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]s(%[2]s))\n",
-				name, instance)
-			fmt.Fprintf(w,
-				"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]s(%[2]s))\n",
-				name, instance)
+			if details.input || details.ptrInput {
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]s(%[2]s))\n",
+					name, instance)
+				fmt.Fprintf(w,
+					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sPtrInput)(nil)).Elem(), %[1]s(%[2]s))\n",
+					name, instance)
+			}
 			if details.arrayInput {
 				fmt.Fprintf(w,
 					"\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sArrayInput)(nil)).Elem(), %[1]sArray{})\n",
@@ -2355,8 +2377,10 @@ func (pkg *pkgContext) genEnumRegistrations(w io.Writer) {
 	// Register all output types
 	for _, e := range pkg.enums {
 		name, details := pkg.tokenToEnum(e.Token), pkg.detailsForType(e)
-		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
-		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
+		if details.output || details.ptrOutput {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
+		}
 		if details.arrayOutput {
 			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
 		}
@@ -2835,6 +2859,28 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	var populateDetailsForPropertyTypes func(seen codegen.StringSet, props []*schema.Property, optional, input, output bool)
 	var populateDetailsForTypes func(seen codegen.StringSet, schemaType schema.Type, optional, input, output bool)
 
+	seenKey := func(t schema.Type, optional, input, output bool) string {
+		var key string
+		switch t := t.(type) {
+		case *schema.ObjectType:
+			key = t.Token
+		case *schema.EnumType:
+			key = t.Token
+		default:
+			key = t.String()
+		}
+		if optional {
+			key += ",optional"
+		}
+		if input {
+			key += ",input"
+		}
+		if output {
+			key += ",output"
+		}
+		return key
+	}
+
 	populateDetailsForPropertyTypes = func(seen codegen.StringSet, props []*schema.Property, optional, input, output bool) {
 		for _, p := range props {
 			populateDetailsForTypes(seen, p.Type, !p.IsRequired() || optional, input, output)
@@ -2842,6 +2888,12 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	}
 
 	populateDetailsForTypes = func(seen codegen.StringSet, schemaType schema.Type, optional, input, output bool) {
+		key := seenKey(schemaType, optional, input, output)
+		if seen.Has(key) {
+			return
+		}
+		seen.Add(key)
+
 		switch typ := schemaType.(type) {
 		case *schema.InputType:
 			populateDetailsForTypes(seen, typ.ElementType, optional, true, false)
@@ -2849,42 +2901,29 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			populateDetailsForTypes(seen, typ.ElementType, true, input, output)
 		case *schema.ObjectType:
 			pkg := getPkgFromToken(typ.Token)
-			if optional {
-				if seen.Has(typ.Token) {
-					return
-				}
-				seen.Add(typ.Token)
+			pkg.detailsForType(typ).mark(input || goInfo.GenerateExtraInputTypes, output)
 
+			if optional {
 				pkg.detailsForType(typ).markPtr(input || goInfo.GenerateExtraInputTypes, output)
-				populateDetailsForPropertyTypes(seen, typ.Properties, true, input, output)
 			}
+
 			pkg.schemaNames.Add(tokenToName(typ.Token))
+
+			populateDetailsForPropertyTypes(seen, typ.Properties, optional, input, output)
 		case *schema.EnumType:
 			pkg := getPkgFromToken(typ.Token)
-			if optional {
-				if seen.Has(typ.Token) {
-					return
-				}
-				seen.Add(typ.Token)
+			pkg.detailsForType(typ).mark(input || goInfo.GenerateExtraInputTypes, output)
 
+			if optional {
 				pkg.detailsForType(typ).markPtr(input || goInfo.GenerateExtraInputTypes, output)
 			}
+
 			pkg.schemaNames.Add(tokenToName(typ.Token))
 		case *schema.ArrayType:
-			if seen.Has(typ.String()) {
-				return
-			}
-			seen.Add(typ.String())
-
 			details := getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType))
 			details.markArray(input || goInfo.GenerateExtraInputTypes, output)
 			populateDetailsForTypes(seen, typ.ElementType, false, input, output)
 		case *schema.MapType:
-			if seen.Has(typ.String()) {
-				return
-			}
-			seen.Add(typ.String())
-
 			details := getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType))
 			details.markMap(input || goInfo.GenerateExtraInputTypes, output)
 			populateDetailsForTypes(seen, typ.ElementType, false, input, output)
@@ -2911,11 +2950,13 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			if !typ.IsInputShape() {
 				pkg.types = append(pkg.types, typ)
 			}
-			populateDetailsForPropertyTypes(seenMap, typ.Properties, false, false, false)
+			populateDetailsForTypes(seenMap, typ, false, false, false)
 		case *schema.EnumType:
 			if !typ.IsOverlay {
 				pkg := getPkgFromToken(typ.Token)
 				pkg.enums = append(pkg.enums, typ)
+
+				populateDetailsForTypes(seenMap, typ, false, false, false)
 			}
 		}
 	}
