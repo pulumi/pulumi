@@ -2970,8 +2970,8 @@ func TestExpectedCreate(t *testing.T) {
 	createAllResources = false
 	p.Options.Plan = ClonePlan(t, plan)
 	validate := ExpectDiagMessage(t,
-		"<{%reset%}>Expected resource operations for "+
-			"urn:pulumi:test::test::pkgA:m:typA::resB but none were seen.<{%reset%}>\n")
+		"<{%reset%}>expected resource operations for "+
+			"urn:pulumi:test::test::pkgA:m:typA::resB but none were seen<{%reset%}>\n")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
