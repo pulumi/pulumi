@@ -23,6 +23,7 @@ import (
 )
 
 func TestNewDetailedDiff(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		diff     *resource.ObjectDiff
