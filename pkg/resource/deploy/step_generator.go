@@ -308,7 +308,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// Generate the output goal plan
 	// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
 	// application. However, it is necessary in the face of computed inputs.
-	newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(oldOutputs, goal)}
+	newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(oldInputs, goal)}
 	sg.deployment.newPlans.set(urn, newResourcePlan)
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
@@ -322,7 +322,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
 			}
 		} else {
-			if err := resourcePlan.checkGoal(oldOutputs, inputs, goal); err != nil {
+			if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
 				return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
 			}
 		}

@@ -83,7 +83,7 @@ type GoalPlan struct {
 	CustomTimeouts resource.CustomTimeouts
 }
 
-func NewGoalPlan(oldOutputs resource.PropertyMap, goal *resource.Goal) *GoalPlan {
+func NewGoalPlan(oldInputs resource.PropertyMap, goal *resource.Goal) *GoalPlan {
 	if goal == nil {
 		return nil
 	}
@@ -92,7 +92,7 @@ func NewGoalPlan(oldOutputs resource.PropertyMap, goal *resource.Goal) *GoalPlan
 	var deletes []resource.PropertyKey
 	var updates resource.PropertyMap
 
-	if diff, hasDiff := oldOutputs.DiffIncludeUnknowns(goal.Properties); hasDiff {
+	if diff, hasDiff := oldInputs.DiffIncludeUnknowns(goal.Properties); hasDiff {
 		adds = diff.Adds
 		updates = make(resource.PropertyMap)
 		for k := range diff.Updates {
@@ -234,7 +234,7 @@ func checkMissingPlan(
 	}
 
 	rp := ResourcePlan{Goal: goal}
-	return rp.checkGoal(oldState.Outputs, newInputs, programGoal)
+	return rp.checkGoal(oldState.Inputs, newInputs, programGoal)
 }
 
 func (rp *ResourcePlan) checkGoal(
