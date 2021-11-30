@@ -457,33 +457,6 @@ type OtherResourceOutputType struct {
 	Foo *string `pulumi:"foo"`
 }
 
-// OtherResourceOutputTypeInput is an input type that accepts OtherResourceOutputTypeArgs and OtherResourceOutputTypeOutput values.
-// You can construct a concrete instance of `OtherResourceOutputTypeInput` via:
-//
-//          OtherResourceOutputTypeArgs{...}
-type OtherResourceOutputTypeInput interface {
-	pulumi.Input
-
-	ToOtherResourceOutputTypeOutput() OtherResourceOutputTypeOutput
-	ToOtherResourceOutputTypeOutputWithContext(context.Context) OtherResourceOutputTypeOutput
-}
-
-type OtherResourceOutputTypeArgs struct {
-	Foo pulumi.StringPtrInput `pulumi:"foo"`
-}
-
-func (OtherResourceOutputTypeArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*OtherResourceOutputType)(nil)).Elem()
-}
-
-func (i OtherResourceOutputTypeArgs) ToOtherResourceOutputTypeOutput() OtherResourceOutputTypeOutput {
-	return i.ToOtherResourceOutputTypeOutputWithContext(context.Background())
-}
-
-func (i OtherResourceOutputTypeArgs) ToOtherResourceOutputTypeOutputWithContext(ctx context.Context) OtherResourceOutputTypeOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(OtherResourceOutputTypeOutput)
-}
-
 type OtherResourceOutputTypeOutput struct{ *pulumi.OutputState }
 
 func (OtherResourceOutputTypeOutput) ElementType() reflect.Type {
@@ -500,6 +473,81 @@ func (o OtherResourceOutputTypeOutput) ToOtherResourceOutputTypeOutputWithContex
 
 func (o OtherResourceOutputTypeOutput) Foo() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v OtherResourceOutputType) *string { return v.Foo }).(pulumi.StringPtrOutput)
+}
+
+type OutputOnlyObjectType struct {
+	Foo *string `pulumi:"foo"`
+}
+
+type OutputOnlyObjectTypeOutput struct{ *pulumi.OutputState }
+
+func (OutputOnlyObjectTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*OutputOnlyObjectType)(nil)).Elem()
+}
+
+func (o OutputOnlyObjectTypeOutput) ToOutputOnlyObjectTypeOutput() OutputOnlyObjectTypeOutput {
+	return o
+}
+
+func (o OutputOnlyObjectTypeOutput) ToOutputOnlyObjectTypeOutputWithContext(ctx context.Context) OutputOnlyObjectTypeOutput {
+	return o
+}
+
+func (o OutputOnlyObjectTypeOutput) Foo() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v OutputOnlyObjectType) *string { return v.Foo }).(pulumi.StringPtrOutput)
+}
+
+type OutputOnlyObjectTypePtrOutput struct{ *pulumi.OutputState }
+
+func (OutputOnlyObjectTypePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**OutputOnlyObjectType)(nil)).Elem()
+}
+
+func (o OutputOnlyObjectTypePtrOutput) ToOutputOnlyObjectTypePtrOutput() OutputOnlyObjectTypePtrOutput {
+	return o
+}
+
+func (o OutputOnlyObjectTypePtrOutput) ToOutputOnlyObjectTypePtrOutputWithContext(ctx context.Context) OutputOnlyObjectTypePtrOutput {
+	return o
+}
+
+func (o OutputOnlyObjectTypePtrOutput) Elem() OutputOnlyObjectTypeOutput {
+	return o.ApplyT(func(v *OutputOnlyObjectType) OutputOnlyObjectType {
+		if v != nil {
+			return *v
+		}
+		var ret OutputOnlyObjectType
+		return ret
+	}).(OutputOnlyObjectTypeOutput)
+}
+
+func (o OutputOnlyObjectTypePtrOutput) Foo() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *OutputOnlyObjectType) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Foo
+	}).(pulumi.StringPtrOutput)
+}
+
+type OutputOnlyObjectTypeArrayOutput struct{ *pulumi.OutputState }
+
+func (OutputOnlyObjectTypeArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]OutputOnlyObjectType)(nil)).Elem()
+}
+
+func (o OutputOnlyObjectTypeArrayOutput) ToOutputOnlyObjectTypeArrayOutput() OutputOnlyObjectTypeArrayOutput {
+	return o
+}
+
+func (o OutputOnlyObjectTypeArrayOutput) ToOutputOnlyObjectTypeArrayOutputWithContext(ctx context.Context) OutputOnlyObjectTypeArrayOutput {
+	return o
+}
+
+func (o OutputOnlyObjectTypeArrayOutput) Index(i pulumi.IntInput) OutputOnlyObjectTypeOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) OutputOnlyObjectType {
+		return vs[0].([]OutputOnlyObjectType)[vs[1].(int)]
+	}).(OutputOnlyObjectTypeOutput)
 }
 
 type SomeOtherObject struct {
@@ -777,7 +825,6 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*ObjectPtrInput)(nil)).Elem(), ObjectArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*ObjectWithNodeOptionalInputsInput)(nil)).Elem(), ObjectWithNodeOptionalInputsArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*ObjectWithNodeOptionalInputsPtrInput)(nil)).Elem(), ObjectWithNodeOptionalInputsArgs{})
-	pulumi.RegisterInputType(reflect.TypeOf((*OtherResourceOutputTypeInput)(nil)).Elem(), OtherResourceOutputTypeArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*SomeOtherObjectInput)(nil)).Elem(), SomeOtherObjectArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*SomeOtherObjectPtrInput)(nil)).Elem(), SomeOtherObjectArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*SomeOtherObjectArrayInput)(nil)).Elem(), SomeOtherObjectArray{})
@@ -789,7 +836,9 @@ func init() {
 	pulumi.RegisterOutputType(ObjectPtrOutput{})
 	pulumi.RegisterOutputType(ObjectWithNodeOptionalInputsOutput{})
 	pulumi.RegisterOutputType(ObjectWithNodeOptionalInputsPtrOutput{})
-	pulumi.RegisterOutputType(OtherResourceOutputTypeOutput{})
+	pulumi.RegisterOutputType(OutputOnlyObjectTypeOutput{})
+	pulumi.RegisterOutputType(OutputOnlyObjectTypePtrOutput{})
+	pulumi.RegisterOutputType(OutputOnlyObjectTypeArrayOutput{})
 	pulumi.RegisterOutputType(SomeOtherObjectOutput{})
 	pulumi.RegisterOutputType(SomeOtherObjectPtrOutput{})
 	pulumi.RegisterOutputType(SomeOtherObjectArrayOutput{})
