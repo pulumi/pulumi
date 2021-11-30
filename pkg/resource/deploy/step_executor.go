@@ -170,7 +170,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			return result.FromError(fmt.Errorf("no plan for resource %v", urn))
 		}
 
-		if diffs, has := resourcePlan.Outputs.DiffIncludeUnknowns(outs); has {
+		if diffs := resourcePlan.Outputs.DiffIncludeUnknowns(outs); diffs != nil {
 			return result.FromError(fmt.Errorf("resource violates plan: %v", diffs))
 		}
 	}

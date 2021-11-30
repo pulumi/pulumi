@@ -429,9 +429,9 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 	return v.deepEquals(other, false)
 }
 
-func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap) (*ObjectDiff, bool) {
+func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap) *ObjectDiff {
 	diff := props.diff(other, true, nil)
-	return diff, diff != nil
+	return diff
 }
 
 func (v PropertyValue) DeepEqualsIncludeUnknowns(other PropertyValue) bool {

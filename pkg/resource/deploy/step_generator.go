@@ -305,29 +305,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		inputs = processedInputs
 	}
 
-	// Generate the output goal plan
-	// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
-	// application. However, it is necessary in the face of computed inputs.
-	newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(oldInputs, goal)}
-	sg.deployment.newPlans.set(urn, newResourcePlan)
-
-	// If there is a plan for this resource, validate that the program goal conforms to the plan.
-	// If theres no plan for this resource check that nothing has been changed.
-	if sg.deployment.plan != nil {
-		resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
-		if !ok {
-			if old == nil {
-				// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
-			} else if err := checkMissingPlan(old, inputs, goal); err != nil {
-				return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
-			}
-		} else {
-			if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
-				return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
-			}
-		}
-	}
-
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
@@ -403,6 +380,36 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			invalid = true
 		}
 		new.Inputs = inputs
+	}
+
+	var inputDiff *resource.ObjectDiff
+	if recreating || wasExternal || sg.isTargetedReplace(urn) {
+		inputDiff = nil
+	} else {
+		inputDiff = oldInputs.DiffIncludeUnknowns(inputs)
+	}
+
+	// Generate the output goal plan
+	// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
+	// application. However, it is necessary in the face of computed inputs.
+	newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(inputDiff, goal)}
+	sg.deployment.newPlans.set(urn, newResourcePlan)
+
+	// If there is a plan for this resource, validate that the program goal conforms to the plan.
+	// If theres no plan for this resource check that nothing has been changed.
+	if sg.deployment.plan != nil {
+		resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
+		if !ok {
+			if old == nil {
+				// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
+			} else if err := checkMissingPlan(old, inputs, goal); err != nil {
+				return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
+			}
+		} else {
+			if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
+				return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
+			}
+		}
 	}
 
 	// Send the resource off to any Analyzers before being operated on.

@@ -83,7 +83,7 @@ type GoalPlan struct {
 	CustomTimeouts resource.CustomTimeouts
 }
 
-func NewGoalPlan(oldInputs resource.PropertyMap, goal *resource.Goal) *GoalPlan {
+func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan {
 	if goal == nil {
 		return nil
 	}
@@ -92,15 +92,15 @@ func NewGoalPlan(oldInputs resource.PropertyMap, goal *resource.Goal) *GoalPlan 
 	var deletes []resource.PropertyKey
 	var updates resource.PropertyMap
 
-	if diff, hasDiff := oldInputs.DiffIncludeUnknowns(goal.Properties); hasDiff {
-		adds = diff.Adds
+	if inputDiff != nil {
+		adds = inputDiff.Adds
 		updates = make(resource.PropertyMap)
-		for k := range diff.Updates {
-			updates[k] = diff.Updates[k].New
+		for k := range inputDiff.Updates {
+			updates[k] = inputDiff.Updates[k].New
 		}
-		deletes = make([]resource.PropertyKey, len(diff.Deletes))
+		deletes = make([]resource.PropertyKey, len(inputDiff.Deletes))
 		i := 0
-		for k := range diff.Deletes {
+		for k := range inputDiff.Deletes {
 			deletes[i] = k
 			i = i + 1
 		}
@@ -345,8 +345,7 @@ func (rp *ResourcePlan) checkGoal(
 	// Check that the property diffs meet the constraints set in the plan.
 	changes := []string{}
 	var diff *resource.ObjectDiff
-	var hasDiff bool
-	if diff, hasDiff = oldOutputs.DiffIncludeUnknowns(newInputs); hasDiff {
+	if diff = oldOutputs.DiffIncludeUnknowns(newInputs); diff != nil {
 		// Check that any adds are in the goal for adds
 		for k := range diff.Adds {
 			if expected, has := rp.Goal.Adds[k]; has {
