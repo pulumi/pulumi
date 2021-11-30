@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
-using Pulumi.Example;
 
 namespace Pulumi.Example
 {
@@ -20,7 +19,7 @@ namespace Pulumi.Example
     public sealed class DoFooArgs : Pulumi.InvokeArgs
     {
         [Input("foo", required: true)]
-        public Pulumi.Example.Inputs.Foo Foo { get; set; } = null!;
+        public Inputs.Foo Foo { get; set; } = null!;
 
         public DoFooArgs()
         {

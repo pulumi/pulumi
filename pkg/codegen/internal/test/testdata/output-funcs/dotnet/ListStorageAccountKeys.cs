@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
-using Pulumi.Mypkg;
 using Pulumi.Utilities;
 
 namespace Pulumi.Mypkg

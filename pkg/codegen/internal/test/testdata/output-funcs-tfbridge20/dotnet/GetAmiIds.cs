@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
-using Pulumi.Mypkg;
 using Pulumi.Utilities;
 
 namespace Pulumi.Mypkg
@@ -44,16 +43,16 @@ namespace Pulumi.Mypkg
         }
 
         [Input("filters")]
-        private List<Pulumi.Mypkg.Inputs.GetAmiIdsFilterArgs>? _filters;
+        private List<Inputs.GetAmiIdsFilterArgs>? _filters;
 
         /// <summary>
         /// One or more name/value pairs to filter off of. There
         /// are several valid keys, for a full reference, check out
         /// [describe-images in the AWS CLI reference][1].
         /// </summary>
-        public List<Pulumi.Mypkg.Inputs.GetAmiIdsFilterArgs> Filters
+        public List<Inputs.GetAmiIdsFilterArgs> Filters
         {
-            get => _filters ?? (_filters = new List<Pulumi.Mypkg.Inputs.GetAmiIdsFilterArgs>());
+            get => _filters ?? (_filters = new List<Inputs.GetAmiIdsFilterArgs>());
             set => _filters = value;
         }
 
@@ -106,16 +105,16 @@ namespace Pulumi.Mypkg
         }
 
         [Input("filters")]
-        private InputList<Pulumi.Mypkg.Inputs.GetAmiIdsFilterInputArgs>? _filters;
+        private InputList<Inputs.GetAmiIdsFilterInputArgs>? _filters;
 
         /// <summary>
         /// One or more name/value pairs to filter off of. There
         /// are several valid keys, for a full reference, check out
         /// [describe-images in the AWS CLI reference][1].
         /// </summary>
-        public InputList<Pulumi.Mypkg.Inputs.GetAmiIdsFilterInputArgs> Filters
+        public InputList<Inputs.GetAmiIdsFilterInputArgs> Filters
         {
-            get => _filters ?? (_filters = new InputList<Pulumi.Mypkg.Inputs.GetAmiIdsFilterInputArgs>());
+            get => _filters ?? (_filters = new InputList<Inputs.GetAmiIdsFilterInputArgs>());
             set => _filters = value;
         }
 

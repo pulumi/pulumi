@@ -1284,15 +1284,26 @@ func (mod *modContext) genFunctionFileCode(f *schema.Function) (string, error) {
 	imports := map[string]codegen.StringSet{}
 	mod.getImports(f, imports)
 	buffer := &bytes.Buffer{}
-	importStrings := append(pulumiImports, mod.namespaceName)
+	importStrings := pulumiImports
+
+	// True if the function has a non-standard namespace.
+	nonStandardNamespace := mod.namespaceName != mod.tokenToNamespace(f.Token, "")
+	// If so, we need to import our project defined types.
+	if nonStandardNamespace {
+		importStrings = append(importStrings, mod.namespaceName)
+	}
 	for _, i := range imports {
 		importStrings = append(importStrings, i.SortedValues()...)
 	}
 	if f.NeedsOutputVersion() {
 		importStrings = append(importStrings, "Pulumi.Utilities")
 	}
-	defer func(current bool) { mod.fullyQualifiedInputs = current }(mod.fullyQualifiedInputs)
-	mod.fullyQualifiedInputs = true
+
+	// We need to qualify input types when we are not in the same module as them.
+	if nonStandardNamespace {
+		defer func(current bool) { mod.fullyQualifiedInputs = current }(mod.fullyQualifiedInputs)
+		mod.fullyQualifiedInputs = true
+	}
 	mod.genHeader(buffer, importStrings)
 	if err := mod.genFunction(buffer, f); err != nil {
 		return "", err

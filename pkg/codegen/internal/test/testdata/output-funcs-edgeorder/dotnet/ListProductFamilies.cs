@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
-using Pulumi.Myedgeorder;
 using Pulumi.Utilities;
 
 namespace Pulumi.Myedgeorder
@@ -35,7 +34,7 @@ namespace Pulumi.Myedgeorder
         /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
         /// </summary>
         [Input("customerSubscriptionDetails")]
-        public Pulumi.Myedgeorder.Inputs.CustomerSubscriptionDetails? CustomerSubscriptionDetails { get; set; }
+        public Inputs.CustomerSubscriptionDetails? CustomerSubscriptionDetails { get; set; }
 
         /// <summary>
         /// $expand is supported on configurations parameter for product, which provides details on the configurations for the product.
@@ -44,14 +43,14 @@ namespace Pulumi.Myedgeorder
         public string? Expand { get; set; }
 
         [Input("filterableProperties", required: true)]
-        private Dictionary<string, ImmutableArray<Pulumi.Myedgeorder.Inputs.FilterableProperty>>? _filterableProperties;
+        private Dictionary<string, ImmutableArray<Inputs.FilterableProperty>>? _filterableProperties;
 
         /// <summary>
         /// Dictionary of filterable properties on product family.
         /// </summary>
-        public Dictionary<string, ImmutableArray<Pulumi.Myedgeorder.Inputs.FilterableProperty>> FilterableProperties
+        public Dictionary<string, ImmutableArray<Inputs.FilterableProperty>> FilterableProperties
         {
-            get => _filterableProperties ?? (_filterableProperties = new Dictionary<string, ImmutableArray<Pulumi.Myedgeorder.Inputs.FilterableProperty>>());
+            get => _filterableProperties ?? (_filterableProperties = new Dictionary<string, ImmutableArray<Inputs.FilterableProperty>>());
             set => _filterableProperties = value;
         }
 
@@ -72,7 +71,7 @@ namespace Pulumi.Myedgeorder
         /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
         /// </summary>
         [Input("customerSubscriptionDetails")]
-        public Input<Pulumi.Myedgeorder.Inputs.CustomerSubscriptionDetailsArgs>? CustomerSubscriptionDetails { get; set; }
+        public Input<Inputs.CustomerSubscriptionDetailsArgs>? CustomerSubscriptionDetails { get; set; }
 
         /// <summary>
         /// $expand is supported on configurations parameter for product, which provides details on the configurations for the product.
@@ -81,14 +80,14 @@ namespace Pulumi.Myedgeorder
         public Input<string>? Expand { get; set; }
 
         [Input("filterableProperties", required: true)]
-        private InputMap<ImmutableArray<Pulumi.Myedgeorder.Inputs.FilterablePropertyArgs>>? _filterableProperties;
+        private InputMap<ImmutableArray<Inputs.FilterablePropertyArgs>>? _filterableProperties;
 
         /// <summary>
         /// Dictionary of filterable properties on product family.
         /// </summary>
-        public InputMap<ImmutableArray<Pulumi.Myedgeorder.Inputs.FilterablePropertyArgs>> FilterableProperties
+        public InputMap<ImmutableArray<Inputs.FilterablePropertyArgs>> FilterableProperties
         {
-            get => _filterableProperties ?? (_filterableProperties = new InputMap<ImmutableArray<Pulumi.Myedgeorder.Inputs.FilterablePropertyArgs>>());
+            get => _filterableProperties ?? (_filterableProperties = new InputMap<ImmutableArray<Inputs.FilterablePropertyArgs>>());
             set => _filterableProperties = value;
         }
 
