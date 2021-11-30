@@ -91,14 +91,25 @@ class LocalWorkspace(Workspace):
         opt_out = os.getenv(_SKIP_VERSION_CHECK_VAR) is not None
         if env_vars:
             opt_out = opt_out or env_vars.get(_SKIP_VERSION_CHECK_VAR) is not None
-        _validate_pulumi_version(_MINIMUM_VERSION, pulumi_version, opt_out)
-        self.pulumi_version = str(pulumi_version)
+        version = _parse_and_validate_pulumi_version(_MINIMUM_VERSION, pulumi_version, opt_out)
+        self.__pulumi_version = str(version) if version else None
 
         if project_settings:
             self.save_project_settings(project_settings)
         if stack_settings:
             for key in stack_settings:
                 self.save_stack_settings(key, stack_settings[key])
+
+    # mypy does not support properties: https://github.com/python/mypy/issues/1362
+    @property # type: ignore
+    def pulumi_version(self) -> str: # type: ignore
+        if self.__pulumi_version:
+            return self.__pulumi_version
+        raise InvalidVersionError("Could not get Pulumi CLI version")
+
+    @pulumi_version.setter # type: ignore
+    def pulumi_version(self, v: str):
+        self.__pulumi_version = v
 
     def __repr__(self):
         return f"{self.__class__.__name__}(work_dir={self.work_dir!r}, " \
@@ -288,12 +299,12 @@ class LocalWorkspace(Workspace):
             outputs[key] = OutputValue(value=plaintext_outputs[key], secret=secret)
         return outputs
 
-    def _get_pulumi_version(self) -> VersionInfo:
+    def _get_pulumi_version(self) -> str:
         result = self._run_pulumi_cmd_sync(["version"])
         version_string = result.stdout.strip()
         if version_string[0] == "v":
             version_string = version_string[1:]
-        return VersionInfo.parse(version_string)
+        return version_string
 
     def _run_pulumi_cmd_sync(self, args: List[str], on_output: Optional[OnOutput] = None) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}
@@ -474,16 +485,31 @@ def get_stack_settings_name(name: str) -> str:
     return parts[-1]
 
 
-def _validate_pulumi_version(min_version: VersionInfo, current_version: VersionInfo, opt_out: bool):
+def _parse_and_validate_pulumi_version(min_version: VersionInfo,
+                             current_version: str,
+                             opt_out: bool) -> Optional[VersionInfo]:
+    """
+    Parse and return a version. An error is raised if the version is not
+    valid. If *current_version* is not a valid version but *opt_out* is true,
+    *None* is returned.
+    """
+    try:
+        version: Optional[VersionInfo] = VersionInfo.parse(current_version)
+    except ValueError:
+        version = None
     if opt_out:
-        return
-    if min_version.major < current_version.major:
-        raise InvalidVersionError(f"Major version mismatch. You are using Pulumi CLI version {current_version} with "
+        return version
+    if version is None:
+        raise InvalidVersionError(f"Could not parse the Pulumi CLI version. This is probably an internal error. "
+                                  f"If you are sure you have the correct version, set {_SKIP_VERSION_CHECK_VAR}=true.")
+    if min_version.major < version.major:
+        raise InvalidVersionError(f"Major version mismatch. You are using Pulumi CLI version {version} with "
                                   f"Automation SDK v{min_version.major}. Please update the SDK.")
-    if min_version.compare(current_version) == 1:
+    if min_version.compare(version) == 1:
         raise InvalidVersionError(f"Minimum version requirement failed. The minimum CLI version requirement is "
-                                  f"{min_version}, your current CLI version is {current_version}. "
+                                  f"{min_version}, your current CLI version is {version}. "
                                   f"Please update the Pulumi CLI.")
+    return version
 
 
 def _load_project_settings(work_dir: str) -> ProjectSettings:

@@ -35,6 +35,13 @@ func TestDetectVars(t *testing.T) {
 			"BUILD_BUILDID":  buildNumber,
 			"GITHUB_ACTIONS": "",
 		},
+		Buildkite: {
+			"GITHUB_ACTIONS":         "",
+			"TRAVIS":                 "",
+			"BUILDKITE":              "true",
+			"BUILDKITE_BUILD_NUMBER": buildNumber,
+			"BUILDKITE_BUILD_ID":     buildID,
+		},
 		CircleCI: {
 			"TRAVIS":           "",
 			"CIRCLECI":         "true",

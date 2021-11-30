@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
@@ -93,7 +93,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	// Run Go formatter on the code before saving to disk
 	formattedSource, err := gofmt.Source(index.Bytes())
 	if err != nil {
-		panic(errors.Errorf("invalid Go source code:\n\n%s", index.String()))
+		panic(fmt.Errorf("invalid Go source code:\n\n%s", index.String()))
 	}
 
 	files := map[string][]byte{
@@ -244,9 +244,7 @@ func (g *generator) collectImports(
 					}
 					pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
 				} else if call.Name == pcl.IntrinsicConvert {
-					if schemaType, ok := pcl.GetSchemaForType(call.Type()); ok {
-						g.collectTypeImports(program, schemaType, pulumiImports)
-					}
+					g.collectConvertImports(program, call, pulumiImports)
 				}
 
 				// Checking to see if this function call deserves its own dedicated helper method in the preamble
@@ -277,6 +275,30 @@ func (g *generator) collectImports(
 	return stdImports, pulumiImports, preambleHelperMethods
 }
 
+func (g *generator) collectConvertImports(
+	program *pcl.Program,
+	call *model.FunctionCallExpression,
+	pulumiImports codegen.StringSet) {
+	if schemaType, ok := pcl.GetSchemaForType(call.Type()); ok {
+		// Sometimes code for a `__convert` call does not
+		// really use the import of the result type. In such
+		// cases it is important not to generate a
+		// non-compiling unused import. Detect some of these
+		// cases here.
+		//
+		// Fully solving this is deferred for later:
+		// TODO[pulumi/pulumi#8324].
+		if expr, ok := call.Args[0].(*model.TemplateExpression); ok {
+			if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok &&
+				model.StringType.AssignableFrom(lit.Type()) &&
+				call.Type().AssignableFrom(lit.Type()) {
+				return
+			}
+		}
+		g.collectTypeImports(program, schemaType, pulumiImports)
+	}
+}
+
 func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, error) {
 	for _, p := range program.Packages() {
 		if p.Name == pkg {
@@ -287,7 +309,7 @@ func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, er
 		}
 	}
 
-	return "", errors.Errorf("could not find package version information for pkg: %s", pkg)
+	return "", fmt.Errorf("could not find package version information for pkg: %s", pkg)
 
 }
 
@@ -431,7 +453,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
-	resName := makeValidIdentifier(r.Name())
+	resName, resNameVar := r.Name(), makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
 	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
 		mod = pkg
@@ -487,7 +509,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		rangeExpr, temps := g.lowerExpression(r.Options.Range, rangeType)
 		g.genTemps(w, temps)
 
-		g.Fgenf(w, "var %s []*%s.%s\n", resName, modOrAlias, typ)
+		g.Fgenf(w, "var %s []*%s.%s\n", resNameVar, modOrAlias, typ)
 
 		// ahead of range statement declaration generate the resource instantiation
 		// to detect and removed unused k,v variables
@@ -502,11 +524,11 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 		g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
 		g.Fgen(w, instantiation)
-		g.Fgenf(w, "%s = append(%s, __res)\n", resName, resName)
+		g.Fgenf(w, "%[1]s = append(%[1]s, __res)\n", resNameVar)
 		g.Fgenf(w, "}\n")
 
 	} else {
-		instantiate(resName, fmt.Sprintf("%q", resName), w)
+		instantiate(resNameVar, fmt.Sprintf("%q", resName), w)
 	}
 
 }
@@ -614,11 +636,17 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
 		case pcl.Invoke:
-			g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr)
-			g.isErrAssigned = true
-			g.Fgenf(w, "if err != nil {\n")
-			g.Fgenf(w, "return err\n")
-			g.Fgenf(w, "}\n")
+			// OutputVersionedInvoke does not return an error
+			noError, _, _ := pcl.RecognizeOutputVersionedInvoke(expr)
+			if noError {
+				g.Fgenf(w, "%s %s %.3v;\n", name, assignment, expr)
+			} else {
+				g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr)
+				g.isErrAssigned = true
+				g.Fgenf(w, "if err != nil {\n")
+				g.Fgenf(w, "return err\n")
+				g.Fgenf(w, "}\n")
+			}
 		case "join", "toBase64", "mimeType", "fileAsset":
 			g.Fgenf(w, "%s := %.3v;\n", name, expr)
 		}

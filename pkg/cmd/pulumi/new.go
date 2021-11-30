@@ -16,6 +16,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -26,7 +27,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
@@ -83,7 +83,7 @@ func runNew(args newArgs) error {
 
 	// Validate name (if specified) before further prompts/operations.
 	if args.name != "" && workspace.ValidateProjectName(args.name) != nil {
-		return errors.Errorf("'%s' is not a valid project name. %s.", args.name, workspace.ValidateProjectName(args.name))
+		return fmt.Errorf("'%s' is not a valid project name. %s", args.name, workspace.ValidateProjectName(args.name))
 	}
 
 	// Validate secrets provider type
@@ -94,7 +94,7 @@ func runNew(args newArgs) error {
 	// Get the current working directory.
 	cwd, err := os.Getwd()
 	if err != nil {
-		return errors.Wrap(err, "getting the working directory")
+		return fmt.Errorf("getting the working directory: %w", err)
 	}
 	originalCwd := cwd
 
@@ -159,7 +159,7 @@ func runNew(args newArgs) error {
 	if !args.force {
 		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
 			if os.IsNotExist(err) {
-				return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
+				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 			}
 			return err
 		}
@@ -172,7 +172,11 @@ func runNew(args newArgs) error {
 	// created via the web app.
 	var s backend.Stack
 	if args.stack != "" && strings.Count(args.stack, "/") == 2 {
-		existingStack, existingName, existingDesc, err := getStack(args.stack, opts)
+		stackName, err := buildStackName(args.stack)
+		if err != nil {
+			return err
+		}
+		existingStack, existingName, existingDesc, err := getStack(stackName, opts)
 		if err != nil {
 			return err
 		}
@@ -228,7 +232,7 @@ func runNew(args newArgs) error {
 	// Actually copy the files.
 	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
 		if os.IsNotExist(err) {
-			return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
+			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 		}
 		return err
 	}
@@ -245,7 +249,7 @@ func runNew(args newArgs) error {
 	proj.Description = &args.description
 	proj.Template = nil
 	if err = workspace.SaveProject(proj); err != nil {
-		return errors.Wrap(err, "saving project")
+		return fmt.Errorf("saving project: %w", err)
 	}
 
 	// Create the stack, if needed.
@@ -299,19 +303,19 @@ func runNew(args newArgs) error {
 func useSpecifiedDir(dir string) (string, error) {
 	// Ensure the directory exists.
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return "", errors.Wrap(err, "creating the directory")
+		return "", fmt.Errorf("creating the directory: %w", err)
 	}
 
 	// Change the working directory to the specified directory.
 	if err := os.Chdir(dir); err != nil {
-		return "", errors.Wrap(err, "changing the working directory")
+		return "", fmt.Errorf("changing the working directory: %w", err)
 	}
 
 	// Get the new working directory.
 	var cwd string
 	var err error
 	if cwd, err = os.Getwd(); err != nil {
-		return "", errors.Wrap(err, "getting the working directory")
+		return "", fmt.Errorf("getting the working directory: %w", err)
 	}
 	return cwd, nil
 }
@@ -445,7 +449,7 @@ func errorIfNotEmptyDirectory(path string) error {
 	}
 
 	if len(infos) > 0 {
-		return errors.Errorf("%s is not empty; "+
+		return fmt.Errorf("%s is not empty; "+
 			"rerun in an empty directory, pass the path to an empty directory to --dir, or use --force", path)
 	}
 
@@ -518,7 +522,11 @@ func promptAndCreateStack(prompt promptForValueFunc,
 	}
 
 	if stack != "" {
-		s, err := stackInit(b, stack, setCurrent, secretsProvider)
+		stackName, err := buildStackName(stack)
+		if err != nil {
+			return nil, err
+		}
+		s, err := stackInit(b, stackName, setCurrent, secretsProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -536,7 +544,14 @@ func promptAndCreateStack(prompt promptForValueFunc,
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(b, stackName, setCurrent, secretsProvider)
+		formattedStackName, err := buildStackName(stackName)
+		if err != nil {
+			return nil, err
+		}
+		if err != nil {
+			return nil, err
+		}
+		s, err := stackInit(b, formattedStackName, setCurrent, secretsProvider)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
@@ -577,8 +592,9 @@ func installDependencies(proj *workspace.Project, root string) error {
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		if bin, err := nodeInstallDependencies(); err != nil {
-			return errors.Wrapf(err, "%s install failed; rerun manually to try again, "+
-				"then run 'pulumi up' to perform an initial deployment", bin)
+			return fmt.Errorf("%s install failed; rerun manually to try again, "+
+				"then run 'pulumi up' to perform an initial deployment"+": %w", bin, err)
+
 		}
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
 		return pythonInstallDependencies(proj, root)
@@ -620,7 +636,7 @@ func pythonInstallDependencies(proj *workspace.Project, root string) error {
 	// Save project with venv info.
 	proj.Runtime.SetOption("virtualenv", venvDir)
 	if err := workspace.SaveProject(proj); err != nil {
-		return errors.Wrap(err, "saving project")
+		return fmt.Errorf("saving project: %w", err)
 	}
 	return nil
 }
@@ -671,8 +687,9 @@ func goInstallDependencies() error {
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "`go mod tidy` failed to install dependencies; rerun manually to try again, "+
-			"then run 'pulumi up' to perform an initial deployment")
+		return fmt.Errorf("`go mod tidy` failed to install dependencies; rerun manually to try again, "+
+			"then run 'pulumi up' to perform an initial deployment"+": %w", err)
+
 	}
 
 	fmt.Println("Finished installing dependencies")

@@ -3,6 +3,8 @@
 title: "ResourceInput"
 title_tag: "example.ResourceInput"
 meta_desc: "Documentation for the example.ResourceInput resource with examples, input properties, output properties, lookup functions, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 

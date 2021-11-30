@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "GetCustomDbRoles.cs",
+    "Outputs/GetCustomDbRolesResult.cs",
+    "Provider.cs",
+    "Pulumi.Mongodbatlas.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumiplugin.json"
+  ]
+}

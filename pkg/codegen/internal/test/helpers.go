@@ -17,6 +17,7 @@ package test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -26,7 +27,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -323,6 +323,14 @@ func ValidateFileTransformer(
 }
 
 func RunCommand(t *testing.T, name string, cwd string, exec string, args ...string) {
+	RunCommandWithOptions(t, &integration.ProgramTestOptions{}, name, cwd, exec, args...)
+}
+
+func RunCommandWithOptions(
+	t *testing.T,
+	opts *integration.ProgramTestOptions,
+	name string, cwd string, exec string, args ...string) {
+
 	exec, err := executable.FindExecutable(exec)
 	if err != nil {
 		t.Error(err)
@@ -331,12 +339,14 @@ func RunCommand(t *testing.T, name string, cwd string, exec string, args ...stri
 	wd, err := filepath.Abs(cwd)
 	require.NoError(t, err)
 	var stdout, stderr bytes.Buffer
-	cmdOptions := integration.ProgramTestOptions{Stderr: &stderr, Stdout: &stdout, Verbose: true}
+	opts.Stdout = &stdout
+	opts.Stderr = &stderr
+	opts.Verbose = true
 	err = integration.RunCommand(t,
 		name,
 		append([]string{exec}, args...),
 		wd,
-		&cmdOptions)
+		opts)
 	if !assert.NoError(t, err) {
 		stdout := stdout.String()
 		stderr := stderr.String()
@@ -353,7 +363,7 @@ func RunCommand(t *testing.T, name string, cwd string, exec string, args ...stri
 type SchemaVersion = string
 
 const (
-	AwsSchema         SchemaVersion = "4.21.1"
+	AwsSchema         SchemaVersion = "4.26.0"
 	AzureNativeSchema SchemaVersion = "1.29.0"
 	AzureSchema       SchemaVersion = "4.18.0"
 	KubernetesSchema  SchemaVersion = "3.7.2"
@@ -432,7 +442,7 @@ func currentVersion(path string) (string, error) {
 	}
 	json, ok := data.(map[string]interface{})
 	if !ok {
-		return "", errors.Errorf("%s could not be read", path)
+		return "", fmt.Errorf("%s could not be read", path)
 	}
 	version, ok := json["version"]
 	if !ok {
@@ -458,7 +468,7 @@ func replaceSchema(c chan error, path, version, url string) {
 
 	err = os.Remove(path)
 	if !os.IsNotExist(err) && err != nil {
-		c <- errors.Wrap(err, "failed to replace schema")
+		c <- fmt.Errorf("failed to replace schema: %w", err)
 		return
 	}
 	schemaFile, err := os.Create(path)

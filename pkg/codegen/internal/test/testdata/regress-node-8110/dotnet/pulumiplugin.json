@@ -1,0 +1,5 @@
+{
+  "resource": true,
+  "name": "my8110",
+  "version": "${PLUGIN_VERSION}"
+}

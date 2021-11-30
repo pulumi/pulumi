@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,5 +35,42 @@ func TestIntersect(t *testing.T) {
 	setC := setA.Intersect(setB)
 	assert.False(t, setC[a])
 	assert.True(t, setC[b])
+	assert.False(t, setC[c])
+}
+
+func TestUnion(t *testing.T) {
+	a := NewResource("a", nil)
+	b := NewResource("b", nil)
+	c := NewResource("c", nil)
+
+	setA := make(ResourceSet)
+	setA[a] = true
+	setA[c] = true
+
+	setB := make(ResourceSet)
+	setB[b] = true
+
+	setC := setA.Union(setB)
+	assert.True(t, setC[a])
+	assert.True(t, setC[b])
+	assert.True(t, setC[c])
+}
+
+func TestSetMinus(t *testing.T) {
+	a := NewResource("a", nil)
+	b := NewResource("b", nil)
+	c := NewResource("c", nil)
+
+	setA := make(ResourceSet)
+	setA[a] = true
+	setA[b] = true
+
+	setB := make(ResourceSet)
+	setB[b] = true
+	setB[c] = true
+
+	setC := setA.SetMinus(setB)
+	assert.True(t, setC[a])
+	assert.False(t, setC[b])
 	assert.False(t, setC[c])
 }

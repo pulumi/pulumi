@@ -11,6 +11,7 @@
     <TestParallelism>20</TestParallelism>
     <MSVSVersion>2019</MSVSVersion>
     <PulumiRoot Condition="'$(PulumiRoot)' == ''">C:\Pulumi\</PulumiRoot>
+    <PythonVersion Condition="'$(PythonVersion)' == ''">3.9.x</PythonVersion>
     <PulumiBin>$(PulumiRoot)\bin</PulumiBin>
   </PropertyGroup>
 
@@ -190,7 +191,7 @@
 
   <Target Name="PythonDependencies">
     <MakeDir Directories="$(PythonSdkDirectory)\env\src"/>
-    <Exec Command="pipenv install --dev"
+    <Exec Command="pipenv install --python $(PythonVersion) --dev"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
   </Target>
 
@@ -271,6 +272,10 @@
     <Exec Command="yarn link @pulumi/pulumi"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
     <Exec Command="yarn install"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_output_values\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_output_values\testcomponent" />
+    <Exec Command="yarn install"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_slow\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_slow\testcomponent" />
@@ -298,6 +303,14 @@
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent" />
+    <Exec Command="yarn install"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_resources\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_resources\testcomponent" />
+    <Exec Command="yarn install"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_errors\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_errors\testcomponent" />
     <Exec Command="yarn install"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
@@ -308,6 +321,8 @@
     <Exec Command="go build -o pulumi-resource-testprovider.exe" WorkingDirectory="$(TestsDirectory)\testprovider" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent-go" />
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_output_values\testcomponent" />
+    <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_output_values\testcomponent-go" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_slow\testcomponent" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_plain\testcomponent" />
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_plain\testcomponent-go" />
@@ -320,6 +335,10 @@
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent-go" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent" />
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent-go" />
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_resources\testcomponent" />
+    <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_resources\testcomponent-go" />
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_errors\testcomponent" />
+    <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_errors\testcomponent-go" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent" />
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent-go" />
 

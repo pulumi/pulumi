@@ -1,4 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+//go:build nodejs || all
 // +build nodejs all
 
 package ints
@@ -35,6 +36,8 @@ func TestEmptyNodeJS(t *testing.T) {
 
 // Tests emitting many engine events doesn't result in a performance problem.
 func TestEngineEventPerf(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7883]
+
 	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
 	// Since then, it should now be down to ~4s, with additional padding,
 	// since some Travis machines (especially the macOS ones) seem quite slow
@@ -1044,6 +1047,14 @@ func TestConstructMethodsUnknownNode(t *testing.T) {
 	testConstructMethodsUnknown(t, "nodejs", "@pulumi/pulumi")
 }
 
+func TestConstructMethodsResourcesNode(t *testing.T) {
+	testConstructMethodsResources(t, "nodejs", "@pulumi/pulumi")
+}
+
+func TestConstructMethodsErrorsNode(t *testing.T) {
+	testConstructMethodsErrors(t, "nodejs", "@pulumi/pulumi")
+}
+
 func TestConstructProviderNode(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {
@@ -1162,4 +1173,28 @@ func TestAboutNodeJS(t *testing.T) {
 	// Assert we parsed the dependencies
 	assert.Containsf(t, stdout, "@types/node",
 		"Did not contain expected output. stderr: \n%q", stderr)
+}
+
+func TestConstructOutputValuesNode(t *testing.T) {
+	testConstructOutputValues(t, "nodejs", "@pulumi/pulumi")
+}
+
+func TestTSConfigOption(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Skip on windows because we lack yarn")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	e.ImportDirectory("tsconfig")
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
+	e.RunCommand("pulumi", "preview")
 }

@@ -18,8 +18,8 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	user "github.com/tweekmonster/luser"
 	"net/http"
 	"net/url"
 	"os"
@@ -30,10 +30,12 @@ import (
 	"strings"
 	"time"
 
+	user "github.com/tweekmonster/luser"
+
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
 	"github.com/docker/docker/pkg/term"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -210,6 +212,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newConsoleCmd())
 	cmd.AddCommand(newAboutCmd())
 	cmd.AddCommand(newSchemaCmd())
+	cmd.AddCommand(newOrgCmd())
 
 	// Less common, and thus hidden, commands:
 	cmd.AddCommand(newGenCompletionCmd(cmd))
@@ -435,7 +438,7 @@ func isBrewInstall(exe string) (bool, error) {
 		if ee, ok := err.(*exec.ExitError); ok {
 			ee.Stderr = stderr.Bytes()
 		}
-		return false, errors.Wrapf(err, "'brew --prefix pulumi' failed")
+		return false, fmt.Errorf("'brew --prefix pulumi' failed: %w", err)
 	}
 
 	brewPrefixCmdOutput := strings.TrimSpace(stdout.String())

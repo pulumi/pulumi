@@ -185,5 +185,5 @@ func (fs Fs) Add(path string, contents []byte) {
 }
 
 func NewFs() Fs {
-	return map[string][]byte{}
+	return Fs{}
 }

@@ -49,14 +49,17 @@ var programTests = []programTest{
 	{
 		Name:        "aws-fargate",
 		Description: "AWS Fargate",
+
+		// TODO[pulumi/pulumi#8440]
 		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Name:        "aws-s3-logging",
 		Description: "AWS S3 with logging",
-		SkipCompile: codegen.NewStringSet("dotnet", "nodejs"),
+		SkipCompile: codegen.NewStringSet("dotnet", "nodejs", "go"),
 		// Blocked on dotnet: TODO[pulumi/pulumi#8069]
 		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
+		// Flaky in go: TODO[pulumi/pulumi#8123]
 	},
 	{
 		Name:        "aws-webserver",
@@ -67,6 +70,8 @@ var programTests = []programTest{
 	{
 		Name:        "azure-native",
 		Description: "Azure Native",
+		Skip:        codegen.NewStringSet("go"),
+		// Blocked on TODO[pulumi/pulumi#8123]
 		SkipCompile: codegen.NewStringSet("go", "nodejs"),
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8072]
@@ -120,15 +125,22 @@ var programTests = []programTest{
 		//   TODO[pulumi/pulumi#8078]
 		//   TODO[pulumi/pulumi#8079]
 	},
+	{
+		Name:        "output-funcs-aws",
+		Description: "Output Versioned Functions",
+	},
 }
 
 // Checks that a generated program is correct
-type CheckProgramOutput = func(*testing.T, string)
+//
+// The arguments are to be read:
+// (Testing environment, path to generated code, set of dependencies)
+type CheckProgramOutput = func(*testing.T, string, codegen.StringSet)
 
 // Generates a program from a pcl.Program
 type GenProgram = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
-type ProgramLangConfig struct {
+type ProgramCodegenOptions struct {
 	Language   string
 	Extension  string
 	OutputFile string
@@ -149,7 +161,7 @@ func TestProgramCodegen(
 	t *testing.T,
 	// language string,
 	// genProgram func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error
-	testcase ProgramLangConfig,
+	testcase ProgramCodegenOptions,
 
 ) {
 	ensureValidSchemaVersions(t)
@@ -220,7 +232,16 @@ func TestProgramCodegen(
 				assert.Equal(t, string(expected), string(files[testcase.OutputFile]))
 			}
 			if testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
-				testcase.Check(t, expectedFile)
+				extraPulumiPackages := codegen.NewStringSet()
+				for _, n := range program.Nodes {
+					if r, isResource := n.(*pcl.Resource); isResource {
+						pkg, _, _, _ := r.DecomposeToken()
+						if pkg != "pulumi" {
+							extraPulumiPackages.Add(pkg)
+						}
+					}
+				}
+				testcase.Check(t, expectedFile, extraPulumiPackages)
 			}
 		})
 	}

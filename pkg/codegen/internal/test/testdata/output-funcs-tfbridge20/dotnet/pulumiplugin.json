@@ -1,0 +1,5 @@
+{
+  "resource": true,
+  "name": "mypkg",
+  "version": "${PLUGIN_VERSION}"
+}

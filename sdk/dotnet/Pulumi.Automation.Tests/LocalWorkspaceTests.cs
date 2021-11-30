@@ -1248,7 +1248,8 @@ namespace Pulumi.Automation.Tests
                 () => upTaskWithOutput);
         }
 
-        [Fact]
+        // TODO[pulumi/pulumi#8228]: fix flakiness
+        [Fact(Skip="flaky")]
         public async Task InlineProgramExceptionPropagatesToCallerWithServiceProvider()
         {
             await using var provider = new ServiceCollection()
@@ -1434,6 +1435,7 @@ namespace Pulumi.Automation.Tests
             }
         }
 
+        // TODO[pulumi/pulumi#7467]
         [Fact(Skip = "Flakey test - https://github.com/pulumi/pulumi/issues/7467")]
         public async Task WorkspaceStackSupportsCancel()
         {
@@ -1508,17 +1510,21 @@ namespace Pulumi.Automation.Tests
         [InlineData("2.21.1-alpha.1234", true, false)]
         [InlineData("2.20.0", false, true)]
         [InlineData("2.22.0", false, true)]
+        // Invalid version check
+        [InlineData("invalid", false, true)]
+        [InlineData("invalid", true, false)]
         public void ValidVersionTheory(string currentVersion, bool errorExpected, bool optOut)
         {
             var testMinVersion = SemVersion.Parse("2.21.1");
+
             if (errorExpected)
             {
-                void ValidatePulumiVersion() => LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
+                void ValidatePulumiVersion() => LocalWorkspace.ParseAndValidatePulumiVersion(testMinVersion, currentVersion, optOut);
                 Assert.Throws<InvalidOperationException>(ValidatePulumiVersion);
             }
             else
             {
-                LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
+                LocalWorkspace.ParseAndValidatePulumiVersion(testMinVersion, currentVersion, optOut);
             }
         }
 
@@ -1723,6 +1729,275 @@ namespace Pulumi.Automation.Tests
             }
         }
 
+        [Fact]
+        public async Task StateDelete()
+        {
+            const string type = "test:res";
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                new ComponentResource(
+                    type,
+                    "a");
+            });
+
+            var stackName = RandomStackName();
+            var projectName = "test_state_delete";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            try
+            {
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(2, upCount);
+
+                // export state
+                var exportResult = await stack.ExportStackAsync();
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(2, state.Deployment.Resources.Count);
+                var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
+
+                // pulumi state delete
+                await stack.State.DeleteAsync(resource.Urn);
+
+                // test
+                exportResult = await stack.ExportStackAsync();
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Single(state.Deployment.Resources);
+            }
+            finally
+            {
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task StateDeleteForce()
+        {
+            const string type = "test:res";
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                new ComponentResource(
+                    type,
+                    "a",
+                    new ComponentResourceOptions
+                    {
+                        Protect = true,
+                    });
+            });
+
+            var stackName = RandomStackName();
+            var projectName = "test_state_delete_force";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            try
+            {
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(2, upCount);
+
+                // export state
+                var exportResult = await stack.ExportStackAsync();
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(2, state.Deployment.Resources.Count);
+                var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
+
+                // pulumi state delete
+                await Assert.ThrowsAsync<CommandException>(() => stack.State.DeleteAsync(resource.Urn));
+
+                // pulumi state delete force
+                await stack.State.DeleteAsync(resource.Urn, force: true);
+
+                // test
+                exportResult = await stack.ExportStackAsync();
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Single(state.Deployment.Resources);
+            }
+            finally
+            {
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task StateUnprotect()
+        {
+            const string type = "test:res";
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                new ComponentResource(
+                    type,
+                    "a",
+                    new ComponentResourceOptions
+                    {
+                        Protect = true,
+                    });
+            });
+
+            var stackName = RandomStackName();
+            var projectName = "test_state_unprotect";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            try
+            {
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(2, upCount);
+
+                // export state
+                var exportResult = await stack.ExportStackAsync();
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(2, state.Deployment.Resources.Count);
+                var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
+                Assert.True(resource.Protect);
+
+                // pulumi state unprotect
+                await stack.State.UnprotectAsync(resource.Urn);
+
+                // test
+                exportResult = await stack.ExportStackAsync();
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(2, state.Deployment.Resources.Count);
+                resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
+                Assert.False(resource.Protect);
+            }
+            finally
+            {
+                await stack.State.UnprotectAllAsync();
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task StateUnprotectAll()
+        {
+            const string type = "test:res";
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                new ComponentResource(
+                    type,
+                    "a",
+                    new ComponentResourceOptions
+                    {
+                        Protect = true,
+                    });
+
+                new ComponentResource(
+                    type,
+                    "b",
+                    new ComponentResourceOptions
+                    {
+                        Protect = true,
+                    });
+            });
+
+            var stackName = RandomStackName();
+            var projectName = "test_state_unprotect_all";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            try
+            {
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(3, upCount);
+
+                // export state
+                var exportResult = await stack.ExportStackAsync();
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(3, state.Deployment.Resources.Count);
+                var resources = state.Deployment.Resources.Where(x => x.Urn.Contains(type)).ToList();
+                Assert.Equal(2, resources.Count);
+                Assert.True(resources.All(x => x.Protect));
+
+                // pulumi state unprotect
+                await stack.State.UnprotectAllAsync();
+
+                // test
+                exportResult = await stack.ExportStackAsync();
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                Assert.Equal(3, state.Deployment.Resources.Count);
+                resources = state.Deployment.Resources.Where(x => x.Urn.Contains(type)).ToList();
+                Assert.Equal(2, resources.Count);
+                Assert.DoesNotContain(resources, x => x.Protect);
+            }
+            finally
+            {
+                await stack.State.UnprotectAllAsync();
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
         private string ResourcePath(string path, [CallerFilePath] string pathBase = "LocalWorkspaceTests.cs")
         {
             var dir = Path.GetDirectoryName(pathBase) ?? ".";
@@ -1748,6 +2023,23 @@ namespace Pulumi.Automation.Tests
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
                 => _action();
+        }
+
+        private class StackState
+        {
+            public StackStateDeployment Deployment { get; set; } = new StackStateDeployment();
+        }
+
+        private class StackStateDeployment
+        {
+            public List<StackStateResource> Resources { get; set; } = new List<StackStateResource>();
+        }
+
+        private class StackStateResource
+        {
+            public string Urn { get; set; } = null!;
+
+            public bool Protect { get; set; }
         }
     }
 }

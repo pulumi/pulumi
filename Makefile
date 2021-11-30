@@ -17,6 +17,8 @@ TEST_ALL_DEPS = build $(SUB_PROJECTS:%=%_install)
 
 ensure::
 	$(call STEP_MESSAGE)
+	@echo "Check for pulumictl"; [ -e "$(shell which pulumictl)" ]
+
 	@echo "cd sdk && go mod download"; cd sdk && go mod download
 	@echo "cd pkg && go mod download"; cd pkg && go mod download
 	@echo "cd tests && go mod download"; cd tests && go mod download
@@ -27,19 +29,18 @@ build-proto::
 .PHONY: generate
 generate::
 	$(call STEP_MESSAGE)
-	echo "Generate static assets bundle for docs generator"
-	cd pkg && go generate ./codegen/docs/gen.go
+	echo "This command does not do anything anymore. It will be removed in a future version."
 
-build:: generate
+build::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
-build_debug:: generate
+build_debug::
 	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 developer_docs::
 	cd developer-docs && make html
 
-install:: generate
+install::
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 install_all:: install
@@ -64,6 +65,8 @@ test_build:: $(TEST_ALL_DEPS)
 	cd tests/testprovider && go build -o pulumi-resource-testprovider
 	cd tests/integration/construct_component/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component/testcomponent-go && go build -o pulumi-resource-testcomponent
+	cd tests/integration/construct_component_output_values/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+	cd tests/integration/construct_component_output_values/testcomponent-go && go build -o pulumi-resource-testcomponent
 	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_plain/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_plain/testcomponent-go && go build -o pulumi-resource-testcomponent
@@ -78,12 +81,11 @@ test_build:: $(TEST_ALL_DEPS)
 	cd tests/integration/construct_component_provider/testcomponent-go && go build -o pulumi-resource-testcomponent
 	cd tests/integration/construct_component_methods_unknown/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_methods_unknown/testcomponent-go && go build -o pulumi-resource-testcomponent
+	cd tests/integration/construct_component_methods_resources/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+	cd tests/integration/construct_component_methods_resources/testcomponent-go && go build -o pulumi-resource-testcomponent
+	cd tests/integration/construct_component_methods_errors/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+	cd tests/integration/construct_component_methods_errors/testcomponent-go && go build -o pulumi-resource-testcomponent
 
 test_all:: test_build
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
-
-.PHONY: test_containers
-test_containers:
-	$(call STEP_MESSAGE)
-	./scripts/test-containers.sh ${VERSION}

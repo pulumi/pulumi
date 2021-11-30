@@ -57,6 +57,14 @@ The description of the package. Descriptions are interpreted as Markdown.
 
 ---
 
+### `displayName`
+
+The human-friendly name of the package.
+
+`string`
+
+---
+
 ### `functions`
 
 A map from token to functionSpec that describes the set of functions defined by this package.
@@ -156,6 +164,14 @@ The URL to use when downloading the provider plugin binary.
 The provider type for this package.
 
 [Resource Definition](#resource-definition)
+
+---
+
+### `publisher`
+
+The name of the person or organization that authored and published the package.
+
+`string`
 
 ---
 
@@ -297,7 +313,7 @@ Enum: `"boolean"` | `"integer"` | `"number"` | `"string"`
 
 #### `deprecationMessage`
 
-Indicates whether or not the value is deprecated.
+Indicates whether the value is deprecated.
 
 `string`
 
@@ -339,7 +355,7 @@ Describes a function.
 
 #### `deprecationMessage`
 
-Indicates whether or not the function is deprecated
+Indicates whether the function is deprecated
 
 `string`
 
@@ -358,6 +374,14 @@ The description of the function, if any. Interpreted as Markdown.
 The bag of input values for the function, if any.
 
 [Object Type Details](#object-type-details)
+
+---
+
+#### `isOverlay`
+
+Indicates that the implementation of the function should not be generated from the schema, and is instead provided out-of-band by the package author
+
+`boolean`
 
 ---
 
@@ -564,7 +588,7 @@ Additional language-specific data about the default value.
 
 #### `deprecationMessage`
 
-Indicates whether or not the property is deprecated
+Indicates whether the property is deprecated
 
 `string`
 
@@ -627,7 +651,7 @@ Items: [Alias Definition](#alias-definition)
 
 #### `deprecationMessage`
 
-Indicates whether or not the resource is deprecated
+Indicates whether the resource is deprecated
 
 `string`
 
@@ -653,7 +677,15 @@ Additional properties: [Property Definition](#property-definition)
 
 #### `isComponent`
 
-Indicates whether or not the resource is a component.
+Indicates whether the resource is a component.
+
+`boolean`
+
+---
+
+#### `isOverlay`
+
+Indicates that the implementation of the resource should not be generated from the schema, and is instead provided out-of-band by the package author
 
 `boolean`
 
@@ -691,7 +723,7 @@ An optional objectTypeSpec that describes additional inputs that mau be necessar
 
 `string`
 
-Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/]*)?:[^0-9][a-zA-Z0-9._/]*$`
+Pattern: `^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/-]*)?:[^0-9][a-zA-Z0-9._/]*$`
 
 ## Type Definition
 
@@ -710,6 +742,14 @@ One of:
 The description of the type, if any. Interpreted as Markdown.
 
 `string`
+
+---
+
+#### `isOverlay`
+
+Indicates that the implementation of the type should not be generated from the schema, and is instead provided out-of-band by the package author
+
+`boolean`
 
 ---
 

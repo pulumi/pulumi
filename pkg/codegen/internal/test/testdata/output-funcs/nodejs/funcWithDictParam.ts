@@ -30,3 +30,12 @@ export interface FuncWithDictParamArgs {
 export interface FuncWithDictParamResult {
     readonly r: string;
 }
+
+export function funcWithDictParamOutput(args?: FuncWithDictParamOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithDictParamResult> {
+    return pulumi.output(args).apply(a => funcWithDictParam(a, opts))
+}
+
+export interface FuncWithDictParamOutputArgs {
+    a?: pulumi.Input<{[key: string]: pulumi.Input<string>}>;
+    b?: pulumi.Input<string>;
+}

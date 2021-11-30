@@ -44,7 +44,9 @@ func (os *optionalSpiller) spillExpressionHelper(
 	case *model.FunctionCallExpression:
 		if x.Name == "invoke" {
 			// recurse into invoke args
-			isInvoke = true
+			isOutputInvoke, _, _ := pcl.RecognizeOutputVersionedInvoke(x)
+			// ignore output-versioned invokes as they do not need converting
+			isInvoke = !isOutputInvoke
 			_, diags := os.spillExpressionHelper(x.Args[1], x.Args[1].Type(), isInvoke)
 			return x, diags
 		}

@@ -3,6 +3,7 @@
     "README.md",
     "foo.ts",
     "index.ts",
+    "nested/index.ts",
     "package.json",
     "provider.ts",
     "tsconfig.json",

@@ -264,6 +264,9 @@ func (o FooArrayOutput) Index(i pulumi.IntInput) FooOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*FooInput)(nil)).Elem(), FooArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FooPtrInput)(nil)).Elem(), FooArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FooArrayInput)(nil)).Elem(), FooArray{})
 	pulumi.RegisterOutputType(FooOutput{})
 	pulumi.RegisterOutputType(FooPtrOutput{})
 	pulumi.RegisterOutputType(FooArrayOutput{})

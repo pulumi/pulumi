@@ -77,7 +77,7 @@ type DogInput interface {
 }
 
 func (*Dog) ElementType() reflect.Type {
-	return reflect.TypeOf((*Dog)(nil))
+	return reflect.TypeOf((**Dog)(nil)).Elem()
 }
 
 func (i *Dog) ToDogOutput() DogOutput {
@@ -86,35 +86,6 @@ func (i *Dog) ToDogOutput() DogOutput {
 
 func (i *Dog) ToDogOutputWithContext(ctx context.Context) DogOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(DogOutput)
-}
-
-func (i *Dog) ToDogPtrOutput() DogPtrOutput {
-	return i.ToDogPtrOutputWithContext(context.Background())
-}
-
-func (i *Dog) ToDogPtrOutputWithContext(ctx context.Context) DogPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(DogPtrOutput)
-}
-
-type DogPtrInput interface {
-	pulumi.Input
-
-	ToDogPtrOutput() DogPtrOutput
-	ToDogPtrOutputWithContext(ctx context.Context) DogPtrOutput
-}
-
-type dogPtrType DogArgs
-
-func (*dogPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Dog)(nil))
-}
-
-func (i *dogPtrType) ToDogPtrOutput() DogPtrOutput {
-	return i.ToDogPtrOutputWithContext(context.Background())
-}
-
-func (i *dogPtrType) ToDogPtrOutputWithContext(ctx context.Context) DogPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(DogPtrOutput)
 }
 
 // DogArrayInput is an input type that accepts DogArray and DogArrayOutput values.
@@ -170,7 +141,7 @@ func (i DogMap) ToDogMapOutputWithContext(ctx context.Context) DogMapOutput {
 type DogOutput struct{ *pulumi.OutputState }
 
 func (DogOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Dog)(nil))
+	return reflect.TypeOf((**Dog)(nil)).Elem()
 }
 
 func (o DogOutput) ToDogOutput() DogOutput {
@@ -181,44 +152,10 @@ func (o DogOutput) ToDogOutputWithContext(ctx context.Context) DogOutput {
 	return o
 }
 
-func (o DogOutput) ToDogPtrOutput() DogPtrOutput {
-	return o.ToDogPtrOutputWithContext(context.Background())
-}
-
-func (o DogOutput) ToDogPtrOutputWithContext(ctx context.Context) DogPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Dog) *Dog {
-		return &v
-	}).(DogPtrOutput)
-}
-
-type DogPtrOutput struct{ *pulumi.OutputState }
-
-func (DogPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Dog)(nil))
-}
-
-func (o DogPtrOutput) ToDogPtrOutput() DogPtrOutput {
-	return o
-}
-
-func (o DogPtrOutput) ToDogPtrOutputWithContext(ctx context.Context) DogPtrOutput {
-	return o
-}
-
-func (o DogPtrOutput) Elem() DogOutput {
-	return o.ApplyT(func(v *Dog) Dog {
-		if v != nil {
-			return *v
-		}
-		var ret Dog
-		return ret
-	}).(DogOutput)
-}
-
 type DogArrayOutput struct{ *pulumi.OutputState }
 
 func (DogArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Dog)(nil))
+	return reflect.TypeOf((*[]*Dog)(nil)).Elem()
 }
 
 func (o DogArrayOutput) ToDogArrayOutput() DogArrayOutput {
@@ -230,15 +167,15 @@ func (o DogArrayOutput) ToDogArrayOutputWithContext(ctx context.Context) DogArra
 }
 
 func (o DogArrayOutput) Index(i pulumi.IntInput) DogOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Dog {
-		return vs[0].([]Dog)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Dog {
+		return vs[0].([]*Dog)[vs[1].(int)]
 	}).(DogOutput)
 }
 
 type DogMapOutput struct{ *pulumi.OutputState }
 
 func (DogMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Dog)(nil))
+	return reflect.TypeOf((*map[string]*Dog)(nil)).Elem()
 }
 
 func (o DogMapOutput) ToDogMapOutput() DogMapOutput {
@@ -250,14 +187,13 @@ func (o DogMapOutput) ToDogMapOutputWithContext(ctx context.Context) DogMapOutpu
 }
 
 func (o DogMapOutput) MapIndex(k pulumi.StringInput) DogOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Dog {
-		return vs[0].(map[string]Dog)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *Dog {
+		return vs[0].(map[string]*Dog)[vs[1].(string)]
 	}).(DogOutput)
 }
 
 func init() {
 	pulumi.RegisterOutputType(DogOutput{})
-	pulumi.RegisterOutputType(DogPtrOutput{})
 	pulumi.RegisterOutputType(DogArrayOutput{})
 	pulumi.RegisterOutputType(DogMapOutput{})
 }

@@ -24,13 +24,14 @@ import (
 var testdataPath = filepath.Join("..", "internal", "test", "testdata")
 
 func TestGenerateProgram(t *testing.T) {
-	test.TestProgramCodegen(t, test.ProgramLangConfig{
-		Language:   "go",
-		Extension:  "go",
-		OutputFile: "main.go",
-		Check:      goCheck,
-		GenProgram: GenerateProgram,
-	})
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "go",
+			Extension:  "go",
+			OutputFile: "main.go",
+			Check:      goCheck,
+			GenProgram: GenerateProgram,
+		})
 }
 
 func TestCollectImports(t *testing.T) {
@@ -82,7 +83,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 	return g
 }
 
-func goCheck(t *testing.T, path string) {
+func goCheck(t *testing.T, path string, _ codegen.StringSet) {
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)

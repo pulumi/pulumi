@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // Defines an extra check logic that accepts the directory with the
@@ -35,129 +36,177 @@ type sdkTest struct {
 }
 
 const (
-	// python = "python"
+	python = "python"
 	nodejs = "nodejs"
 	dotnet = "dotnet"
 	golang = "go"
 )
 
+// TODO[pulumi/pulumi#8054]: remove
+// `codegen.NewStringSet("python/test", "nodejs/test")` workaround for
+// schemas with no unit tests.
 var sdkTests = []sdkTest{
 	{
 		Directory:   "naming-collisions",
 		Description: "Schema with types that could potentially produce collisions (go).",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "dash-named-schema",
 		Description: "Simple schema with a two part name (foo-bar)",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:        "external-resource-schema",
 		Description:      "External resource schema",
 		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
-		Skip:             codegen.NewStringSet("python/test"),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:        "nested-module",
 		Description:      "Nested module",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
-		Skip:             codegen.NewStringSet("python/test"),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:        "nested-module-thirdparty",
 		Description:      "Third-party nested module",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
-		Skip:             codegen.NewStringSet("python/test"),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "plain-schema-gh6957",
 		Description: "Repro for #6957",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "resource-args-python-case-insensitive",
 		Description: "Resource args with same named resource and type case insensitive",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "resource-args-python",
 		Description: "Resource args with same named resource and type",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "simple-enum-schema",
 		Description: "Simple schema with enum types",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "simple-plain-schema",
 		Description: "Simple schema with plain properties",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "simple-plain-schema-with-root-package",
 		Description: "Simple schema with root package set",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "simple-resource-schema",
 		Description: "Simple schema with local resource properties",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "simple-resource-schema-custom-pypackage-name",
 		Description: "Simple schema with local resource properties and custom Python package name",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:        "simple-methods-schema",
 		Description:      "Simple schema with methods",
-		SkipCompileCheck: codegen.NewStringSet(nodejs, dotnet, golang),
-		Skip:             codegen.NewStringSet("python/test"),
+		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "simple-methods-schema-single-value-returns",
 		Description: "Simple schema with methods that return single values",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "simple-yaml-schema",
 		Description: "Simple schema encoded using YAML",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:        "provider-config-schema",
 		Description:      "Simple provider config schema",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
-		Skip:             codegen.NewStringSet("python/test"),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:        "replace-on-change",
 		Description:      "Simple use of replaceOnChange in schema",
 		SkipCompileCheck: codegen.NewStringSet(golang),
-		Skip:             codegen.NewStringSet("python/test"),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:        "resource-property-overlap",
 		Description:      "A resource with the same name as its property",
 		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
-		Skip:             codegen.NewStringSet("python/test"),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
 		Directory:   "hyphen-url",
 		Description: "A resource url with a hyphen in its path",
-		Skip:        codegen.NewStringSet("python/test"),
+		// TODO[pulumi/pulumi#8370]: Re-enable compiling for Go.
+		SkipCompileCheck: codegen.NewStringSet(golang),
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
 	},
 	{
-		Directory:        "output-funcs",
-		Description:      "Tests targeting the $fn_output helper code generation feature",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "output-funcs",
+		Description: "Tests targeting the $fn_output helper code generation feature",
+	},
+	{
+		Directory:        "output-funcs-edgeorder",
+		Description:      "Regresses Node compilation issues on a subset of azure-native",
+		SkipCompileCheck: codegen.NewStringSet(dotnet, golang, python),
+		Skip:             codegen.NewStringSet("nodejs/test"),
+	},
+	{
+		Directory:        "output-funcs-tfbridge20",
+		Description:      "Similar to output-funcs, but with compatibility: tfbridge20, to simulate pulumi-aws use case",
+		SkipCompileCheck: codegen.NewStringSet(dotnet, python),
 	},
 	{
 		Directory:   "cyclic-types",
 		Description: "Cyclic object types",
-		Skip:        codegen.NewStringSet("python/test"),
+		Skip:        codegen.NewStringSet("python/test", "nodejs/test"),
+	},
+	{
+		Directory:   "regress-node-8110",
+		Description: "Test the fix for pulumi/pulumi#8110 nodejs compilation error",
+		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
+	},
+	{
+		Directory:   "dashed-import-schema",
+		Description: "Ensure that we handle all valid go import paths",
+		Skip:        codegen.NewStringSet("nodejs/test", "go/test", "python/test", "dotnet/test"),
+	},
+	{
+		Directory:        "plain-and-default",
+		Description:      "Ensure that a resource with a plain default property works correctly",
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
+		SkipCompileCheck: codegen.NewStringSet(nodejs),
+	},
+	{
+		Directory:        "plain-object-defaults",
+		Description:      "Ensure that object defaults are generated (repro #8132)",
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+	},
+	{
+		Directory:        "plain-object-disable-defaults",
+		Description:      "Ensure that we can still compile safely when defaults are disabled",
+		Skip:             codegen.NewStringSet("python/test", "nodejs/test"),
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
+	},
+	{
+		Directory:        "regress-8403",
+		Description:      "Regress pulumi/pulumi#8403",
+		SkipCompileCheck: codegen.NewStringSet(dotnet, python, nodejs),
 	},
 }
 
@@ -185,11 +234,11 @@ type SDKCodegenOptions struct {
 	Checks map[string]CodegenCheck
 }
 
-// `TestSDKCodegen` runs the complete set of SDK code generation tests
+// TestSDKCodegen runs the complete set of SDK code generation tests
 // against a particular language's code generator. It also verifies
 // that the generated code is structurally sound.
 //
-// The tests files live in `pkg/codegen/internal/test/testdata` and
+// The test files live in `pkg/codegen/internal/test/testdata` and
 // are registered in `var sdkTests` in `sdk_driver.go`.
 //
 // An SDK code generation test files consists of a schema and a set of
@@ -213,7 +262,7 @@ type SDKCodegenOptions struct {
 //      PULUMI_ACCEPT=true go test ./...
 //
 // This will rebuild subfolders such as `go/` from scratch and store
-// the set of code-generated file names in `go/codegen-manfiest.json`.
+// the set of code-generated file names in `go/codegen-manifest.json`.
 // If these outputs look correct, they need to be checked into git and
 // will then serve as the expected values for the normal test runs:
 //
@@ -241,11 +290,9 @@ type SDKCodegenOptions struct {
 func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-line
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 
-	// Motivation for flagging parallelism: not all tests are
-	// parallel-safe yet (for example, codegen/docs tests fail),
-	// and there are concerns about memory utilizaion in CI. It
-	// can be a nice feature for developing though.
-	parallel := os.Getenv("PULUMI_PARALLEL_SDK_CODEGEN_TESTS") != ""
+	// Motivation for flagging: concerns about memory utilizaion
+	// in CI. It can be a nice feature for developing though.
+	parallel := cmdutil.IsTruthy(os.Getenv("PULUMI_PARALLEL_SDK_CODEGEN_TESTS"))
 
 	for _, sdkTest := range sdkTests {
 		tt := sdkTest // avoid capturing loop variable `sdkTest` in the closure

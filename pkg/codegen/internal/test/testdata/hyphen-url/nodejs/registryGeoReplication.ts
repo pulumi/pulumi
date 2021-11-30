@@ -42,25 +42,25 @@ export class RegistryGeoReplication extends pulumi.ComponentResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args: RegistryGeoReplicationArgs, opts?: pulumi.ComponentResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
             if ((!args || args.resourceGroup === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'resourceGroup'");
             }
-            inputs["resourceGroup"] = args ? args.resourceGroup : undefined;
-            inputs["acrLoginServerOut"] = undefined /*out*/;
-            inputs["registry"] = undefined /*out*/;
-            inputs["replication"] = undefined /*out*/;
+            resourceInputs["resourceGroup"] = args ? args.resourceGroup : undefined;
+            resourceInputs["acrLoginServerOut"] = undefined /*out*/;
+            resourceInputs["registry"] = undefined /*out*/;
+            resourceInputs["replication"] = undefined /*out*/;
         } else {
-            inputs["acrLoginServerOut"] = undefined /*out*/;
-            inputs["registry"] = undefined /*out*/;
-            inputs["replication"] = undefined /*out*/;
+            resourceInputs["acrLoginServerOut"] = undefined /*out*/;
+            resourceInputs["registry"] = undefined /*out*/;
+            resourceInputs["replication"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(RegistryGeoReplication.__pulumiType, name, inputs, opts, true /*remote*/);
+        super(RegistryGeoReplication.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 }
 

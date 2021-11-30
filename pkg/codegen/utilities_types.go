@@ -1,6 +1,8 @@
 package codegen
 
-import "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+import (
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+)
 
 func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen Set) {
 	if seen.Has(t) {
@@ -89,6 +91,19 @@ func UnwrapType(t schema.Type) schema.Type {
 	}
 }
 
+func IsNOptionalInput(t schema.Type) bool {
+	for {
+		switch typ := t.(type) {
+		case *schema.InputType:
+			return true
+		case *schema.OptionalType:
+			t = typ.ElementType
+		default:
+			return false
+		}
+	}
+}
+
 func resolvedType(t schema.Type, plainObjects bool) schema.Type {
 	switch typ := t.(type) {
 	case *schema.InputType:
@@ -145,4 +160,28 @@ func PlainType(t schema.Type) schema.Type {
 // ResolvedType deeply removes any InputTypes from t.
 func ResolvedType(t schema.Type) schema.Type {
 	return resolvedType(t, true)
+}
+
+// If a helper function needs to be invoked to provide default values for a
+// plain type. The provided map cannot be reused.
+func IsProvideDefaultsFuncRequired(t schema.Type) bool {
+	return isProvideDefaultsFuncRequiredHelper(t, map[string]bool{})
+}
+
+func isProvideDefaultsFuncRequiredHelper(t schema.Type, seen map[string]bool) bool {
+	if seen[t.String()] {
+		return false
+	}
+	seen[t.String()] = true
+	t = UnwrapType(t)
+	object, ok := t.(*schema.ObjectType)
+	if !ok {
+		return false
+	}
+	for _, p := range object.Properties {
+		if p.DefaultValue != nil || isProvideDefaultsFuncRequiredHelper(p.Type, seen) {
+			return true
+		}
+	}
+	return false
 }

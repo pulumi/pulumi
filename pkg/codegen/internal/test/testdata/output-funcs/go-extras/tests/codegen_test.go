@@ -35,8 +35,8 @@ func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.Propert
 }
 
 func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
-	if args.Token == "mypkg::listStorageAccountKeys" {
-
+	switch args.Token {
+	case "mypkg::listStorageAccountKeys":
 		targs := mypkg.ListStorageAccountKeysArgs{}
 		for k, v := range args.Args {
 			switch k {
@@ -72,12 +72,11 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 			"keys": result.Keys,
 		}
 		return resource.NewPropertyMapFromMap(outputs), nil
-	}
 
-	if args.Token == "mypkg::funcWithDefaultValue" ||
-		args.Token == "mypkg::funcWithAllOptionalInputs" ||
-		args.Token == "mypkg::funcWithListParam" ||
-		args.Token == "mypkg::funcWithDictParam" {
+	case "mypkg::funcWithDefaultValue",
+		"mypkg::funcWithAllOptionalInputs",
+		"mypkg::funcWithListParam",
+		"mypkg::funcWithDictParam":
 		result := mypkg.FuncWithDefaultValueResult{
 			R: fmt.Sprintf("%v", args.Args),
 		}
@@ -85,9 +84,8 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 			"r": result.R,
 		}
 		return resource.NewPropertyMapFromMap(outputs), nil
-	}
 
-	if args.Token == "mypkg::getIntegrationRuntimeObjectMetadatum" {
+	case "mypkg::getIntegrationRuntimeObjectMetadatum":
 		targs := mypkg.GetIntegrationRuntimeObjectMetadatumArgs{}
 		for k, v := range args.Args {
 			switch k {
@@ -151,16 +149,13 @@ func TestListStorageAccountKeysOutput(t *testing.T) {
 	})
 }
 
-// TODO[pulumi/pulumi#7811]: it seems that default values are not
-// supported by Go codegen yet, hence we do not observe "B" populated
-// to default at all here.
 func TestFuncWithDefaultValueOutput(t *testing.T) {
 	pulumiTest(t, func(ctx *pulumi.Context) error {
 		output := mypkg.FuncWithDefaultValueOutput(ctx, mypkg.FuncWithDefaultValueOutputArgs{
 			A: pulumi.String("my-a"),
 		})
 		r := waitOut(t, output.R())
-		assert.Equal(t, "map[a:{my-a}]", r)
+		assert.Equal(t, "map[a:{my-a} b:{b-default}]", r)
 		return nil
 	})
 }

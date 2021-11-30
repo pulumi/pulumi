@@ -78,7 +78,7 @@ type NoRecursiveInput interface {
 }
 
 func (*NoRecursive) ElementType() reflect.Type {
-	return reflect.TypeOf((*NoRecursive)(nil))
+	return reflect.TypeOf((**NoRecursive)(nil)).Elem()
 }
 
 func (i *NoRecursive) ToNoRecursiveOutput() NoRecursiveOutput {
@@ -87,35 +87,6 @@ func (i *NoRecursive) ToNoRecursiveOutput() NoRecursiveOutput {
 
 func (i *NoRecursive) ToNoRecursiveOutputWithContext(ctx context.Context) NoRecursiveOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(NoRecursiveOutput)
-}
-
-func (i *NoRecursive) ToNoRecursivePtrOutput() NoRecursivePtrOutput {
-	return i.ToNoRecursivePtrOutputWithContext(context.Background())
-}
-
-func (i *NoRecursive) ToNoRecursivePtrOutputWithContext(ctx context.Context) NoRecursivePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(NoRecursivePtrOutput)
-}
-
-type NoRecursivePtrInput interface {
-	pulumi.Input
-
-	ToNoRecursivePtrOutput() NoRecursivePtrOutput
-	ToNoRecursivePtrOutputWithContext(ctx context.Context) NoRecursivePtrOutput
-}
-
-type noRecursivePtrType NoRecursiveArgs
-
-func (*noRecursivePtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**NoRecursive)(nil))
-}
-
-func (i *noRecursivePtrType) ToNoRecursivePtrOutput() NoRecursivePtrOutput {
-	return i.ToNoRecursivePtrOutputWithContext(context.Background())
-}
-
-func (i *noRecursivePtrType) ToNoRecursivePtrOutputWithContext(ctx context.Context) NoRecursivePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(NoRecursivePtrOutput)
 }
 
 // NoRecursiveArrayInput is an input type that accepts NoRecursiveArray and NoRecursiveArrayOutput values.
@@ -171,7 +142,7 @@ func (i NoRecursiveMap) ToNoRecursiveMapOutputWithContext(ctx context.Context) N
 type NoRecursiveOutput struct{ *pulumi.OutputState }
 
 func (NoRecursiveOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*NoRecursive)(nil))
+	return reflect.TypeOf((**NoRecursive)(nil)).Elem()
 }
 
 func (o NoRecursiveOutput) ToNoRecursiveOutput() NoRecursiveOutput {
@@ -182,44 +153,10 @@ func (o NoRecursiveOutput) ToNoRecursiveOutputWithContext(ctx context.Context) N
 	return o
 }
 
-func (o NoRecursiveOutput) ToNoRecursivePtrOutput() NoRecursivePtrOutput {
-	return o.ToNoRecursivePtrOutputWithContext(context.Background())
-}
-
-func (o NoRecursiveOutput) ToNoRecursivePtrOutputWithContext(ctx context.Context) NoRecursivePtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v NoRecursive) *NoRecursive {
-		return &v
-	}).(NoRecursivePtrOutput)
-}
-
-type NoRecursivePtrOutput struct{ *pulumi.OutputState }
-
-func (NoRecursivePtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**NoRecursive)(nil))
-}
-
-func (o NoRecursivePtrOutput) ToNoRecursivePtrOutput() NoRecursivePtrOutput {
-	return o
-}
-
-func (o NoRecursivePtrOutput) ToNoRecursivePtrOutputWithContext(ctx context.Context) NoRecursivePtrOutput {
-	return o
-}
-
-func (o NoRecursivePtrOutput) Elem() NoRecursiveOutput {
-	return o.ApplyT(func(v *NoRecursive) NoRecursive {
-		if v != nil {
-			return *v
-		}
-		var ret NoRecursive
-		return ret
-	}).(NoRecursiveOutput)
-}
-
 type NoRecursiveArrayOutput struct{ *pulumi.OutputState }
 
 func (NoRecursiveArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]NoRecursive)(nil))
+	return reflect.TypeOf((*[]*NoRecursive)(nil)).Elem()
 }
 
 func (o NoRecursiveArrayOutput) ToNoRecursiveArrayOutput() NoRecursiveArrayOutput {
@@ -231,15 +168,15 @@ func (o NoRecursiveArrayOutput) ToNoRecursiveArrayOutputWithContext(ctx context.
 }
 
 func (o NoRecursiveArrayOutput) Index(i pulumi.IntInput) NoRecursiveOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) NoRecursive {
-		return vs[0].([]NoRecursive)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *NoRecursive {
+		return vs[0].([]*NoRecursive)[vs[1].(int)]
 	}).(NoRecursiveOutput)
 }
 
 type NoRecursiveMapOutput struct{ *pulumi.OutputState }
 
 func (NoRecursiveMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]NoRecursive)(nil))
+	return reflect.TypeOf((*map[string]*NoRecursive)(nil)).Elem()
 }
 
 func (o NoRecursiveMapOutput) ToNoRecursiveMapOutput() NoRecursiveMapOutput {
@@ -251,14 +188,13 @@ func (o NoRecursiveMapOutput) ToNoRecursiveMapOutputWithContext(ctx context.Cont
 }
 
 func (o NoRecursiveMapOutput) MapIndex(k pulumi.StringInput) NoRecursiveOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) NoRecursive {
-		return vs[0].(map[string]NoRecursive)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *NoRecursive {
+		return vs[0].(map[string]*NoRecursive)[vs[1].(string)]
 	}).(NoRecursiveOutput)
 }
 
 func init() {
 	pulumi.RegisterOutputType(NoRecursiveOutput{})
-	pulumi.RegisterOutputType(NoRecursivePtrOutput{})
 	pulumi.RegisterOutputType(NoRecursiveArrayOutput{})
 	pulumi.RegisterOutputType(NoRecursiveMapOutput{})
 }

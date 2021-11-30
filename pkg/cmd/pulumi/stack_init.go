@@ -15,9 +15,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -65,7 +65,7 @@ func newStackInitCmd() *cobra.Command {
 			"\n" +
 			"A stack can be created based on the configuration of an existing stack by passing the\n" +
 			"`--copy-config-from` flag.\n" +
-			"* `pulumi stack init --copy-config-from dev",
+			"* `pulumi stack init --copy-config-from dev`",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -107,11 +107,15 @@ func newStackInitCmd() *cobra.Command {
 				return errors.New("missing stack name")
 			}
 
-			if err := b.ValidateStackName(stackName); err != nil {
+			formattedStackName, err := buildStackName(stackName)
+			if err != nil {
+				return err
+			}
+			if err := b.ValidateStackName(formattedStackName); err != nil {
 				return err
 			}
 
-			stackRef, err := b.ParseStackReference(stackName)
+			stackRef, err := b.ParseStackReference(formattedStackName)
 			if err != nil {
 				return err
 			}

@@ -20,7 +20,8 @@ SVG_FILES = \
 	architecture/import.svg \
 	architecture/replace.svg \
 	architecture/same.svg \
-	architecture/update.svg
+	architecture/update.svg \
+	architecture/pulumi-import.svg
 
 %.svg: %.uml
 	plantuml -tsvg $<

@@ -417,6 +417,14 @@ type SomeOtherObjectArrayMapInput interface {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ConfigMapInput)(nil)).Elem(), ConfigMapArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ConfigMapArrayInput)(nil)).Elem(), ConfigMapArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ObjectInput)(nil)).Elem(), ObjectArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*OtherResourceOutputTypeInput)(nil)).Elem(), OtherResourceOutputTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SomeOtherObjectInput)(nil)).Elem(), SomeOtherObjectArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SomeOtherObjectArrayInput)(nil)).Elem(), SomeOtherObjectArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SomeOtherObjectArrayArrayInput)(nil)).Elem(), SomeOtherObjectArrayArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*SomeOtherObjectArrayMapInput)(nil)).Elem(), SomeOtherObjectArrayMap{})
 	pulumi.RegisterOutputType(ConfigMapOutput{})
 	pulumi.RegisterOutputType(ConfigMapArrayOutput{})
 	pulumi.RegisterOutputType(ObjectOutput{})
