@@ -2813,39 +2813,41 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// In addition, if the optional property's type is itself an object type, we also need to generate pointer
 	// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
 	// those nested types.
-	var populateDetailsForPropertyTypes func(seen codegen.StringSet, props []*schema.Property, parentOptional bool)
-	var populateDetailsForTypes func(seen codegen.StringSet, schemaType schema.Type, isRequired bool, parentOptional bool)
+	var populateDetailsForPropertyTypes func(seen codegen.StringSet, props []*schema.Property, optional bool)
+	var populateDetailsForTypes func(seen codegen.StringSet, schemaType schema.Type, optional bool)
 
-	populateDetailsForPropertyTypes = func(seen codegen.StringSet, props []*schema.Property, parentOptional bool) {
+	populateDetailsForPropertyTypes = func(seen codegen.StringSet, props []*schema.Property, optional bool) {
 		for _, p := range props {
-			populateDetailsForTypes(seen, p.Type, p.IsRequired(), parentOptional)
+			populateDetailsForTypes(seen, p.Type, !p.IsRequired() || optional)
 		}
 	}
 
-	populateDetailsForTypes = func(seen codegen.StringSet, schemaType schema.Type, isRequired bool, parentOptional bool) {
+	populateDetailsForTypes = func(seen codegen.StringSet, schemaType schema.Type, optional bool) {
 		switch typ := schemaType.(type) {
 		case *schema.InputType:
-			populateDetailsForTypes(seen, typ.ElementType, isRequired, parentOptional)
+			populateDetailsForTypes(seen, typ.ElementType, optional)
 		case *schema.OptionalType:
-			populateDetailsForTypes(seen, typ.ElementType, false, true)
+			populateDetailsForTypes(seen, typ.ElementType, true)
 		case *schema.ObjectType:
 			pkg := getPkgFromToken(typ.Token)
-			if !isRequired || parentOptional {
+			if optional {
 				if seen.Has(typ.Token) {
 					return
 				}
 				seen.Add(typ.Token)
+
 				pkg.detailsForType(typ).ptrInput = true
 				populateDetailsForPropertyTypes(seen, typ.Properties, true)
 			}
 			pkg.schemaNames.Add(tokenToName(typ.Token))
 		case *schema.EnumType:
-			if seen.Has(typ.Token) {
-				return
-			}
-			seen.Add(typ.Token)
 			pkg := getPkgFromToken(typ.Token)
-			if !isRequired || parentOptional {
+			if optional {
+				if seen.Has(typ.Token) {
+					return
+				}
+				seen.Add(typ.Token)
+
 				pkg.detailsForType(typ).ptrInput = true
 			}
 			pkg.schemaNames.Add(tokenToName(typ.Token))
@@ -2854,15 +2856,17 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				return
 			}
 			seen.Add(typ.String())
+
 			getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType)).arrayInput = true
-			populateDetailsForTypes(seen, typ.ElementType, true, false)
+			populateDetailsForTypes(seen, typ.ElementType, false)
 		case *schema.MapType:
 			if seen.Has(typ.String()) {
 				return
 			}
 			seen.Add(typ.String())
+
 			getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType)).mapInput = true
-			populateDetailsForTypes(seen, typ.ElementType, true, false)
+			populateDetailsForTypes(seen, typ.ElementType, false)
 		}
 	}
 
@@ -2958,8 +2962,8 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			}
 		}
 
-		populateDetailsForPropertyTypes(seenMap, r.InputProperties, !r.IsProvider)
-		populateDetailsForPropertyTypes(seenMap, r.Properties, !r.IsProvider)
+		populateDetailsForPropertyTypes(seenMap, r.InputProperties, r.IsProvider)
+		populateDetailsForPropertyTypes(seenMap, r.Properties, r.IsProvider)
 
 		for _, method := range r.Methods {
 			if method.Function.Inputs != nil {
@@ -3088,12 +3092,12 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// input or output property type metadata, in case they have
 	// types used in array or pointer element positions.
 	for _, f := range pkg.Functions {
-		parentOptional := false
+		optional := false
 		if f.Inputs != nil {
-			populateDetailsForPropertyTypes(seenMap, f.Inputs.Properties, parentOptional)
+			populateDetailsForPropertyTypes(seenMap, f.Inputs.Properties, optional)
 		}
 		if f.Outputs != nil {
-			populateDetailsForPropertyTypes(seenMap, f.Outputs.Properties, parentOptional)
+			populateDetailsForPropertyTypes(seenMap, f.Outputs.Properties, optional)
 		}
 	}
 
