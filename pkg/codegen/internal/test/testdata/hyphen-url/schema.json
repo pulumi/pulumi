@@ -37,7 +37,8 @@
     },
     "go": {
       "generateResourceContainerTypes": true,
-      "importBasePath": "github.com/pulumi/pulumi-registrygeoreplication/sdk/go/registrygeoreplication"
+      "importBasePath": "github.com/pulumi/pulumi-registrygeoreplication/sdk/go/registrygeoreplication",
+      "generateExtraInputTypes": true
     },
     "nodejs": {
       "dependencies": {

@@ -94,7 +94,9 @@
         "Pulumi": "3.12"
       }
     },
-    "go": {},
+    "go": {
+      "generateExtraInputTypes": true
+    },
     "nodejs": {
       "dependencies": {
         "@pulumi/pulumi": "^3.12"

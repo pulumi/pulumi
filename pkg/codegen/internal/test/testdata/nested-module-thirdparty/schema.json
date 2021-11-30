@@ -39,7 +39,8 @@
       ]
     },
     "go": {
-      "importBasePath": "nested-module-thirdparty/foo"
+      "importBasePath": "nested-module-thirdparty/foo",
+      "generateExtraInputTypes": true
     }
   }
 }

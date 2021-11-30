@@ -49,16 +49,19 @@ type typeDetails struct {
 	mapOutput   bool
 }
 
-func (d *typeDetails) markPtrInput() {
-	d.ptrInput, d.ptrOutput = true, true
+func (d *typeDetails) markPtr(input, output bool) {
+	d.ptrInput = d.ptrInput || input
+	d.ptrOutput = d.ptrOutput || input || output
 }
 
-func (d *typeDetails) markArrayInput() {
-	d.arrayInput, d.arrayOutput = true, true
+func (d *typeDetails) markArray(input, output bool) {
+	d.arrayInput = d.arrayInput || input
+	d.arrayOutput = d.arrayOutput || input || output
 }
 
-func (d *typeDetails) markMapInput() {
-	d.mapInput, d.mapOutput = true, true
+func (d *typeDetails) markMap(input, output bool) {
+	d.mapInput = d.mapInput || input
+	d.mapOutput = d.mapOutput || input || output
 }
 
 // Title converts the input string to a title case
@@ -2829,21 +2832,21 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// In addition, if the optional property's type is itself an object type, we also need to generate pointer
 	// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
 	// those nested types.
-	var populateDetailsForPropertyTypes func(seen codegen.StringSet, props []*schema.Property, optional bool)
-	var populateDetailsForTypes func(seen codegen.StringSet, schemaType schema.Type, optional bool)
+	var populateDetailsForPropertyTypes func(seen codegen.StringSet, props []*schema.Property, optional, input, output bool)
+	var populateDetailsForTypes func(seen codegen.StringSet, schemaType schema.Type, optional, input, output bool)
 
-	populateDetailsForPropertyTypes = func(seen codegen.StringSet, props []*schema.Property, optional bool) {
+	populateDetailsForPropertyTypes = func(seen codegen.StringSet, props []*schema.Property, optional, input, output bool) {
 		for _, p := range props {
-			populateDetailsForTypes(seen, p.Type, !p.IsRequired() || optional)
+			populateDetailsForTypes(seen, p.Type, !p.IsRequired() || optional, input, output)
 		}
 	}
 
-	populateDetailsForTypes = func(seen codegen.StringSet, schemaType schema.Type, optional bool) {
+	populateDetailsForTypes = func(seen codegen.StringSet, schemaType schema.Type, optional, input, output bool) {
 		switch typ := schemaType.(type) {
 		case *schema.InputType:
-			populateDetailsForTypes(seen, typ.ElementType, optional)
+			populateDetailsForTypes(seen, typ.ElementType, optional, true, false)
 		case *schema.OptionalType:
-			populateDetailsForTypes(seen, typ.ElementType, true)
+			populateDetailsForTypes(seen, typ.ElementType, true, input, output)
 		case *schema.ObjectType:
 			pkg := getPkgFromToken(typ.Token)
 			if optional {
@@ -2852,8 +2855,8 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				}
 				seen.Add(typ.Token)
 
-				pkg.detailsForType(typ).markPtrInput()
-				populateDetailsForPropertyTypes(seen, typ.Properties, true)
+				pkg.detailsForType(typ).markPtr(input || goInfo.GenerateExtraInputTypes, output)
+				populateDetailsForPropertyTypes(seen, typ.Properties, true, input, output)
 			}
 			pkg.schemaNames.Add(tokenToName(typ.Token))
 		case *schema.EnumType:
@@ -2864,7 +2867,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				}
 				seen.Add(typ.Token)
 
-				pkg.detailsForType(typ).markPtrInput()
+				pkg.detailsForType(typ).markPtr(input || goInfo.GenerateExtraInputTypes, output)
 			}
 			pkg.schemaNames.Add(tokenToName(typ.Token))
 		case *schema.ArrayType:
@@ -2873,16 +2876,18 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			}
 			seen.Add(typ.String())
 
-			getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType)).markArrayInput()
-			populateDetailsForTypes(seen, typ.ElementType, false)
+			details := getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType))
+			details.markArray(input || goInfo.GenerateExtraInputTypes, output)
+			populateDetailsForTypes(seen, typ.ElementType, false, input, output)
 		case *schema.MapType:
 			if seen.Has(typ.String()) {
 				return
 			}
 			seen.Add(typ.String())
 
-			getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType)).markMapInput()
-			populateDetailsForTypes(seen, typ.ElementType, false)
+			details := getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType))
+			details.markMap(input || goInfo.GenerateExtraInputTypes, output)
+			populateDetailsForTypes(seen, typ.ElementType, false, input, output)
 		}
 	}
 
@@ -2896,15 +2901,17 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ArrayType:
-			getPkgFromType(typ.ElementType).detailsForType(typ.ElementType).markArrayInput()
+			details := getPkgFromType(typ.ElementType).detailsForType(typ.ElementType)
+			details.markArray(goInfo.GenerateExtraInputTypes, false)
 		case *schema.MapType:
-			getPkgFromType(typ.ElementType).detailsForType(typ.ElementType).markMapInput()
+			details := getPkgFromType(typ.ElementType).detailsForType(typ.ElementType)
+			details.markMap(goInfo.GenerateExtraInputTypes, false)
 		case *schema.ObjectType:
 			pkg := getPkgFromToken(typ.Token)
 			if !typ.IsInputShape() {
 				pkg.types = append(pkg.types, typ)
 			}
-			populateDetailsForPropertyTypes(seenMap, typ.Properties, false)
+			populateDetailsForPropertyTypes(seenMap, typ.Properties, false, false, false)
 		case *schema.EnumType:
 			if !typ.IsOverlay {
 				pkg := getPkgFromToken(typ.Token)
@@ -2978,8 +2985,8 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			}
 		}
 
-		populateDetailsForPropertyTypes(seenMap, r.InputProperties, r.IsProvider)
-		populateDetailsForPropertyTypes(seenMap, r.Properties, r.IsProvider)
+		populateDetailsForPropertyTypes(seenMap, r.InputProperties, r.IsProvider, false, false)
+		populateDetailsForPropertyTypes(seenMap, r.Properties, r.IsProvider, false, true)
 
 		for _, method := range r.Methods {
 			if method.Function.Inputs != nil {
@@ -3110,10 +3117,10 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	for _, f := range pkg.Functions {
 		optional := false
 		if f.Inputs != nil {
-			populateDetailsForPropertyTypes(seenMap, f.Inputs.Properties, optional)
+			populateDetailsForPropertyTypes(seenMap, f.Inputs.InputShape.Properties, optional, false, false)
 		}
 		if f.Outputs != nil {
-			populateDetailsForPropertyTypes(seenMap, f.Outputs.Properties, optional)
+			populateDetailsForPropertyTypes(seenMap, f.Outputs.Properties, optional, false, true)
 		}
 	}
 

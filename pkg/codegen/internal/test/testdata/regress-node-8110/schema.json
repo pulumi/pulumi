@@ -58,6 +58,9 @@
       "extraTypeScriptFiles": [
         "compileCheck.ts"
       ]
+    },
+    "go": {
+      "generateExtraInputTypes": true
     }
   }
 }

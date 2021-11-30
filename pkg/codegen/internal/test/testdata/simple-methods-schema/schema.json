@@ -132,7 +132,8 @@
       }
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-methods-schema/go/example"
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-methods-schema/go/example",
+      "generateExtraInputTypes": true
     },
     "nodejs": {
       "dependencies": {

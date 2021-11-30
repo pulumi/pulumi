@@ -222,7 +222,8 @@
       }
     },
     "go": {
-      "importBasePath": "plain-object-defaults/example"
+      "importBasePath": "plain-object-defaults/example",
+      "generateExtraInputTypes": true
     },
     "nodejs": {
       "dependencies": {
