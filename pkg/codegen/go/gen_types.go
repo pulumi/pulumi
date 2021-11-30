@@ -7,6 +7,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
+// outputType represents an `output(T)`. This type is used as part of the logic in noteType to distinguish between
+// `T` and `output(T)`.
 type outputType struct {
 	schema.Type
 
@@ -17,6 +19,12 @@ func (t *outputType) String() string {
 	return fmt.Sprintf("Output<%v>", t.elementType)
 }
 
+// typeDetails tracks the input and output types associated with a resource, object, or enum type defined in a Pulumi
+// package. This includes includes inputs and outputs that use constructed types (optionals, arrays, and maps) that
+// reference the resource, object, or enum type. For example, the details for an object type `example::Foo` might
+// contain the input types `input(example::Foo)`, `input(array(input(example::Foo)))`, and
+// `input(optional(example::Foo))`, and the output types `output(example::Foo)`, `ouptut(array(example::Foo))`, and
+// `output(optional(example::Foo))`.
 type typeDetails struct {
 	optionalInputType bool
 
@@ -24,26 +32,29 @@ type typeDetails struct {
 	outputTypes []*outputType
 }
 
+// genContext provides a common context for storing information about an input Pulumi package and its output Go SDK.
 type genContext struct {
 	tool          string
 	pulumiPackage *schema.Package
 	info          GoPackageInfo
 
-	generateExtraTypes bool
+	generateExtraInputTypes bool
 
 	goPackages map[string]*pkgContext
 
+	// notedTypes tracks the set of schema types seen by genContext.noteType in order to ensure that we don't record the
+	// same type more than once in a resource, object, or enum type's type details.
 	notedTypes codegen.StringSet
 }
 
 func newGenContext(tool string, pulumiPackage *schema.Package, info GoPackageInfo) *genContext {
 	return &genContext{
-		tool:               tool,
-		pulumiPackage:      pulumiPackage,
-		info:               info,
-		generateExtraTypes: true,
-		goPackages:         map[string]*pkgContext{},
-		notedTypes:         codegen.StringSet{},
+		tool:                    tool,
+		pulumiPackage:           pulumiPackage,
+		info:                    info,
+		generateExtraInputTypes: info.GenerateExtraInputTypes,
+		goPackages:              map[string]*pkgContext{},
+		notedTypes:              codegen.StringSet{},
 	}
 }
 
@@ -83,6 +94,13 @@ func (ctx *genContext) getPackageForType(t schema.Type) *pkgContext {
 	return pkg
 }
 
+// getRepresentativeTypeAndPackage returns the representative type (if any) for a particular schema type. The
+// representative type is the object, enum, or resource type referenced by the input type. For constructed types--
+// outputs, inputs, optionals, arrays, and maps--this is defined recursively as the representative type of the
+// element type. For objects, enums, and resources, this is the type itself. Otherwise, there is no representative
+// type and package. Representative types that are defined in other Pulumi packages are ignored.
+//
+// This method is used to associate input and output types with any object, enum, or resource type they reference.
 func (ctx *genContext) getRepresentativeTypeAndPackage(t schema.Type) (schema.Type, *pkgContext) {
 	switch t := t.(type) {
 	case *outputType:
@@ -117,6 +135,8 @@ func (ctx *genContext) getRepresentativeTypeAndPackage(t schema.Type) (schema.Ty
 	}
 }
 
+// outputType creates a reference to `output(T)`. If `T` is the input shape of an object type, it is replaced with
+// its plain shape.
 func (ctx *genContext) outputType(elementType schema.Type) *outputType {
 	if obj, ok := elementType.(*schema.ObjectType); ok && !obj.IsPlainShape() {
 		elementType = obj.PlainShape
@@ -131,6 +151,30 @@ func (ctx *genContext) resourceType(resource *schema.Resource) *schema.ResourceT
 	}
 }
 
+// noteType records the usage of a particular schema type. This function is used in particular to calculate the set of
+// input and output types that are used by the input Pulumi package, which drives the set of input and output types we
+// need to generate in the output SDK.
+//
+// The mapping from schema type to Go type has a few special cases around optionals and inputs:
+//
+// - given optional(T), if the Go representation of T is nilable, then we just generate T. Otherwise, we generate *T.
+// - optional(input(T)) and input(optional(T)) generate the same type.
+// - by the two rules above, input(optional(T)) and input(T) generate the same type if the Go representation of T is
+//   nilable.
+//
+// Each noted input or output type must be associated with a particular resource, object, or enum type defined in the
+// input Pulumi package in order to be present in the output SDK. Input and output types that are associated with types
+// defined in other Pulumi packages must be present in the SDKs for their associated types, and we instead generate
+// references to those definitions. For example, the type `input(array(input(string)))` is associated with the core
+// Pulumi SDK, and will generate a reference to `pulumi.StringArrayInput`, and the type
+// `input(map(input(resource(aws:s3/bucket:Bucket))))` is associated with the `aws` Pulumi package, and will generate
+// a reference to `s3.BucketInput`.
+//
+// Because the generated code for each input type depends on the existence of its corresponding output type, noting
+// an input type will also note its output type.
+//
+// If the package has been configured to generate extra input types, we always note input(T) for T if T is not already
+// an input or output type.
 func (ctx *genContext) noteType(t schema.Type) {
 	if ctx.notedTypes.Has(t.String()) {
 		return
@@ -167,7 +211,7 @@ func (ctx *genContext) noteType(t schema.Type) {
 		pkg.enums = append(pkg.enums, t)
 	}
 
-	if !isInputOrOutputType && ctx.generateExtraTypes {
+	if !isInputOrOutputType && ctx.generateExtraInputTypes {
 		ctx.noteType(codegen.InputType(t))
 	}
 }
@@ -180,7 +224,7 @@ func (ctx *genContext) foldOptionalInputOutputType(t *schema.OptionalType) bool 
 
 func (ctx *genContext) noteOutputType(t *outputType) {
 	// If the context has been configured to generate extra types, note the corresponding input type.
-	if ctx.generateExtraTypes {
+	if ctx.generateExtraInputTypes {
 		ctx.noteType(codegen.InputType(t.elementType))
 	}
 

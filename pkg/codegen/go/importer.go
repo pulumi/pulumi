@@ -60,6 +60,10 @@ type GoPackageInfo struct {
 	// Feature flag to disable generating input type registration. This is a
 	// space saving measure.
 	DisableInputTypeRegistrations bool `json:"disableInputTypeRegistrations,omitempty"`
+
+	// GenerateExtraInputTypes determines whether or not the code generator generates input (and output) types for
+	// all plain types, instead of for only types that are used as input/output types.
+	GenerateExtraInputTypes bool `json:"generateExtraInputTypes,omitempty"`
 }
 
 // Importer implements schema.Language for Go.
