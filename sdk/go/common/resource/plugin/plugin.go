@@ -74,7 +74,7 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 		return nil, err
 	}
 
-	var plugin *PulumiPluginJSON
+	plugin := &PulumiPluginJSON{}
 	if err := json.Unmarshal(b, plugin); err != nil {
 		return nil, err
 	}
