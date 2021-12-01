@@ -147,7 +147,8 @@ func TestGetPlugin(t *testing.T) {
 				}
 				bytes, err := c.json.JSON()
 				assert.NoError(t, err, "Failed to setup test pulumiplugin.json")
-				os.WriteFile(filepath.Join(cwd, "pulumiplugin.json"), bytes, 0600)
+				err = os.WriteFile(filepath.Join(cwd, "pulumiplugin.json"), bytes, 0600)
+				assert.NoError(t, err, "Failed to write pulumiplugin.json")
 			}
 			actual, err := c.Mod.getPlugin()
 			if c.ShouldErr {
