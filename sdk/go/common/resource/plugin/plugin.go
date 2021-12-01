@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -74,7 +74,7 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 		return nil, err
 	}
 
-	var plugin *PulumiPluginJSON
+	plugin := &PulumiPluginJSON{}
 	if err := json.Unmarshal(b, plugin); err != nil {
 		return nil, err
 	}
