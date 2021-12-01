@@ -125,6 +125,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pip-install-test")
 		assert.NoError(t, err)
 		sitePackages, err := runPythonCommand("venv", cwd, "-c", "import site; print(site.getsitepackages()[0])")
+		assert.NoError(t, err)
 		path := filepath.Join(strings.TrimSpace(string(sitePackages)), "pip_install_test", "pulumiplugin.json")
 		t.Logf("Wrote pulumipluing.json file: %s", path)
 		bytes := []byte(`{ "name": "thing1", "version": "thing2", "server": "thing3", "resource": true }` + "\n")
