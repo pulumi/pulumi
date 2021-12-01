@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -215,6 +216,72 @@ type DiffResult struct {
 	ChangedKeys         []resource.PropertyKey  // an optional list of keys that changed.
 	DetailedDiff        map[string]PropertyDiff // an optional structured diff
 	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
+}
+
+// Computes the detailed diff of Updated, Added and Deleted keys.
+func NewDetailedDiffFromObjectDiff(diff *resource.ObjectDiff) map[string]PropertyDiff {
+	if diff == nil {
+		return map[string]PropertyDiff{}
+	}
+	out := map[string]PropertyDiff{}
+	objectDiffToDetailedDiff("", diff, out)
+	return out
+}
+
+func objectDiffToDetailedDiff(prefix string, diff *resource.ObjectDiff, acc map[string]PropertyDiff) {
+
+	getPrefix := func(k resource.PropertyKey) string {
+		if prefix == "" {
+			return string(k)
+		}
+		return fmt.Sprintf("%s.%s", prefix, string(k))
+	}
+
+	for k, vd := range diff.Updates {
+		nestedPrefix := getPrefix(k)
+		valueDiffToDetailedDiff(nestedPrefix, vd, acc)
+	}
+
+	for k := range diff.Adds {
+		nestedPrefix := getPrefix(k)
+		acc[nestedPrefix] = PropertyDiff{Kind: DiffAdd}
+	}
+
+	for k := range diff.Deletes {
+		nestedPrefix := getPrefix(k)
+		acc[nestedPrefix] = PropertyDiff{Kind: DiffDelete}
+	}
+}
+
+func arrayDiffToDetailedDiff(prefix string, d *resource.ArrayDiff, acc map[string]PropertyDiff) {
+	nestedPrefix := func(i int) string { return fmt.Sprintf("%s[%d]", prefix, i) }
+	for i, vd := range d.Updates {
+		valueDiffToDetailedDiff(nestedPrefix(i), vd, acc)
+	}
+	for i := range d.Adds {
+		acc[nestedPrefix(i)] = PropertyDiff{Kind: DiffAdd}
+	}
+	for i := range d.Deletes {
+		acc[nestedPrefix(i)] = PropertyDiff{Kind: DiffDelete}
+	}
+
+}
+
+func valueDiffToDetailedDiff(prefix string, vd resource.ValueDiff, acc map[string]PropertyDiff) {
+	if vd.Object != nil {
+		objectDiffToDetailedDiff(prefix, vd.Object, acc)
+	} else if vd.Array != nil {
+		arrayDiffToDetailedDiff(prefix, vd.Array, acc)
+	} else {
+		switch {
+		case vd.Old.V == nil && vd.New.V != nil:
+			acc[prefix] = PropertyDiff{Kind: DiffAdd}
+		case vd.Old.V != nil && vd.New.V == nil:
+			acc[prefix] = PropertyDiff{Kind: DiffDelete}
+		default:
+			acc[prefix] = PropertyDiff{Kind: DiffUpdate}
+		}
+	}
 }
 
 // Replace returns true if this diff represents a replacement.

@@ -2,7 +2,7 @@
 **/vendor/
 **/node_modules/
 **/bin
-**/.vscode/
+**/.vscode/**/*
 **/.vs/
 **/.ionide/
 **/.idea/
@@ -10,12 +10,16 @@
 coverage.cov
 *.coverprofile
 **/obj/
+coverage/
 
 **/.idea/
 *.iml
 
 # VSCode creates this binary when running tests in the debugger
 **/debug.test
+
+# Check in vscode settings for this workspace. This is so we can save common settings like setting go build tags to use by default.
+!**/.vscode/settings.json
 
 # Go tests run "in tree" and this folder will linger if they fail (the integration test framework cleans
 # it up when they pass.)

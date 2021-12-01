@@ -17,13 +17,13 @@ package main
 import (
 	cryptorand "crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -42,11 +42,11 @@ func readPassphraseImpl(prompt string, useEnv bool) (phrase string, interactive 
 		if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok {
 			phraseFilePath, err := filepath.Abs(phraseFile)
 			if err != nil {
-				return "", false, errors.Wrap(err, "unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE")
+				return "", false, fmt.Errorf("unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
 			}
 			phraseDetails, err := ioutil.ReadFile(phraseFilePath)
 			if err != nil {
-				return "", false, errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
+				return "", false, fmt.Errorf("unable to read PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
 			}
 			return strings.TrimSpace(string(phraseDetails)), false, nil
 		}

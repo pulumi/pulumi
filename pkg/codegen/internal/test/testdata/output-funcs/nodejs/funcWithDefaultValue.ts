@@ -29,3 +29,12 @@ export interface FuncWithDefaultValueArgs {
 export interface FuncWithDefaultValueResult {
     readonly r: string;
 }
+
+export function funcWithDefaultValueOutput(args: FuncWithDefaultValueOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithDefaultValueResult> {
+    return pulumi.output(args).apply(a => funcWithDefaultValue(a, opts))
+}
+
+export interface FuncWithDefaultValueOutputArgs {
+    a: pulumi.Input<string>;
+    b?: pulumi.Input<string>;
+}

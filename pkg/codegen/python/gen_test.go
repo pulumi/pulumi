@@ -18,6 +18,7 @@ import (
 	"fmt"
 	filesystem "io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -193,7 +194,12 @@ func pyTestCheck(t *testing.T, codeDir string) {
 	}
 
 	if err = cmd("pytest", "."); err != nil {
-		t.Error(err)
+		exitError, isExitError := err.(*exec.ExitError)
+		if isExitError && exitError.ExitCode() == 5 {
+			t.Logf("Could not find any pytest tests in %s", codeDir)
+		} else {
+			t.Error(err)
+		}
 		return
 	}
 }

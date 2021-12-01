@@ -69,7 +69,7 @@ def is_custom_timeouts(obj: Any) -> bool:
 
 def is_stack(obj: Any) -> bool:
     """
-    Returns true if the given type is an Output, false otherwise.
+    Returns true if the given type is a Stack, false otherwise.
     """
     from .stack import Stack  # pylint: disable=import-outside-toplevel
     return isinstance(obj, Stack)

@@ -13,7 +13,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public async Task EmptyList()
         {
-            var data = Converter.ConvertValue<ImmutableArray<bool>>("", await SerializeToValueAsync(new List<bool>()));
+            var data = Converter.ConvertValue<ImmutableArray<bool>>(NoWarn, "", await SerializeToValueAsync(new List<bool>()));
 
             Assert.Equal(ImmutableArray<bool>.Empty, data.Value);
             Assert.True(data.IsKnown);
@@ -22,7 +22,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public async Task ListWithElement()
         {
-            var data = Converter.ConvertValue<ImmutableArray<bool>>("", await SerializeToValueAsync(new List<bool> { true }));
+            var data = Converter.ConvertValue<ImmutableArray<bool>>(NoWarn, "", await SerializeToValueAsync(new List<bool> { true }));
 
             AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(true), data.Value);
             Assert.True(data.IsKnown);
@@ -31,7 +31,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public async Task SecretListWithElement()
         {
-            var data = Converter.ConvertValue<ImmutableArray<bool>>("", await SerializeToValueAsync(Output.CreateSecret(new List<object> { true })));
+            var data = Converter.ConvertValue<ImmutableArray<bool>>(NoWarn, "", await SerializeToValueAsync(Output.CreateSecret(new List<object> { true })));
 
             AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(true), data.Value);
             Assert.True(data.IsKnown);
@@ -41,7 +41,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public async Task ListWithSecretElement()
         {
-            var data = Converter.ConvertValue<ImmutableArray<bool>>("", await SerializeToValueAsync(new List<object> { Output.CreateSecret(true) }));
+            var data = Converter.ConvertValue<ImmutableArray<bool>>(NoWarn, "", await SerializeToValueAsync(new List<object> { Output.CreateSecret(true) }));
 
             AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(true), data.Value);
             Assert.True(data.IsKnown);
@@ -51,7 +51,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public async Task ListWithUnknownElement()
         {
-            var data = Converter.ConvertValue<ImmutableArray<bool>>("", await SerializeToValueAsync(new List<object> { Output<bool>.CreateUnknown(true) }));
+            var data = Converter.ConvertValue<ImmutableArray<bool>>(NoWarn, "", await SerializeToValueAsync(new List<object> { Output<bool>.CreateUnknown(true) }));
 
             AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(false), data.Value);
             Assert.False(data.IsKnown);

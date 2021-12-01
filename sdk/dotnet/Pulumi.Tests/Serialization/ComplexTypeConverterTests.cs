@@ -81,7 +81,7 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public async Task TestComplexType1()
         {
-            var data = Converter.ConvertValue<ComplexType1>("", await SerializeToValueAsync(new Dictionary<string, object>
+            var data = Converter.ConvertValue<ComplexType1>(NoWarn, "", await SerializeToValueAsync(new Dictionary<string, object>
             {
                 { "s", "str" },
                 { "b", true },
@@ -133,10 +133,10 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public async Task TestComplexType2()
         {
-            var data = Converter.ConvertValue<ComplexType2>("", await SerializeToValueAsync(new Dictionary<string, object>
+            var data = Converter.ConvertValue<ComplexType2>(NoWarn, "", await SerializeToValueAsync(new Dictionary<string, object>
             {
                 {
-                    "c", 
+                    "c",
                     new Dictionary<string, object>
                     {
                         { "s", "str1" },
@@ -168,7 +168,7 @@ namespace Pulumi.Tests.Serialization
                         }
                     }
                 },
-                { 
+                {
                     "c2Map",
                     new Dictionary<string, object>
                     {
@@ -231,5 +231,48 @@ namespace Pulumi.Tests.Serialization
         }
 
         #endregion
+
+        [Fact]
+        public async Task TestComplexTypeTypeMismatches()
+        {
+            var warnings = new List<string>();
+
+            var data = Converter.ConvertValue<ComplexType1>(warnings.Add, "", await SerializeToValueAsync(new Dictionary<string, object>
+            {
+                { "s", 24 },
+                { "b", "hi" },
+                { "i", "string" },
+                { "d", true },
+                { "array", new List<object> { false, 99, true, "hello" } },
+                { "dict", new Dictionary<object, object> { { "k", 10 }, { "v", "hello" } } },
+                { "obj", "test" },
+                { "size", "bigger" },
+                { "color", true },
+            }));
+
+            Assert.Null(data.Value.S);
+            Assert.False(data.Value.B);
+            Assert.Equal(0, data.Value.I);
+            Assert.Equal(0.0, data.Value.D);
+            AssertEx.SequenceEqual(ImmutableArray<bool>.Empty.Add(false).Add(false).Add(true).Add(false), data.Value.Array);
+            AssertEx.MapEqual(ImmutableDictionary<string, int>.Empty.Add("k", 10).Add("v", 0), data.Value.Dict);
+            Assert.Equal("test", data.Value.Obj);
+            Assert.Equal(default(ContainerSize), data.Value.Size);
+            Assert.Equal(default(ContainerColor), data.Value.Color);
+
+            Assert.True(data.IsKnown);
+
+            AssertEx.SequenceEqual(new string[] {
+                "Expected System.String but got System.Double deserializing Pulumi.Tests.Serialization.ComplexTypeConverterTests+ComplexType1(s)",
+                "Expected System.Boolean but got System.String deserializing Pulumi.Tests.Serialization.ComplexTypeConverterTests+ComplexType1(b)",
+                "Expected System.Double but got System.String deserializing Pulumi.Tests.Serialization.ComplexTypeConverterTests+ComplexType1(i)",
+                "Expected System.Double but got System.Boolean deserializing Pulumi.Tests.Serialization.ComplexTypeConverterTests+ComplexType1(d)",
+                "Expected System.Boolean but got System.Double deserializing Pulumi.Tests.Serialization.ComplexTypeConverterTests+ComplexType1(array)",
+                "Expected System.Boolean but got System.String deserializing Pulumi.Tests.Serialization.ComplexTypeConverterTests+ComplexType1(array)",
+                "Expected System.Double but got System.String deserializing Pulumi.Tests.Serialization.ComplexTypeConverterTests+ComplexType1(dict)",
+                "Expected System.Double but got System.String deserializing Pulumi.Tests.Serialization.ComplexTypeConverterTests+ComplexType1(size)",
+                "Expected System.String or System.Double but got System.Boolean deserializing Pulumi.Tests.Serialization.ComplexTypeConverterTests+ComplexType1(color)",
+            }, warnings);
+        }
     }
 }

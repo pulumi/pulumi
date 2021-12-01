@@ -264,6 +264,8 @@ namespace Pulumi.Automation
         public static Task<WorkspaceStack> CreateOrSelectStackAsync(LocalProgramArgs args, CancellationToken cancellationToken)
             => CreateStackHelperAsync(args, WorkspaceStack.CreateOrSelectAsync, cancellationToken);
 
+        private static string SkipVersionCheckVar = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
+
         private static async Task<WorkspaceStack> CreateStackHelperAsync(
             InlineProgramArgs args,
             Func<string, Workspace, CancellationToken, Task<WorkspaceStack>> initFunc,
@@ -374,31 +376,35 @@ namespace Pulumi.Automation
             var result = await this.RunCommandAsync(new[] { "version" }, cancellationToken).ConfigureAwait(false);
             var versionString = result.StandardOutput.Trim();
             versionString = versionString.TrimStart('v');
-            if (!SemVersion.TryParse(versionString, out var version))
-            {
-                throw new InvalidOperationException("Failed to get Pulumi version.");
-            }
-            var skipVersionCheckVar = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
-            var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(skipVersionCheckVar) ?? false;
-            var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(skipVersionCheckVar) != null;
-            ValidatePulumiVersion(_minimumVersion, version, optOut);
-            this._pulumiVersion = version;
+
+            var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(SkipVersionCheckVar) ?? false;
+            var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(SkipVersionCheckVar) != null;
+            this._pulumiVersion = ParseAndValidatePulumiVersion(_minimumVersion, versionString, optOut);
         }
 
-        internal static void ValidatePulumiVersion(SemVersion minVersion, SemVersion currentVersion, bool optOut)
+        internal static SemVersion? ParseAndValidatePulumiVersion(SemVersion minVersion, string currentVersion, bool optOut)
         {
+            if (!SemVersion.TryParse(currentVersion, out SemVersion? version))
+            {
+                version = null;
+            }
             if (optOut)
             {
-                return;
+                return version;
             }
-            if (minVersion.Major < currentVersion.Major)
+            if (version == null)
             {
-                throw new InvalidOperationException($"Major version mismatch. You are using Pulumi CLI version {currentVersion} with Automation SDK v{minVersion.Major}. Please update the SDK.");
+                throw new InvalidOperationException("Failed to get Pulumi version. This is probably a pulumi error. You can override by version checking by setting {SkipVersionCheckVar}=true.");
             }
-            if (minVersion > currentVersion)
+            if (minVersion.Major < version.Major)
             {
-                throw new InvalidOperationException($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is {currentVersion}. Please update the Pulumi CLI.");
+                throw new InvalidOperationException($"Major version mismatch. You are using Pulumi CLI version {version} with Automation SDK v{minVersion.Major}. Please update the SDK.");
             }
+            if (minVersion > version)
+            {
+                throw new InvalidOperationException($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is {version}. Please update the Pulumi CLI.");
+            }
+            return version;
         }
 
         /// <inheritdoc/>

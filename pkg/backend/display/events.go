@@ -1,7 +1,7 @@
 package display
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -21,7 +21,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 	var apiEvent apitype.EngineEvent
 
 	// Error to return if the payload doesn't match expected.
-	eventTypePayloadMismatch := errors.Errorf("unexpected payload for event type %v", e.Type)
+	eventTypePayloadMismatch := fmt.Errorf("unexpected payload for event type %v", e.Type)
 
 	switch e.Type {
 	case engine.CancelEvent:
@@ -130,7 +130,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		}
 
 	default:
-		return apiEvent, errors.Errorf("unknown event type %q", e.Type)
+		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
 	}
 
 	return apiEvent, nil

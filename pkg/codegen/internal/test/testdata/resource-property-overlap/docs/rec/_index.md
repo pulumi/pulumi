@@ -3,6 +3,8 @@
 title: "Rec"
 title_tag: "example.Rec"
 meta_desc: "Documentation for the example.Rec resource with examples, input properties, output properties, lookup functions, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 
@@ -189,7 +191,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#rec_csharp" style="color: inherit; text-decoration: inherit;">Rec</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Rec</span>
+        <span class="property-type">Pulumi.<wbr>Example.<wbr>Rec</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -249,7 +251,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#rec_python" style="color: inherit; text-decoration: inherit;">rec</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Any</span>
+        <span class="property-type">Rec</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

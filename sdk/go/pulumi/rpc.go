@@ -214,12 +214,20 @@ const cannotAwaitFmt = "cannot marshal Output value of type %T; please use Apply
 
 // marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
 func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.PropertyValue, []Resource, error) {
+	return marshalInputImpl(v, destType, await, false /*skipInputCheck*/)
+}
+
+// marshalInputImpl marshals an input value, returning its raw serializable value along with any dependencies.
+func marshalInputImpl(v interface{},
+	destType reflect.Type,
+	await,
+	skipInputCheck bool) (resource.PropertyValue, []Resource, error) {
 	var deps []Resource
 	for {
 		valueType := reflect.TypeOf(v)
 
 		// If this is an Input, make sure it is of the proper type and await it if it is an output/
-		if input, ok := v.(Input); ok {
+		if input, ok := v.(Input); !skipInputCheck && ok {
 			if inputType := reflect.ValueOf(input); inputType.Kind() == reflect.Ptr && inputType.IsNil() {
 				// input type is a ptr type with a nil backing value
 				return resource.PropertyValue{}, nil, nil
@@ -259,33 +267,44 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 					return resource.PropertyValue{}, nil, err
 				}
 
+				// Get the underlying value, if known.
+				var element resource.PropertyValue
+				if known {
+					element, _, err = marshalInputImpl(ov, destType, await, true /*skipInputCheck*/)
+					if err != nil {
+						return resource.PropertyValue{}, nil, err
+					}
+
+					// If it's known, not a secret, and has no deps, return the value itself.
+					if !secret && len(outputDeps) == 0 {
+						return element, nil, nil
+					}
+				}
+
+				// Expand dependencies.
 				urnSet, err := expandDependencies(context.TODO(), outputDeps)
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
-				urns := urnSet.sortedValues()
 				var dependencies []resource.URN
-				if len(urns) > 0 {
-					dependencies = make([]resource.URN, len(urns))
-					for i, urn := range urns {
+				if len(urnSet) > 0 {
+					dependencies = make([]resource.URN, len(urnSet))
+					for i, urn := range urnSet.sortedValues() {
 						dependencies[i] = resource.URN(urn)
 					}
 				}
 
-				out := resource.Output{
+				return resource.NewOutputProperty(resource.Output{
+					Element:      element,
 					Known:        known,
 					Secret:       secret,
 					Dependencies: dependencies,
-				}
-				if known {
-					out.Element, _, err = marshalInput(ov, destType, await)
-					if err != nil {
-						return resource.PropertyValue{}, nil, err
-					}
-				}
-				return resource.NewOutputProperty(out), outputDeps, nil
+				}), outputDeps, nil
 			}
 		}
+
+		// Set skipInputCheck to false, so that if we loop around we don't skip the input check.
+		skipInputCheck = false
 
 		// If v is nil, just return that.
 		if v == nil {

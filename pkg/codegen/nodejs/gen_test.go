@@ -3,7 +3,10 @@ package nodejs
 
 import (
 	"bytes"
+	"encoding/json"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,7 +16,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 func TestGeneratePackage(t *testing.T) {
@@ -22,69 +24,120 @@ func TestGeneratePackage(t *testing.T) {
 		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
 			"nodejs/compile": typeCheckGeneratedPackage,
+			"nodejs/test":    testGeneratedPackage,
 		},
 	})
 }
 
 func typeCheckGeneratedPackage(t *testing.T, pwd string) {
-	var err error
-	var stdout, stderr bytes.Buffer
-	cmdOptions := integration.ProgramTestOptions{
-		Verbose: true,
-		Stderr:  &stderr,
-		Stdout:  &stdout,
-	}
-
-	// TODO: previous attempt used npm. It may be more popular and
+	// NOTE: previous attempt used npm. It may be more popular and
 	// better target than yarn, however our build uses yarn in
 	// other places at the moment, and yarn does not run into the
 	// ${VERSION} problem; use yarn for now.
-	//
-	// var npm string
-	// npm, err = executable.FindExecutable("npm")
-	// require.NoError(t, err)
-	// // TODO remove when https://github.com/pulumi/pulumi/pull/7938 lands
-	// file := filepath.Join(pwd, "package.json")
-	// oldFile, err := ioutil.ReadFile(file)
-	// require.NoError(t, err)
-	// newFile := strings.ReplaceAll(string(oldFile), "${VERSION}", "0.0.1")
-	// err = ioutil.WriteFile(file, []byte(newFile), 0600)
-	// require.NoError(t, err)
-	// err = integration.RunCommand(t, "npm install", []string{npm, "i"}, pwd, &cmdOptions)
-	// require.NoError(t, err)
 
-	var yarn string
-	yarn, err = executable.FindExecutable("yarn")
-	require.NoError(t, err)
-
-	err = integration.RunCommand(t, "yarn link @pulumi/pulumi",
-		[]string{yarn, "link", "@pulumi/pulumi"}, pwd, &cmdOptions)
-	require.NoError(t, err)
-
-	err = integration.RunCommand(t, "yarn install",
-		[]string{yarn, "install"}, pwd, &cmdOptions)
-	require.NoError(t, err)
-
-	// We increase the amount of memory node can use. We get OOM otherwise.
-	nodeOptions := []string{os.Getenv("NODE_OPTIONS"), "--max_old_space_size=4096"}
-	err = os.Setenv("NODE_OPTIONS", strings.Join(nodeOptions, " "))
-	require.NoError(t, err)
-
-	err = integration.RunCommand(t, "typecheck ts",
-		[]string{filepath.Join(".", "node_modules", ".bin", "tsc"), "--noEmit"}, pwd, &cmdOptions)
-
-	if err != nil {
-		stderr := stderr.String()
-		if len(stderr) > 0 {
-			t.Logf("stderr: %s", stderr)
-		}
-		stdout := stdout.String()
-		if len(stdout) > 0 {
-			t.Logf("stdout: %s", stdout)
-		}
-
+	test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
+	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
+	tscOptions := &integration.ProgramTestOptions{
+		// Avoid Out of Memory error on CI:
+		Env: []string{"NODE_OPTIONS=--max_old_space_size=4096"},
 	}
-	require.NoError(t, err)
+	test.RunCommandWithOptions(t, tscOptions, "tsc", pwd, "yarn", "run", "tsc", "--noEmit")
+}
+
+// Runs unit tests against the generated code.
+func testGeneratedPackage(t *testing.T, pwd string) {
+
+	// Some tests have do not have mocha as a dependency.
+	hasMocha := false
+	for _, c := range getYarnCommands(t, pwd) {
+		if c == "mocha" {
+			hasMocha = true
+			break
+		}
+	}
+
+	// We are attempting to ensure that we don't write tests that are not run. The `nodejs-extras`
+	// folder exists to mixin tests of the form `*.spec.ts`. We assume that if this folder is
+	// present and contains `*.spec.ts` files, we want to run those tests.
+	foundTests := false
+	findTests := func(path string, _ os.DirEntry, _ error) error {
+		if strings.HasSuffix(path, ".spec.ts") {
+			foundTests = true
+		}
+		return nil
+	}
+	mixinFolder := filepath.Join(filepath.Dir(pwd), "nodejs-extras")
+	if err := filepath.WalkDir(mixinFolder, findTests); !hasMocha && !os.IsNotExist(err) && foundTests {
+		t.Errorf("%s has at least one nodejs-extras/**/*.spec.ts file , but does not have mocha as a dependency."+
+			" Tests were not run. Please add mocha as a dependency in the schema or remove the *.spec.ts files.",
+			pwd)
+	}
+
+	if hasMocha {
+		// If mocha is a dev dependency but no test files exist, this will fail.
+		test.RunCommand(t, "mocha", pwd,
+			"yarn", "run", "mocha",
+			"--require", "ts-node/register",
+			"tests/**/*.spec.ts")
+	} else {
+		t.Logf("No mocha tests found for %s", pwd)
+	}
+}
+
+// Get the commands runnable with yarn run
+func getYarnCommands(t *testing.T, pwd string) []string {
+	cmd := exec.Command("yarn", "run", "--json")
+	cmd.Dir = pwd
+	out, err := cmd.Output()
+	if err != nil {
+		t.Errorf("Got error determining valid commands: %s", err)
+	}
+	dec := json.NewDecoder(bytes.NewReader(out))
+	parsed := []map[string]interface{}{}
+	for {
+		var m map[string]interface{}
+		if err := dec.Decode(&m); err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.FailNow()
+		}
+		parsed = append(parsed, m)
+	}
+	var cmds []string
+
+	addProvidedCmds := func(c map[string]interface{}) {
+		// If this fails, we want the test to fail. We don't want to accidentally skip tests.
+		data := c["data"].(map[string]interface{})
+		if data["type"] == "possibleCommands" {
+			return
+		}
+		for _, cmd := range data["items"].([]interface{}) {
+			cmds = append(cmds, cmd.(string))
+		}
+	}
+
+	addBinaryCmds := func(c map[string]interface{}) {
+		data := c["data"].(string)
+		if !strings.HasPrefix(data, "Commands available from binary scripts:") {
+			return
+		}
+		cmdList := data[strings.Index(data, ":")+1:]
+		for _, cmd := range strings.Split(cmdList, ",") {
+			cmds = append(cmds, strings.TrimSpace(cmd))
+		}
+	}
+
+	for _, c := range parsed {
+		switch c["type"] {
+		case "list":
+			addProvidedCmds(c)
+		case "info":
+			addBinaryCmds(c)
+		}
+	}
+	t.Logf("Found yarn commands in %s: %v", pwd, cmds)
+	return cmds
 }
 
 func TestGenerateTypeNames(t *testing.T) {

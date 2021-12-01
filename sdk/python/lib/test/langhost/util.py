@@ -135,8 +135,15 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
             loop.close()
         else:
             obj_proto = None
+
+        output_property_dependencies = None
+        if "propertyDependencies" in outs:
+            output_property_dependencies = {}
+            for key, urns in outs["propertyDependencies"].items():
+                output_property_dependencies[key] = proto.RegisterResourceResponse.PropertyDependencies(urns=urns)
+
         return proto.RegisterResourceResponse(
-            urn=outs.get("urn"), id=outs.get("id"), object=obj_proto)
+            urn=outs.get("urn"), id=outs.get("id"), object=obj_proto, propertyDependencies=output_property_dependencies)
 
     def RegisterResourceOutputs(self, request, context):
         urn = request.urn

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
 
 package graph
 
@@ -63,58 +63,58 @@ func TestBasicGraph(t *testing.T) {
 
 	assert.Equal(t, []*resource.State{
 		a, b, pB, c, d,
-	}, dg.DependingOn(pA, nil))
+	}, dg.DependingOn(pA, nil, false))
 
 	assert.Equal(t, []*resource.State{
 		b, pB, c, d,
-	}, dg.DependingOn(a, nil))
+	}, dg.DependingOn(a, nil, false))
 
 	assert.Equal(t, []*resource.State{
 		pB, c, d,
-	}, dg.DependingOn(b, nil))
+	}, dg.DependingOn(b, nil, false))
 
 	assert.Equal(t, []*resource.State{
 		c,
-	}, dg.DependingOn(pB, nil))
+	}, dg.DependingOn(pB, nil, false))
 
-	assert.Nil(t, dg.DependingOn(c, nil))
-	assert.Nil(t, dg.DependingOn(d, nil))
+	assert.Nil(t, dg.DependingOn(c, nil, false))
+	assert.Nil(t, dg.DependingOn(d, nil, false))
 
 	assert.Nil(t, dg.DependingOn(pA, map[resource.URN]bool{
 		a.URN: true,
 		b.URN: true,
-	}))
+	}, false))
 
 	assert.Equal(t, []*resource.State{
 		a, pB, c,
 	}, dg.DependingOn(pA, map[resource.URN]bool{
 		b.URN: true,
-	}))
+	}, false))
 
 	assert.Equal(t, []*resource.State{
 		b, pB, c, d,
 	}, dg.DependingOn(pA, map[resource.URN]bool{
 		a.URN: true,
-	}))
+	}, false))
 
 	assert.Equal(t, []*resource.State{
 		c,
 	}, dg.DependingOn(a, map[resource.URN]bool{
 		b.URN:  true,
 		pB.URN: true,
-	}))
+	}, false))
 
 	assert.Equal(t, []*resource.State{
 		pB, c,
 	}, dg.DependingOn(a, map[resource.URN]bool{
 		b.URN: true,
-	}))
+	}, false))
 
 	assert.Equal(t, []*resource.State{
 		d,
 	}, dg.DependingOn(b, map[resource.URN]bool{
 		pB.URN: true,
-	}))
+	}, false))
 }
 
 // Tests that we don't add the same node to the DependingOn set twice.
@@ -133,7 +133,7 @@ func TestGraphNoDuplicates(t *testing.T) {
 
 	assert.Equal(t, []*resource.State{
 		b, c, d,
-	}, dg.DependingOn(a, nil))
+	}, dg.DependingOn(a, nil, false))
 }
 
 func TestDependenciesOf(t *testing.T) {
@@ -228,4 +228,30 @@ func TestDependenciesOfRemoteComponentsNoCycle(t *testing.T) {
 	assert.True(t, rDependencies[aws])
 	assert.True(t, rDependencies[parent])
 	assert.False(t, rDependencies[child])
+}
+
+func TestTransitiveDependenciesOf(t *testing.T) {
+	aws := NewProviderResource("aws", "default", "0")
+	parent := NewResource("parent", aws)
+	greatUncle := NewResource("greatUncle", aws)
+	uncle := NewResource("r", aws)
+	uncle.Parent = greatUncle.URN
+	child := NewResource("child", aws, uncle.URN)
+	child.Parent = parent.URN
+	baby := NewResource("baby", aws)
+	baby.Parent = child.URN
+
+	dg := NewDependencyGraph([]*resource.State{
+		aws,
+		parent,
+		greatUncle,
+		uncle,
+		child,
+		baby,
+	})
+	// <(relation)- as an alias for depends on via relation
+	// baby <(Parent)- child <(Dependency)- uncle <(Parent)- greatUncle <(Provider)- aws
+	set := dg.TransitiveDependenciesOf(baby)
+	assert.True(t, set[aws], "everything should depend on the provider")
+	assert.True(t, set[greatUncle], "child depends on greatUncle")
 }

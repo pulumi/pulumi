@@ -15,9 +15,9 @@
 package deploy
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -72,8 +72,33 @@ func (sg *stepGenerator) isTargetedUpdate() bool {
 	return sg.updateTargetsOpt != nil || sg.replaceTargetsOpt != nil
 }
 
-func (sg *stepGenerator) isTargetedForUpdate(urn resource.URN) bool {
-	return sg.updateTargetsOpt == nil || sg.updateTargetsOpt[urn]
+// isTargetedForUpdate returns if `res` is targeted for update. The function accommodates
+// `--target-dependents`. `targetDependentsForUpdate` should probably be called if this function
+// returns true.
+func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
+	if sg.updateTargetsOpt == nil || sg.updateTargetsOpt[res.URN] {
+		return true
+	} else if !sg.opts.TargetDependents {
+		return false
+	}
+	if res.Provider != "" {
+		res, err := providers.ParseReference(res.Provider)
+		contract.AssertNoError(err)
+		if sg.updateTargetsOpt[res.URN()] {
+			return true
+		}
+	}
+	if res.Parent != "" {
+		if sg.updateTargetsOpt[res.Parent] {
+			return true
+		}
+	}
+	for _, dep := range res.Dependencies {
+		if dep != "" && sg.updateTargetsOpt[dep] {
+			return true
+		}
+	}
+	return false
 }
 
 func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
@@ -158,7 +183,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		return steps, nil
 	}
 
-	// We got a set of steps to perfom during a targeted update. If any of the steps are not same steps and depend on
+	// We got a set of steps to perform during a targeted update. If any of the steps are not same steps and depend on
 	// creates we skipped because they were not in the --target list, issue an error that that the create was necessary
 	// and that the user must target the resource to create.
 	for _, step := range steps {
@@ -421,6 +446,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}, nil
 	}
 
+	isTargeted := sg.isTargetedForUpdate(new)
+	if isTargeted && sg.updateTargetsOpt != nil {
+		sg.updateTargetsOpt[urn] = true
+	}
+
 	// Case 3: hasOld
 	//  In this case, the resource we are operating upon now exists in the old snapshot.
 	//  It must be an update or a replace. Which operation we do depends on the the specific change made to the
@@ -439,8 +469,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		contract.Assert(old != nil)
 
 		// If the user requested only specific resources to update, and this resource was not in
-		// that set, then do nothin but create a SameStep for it.
-		if !sg.isTargetedForUpdate(urn) {
+		// that set, then do nothing but create a SameStep for it.
+		if !isTargeted {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
@@ -490,9 +520,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// We will also not record this non-created resource into the checkpoint as it doesn't actually
 	// exist.
 
-	if !sg.isTargetedForUpdate(urn) &&
-		!providers.IsProviderType(goal.Type) {
-
+	if !isTargeted && !providers.IsProviderType(goal.Type) {
 		sg.sames[urn] = true
 		sg.skippedCreates[urn] = true
 		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil
@@ -772,23 +800,44 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 	return dels, nil
 }
 
-func (sg *stepGenerator) getTargetIncludingChildren(target resource.URN) map[resource.URN]bool {
-	allTargets := make(map[resource.URN]bool)
-	allTargets[target] = true
-
-	// The list of resources is a topological sort of the reverse-dependency graph, so any
-	// resource R will appear in a list before its dependents and its children. We can use this
-	// to our advantage here and find all of a resource's children via a linear scan of the list
-	// starting from R.
+// getTargetDependents returns the (transitive) set of dependents on the target resources.
+// This includes both implicit and explicit dependents in the DAG itself, as well as children.
+func (sg *stepGenerator) getTargetDependents(targetsOpt map[resource.URN]bool) map[resource.URN]bool {
+	// Seed the list with the initial set of targets.
+	var frontier []*resource.State
 	for _, res := range sg.deployment.prev.Resources {
-		if _, has := allTargets[res.Parent]; has {
-			allTargets[res.URN] = true
+		if _, has := targetsOpt[res.URN]; has {
+			frontier = append(frontier, res)
 		}
 	}
 
-	return allTargets
+	// Produce a dependency graph of resources.
+	dg := graph.NewDependencyGraph(sg.deployment.prev.Resources)
+
+	// Now accumulate a list of targets that are implicated because they depend upon the targets.
+	targets := make(map[resource.URN]bool)
+	for len(frontier) > 0 {
+		// Pop the next to explore, mark it, and skip any we've already seen.
+		next := frontier[0]
+		frontier = frontier[1:]
+		if _, has := targets[next.URN]; has {
+			continue
+		}
+		targets[next.URN] = true
+
+		// Compute the set of resources depending on this one, either implicitly, explicitly,
+		// or because it is a child resource. Add them to the frontier to keep exploring.
+		deps := dg.DependingOn(next, targets, true)
+		frontier = append(frontier, deps...)
+	}
+
+	return targets
 }
 
+// determineAllowedResourcesToDeleteFromTargets computes the full (transitive) closure of resources
+// that need to be deleted to permit the full list of targetsOpt resources to be deleted. This list
+// will include the targetsOpt resources, but may contain more than just that, if there are dependent
+// or child resources that require the targets to exist (and so are implicated in the deletion).
 func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	targetsOpt map[resource.URN]bool) (map[resource.URN]bool, result.Result) {
 
@@ -797,21 +846,14 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 		return nil, nil
 	}
 
-	targetsIncludingChildren := make(map[resource.URN]bool)
-
-	// Include all the children of each target.
-	for target := range targetsOpt {
-		allTargets := sg.getTargetIncludingChildren(target)
-		for child := range allTargets {
-			targetsIncludingChildren[child] = true
-		}
-	}
-
+	// Produce a map of targets and their dependents, including explicit and implicit
+	// DAG dependencies, as well as children (transitively).
+	targets := sg.getTargetDependents(targetsOpt)
 	logging.V(7).Infof("Planner was asked to only delete/update '%v'", targetsOpt)
 	resourcesToDelete := make(map[resource.URN]bool)
 
 	// Now actually use all the requested targets to figure out the exact set to delete.
-	for target := range targetsIncludingChildren {
+	for target := range targets {
 		current := sg.deployment.olds[target]
 		if current == nil {
 			// user specified a target that didn't exist.  they will have already gotten a warning
@@ -1013,7 +1055,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	// performance problem, this result can be cached.
 	newProv, ok := sg.deployment.providers.GetProvider(newRef)
 	if !ok {
-		return false, errors.Errorf("failed to resolve provider reference: %q", oldRef.String())
+		return false, fmt.Errorf("failed to resolve provider reference: %q", oldRef.String())
 	}
 
 	oldRes, ok := sg.deployment.olds[oldRef.URN()]
@@ -1090,10 +1132,17 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 		return diff, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
-		if oldInputs.DeepEquals(newInputs) {
-			diff.Changes = plugin.DiffNone
-		} else {
+		new, res := processIgnoreChanges(newInputs, oldInputs, ignoreChanges)
+		if res != nil {
+			return plugin.DiffResult{}, err
+		}
+		tmp := oldInputs.Diff(new)
+		if tmp.AnyChanges() {
 			diff.Changes = plugin.DiffSome
+			diff.ChangedKeys = tmp.ChangedKeys()
+			diff.DetailedDiff = plugin.NewDetailedDiffFromObjectDiff(tmp)
+		} else {
+			diff.Changes = plugin.DiffNone
 		}
 	}
 	return diff, nil
@@ -1395,7 +1444,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	// that have already been registered must not depend on the root. Thus, we ignore these resources if they are
 	// encountered while walking the old dependency graph to determine the set of dependents.
 	impossibleDependents := sg.urns
-	for _, d := range sg.deployment.depGraph.DependingOn(root, impossibleDependents) {
+	for _, d := range sg.deployment.depGraph.DependingOn(root, impossibleDependents, false) {
 		replace, keys, res := requiresReplacement(d)
 		if res != nil {
 			return nil, res

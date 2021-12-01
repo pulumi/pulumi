@@ -32,6 +32,7 @@ import (
 )
 
 const (
+	//nolint: gosec
 	pulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 )
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
 
 package graph
 
@@ -20,7 +20,8 @@ type DependencyGraph struct {
 // order with respect to the snapshot dependency graph.
 //
 // The time complexity of DependingOn is linear with respect to the number of resources.
-func (dg *DependencyGraph) DependingOn(res *resource.State, ignore map[resource.URN]bool) []*resource.State {
+func (dg *DependencyGraph) DependingOn(res *resource.State,
+	ignore map[resource.URN]bool, includeChildren bool) []*resource.State {
 	// This implementation relies on the detail that snapshots are stored in a valid
 	// topological order.
 	var dependents []*resource.State
@@ -34,15 +35,18 @@ func (dg *DependencyGraph) DependingOn(res *resource.State, ignore map[resource.
 		if ignore[candidate.URN] {
 			return false
 		}
+		if includeChildren && candidate.Parent == res.URN {
+			return true
+		}
+		for _, dependency := range candidate.Dependencies {
+			if dependentSet[dependency] {
+				return true
+			}
+		}
 		if candidate.Provider != "" {
 			ref, err := providers.ParseReference(candidate.Provider)
 			contract.Assert(err == nil)
 			if dependentSet[ref.URN()] {
-				return true
-			}
-		}
-		for _, dependency := range candidate.Dependencies {
-			if dependentSet[dependency] {
 				return true
 			}
 		}
@@ -119,6 +123,67 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 	return set
 }
 
+// `TransitiveDependenciesOf` calculates the set of resources that `r` depends
+// on, directly or indirectly. This includes as a `Parent`, a member of r's
+// `Dependencies` list or as a provider.
+//
+// This function is linear in the number of resources in the `DependencyGraph`.
+func (dg *DependencyGraph) TransitiveDependenciesOf(r *resource.State) ResourceSet {
+	dependentProviders := make(map[resource.URN]struct{})
+
+	urns := make(map[resource.URN]*node, len(dg.resources))
+	for _, r := range dg.resources {
+		urns[r.URN] = &node{resource: r}
+	}
+
+	// Linearity is due to short circuiting in the traversal.
+	markAsDependency(r.URN, urns, dependentProviders)
+
+	// This will only trigger if (urn, node) is a provider. The check is implicit
+	// in the set lookup.
+	for urn := range urns {
+		if _, ok := dependentProviders[urn]; ok {
+			markAsDependency(urn, urns, dependentProviders)
+		}
+	}
+
+	dependencies := ResourceSet{}
+	for _, r := range urns {
+		if r.marked {
+			dependencies[r.resource] = true
+		}
+	}
+	// We don't want to include `r` as it's own dependency.
+	delete(dependencies, r)
+	return dependencies
+
+}
+
+// Mark a resource and its parents as a dependency. This is a helper function for `TransitiveDependenciesOf`.
+func markAsDependency(urn resource.URN, urns map[resource.URN]*node, dependedProviders map[resource.URN]struct{}) {
+	r := urns[urn]
+	for {
+		r.marked = true
+		if r.resource.Provider != "" {
+			ref, err := providers.ParseReference(r.resource.Provider)
+			contract.AssertNoError(err)
+			dependedProviders[ref.URN()] = struct{}{}
+		}
+		for _, dep := range r.resource.Dependencies {
+			markAsDependency(dep, urns, dependedProviders)
+		}
+
+		// If p is already marked, we don't need to continue to traverse. All
+		// nodes above p will have already been marked. This is a property of
+		// `resources` being topologically sorted.
+		if p, ok := urns[r.resource.Parent]; ok && !p.marked {
+			r = p
+		} else {
+			break
+		}
+	}
+}
+
 // NewDependencyGraph creates a new DependencyGraph from a list of resources.
 // The resources should be in topological order with respect to their dependencies, including
 // parents appearing before children.
@@ -138,4 +203,10 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 	}
 
 	return &DependencyGraph{index, resources, childrenOf}
+}
+
+// A node in a graph.
+type node struct {
+	marked   bool
+	resource *resource.State
 }

@@ -2,8 +2,8 @@ package gen
 
 import (
 	"bytes"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
@@ -37,13 +37,15 @@ func CRDTypes(tool string, pkg *schema.Package) (map[string]*bytes.Buffer, error
 			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
 
 			if err := pkg.genResource(buffer, r, goPkgInfo.GenerateResourceContainerTypes); err != nil {
-				return nil, errors.Wrapf(err, "generating resource %s", mod)
+				return nil, fmt.Errorf("generating resource %s: %w", mod, err)
 			}
 		}
 
 		if len(pkg.types) > 0 {
 			for _, t := range pkg.types {
-				pkg.genType(buffer, t)
+				if err := pkg.genType(buffer, t); err != nil {
+					return nil, err
+				}
 			}
 			pkg.genTypeRegistrations(buffer, pkg.types)
 		}

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,16 +16,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -38,6 +40,7 @@ func newDestroyCmd() *cobra.Command {
 	var execAgent string
 
 	// Flags for engine.UpdateOptions.
+	var jsonDisplay bool
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
@@ -51,6 +54,7 @@ func newDestroyCmd() *cobra.Command {
 	var yes bool
 	var targets *[]string
 	var targetDependents bool
+	var excludeProtected bool
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -91,6 +95,7 @@ func newDestroyCmd() *cobra.Command {
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
+				JSONDisplay:          jsonDisplay,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -125,17 +130,17 @@ func newDestroyCmd() *cobra.Command {
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
 			sm, err := getStackSecretsManager(s)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
 			cfg, err := getStackConfiguration(s, sm)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
 			targetUrns := []resource.URN{}
@@ -147,6 +152,29 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(err)
 			}
+
+			if targets != nil && len(*targets) > 0 && excludeProtected {
+				return result.FromError(errors.New("You cannot specify --target and --exclude-protected"))
+			}
+
+			var protectedCount int
+			if excludeProtected {
+				contract.Assert(len(targetUrns) == 0)
+				targetUrns, protectedCount, err = handleExcludeProtected(s)
+				if err != nil {
+					return result.FromError(err)
+				} else if protectedCount > 0 && len(targetUrns) == 0 {
+					if !jsonDisplay {
+						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
+							" protected resources associated with this stack.\n", protectedCount)
+					}
+					// We need to return now. Otherwise the update will conclude
+					// we tried to destroy everything and error for trying to
+					// destroy a protected resource.
+					return nil
+				}
+			}
+
 			opts.Engine = engine.UpdateOptions{
 				Parallel:                  parallel,
 				Debug:                     debug,
@@ -168,8 +196,10 @@ func newDestroyCmd() *cobra.Command {
 				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
 			})
-
-			if res == nil && len(*targets) == 0 {
+			if res == nil && protectedCount > 0 && !jsonDisplay {
+				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
+					" associated with this stack.\n", protectedCount)
+			} else if res == nil && len(*targets) == 0 && !jsonDisplay {
 				fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 					"associated with the stack are still maintained. \nIf you want to remove the stack "+
 					"completely, run 'pulumi stack rm %s'.\n", s.Ref())
@@ -200,11 +230,16 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&targetDependents, "target-dependents", false,
 		"Allows destroying of dependent targets discovered but not specified in --target list")
+	cmd.PersistentFlags().BoolVar(&excludeProtected, "exclude-protected", false, "Do not destroy protected resources."+
+		" Destroy all other resources.")
 
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.Flags().BoolVarP(
+		&jsonDisplay, "json", "j", false,
+		"Serialize the destroy diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
@@ -251,4 +286,53 @@ func newDestroyCmd() *cobra.Command {
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
 	return cmd
+}
+
+// seperateProtected returns a list or unprotected and protected resources respectively. This allows
+// us to safely destroy all resources in the unprotected list without invalidating any resource in
+// the protected list. Protection is contravarient: A < B where A: Protected => B: Protected, A < B
+// where B: Protected !=> A: Protected.
+//
+// A
+// B: Parent = A
+// C: Parent = A, Protect = True
+// D: Parent = C
+//
+// -->
+//
+// Unprotected: B, D
+// Protected: A, C
+//
+// We rely on the fact that `resources` is topologically sorted with respect to its dependencies.
+// This function understands that providers live outside this topological sort.
+func seperateProtected(resources []*resource.State) (
+	/*unprotected*/ []*resource.State /*protected*/, []*resource.State) {
+	dg := graph.NewDependencyGraph(resources)
+	transitiveProtected := graph.ResourceSet{}
+	for _, r := range resources {
+		if r.Protect {
+			rProtected := dg.TransitiveDependenciesOf(r)
+			rProtected[r] = true
+			transitiveProtected.UnionWith(rProtected)
+		}
+	}
+	allResources := graph.NewResourceSetFromArray(resources)
+	return allResources.SetMinus(transitiveProtected).ToArray(), transitiveProtected.ToArray()
+}
+
+// Returns the number of protected resources that remain. Appends all unprotected resources to `targetUrns`.
+func handleExcludeProtected(s backend.Stack) ([]resource.URN, int, error) {
+	// Get snapshot
+	snapshot, err := s.Snapshot(commandContext())
+	if err != nil {
+		return nil, 0, err
+	} else if snapshot == nil {
+		return nil, 0, errors.New("Failed to find the stack snapshot. Are you in a stack?")
+	}
+	unprotected, protected := seperateProtected(snapshot.Resources)
+	targetUrns := []resource.URN{}
+	for _, r := range unprotected {
+		targetUrns = append(targetUrns, r.URN)
+	}
+	return targetUrns, len(protected), nil
 }

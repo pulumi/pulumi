@@ -1557,7 +1557,7 @@ func TestMarshalPropertiesDiscardsListNestedUnknowns(t *testing.T) {
 
 	propsWithUnknowns, err := UnmarshalProperties(proto, MarshalOptions{KeepUnknowns: true})
 	if err != nil {
-		t.Errorf("UnmarshalProperties failed: %w", err)
+		t.Errorf("UnmarshalProperties failed: %v", err)
 	}
 
 	protobufStruct, err := MarshalProperties(propsWithUnknowns, MarshalOptions{KeepUnknowns: false})
@@ -1604,7 +1604,7 @@ func assertValidProtobufValue(t *testing.T, value *structpb.Value) {
 		return nil
 	})
 	if err != nil {
-		t.Errorf("This is not a valid *structpb.Value: %v\n%w", value, err)
+		t.Errorf("This is not a valid *structpb.Value: %v\n%v", value, err)
 	}
 }
 

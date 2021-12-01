@@ -43,21 +43,21 @@ export class NoRecursive extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: NoRecursiveArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["rec"] = undefined /*out*/;
-            inputs["replace"] = undefined /*out*/;
+            resourceInputs["rec"] = undefined /*out*/;
+            resourceInputs["replace"] = undefined /*out*/;
         } else {
-            inputs["rec"] = undefined /*out*/;
-            inputs["replace"] = undefined /*out*/;
+            resourceInputs["rec"] = undefined /*out*/;
+            resourceInputs["replace"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
         const replaceOnChanges = { replaceOnChanges: ["replace"] };
         opts = pulumi.mergeOptions(opts, replaceOnChanges);
-        super(NoRecursive.__pulumiType, name, inputs, opts);
+        super(NoRecursive.__pulumiType, name, resourceInputs, opts);
     }
 }
 

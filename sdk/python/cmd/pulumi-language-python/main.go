@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -61,6 +62,15 @@ const (
 	// The runtime expects the array of secret config keys to be saved to this environment variable.
 	//nolint: gosec
 	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
+)
+
+var (
+	// The minimum python version that Pulumi supports
+	minimumSupportedPythonVersion = semver.MustParse("3.6.0")
+	// Any version less then `eolPythonVersion` is EOL.
+	eolPythonVersion = semver.MustParse("3.7.0")
+	// An url to the issue discussing EOL.
+	eolPythonVersionIssue = "https://github.com/pulumi/pulumi/issues/8131"
 )
 
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the
@@ -119,6 +129,7 @@ func main() {
 
 	// Resolve virtualenv path relative to root.
 	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
+	validateVersion(virtualenvPath)
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
@@ -658,4 +669,38 @@ func (host *pythonLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
+}
+
+// validateVersion checks that python is running a valid version. If a version
+// is invalid, it prints to os.Stderr. This is interpreted as diagnostic message
+// by the Pulumi CLI program.
+func validateVersion(virtualEnvPath string) {
+	var versionCmd *exec.Cmd
+	var err error
+	versionArgs := []string{"--version"}
+	if virtualEnvPath != "" {
+		versionCmd = python.VirtualEnvCommand(virtualEnvPath, "python", versionArgs...)
+	} else if versionCmd, err = python.Command(versionArgs...); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to find python executable\n")
+		return
+	}
+	var out []byte
+	if out, err = versionCmd.Output(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to resolve python version command: %s\n", err.Error())
+		return
+	}
+	version := strings.TrimSpace(strings.TrimPrefix(string(out), "Python "))
+	parsed, err := semver.Parse(version)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse python version: '%s'\n", version)
+		return
+	}
+	if parsed.LT(minimumSupportedPythonVersion) {
+		fmt.Fprintf(os.Stderr, "Pulumi does not support Python %s."+
+			" Please upgrade to at least %s\n", parsed, minimumSupportedPythonVersion)
+	} else if parsed.LT(eolPythonVersion) {
+		fmt.Fprintf(os.Stderr, "Python %d.%d is approaching EOL and will not be supported in Pulumi soon."+
+			" Check %s for more details\n", parsed.Major,
+			parsed.Minor, eolPythonVersionIssue)
+	}
 }

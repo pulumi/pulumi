@@ -17,6 +17,19 @@ type Container struct {
 	Size       ContainerSize        `pulumi:"size"`
 }
 
+// Defaults sets the appropriate defaults for Container
+func (val *Container) Defaults() *Container {
+	if val == nil {
+		return nil
+	}
+	tmp := *val
+	if isZero(tmp.Brightness) {
+		brightness_ := ContainerBrightness(1.0)
+		tmp.Brightness = &brightness_
+	}
+	return &tmp
+}
+
 // ContainerInput is an input type that accepts ContainerArgs and ContainerOutput values.
 // You can construct a concrete instance of `ContainerInput` via:
 //
@@ -189,6 +202,8 @@ func (o ContainerPtrOutput) Size() ContainerSizePtrOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerInput)(nil)).Elem(), ContainerArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ContainerPtrInput)(nil)).Elem(), ContainerArgs{})
 	pulumi.RegisterOutputType(ContainerOutput{})
 	pulumi.RegisterOutputType(ContainerPtrOutput{})
 }

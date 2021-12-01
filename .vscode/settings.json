@@ -1,0 +1,17 @@
+{
+    "go.buildTags": "all",
+    "go.testTimeout": "1h",
+    "gopls": {
+        // A couple of modules get copied as part of builds and this confuse gopls as it sees the module name twice, just ignore the copy in the build folders.
+        "build.directoryFilters": [
+            "-sdk/dotnet/Pulumi.Automation.Tests/bin",
+            "-sdk/nodejs/bin",
+            "-sdk/python/env"
+        ],
+        // Experimental but seems to work and means we don't need a vscode instance per go.mod file.
+        "experimentalWorkspaceModule": true,
+    },
+
+    "omnisharp.defaultLaunchSolution": "sdk/dotnet/dotnet.sln",
+    "dotnet-test-explorer.testProjectPath": "sdk/dotnet",
+}

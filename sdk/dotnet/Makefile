@@ -14,6 +14,16 @@ include ../../build/common.mk
 # `test_all` without the dependencies.
 TEST_ALL_DEPS = install
 
+ensure::
+	# We want to dotnet restore all projects on startup so that omnisharp doesn't complain about lots of missing types on startup.
+	dotnet restore dotnet.sln
+
+ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
+TEST_COVERAGE_ARGS := /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
+else
+TEST_COVERAGE_ARGS := /p:CollectCoverage=false /p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
+endif
+
 build::
 	# From the nuget docs:
 	#
@@ -41,11 +51,11 @@ install:: build install_plugin
 
 dotnet_test:: $(TEST_ALL_DEPS)
 	# include the version prefix/suffix to avoid generating a separate nupkg file
-	$(RUN_TESTSUITE) dotnet-test dotnet test --no-build --filter --filter FullyQualifiedName\\!~Pulumi.Automation.Tests /p:Version=${DOTNET_VERSION}
+	$(RUN_TESTSUITE) dotnet-test dotnet test --no-build --filter FullyQualifiedName\!~Pulumi.Automation.Tests /p:Version=${DOTNET_VERSION}  ${TEST_COVERAGE_ARGS}/dotnet.xml
 
 auto_test:: $(TEST_ALL_DEPS)
 	# include the version prefix/suffix to avoid generating a separate nupkg file
-	$(RUN_TESTSUITE) auto-dotnet dotnet test --no-build --filter --filter FullyQualifiedName~Pulumi.Automation.Tests /p:Version=${DOTNET_VERSION}
+	$(RUN_TESTSUITE) auto-dotnet dotnet test --no-build --filter FullyQualifiedName~Pulumi.Automation.Tests /p:Version=${DOTNET_VERSION} ${TEST_COVERAGE_ARGS}/dotnet-auto.xml
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
@@ -62,5 +72,5 @@ brew::
 
 publish:: build install
 	echo "Publishing .nupkgs to nuget.org:"
-	find /opt/pulumi/nuget -name 'Pulumi*.nupkg' \
+	find $(PULUMI_NUGET) -name 'Pulumi*.nupkg' \
 		-exec dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'

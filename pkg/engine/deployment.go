@@ -16,10 +16,12 @@ package engine
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -176,7 +178,7 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 			imp := &opts.imports[i]
 			_, err := tokens.ParseTypeToken(imp.Type.String())
 			if err != nil {
-				return nil, errors.Errorf("import type %q is not a valid resource type token. "+
+				return nil, fmt.Errorf("import type %q is not a valid resource type token. "+
 					"Type tokens must be of the format <package>:<module>:<type> - "+
 					"refer to the import section of the provider resource documentation.", imp.Type.String())
 			}

@@ -28,6 +28,10 @@ import (
 )
 
 func TestConcurrentUpdateError(t *testing.T) {
+	// TODO[pulumi/pulumi#8122] - investigate underlying sporadic 404 error
+	t.Skip("disabled as flaky and resource-intensive")
+
+	n := 50
 	ctx := context.Background()
 	pName := "conflict_error"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -50,7 +54,7 @@ func TestConcurrentUpdateError(t *testing.T) {
 	c := make(chan error)
 
 	// parallel updates to cause conflict
-	for i := 0; i < 50; i++ {
+	for i := 0; i < n; i++ {
 		go func() {
 			_, err := s.Up(ctx)
 			c <- err
@@ -58,11 +62,16 @@ func TestConcurrentUpdateError(t *testing.T) {
 	}
 
 	conflicts := 0
+	var otherErrors []error
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < n; i++ {
 		err := <-c
-		if IsConcurrentUpdateError(err) {
-			conflicts++
+		if err != nil {
+			if IsConcurrentUpdateError(err) {
+				conflicts++
+			} else {
+				otherErrors = append(otherErrors, err)
+			}
 		}
 	}
 
@@ -74,8 +83,16 @@ func TestConcurrentUpdateError(t *testing.T) {
 		t.FailNow()
 	}
 
-	// should have at least one conflict
-	assert.Greater(t, conflicts, 0)
+	if len(otherErrors) > 0 {
+		t.Logf("Concurrent updates incurred %d non-conflict errors, including:", len(otherErrors))
+		for _, err := range otherErrors {
+			t.Error(err)
+		}
+	}
+
+	if conflicts == 0 {
+		t.Errorf("Expected at least one conflict error from the %d concurrent updates, but got none", n)
+	}
 }
 
 func TestInlineConcurrentUpdateError(t *testing.T) {

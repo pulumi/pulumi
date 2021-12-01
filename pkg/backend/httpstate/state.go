@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -171,7 +170,7 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 	for idx, event := range events {
 		apiEvent, convErr := display.ConvertEngineEvent(event)
 		if convErr != nil {
-			return errors.Wrap(convErr, "converting engine event")
+			return fmt.Errorf("converting engine event: %w", convErr)
 		}
 
 		// Each event within an update must have a unique sequence number. Any request to
@@ -294,7 +293,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
 				"Please update your version of the Pulumi CLI", stackRef.Name())
 		default:
-			return nil, errors.Wrap(err, "could not deserialize deployment")
+			return nil, fmt.Errorf("could not deserialize deployment: %w", err)
 		}
 	}
 

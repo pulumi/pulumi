@@ -1,0 +1,18 @@
+{
+    "name": "@pulumi/myedgeorder",
+    "version": "${VERSION}",
+    "scripts": {
+        "build": "tsc"
+    },
+    "devDependencies": {
+        "@types/node": "latest",
+        "ts-node": "latest",
+        "typescript": "^4.3.5"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    },
+    "pulumi": {
+        "resource": true
+    }
+}

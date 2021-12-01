@@ -1504,13 +1504,7 @@ func TestConstructResult(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, resource.PropertyMap{
-		"foo": resource.NewOutputProperty(resource.Output{
-			Element: resource.NewStringProperty("hi"),
-			Known:   true,
-		}),
-		"someValue": resource.NewOutputProperty(resource.Output{
-			Element: resource.NewStringProperty("something"),
-			Known:   true,
-		}),
+		"foo":       resource.NewStringProperty("hi"),
+		"someValue": resource.NewStringProperty("something"),
 	}, resolvedProps)
 }
