@@ -28,6 +28,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -338,10 +339,11 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 	logging.V(5).Infof("GetRequiredPlugins: version file path: %v", versionFilePath)
 
 	pulumiPlugin, err := plugin.LoadPulumiPluginJSON(pulumiPluginFilePath)
-	if err != nil {
+	if os.IsNotExist(err) {
+		pulumiPlugin = nil
+	} else if err != nil {
 		return nil, err
 	}
-
 	// Explicitly not a resource
 	if pulumiPlugin != nil && !pulumiPlugin.Resource {
 		return nil, nil
@@ -360,14 +362,13 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 		return nil, fmt.Errorf("Failed to read version file: %w", err)
 	}
 
+	defaultName := strings.ToLower(strings.TrimPrefix(packageName, "Pulumi."))
+
 	// No pulumiplugin.json or version.txt
 	// That means this is not a resource.
 	if pulumiPlugin == nil && vf == nil {
 		return nil, nil
 	}
-
-	defaultName := strings.ToLower(strings.TrimPrefix(packageName, "Pulumi."))
-
 	// Create stubs to avoid dereferencing a null
 	if pulumiPlugin == nil {
 		pulumiPlugin = &plugin.PulumiPluginJSON{}
@@ -384,9 +385,17 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 		return ""
 	}
 
+	name := or(pulumiPlugin.Name, vf.name, defaultName)
+	version := or(pulumiPlugin.Version, vf.version, packageVersion)
+
+	_, err = semver.ParseTolerant(version)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid package version: %w", err)
+	}
+
 	result := pulumirpc.PluginDependency{
-		Name:    or(pulumiPlugin.Name, vf.name, defaultName),
-		Version: or(pulumiPlugin.Version, vf.version, packageVersion),
+		Name:    name,
+		Version: version,
 		Server:  pulumiPlugin.Server,
 		Kind:    "resource",
 	}
