@@ -377,12 +377,10 @@ describe("provider", () => {
                 input: [createResourceRef(testURN, testID)],
                 deps: [testURN],
                 assert: async (actual) => {
-                    await assertOutputEqual(actual, async (v: any) => {
-                        assert.ok(Array.isArray(v));
-                        assert.ok(v[0] instanceof TestResource);
-                        assert.deepStrictEqual(await v[0].urn.promise(), testURN);
-                        assert.deepStrictEqual(await v[0].id.promise(), testID);
-                    }, true, false, [testURN]);
+                    assert.ok(Array.isArray(actual));
+                    assert.ok(actual[0] instanceof TestResource);
+                    assert.deepStrictEqual(await actual[0].urn.promise(), testURN);
+                    assert.deepStrictEqual(await actual[0].id.promise(), testID);
                 },
             },
             {
@@ -400,11 +398,9 @@ describe("provider", () => {
                 input: { foo: createResourceRef(testURN, testID) },
                 deps: [testURN],
                 assert: async (actual) => {
-                    await assertOutputEqual(actual, async (v: any) => {
-                        assert.ok(v.foo instanceof TestResource);
-                        assert.deepStrictEqual(await v.foo.urn.promise(), testURN);
-                        assert.deepStrictEqual(await v.foo.id.promise(), testID);
-                    }, true, false, [testURN]);
+                    assert.ok(actual.foo instanceof TestResource);
+                    assert.deepStrictEqual(await actual.foo.urn.promise(), testURN);
+                    assert.deepStrictEqual(await actual.foo.id.promise(), testID);
                 },
             },
             {
@@ -488,46 +484,172 @@ describe("provider", () => {
         }
     });
 
-    describe("containsOutputs", () => {
+    describe("hasEquivalentDeps", () => {
+        function createOutput<T>(deps: string[], value: T, isSecret: boolean = false): pulumi.Output<T> {
+            return new pulumi.Output(
+                deps.map(d => new pulumi.DependencyResource(d)),
+                Promise.resolve(value),
+                Promise.resolve(true),
+                Promise.resolve(isSecret),
+                Promise.resolve([]));
+        }
+
         const tests: {
             name: string;
             input: any;
+            deps?: string[];
             expected: boolean;
         }[] = [
             {
                 name: "Output",
-                input: pulumi.Output.create("hi"),
+                input: createOutput(["fakeURN1"], "hi"),
+                deps: ["fakeURN1"],
+                expected: true,
+            },
+            {
+                name: "Output (more)",
+                input: createOutput(["fakeURN1", "fakeURN2"], "hi"),
+                deps: ["fakeURN1"],
+                expected: true,
+            },
+            {
+                name: "Output (no deps)",
+                input: createOutput(["fakeURN1"], "hi"),
                 expected: true,
             },
             {
                 name: "[Output]",
-                input: [pulumi.Output.create("hi")],
+                input: [createOutput(["fakeURN1"], "hi")],
+                deps: ["fakeURN1"],
+                expected: true,
+            },
+            {
+                name: "[Output] (more)",
+                input: [createOutput(["fakeURN1", "fakeURN2"], "hi")],
+                deps: ["fakeURN1"],
+                expected: true,
+            },
+            {
+                name: "[Output] (no deps)",
+                input: [createOutput(["fakeURN1"], "hi")],
                 expected: true,
             },
             {
                 name: "{ foo: Output }",
-                input: { foo: pulumi.Output.create("hi") },
+                input: { foo: createOutput(["fakeURN1"], "hi") },
+                deps: ["fakeURN1"],
+                expected: true,
+            },
+            {
+                name: "{ foo: Output } (more)",
+                input: { foo: createOutput(["fakeURN1", "fakeURN2"], "hi") },
+                deps: ["fakeURN1"],
+                expected: true,
+            },
+            {
+                name: "{ foo: Output } (no deps)",
+                input: { foo: createOutput(["fakeURN1"], "hi") },
                 expected: true,
             },
             {
                 name: "Resource",
-                input: new pulumi.DependencyResource("fakeURN"),
-                expected: false,
+                input: new pulumi.DependencyResource("fakeURN1"),
+                deps: ["fakeURN1"],
+                expected: true,
+            },
+            {
+                name: "Resource (no deps)",
+                input: new pulumi.DependencyResource("fakeURN1"),
+                expected: true,
             },
             {
                 name: "[Resource]",
-                input: [new pulumi.DependencyResource("fakeURN")],
-                expected: false,
+                input: [new pulumi.DependencyResource("fakeURN1")],
+                deps: ["fakeURN1"],
+                expected: true,
+            },
+            {
+                name: "[Resource] (no deps)",
+                input: [new pulumi.DependencyResource("fakeURN1")],
+                expected: true,
             },
             {
                 name: "{ foo: Resource }",
-                input: { foo: new pulumi.DependencyResource("fakeURN") },
+                input: { foo: new pulumi.DependencyResource("fakeURN1") },
+                deps: ["fakeURN1"],
+                expected: true,
+            },
+            {
+                name: "{ foo: Resource } (no deps)",
+                input: { foo: new pulumi.DependencyResource("fakeURN1") },
+                expected: true,
+            },
+            {
+                name: "Output and Resource",
+                input: {
+                    foo: createOutput(["fakeURN1"], "hi"),
+                    bar: new pulumi.DependencyResource("fakeURN2"),
+                },
+                deps: ["fakeURN1", "fakeURN2"],
+                expected: true,
+            },
+            {
+                name: "Output and Resource",
+                input: {
+                    foo: createOutput(["fakeURN1"], "hi"),
+                    bar: new pulumi.DependencyResource("fakeURN2"),
+                },
+                deps: ["fakeURN1", "fakeURN2"],
+                expected: true,
+            },
+            {
+                name: "Output and Resource (no deps)",
+                input: {
+                    foo: createOutput(["fakeURN1"], "hi"),
+                    bar: new pulumi.DependencyResource("fakeURN2"),
+                },
+                expected: true,
+            },
+            {
+                name: "Output not equivalent",
+                input: createOutput(["fakeURN1"], "hi"),
+                deps: ["fakeURN2"],
+                expected: false,
+            },
+            {
+                name: "[Output] not equivalent",
+                input: [createOutput(["fakeURN1"], "hi")],
+                deps: ["fakeURN2"],
+                expected: false,
+            },
+            {
+                name: "{ foo: Output } not equivalent",
+                input: { foo: createOutput(["fakeURN1"], "hi") },
+                deps: ["fakeURN2"],
+                expected: false,
+            },
+            {
+                name: "Resource not equivalent",
+                input: new pulumi.DependencyResource("fakeURN1"),
+                deps: ["fakeURN2"],
+                expected: false,
+            },
+            {
+                name: "[Resource] not equivalent",
+                input: [new pulumi.DependencyResource("fakeURN1")],
+                deps: ["fakeURN2"],
+                expected: false,
+            },
+            {
+                name: "{ foo: Resource } not equivalent",
+                input: { foo: new pulumi.DependencyResource("fakeURN1") },
+                deps: ["fakeURN2"],
                 expected: false,
             },
         ];
         for (const test of tests) {
-            it(`${test.name} should return ${test.expected}`, () => {
-                const actual = pulumi.provider.containsOutputs(test.input);
+            it(`${test.name} should return ${test.expected}`, async () => {
+                const actual = await pulumi.provider.hasEquivalentDeps(test.input, test.deps ?? []);
                 assert.strictEqual(actual, test.expected);
             });
         }

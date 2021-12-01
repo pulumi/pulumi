@@ -502,29 +502,31 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
  */
 export async function deserializeInputs(inputsStruct: any, inputDependencies: any): Promise<Inputs> {
     const result: Inputs = {};
-
     const deserializedInputs = runtime.deserializeProperties(inputsStruct);
     for (const k of Object.keys(deserializedInputs)) {
         const input = deserializedInputs[k];
-        const isSecret = runtime.isRpcSecret(input);
-        const depsUrns: resource.URN[] = inputDependencies.get(k)?.getUrnsList() ?? [];
+        const deps = inputDependencies.get(k)?.getUrnsList() ?? [];
+        result[k] = await wrapAsOutputIfNeeded(input, deps);
+    }
+    return result;
+}
 
-        if (!isSecret && (depsUrns.length === 0 || containsOutputs(input) || await isResourceReference(input, depsUrns))) {
-            // If the input isn't a secret and either doesn't have any dependencies, already contains Outputs (from
-            // deserialized output values), or is a resource reference, then we can return it directly without
-            // wrapping it as an output.
-            result[k] = input;
-        } else {
-            // Otherwise, wrap it in an output so we can handle secrets and/or track dependencies.
-            // Note: If the value is or contains an unknown value, the Output will mark its value as
-            // unknown automatically, so we just pass true for isKnown here.
-            const deps = depsUrns.map(depUrn => new resource.DependencyResource(depUrn));
-            result[k] = new Output(deps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
-                Promise.resolve(isSecret), Promise.resolve([]));
-        }
+async function wrapAsOutputIfNeeded(input: any, deps: resource.URN[]): Promise<any> {
+    const isSecret = runtime.isRpcSecret(input);
+
+    // If the input isn't a secret and either doesn't have any dependencies, is a resource reference, or has
+    // equivalent dependencies, then it can be returned as-is.
+    if (!isSecret &&
+        (deps.length === 0 || await isResourceReference(input, deps) || await hasEquivalentDeps(input, deps))) {
+        return input;
     }
 
-    return result;
+    // Otherwise, wrap it as an output so we can handle secrets and/or track dependencies.
+    // Note: If the value is or contains an unknown value, the Output will mark its value as
+    // unknown automatically, so we just pass true for isKnown here.
+    const resourceDeps = deps.map(depUrn => new resource.DependencyResource(depUrn));
+    return new Output(resourceDeps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
+        Promise.resolve(isSecret), Promise.resolve([]));
 }
 
 /**
@@ -537,35 +539,28 @@ async function isResourceReference(input: any, deps: string[]): Promise<boolean>
 }
 
 /**
- * Returns true if the deserialized input contains Outputs (deeply), excluding properties of Resources.
+ * Returns true if deps are equal to or a subset of the dependencies gathered from the input value.
  * @internal
  */
-export function containsOutputs(input: any): boolean {
-    if (Array.isArray(input)) {
-        for (const e of input) {
-            if (containsOutputs(e)) {
-                return true;
-            }
-        }
+export async function hasEquivalentDeps(input: any, deps: resource.URN[]): Promise<boolean> {
+    // Gather dependent resources by serializing the input.
+    const gatheredResourceDeps = new Set<resource.Resource>();
+    await runtime.serializeProperty("", input, gatheredResourceDeps);
+
+    // Convert Resources to URNs.
+    const gatheredDeps = new Set<resource.URN>();
+    for (const res of gatheredResourceDeps) {
+        const urn = await res.urn.promise();
+        gatheredDeps.add(urn);
     }
-    else if (typeof input === "object") {
-        if (Output.isInstance(input)) {
-            return true;
-        }
-        else if (resource.Resource.isInstance(input)) {
-            // Do not drill into instances of Resource because they will have properties that are
-            // instances of Output (e.g. urn, id, etc.) and we're only looking for instances of
-            // Output that aren't associated with a Resource.
+
+    // Return true if gatheredDeps contains all the items in deps.
+    for (const dep of deps) {
+        if (!gatheredDeps.has(dep)) {
             return false;
         }
-
-        for (const k of Object.keys(input)) {
-            if (containsOutputs(input[k])) {
-                return true;
-            }
-        }
     }
-    return false;
+    return true;
 }
 
 // grpcResponseFromError creates a gRPC response representing an error from a dynamic provider's
