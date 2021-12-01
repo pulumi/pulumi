@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/plant",
-    "version": "${VERSION}",
+    "version": "0.0.1",
     "scripts": {
         "build": "tsc"
     },

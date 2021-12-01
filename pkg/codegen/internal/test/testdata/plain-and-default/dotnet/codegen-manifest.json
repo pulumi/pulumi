@@ -6,6 +6,7 @@
     "Pulumi.FooBar.csproj",
     "README.md",
     "Utilities.cs",
-    "logo.png"
+    "logo.png",
+    "version.txt"
   ]
 }
