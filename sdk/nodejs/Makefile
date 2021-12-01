@@ -46,25 +46,28 @@ install_plugin:: build
 
 install:: install_package install_plugin
 
-istanbul_tests:: $(TEST_ALL_DEPS)
-	$(RUN_TESTSUITE) istanbul ./node_modules/.bin/istanbul test --print none _mocha -- --timeout 120000 --exclude 'bin/tests/automation/**/*.spec.js' 'bin/tests/**/*.spec.js'
-	./node_modules/.bin/istanbul report text-summary
-	./node_modules/.bin/istanbul report text
-	$(RUN_TESTSUITE) istanbul-with-mocks ./node_modules/.bin/istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
+unit_tests:: $(TEST_ALL_DEPS)
+	$(RUN_TESTSUITE) unit-nodejs ./node_modules/.bin/nyc -x 'bin/tests/runtime/*ClosureCases*.js' -s mocha --timeout 120000 --exclude 'bin/tests/automation/**/*.spec.js' --exclude 'bin/tests/runtime/closureLoader.spec.js' 'bin/tests/**/*.spec.js'
+	$(RUN_TESTSUITE) unit-nodejs mocha --timeout 120000 'bin/tests/runtime/closureLoader.spec.js'
+	$(RUN_TESTSUITE) unit-with-mocks-nodejs ./node_modules/.bin/nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 auto_tests:: $(TEST_ALL_DEPS)
-	$(RUN_TESTSUITE) auto-nodejs ./node_modules/.bin/istanbul test --print none _mocha -- --timeout 120000 'bin/tests/automation/**/*.spec.js'
-	./node_modules/.bin/istanbul report text-summary
-	./node_modules/.bin/istanbul report text
+	$(RUN_TESTSUITE) auto-nodejs ./node_modules/.bin/nyc -s mocha --timeout 120000 'bin/tests/automation/**/*.spec.js'
 
 sxs_tests:: $(TEST_ALL_DEPS)
 	pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd
 	pushd tests/sxs_ts_latest && yarn ; tsc ; popd
 
-test_fast:: sxs_tests istanbul_tests
+test_fast:: sxs_tests unit_tests
+ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
+	if [ -e .nyc_output ]; then ./node_modules/.bin/nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
+endif
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: sxs_tests istanbul_tests auto_tests
+test_all:: sxs_tests unit_tests auto_tests
+ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
+	if [ -e .nyc_output ]; then ./node_modules/.bin/nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
+endif
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist:: build
