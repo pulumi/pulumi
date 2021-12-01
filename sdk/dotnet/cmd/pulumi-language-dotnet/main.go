@@ -191,7 +191,7 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 
 		packageToVersion[packageName] = packageVersion
 
-		plugin, err := host.DeterminePluginDependency(ctx, packageDir, packageName, packageVersion)
+		plugin, err := DeterminePluginDependency(packageDir, packageName, packageVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -324,8 +324,7 @@ func newVersionFile(b []byte, packageName string) *versionFile {
 	}
 }
 
-func (host *dotnetLanguageHost) DeterminePluginDependency(
-	ctx context.Context, packageDir, packageName, packageVersion string) (*pulumirpc.PluginDependency, error) {
+func DeterminePluginDependency(packageDir, packageName, packageVersion string) (*pulumirpc.PluginDependency, error) {
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v, %v",
 		packageDir, packageName, packageVersion)
