@@ -1,18 +1,8 @@
 ### Improvements
 
-- [codegen/go] - Remove `ResourcePtr` types from generated SDKs. Besides being
-  unnecessary--`Resource` types already accommodate `nil` to indicate the lack of
-  a value--the implementation of `Ptr` types for resources was incorrect, making
-  these types virtually unusable in practice.
-  [#8449](https://github.com/pulumi/pulumi/pull/8449)
-
-- [cli] - Allow interpolating plugin custom server URLs.
-  [#8507](https://github.com/pulumi/pulumi/pull/8507)
-  
-- [sdk/python] - Lookup packages by searching for `pulumiplugin.json`.
+- [sdk/python] - Lookup Pulumi packages by searching for `pulumiplugin.json`.
+  Pulumi packages need not be prefixed by `pulumi-` anymore.
   [#8515](https://github.com/pulumi/pulumi/pull/8515)
 
 ### Bug Fixes
 
-- [codegen/go] - Respect default values in Pulumi object types.
-  [#8411](https://github.com/pulumi/pulumi/pull/8400)
