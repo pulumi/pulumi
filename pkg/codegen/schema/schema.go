@@ -1830,26 +1830,32 @@ const (
 	providerRef  = "provider"
 )
 
+// Validate an individual name token.
+func (spec *PackageSpec) validateTypeToken(section, token string) hcl.Diagnostics {
+	diags := hcl.Diagnostics{}
+
+	requiredPrefix := spec.Name + ":"
+	path := memberPath(section, token)
+	if !strings.HasPrefix(token, requiredPrefix) {
+		error := errorf(path, "'%s' is not prefix by the package name: '%s:'", token, spec.Name)
+		fmt.Printf("appended to diags: %s\n", error)
+		diags = diags.Append(error)
+	}
+
+	return diags
+}
+
 // This is for validating non-reference type tokens.
 func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	diags := hcl.Diagnostics{}
-	requiredPrefix := spec.Name + ":"
-	addPrefixError := func(section, t string) {
-		path := memberPath(section, t)
-		error := errorf(path, "'%s' is not prefix by the package name: '%s:'", t, spec.Name)
-		if !strings.HasPrefix(t, requiredPrefix) {
-			fmt.Printf("appended to diags: %s\n", error)
-			diags = diags.Append(error)
-		}
-	}
 	for t := range spec.Resources {
-		addPrefixError("resources", t)
+		diags = diags.Extend(spec.validateTypeToken("resources", t))
 	}
 	for t := range spec.Types {
-		addPrefixError("types", t)
+		diags = diags.Extend(spec.validateTypeToken("types", t))
 	}
 	for t := range spec.Functions {
-		addPrefixError("functions", t)
+		diags = diags.Extend(spec.validateTypeToken("functions", t))
 	}
 	return diags
 }
