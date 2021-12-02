@@ -11,6 +11,9 @@
 - [sdk/dotnet] - Lookup packages by searching for `pulumiplugin.json`.
   Pulumi packages need not be prefixed by `Pulumi.` anymore.
   [#8517](https://github.com/pulumi/pulumi/pull/8517)
+  
+- [sdk/go] - Emit `pulumiplugin.json`
+  [#8530](https://github.com/pulumi/pulumi/pull/8530)
 
 ### Bug Fixes
 
