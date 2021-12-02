@@ -40,7 +40,7 @@ jobs:
       fail-fast: false
     steps:
       - name: Install Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: 1.17.x
       - name: Install Node.js
