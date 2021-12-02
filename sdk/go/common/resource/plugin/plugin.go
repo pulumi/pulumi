@@ -63,7 +63,7 @@ func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json, nil
+	return append(json, '\n'), nil
 }
 
 func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {

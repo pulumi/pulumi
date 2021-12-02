@@ -48,6 +48,7 @@ setup(name='pulumi_mongodbatlas',
       package_data={
           'pulumi_mongodbatlas': [
               'py.typed',
+              'pulumiplugin.json',
           ]
       },
       install_requires=[

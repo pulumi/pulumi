@@ -6,6 +6,7 @@
     "pulumi_foo_bar/_utilities.py",
     "pulumi_foo_bar/outputs.py",
     "pulumi_foo_bar/provider.py",
+    "pulumi_foo_bar/pulumiplugin.json",
     "pulumi_foo_bar/py.typed",
     "pulumi_foo_bar/submodule1/__init__.py",
     "pulumi_foo_bar/submodule1/module_resource.py",
