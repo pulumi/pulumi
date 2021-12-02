@@ -18,3 +18,5 @@
 
 ### Bug Fixes
 
+- [codegen/schema] - Error on type token names missing the correct prefix. 
+  [#8538](https://github.com/pulumi/pulumi/pull/8538)
