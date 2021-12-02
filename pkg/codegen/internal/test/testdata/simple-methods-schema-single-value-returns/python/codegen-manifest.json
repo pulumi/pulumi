@@ -5,6 +5,7 @@
     "pulumi_example/_utilities.py",
     "pulumi_example/foo.py",
     "pulumi_example/provider.py",
+    "pulumi_example/pulumiplugin.json",
     "pulumi_example/py.typed",
     "setup.py"
   ]

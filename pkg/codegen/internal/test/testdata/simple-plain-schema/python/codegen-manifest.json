@@ -8,6 +8,7 @@
     "pulumi_example/do_foo.py",
     "pulumi_example/outputs.py",
     "pulumi_example/provider.py",
+    "pulumi_example/pulumiplugin.json",
     "pulumi_example/py.typed",
     "setup.py"
   ]
