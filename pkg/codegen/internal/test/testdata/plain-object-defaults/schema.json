@@ -187,7 +187,7 @@
   },
 
   "functions": {
-    "mypkg::funcWithAllOptionalInputs": {
+    "example::funcWithAllOptionalInputs": {
       "description": "Check codegen of functions with all optional inputs.",
       "inputs": {
         "type": "object",

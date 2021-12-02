@@ -53,7 +53,7 @@ namespace Pulumi.Xyz
     public sealed class StaticPageArgs : Pulumi.ResourceArgs
     {
         [Input("foo")]
-        public Pulumi.Example.Inputs.FooArgs? Foo { get; set; }
+        public Inputs.FooArgs? Foo { get; set; }
 
         /// <summary>
         /// The HTML content for index.html.
