@@ -16,6 +16,7 @@
     "Resource.cs",
     "TypeUses.cs",
     "Utilities.cs",
-    "logo.png"
+    "logo.png",
+    "pulumiplugin.json"
   ]
 }

@@ -6,6 +6,7 @@
     "README.md",
     "StaticPage.cs",
     "Utilities.cs",
-    "logo.png"
+    "logo.png",
+    "pulumiplugin.json"
   ]
 }

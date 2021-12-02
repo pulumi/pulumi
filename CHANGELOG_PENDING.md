@@ -1,7 +1,8 @@
 ### Improvements
 
-- [codegen/python] - Emit `pulumiplugin.json` unconditionally. 
+- [codegen/{python,dotnet}] - Emit `pulumiplugin.json` unconditionally.
   [#8527](https://github.com/pulumi/pulumi/pull/8527)
+  [#8532](https://github.com/pulumi/pulumi/pull/8532)
 
 - [sdk/python] - Lookup Pulumi packages by searching for `pulumiplugin.json`.
   Pulumi packages need not be prefixed by `pulumi-` anymore.

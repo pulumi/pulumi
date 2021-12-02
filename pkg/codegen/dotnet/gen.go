@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -2138,9 +2139,18 @@ func genPackageMetadata(pkg *schema.Package,
 	if err != nil {
 		return err
 	}
+	plugin, err := (&plugin.PulumiPluginJSON{
+		Resource: true,
+		Name:     pkg.Name,
+		Server:   pkg.PluginDownloadURL,
+	}).JSON()
+	if err != nil {
+		return err
+	}
 
 	files.add(assemblyName+".csproj", projectFile)
 	files.add("logo.png", logo)
+	files.add("pulumiplugin.json", plugin)
 	return nil
 }
 
