@@ -18,5 +18,12 @@
         }
       }
     }
+  },
+  "language": {
+    "csharp": {
+      "projectReferences": [
+        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ]
+    }
   }
 }

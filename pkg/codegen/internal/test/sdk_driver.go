@@ -140,13 +140,13 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "output-funcs-edgeorder",
 		Description:      "Regresses Node compilation issues on a subset of azure-native",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, golang, python),
+		SkipCompileCheck: codegen.NewStringSet(golang, python),
 		Skip:             codegen.NewStringSet("nodejs/test"),
 	},
 	{
 		Directory:        "output-funcs-tfbridge20",
 		Description:      "Similar to output-funcs, but with compatibility: tfbridge20, to simulate pulumi-aws use case",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, python),
+		SkipCompileCheck: codegen.NewStringSet(python),
 	},
 	{
 		Directory:   "cyclic-types",
@@ -168,19 +168,17 @@ var sdkTests = []sdkTest{
 		SkipCompileCheck: codegen.NewStringSet(nodejs),
 	},
 	{
-		Directory:        "plain-object-defaults",
-		Description:      "Ensure that object defaults are generated (repro #8132)",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "plain-object-defaults",
+		Description: "Ensure that object defaults are generated (repro #8132)",
 	},
 	{
-		Directory:        "plain-object-disable-defaults",
-		Description:      "Ensure that we can still compile safely when defaults are disabled",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "plain-object-disable-defaults",
+		Description: "Ensure that we can still compile safely when defaults are disabled",
 	},
 	{
 		Directory:        "regress-8403",
 		Description:      "Regress pulumi/pulumi#8403",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, python, nodejs),
+		SkipCompileCheck: codegen.NewStringSet(python, nodejs),
 	},
 }
 
