@@ -12,6 +12,7 @@
     "Tree/V1/README.md",
     "Tree/V1/RubberTree.cs",
     "Utilities.cs",
-    "logo.png"
+    "logo.png",
+    "pulumiplugin.json"
   ]
 }

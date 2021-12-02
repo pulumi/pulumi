@@ -5,6 +5,7 @@
     "README.md",
     "Rec.cs",
     "Utilities.cs",
-    "logo.png"
+    "logo.png",
+    "pulumiplugin.json"
   ]
 }

@@ -39,6 +39,11 @@
     <None Include="version.txt" Pack="True" PackagePath="content" />
   </ItemGroup>
 
+   <ItemGroup>
+    <EmbeddedResource Include="pulumiplugin.json" />
+    <None Include="pulumiplugin.json" Pack="True" PackagePath="content" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Pulumi" Version="3.*" />
     <PackageReference Include="Pulumi.AzureNative" Version="1.28.*" ExcludeAssets="contentFiles" />

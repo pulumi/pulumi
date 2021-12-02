@@ -23,6 +23,7 @@
     "Pulumi.Mypkg.csproj",
     "README.md",
     "Utilities.cs",
-    "logo.png"
+    "logo.png",
+    "pulumiplugin.json"
   ]
 }
