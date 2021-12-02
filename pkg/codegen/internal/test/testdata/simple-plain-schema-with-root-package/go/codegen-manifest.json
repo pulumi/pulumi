@@ -5,6 +5,7 @@
     "init.go",
     "provider.go",
     "pulumiTypes.go",
-    "pulumiUtilities.go"
+    "pulumiUtilities.go",
+    "pulumiplugin.json"
   ]
 }

@@ -4,6 +4,7 @@
     "registrygeoreplication/init.go",
     "registrygeoreplication/provider.go",
     "registrygeoreplication/pulumiUtilities.go",
+    "registrygeoreplication/pulumiplugin.json",
     "registrygeoreplication/registryGeoReplication.go"
   ]
 }

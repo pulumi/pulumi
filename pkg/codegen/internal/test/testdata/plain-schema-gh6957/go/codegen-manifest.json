@@ -5,6 +5,7 @@
     "xyz/provider.go",
     "xyz/pulumiTypes.go",
     "xyz/pulumiUtilities.go",
+    "xyz/pulumiplugin.json",
     "xyz/staticPage.go"
   ]
 }
