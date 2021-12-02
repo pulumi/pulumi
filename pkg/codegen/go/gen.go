@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -3244,6 +3245,18 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	pathPrefix := packageRoot(pkg)
 
 	files := map[string][]byte{}
+
+	// Generate pulumiplugin.json
+	pulumiPlugin, err := (&plugin.PulumiPluginJSON{
+		Resource: true,
+		Name:     pkg.Name,
+		Server:   pkg.PluginDownloadURL,
+	}).JSON()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to format pulumiplugin.json: %w", err)
+	}
+	files[path.Join(pathPrefix, "pulumiplugin.json")] = pulumiPlugin
+
 	setFile := func(relPath, contents string) {
 		relPath = path.Join(pathPrefix, relPath)
 		if _, ok := files[relPath]; ok {
