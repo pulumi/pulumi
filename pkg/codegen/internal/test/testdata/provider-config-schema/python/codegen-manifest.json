@@ -10,6 +10,7 @@
     "pulumi_configstation/config/vars.py",
     "pulumi_configstation/outputs.py",
     "pulumi_configstation/provider.py",
+    "pulumi_configstation/pulumiplugin.json",
     "pulumi_configstation/py.typed",
     "setup.py"
   ]

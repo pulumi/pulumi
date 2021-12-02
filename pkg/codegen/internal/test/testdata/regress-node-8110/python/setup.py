@@ -48,6 +48,7 @@ setup(name='pulumi_my8110',
       package_data={
           'pulumi_my8110': [
               'py.typed',
+              'pulumiplugin.json',
           ]
       },
       install_requires=[

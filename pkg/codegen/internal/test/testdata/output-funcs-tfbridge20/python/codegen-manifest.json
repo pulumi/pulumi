@@ -8,6 +8,7 @@
     "pulumi_mypkg/list_storage_account_keys.py",
     "pulumi_mypkg/outputs.py",
     "pulumi_mypkg/provider.py",
+    "pulumi_mypkg/pulumiplugin.json",
     "pulumi_mypkg/py.typed",
     "setup.py"
   ]

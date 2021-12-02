@@ -8,6 +8,7 @@
     "pulumi_example/person.py",
     "pulumi_example/pet.py",
     "pulumi_example/provider.py",
+    "pulumi_example/pulumiplugin.json",
     "pulumi_example/py.typed",
     "setup.py"
   ]

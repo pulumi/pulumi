@@ -6,6 +6,7 @@
     "custom_py_package/arg_function.py",
     "custom_py_package/other_resource.py",
     "custom_py_package/provider.py",
+    "custom_py_package/pulumiplugin.json",
     "custom_py_package/py.typed",
     "custom_py_package/resource.py",
     "setup.py"

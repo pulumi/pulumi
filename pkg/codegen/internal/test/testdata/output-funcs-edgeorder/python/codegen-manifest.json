@@ -9,6 +9,7 @@
     "pulumi_myedgeorder/list_product_families.py",
     "pulumi_myedgeorder/outputs.py",
     "pulumi_myedgeorder/provider.py",
+    "pulumi_myedgeorder/pulumiplugin.json",
     "pulumi_myedgeorder/py.typed",
     "setup.py"
   ]

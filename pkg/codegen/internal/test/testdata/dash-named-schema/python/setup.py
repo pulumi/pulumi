@@ -48,6 +48,7 @@ setup(name='pulumi_foo_bar',
       package_data={
           'pulumi_foo_bar': [
               'py.typed',
+              'pulumiplugin.json',
           ]
       },
       install_requires=[
