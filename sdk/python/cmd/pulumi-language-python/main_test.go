@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,64 +15,14 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestParseLocation(t *testing.T) {
-	tests := []struct {
-		pipShowOutput string
-		expected      string
-		err           error
-	}{
-		{
-			pipShowOutput: "Location: /plugin/location",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Location:/plugin/location",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Location:   /plugin/location",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Foo: bar\nLocation: /plugin/location\n",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Foo: bar\nLocation: /plugin/location\nBlah: baz",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Foo: bar\r\nLocation: /plugin/location\r\nBlah: baz",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "",
-			err:           errors.New("determining location of package foo"),
-		},
-		{
-			pipShowOutput: "Foo: bar\nBlah: baz",
-			err:           errors.New("determining location of package foo"),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.pipShowOutput, func(t *testing.T) {
-			result, err := parseLocation("foo", tt.pipShowOutput)
-			if tt.err != nil {
-				assert.Error(t, err)
-				assert.EqualError(t, err, tt.err.Error())
-				return
-			}
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
 
 func TestDeterminePluginVersion(t *testing.T) {
 	tests := []struct {
@@ -158,6 +108,8 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.NoError(t, err)
 		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pulumi-random")
 		assert.NoError(t, err)
+		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pip-install-test")
+		assert.NoError(t, err)
 		packages, err := determinePulumiPackages("venv", cwd)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, packages)
@@ -165,5 +117,30 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		random := packages[0]
 		assert.Equal(t, "pulumi-random", random.Name)
 		assert.NotEmpty(t, random.Location)
+	})
+	t.Run("pulumiplugin", func(t *testing.T) {
+		cwd := t.TempDir()
+		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
+		assert.NoError(t, err)
+		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pip-install-test")
+		assert.NoError(t, err)
+		sitePackages, err := runPythonCommand("venv", cwd, "-c", "import site; print(site.getsitepackages()[0])")
+		assert.NoError(t, err)
+		path := filepath.Join(strings.TrimSpace(string(sitePackages)), "pip_install_test", "pulumiplugin.json")
+		t.Logf("Wrote pulumipluing.json file: %s", path)
+		bytes := []byte(`{ "name": "thing1", "version": "thing2", "server": "thing3", "resource": true }` + "\n")
+		err = os.WriteFile(path, bytes, 0600)
+		assert.NoError(t, err)
+		packages, err := determinePulumiPackages("venv", cwd)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(packages))
+		pipInstallTest := packages[0]
+		assert.NotNil(t, pipInstallTest.plugin)
+		assert.Equal(t, "pip-install-test", pipInstallTest.Name)
+		assert.NotEmpty(t, pipInstallTest.Location)
+		assert.Equal(t, "thing1", pipInstallTest.plugin.Name)
+		assert.Equal(t, "thing2", pipInstallTest.plugin.Version)
+		assert.Equal(t, "thing3", pipInstallTest.plugin.Server)
+		assert.True(t, pipInstallTest.plugin.Resource)
 	})
 }
