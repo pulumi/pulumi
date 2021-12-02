@@ -238,7 +238,7 @@ func checkMissingPlan(
 }
 
 func (rp *ResourcePlan) checkGoal(
-	oldOutputs resource.PropertyMap,
+	oldInputs resource.PropertyMap,
 	newInputs resource.PropertyMap,
 	programGoal *resource.Goal) error {
 
@@ -345,7 +345,7 @@ func (rp *ResourcePlan) checkGoal(
 	// Check that the property diffs meet the constraints set in the plan.
 	changes := []string{}
 	var diff *resource.ObjectDiff
-	if diff = oldOutputs.DiffIncludeUnknowns(newInputs); diff != nil {
+	if diff = oldInputs.DiffIncludeUnknowns(newInputs); diff != nil {
 		// Check that any adds are in the goal for adds
 		for k := range diff.Adds {
 			if expected, has := rp.Goal.Adds[k]; has {
