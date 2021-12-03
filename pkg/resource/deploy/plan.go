@@ -511,9 +511,34 @@ func (rp *ResourcePlan) checkGoal(
 		return fmt.Errorf("dependencies changed: %v", message)
 	}
 
-	// Check that the property diffs meet the constraints set in the plan.
-	if err := checkDiff(oldInputs, newInputs, rp.Goal.InputDiff); err != nil {
-		return err
+	// Check that the properties in the goal match the goal properties in the plan
+	// or that the property diffs meet the constraints set in the plan or that the goal properties match
+	if rp.Goal.Properties == nil {
+		if err := checkDiff(oldInputs, newInputs, rp.Goal.InputDiff); err != nil {
+			return err
+		}
+	} else {
+		// Check that the property set saved as the plan goal matchs the program goal
+		diff := rp.Goal.Properties.DiffIncludeUnknowns(programGoal.Properties)
+		if diff != nil {
+			changes := []string{}
+
+			for k := range diff.Adds {
+				changes = append(changes, "+"+string(k))
+			}
+			for k := range diff.Deletes {
+				changes = append(changes, "-"+string(k))
+			}
+			for k := range diff.Updates {
+				changes = append(changes, "~"+string(k))
+			}
+
+			if len(changes) > 0 {
+				// Sort changes, mostly so it's easy to write tests against determinstic strings
+				sort.Strings(changes)
+				return fmt.Errorf("properties changed: %v", strings.Join(changes, ", "))
+			}
+		}
 	}
 
 	// Check that the property dependencies match. Note that because it is legal for a property that is unknown in the
