@@ -683,7 +683,7 @@ func (o SomeOtherObjectArrayOutput) Index(i pulumi.IntInput) SomeOtherObjectOutp
 type SomeOtherObjectArrayArray []SomeOtherObjectArrayInput
 
 func (SomeOtherObjectArrayArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*SomeOtherObjectArray)(nil)).Elem()
+	return reflect.TypeOf((*[][]SomeOtherObject)(nil)).Elem()
 }
 
 func (i SomeOtherObjectArrayArray) ToSomeOtherObjectArrayArrayOutput() SomeOtherObjectArrayArrayOutput {
@@ -697,7 +697,7 @@ func (i SomeOtherObjectArrayArray) ToSomeOtherObjectArrayArrayOutputWithContext(
 type SomeOtherObjectArrayArrayOutput struct{ *pulumi.OutputState }
 
 func (SomeOtherObjectArrayArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]SomeOtherObjectArray)(nil)).Elem()
+	return reflect.TypeOf((*[][]SomeOtherObject)(nil)).Elem()
 }
 
 func (o SomeOtherObjectArrayArrayOutput) ToSomeOtherObjectArrayArrayOutput() SomeOtherObjectArrayArrayOutput {
@@ -709,8 +709,8 @@ func (o SomeOtherObjectArrayArrayOutput) ToSomeOtherObjectArrayArrayOutputWithCo
 }
 
 func (o SomeOtherObjectArrayArrayOutput) Index(i pulumi.IntInput) SomeOtherObjectArrayOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) SomeOtherObjectArray {
-		return vs[0].([]SomeOtherObjectArray)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) []SomeOtherObject {
+		return vs[0].([][]SomeOtherObject)[vs[1].(int)]
 	}).(SomeOtherObjectArrayOutput)
 }
 
@@ -728,7 +728,7 @@ type SomeOtherObjectArrayArrayInput interface {
 type SomeOtherObjectArrayMap map[string]SomeOtherObjectArrayInput
 
 func (SomeOtherObjectArrayMap) ElementType() reflect.Type {
-	return reflect.TypeOf((*SomeOtherObjectArray)(nil)).Elem()
+	return reflect.TypeOf((*map[string][]SomeOtherObject)(nil)).Elem()
 }
 
 func (i SomeOtherObjectArrayMap) ToSomeOtherObjectArrayMapOutput() SomeOtherObjectArrayMapOutput {
@@ -742,7 +742,7 @@ func (i SomeOtherObjectArrayMap) ToSomeOtherObjectArrayMapOutputWithContext(ctx 
 type SomeOtherObjectArrayMapOutput struct{ *pulumi.OutputState }
 
 func (SomeOtherObjectArrayMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]SomeOtherObjectArray)(nil)).Elem()
+	return reflect.TypeOf((*map[string][]SomeOtherObject)(nil)).Elem()
 }
 
 func (o SomeOtherObjectArrayMapOutput) ToSomeOtherObjectArrayMapOutput() SomeOtherObjectArrayMapOutput {
@@ -754,8 +754,8 @@ func (o SomeOtherObjectArrayMapOutput) ToSomeOtherObjectArrayMapOutputWithContex
 }
 
 func (o SomeOtherObjectArrayMapOutput) MapIndex(k pulumi.StringInput) SomeOtherObjectArrayOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) SomeOtherObjectArray {
-		return vs[0].(map[string]SomeOtherObjectArray)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) []SomeOtherObject {
+		return vs[0].(map[string][]SomeOtherObject)[vs[1].(string)]
 	}).(SomeOtherObjectArrayOutput)
 }
 
