@@ -583,10 +583,13 @@ func (pkg *pkgContext) contextForExternalReferenceType(t *schema.ObjectType) *pk
 	return extPkgCtx
 }
 
-func (pkg *pkgContext) outputType(t schema.Type) string {
+// outputTypeImpl does the meat of the generation of output type names from schema types. This function should only be
+// called with a fully-resolved type (e.g. the result of codegen.ResolvedType). Instead of calling this function, you
+// probably want to call pkgContext.outputType, which ensures that its argument is resolved.
+func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 	switch t := t.(type) {
 	case *schema.OptionalType:
-		elem := pkg.outputType(t.ElementType)
+		elem := pkg.outputTypeImpl(t.ElementType)
 		if isNilType(t.ElementType) || elem == "pulumi.AnyOutput" {
 			return elem
 		}
@@ -594,13 +597,13 @@ func (pkg *pkgContext) outputType(t schema.Type) string {
 	case *schema.EnumType:
 		return pkg.tokenToEnum(t.Token) + "Output"
 	case *schema.ArrayType:
-		en := strings.TrimSuffix(pkg.outputType(t.ElementType), "Output")
+		en := strings.TrimSuffix(pkg.outputTypeImpl(t.ElementType), "Output")
 		if en == "pulumi.Any" {
 			return "pulumi.ArrayOutput"
 		}
 		return en + "ArrayOutput"
 	case *schema.MapType:
-		en := strings.TrimSuffix(pkg.outputType(t.ElementType), "Output")
+		en := strings.TrimSuffix(pkg.outputTypeImpl(t.ElementType), "Output")
 		if en == "pulumi.Any" {
 			return "pulumi.MapOutput"
 		}
@@ -612,7 +615,7 @@ func (pkg *pkgContext) outputType(t schema.Type) string {
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
-			return pkg.outputType(t.UnderlyingType)
+			return pkg.outputTypeImpl(t.UnderlyingType)
 		}
 		return pkg.tokenToType(t.Token) + "Output"
 	case *schema.UnionType:
@@ -620,14 +623,14 @@ func (pkg *pkgContext) outputType(t schema.Type) string {
 		// type for the output instead
 		for _, e := range t.ElementTypes {
 			if typ, ok := e.(*schema.EnumType); ok {
-				return pkg.outputType(typ.ElementType)
+				return pkg.outputTypeImpl(typ.ElementType)
 			}
 		}
 		// TODO(pdg): union types
 		return "pulumi.AnyOutput"
 	case *schema.InputType:
 		// We can't make output types for input types. We instead strip the input and try again.
-		return pkg.outputType(t.ElementType)
+		return pkg.outputTypeImpl(t.ElementType)
 	default:
 		switch t {
 		case schema.BoolType:
@@ -650,6 +653,25 @@ func (pkg *pkgContext) outputType(t schema.Type) string {
 	}
 
 	panic(fmt.Errorf("unexpected type %T", t))
+}
+
+// outputType returns a reference to the Go output type that corresponds to the given schema type. For example, given
+// a schema.String, outputType returns "pulumi.String", and given a *schema.ObjectType with the token pkg:mod:Name,
+// outputType returns "mod.NameOutput" or "NameOutput", depending on whether or not the object type lives in a
+// different module than the one associated with the receiver.
+func (pkg *pkgContext) outputType(t schema.Type) string {
+	return pkg.outputTypeImpl(codegen.ResolvedType(t))
+}
+
+// toOutputMethod returns the name of the "ToXXXOutput" method for the given schema type. For example, given a
+// schema.String, toOutputMethod returns "ToStringOutput", and given a *schema.ObjectType with the token pkg:mod:Name,
+// outputType returns "ToNameOutput".
+func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
+	outputTypeName := pkg.outputType(t)
+	if i := strings.LastIndexByte(outputTypeName, '.'); i != -1 {
+		outputTypeName = outputTypeName[i+1:]
+	}
+	return "To" + outputTypeName
 }
 
 func printComment(w io.Writer, comment string, indent bool) int {
@@ -1493,39 +1515,24 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			assign(p, dv)
 			fmt.Fprintf(w, "\t}\n")
 		} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" && !pkg.disableObjectDefaults {
-			var value string
-			var needsNilCheck bool
-			if codegen.IsNOptionalInput(p.Type) {
-				innerFuncType := strings.TrimSuffix(pkg.typeString(codegen.UnwrapType(p.Type)), "Args")
-				applyName := fmt.Sprintf("%sApplier", camel(p.Name))
-				fmt.Fprintf(w, "%[3]s := func(v %[1]s) *%[1]s { return v.%[2]s() }\n", innerFuncType, name, applyName)
-
-				outputValue := pkg.convertToOutput(fmt.Sprintf("args.%s", Title(p.Name)), p.Type)
-				outputType := pkg.typeString(p.Type)
-				if strings.HasSuffix(outputType, "Input") {
-					outputType = strings.TrimSuffix(outputType, "Input") + "Output"
-				}
-
-				// Because applies return pointers, we need to convert to PtrOutput and then call .Elem().
-				var tail string
-				if !strings.HasSuffix(outputType, "PtrOutput") {
-					outputType = strings.TrimSuffix(outputType, "Output") + "PtrOutput"
-					tail = ".Elem()"
-				}
-				needsNilCheck = !p.IsRequired()
-				value = fmt.Sprintf("%s.ApplyT(%s).(%s)%s", outputValue, applyName, outputType, tail)
-			} else {
-				value = fmt.Sprintf("args.%[1]s.%[2]s()", Title(p.Name), name)
+			optionalDeref := ""
+			if p.IsRequired() {
+				optionalDeref = "*"
 			}
-			v := func() {
-				fmt.Fprintf(w, "args.%[1]s = %s\n", Title(p.Name), value)
-			}
-			if needsNilCheck {
+
+			toOutputMethod := pkg.toOutputMethod(p.Type)
+			outputType := pkg.outputType(p.Type)
+			resolvedType := pkg.typeString(codegen.ResolvedType(p.Type))
+			originalValue := fmt.Sprintf("args.%s.%s()", Title(p.Name), toOutputMethod)
+			valueWithDefaults := fmt.Sprintf("%[1]v.ApplyT(func (v %[2]s) %[2]s { return %[3]sv.%[4]s() }).(%[5]s)",
+				originalValue, resolvedType, optionalDeref, name, outputType)
+
+			if !p.IsRequired() {
 				fmt.Fprintf(w, "if args.%s != nil {\n", Title(p.Name))
-				v()
+				fmt.Fprintf(w, "args.%[1]s = %s\n", Title(p.Name), valueWithDefaults)
 				fmt.Fprint(w, "}\n")
 			} else {
-				v()
+				fmt.Fprintf(w, "args.%[1]s = %s\n", Title(p.Name), valueWithDefaults)
 			}
 
 		}
@@ -1818,30 +1825,6 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	pkg.genResourceRegistrations(w, r, generateResourceContainerTypes)
 
 	return nil
-}
-
-// Takes an expression and type, and returns a string that converts that expression to an Output type.
-//
-// Examples:
-// ("bar", Foo of ObjectType) => "bar.ToFooOutput()"
-// ("id", FooOutput) => "id"
-// ("ptr", FooInput of ObjectType) => "ptr.ToFooPtrOutput().Elem()"
-func (pkg *pkgContext) convertToOutput(expr string, typ schema.Type) string {
-	elemConversion := ""
-	switch typ.(type) {
-	case *schema.OptionalType:
-		elemConversion = ".Elem()"
-	}
-	outputType := pkg.outputType(typ)
-	// Remove any element before the last .
-	outputType = outputType[strings.LastIndex(outputType, ".")+1:]
-	if strings.HasSuffix(outputType, "ArgsOutput") {
-		outputType = strings.TrimSuffix(outputType, "ArgsOutput") + "Output"
-	}
-	if elemConversion != "" {
-		outputType = strings.TrimSuffix(outputType, "Output") + "PtrOutput"
-	}
-	return fmt.Sprintf("%s.To%s()%s", expr, outputType, elemConversion)
 }
 
 func NeedsGoOutputVersion(f *schema.Function) bool {

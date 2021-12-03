@@ -22,13 +22,11 @@ func NewModuleTest(ctx *pulumi.Context,
 		args = &ModuleTestArgs{}
 	}
 
-	mod1Applier := func(v mod1.Typ) *mod1.Typ { return v.Defaults() }
 	if args.Mod1 != nil {
-		args.Mod1 = args.Mod1.ToTypPtrOutput().Elem().ApplyT(mod1Applier).(mod1.TypPtrOutput)
+		args.Mod1 = args.Mod1.ToTypPtrOutput().ApplyT(func(v *mod1.Typ) *mod1.Typ { return v.Defaults() }).(mod1.TypPtrOutput)
 	}
-	valApplier := func(v Typ) *Typ { return v.Defaults() }
 	if args.Val != nil {
-		args.Val = args.Val.ToTypPtrOutput().Elem().ApplyT(valApplier).(TypPtrOutput)
+		args.Val = args.Val.ToTypPtrOutput().ApplyT(func(v *Typ) *Typ { return v.Defaults() }).(TypPtrOutput)
 	}
 	var resource ModuleTest
 	err := ctx.RegisterResource("example:index:moduleTest", name, args, &resource, opts...)

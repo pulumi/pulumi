@@ -22,9 +22,8 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
-	helmReleaseSettingsApplier := func(v HelmReleaseSettings) *HelmReleaseSettings { return v.Defaults() }
 	if args.HelmReleaseSettings != nil {
-		args.HelmReleaseSettings = args.HelmReleaseSettings.ToHelmReleaseSettingsPtrOutput().Elem().ApplyT(helmReleaseSettingsApplier).(HelmReleaseSettingsPtrOutput)
+		args.HelmReleaseSettings = args.HelmReleaseSettings.ToHelmReleaseSettingsPtrOutput().ApplyT(func(v *HelmReleaseSettings) *HelmReleaseSettings { return v.Defaults() }).(HelmReleaseSettingsPtrOutput)
 	}
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:example", name, args, &resource, opts...)
