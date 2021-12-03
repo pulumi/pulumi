@@ -12,17 +12,29 @@ namespace Pulumi.Example
     [ExampleResourceType("example::TypeUses")]
     public partial class TypeUses : Pulumi.CustomResource
     {
+        [Output("alpha")]
+        public Output<Pulumi.Example.OutputOnlyEnumType?> Alpha { get; private set; } = null!;
+
         [Output("bar")]
         public Output<Outputs.SomeOtherObject?> Bar { get; private set; } = null!;
 
         [Output("baz")]
         public Output<Outputs.ObjectWithNodeOptionalInputs?> Baz { get; private set; } = null!;
 
+        [Output("beta")]
+        public Output<ImmutableArray<Outputs.OutputOnlyObjectType>> Beta { get; private set; } = null!;
+
         [Output("foo")]
         public Output<Outputs.Object?> Foo { get; private set; } = null!;
 
+        [Output("gamma")]
+        public Output<ImmutableDictionary<string, Pulumi.Example.OutputOnlyEnumType>?> Gamma { get; private set; } = null!;
+
         [Output("qux")]
         public Output<Pulumi.Example.RubberTreeVariety?> Qux { get; private set; } = null!;
+
+        [Output("zed")]
+        public Output<Outputs.OutputOnlyObjectType?> Zed { get; private set; } = null!;
 
 
         /// <summary>
