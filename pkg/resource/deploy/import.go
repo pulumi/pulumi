@@ -93,7 +93,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 		goals:        newGoals,
 		imports:      imports,
 		isImport:     true,
-		schemaLoader: schema.NewPluginLoader(ctx.Host),
+		schemaLoader: schema.NewPluginLoader(ctx.Host, schema.DisableValidation()),
 		source:       NewErrorSource(projectName),
 		preview:      preview,
 		providers:    reg,

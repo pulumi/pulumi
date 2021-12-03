@@ -1609,16 +1609,21 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 //   are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
 //   diagnostic error that is appropriately tagged with a JSON pointer.
 //
-func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*Package, hcl.Diagnostics, error) {
+func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader, opts...SpecOpts) (*Package, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	// Validate the package against the metaschema.
-	validationDiags, err := validateSpec(spec)
-	if err != nil {
-		return nil, nil, fmt.Errorf("validating spec: %w", err)
+	specOpts := &specOpts{}
+	for _, o := range opts {
+		o.apply(specOpts)
 	}
-	diags = diags.Extend(validationDiags)
-
+	if specOpts.disableValidation {
+		// Validate the package against the metaschema.
+		validationDiags, err := validateSpec(spec)
+		if err != nil {
+			return nil, nil, fmt.Errorf("validating spec: %w", err)
+		}
+		diags = diags.Extend(validationDiags)
+	}
 	// Validate that there is a name
 	if spec.Name == "" {
 		diags = diags.Append(errorf("#/name", "no name provided"))
@@ -1660,7 +1665,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*
 		}
 		defer contract.IgnoreClose(ctx)
 
-		loader = NewPluginLoader(ctx.Host)
+		loader = NewPluginLoader(ctx.Host, opts...)
 	}
 
 	types, typeDiags, err := bindTypes(pkg, spec.Types, loader)
@@ -1759,16 +1764,37 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*
 
 }
 
+type specOpts struct {
+	disableValidation bool
+}
+
+type specOptsFunc func (*specOpts)
+func (s specOptsFunc) apply(o *specOpts) {
+	s(o)
+}
+
+type SpecOpts interface {
+	apply(*specOpts)
+}
+
+// DisableValidation returns an optional flag to disable metaschema validation of the schema at bind/load time.
+// This may be useful to set for user-facing conversion tools or CLI import etc.
+func DisableValidation() SpecOpts {
+	return specOptsFunc(func(o *specOpts) {
+		o.disableValidation = true
+	})
+}
+
 // BindSpec converts a serializable PackageSpec into a Package. Any semantic errors encountered during binding are
 // contained in the returned diagnostics. The returned error is only non-nil if a fatal error was encountered.
-func BindSpec(spec PackageSpec, languages map[string]Language) (*Package, hcl.Diagnostics, error) {
-	return bindSpec(spec, languages, nil)
+func BindSpec(spec PackageSpec, languages map[string]Language, opts ...SpecOpts) (*Package, hcl.Diagnostics, error) {
+	return bindSpec(spec, languages, nil, opts...)
 }
 
 // ImportSpec converts a serializable PackageSpec into a Package.
-func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, error) {
+func ImportSpec(spec PackageSpec, languages map[string]Language, opts ...SpecOpts) (*Package, error) {
 	// Call the internal implementation that includes a loader parameter.
-	pkg, diags, err := bindSpec(spec, languages, nil)
+	pkg, diags, err := bindSpec(spec, languages, nil, opts...)
 	if err != nil {
 		return nil, err
 	}

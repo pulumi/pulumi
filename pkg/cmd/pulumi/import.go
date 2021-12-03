@@ -248,7 +248,7 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectN
 	if err != nil {
 		return false, err
 	}
-	loader := schema.NewPluginLoader(ctx.Host)
+	loader := schema.NewPluginLoader(ctx.Host, schema.DisableValidation())
 	return true, importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *pcl.Program) error {
 		files, _, err := programGenerator(p)
 		if err != nil {

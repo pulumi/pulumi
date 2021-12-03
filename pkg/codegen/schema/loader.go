@@ -23,13 +23,16 @@ type Loader interface {
 type pluginLoader struct {
 	m sync.RWMutex
 
+	specOpts []SpecOpts
 	host    plugin.Host
 	entries map[string]*Package
 }
 
-func NewPluginLoader(host plugin.Host) Loader {
+func NewPluginLoader(host plugin.Host, s ...SpecOpts) Loader {
+
 	return &pluginLoader{
 		host:    host,
+		specOpts: s,
 		entries: map[string]*Package{},
 	}
 }
@@ -155,7 +158,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return nil, err
 	}
 
-	p, diags, err := bindSpec(spec, nil, l)
+	p, diags, err := bindSpec(spec, nil, l, l.specOpts...)
 	if err != nil {
 		return nil, err
 	}
