@@ -583,6 +583,9 @@ func (pkg *pkgContext) contextForExternalReferenceType(t *schema.ObjectType) *pk
 	return extPkgCtx
 }
 
+// outputTypeImpl does the meat of the generation of output type names from schema types. This function should only be
+// called with a fully-resolved type (e.g. the result of codegen.ResolvedType). Instead of calling this function, you
+// probably want to call pkgContext.outputType, which ensures that its argument is resolved.
 func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 	switch t := t.(type) {
 	case *schema.OptionalType:
@@ -652,10 +655,17 @@ func (pkg *pkgContext) outputTypeImpl(t schema.Type) string {
 	panic(fmt.Errorf("unexpected type %T", t))
 }
 
+// outputType returns a reference to the Go output type that corresponds to the given schema type. For example, given
+// a schema.String, outputType returns "pulumi.String", and given a *schema.ObjectType with the token pkg:mod:Name,
+// outputType returns "mod.NameOutput" or "NameOutput", depending on whether or not the object type lives in a
+// different module than the one associated with the receiver.
 func (pkg *pkgContext) outputType(t schema.Type) string {
 	return pkg.outputTypeImpl(codegen.ResolvedType(t))
 }
 
+// toOutputMethod returns the name of the "ToXXXOutput" method for the given schema type. For example, given a
+// schema.String, toOutputMethod returns "ToStringOutput", and given a *schema.ObjectType with the token pkg:mod:Name,
+// outputType returns "ToNameOutput".
 func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 	outputTypeName := pkg.outputType(t)
 	if i := strings.LastIndexByte(outputTypeName, '.'); i != -1 {
