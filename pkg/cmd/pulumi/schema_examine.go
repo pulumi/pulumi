@@ -284,21 +284,50 @@ func displayValue(v reflect.Value) string {
 	case reflect.Slice:
 		value := v.Type().Elem().String()
 		length := v.Len()
-		return fmt.Sprintf("[%s]%s (%d)", arrayLen, value, length)
+		endTag := fmt.Sprintf("(%d)", length)
+		if length == 1 {
+			endTag = fmt.Sprintf("[ %s ]", displayValue(v.Index(0)))
+		}
+		return fmt.Sprintf("[%s]%s %s", arrayLen, value, endTag)
 
 	case reflect.Map:
 		key := v.Type().Key().String()
 		value := v.Type().Elem().String()
 		length := len(v.MapKeys())
-		return fmt.Sprintf("map[%s]%s (%d)", key, value, length)
+		endTag := fmt.Sprintf("(%d)", length)
+		if length == 1 {
+			iter := v.MapRange()
+			contract.Assert(iter.Next())
+			onlyKey := iter.Key()
+			onlyValue := iter.Value()
+			endTag = fmt.Sprintf("{ %s: %s }", displayValue(onlyKey), displayValue(onlyValue))
+		}
+		return fmt.Sprintf("map[%s]%s %s", key, value, endTag)
 
 	case reflect.Struct:
 		// special case version
 		if version, ok := v.Interface().(semver.Version); ok {
 			return version.String()
 		}
+		// If there is a `Name` or `Token` tag, display that next to the struct
+		title := ""
+		for _, f := range reflect.VisibleFields(v.Type()) {
+			if f.Name == "Name" {
+				title = displayValue(v.FieldByIndex(f.Index))
+				break
+			}
+			if f.Name == "Token" {
+				title = displayValue(v.FieldByIndex(f.Index))
+			}
+			if f.Name == "Value" {
+				title = displayValue(v.FieldByIndex(f.Index))
+			}
+		}
+		if title != "" {
+			title = fmt.Sprintf(": %s", title)
+		}
 		typ := v.Type().String()
-		return fmt.Sprintf("struct %s", typ)
+		return fmt.Sprintf("struct %s%s", typ, title)
 
 	// Indirect types
 	case reflect.Ptr:
@@ -345,6 +374,7 @@ func showExaminePrompt(prompt string, values []string, isExit bool) int {
 		var typeTag string
 		if i := strings.Index(selected, ":"); i > -1 {
 			typeTag = strings.TrimSpace(selected[i+1:])
+			typeTag = strings.TrimPrefix(typeTag, "*")
 		} else {
 			return fmt.Errorf("Could not find determine type for %q", selected)
 		}
