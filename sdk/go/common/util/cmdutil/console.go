@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -214,4 +214,11 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// Move up one column in the terminal.
+func MoveUp(i int) {
+	if InteractiveTerminal() {
+		fmt.Printf("\033[%dA", i)
+	}
 }

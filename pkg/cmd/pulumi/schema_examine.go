@@ -15,11 +15,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"math"
 	"os"
-	"path"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -35,7 +37,8 @@ import (
 )
 
 func newSchemaExamineCommand() *cobra.Command {
-	return &cobra.Command{
+	var displayEmpty bool
+	cmd := &cobra.Command{
 		Use:   "examine",
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Interactively examine a Pulumi package schema",
@@ -53,7 +56,7 @@ func newSchemaExamineCommand() *cobra.Command {
 				return fmt.Errorf("failed to bind schema: %w", err)
 			}
 			if err == nil && diags.HasErrors() {
-				return fmt.Errorf("schema validation failed")
+				return fmt.Errorf("cannot examine invalid schema")
 			}
 
 			opts := display.Options{
@@ -61,19 +64,20 @@ func newSchemaExamineCommand() *cobra.Command {
 				IsInteractive: true,
 			}
 
-			return displaySchema(pkg, opts)
+			return displaySchema(pkg, opts, displayEmpty)
 		}),
 	}
+	cmd.PersistentFlags().BoolVarP(
+		&displayEmpty, "display-empty", "d", false,
+		"Show empty struct fields")
+
+	return cmd
 }
 
-func isDrillable(ans interface{}) error {
-	return nil
-}
+type selectFunc = func(string, reflect.Value, displayArgs)
 
-type selectFunc = func(string, reflect.Value)
-
-func selectFunction(k reflect.Kind) selectFunc {
-	switch k {
+func selectFunction(v reflect.Value) selectFunc {
+	switch v.Kind() {
 	case reflect.Struct:
 		return selectStruct
 	case reflect.Map:
@@ -81,24 +85,49 @@ func selectFunction(k reflect.Kind) selectFunc {
 	case reflect.Array:
 		fallthrough
 	case reflect.Slice:
-		panic("Slices are not implemented")
+		return selectSlice
+	case reflect.Ptr:
+		fallthrough
+	case reflect.Interface:
+		if v.IsNil() {
+			return nil
+		}
+		return selectFunction(v.Elem())
+
 	default:
+		fmt.Printf("Could not provide function for: %s\n", v.Kind().String())
 		return nil
 	}
 }
 
-func displaySchema(spec *schema.Package, opts display.Options) error {
+type displayArgs struct {
+	isTopLevel   bool
+	displayEmpty bool
+}
+
+func (a *displayArgs) NotTopLevel() displayArgs {
+	t := *a
+	t.isTopLevel = false
+	return t
+}
+
+func displaySchema(spec *schema.Package, opts display.Options, displayEmpty bool) error {
 	surveycore.DisableColor = true
 	surveycore.QuestionIcon = ""
 	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	prompt := "Schema"
 	prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
 	structValue := *spec
-	selectStruct(prompt, reflect.ValueOf(structValue))
+	args := displayArgs{
+		isTopLevel:   true,
+		displayEmpty: displayEmpty,
+	}
+	selectStruct(prompt, reflect.ValueOf(structValue), args)
 	return nil
 }
 
-func selectStruct(prompt string, v reflect.Value) {
+func selectStruct(prompt string, v reflect.Value, args displayArgs) {
+	v = drillType(v)
 	contract.Assert(v.Kind() == reflect.Struct)
 	fields := reflect.VisibleFields(v.Type())
 	displayFields := []string{}
@@ -106,6 +135,9 @@ func selectStruct(prompt string, v reflect.Value) {
 	maxFieldLength := 0
 	for _, f := range fields {
 		if !f.IsExported() {
+			continue
+		}
+		if !args.displayEmpty && isEmptyValue(v.FieldByIndex(f.Index)) {
 			continue
 		}
 
@@ -122,30 +154,40 @@ func selectStruct(prompt string, v reflect.Value) {
 		displayOptions[i] = fmt.Sprintf("%-*s: %s", maxFieldLength, f, v)
 	}
 
-	var selectedField string
-	survey.AskOne(&survey.Select{
-		Message:  prompt,
-		Options:  displayOptions,
-		PageSize: len(displayOptions),
-	}, &selectedField, isDrillable)
-	index := -1
-	for i, v := range displayOptions {
-		if selectedField == v {
-			index = i
-			break
+	showRepeatedPrompt(prompt, displayOptions, args.isTopLevel, func(index int) {
+		nextField := displayValues[index]
+		nextValue := drillType(v.FieldByIndex(nextField.Index))
+		nextFunc := selectFunction(nextValue)
+		if nextFunc == nil {
+			return
 		}
-	}
-	contract.Assert(index != -1)
-	nextField := displayValues[index]
-	nextValue := v.FieldByIndex(nextField.Index)
-	nextFunc := selectFunction(nextValue.Kind())
-	if nextFunc == nil {
-		return
-	}
-	nextFunc(path.Join(prompt, nextField.Name), nextValue)
+		nextFunc(prompt+"."+nextField.Name, nextValue, args.NotTopLevel())
+	})
 }
 
-func selectMap(prompt string, mapValue reflect.Value) {
+func selectSlice(prompt string, slice reflect.Value, args displayArgs) {
+	slice = drillType(slice)
+	contract.Assertf(slice.Kind() == reflect.Slice ||
+		slice.Kind() == reflect.Array, "Found type %s", slice.Kind().String())
+	maxLength := int(math.Log10(float64(slice.Len())))
+	displayOptions := make([]string, slice.Len())
+	for i := 0; i < slice.Len(); i++ {
+		v := displayValue(slice.Index(i))
+		displayOptions[i] = fmt.Sprintf("%-*d: %s", maxLength, i, v)
+	}
+	showRepeatedPrompt(prompt, displayOptions, false, func(index int) {
+		nextValue := drillType(reflect.Indirect(slice.Index(index)))
+		nextFunc := selectFunction(nextValue)
+		if nextFunc == nil {
+			return
+		}
+		nextFunc(prompt+fmt.Sprintf("[%d]", index), slice.Index(index), args)
+	})
+}
+
+func selectMap(prompt string, mapValue reflect.Value, args displayArgs) {
+	mapValue = drillType(mapValue)
+	contract.Assert(mapValue.Kind() == reflect.Map)
 	mapEntries := make([]struct {
 		key   reflect.Value
 		value reflect.Value
@@ -171,26 +213,22 @@ func selectMap(prompt string, mapValue reflect.Value) {
 	}
 	for i, k := range displayOptions {
 		v := displayValue(mapEntries[i].value)
-		fmt.Sprintf("%-*s: %s", maxKeyLength, k, v)
+		displayOptions[i] = fmt.Sprintf("%-*s: %s", maxKeyLength, k, v)
 	}
-	var result string
-	survey.AskOne(&survey.Select{
-		Message:  prompt,
-		Options:  displayOptions,
-		PageSize: len(displayOptions),
-	}, &result, isDrillable)
-	index := -1
-	for i, v := range displayOptions {
-		if result == v {
-			index = i
-			break
+
+	showRepeatedPrompt(prompt, displayOptions, false, func(index int) {
+		value := drillType(mapEntries[index].value)
+		nextFunc := selectFunction(value)
+		key := displayValue(mapEntries[index].key)
+		if nextFunc == nil {
+			return
 		}
-	}
-	contract.Assert(index > -1)
-	// index into map
+		nextFunc(prompt+fmt.Sprintf("[%s]", key), value, args)
+	})
 }
 
 func displayValue(v reflect.Value) string {
+	var arrayLen string
 	switch v.Type().Kind() {
 	case reflect.String:
 		suffix := ""
@@ -206,23 +244,54 @@ func displayValue(v reflect.Value) string {
 			}
 			return fmt.Sprintf("'%s'%s", actual[:max], suffix)
 		}
+
+	// Numbers
+	case reflect.Uint8:
+		fallthrough
+	case reflect.Uint16:
+		fallthrough
+	case reflect.Uint32:
+		fallthrough
+	case reflect.Uint64:
+		fallthrough
+	case reflect.Uint:
+		actual := v.Uint()
+		return fmt.Sprintf("%d", actual)
+	case reflect.Int8:
+		fallthrough
+	case reflect.Int16:
+		fallthrough
+	case reflect.Int32:
+		fallthrough
+	case reflect.Int64:
+		fallthrough
 	case reflect.Int:
 		actual := v.Int()
 		return fmt.Sprintf("%d", actual)
+	case reflect.Float32:
+		fallthrough
+	case reflect.Float64:
+		actual := v.Float()
+		return fmt.Sprintf("%f", actual)
+
 	case reflect.Bool:
 		actual := v.Bool()
 		return fmt.Sprintf("%t", actual)
-	case reflect.Slice:
-		fallthrough
+
 	case reflect.Array:
+		arrayLen = fmt.Sprintf("%d", v.Len())
+		fallthrough
+	case reflect.Slice:
 		value := v.Type().Elem().String()
 		length := v.Len()
-		return fmt.Sprintf("[]%s (%d)", value, length)
+		return fmt.Sprintf("[%s]%s (%d)", arrayLen, value, length)
+
 	case reflect.Map:
 		key := v.Type().Key().String()
 		value := v.Type().Elem().String()
 		length := len(v.MapKeys())
 		return fmt.Sprintf("map[%s]%s (%d)", key, value, length)
+
 	case reflect.Struct:
 		// special case version
 		if version, ok := v.Interface().(semver.Version); ok {
@@ -230,17 +299,166 @@ func displayValue(v reflect.Value) string {
 		}
 		typ := v.Type().String()
 		return fmt.Sprintf("struct %s", typ)
+
+	// Indirect types
 	case reflect.Ptr:
 		if v.IsNil() {
 			return fmt.Sprintf("%s (nil)", v.Type().String())
 		}
-		return displayValue(v.Elem())
+		return fmt.Sprintf("*%s", displayValue(v.Elem()))
 	case reflect.Interface:
 		if v.IsNil() {
 			return fmt.Sprintf("interface{} (nil)")
 		}
-		return displayValue(v.Elem())
+		v = drillType(v)
+
+		return displayValue(v)
+
 	default:
 		return "unknown kind: " + v.Type().Kind().String()
+	}
+}
+
+// Displays a prompt to the user, returning the index of the selected value.
+//
+// If a non-negative number is returned, then it is the index of the selected value.
+// If -1 is returned, the user did not select a value.
+// If -2 is returned, the user selected to leave.
+func showExaminePrompt(prompt string, values []string, isExit bool) int {
+	var leaveValue string
+	if isExit {
+		leaveValue = "(exit)"
+	} else {
+		leaveValue = "(back)"
+	}
+
+	isDrillable := func(ans interface{}) error {
+		selected, ok := ans.(string)
+		if !ok {
+			return fmt.Errorf("Could not process answer: %v", ans)
+		}
+
+		if selected == leaveValue {
+			return nil
+		}
+
+		var typeTag string
+		if i := strings.Index(selected, ":"); i > -1 {
+			typeTag = strings.TrimSpace(selected[i+1:])
+		} else {
+			return fmt.Errorf("Could not find determine type for %q", selected)
+		}
+		if strings.HasPrefix(typeTag, "struct") {
+			return nil
+		} else if strings.HasPrefix(typeTag, "map") ||
+			strings.HasPrefix(typeTag, "[]") {
+			if strings.HasSuffix(typeTag, "(0)") {
+				return fmt.Errorf("Cannot look deeper into empty containers")
+			}
+			return nil
+		}
+		// Fixup for display purposes
+		if strings.HasPrefix(typeTag, "'") {
+			typeTag = "string"
+		}
+		return fmt.Errorf("found type %s, only structs, maps or arrays are examinable", typeTag)
+	}
+	var result string
+	options := append(values, leaveValue)
+	survey.AskOne(&survey.Select{
+		Message:  prompt,
+		Options:  options,
+		PageSize: len(options),
+	}, &result, isDrillable)
+	if result == leaveValue {
+		return -2
+	}
+	for i, v := range values {
+		if v == result {
+			return i
+		}
+	}
+	return -1
+
+}
+
+func showRepeatedPrompt(prompt string, displayOptions []string, isTopLevel bool, drill func(i int)) {
+	for {
+		index := showExaminePrompt(prompt, displayOptions, isTopLevel)
+
+		if index == -1 {
+			// This will leave whatever is on the screen in place.
+			os.Exit(0)
+		}
+		cmdutil.MoveUp(1)
+		if index == -2 {
+			return
+		}
+
+		drill(index)
+	}
+}
+
+func drillType(v reflect.Value) reflect.Value {
+	for {
+
+		switch v.Kind() {
+		case reflect.Ptr:
+			if v.IsNil() {
+				return v
+			}
+			v = v.Elem()
+		case reflect.Interface:
+			if v.IsNil() {
+				return v
+			}
+
+			// Handle interface{} -> json.RawMessage
+			if data, ok := v.Elem().Interface().(json.RawMessage); ok {
+				jsonMap := map[string]interface{}{}
+				if err := json.Unmarshal(data, &jsonMap); err == nil {
+					return reflect.ValueOf(jsonMap)
+				}
+				jsonArray := []interface{}{}
+				if err := json.Unmarshal(data, &jsonArray); err == nil {
+					return reflect.ValueOf(jsonArray)
+				}
+				return reflect.ValueOf(string(data))
+			}
+
+			v = v.Elem()
+		case reflect.Slice:
+			var u8 []uint8 // This is what generic interfaces coerce to.
+			if v.Type() == reflect.TypeOf(u8) {
+				mapValue, ok := v.Interface().(map[string]interface{})
+				if ok {
+					return reflect.ValueOf(mapValue)
+				}
+			}
+			fallthrough
+		default:
+			return v
+		}
+	}
+}
+
+func isEmptyValue(v reflect.Value) bool {
+	v = drillType(v)
+	switch v.Kind() {
+	case reflect.Interface:
+		fallthrough
+	case reflect.Ptr:
+		// We would have drilled if this had something in it
+		return true
+	case reflect.Map:
+		fallthrough
+	case reflect.Array:
+		fallthrough
+	case reflect.String:
+		fallthrough
+	case reflect.Slice:
+		return v.Len() == 0
+	default:
+		return false
 	}
 }
