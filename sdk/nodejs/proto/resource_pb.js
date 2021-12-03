@@ -1285,7 +1285,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     remote: jspb.Message.getBooleanFieldWithDefault(msg, 20, false),
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
-    replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f
+    replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
+    serverurl: jspb.Message.getFieldWithDefault(msg, 24, "")
   };
 
   if (includeInstance) {
@@ -1419,6 +1420,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 23:
       var value = /** @type {string} */ (reader.readString());
       msg.addReplaceonchanges(value);
+      break;
+    case 24:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setServerurl(value);
       break;
     default:
       reader.skipField();
@@ -1603,6 +1608,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeRepeatedString(
       23,
+      f
+    );
+  }
+  f = message.getServerurl();
+  if (f.length > 0) {
+    writer.writeString(
+      24,
       f
     );
   }
@@ -2507,6 +2519,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addReplaceonchanges = function
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearReplaceonchangesList = function() {
   return this.setReplaceonchangesList([]);
+};
+
+
+/**
+ * optional string serverURL = 24;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getServerurl = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 24, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setServerurl = function(value) {
+  return jspb.Message.setProto3StringField(this, 24, value);
 };
 
 

@@ -919,8 +919,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	if providers.IsProviderType(t) && req.GetVersion() != "" {
-		props["version"] = resource.NewStringProperty(req.GetVersion())
+	if providers.IsProviderType(t) {
+		if req.GetVersion() != "" {
+			props["version"] = resource.NewStringProperty(req.GetVersion())
+		}
+		if req.GetServerURL() != "" {
+			props["serverURL"] = resource.NewStringProperty(req.GetServerURL())
+		}
 	}
 
 	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)

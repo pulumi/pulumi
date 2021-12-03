@@ -116,12 +116,17 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 		if err != nil {
 			return set, err
 		}
+		serverUrl, err := providers.GetProviderServerURL(res.Inputs)
+		if err != nil {
+			return set, err
+		}
 		logging.V(preparePluginLog).Infof(
 			"gatherPluginsFromSnapshot(): plugin %s %s is required by first-class provider %q", pkg, version, urn)
 		set.Add(workspace.PluginInfo{
-			Name:    pkg.String(),
-			Kind:    workspace.ResourcePlugin,
-			Version: version,
+			Name:      pkg.String(),
+			Kind:      workspace.ResourcePlugin,
+			Version:   version,
+			ServerURL: serverUrl,
 		})
 	}
 	return set, nil

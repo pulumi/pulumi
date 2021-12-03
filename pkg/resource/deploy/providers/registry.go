@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// GetProviderServerURL fetches a provider server URL from the given property map. If the server URL
+// is not set, this function returns "".
+func GetProviderServerURL(inputs resource.PropertyMap) (string, error) {
+	urlProp, ok := inputs["serverURL"]
+	if !ok {
+		return "", nil
+	}
+	if !urlProp.IsString() {
+		return "", fmt.Errorf("'serverURL' must be a string")
+	}
+	return urlProp.StringValue(), nil
+}
 
 // GetProviderVersion fetches and parses a provider version from the given property map. If the version property is not
 // present, this function returns nil.
