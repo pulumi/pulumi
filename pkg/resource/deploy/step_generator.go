@@ -359,18 +359,20 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges)}, nil
 	}
 
-	// If we are re-creating this resource because it was deleted earlier, the old inputs are now
-	// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
-	// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
-	// targeted for replacement, ignore its old state.
-	if recreating || wasExternal || sg.isTargetedReplace(urn) {
-		oldInputs = nil
-	}
-
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
 	var err error
 	if prov != nil {
-		inputs, failures, err := prov.Check(urn, oldInputs, inputs, allowUnknowns)
+		var failures []plugin.CheckFailure
+
+		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
+		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
+		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
+		// targeted for replacement, ignore its old state.
+		if recreating || wasExternal || sg.isTargetedReplace(urn) {
+			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+		} else {
+			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
+		}
 
 		if err != nil {
 			return nil, result.FromError(err)
@@ -380,7 +382,12 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		new.Inputs = inputs
 	}
 
-	inputDiff := oldInputs.DiffIncludeUnknowns(inputs)
+	var inputDiff *resource.ObjectDiff
+	if recreating || wasExternal || sg.isTargetedReplace(urn) {
+		inputDiff = nil
+	} else {
+		inputDiff = oldInputs.DiffIncludeUnknowns(inputs)
+	}
 
 	// Generate the output goal plan
 	// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default

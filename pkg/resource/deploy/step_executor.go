@@ -163,7 +163,11 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 		"registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
 	reg.New().Outputs = outs
 
-	oldOuts := se.deployment.Olds()[urn].Outputs
+	old := se.deployment.Olds()[urn]
+	var oldOuts resource.PropertyMap = nil
+	if old != nil {
+		oldOuts = old.Outputs
+	}
 
 	// If a plan is present check that these outputs match what we recorded before
 	if se.deployment.plan != nil {
