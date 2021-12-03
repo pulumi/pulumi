@@ -189,6 +189,11 @@ var sdkTests = []sdkTest{
 		Description: "An enum in a different package namespace",
 		Skip:        codegen.NewStringSet("dotnet/compile"),
 	},
+	{
+		Directory:        "repro",
+		Description:      "azure repro",
+		SkipCompileCheck: codegen.NewStringSet(dotnet, python, nodejs, golang),
+	},
 }
 
 var genSDKOnly bool

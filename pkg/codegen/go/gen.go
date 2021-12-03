@@ -51,6 +51,10 @@ type typeDetails struct {
 	mapOutput   bool
 }
 
+func (d *typeDetails) hasOutputs() bool {
+	return d.output || d.ptrOutput || d.arrayOutput || d.mapOutput
+}
+
 func (d *typeDetails) mark(input, output bool) {
 	d.input = d.input || input
 	d.output = d.output || input || output
@@ -1317,26 +1321,28 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 		name = pkg.tokenToType(t.Token)
 	}
 
-	printComment(w, t.Comment, false)
-	genOutputType(w,
-		name,             /* baseName */
-		name,             /* elementType */
-		details.ptrInput, /* ptrMethods */
-	)
+	if details.output {
+		printComment(w, t.Comment, false)
+		genOutputType(w,
+			name,             /* baseName */
+			name,             /* elementType */
+			details.ptrInput, /* ptrMethods */
+		)
 
-	for _, p := range t.Properties {
-		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
-		outputType, applyType := pkg.outputType(p.Type), pkg.typeString(p.Type)
+		for _, p := range t.Properties {
+			printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
+			outputType, applyType := pkg.outputType(p.Type), pkg.typeString(p.Type)
 
-		propName := Title(p.Name)
-		switch strings.ToLower(p.Name) {
-		case "elementtype", "issecret":
-			propName = "Get" + propName
+			propName := Title(p.Name)
+			switch strings.ToLower(p.Name) {
+			case "elementtype", "issecret":
+				propName = "Get" + propName
+			}
+			fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
+			fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n",
+				name, applyType, Title(p.Name), outputType)
+			fmt.Fprintf(w, "}\n\n")
 		}
-		fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
-		fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n",
-			name, applyType, Title(p.Name), outputType)
-		fmt.Fprintf(w, "}\n\n")
 	}
 
 	if details.ptrOutput {
@@ -1882,6 +1888,8 @@ func NeedsGoOutputVersion(f *schema.Function) bool {
 func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 	importsAndAliases := map[string]string{}
 	pkg.getImports(f, importsAndAliases)
+	importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
+
 	buffer := &bytes.Buffer{}
 
 	var imports []string
@@ -2177,10 +2185,16 @@ func (pkg *pkgContext) addSuffixesToName(typ schema.Type, name string) []string 
 	var names []string
 	details := pkg.detailsForType(typ)
 	if details.arrayInput {
-		names = append(names, name+"Array")
+		names = append(names, name+"ArrayInput")
+	}
+	if details.arrayOutput || details.arrayInput {
+		names = append(names, name+"ArrayOutput")
 	}
 	if details.mapInput {
-		names = append(names, name+"Map")
+		names = append(names, name+"MapInput")
+	}
+	if details.mapOutput || details.mapInput {
+		names = append(names, name+"MapOutput")
 	}
 	return names
 }
@@ -2252,20 +2266,24 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*n
 		sort.Strings(collectionTypes)
 		for _, name := range collectionTypes {
 			names = append(names, name)
-			if strings.HasSuffix(name, "Array") {
+			switch {
+			case strings.HasSuffix(name, "ArrayInput"):
+				name = strings.TrimSuffix(name, "Input")
 				fmt.Fprintf(w, "type %s []%sInput\n\n", name, elementTypeName)
 				genInputImplementation(w, name, name, "[]"+info.resolvedElementType, false)
 
-				genArrayOutput(w, strings.TrimSuffix(name, "Array"), info.resolvedElementType)
-			}
-
-			if strings.HasSuffix(name, "Map") {
+				pkg.genInputInterface(w, name)
+			case strings.HasSuffix(name, "ArrayOutput"):
+				genArrayOutput(w, strings.TrimSuffix(name, "ArrayOutput"), info.resolvedElementType)
+			case strings.HasSuffix(name, "MapInput"):
+				name = strings.TrimSuffix(name, "Input")
 				fmt.Fprintf(w, "type %s map[string]%sInput\n\n", name, elementTypeName)
 				genInputImplementation(w, name, name, "map[string]"+info.resolvedElementType, false)
 
-				genMapOutput(w, strings.TrimSuffix(name, "Map"), info.resolvedElementType)
+				pkg.genInputInterface(w, name)
+			case strings.HasSuffix(name, "MapOutput"):
+				genMapOutput(w, strings.TrimSuffix(name, "MapOutput"), info.resolvedElementType)
 			}
-			pkg.genInputInterface(w, name)
 		}
 	}
 
@@ -2313,7 +2331,9 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.Obje
 			}
 		}
 		for _, t := range types {
-			fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%[1]sInput)(nil)).Elem(), %[1]s{})\n", t)
+			if strings.HasSuffix(t, "Input") {
+				fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%s)(nil)).Elem(), %s{})\n", t, strings.TrimSuffix(t, "Input"))
+			}
 		}
 	}
 
@@ -2338,7 +2358,9 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.Obje
 		}
 	}
 	for _, t := range types {
-		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", t)
+		if strings.HasSuffix(t, "Output") {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s{})\n", t)
+		}
 	}
 
 	fmt.Fprintf(w, "}\n")
@@ -2573,8 +2595,6 @@ func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[stri
 	default:
 		return
 	}
-
-	importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
 }
 
 func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAliases map[string]string) {
@@ -2628,7 +2648,10 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 }
 
 func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) error {
-	importsAndAliases := map[string]string{"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config": ""}
+	importsAndAliases := map[string]string{
+		"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config": "",
+		"github.com/pulumi/pulumi/sdk/v3/go/pulumi":        "",
+	}
 	pkg.getImports(variables, importsAndAliases)
 
 	pkg.genHeader(w, nil, importsAndAliases)
@@ -2940,10 +2963,10 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ArrayType:
-			details := getPkgFromType(typ.ElementType).detailsForType(typ.ElementType)
+			details := getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType))
 			details.markArray(goInfo.GenerateExtraInputTypes, false)
 		case *schema.MapType:
-			details := getPkgFromType(typ.ElementType).detailsForType(typ.ElementType)
+			details := getPkgFromType(typ.ElementType).detailsForType(codegen.UnwrapType(typ.ElementType))
 			details.markMap(goInfo.GenerateExtraInputTypes, false)
 		case *schema.ObjectType:
 			pkg := getPkgFromToken(typ.Token)
@@ -3163,7 +3186,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 					populateDetailsForPropertyTypes(seenMap, f.Inputs.InputShape.Properties, optional, false, false)
 				}
 				if f.Outputs != nil {
-					populateDetailsForPropertyTypes(seenMap, f.Outputs.Properties, optional, false, true)
+					populateDetailsForTypes(seenMap, f.Outputs, optional, false, true)
 				}
 			}
 		}
@@ -3378,6 +3401,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 			importsAndAliases := map[string]string{}
 			pkg.getImports(r, importsAndAliases)
+			importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
 
 			buffer := &bytes.Buffer{}
 			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
@@ -3411,13 +3435,19 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Enums
 		if len(pkg.enums) > 0 {
-			imports := map[string]string{}
+			hasOutputs, imports := false, map[string]string{}
 			for _, e := range pkg.enums {
 				pkg.getImports(e, imports)
+				hasOutputs = hasOutputs || pkg.detailsForType(e).hasOutputs()
+			}
+			var goImports []string
+			if hasOutputs {
+				goImports = []string{"context", "reflect"}
+				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
 			}
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
+			pkg.genHeader(buffer, goImports, imports)
 
 			for _, e := range pkg.enums {
 				if err := pkg.genEnum(buffer, e); err != nil {
@@ -3431,13 +3461,19 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Types
 		if len(pkg.types) > 0 {
-			importsAndAliases := map[string]string{}
+			hasOutputs, importsAndAliases := false, map[string]string{}
 			for _, t := range pkg.types {
 				pkg.getImports(t, importsAndAliases)
+				hasOutputs = hasOutputs || pkg.detailsForType(t).hasOutputs()
+			}
+			var goImports []string
+			if hasOutputs {
+				goImports = []string{"context", "reflect"}
+				importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
 			}
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
+			pkg.genHeader(buffer, goImports, importsAndAliases)
 
 			for _, t := range pkg.types {
 				if err := pkg.genType(buffer, t); err != nil {
