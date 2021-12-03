@@ -8,6 +8,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
+// PlanDiffV1 is the serializable version of a plan diff.
+type PlanDiffV1 struct {
+	// the resource properties that will be added.
+	Adds map[string]interface{} `json:"adds,omitempty"`
+	// the resource properties that will be deleted.
+	Deletes []string `json:"deletes,omitempty"`
+	// the resource properties that will be updated.
+	Updates map[string]interface{} `json:"updates,omitempty"`
+}
+
 // GoalV1 is the serializable version of a resource goal state.
 type GoalV1 struct {
 	// the type of resource.
@@ -16,12 +26,12 @@ type GoalV1 struct {
 	Name tokens.QName `json:"name"`
 	// true if this resource is custom, managed by a plugin.
 	Custom bool `json:"custom"`
-	// the resource properties that will be added.
-	Adds map[string]interface{} `json:"adds,omitempty"`
-	// the resource properties that will be deleted.
-	Deletes []string `json:"deletes,omitempty"`
-	// the resource properties that will be updated.
-	Updates map[string]interface{} `json:"updates,omitempty"`
+	// the raw resource goal that is planned for a create
+	//CreateGoal map[string]interface{} `json:"createGoal,omitempty"`
+	// the resource properties that will be changed.
+	InputDiff PlanDiffV1 `json:"inputDiff,omitempty"`
+	// the resource outputs that will be changed.
+	OutputDiff *PlanDiffV1 `json:"outputDiff,omitempty"`
 	// an optional parent URN for this resource.
 	Parent resource.URN `json:"parent,omitempty"`
 	// true to protect this resource from deletion.

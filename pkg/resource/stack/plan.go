@@ -7,25 +7,60 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
+func SerializePlanDiff(
+	diff deploy.PlanDiff,
+	enc config.Encrypter,
+	showSecrets bool) (apitype.PlanDiffV1, error) {
+
+	adds, err := SerializeProperties(diff.Adds, enc, showSecrets)
+	if err != nil {
+		return apitype.PlanDiffV1{}, err
+	}
+
+	updates, err := SerializeProperties(diff.Updates, enc, showSecrets)
+	if err != nil {
+		return apitype.PlanDiffV1{}, err
+	}
+
+	deletes := make([]string, len(diff.Deletes))
+	for i := range deletes {
+		deletes[i] = string(diff.Deletes[i])
+	}
+
+	return apitype.PlanDiffV1{
+		Adds:    adds,
+		Updates: updates,
+		Deletes: deletes,
+	}, nil
+}
+
+func DeserializePlanDiff(
+	diff apitype.PlanDiffV1,
+	dec config.Decrypter,
+	enc config.Encrypter) (deploy.PlanDiff, error) {
+
+	adds, err := DeserializeProperties(diff.Adds, dec, enc)
+	if err != nil {
+		return deploy.PlanDiff{}, err
+	}
+
+	updates, err := DeserializeProperties(diff.Updates, dec, enc)
+	if err != nil {
+		return deploy.PlanDiff{}, err
+	}
+
+	deletes := make([]resource.PropertyKey, len(diff.Deletes))
+	for i := range deletes {
+		deletes[i] = resource.PropertyKey(diff.Deletes[i])
+	}
+
+	return deploy.PlanDiff{Adds: adds, Updates: updates, Deletes: deletes}, nil
+}
+
 func SerializeResourcePlan(
 	plan *deploy.ResourcePlan,
 	enc config.Encrypter,
 	showSecrets bool) (apitype.ResourcePlanV1, error) {
-
-	adds, err := SerializeProperties(plan.Goal.Adds, enc, showSecrets)
-	if err != nil {
-		return apitype.ResourcePlanV1{}, err
-	}
-
-	updates, err := SerializeProperties(plan.Goal.Updates, enc, showSecrets)
-	if err != nil {
-		return apitype.ResourcePlanV1{}, err
-	}
-
-	deletes := make([]string, len(plan.Goal.Deletes))
-	for i := range deletes {
-		deletes[i] = string(plan.Goal.Deletes[i])
-	}
 
 	var outputs map[string]interface{}
 	if plan.Outputs != nil {
@@ -36,13 +71,26 @@ func SerializeResourcePlan(
 		outputs = outs
 	}
 
+	inputDiff, err := SerializePlanDiff(plan.Goal.InputDiff, enc, showSecrets)
+	if err != nil {
+		return apitype.ResourcePlanV1{}, err
+	}
+
+	var outputDiff *apitype.PlanDiffV1
+	if plan.Goal.OutputDiff != nil {
+		diff, err := SerializePlanDiff(*plan.Goal.OutputDiff, enc, showSecrets)
+		if err != nil {
+			return apitype.ResourcePlanV1{}, err
+		}
+		outputDiff = &diff
+	}
+
 	goal := apitype.GoalV1{
 		Type:                    plan.Goal.Type,
 		Name:                    plan.Goal.Name,
 		Custom:                  plan.Goal.Custom,
-		Adds:                    adds,
-		Deletes:                 deletes,
-		Updates:                 updates,
+		InputDiff:               inputDiff,
+		OutputDiff:              outputDiff,
 		Parent:                  plan.Goal.Parent,
 		Protect:                 plan.Goal.Protect,
 		Dependencies:            plan.Goal.Dependencies,
@@ -90,14 +138,18 @@ func DeserializeResourcePlan(
 	dec config.Decrypter,
 	enc config.Encrypter) (*deploy.ResourcePlan, error) {
 
-	adds, err := DeserializeProperties(plan.Goal.Adds, dec, enc)
+	inputDiff, err := DeserializePlanDiff(plan.Goal.InputDiff, dec, enc)
 	if err != nil {
 		return nil, err
 	}
 
-	updates, err := DeserializeProperties(plan.Goal.Updates, dec, enc)
-	if err != nil {
-		return nil, err
+	var outputDiff *deploy.PlanDiff = nil
+	if plan.Goal.OutputDiff != nil {
+		diff, err := DeserializePlanDiff(*plan.Goal.OutputDiff, dec, enc)
+		if err != nil {
+			return nil, err
+		}
+		outputDiff = &diff
 	}
 
 	var outputs resource.PropertyMap
@@ -113,9 +165,8 @@ func DeserializeResourcePlan(
 		Type:                    plan.Goal.Type,
 		Name:                    plan.Goal.Name,
 		Custom:                  plan.Goal.Custom,
-		Adds:                    adds,
-		Deletes:                 nil,
-		Updates:                 updates,
+		InputDiff:               inputDiff,
+		OutputDiff:              outputDiff,
 		Parent:                  plan.Goal.Parent,
 		Protect:                 plan.Goal.Protect,
 		Dependencies:            plan.Goal.Dependencies,

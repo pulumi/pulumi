@@ -163,6 +163,8 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 		"registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
 	reg.New().Outputs = outs
 
+	oldOuts := se.deployment.Olds()[urn].Outputs
+
 	// If a plan is present check that these outputs match what we recorded before
 	if se.deployment.plan != nil {
 		resourcePlan, ok := se.deployment.plan.ResourcePlans[urn]
@@ -170,13 +172,15 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			return result.FromError(fmt.Errorf("no plan for resource %v", urn))
 		}
 
-		if diffs := resourcePlan.Outputs.DiffIncludeUnknowns(outs); diffs != nil {
-			return result.FromError(fmt.Errorf("resource violates plan: %v", diffs))
+		if err := resourcePlan.checkOutputs(oldOuts, outs); err != nil {
+			return result.FromError(fmt.Errorf("resource violates plan: %w", err))
 		}
 	}
 
 	// Save these new outputs to the plan
 	if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
+		diff := NewPlanDiff(oldOuts.DiffIncludeUnknowns(outs))
+		resourcePlan.Goal.OutputDiff = &diff
 		resourcePlan.Outputs = outs
 	} else {
 		return result.FromError(fmt.Errorf("this should already have a plan from when we called register resources"))
