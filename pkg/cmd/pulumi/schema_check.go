@@ -43,33 +43,10 @@ func newSchemaCheckCommand() *cobra.Command {
 			"schema spec as well as additional requirements imposed by the supported\n" +
 			"target languages.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			file := args[0]
 
-			// Read from stdin or a specified file
-			reader := os.Stdin
-			if file != "-" {
-				f, err := os.Open(file)
-				if err != nil {
-					return fmt.Errorf("could not open file %v: %w", file, err)
-				}
-				reader = f
-			}
-			schemaBytes, err := ioutil.ReadAll(reader)
-			if err != nil {
-				return fmt.Errorf("failed to read schema: %w", err)
-			}
+			pkgSpec, err := readSchemaFromFile(args[0])
 
-			var pkgSpec schema.PackageSpec
-			if ext := filepath.Ext(file); ext == ".yaml" || ext == ".yml" {
-				err = yaml.Unmarshal(schemaBytes, &pkgSpec)
-			} else {
-				err = json.Unmarshal(schemaBytes, &pkgSpec)
-			}
-			if err != nil {
-				return fmt.Errorf("failed to unmarshal schema: %w", err)
-			}
-
-			_, diags, err := schema.BindSpec(pkgSpec, nil)
+			_, diags, err := schema.BindSpec(*pkgSpec, nil)
 			diagWriter := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 0, true)
 			wrErr := diagWriter.WriteDiagnostics(diags)
 			contract.IgnoreError(wrErr)
@@ -81,4 +58,32 @@ func newSchemaCheckCommand() *cobra.Command {
 	}
 
 	return cmd
+}
+
+func readSchemaFromFile(file string) (*schema.PackageSpec, error) {
+	// Read from stdin or a specified file
+	reader := os.Stdin
+	if file != "-" {
+		f, err := os.Open(file)
+		if err != nil {
+			return nil, fmt.Errorf("could not open file %v: %w", file, err)
+		}
+		reader = f
+	}
+	schemaBytes, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read schema: %w", err)
+	}
+
+	var pkgSpec schema.PackageSpec
+	if ext := filepath.Ext(file); ext == ".yaml" || ext == ".yml" {
+		err = yaml.Unmarshal(schemaBytes, &pkgSpec)
+	} else {
+		err = json.Unmarshal(schemaBytes, &pkgSpec)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal schema: %w", err)
+	}
+
+	return &pkgSpec, nil
 }
