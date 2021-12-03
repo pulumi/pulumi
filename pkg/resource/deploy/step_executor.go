@@ -164,7 +164,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	reg.New().Outputs = outs
 
 	old := se.deployment.Olds()[urn]
-	var oldOuts resource.PropertyMap = nil
+	var oldOuts resource.PropertyMap
 	if old != nil {
 		oldOuts = old.Outputs
 	}

@@ -154,7 +154,7 @@ func DeserializeResourcePlan(
 		return nil, err
 	}
 
-	var outputDiff *deploy.PlanDiff = nil
+	var outputDiff *deploy.PlanDiff
 	if plan.Goal.OutputDiff != nil {
 		diff, err := DeserializePlanDiff(*plan.Goal.OutputDiff, dec, enc)
 		if err != nil {
