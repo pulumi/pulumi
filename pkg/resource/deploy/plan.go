@@ -60,6 +60,8 @@ type GoalPlan struct {
 	Name tokens.QName
 	// true if this resource is custom, managed by a plugin.
 	Custom bool
+	// the raw goal state we expect for creates.
+	Properties resource.PropertyMap
 	// the resource's checked input properties we expect to change.
 	InputDiff PlanDiff
 	// the resource's output properties we expect to change (only set for RegisterResourceOutputs)
@@ -121,6 +123,7 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan 
 		Type:                    goal.Type,
 		Name:                    goal.Name,
 		Custom:                  goal.Custom,
+		Properties:              goal.Properties,
 		InputDiff:               diff,
 		OutputDiff:              nil,
 		Parent:                  goal.Parent,
@@ -227,6 +230,7 @@ func checkMissingPlan(
 		Type:                    oldState.Type,
 		Name:                    oldState.URN.Name(),
 		Custom:                  oldState.Custom,
+		Properties:              nil,
 		InputDiff:               PlanDiff{},
 		OutputDiff:              nil,
 		Parent:                  oldState.Parent,

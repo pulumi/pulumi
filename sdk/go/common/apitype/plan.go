@@ -27,7 +27,7 @@ type GoalV1 struct {
 	// true if this resource is custom, managed by a plugin.
 	Custom bool `json:"custom"`
 	// the raw resource goal that is planned for a create
-	//CreateGoal map[string]interface{} `json:"createGoal,omitempty"`
+	Properties map[string]interface{} `json:"properties,omitempty"`
 	// the resource properties that will be changed.
 	InputDiff PlanDiffV1 `json:"inputDiff,omitempty"`
 	// the resource outputs that will be changed.
