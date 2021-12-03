@@ -1,5 +1,8 @@
 ### Improvements
 
+- [codegen/go] - Simplify the application of object defaults in generated SDKs.
+  [#8539](https://github.com/pulumi/pulumi/pull/8539)
+
 - [codegen/{python,dotnet}] - Emit `pulumiplugin.json` unconditionally.
   [#8527](https://github.com/pulumi/pulumi/pull/8527)
   [#8532](https://github.com/pulumi/pulumi/pull/8532)
