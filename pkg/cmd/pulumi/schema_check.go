@@ -45,6 +45,9 @@ func newSchemaCheckCommand() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 
 			pkgSpec, err := readSchemaFromFile(args[0])
+			if err != nil {
+				return err
+			}
 
 			_, diags, err := schema.BindSpec(*pkgSpec, nil)
 			diagWriter := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 0, true)

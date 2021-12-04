@@ -36,6 +36,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+const MaxPageSize int = 20
+
 func newSchemaExamineCommand() *cobra.Command {
 	var displayEmpty bool
 	cmd := &cobra.Command{
@@ -235,15 +237,14 @@ func displayValue(v reflect.Value) string {
 		actual := v.String()
 		if actual == "" {
 			return "empty string"
-		} else {
-			max := 80
-			if len(actual) > max {
-				suffix = "..."
-			} else {
-				max = len(actual)
-			}
-			return fmt.Sprintf("'%s'%s", actual[:max], suffix)
 		}
+		max := 80
+		if len(actual) > max {
+			suffix = "..."
+		} else {
+			max = len(actual)
+		}
+		return fmt.Sprintf("'%s'%s", actual[:max], suffix)
 
 	// Numbers
 	case reflect.Uint8:
@@ -311,18 +312,25 @@ func displayValue(v reflect.Value) string {
 		}
 		// If there is a `Name` or `Token` tag, display that next to the struct
 		title := ""
-		for _, f := range reflect.VisibleFields(v.Type()) {
-			if f.Name == "Name" {
-				title = displayValue(v.FieldByIndex(f.Index))
-				break
-			}
-			if f.Name == "Token" {
-				title = displayValue(v.FieldByIndex(f.Index))
-			}
-			if f.Name == "Value" {
-				title = displayValue(v.FieldByIndex(f.Index))
+		visibleFields := reflect.VisibleFields(v.Type())
+		if len(visibleFields) == 1 {
+			f := v.FieldByIndex(visibleFields[0].Index)
+			title = fmt.Sprintf("(%s:%s)", visibleFields[0].Name, displayValue(f))
+		} else {
+			for _, f := range visibleFields {
+				if f.Name == "Name" {
+					title = fmt.Sprintf("(Name:%s)", displayValue(v.FieldByIndex(f.Index)))
+					break
+				}
+				if f.Name == "Token" {
+					title = fmt.Sprintf("(Token:%s)", displayValue(v.FieldByIndex(f.Index)))
+				}
+				if f.Name == "Value" {
+					title = fmt.Sprintf("(Value:%s)", displayValue(v.FieldByIndex(f.Index)))
+				}
 			}
 		}
+
 		if title != "" {
 			title = fmt.Sprintf(": %s", title)
 		}
@@ -395,11 +403,19 @@ func showExaminePrompt(prompt string, values []string, isExit bool) int {
 	}
 	var result string
 	options := append(values, leaveValue)
-	survey.AskOne(&survey.Select{
+	pageSize := len(options)
+	if pageSize > MaxPageSize {
+		pageSize = MaxPageSize
+	}
+	err := survey.AskOne(&survey.Select{
 		Message:  prompt,
 		Options:  options,
-		PageSize: len(options),
+		PageSize: pageSize,
 	}, &result, isDrillable)
+
+	if err != nil {
+		return -1
+	}
 	if result == leaveValue {
 		return -2
 	}
