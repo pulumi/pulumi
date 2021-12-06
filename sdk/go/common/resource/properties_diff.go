@@ -209,7 +209,7 @@ func (props PropertyMap) Diff(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *O
 	return props.diff(other, false, ignoreKeys)
 }
 
-func (v PropertyValue) diff(other PropertyValue, ignoreUnknowns bool, ignoreKeys []IgnoreKeyFunc) *ValueDiff {
+func (v PropertyValue) diff(other PropertyValue, includeUnknowns bool, ignoreKeys []IgnoreKeyFunc) *ValueDiff {
 	if v.IsArray() && other.IsArray() {
 		old := v.ArrayValue()
 		new := other.ArrayValue()
@@ -227,7 +227,7 @@ func (v PropertyValue) diff(other PropertyValue, ignoreUnknowns bool, ignoreKeys
 		sames := make(map[int]PropertyValue)
 		updates := make(map[int]ValueDiff)
 		for i := 0; i < len(old) && i < len(new); i++ {
-			if diff := old[i].diff(new[i], ignoreUnknowns, ignoreKeys); diff != nil {
+			if diff := old[i].diff(new[i], includeUnknowns, ignoreKeys); diff != nil {
 				updates[i] = *diff
 			} else {
 				sames[i] = old[i]
@@ -251,7 +251,7 @@ func (v PropertyValue) diff(other PropertyValue, ignoreUnknowns bool, ignoreKeys
 	if v.IsObject() && other.IsObject() {
 		old := v.ObjectValue()
 		new := other.ObjectValue()
-		if diff := old.diff(new, ignoreUnknowns, ignoreKeys); diff != nil {
+		if diff := old.diff(new, includeUnknowns, ignoreKeys); diff != nil {
 			return &ValueDiff{
 				Old:    v,
 				New:    other,
@@ -262,7 +262,7 @@ func (v PropertyValue) diff(other PropertyValue, ignoreUnknowns bool, ignoreKeys
 	}
 	if v.IsSecret() && other.IsSecret() {
 		old, new := v.SecretValue().Element, other.SecretValue().Element
-		diff := old.diff(new, ignoreUnknowns, ignoreKeys)
+		diff := old.diff(new, includeUnknowns, ignoreKeys)
 		if diff != nil {
 			return &ValueDiff{
 				Old:    v,
@@ -281,14 +281,14 @@ func (v PropertyValue) diff(other PropertyValue, ignoreUnknowns bool, ignoreKeys
 		}
 
 		vid, oid := vr.ID, or.ID
-		if vid.IsComputed() && ignoreUnknowns || vid.DeepEquals(oid) {
+		if vid.deepEquals(oid, includeUnknowns) {
 			return nil
 		}
 		return &ValueDiff{Old: v, New: other}
 	}
 
 	// If we got here, either the values are primitives, or they weren't the same type; do a simple diff.
-	if v.DeepEquals(other) || ignoreUnknowns && (v.IsComputed() || v.IsOutput()) {
+	if v.deepEquals(other, includeUnknowns) {
 		return nil
 	}
 	return &ValueDiff{Old: v, New: other}
