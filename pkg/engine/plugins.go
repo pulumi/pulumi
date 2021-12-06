@@ -116,7 +116,7 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 		if err != nil {
 			return set, err
 		}
-		serverUrl, err := providers.GetProviderServerURL(res.Inputs)
+		serverURL, err := providers.GetProviderServerURL(res.Inputs)
 		if err != nil {
 			return set, err
 		}
@@ -126,7 +126,7 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 			Name:      pkg.String(),
 			Kind:      workspace.ResourcePlugin,
 			Version:   version,
-			ServerURL: serverUrl,
+			ServerURL: serverURL,
 		})
 	}
 	return set, nil
