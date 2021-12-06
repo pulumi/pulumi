@@ -3548,3 +3548,60 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
 }
+
+func TestAliasWithPlans(t *testing.T) {
+	// This tests that if a resource has an alias the plan for it is still used
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	resourceName := "resA"
+	var aliases []resource.URN
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "baz",
+	})
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resourceName, true, deploytest.ResourceOptions{
+			Inputs:  ins,
+			Aliases: aliases,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Create an initial ResA
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.Nil(t, res)
+
+	// Update the name and alias and make a plan for resA
+	resourceName = "newResA"
+	aliases = make([]resource.URN, 1)
+	aliases[0] = resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	assert.NotNil(t, plan)
+	assert.Nil(t, res)
+
+	// Now try and run with the plan
+	p.Options.Plan = plan.Clone()
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.Nil(t, res)
+}
