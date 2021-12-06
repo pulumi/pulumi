@@ -534,16 +534,16 @@ func getProviderFromSource(
 
 func parseProviderRequest(pkg tokens.Package, version, serverURL string) (providers.ProviderRequest, error) {
 	var err error
-	var parsedVersion semver.Version
+	var parsedVersion *semver.Version
 	if version == "" {
 		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
 		// return providers.NewProviderRequest(nil, pkg), nil
-	} else if parsedVersion, err = semver.Parse(version); err != nil {
+	} else if *parsedVersion, err = semver.Parse(version); err != nil {
 		logging.V(5).Infof("parseProviderRequest(%s, %s): semver version string is invalid: %v", pkg, version, err)
 		return providers.ProviderRequest{}, err
 	}
 
-	return providers.NewProviderRequest(&parsedVersion, pkg, serverURL), nil
+	return providers.NewProviderRequest(parsedVersion, pkg, serverURL), nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,

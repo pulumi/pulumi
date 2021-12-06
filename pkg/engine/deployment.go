@@ -182,9 +182,13 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 					"Type tokens must be of the format <package>:<module>:<type> - "+
 					"refer to the import section of the provider resource documentation.", imp.Type.String())
 			}
-			if imp.Provider == "" && imp.Version == nil {
-				imp.Version = defaultProviderVersions[imp.Type.Package()].Version
-				imp.ServerURL = defaultProviderVersions[imp.Type.Package()].ServerURL
+			if imp.Provider == "" {
+				if imp.Version == nil {
+					imp.Version = defaultProviderVersions[imp.Type.Package()].Version
+				}
+				if imp.ServerURL == "" {
+					imp.ServerURL = defaultProviderVersions[imp.Type.Package()].ServerURL
+				}
 			}
 		}
 
