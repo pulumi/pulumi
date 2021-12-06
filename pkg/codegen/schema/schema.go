@@ -1645,6 +1645,8 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*
 		diags = diags.Append(errorf("#/meta/moduleFormat", "failed to compile regex: %v", err))
 	}
 
+	diags = diags.Extend(spec.validateTypeTokens())
+
 	pkg := &Package{}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
@@ -1827,6 +1829,35 @@ const (
 	typesRef     = "types"
 	providerRef  = "provider"
 )
+
+// Validate an individual name token.
+func (spec *PackageSpec) validateTypeToken(section, token string) hcl.Diagnostics {
+	diags := hcl.Diagnostics{}
+
+	requiredPrefix := spec.Name + ":"
+	path := memberPath(section, token)
+	if !strings.HasPrefix(token, requiredPrefix) {
+		error := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
+		diags = diags.Append(error)
+	}
+
+	return diags
+}
+
+// This is for validating non-reference type tokens.
+func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
+	diags := hcl.Diagnostics{}
+	for t := range spec.Resources {
+		diags = diags.Extend(spec.validateTypeToken("resources", t))
+	}
+	for t := range spec.Types {
+		diags = diags.Extend(spec.validateTypeToken("types", t))
+	}
+	for t := range spec.Functions {
+		diags = diags.Extend(spec.validateTypeToken("functions", t))
+	}
+	return diags
+}
 
 // Regex used to parse external schema paths. This is declared at the package scope to avoid repeated recompilation.
 var refPathRegex = regexp.MustCompile(`^/?(?P<package>[-\w]+)/(?P<version>v[^/]*)/schema\.json$`)

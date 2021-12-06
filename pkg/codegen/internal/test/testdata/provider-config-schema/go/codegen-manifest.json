@@ -8,6 +8,7 @@
     "configstation/provider.go",
     "configstation/pulumiEnums.go",
     "configstation/pulumiTypes.go",
-    "configstation/pulumiUtilities.go"
+    "configstation/pulumiUtilities.go",
+    "configstation/pulumiplugin.json"
   ]
 }

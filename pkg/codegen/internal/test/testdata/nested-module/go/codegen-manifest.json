@@ -5,6 +5,7 @@
     "foo/nested/module/init.go",
     "foo/nested/module/resource.go",
     "foo/provider.go",
-    "foo/pulumiUtilities.go"
+    "foo/pulumiUtilities.go",
+    "foo/pulumiplugin.json"
   ]
 }

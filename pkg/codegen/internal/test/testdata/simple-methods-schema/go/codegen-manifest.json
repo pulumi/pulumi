@@ -5,6 +5,7 @@
     "example/init.go",
     "example/nested/pulumiTypes.go",
     "example/provider.go",
-    "example/pulumiUtilities.go"
+    "example/pulumiUtilities.go",
+    "example/pulumiplugin.json"
   ]
 }

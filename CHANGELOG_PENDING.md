@@ -18,9 +18,14 @@
 - [sdk/dotnet] - Lookup packages by searching for `pulumiplugin.json`.
   Pulumi packages need not be prefixed by `Pulumi.` anymore.
   [#8517](https://github.com/pulumi/pulumi/pull/8517)
+  
+- [sdk/go] - Emit `pulumiplugin.json`
+  [#8530](https://github.com/pulumi/pulumi/pull/8530)
 
 ### Bug Fixes
 
+- [codegen/schema] - Error on type token names missing the correct prefix.
+  [#8538](https://github.com/pulumi/pulumi/pull/8538)
+
 - [codegen/go] - Fix `ElementType` for nested collection input and output types.
   [#8535](https://github.com/pulumi/pulumi/pull/8535)
-

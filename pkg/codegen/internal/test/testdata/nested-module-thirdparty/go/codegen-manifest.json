@@ -5,6 +5,7 @@
     "foo/doc.go",
     "foo/init.go",
     "foo/provider.go",
-    "foo/pulumiUtilities.go"
+    "foo/pulumiUtilities.go",
+    "foo/pulumiplugin.json"
   ]
 }

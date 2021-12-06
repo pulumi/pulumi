@@ -141,20 +141,36 @@ type modInfo struct {
 	Dir     string
 }
 
+// Returns the pulumiplugin.json if found. If not found, then returns nil, nil.
+// The lookup path for pulumiplugin.json is
+// 1. m.Dir
+// 2. m.Dir/go
+// 3. m.Dir/go/*
 func (m *modInfo) readPulumiPluginJSON() (*plugin.PulumiPluginJSON, error) {
 	if m.Dir == "" {
 		return nil, nil
 	}
-	path := filepath.Join(m.Dir, "pulumiplugin.json")
-	plugin, err := plugin.LoadPulumiPluginJSON(path)
-	switch {
-	case os.IsNotExist(err):
-		return nil, nil
-	case err != nil:
-		return nil, err
-	default:
-		return plugin, nil
+
+	path1 := filepath.Join(m.Dir, "pulumiplugin.json")
+	path2 := filepath.Join(m.Dir, "go", "pulumiplugin.json")
+	path3, err := filepath.Glob(filepath.Join(m.Dir, "go", "*", "pulumiplugin.json"))
+	if err != nil {
+		path3 = []string{}
 	}
+	paths := append([]string{path1, path2}, path3...)
+
+	for _, path := range paths {
+		plugin, err := plugin.LoadPulumiPluginJSON(path)
+		switch {
+		case os.IsNotExist(err):
+			continue
+		case err != nil:
+			return nil, err
+		default:
+			return plugin, nil
+		}
+	}
+	return nil, nil
 }
 
 func normalizeVersion(version string) (string, error) {
