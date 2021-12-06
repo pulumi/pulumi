@@ -46,30 +46,29 @@ install_plugin:: build
 
 install:: install_package install_plugin
 
-istanbul_tests:: $(TEST_ALL_DEPS)
-	$(TESTSUITE_SKIPPED) --skip-windows istanbul || ( \
-		istanbul test --print none _mocha -- --timeout 120000 --exclude 'bin/tests/automation/**/*.spec.js' 'bin/tests/**/*.spec.js' && \
-		istanbul report text-summary && \
-		istanbul report text \
-	)
-	$(TESTSUITE_SKIPPED) --skip-windows istanbul-with-mocks || \
-		istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
+unit_tests:: $(TEST_ALL_DEPS)
+	$(TESTSUITE_SKIPPED) --skip-windows unit-nodejs || nyc -x 'bin/tests/runtime/*ClosureCases*.js' -s mocha --timeout 120000 --exclude 'bin/tests/automation/**/*.spec.js' --exclude 'bin/tests/runtime/closureLoader.spec.js' 'bin/tests/**/*.spec.js'
+	$(TESTSUITE_SKIPPED) --skip-windows unit-nodejs || mocha --timeout 120000 'bin/tests/runtime/closureLoader.spec.js'
+	$(TESTSUITE_SKIPPED) --skip-windows unit-with-mocks-nodejs nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 auto_tests:: $(TEST_ALL_DEPS)
-	$(TESTSUITE_SKIPPED) --skip-windows auto-nodejs || ( \
-		istanbul test --print none _mocha -- --timeout 120000 'bin/tests/automation/**/*.spec.js' && \
-		istanbul report text-summary && \
-		istanbul report text \
-	)
+	$(TESTSUITE_SKIPPED) --skip-windows auto-nodejs || nyc -s mocha --timeout 120000 'bin/tests/automation/**/*.spec.js'
 
 sxs_tests:: $(TEST_ALL_DEPS)
-	echo "SKIP tests/sxs_ts_3.6" # pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd
-	echo "SKIP tests/sxs_ts_latest" # pushd tests/sxs_ts_latest && yarn ; tsc ; popd
+	$(TESTSUITE_SKIPPED) --skip-windows sxs || ( \
+		pushd tests/sxs_ts_3.6    && yarn && tsc && popd && \
+		pushd tests/sxs_ts_latest && yarn && tsc && popd )
 
-test_fast:: sxs_tests istanbul_tests
+test_fast:: sxs_tests unit_tests
+ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
+	if [ -e .nyc_output ]; then nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
+endif
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: sxs_tests istanbul_tests auto_tests
+test_all:: sxs_tests unit_tests auto_tests
+ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
+	if [ -e .nyc_output ]; then nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
+endif
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist:: build
