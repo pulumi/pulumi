@@ -176,6 +176,10 @@ jobs:
       - name: Enable code coverage
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> $GITHUB_ENV
+      - name: Set up Make (windows)
+        if: ${{ matrix.platform == 'windows-latest' }}
+        run: |
+          choco install make
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v2
         with:
@@ -192,10 +196,6 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ env.PR_COMMIT_SHA }}
       - name: Uninstall pre-installed Pulumi (windows)
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
@@ -241,16 +241,6 @@ jobs:
         run: |
           which pulumi   || echo "no pulumi"
           pulumi version || echo "no pulumi"
-      - name: Diagnose System Path and sub-process Pulumi version
-        run: |
-          python scripts/path.py
-      - name: Install Make
-        if: ${{ matrix.platform == 'windows-latest' }}
-        run: |
-          choco install make
-      - name: Diagnose System Path
-        run: |
-          python scripts/path.py
       - name: Install yarn
         run: |
           npm install -g yarn
@@ -261,6 +251,10 @@ jobs:
         run: |
           git config --global user.email "you@example.com"
           git config --global user.name "Your Name"
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
