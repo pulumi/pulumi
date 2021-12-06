@@ -336,6 +336,17 @@ jobs:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+      - name: Merge Go coverage data
+        run: |
+          pulumictl cover merge --in ./coverage --out ./coverage/go-all.txt
+          rm ./coverage/*.cov
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v2
+        with:
+          directory: coverage
+          files: '*'
+          fail_ci_if_error: true
+          verbose: true
       - name: Summarize Test Time by Package
         run: |
           mkdir -p test-results
