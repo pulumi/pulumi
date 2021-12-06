@@ -139,7 +139,7 @@ func (diff *ArrayDiff) Len() int {
 // IgnoreKeyFunc is the callback type for Diff's ignore option.
 type IgnoreKeyFunc func(key PropertyKey) bool
 
-func (props PropertyMap) diff(other PropertyMap, ignoreUnknowns bool, ignoreKeys []IgnoreKeyFunc) *ObjectDiff {
+func (props PropertyMap) diff(other PropertyMap, includeUnknowns bool, ignoreKeys []IgnoreKeyFunc) *ObjectDiff {
 	adds := make(PropertyMap)
 	deletes := make(PropertyMap)
 	sames := make(PropertyMap)
@@ -156,7 +156,7 @@ func (props PropertyMap) diff(other PropertyMap, ignoreUnknowns bool, ignoreKeys
 
 	// First find any updates or deletes.
 	for k, old := range props {
-		if ignore(k) || ignoreUnknowns && (old.IsComputed() || old.IsOutput()) {
+		if ignore(k) {
 			continue
 		}
 
@@ -164,7 +164,7 @@ func (props PropertyMap) diff(other PropertyMap, ignoreUnknowns bool, ignoreKeys
 			// If a new exists, use it; for output properties, however, ignore differences.
 			if new.IsOutput() {
 				sames[k] = old
-			} else if diff := old.diff(new, ignoreUnknowns, ignoreKeys); diff != nil {
+			} else if diff := old.diff(new, includeUnknowns, ignoreKeys); diff != nil {
 				if !old.HasValue() {
 					adds[k] = new
 				} else if !new.HasValue() {
@@ -175,7 +175,7 @@ func (props PropertyMap) diff(other PropertyMap, ignoreUnknowns bool, ignoreKeys
 			} else {
 				sames[k] = old
 			}
-		} else if old.HasValue() && (!ignoreUnknowns || !old.IsComputed()) {
+		} else if old.HasValue() || (includeUnknowns && old.IsComputed()) {
 			// If there was no new property, it has been deleted.
 			deletes[k] = old
 		}

@@ -3369,7 +3369,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
-		"<{%reset%}>resource violates plan: &{map[] map[frob:{baz}] map[foo:{bar}] map[]}<{%reset%}>\n")
+		"<{%reset%}>resource violates plan: properties changed: -frob<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
