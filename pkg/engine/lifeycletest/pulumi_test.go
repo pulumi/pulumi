@@ -3456,3 +3456,95 @@ func TestPlannedOutputChanges(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
 }
+
+func TestPlannedInputOutputDifferences(t *testing.T) {
+	// This tests that plans are working on the program inputs, not the provider outputs
+
+	createOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "baz",
+		"baz":  24,
+	})
+	updateOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "newBazzer",
+		"baz":  24,
+	})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("created-id-" + urn.Name()), createOutputs, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return updateOutputs, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	inputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "baz",
+	})
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputs})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Create an initial plan to create resA
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	assert.NotNil(t, plan)
+	assert.Nil(t, res)
+
+	// Check we can create resA even though its outputs are differnt to the planned inputs
+	p.Options.Plan = plan.Clone()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.Nil(t, res)
+
+	// Make a plan to change resA
+	inputs = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "newBazzer",
+	})
+	p.Options.Plan = nil
+	plan, res = TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
+	assert.NotNil(t, plan)
+	assert.Nil(t, res)
+
+	// Test the plan fails if we don't pass newBazzer
+	inputs = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "differentBazzer",
+	})
+	p.Options.Plan = plan.Clone()
+	validate := ExpectDiagMessage(t,
+		"<{%reset%}>resource violates plan: properties changed: ~frob<{%reset%}>\n")
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	assert.NotNil(t, snap)
+	assert.Nil(t, res)
+
+	// Check the plan succeeds if we do pass newBazzer
+	inputs = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"frob": "newBazzer",
+	})
+	p.Options.Plan = plan.Clone()
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, snap)
+	assert.Nil(t, res)
+}
