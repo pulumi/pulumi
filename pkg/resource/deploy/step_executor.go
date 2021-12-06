@@ -184,7 +184,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	// Save these new outputs to the plan
 	if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
 		diff := NewPlanDiff(oldOuts.DiffIncludeUnknowns(outs))
-		resourcePlan.Goal.OutputDiff = &diff
+		resourcePlan.Goal.OutputDiff = diff
 		resourcePlan.Outputs = outs
 	} else {
 		return result.FromError(fmt.Errorf("this should already have a plan from when we called register resources"))

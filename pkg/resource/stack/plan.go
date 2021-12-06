@@ -8,18 +8,18 @@ import (
 )
 
 func SerializePlanDiff(
-	diff deploy.PlanDiff,
+	diff *deploy.PlanDiff,
 	enc config.Encrypter,
-	showSecrets bool) (apitype.PlanDiffV1, error) {
+	showSecrets bool) (*apitype.PlanDiffV1, error) {
 
 	adds, err := SerializeProperties(diff.Adds, enc, showSecrets)
 	if err != nil {
-		return apitype.PlanDiffV1{}, err
+		return nil, err
 	}
 
 	updates, err := SerializeProperties(diff.Updates, enc, showSecrets)
 	if err != nil {
-		return apitype.PlanDiffV1{}, err
+		return nil, err
 	}
 
 	deletes := make([]string, len(diff.Deletes))
@@ -27,7 +27,7 @@ func SerializePlanDiff(
 		deletes[i] = string(diff.Deletes[i])
 	}
 
-	return apitype.PlanDiffV1{
+	return &apitype.PlanDiffV1{
 		Adds:    adds,
 		Updates: updates,
 		Deletes: deletes,
@@ -35,18 +35,22 @@ func SerializePlanDiff(
 }
 
 func DeserializePlanDiff(
-	diff apitype.PlanDiffV1,
+	diff *apitype.PlanDiffV1,
 	dec config.Decrypter,
-	enc config.Encrypter) (deploy.PlanDiff, error) {
+	enc config.Encrypter) (*deploy.PlanDiff, error) {
+
+	if diff == nil {
+		return nil, nil
+	}
 
 	adds, err := DeserializeProperties(diff.Adds, dec, enc)
 	if err != nil {
-		return deploy.PlanDiff{}, err
+		return nil, err
 	}
 
 	updates, err := DeserializeProperties(diff.Updates, dec, enc)
 	if err != nil {
-		return deploy.PlanDiff{}, err
+		return nil, err
 	}
 
 	deletes := make([]resource.PropertyKey, len(diff.Deletes))
@@ -54,7 +58,7 @@ func DeserializePlanDiff(
 		deletes[i] = resource.PropertyKey(diff.Deletes[i])
 	}
 
-	return deploy.PlanDiff{Adds: adds, Updates: updates, Deletes: deletes}, nil
+	return &deploy.PlanDiff{Adds: adds, Updates: updates, Deletes: deletes}, nil
 }
 
 func SerializeResourcePlan(
@@ -90,11 +94,11 @@ func SerializeResourcePlan(
 
 		var outputDiff *apitype.PlanDiffV1
 		if plan.Goal.OutputDiff != nil {
-			diff, err := SerializePlanDiff(*plan.Goal.OutputDiff, enc, showSecrets)
+			diff, err := SerializePlanDiff(plan.Goal.OutputDiff, enc, showSecrets)
 			if err != nil {
 				return apitype.ResourcePlanV1{}, err
 			}
-			outputDiff = &diff
+			outputDiff = diff
 		}
 
 		goal = &apitype.GoalV1{
@@ -169,11 +173,11 @@ func DeserializeResourcePlan(
 
 	var outputDiff *deploy.PlanDiff
 	if plan.Goal.OutputDiff != nil {
-		diff, err := DeserializePlanDiff(*plan.Goal.OutputDiff, dec, enc)
+		diff, err := DeserializePlanDiff(plan.Goal.OutputDiff, dec, enc)
 		if err != nil {
 			return nil, err
 		}
-		outputDiff = &diff
+		outputDiff = diff
 	}
 
 	var outputs resource.PropertyMap

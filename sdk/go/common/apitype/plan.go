@@ -29,7 +29,7 @@ type GoalV1 struct {
 	// the raw resource goal that is planned for a create
 	Properties map[string]interface{} `json:"properties,omitempty"`
 	// the resource properties that will be changed.
-	InputDiff PlanDiffV1 `json:"inputDiff,omitempty"`
+	InputDiff *PlanDiffV1 `json:"inputDiff,omitempty"`
 	// the resource outputs that will be changed.
 	OutputDiff *PlanDiffV1 `json:"outputDiff,omitempty"`
 	// an optional parent URN for this resource.
