@@ -29,9 +29,8 @@ func NewRubberTree(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
-	containerApplier := func(v plantprovider.Container) *plantprovider.Container { return v.Defaults() }
 	if args.Container != nil {
-		args.Container = args.Container.ToContainerPtrOutput().Elem().ApplyT(containerApplier).(plantprovider.ContainerPtrOutput)
+		args.Container = args.Container.ToContainerPtrOutput().ApplyT(func(v *plantprovider.Container) *plantprovider.Container { return v.Defaults() }).(plantprovider.ContainerPtrOutput)
 	}
 	if isZero(args.Diameter) {
 		args.Diameter = Diameter(6.0)
