@@ -169,7 +169,7 @@ func (rp *ResourcePlan) diffURNs(a, b []resource.URN) (message string, changed b
 	for i, urn := range a {
 		stringsA[i] = string(urn)
 	}
-	stringsB := make([]string, len(a))
+	stringsB := make([]string, len(b))
 	for i, urn := range b {
 		stringsB[i] = string(urn)
 	}
