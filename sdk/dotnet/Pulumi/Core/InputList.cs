@@ -60,7 +60,15 @@ namespace Pulumi
             _outputValue = Concat(inputs);
         }
 
+        /// <summary>
+        /// Note: this is non-standard convenience for use with collection initializers.
+        /// </summary>
         public void Add(InputList<T> inputs)
+        {
+            AddRange(inputs);
+        }
+
+        public void AddRange(InputList<T> inputs)
         {
             _outputValue = Concat(inputs);
         }
