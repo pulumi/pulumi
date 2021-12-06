@@ -62,11 +62,6 @@ func SerializeResourcePlan(
 	enc config.Encrypter,
 	showSecrets bool) (apitype.ResourcePlanV1, error) {
 
-	properties, err := SerializeProperties(plan.Goal.Properties, enc, showSecrets)
-	if err != nil {
-		return apitype.ResourcePlanV1{}, err
-	}
-
 	var outputs map[string]interface{}
 	if plan.Outputs != nil {
 		outs, err := SerializeProperties(plan.Outputs, enc, showSecrets)
@@ -76,43 +71,51 @@ func SerializeResourcePlan(
 		outputs = outs
 	}
 
-	inputDiff, err := SerializePlanDiff(plan.Goal.InputDiff, enc, showSecrets)
-	if err != nil {
-		return apitype.ResourcePlanV1{}, err
-	}
-
-	var outputDiff *apitype.PlanDiffV1
-	if plan.Goal.OutputDiff != nil {
-		diff, err := SerializePlanDiff(*plan.Goal.OutputDiff, enc, showSecrets)
-		if err != nil {
-			return apitype.ResourcePlanV1{}, err
-		}
-		outputDiff = &diff
-	}
-
-	goal := apitype.GoalV1{
-		Type:                    plan.Goal.Type,
-		Name:                    plan.Goal.Name,
-		Custom:                  plan.Goal.Custom,
-		Properties:              properties,
-		InputDiff:               inputDiff,
-		OutputDiff:              outputDiff,
-		Parent:                  plan.Goal.Parent,
-		Protect:                 plan.Goal.Protect,
-		Dependencies:            plan.Goal.Dependencies,
-		Provider:                plan.Goal.Provider,
-		PropertyDependencies:    plan.Goal.PropertyDependencies,
-		DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
-		IgnoreChanges:           plan.Goal.IgnoreChanges,
-		AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
-		Aliases:                 plan.Goal.Aliases,
-		ID:                      plan.Goal.ID,
-		CustomTimeouts:          plan.Goal.CustomTimeouts,
-	}
-
 	steps := make([]apitype.OpType, len(plan.Ops))
 	for i, op := range plan.Ops {
 		steps[i] = apitype.OpType(op)
+	}
+
+	var goal *apitype.GoalV1
+	if plan.Goal != nil {
+		properties, err := SerializeProperties(plan.Goal.Properties, enc, showSecrets)
+		if err != nil {
+			return apitype.ResourcePlanV1{}, err
+		}
+
+		inputDiff, err := SerializePlanDiff(plan.Goal.InputDiff, enc, showSecrets)
+		if err != nil {
+			return apitype.ResourcePlanV1{}, err
+		}
+
+		var outputDiff *apitype.PlanDiffV1
+		if plan.Goal.OutputDiff != nil {
+			diff, err := SerializePlanDiff(*plan.Goal.OutputDiff, enc, showSecrets)
+			if err != nil {
+				return apitype.ResourcePlanV1{}, err
+			}
+			outputDiff = &diff
+		}
+
+		goal = &apitype.GoalV1{
+			Type:                    plan.Goal.Type,
+			Name:                    plan.Goal.Name,
+			Custom:                  plan.Goal.Custom,
+			Properties:              properties,
+			InputDiff:               inputDiff,
+			OutputDiff:              outputDiff,
+			Parent:                  plan.Goal.Parent,
+			Protect:                 plan.Goal.Protect,
+			Dependencies:            plan.Goal.Dependencies,
+			Provider:                plan.Goal.Provider,
+			PropertyDependencies:    plan.Goal.PropertyDependencies,
+			DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
+			IgnoreChanges:           plan.Goal.IgnoreChanges,
+			AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
+			Aliases:                 plan.Goal.Aliases,
+			ID:                      plan.Goal.ID,
+			CustomTimeouts:          plan.Goal.CustomTimeouts,
+		}
 	}
 
 	return apitype.ResourcePlanV1{

@@ -59,7 +59,7 @@ type GoalV1 struct {
 // ResourcePlanV1 is the serializable version of a resource plan.
 type ResourcePlanV1 struct {
 	// The goal state for the resource.
-	Goal GoalV1 `json:"goal"`
+	Goal *GoalV1 `json:"goal,omitempty"`
 	// The steps to be performed on the resource.
 	Steps []OpType `json:"steps,omitempty"`
 	// The proposed outputs for the resource, if any. Purely advisory.
