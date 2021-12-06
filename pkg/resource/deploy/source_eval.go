@@ -288,13 +288,13 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	// problematic for a lot of reasons.
 	if req.Version() != nil {
 		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using version %s from request", req, req.Version())
-		inputs["version"] = resource.NewStringProperty(req.Version().String())
+		inputs.Special().Version().Set(req.Version().String())
 	} else {
 		logging.V(5).Infof(
 			"newRegisterDefaultProviderEvent(%s): no version specified, falling back to default version", req)
 		if version := d.defaultProviderInfo[req.Package()].Version; version != nil {
 			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default version hit on version %s", req, version)
-			inputs["version"] = resource.NewStringProperty(version.String())
+			inputs.Special().Version().Set(version.String())
 		} else {
 			logging.V(5).Infof(
 				"newRegisterDefaultProviderEvent(%s): default provider miss, sending nil version to engine", req)
@@ -303,13 +303,13 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 
 	if req.ServerURL() != "" {
 		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using serverURL %s from request", req, req.ServerURL())
-		inputs["serverURL"] = resource.NewStringProperty(req.ServerURL())
+		inputs.Special().ServerURL().Set(req.ServerURL())
 	} else {
 		logging.V(5).Infof(
 			"newRegisterDefaultProviderEvent(%s): no serverURL specified, falling back to default serverURL", req)
 		if serverURL := d.defaultProviderInfo[req.Package()].ServerURL; serverURL != "" {
 			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default serverURL hit on %s", req, serverURL)
-			inputs["serverURL"] = resource.NewStringProperty(serverURL)
+			inputs.Special().ServerURL().Set(serverURL)
 		} else {
 			logging.V(5).Infof(
 				"newRegisterDefaultProviderEvent(%s): default serverURL miss, sending empty string to engine", req)
@@ -935,10 +935,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 	if providers.IsProviderType(t) {
 		if req.GetVersion() != "" {
-			props["version"] = resource.NewStringProperty(req.GetVersion())
+			props.Special().Version().Set(req.GetVersion())
 		}
 		if req.GetServerURL() != "" {
-			props["serverURL"] = resource.NewStringProperty(req.GetServerURL())
+			props.Special().ServerURL().Set(req.GetServerURL())
 		}
 	}
 
