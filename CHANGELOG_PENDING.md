@@ -19,5 +19,9 @@
   Pulumi packages need not be prefixed by `Pulumi.` anymore.
   [#8517](https://github.com/pulumi/pulumi/pull/8517)
 
+- [engine] - Interpret `pluginDownloadURL` as the provider host url when
+  downloading plugins.
+  [#8544](https://github.com/pulumi/pulumi/pull/8544)
+
 ### Bug Fixes
 
