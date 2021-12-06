@@ -880,7 +880,9 @@ func writePlan(path string, plan *deploy.Plan, enc config.Encrypter, showSecrets
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(f).Encode(deploymentPlan)
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(deploymentPlan)
 }
 
 func readPlan(path string, dec config.Decrypter, enc config.Encrypter) (*deploy.Plan, error) {
