@@ -535,3 +535,41 @@ func TestReplaceOnChanges(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateTypeToken(t *testing.T) {
+	cases := []struct {
+		name        string
+		input       string
+		expectError bool
+	}{
+		{
+			name:  "valid",
+			input: "example::typename",
+		},
+		{
+			name:        "invalid",
+			input:       "xyz::typename",
+			expectError: true,
+		},
+		{
+			name:  "valid-has-subsection",
+			input: "example:index:typename",
+		},
+		{
+			name:        "invalid-has-subsection",
+			input:       "not:index:typename",
+			expectError: true,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			spec := &PackageSpec{Name: "example"}
+			errors := spec.validateTypeToken("type", c.input)
+			if c.expectError {
+				assert.True(t, errors.HasErrors())
+			} else {
+				assert.False(t, errors.HasErrors())
+			}
+		})
+	}
+}

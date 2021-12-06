@@ -1,5 +1,5 @@
 {
-  "name": "bad-enum-1",
+  "name": "fake-provider",
   "version": "0.0.1",
   "types": {
     "fake-provider:module1:BadEnum": {

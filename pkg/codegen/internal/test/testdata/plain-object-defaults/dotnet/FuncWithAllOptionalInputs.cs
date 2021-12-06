@@ -6,10 +6,9 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
-using Pulumi.Example;
 using Pulumi.Utilities;
 
-namespace Pulumi.Mypkg
+namespace Pulumi.Example
 {
     public static class FuncWithAllOptionalInputs
     {
@@ -17,13 +16,13 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with all optional inputs.
         /// </summary>
         public static Task<FuncWithAllOptionalInputsResult> InvokeAsync(FuncWithAllOptionalInputsArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithAllOptionalInputsResult>("example::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsArgs(), options.WithVersion());
 
         /// <summary>
         /// Check codegen of functions with all optional inputs.
         /// </summary>
         public static Output<FuncWithAllOptionalInputsResult> Invoke(FuncWithAllOptionalInputsInvokeArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("example::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithVersion());
     }
 
 
@@ -33,7 +32,7 @@ namespace Pulumi.Mypkg
         /// Property A
         /// </summary>
         [Input("a")]
-        public Pulumi.Example.Inputs.HelmReleaseSettings? A { get; set; }
+        public Inputs.HelmReleaseSettings? A { get; set; }
 
         /// <summary>
         /// Property B
@@ -53,7 +52,7 @@ namespace Pulumi.Mypkg
         /// Property A
         /// </summary>
         [Input("a")]
-        public Input<Pulumi.Example.Inputs.HelmReleaseSettingsArgs>? A { get; set; }
+        public Input<Inputs.HelmReleaseSettingsArgs>? A { get; set; }
 
         /// <summary>
         /// Property B
