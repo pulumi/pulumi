@@ -15,6 +15,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -23,8 +25,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -210,7 +214,14 @@ func newPreviewCmd() *cobra.Command {
 					if err = writePlan(planFilePath, plan, encrypter, showSecrets); err != nil {
 						return result.FromError(err)
 					}
-					// TODO(pdg-plan): emit a message about how to apply the plan
+
+					// Write out message on how to use the plan
+					var buf bytes.Buffer
+					writer := bufio.NewWriter(&buf)
+					fprintf(writer, "Update plan written to '%s'", planFilePath)
+					fprintf(writer, "\nRun `pulumi up --plan='%s'` to constrain the update to the operations planned by this preview", planFilePath)
+					contract.IgnoreError(writer.Flush())
+					cmdutil.Diag().Infof(diag.RawMessage("" /*urn*/, buf.String()))
 				}
 				return nil
 			}
