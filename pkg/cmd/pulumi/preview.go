@@ -219,7 +219,10 @@ func newPreviewCmd() *cobra.Command {
 					var buf bytes.Buffer
 					writer := bufio.NewWriter(&buf)
 					fprintf(writer, "Update plan written to '%s'", planFilePath)
-					fprintf(writer, "\nRun `pulumi up --plan='%s'` to constrain the update to the operations planned by this preview", planFilePath)
+					fprintf(
+						writer,
+						"\nRun `pulumi up --plan='%s'` to constrain the update to the operations planned by this preview",
+						planFilePath)
 					contract.IgnoreError(writer.Flush())
 					cmdutil.Diag().Infof(diag.RawMessage("" /*urn*/, buf.String()))
 				}
