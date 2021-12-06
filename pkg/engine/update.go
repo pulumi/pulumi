@@ -24,8 +24,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/blang/semver"
-
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -204,7 +202,7 @@ func RunInstallPlugins(
 
 func installPlugins(
 	proj *workspace.Project, pwd, main string, target *deploy.Target,
-	plugctx *plugin.Context, returnInstallErrors bool) (pluginSet, map[tokens.Package]*semver.Version, error) {
+	plugctx *plugin.Context, returnInstallErrors bool) (pluginSet, map[tokens.Package]workspace.PluginInfo, error) {
 
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//

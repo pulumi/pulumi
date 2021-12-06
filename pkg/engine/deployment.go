@@ -183,7 +183,8 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 					"refer to the import section of the provider resource documentation.", imp.Type.String())
 			}
 			if imp.Provider == "" && imp.Version == nil {
-				imp.Version = defaultProviderVersions[imp.Type.Package()]
+				imp.Version = defaultProviderVersions[imp.Type.Package()].Version
+				imp.ServerURL = defaultProviderVersions[imp.Type.Package()].ServerURL
 			}
 		}
 

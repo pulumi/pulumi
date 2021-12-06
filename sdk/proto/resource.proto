@@ -61,6 +61,7 @@ message ReadResourceRequest {
     repeated string additionalSecretOutputs = 10;   // a list of output properties that should also be treated as secret, in addition to ones we detect.
     repeated string aliases = 11;          // a list of additional URNs that shoud be considered the same.
     bool acceptResources = 12;             // when true operations should return resource references as strongly typed.
+    string serverURL = 13;                 // the server url of the provider to use when servicing this request.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
