@@ -3510,7 +3510,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	assert.NotNil(t, plan)
 	assert.Nil(t, res)
 
-	// Check we can create resA even though its outputs are differnt to the planned inputs
+	// Check we can create resA even though its outputs are different to the planned inputs
 	p.Options.Plan = plan.Clone()
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
