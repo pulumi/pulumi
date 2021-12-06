@@ -206,13 +206,17 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			originalPlan = op.Opts.Engine.Plan.Clone()
 		}
 
-		_, changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		plan, changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
 		if res != nil || kind == apitype.PreviewUpdate {
 			return changes, res
 		}
 
-		// Reset the plan structure
-		op.Opts.Engine.Plan = originalPlan
+		// If we had an original plan use it, else if we're in experimental mode use the newly generated plan
+		if originalPlan != nil {
+			op.Opts.Engine.Plan = originalPlan
+		} else if cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
+			op.Opts.Engine.Plan = plan
+		}
 	}
 
 	// Perform the change (!DryRun) and show the cloud link to the result.
