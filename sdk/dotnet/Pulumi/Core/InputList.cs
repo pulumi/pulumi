@@ -66,13 +66,6 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// Concatenates the values in this list with the value in <paramref name="other"/>,
-        /// returning the concatenated sequence in a new <see cref="InputList{T}"/>.
-        /// </summary>
-        public InputList<T> Concat(Input<T> other)
-            => Output.Concat(_outputValue, other);
-
-        /// <summary>
         /// Concatenates the values in this list with the values in <paramref name="other"/>,
         /// returning the concatenated sequence in a new <see cref="InputList{T}"/>.
         /// </summary>
