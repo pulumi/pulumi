@@ -1837,8 +1837,7 @@ func (spec *PackageSpec) validateTypeToken(section, token string) hcl.Diagnostic
 	requiredPrefix := spec.Name + ":"
 	path := memberPath(section, token)
 	if !strings.HasPrefix(token, requiredPrefix) {
-		error := errorf(path, "'%s' is not prefix by the package name: '%s:'", token, spec.Name)
-		fmt.Printf("appended to diags: %s\n", error)
+		error := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
 		diags = diags.Append(error)
 	}
 
