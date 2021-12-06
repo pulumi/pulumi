@@ -8,6 +8,7 @@
     "foo_bar/deeply/nested/module/__init__.py",
     "foo_bar/deeply/nested/module/resource.py",
     "foo_bar/provider.py",
+    "foo_bar/pulumiplugin.json",
     "foo_bar/py.typed",
     "setup.py"
   ]

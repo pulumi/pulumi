@@ -39,10 +39,16 @@
     <None Include="version.txt" Pack="True" PackagePath="content" />
   </ItemGroup>
 
+   <ItemGroup>
+    <EmbeddedResource Include="pulumiplugin.json" />
+    <None Include="pulumiplugin.json" Pack="True" PackagePath="content" />
+  </ItemGroup>
+
   <ItemGroup>
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\..\..\..\..\sdk\dotnet\Pulumi\Pulumi.csproj"  />
   </ItemGroup>
 
   <ItemGroup>

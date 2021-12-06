@@ -6,6 +6,7 @@
     "pulumi_foobar/_utilities.py",
     "pulumi_foobar/module_resource.py",
     "pulumi_foobar/provider.py",
+    "pulumi_foobar/pulumiplugin.json",
     "pulumi_foobar/py.typed",
     "setup.py"
   ]

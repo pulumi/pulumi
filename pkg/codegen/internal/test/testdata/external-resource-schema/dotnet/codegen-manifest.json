@@ -9,6 +9,7 @@
     "README.md",
     "Utilities.cs",
     "Workload.cs",
-    "logo.png"
+    "logo.png",
+    "pulumiplugin.json"
   ]
 }

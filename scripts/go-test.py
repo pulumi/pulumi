@@ -44,7 +44,13 @@ if not packages:
     sys.exit(0)
 
 
-options_and_packages = options(options_and_packages) + packages
+options = options(options_and_packages)
+cov = os.environ.get('PULUMI_TEST_COVERAGE_PATH', None)
+if cov is not None:
+    options = options + [f'-coverprofile={cov}/go-test-{os.urandom(4).hex()}.cov', '-coverpkg=github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/...']
+
+
+options_and_packages = options + packages
 
 
 if shutil.which('gotestsum') is not None:

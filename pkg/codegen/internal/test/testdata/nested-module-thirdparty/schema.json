@@ -26,9 +26,9 @@
       }
     },
     "csharp": {
-      "packageReferences": {
-        "Pulumi": "3.12"
-      }
+      "projectReferences": [
+        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ]
     },
     "go": {
       "importBasePath": "nested-module-thirdparty/foo"

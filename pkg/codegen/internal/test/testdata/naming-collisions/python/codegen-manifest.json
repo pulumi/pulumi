@@ -5,6 +5,7 @@
     "pulumi_example/_enums.py",
     "pulumi_example/_utilities.py",
     "pulumi_example/provider.py",
+    "pulumi_example/pulumiplugin.json",
     "pulumi_example/py.typed",
     "pulumi_example/resource.py",
     "pulumi_example/resource_input.py",

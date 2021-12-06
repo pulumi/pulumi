@@ -1,12 +1,26 @@
 ### Improvements
 
-- [codegen/go] - Remove `ResourcePtr` types from generated SDKs. Besides being
-  unnecessary--`Resource` types already accommodate `nil` to indicate the lack of
-  a value--the implementation of `Ptr` types for resources was incorrect, making
-  these types virtually unusable in practice.
-  [#8449](https://github.com/pulumi/pulumi/pull/8449)
+- [codegen/go] - Simplify the application of object defaults in generated SDKs.
+  [#8539](https://github.com/pulumi/pulumi/pull/8539)
+
+- [codegen/{python,dotnet}] - Emit `pulumiplugin.json` unconditionally.
+  [#8527](https://github.com/pulumi/pulumi/pull/8527)
+  [#8532](https://github.com/pulumi/pulumi/pull/8532)
+
+- [sdk/python] - Lookup Pulumi packages by searching for `pulumiplugin.json`.
+  Pulumi packages need not be prefixed by `pulumi-` anymore.
+  [#8515](https://github.com/pulumi/pulumi/pull/8515)
+
+- [sdk/go] - Lookup packages by searching for `pulumiplugin.json`.
+  Pulumi packages need not be prefixed by `github.com/pulumi/pulumi-` anymore.
+  [#8516](https://github.com/pulumi/pulumi/pull/8516)
+
+- [sdk/dotnet] - Lookup packages by searching for `pulumiplugin.json`.
+  Pulumi packages need not be prefixed by `Pulumi.` anymore.
+  [#8517](https://github.com/pulumi/pulumi/pull/8517)
 
 ### Bug Fixes
 
-- [codegen/go] - Respect default values in Pulumi object types.
-  [#8411](https://github.com/pulumi/pulumi/pull/8400)
+- [codegen/go] - Fix `ElementType` for nested collection input and output types.
+  [#8535](https://github.com/pulumi/pulumi/pull/8535)
+

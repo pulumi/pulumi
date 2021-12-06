@@ -1941,7 +1941,6 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 	plugin := &plugin.PulumiPluginJSON{
 		Resource: true,
 		Name:     pkg.Name,
-		Version:  "${PLUGIN_VERSION}",
 		Server:   pkg.PluginDownloadURL,
 	}
 	return plugin.JSON()
@@ -1949,7 +1948,7 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func genPackageMetadata(
-	tool string, pkg *schema.Package, pyPkgName string, emitPulumiPluginFile bool, requires map[string]string, pythonRequires string) (string, error) {
+	tool string, pkg *schema.Package, pyPkgName string, requires map[string]string, pythonRequires string) (string, error) {
 
 	w := &bytes.Buffer{}
 	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil)
@@ -2039,9 +2038,7 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "      package_data={\n")
 	fmt.Fprintf(w, "          '%s': [\n", pyPkgName)
 	fmt.Fprintf(w, "              'py.typed',\n")
-	if emitPulumiPluginFile {
-		fmt.Fprintf(w, "              'pulumiplugin.json',\n")
-	}
+	fmt.Fprintf(w, "              'pulumiplugin.json',\n")
 
 	fmt.Fprintf(w, "          ]\n")
 	fmt.Fprintf(w, "      },\n")
@@ -2823,17 +2820,15 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		}
 	}
 
-	// Generate pulumiplugin.json, if requested.
-	if info.EmitPulumiPluginFile {
-		plugin, err := genPulumiPluginFile(pkg)
-		if err != nil {
-			return nil, err
-		}
-		files.add(filepath.Join(pkgName, "pulumiplugin.json"), plugin)
+	// Generate pulumiplugin.json
+	plugin, err := genPulumiPluginFile(pkg)
+	if err != nil {
+		return nil, err
 	}
+	files.add(filepath.Join(pkgName, "pulumiplugin.json"), plugin)
 
 	// Finally emit the package metadata (setup.py).
-	setup, err := genPackageMetadata(tool, pkg, pkgName, info.EmitPulumiPluginFile, info.Requires, info.PythonRequires)
+	setup, err := genPackageMetadata(tool, pkg, pkgName, info.Requires, info.PythonRequires)
 	if err != nil {
 		return nil, err
 	}

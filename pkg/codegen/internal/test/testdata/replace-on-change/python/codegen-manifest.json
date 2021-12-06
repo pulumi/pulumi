@@ -9,6 +9,7 @@
     "pulumi_example/no_recursive.py",
     "pulumi_example/outputs.py",
     "pulumi_example/provider.py",
+    "pulumi_example/pulumiplugin.json",
     "pulumi_example/py.typed",
     "pulumi_example/toy_store.py",
     "setup.py"

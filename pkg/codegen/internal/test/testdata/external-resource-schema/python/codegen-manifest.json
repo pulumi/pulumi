@@ -8,6 +8,7 @@
     "pulumi_example/cat.py",
     "pulumi_example/component.py",
     "pulumi_example/provider.py",
+    "pulumi_example/pulumiplugin.json",
     "pulumi_example/py.typed",
     "pulumi_example/workload.py",
     "setup.py"

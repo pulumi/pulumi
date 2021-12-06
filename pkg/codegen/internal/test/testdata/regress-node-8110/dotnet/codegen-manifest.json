@@ -6,6 +6,7 @@
     "Pulumi.My8110.csproj",
     "README.md",
     "Utilities.cs",
-    "logo.png"
+    "logo.png",
+    "pulumiplugin.json"
   ]
 }

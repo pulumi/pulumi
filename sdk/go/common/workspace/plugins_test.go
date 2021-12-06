@@ -234,3 +234,19 @@ func TestPluginSelection_EmptyVersionWithAlternatives(t *testing.T) {
 	assert.Equal(t, "myplugin", result.Name)
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
+
+func TestInterpolateURL(t *testing.T) {
+	version := semver.MustParse("1.0.0")
+	const os = "linux"
+	const arch = "amd64"
+	assert.Equal(t, "", interpolateURL("", version, os, arch))
+	assert.Equal(t,
+		"https://get.pulumi.com/releases/plugins",
+		interpolateURL("https://get.pulumi.com/releases/plugins", version, os, arch))
+	assert.Equal(t,
+		"https://github.com/org/repo/releases/download/1.0.0",
+		interpolateURL("https://github.com/org/repo/releases/download/${VERSION}", version, os, arch))
+	assert.Equal(t,
+		"https://github.com/org/repo/releases/download/1.0.0/linux/amd64",
+		interpolateURL("https://github.com/org/repo/releases/download/${VERSION}/${OS}/${ARCH}", version, os, arch))
+}

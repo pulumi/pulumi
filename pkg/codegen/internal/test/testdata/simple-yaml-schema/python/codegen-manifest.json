@@ -9,6 +9,7 @@
     "pulumi_example/other_resource.py",
     "pulumi_example/outputs.py",
     "pulumi_example/provider.py",
+    "pulumi_example/pulumiplugin.json",
     "pulumi_example/py.typed",
     "pulumi_example/resource.py",
     "pulumi_example/type_uses.py",

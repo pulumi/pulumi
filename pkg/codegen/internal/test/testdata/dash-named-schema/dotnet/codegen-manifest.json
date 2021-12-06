@@ -8,6 +8,7 @@
     "Submodule1/ModuleResource.cs",
     "Submodule1/README.md",
     "Utilities.cs",
-    "logo.png"
+    "logo.png",
+    "pulumiplugin.json"
   ]
 }

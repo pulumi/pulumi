@@ -39,6 +39,11 @@
     <None Include="version.txt" Pack="True" PackagePath="content" />
   </ItemGroup>
 
+   <ItemGroup>
+    <EmbeddedResource Include="pulumiplugin.json" />
+    <None Include="pulumiplugin.json" Pack="True" PackagePath="content" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="5.10.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />

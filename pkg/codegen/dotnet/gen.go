@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -145,6 +146,9 @@ type modContext struct {
 	namespaces             map[string]string
 	compatibility          string
 	dictionaryConstructors bool
+
+	// If types in the Input namespace are used.
+	fullyQualifiedInputs bool
 
 	// Determine whether to lift single-value method return values
 	liftSingleValueMethodReturns bool
@@ -383,6 +387,9 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		typ := namingCtx.tokenToNamespace(t.Token, qualifier)
 		if (typ == namingCtx.namespaceName && qualifier == "") || typ == namingCtx.namespaceName+"."+qualifier {
 			typ = qualifier
+		}
+		if typ == "Inputs" && mod.fullyQualifiedInputs {
+			typ = fmt.Sprintf("%s.Inputs", mod.namespaceName)
 		}
 		if typ != "" {
 			typ += "."
@@ -1279,11 +1286,24 @@ func (mod *modContext) genFunctionFileCode(f *schema.Function) (string, error) {
 	mod.getImports(f, imports)
 	buffer := &bytes.Buffer{}
 	importStrings := pulumiImports
+
+	// True if the function has a non-standard namespace.
+	nonStandardNamespace := mod.namespaceName != mod.tokenToNamespace(f.Token, "")
+	// If so, we need to import our project defined types.
+	if nonStandardNamespace {
+		importStrings = append(importStrings, mod.namespaceName)
+	}
 	for _, i := range imports {
 		importStrings = append(importStrings, i.SortedValues()...)
 	}
 	if f.NeedsOutputVersion() {
 		importStrings = append(importStrings, "Pulumi.Utilities")
+	}
+
+	// We need to qualify input types when we are not in the same module as them.
+	if nonStandardNamespace {
+		defer func(current bool) { mod.fullyQualifiedInputs = current }(mod.fullyQualifiedInputs)
+		mod.fullyQualifiedInputs = true
 	}
 	mod.genHeader(buffer, importStrings)
 	if err := mod.genFunction(buffer, f); err != nil {
@@ -2119,9 +2139,18 @@ func genPackageMetadata(pkg *schema.Package,
 	if err != nil {
 		return err
 	}
+	plugin, err := (&plugin.PulumiPluginJSON{
+		Resource: true,
+		Name:     pkg.Name,
+		Server:   pkg.PluginDownloadURL,
+	}).JSON()
+	if err != nil {
+		return err
+	}
 
 	files.add(assemblyName+".csproj", projectFile)
 	files.add("logo.png", logo)
+	files.add("pulumiplugin.json", plugin)
 	return nil
 }
 
