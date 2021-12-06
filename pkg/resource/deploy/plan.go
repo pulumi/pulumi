@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mitchellh/copystructure"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -42,6 +44,11 @@ func NewPlan(config config.Map) Plan {
 		Manifest:      manifest,
 		Config:        config,
 	}
+}
+
+// Clone makes a deep copy of the given plan and returns a pointer to the clone.
+func (plan *Plan) Clone() *Plan {
+	return copystructure.Must(copystructure.Copy(plan)).(*Plan)
 }
 
 // PlanDiff holds the results of diffing two object property maps.

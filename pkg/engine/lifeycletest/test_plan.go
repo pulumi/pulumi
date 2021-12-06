@@ -209,18 +209,6 @@ func assertIsErrorOrBailResult(t *testing.T, res result.Result) {
 	assert.NotNil(t, res)
 }
 
-// ClonePlan makes a deep copy of the given plan and returns a pointer to the clone.
-func ClonePlan(t *testing.T, plan *deploy.Plan) *deploy.Plan {
-	t.Helper()
-	if plan != nil {
-		copiedPlan := copystructure.Must(copystructure.Copy(plan)).(*deploy.Plan)
-		assert.True(t, reflect.DeepEqual(plan, copiedPlan))
-		return copiedPlan
-	}
-
-	return plan
-}
-
 // CloneSnapshot makes a deep copy of the given snapshot and returns a pointer to the clone.
 func CloneSnapshot(t *testing.T, snap *deploy.Snapshot) *deploy.Snapshot {
 	t.Helper()

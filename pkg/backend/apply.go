@@ -197,13 +197,22 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	// Preview the operation to the user and ask them if they want to proceed.
 
 	if !op.Opts.SkipPreview {
-		plan, changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		// We want to run the preview with the given plan and then run the full update with the initial plan as well,
+		// but because plans are mutated as they're checked we need to clone it here.
+		// We want to use the original plan because a program could be non-deterministic and have a plan of
+		// operations P0, the update preview could return P1, and then the actual update could run P2, were P1 < P2 < P0.
+		var originalPlan *deploy.Plan
+		if op.Opts.Engine.Plan != nil {
+			originalPlan = op.Opts.Engine.Plan.Clone()
+		}
+
+		_, changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
 		if res != nil || kind == apitype.PreviewUpdate {
 			return changes, res
 		}
 
-		// TODO(pdg-plan): should this check for an existing plan?
-		op.Opts.Engine.Plan = plan
+		// Reset the plan structure
+		op.Opts.Engine.Plan = originalPlan
 	}
 
 	// Perform the change (!DryRun) and show the cloud link to the result.

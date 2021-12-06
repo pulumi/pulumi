@@ -2669,7 +2669,7 @@ func TestPlannedUpdate(t *testing.T) {
 			24,
 		},
 	})
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
 		"<{%reset%}>resource violates plan: properties changed: -baz, -foo, -zed<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
@@ -2697,7 +2697,7 @@ func TestPlannedUpdate(t *testing.T) {
 		},
 		"zed": "grr",
 	})
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
@@ -2760,7 +2760,7 @@ func TestUnplannedCreate(t *testing.T) {
 
 	// Now set the flag for the language runtime to create a resource, and run update with the plan
 	createResource = true
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
 		"<{%reset%}>create is not allowed by the plan: no steps were expected for this resource<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
@@ -2830,7 +2830,7 @@ func TestUnplannedDelete(t *testing.T) {
 	// Now set the flag for the language runtime to not create resB and run an update with
 	// the no-op plan, this should block the delete
 	createAllResources = false
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
 		"<{%reset%}>delete is not allowed by the plan: this resource is constrained to same<{%reset%}>\n")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
@@ -2903,7 +2903,7 @@ func TestExpectedDelete(t *testing.T) {
 	// Now run but set the runtime to return resA and resB, given we expected resB to be deleted
 	// this should be an error
 	createAllResources = true
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, "<{%reset%}>resource violates plan: resource unexpectedly not deleted<{%reset%}>\n")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
@@ -2968,7 +2968,7 @@ func TestExpectedCreate(t *testing.T) {
 	// Now run but set the runtime to return resA, given we expected resB to be created
 	// this should be an error
 	createAllResources = false
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
 		"<{%reset%}>expected resource operations for "+
 			"urn:pulumi:test::test::pkgA:m:typA::resB but none were seen<{%reset%}>\n")
@@ -3023,7 +3023,7 @@ func TestPropertySetChange(t *testing.T) {
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 	})
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, "<{%reset%}>resource violates plan: properties changed: -frob<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
@@ -3072,7 +3072,7 @@ func TestExpectedUnneededCreate(t *testing.T) {
 	assert.Nil(t, res)
 
 	// Now run again with the plan set but the snapshot that resA already exists
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
@@ -3139,7 +3139,7 @@ func TestExpectedUnneededDelete(t *testing.T) {
 	assert.Nil(t, res)
 
 	// Now run again with the plan set but the snapshot that resA is already deleted
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
@@ -3233,7 +3233,7 @@ func TestResoucesWithSames(t *testing.T) {
 		"foo": "bar",
 		"zed": 24,
 	})
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
@@ -3312,7 +3312,7 @@ func TestPlannedPreviews(t *testing.T) {
 			24,
 		},
 	})
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
 		"<{%reset%}>resource violates plan: properties changed: -baz, -foo, -zed<{%reset%}>\n")
 	_, res = TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate)
@@ -3331,7 +3331,7 @@ func TestPlannedPreviews(t *testing.T) {
 		},
 		"zed": "grr",
 	})
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	_, res = TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	assert.Nil(t, res)
 }
@@ -3399,7 +3399,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		"foo": "baz",
 		"zed": 24,
 	})
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, "<{%reset%}>resource violates plan: properties changed: ~zed<{%reset%}>\n")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.Nil(t, res)
@@ -3458,7 +3458,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 	outs = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar",
 	})
-	p.Options.Plan = ClonePlan(t, plan)
+	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
 		"<{%reset%}>resource violates plan: &{map[] map[frob:{baz}] map[foo:{bar}] map[]}<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
