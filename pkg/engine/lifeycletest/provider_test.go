@@ -1127,9 +1127,10 @@ func TestServerURLPassthrough(t *testing.T) {
 	}
 
 	pkgAServerURL := "get.pulumi.com/${VERSION}"
+	pkgAType := providers.MakeProviderType("pkgA")
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, deploytest.ResourceOptions{
+		provURN, provID, _, err := monitor.RegisterResource(pkgAType, "provA", true, deploytest.ResourceOptions{
 			ServerURL: pkgAServerURL,
 		})
 		assert.NoError(t, err)
@@ -1156,7 +1157,7 @@ func TestServerURLPassthrough(t *testing.T) {
 
 		for _, e := range entries {
 			r := e.Step.New()
-			if r.Type == providers.MakeProviderType("pkgA") && r.Inputs["pluginDownloadURL"].StringValue() != pkgAServerURL {
+			if r.Type == pkgAType && r.Inputs["pluginDownloadURL"].StringValue() != pkgAServerURL {
 				return result.Errorf("Found unexpected value %v", r.Inputs["pluginDownloadURL"])
 			}
 		}
