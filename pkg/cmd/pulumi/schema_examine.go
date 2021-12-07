@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -194,13 +195,7 @@ func selectSlice(prompt string, slice reflect.Value, args displayArgs) {
 func showString(prompt string, val reflect.Value, args displayArgs) {
 	val = drillType(val)
 	contract.Assert(val.Kind() == reflect.String)
-	lines := []string{}
-	s := val.String()
-	for len(s) > MaxLineSize {
-		lines = append(lines, s[:MaxLineSize])
-		s = s[MaxLineSize:]
-	}
-	lines = append(lines, s)
+	lines := breakStringIntoLines(val.String(), MaxLineSize)
 
 	var result string
 	noneDrillable := func(_ interface{}) error { return nil }
@@ -545,4 +540,35 @@ func isEmptyValue(v reflect.Value) bool {
 	default:
 		return false
 	}
+}
+
+// Attempts to break s into lines of length targetLength. This is a best effort, and does not
+// guarantee that each line is less then targetLength.
+func breakStringIntoLines(input string, targetLength int) []string {
+	s := []rune(input)
+	lines := []string{}
+	for len(s) > targetLength {
+		guess := targetLength
+
+		// We find the end of the last word
+		for !unicode.IsSpace(s[guess]) && guess > 0 {
+			guess--
+		}
+
+		// The word is longer then targetLength. Take the whole word.
+		if guess == 0 {
+			guess = targetLength
+			for guess < len(s) && !unicode.IsSpace(s[guess]) {
+				guess++
+			}
+		}
+
+		lines = append(lines, string(s[:guess]))
+		s = s[guess:]
+	}
+
+	// Get the last line
+	lines = append(lines, string(s))
+
+	return lines
 }
