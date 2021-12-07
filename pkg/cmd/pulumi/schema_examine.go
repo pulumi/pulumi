@@ -37,6 +37,7 @@ import (
 )
 
 const MaxPageSize int = 20
+const MaxLineSize int = 80
 
 func newSchemaExamineCommand() *cobra.Command {
 	var displayEmpty bool
@@ -88,6 +89,8 @@ func selectFunction(v reflect.Value) selectFunc {
 		fallthrough
 	case reflect.Slice:
 		return selectSlice
+	case reflect.String:
+		return showString
 	case reflect.Ptr:
 		fallthrough
 	case reflect.Interface:
@@ -187,6 +190,36 @@ func selectSlice(prompt string, slice reflect.Value, args displayArgs) {
 	})
 }
 
+// We show the string broken up into lines.
+func showString(prompt string, val reflect.Value, args displayArgs) {
+	val = drillType(val)
+	contract.Assert(val.Kind() == reflect.String)
+	lines := []string{}
+	s := val.String()
+	for len(s) > MaxLineSize {
+		lines = append(lines, s[:MaxLineSize])
+		s = s[MaxLineSize:]
+	}
+	lines = append(lines, s)
+
+	var result string
+	noneDrillable := func(_ interface{}) error { return nil }
+	pageSize := len(lines)
+	if pageSize > MaxPageSize {
+		pageSize = MaxPageSize
+	}
+
+	err := survey.AskOne(&survey.Select{
+		Help:     "(select any line to go back)",
+		Message:  fmt.Sprintf("%s", prompt),
+		Options:  lines,
+		PageSize: pageSize,
+	}, &result, noneDrillable)
+	cmdutil.MoveUp(1)
+
+	contract.IgnoreError(err)
+}
+
 func selectMap(prompt string, mapValue reflect.Value, args displayArgs) {
 	mapValue = drillType(mapValue)
 	contract.Assert(mapValue.Kind() == reflect.Map)
@@ -238,7 +271,7 @@ func displayValue(v reflect.Value) string {
 		if actual == "" {
 			return "empty string"
 		}
-		max := 80
+		max := MaxLineSize
 		if len(actual) > max {
 			suffix = "..."
 		} else {
@@ -376,6 +409,11 @@ func showExaminePrompt(prompt string, values []string, isExit bool) int {
 		}
 
 		if selected == leaveValue {
+			return nil
+		}
+
+		// Is a collapsed string
+		if strings.HasSuffix(selected, "...") {
 			return nil
 		}
 
