@@ -147,11 +147,11 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Now run a preview. Expect a warning because the diff is unavailable.
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -473,7 +473,7 @@ func TestProviderCancellation(t *testing.T) {
 		Parallel: resourceCount,
 		Host:     deploytest.NewPluginHost(nil, nil, program, loaders...),
 	}
-	project, target := p.GetProject(), p.GetTarget(nil)
+	project, target := p.GetProject(), p.GetTarget(t, nil)
 
 	_, res := op.RunWithContext(ctx, project, target, options, false, nil, nil)
 	assertIsErrorOrBailResult(t, res)
@@ -526,7 +526,7 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 
 	op := TestOp(Update)
 	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
-	project, target := p.GetProject(), p.GetTarget(old)
+	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// A preview should succeed despite the pending operations.
 	_, res := op.Run(project, target, options, true, nil, nil)
@@ -836,7 +836,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 	op := TestOp(Update)
 	sink := diag.DefaultSink(sinkWriter, sinkWriter, diag.FormatOptions{Color: colors.Raw})
 	options := UpdateOptions{Host: deploytest.NewPluginHost(sink, sink, program, loaders...)}
-	project, target := p.GetProject(), p.GetTarget(old)
+	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	_, res := op.Run(project, target, options, true, nil, nil)
 	assertIsErrorOrBailResult(t, res)
@@ -1452,12 +1452,12 @@ func TestPersistentDiff(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -1478,7 +1478,7 @@ func TestPersistentDiff(t *testing.T) {
 
 	// Next, enable legacy diff behavior. We should see no changes to the resource.
 	p.Options.UseLegacyDiff = true
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -1533,12 +1533,12 @@ func TestDetailedDiffReplace(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -1776,19 +1776,19 @@ func TestProviderPreview(t *testing.T) {
 
 	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
 	preview, sawPreview = true, false
-	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
 	preview, sawPreview = true, false
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 }
@@ -1861,19 +1861,19 @@ func TestProviderPreviewGrpc(t *testing.T) {
 
 	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
 	preview, sawPreview = true, false
-	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
 	preview, sawPreview = true, false
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 }
@@ -1955,20 +1955,20 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 	// Run a preview. The inputs should not be propagated to the outputs by the provider during the create because the
 	// provider has unknown inputs.
 	preview, sawPreview = true, false
-	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	require.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	require.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should not be propagated to the outputs during the update because the provider
 	// has unknown inputs.
 	preview, sawPreview = true, false
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
 	require.Nil(t, res)
 	assert.False(t, sawPreview)
 }
@@ -2036,7 +2036,7 @@ type updateContext struct {
 	updateResult chan result.Result
 }
 
-func startUpdate(host plugin.Host) (*updateContext, error) {
+func startUpdate(t *testing.T, host plugin.Host) (*updateContext, error) {
 	ctx := &updateContext{
 		resmon:       make(chan *deploytest.ResourceMonitor),
 		programErr:   make(chan error),
@@ -2064,7 +2064,7 @@ func startUpdate(host plugin.Host) (*updateContext, error) {
 	}
 
 	go func() {
-		snap, res := TestOp(Update).Run(p.GetProject(), p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+		snap, res := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 		ctx.snap <- snap
 		close(ctx.snap)
 		ctx.updateResult <- res
@@ -2124,7 +2124,7 @@ func TestLanguageClient(t *testing.T) {
 		}),
 	}
 
-	update, err := startUpdate(deploytest.NewPluginHost(nil, nil, nil, loaders...))
+	update, err := startUpdate(t, deploytest.NewPluginHost(nil, nil, nil, loaders...))
 	if err != nil {
 		t.Fatalf("failed to start update: %v", err)
 	}
@@ -2246,7 +2246,7 @@ func TestConfigSecrets(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	if !assert.Len(t, snap.Resources, 2) {

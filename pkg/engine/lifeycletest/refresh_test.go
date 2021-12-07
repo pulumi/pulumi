@@ -382,6 +382,19 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
+	// The new resources will of had their default provider urn filled in. We fill this in on
+	// the old resources here as well so that the equal checks below pass
+	for _, r := range snap.Resources {
+		if r.URN == provURN {
+			provRef, err := providers.NewReference(r.URN, r.ID)
+			assert.NoError(t, err)
+			for i := range oldResources {
+				oldResources[i].Provider = provRef.String()
+			}
+			break
+		}
+	}
+
 	for _, r := range snap.Resources {
 		switch urn := r.URN; urn {
 		case provURN:
@@ -576,6 +589,19 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
+	// The new resources will of had their default provider urn filled in. We fill this in on
+	// the old resources here as well so that the equal checks below pass
+	for _, r := range snap.Resources {
+		if r.URN == provURN {
+			provRef, err := providers.NewReference(r.URN, r.ID)
+			assert.NoError(t, err)
+			for i := range oldResources {
+				oldResources[i].Provider = provRef.String()
+			}
+			break
+		}
+	}
+
 	for _, r := range snap.Resources {
 		switch urn := r.URN; urn {
 		case provURN:
@@ -678,7 +704,7 @@ func TestCanceledRefresh(t *testing.T) {
 		Parallel: 1,
 		Host:     deploytest.NewPluginHost(nil, nil, nil, loaders...),
 	}
-	project, target := p.GetProject(), p.GetTarget(old)
+	project, target := p.GetProject(), p.GetTarget(t, old)
 	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
 		_ []Event, res result.Result) result.Result {
 
@@ -722,6 +748,19 @@ func TestCanceledRefresh(t *testing.T) {
 	assert.Equal(t, 1, len(refreshed))
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
+
+	// The new resources will of had their default provider urn filled in. We fill this in on
+	// the old resources here as well so that the equal checks below pass
+	for _, r := range snap.Resources {
+		if r.URN == provURN {
+			provRef, err := providers.NewReference(r.URN, r.ID)
+			assert.NoError(t, err)
+			for i := range oldResources {
+				oldResources[i].Provider = provRef.String()
+			}
+			break
+		}
+	}
 
 	for _, r := range snap.Resources {
 		switch urn := r.URN; urn {

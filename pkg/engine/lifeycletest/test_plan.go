@@ -168,7 +168,7 @@ func (p *TestPlan) GetProject() workspace.Project {
 	}
 }
 
-func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
+func (p *TestPlan) GetTarget(t *testing.T, snapshot *deploy.Snapshot) deploy.Target {
 	stack, _, _ := p.getNames()
 
 	cfg := p.Config
@@ -180,7 +180,10 @@ func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
 		Name:      stack,
 		Config:    cfg,
 		Decrypter: p.Decrypter,
-		Snapshot:  snapshot,
+		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
+		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
+		// cause state changes from the preview to persist even when doing an update.
+		Snapshot: CloneSnapshot(t, snapshot),
 	}
 }
 
@@ -209,7 +212,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		// cause state changes from the preview to persist even when doing an update.
 		if !step.SkipPreview {
 			previewSnap := CloneSnapshot(t, snap)
-			previewTarget := p.GetTarget(previewSnap)
+			previewTarget := p.GetTarget(t, previewSnap)
 			// Don't run validate on the preview step
 			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
 			if step.ExpectFailure {
@@ -221,7 +224,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		}
 
 		var res result.Result
-		target := p.GetTarget(snap)
+		target := p.GetTarget(t, snap)
 		snap, res = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
 		if step.ExpectFailure {
 			assertIsErrorOrBailResult(t, res)
