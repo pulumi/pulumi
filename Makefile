@@ -107,7 +107,7 @@ test_build:: $(TEST_ALL_DEPS)
 	cd tests/integration/construct_component_methods_resources/testcomponent-python && python -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
 	cd tests/integration/construct_component_methods_errors/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_methods_errors/testcomponent-go && go build -o pulumi-resource-testcomponent
-	cd tests/integration/construct_component_methods_resources/testcomponent-python && python -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
+	cd tests/integration/construct_component_methods_errors/testcomponent-python && python -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
 
 test_all:: test_build
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
