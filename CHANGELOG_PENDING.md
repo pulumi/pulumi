@@ -22,6 +22,10 @@
 - [sdk/go] - Emit `pulumiplugin.json`
   [#8530](https://github.com/pulumi/pulumi/pull/8530)
 
+- [engine] - Interpret `pluginDownloadURL` as the provider host url when
+  downloading plugins.
+  [#8544](https://github.com/pulumi/pulumi/pull/8544)
+
 ### Bug Fixes
 
 - [codegen/schema] - Error on type token names missing the correct prefix.

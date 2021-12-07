@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,19 +30,32 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// GetProviderServerURL fetches a provider server URL from the given property map. If the server URL
+// is not set, this function returns "".
+func GetProviderServerURL(inputs resource.PropertyMap) (string, error) {
+	url := inputs.Special().ServerURL()
+	if !url.Exists() {
+		return "", nil
+	}
+	if !url.Get().IsString() {
+		return "", fmt.Errorf("'%s' must be a string", url.Tag())
+	}
+	return url.Get().StringValue(), nil
+}
+
 // GetProviderVersion fetches and parses a provider version from the given property map. If the version property is not
 // present, this function returns nil.
 func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
-	versionProp, ok := inputs["version"]
-	if !ok {
+	version := inputs.Special().Version()
+	if !version.Exists() {
 		return nil, nil
 	}
 
-	if !versionProp.IsString() {
-		return nil, errors.New("'version' must be a string")
+	if !version.Get().IsString() {
+		return nil, fmt.Errorf("'%s' must be a string", version.Tag())
 	}
 
-	sv, err := semver.ParseTolerant(versionProp.StringValue())
+	sv, err := semver.ParseTolerant(version.Get().StringValue())
 	if err != nil {
 		return nil, fmt.Errorf("could not parse provider version: %v", err)
 	}

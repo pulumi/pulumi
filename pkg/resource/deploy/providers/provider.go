@@ -36,15 +36,17 @@ import (
 // is free to cache requests for a provider request that is equal to one that has already been serviced. If you do use
 // ProviderRequest as a hash key, you should call String() to get a usable key for string-based hash maps.
 type ProviderRequest struct {
-	version *semver.Version
-	pkg     tokens.Package
+	version   *semver.Version
+	pkg       tokens.Package
+	serverURL string
 }
 
-// NewProviderRequest constructs a new provider request from an optional version and package.
-func NewProviderRequest(version *semver.Version, pkg tokens.Package) ProviderRequest {
+// NewProviderRequest constructs a new provider request from an optional version, optional serverURL and package.
+func NewProviderRequest(version *semver.Version, pkg tokens.Package, serverURL string) ProviderRequest {
 	return ProviderRequest{
-		version: version,
-		pkg:     pkg,
+		version:   version,
+		pkg:       pkg,
+		serverURL: serverURL,
 	}
 }
 
@@ -56,6 +58,11 @@ func (p ProviderRequest) Version() *semver.Version {
 // Package returns this provider request's package.
 func (p ProviderRequest) Package() tokens.Package {
 	return p.pkg
+}
+
+// ServerURL returns this providers server url. May be "" if no serverURL was provided.
+func (p ProviderRequest) ServerURL() string {
+	return p.serverURL
 }
 
 // Name returns a QName that is an appropriate name for a default provider constructed from this provider request. The
@@ -87,8 +94,13 @@ func (p ProviderRequest) Name() tokens.QName {
 
 // String returns a string representation of this request. This string is suitable for use as a hash key.
 func (p ProviderRequest) String() string {
+	var version string
 	if p.version != nil {
-		return fmt.Sprintf("%s-%s", p.pkg, p.version)
+		version = "-" + p.version.String()
 	}
-	return p.pkg.String()
+	var url string
+	if p.serverURL != "" {
+		url = "-" + p.serverURL
+	}
+	return p.pkg.String() + version + url
 }

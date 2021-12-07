@@ -646,3 +646,47 @@ const OutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4"
 func IsInternalPropertyKey(key PropertyKey) bool {
 	return strings.HasPrefix(string(key), "__")
 }
+
+func (m *PropertyMap) Special() SpecialProperties {
+	return SpecialProperties{m}
+}
+
+type SpecialProperties struct {
+	m *PropertyMap
+}
+
+func (sp SpecialProperties) Version() SpecialProperty {
+	return SpecialProperty{
+		name: "version",
+		r:    sp.m,
+	}
+}
+
+func (sp SpecialProperties) ServerURL() SpecialProperty {
+	return SpecialProperty{
+		name: "pluginDownloadURL",
+		r:    sp.m,
+	}
+}
+
+type SpecialProperty struct {
+	name PropertyKey
+	r    *PropertyMap
+}
+
+func (sp SpecialProperty) Set(value string) {
+	(*sp.r)[sp.name] = NewStringProperty(value)
+}
+
+func (sp SpecialProperty) Get() PropertyValue {
+	return (*sp.r)[sp.name]
+}
+
+func (sp SpecialProperty) Exists() bool {
+	_, ok := (*sp.r)[sp.name]
+	return ok
+}
+
+func (sp SpecialProperty) Tag() string {
+	return string(sp.name)
+}
