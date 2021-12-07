@@ -323,174 +323,18 @@ func TestLargeResourceDotNet(t *testing.T) {
 // Test remote component construction in .NET.
 func TestConstructDotnet(t *testing.T) {
 	t.Skip() // TODO[pulumi/pulumi#7355] flaky test
-	tests := []struct {
-		componentDir          string
-		expectedResourceCount int
-		env                   []string
-	}{
-		{
-			componentDir:          "testcomponent",
-			expectedResourceCount: 9,
-			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
-			// the Node.js dynamic provider plugin to load.
-			// When the underlying issue has been fixed, the use of this environment variable inside the integration
-			// test module should be removed.
-			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
-		},
-		{
-			componentDir:          "testcomponent-python",
-			expectedResourceCount: 9,
-		},
-		{
-			componentDir:          "testcomponent-go",
-			expectedResourceCount: 8, // One less because no dynamic provider.
-		},
-	}
 
-	for _, test := range tests {
-		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
-			integration.ProgramTest(t,
-				optsForConstructDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
-		})
-	}
-}
-
-func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
-	return &integration.ProgramTestOptions{
-		Env:          env,
-		Dir:          filepath.Join("construct_component", "dotnet"),
-		Dependencies: []string{"Pulumi"},
-		Secrets: map[string]string{
-			"secret": "this super secret is encrypted",
-		},
-		Quick:      true,
-		NoParallel: true, // avoid contention for Dir
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
-
-				// Check that dependencies flow correctly between the originating program and the remote component
-				// plugin.
-				urns := make(map[string]resource.URN)
-				for _, res := range stackInfo.Deployment.Resources[1:] {
-					assert.NotNil(t, res)
-
-					urns[string(res.URN.Name())] = res.URN
-					switch res.URN.Name() {
-					case "child-a":
-						for _, deps := range res.PropertyDependencies {
-							assert.Empty(t, deps)
-						}
-					case "child-b":
-						expected := []resource.URN{urns["a"]}
-						assert.ElementsMatch(t, expected, res.Dependencies)
-						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
-					case "child-c":
-						expected := []resource.URN{urns["a"], urns["child-a"]}
-						assert.ElementsMatch(t, expected, res.Dependencies)
-						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
-					case "a", "b", "c":
-						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
-						assert.Truef(t, ok, "secret output was not serialized as a secret")
-						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
-					}
-				}
-			}
-		},
-	}
+	testConstruct(t, "dotnet", "Pulumi")
 }
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowDotnet(t *testing.T) {
-	pathEnv := testComponentSlowPathEnv(t)
-
-	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-	// module to run `yarn install && yarn link @pulumi/pulumi` in the .NET program's directory, allowing
-	// the Node.js dynamic provider plugin to load.
-	// When the underlying issue has been fixed, the use of this environment variable inside the integration
-	// test module should be removed.
-	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
-
-	opts := &integration.ProgramTestOptions{
-		Env:          []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir:          filepath.Join("construct_component_slow", "dotnet"),
-		Dependencies: []string{"Pulumi"},
-		Quick:        true,
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
-			}
-		},
-	}
-	integration.ProgramTest(t, opts)
+	testConstructSlow(t, "dotnet", "Pulumi")
 }
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainDotnet(t *testing.T) {
-	tests := []struct {
-		componentDir          string
-		expectedResourceCount int
-		env                   []string
-	}{
-		{
-			componentDir:          "testcomponent",
-			expectedResourceCount: 9,
-			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
-			// the Node.js dynamic provider plugin to load.
-			// When the underlying issue has been fixed, the use of this environment variable inside the integration
-			// test module should be removed.
-			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
-		},
-		{
-			componentDir:          "testcomponent-python",
-			expectedResourceCount: 9,
-		},
-		{
-			componentDir:          "testcomponent-go",
-			expectedResourceCount: 8, // One less because no dynamic provider.
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
-			integration.ProgramTest(t,
-				optsForConstructPlainDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
-		})
-	}
-}
-
-func optsForConstructPlainDotnet(t *testing.T, expectedResourceCount int,
-	env ...string) *integration.ProgramTestOptions {
-	return &integration.ProgramTestOptions{
-		Env:          env,
-		Dir:          filepath.Join("construct_component_plain", "dotnet"),
-		Dependencies: []string{"Pulumi"},
-		NoParallel:   true, // avoid contention for Dir
-		Quick:        true,
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
-			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
-		},
-	}
+	testConstructPlain(t, "dotnet", "Pulumi")
 }
 
 // Test remote component inputs properly handle unknowns.
@@ -500,34 +344,7 @@ func TestConstructUnknownDotnet(t *testing.T) {
 
 // Test methods on remote components.
 func TestConstructMethodsDotnet(t *testing.T) {
-	tests := []struct {
-		componentDir string
-	}{
-		{
-			componentDir: "testcomponent",
-		},
-		{
-			componentDir: "testcomponent-python",
-		},
-		{
-			componentDir: "testcomponent-go",
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
-			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
-				Dir:          filepath.Join("construct_component_methods", "dotnet"),
-				Dependencies: []string{"Pulumi"},
-				Quick:        true,
-				NoParallel:   true, // avoid contention for Dir
-				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
-				},
-			})
-		})
-	}
+	testConstructMethods(t, "dotnet", "Pulumi")
 }
 
 func TestConstructMethodsUnknownDotnet(t *testing.T) {
@@ -539,35 +356,7 @@ func TestConstructMethodsErrorsDotnet(t *testing.T) {
 }
 
 func TestConstructProviderDotnet(t *testing.T) {
-	const testDir = "construct_component_provider"
-	tests := []struct {
-		componentDir string
-	}{
-		{
-			componentDir: "testcomponent",
-		},
-		{
-			componentDir: "testcomponent-python",
-		},
-		{
-			componentDir: "testcomponent-go",
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
-			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
-				Dir:          filepath.Join(testDir, "dotnet"),
-				Dependencies: []string{"Pulumi"},
-				Quick:        true,
-				NoParallel:   true, // avoid contention for Dir
-				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
-				},
-			})
-		})
-	}
+	testConstructProvider(t, "dotnet", "Pulumi")
 }
 
 func TestGetResourceDotnet(t *testing.T) {

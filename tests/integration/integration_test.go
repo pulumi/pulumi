@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -625,14 +626,159 @@ func pathEnv(t *testing.T, path ...string) string {
 	return "PATH=" + strings.Join(pathEnv, pathSeparator)
 }
 
-//nolint:deadcode
-func testComponentSlowPathEnv(t *testing.T) string {
-	return pathEnv(t, filepath.Join("construct_component_slow", "testcomponent"))
+// Test remote component construction.
+// nolint: unused,deadcode
+func testConstruct(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component"
+	componentDirs := []string{
+		"testcomponent",
+		"testcomponent-python",
+		"testcomponent-go",
+	}
+	for _, componentDir := range componentDirs {
+		t.Run(componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          []string{pathEnv},
+				Dir:          filepath.Join(testDir, lang),
+				Dependencies: dependencies,
+				Secrets: map[string]string{
+					"secret": "this super secret is encrypted",
+				},
+				Quick:      true,
+				NoParallel: true,
+				// verify that additional flags don't cause the component provider hang
+				UpdateCommandlineFlags: []string{"--logflow", "--logtostderr"},
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.NotNil(t, stackInfo.Deployment)
+					if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
+						stackRes := stackInfo.Deployment.Resources[0]
+						assert.NotNil(t, stackRes)
+						assert.Equal(t, resource.RootStackType, stackRes.Type)
+						assert.Equal(t, "", string(stackRes.Parent))
+
+						// Check that dependencies flow correctly between the originating program and the remote component
+						// plugin.
+						urns := make(map[string]resource.URN)
+						for _, res := range stackInfo.Deployment.Resources[1:] {
+							assert.NotNil(t, res)
+
+							urns[string(res.URN.Name())] = res.URN
+							switch res.URN.Name() {
+							case "child-a":
+								for _, deps := range res.PropertyDependencies {
+									assert.Empty(t, deps)
+								}
+							case "child-b":
+								expected := []resource.URN{urns["a"]}
+								assert.ElementsMatch(t, expected, res.Dependencies)
+								assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
+							case "child-c":
+								expected := []resource.URN{urns["a"], urns["child-a"]}
+								assert.ElementsMatch(t, expected, res.Dependencies)
+								assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
+							case "a", "b", "c":
+								secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+								assert.Truef(t, ok, "secret output was not serialized as a secret")
+								assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
+							}
+						}
+					}
+				},
+			})
+		})
+	}
 }
 
-//nolint:deadcode
-func testComponentPlainPathEnv(t *testing.T) string {
-	return pathEnv(t, filepath.Join("construct_component_plain", "testcomponent"))
+// Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
+// nolint: unused,deadcode
+func testConstructSlow(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_slow"
+	componentDirs := []string{
+		"testcomponent",
+	}
+	for _, componentDir := range componentDirs {
+		t.Run(componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          []string{pathEnv},
+				Dir:          filepath.Join(testDir, lang),
+				Dependencies: dependencies,
+				Quick:        true,
+				NoParallel:   true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.NotNil(t, stackInfo.Deployment)
+					if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
+						stackRes := stackInfo.Deployment.Resources[0]
+						assert.NotNil(t, stackRes)
+						assert.Equal(t, resource.RootStackType, stackRes.Type)
+						assert.Equal(t, "", string(stackRes.Parent))
+					}
+				},
+			})
+		})
+	}
+}
+
+// Test remote component construction with prompt inputs.
+// nolint: unused,deadcode
+func testConstructPlain(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_plain"
+	componentDirs := []string{
+		"testcomponent",
+		"testcomponent-python",
+		"testcomponent-go",
+	}
+	for _, componentDir := range componentDirs {
+		t.Run(componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          []string{pathEnv},
+				Dir:          filepath.Join(testDir, lang),
+				Dependencies: dependencies,
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.NotNil(t, stackInfo.Deployment)
+					assert.Equal(t, 9, len(stackInfo.Deployment.Resources))
+				},
+			})
+		})
+	}
+}
+
+// Test methods on remote components.
+// nolint: unused,deadcode
+func testConstructMethods(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_methods"
+	componentDirs := []string{
+		"testcomponent",
+		"testcomponent-python",
+		"testcomponent-go",
+	}
+	for _, componentDir := range componentDirs {
+		t.Run(componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          []string{pathEnv},
+				Dir:          filepath.Join(testDir, lang),
+				Dependencies: dependencies,
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
 }
 
 // nolint: unused,deadcode
@@ -700,24 +846,16 @@ func testComponentProviderSchema(t *testing.T, path string) {
 // nolint: unused,deadcode
 func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_unknown"
-	tests := []struct {
-		componentDir string
-	}{
-		{
-			componentDir: "testcomponent",
-		},
-		{
-			componentDir: "testcomponent-python",
-		},
-		{
-			componentDir: "testcomponent-go",
-		},
+	componentDirs := []string{
+		"testcomponent",
+		"testcomponent-python",
+		"testcomponent-go",
 	}
-	for _, test := range tests {
-		t.Run(test.componentDir, func(t *testing.T) {
+	for _, componentDir := range componentDirs {
+		t.Run(componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join(testDir, test.componentDir))
+				filepath.Join(testDir, componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env:                    []string{pathEnv},
 				Dir:                    filepath.Join(testDir, lang),
@@ -738,24 +876,16 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 // nolint: unused,deadcode
 func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_methods_unknown"
-	tests := []struct {
-		componentDir string
-	}{
-		{
-			componentDir: "testcomponent",
-		},
-		{
-			componentDir: "testcomponent-python",
-		},
-		{
-			componentDir: "testcomponent-go",
-		},
+	componentDirs := []string{
+		"testcomponent",
+		"testcomponent-python",
+		"testcomponent-go",
 	}
-	for _, test := range tests {
-		t.Run(test.componentDir, func(t *testing.T) {
+	for _, componentDir := range componentDirs {
+		t.Run(componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join(testDir, test.componentDir))
+				filepath.Join(testDir, componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env:                    []string{pathEnv},
 				Dir:                    filepath.Join(testDir, lang),
@@ -776,24 +906,16 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 // nolint: unused,deadcode
 func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_methods_resources"
-	tests := []struct {
-		componentDir string
-	}{
-		{
-			componentDir: "testcomponent",
-		},
-		{
-			componentDir: "testcomponent-python",
-		},
-		{
-			componentDir: "testcomponent-go",
-		},
+	componentDirs := []string{
+		"testcomponent",
+		"testcomponent-python",
+		"testcomponent-go",
 	}
-	for _, test := range tests {
-		t.Run(test.componentDir, func(t *testing.T) {
+	for _, componentDir := range componentDirs {
+		t.Run(componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join(testDir, test.componentDir))
+				filepath.Join(testDir, componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env:          []string{pathEnv},
 				Dir:          filepath.Join(testDir, lang),
@@ -825,25 +947,17 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 // nolint: unused,deadcode
 func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_methods_errors"
-	tests := []struct {
-		componentDir string
-	}{
-		{
-			componentDir: "testcomponent",
-		},
-		{
-			componentDir: "testcomponent-python",
-		},
-		{
-			componentDir: "testcomponent-go",
-		},
+	componentDirs := []string{
+		"testcomponent",
+		"testcomponent-python",
+		"testcomponent-go",
 	}
-	for _, test := range tests {
-		t.Run(test.componentDir, func(t *testing.T) {
+	for _, componentDir := range componentDirs {
+		t.Run(componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			expectedError := "the failure reason (the failure property)"
 
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			pathEnv := pathEnv(t, filepath.Join(testDir, componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env:           []string{pathEnv},
 				Dir:           filepath.Join(testDir, lang),
@@ -855,6 +969,31 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					output := stderr.String()
 					assert.Contains(t, output, expectedError)
+				},
+			})
+		})
+	}
+}
+
+// nolint: unused,deadcode
+func testConstructProvider(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_provider"
+	componentDirs := []string{
+		"testcomponent",
+		"testcomponent-python",
+		"testcomponent-go",
+	}
+	for _, componentDir := range componentDirs {
+		t.Run(componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join(testDir, componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          []string{pathEnv},
+				Dir:          filepath.Join(testDir, lang),
+				Dependencies: dependencies,
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
 			})
 		})
@@ -975,24 +1114,16 @@ func TestExcludeProtected(t *testing.T) {
 // nolint: unused,deadcode
 func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_output_values"
-	tests := []struct {
-		componentDir string
-	}{
-		{
-			componentDir: "testcomponent",
-		},
-		{
-			componentDir: "testcomponent-python",
-		},
-		{
-			componentDir: "testcomponent-go",
-		},
+	componentDirs := []string{
+		"testcomponent",
+		"testcomponent-python",
+		"testcomponent-go",
 	}
-	for _, test := range tests {
-		t.Run(test.componentDir, func(t *testing.T) {
+	for _, componentDir := range componentDirs {
+		t.Run(componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
-				filepath.Join(testDir, test.componentDir))
+				filepath.Join(testDir, componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Env:          []string{pathEnv},
 				Dir:          filepath.Join(testDir, lang),

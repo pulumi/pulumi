@@ -1,21 +1,9 @@
+// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+
 import * as pulumi from "@pulumi/pulumi";
-import * as dynamic from "@pulumi/pulumi/dynamic";
 import * as provider from "@pulumi/pulumi/provider";
 
-let currentID = 0;
-
-class Resource extends dynamic.Resource {
-    constructor(name: string, echo: pulumi.Input<any>, opts?: pulumi.CustomResourceOptions) {
-        const provider = {
-            create: async (inputs: any) => ({
-                id: (currentID++).toString(),
-                outs: undefined,
-            }),
-        };
-
-        super(provider, name, {echo}, opts);
-    }
-}
+import { Echo } from "./echo";
 
 class Component extends pulumi.ComponentResource {
     public readonly echo: pulumi.Output<any>;
@@ -26,7 +14,7 @@ class Component extends pulumi.ComponentResource {
         super("testcomponent:index:Component", name, {}, opts);
 
         this.echo = pulumi.output(echo);
-        this.childId = (new Resource(`child-${name}`, echo, {parent: this})).id;
+        this.childId = (new Echo(`child-${name}`, {echo}, {parent: this})).id;
         this.secret = secret;
 
         this.registerOutputs({
@@ -50,9 +38,9 @@ class Provider implements provider.Provider {
         const secretKey = "secret";
         const fullSecretKey = `${config.name}:${secretKey}`;
         // use internal pulumi prop to check secretness
-        const isSecret = (pulumi.runtime as any).isConfigSecret(fullSecretKey); 
+        const isSecret = (pulumi.runtime as any).isConfigSecret(fullSecretKey);
         if (!isSecret) {
-            throw new Error(`expected config with key "${secretKey}" to be secret.`)
+            throw new Error(`expected config with key "${secretKey}" to be secret.`);
         }
         const secret = config.requireSecret(secretKey);
 
