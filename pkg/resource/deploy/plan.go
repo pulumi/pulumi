@@ -233,10 +233,6 @@ func (rp *ResourcePlan) diffStrings(a, b []string) (message string, changed bool
 	return message, true
 }
 
-func (rp *ResourcePlan) diffPropertyDependencies(a, b map[resource.PropertyKey][]resource.URN) error {
-	return nil
-}
-
 // This is similar to ResourcePlan.checkGoal but for the case we're we don't have a goal saved.
 // This simple checks that we're not changing anything.
 func checkMissingPlan(
