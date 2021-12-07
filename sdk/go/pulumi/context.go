@@ -279,11 +279,11 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	// Now, invoke the RPC to the provider synchronously.
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
-		Tok:      tok,
-		Args:     rpcArgs,
-		Provider: providerRef,
-		Version:  options.Version,
-		// TODO: add ServerURL: options.ServerURL
+		Tok:             tok,
+		Args:            rpcArgs,
+		Provider:        providerRef,
+		Version:         options.Version,
+		ServerURL:       options.ServerURL,
 		AcceptResources: !disableResourceReferences,
 	})
 	if err != nil {
@@ -424,16 +424,14 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 				Urns: urns,
 			}
 		}
-		if serverURL != "" {
-			panic("Used server url")
-		}
+
 		return &pulumirpc.CallRequest{
 			Tok:             tok,
 			Args:            rpcArgs,
 			ArgDependencies: rpcArgDeps,
 			Provider:        providerRef,
 			Version:         version,
-			// TODO: add server url here
+			ServerURL:       serverURL,
 		}, nil
 	}
 
@@ -808,9 +806,6 @@ func (ctx *Context) registerResource(
 			}
 		} else {
 			logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
-			if serverURL := inputs.serverURL; serverURL != "" {
-				panic("Found the server url!!!")
-			}
 			resp, err = ctx.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
 				Type:                    t,
 				Name:                    name,
@@ -831,9 +826,9 @@ func (ctx *Context) registerResource(
 				AcceptResources:         !disableResourceReferences,
 				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 				Version:                 inputs.version,
-				// TODO: add server url
-				Remote:           remote,
-				ReplaceOnChanges: inputs.replaceOnChanges,
+				ServerURL:               inputs.serverURL,
+				Remote:                  remote,
+				ReplaceOnChanges:        inputs.replaceOnChanges,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
