@@ -44,6 +44,7 @@ type ResourceState struct {
 	providers       map[string]ProviderResource
 	provider        ProviderResource
 	version         string
+	serverURL       string
 	aliases         []URNOutput
 	name            string
 	transformations []ResourceTransformation
@@ -93,6 +94,10 @@ func (s *ResourceState) getProvider() ProviderResource {
 
 func (s *ResourceState) getVersion() string {
 	return s.version
+}
+
+func (s *ResourceState) getServerURL() string {
+	return s.serverURL
 }
 
 func (s *ResourceState) getAliases() []URNOutput {
@@ -192,6 +197,9 @@ type Resource interface {
 	// getVersion returns the version for the resource.
 	getVersion() string
 
+	// getServerURL returns the provider plugin download url
+	getServerURL() string
+
 	// getAliases returns the list of aliases for this resource
 	getAliases() []URNOutput
 
@@ -287,6 +295,10 @@ type resourceOptions struct {
 	// operating on this resource. This version overrides the version information inferred from the current package and
 	// should rarely be used.
 	Version string
+	// ServerURL is an optional url, corresponding to the download url of the provider plugin that should be used when
+	// operating on this resource. This url overrides the url information inferred from the current package and
+	// should rarely be used.
+	ServerURL string
 }
 
 type invokeOptions struct {
@@ -296,6 +308,10 @@ type invokeOptions struct {
 	Provider ProviderResource
 	// Version is an optional version of the provider plugin to use for the invoke.
 	Version string
+	// ServerURL is an optional url, corresponding to the download url of the provider plugin that should be used when
+	// operating on this resource. This url overrides the url information inferred from the current package and
+	// should rarely be used.
+	ServerURL string
 }
 
 type ResourceOption interface {
@@ -514,6 +530,20 @@ func Version(o string) ResourceOrInvokeOption {
 			ro.Version = o
 		case io != nil:
 			io.Version = o
+		}
+	})
+}
+
+// ServerURL is an optional url, corresponding to the download url of the provider plugin that should be used when
+// operating on this resource. This url overrides the url information inferred from the current package and
+// should rarely be used.
+func ServerURL(o string) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+		switch {
+		case ro != nil:
+			ro.ServerURL = o
+		case io != nil:
+			io.ServerURL = o
 		}
 	})
 }

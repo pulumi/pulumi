@@ -279,10 +279,11 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	// Now, invoke the RPC to the provider synchronously.
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
-		Tok:             tok,
-		Args:            rpcArgs,
-		Provider:        providerRef,
-		Version:         options.Version,
+		Tok:      tok,
+		Args:     rpcArgs,
+		Provider: providerRef,
+		Version:  options.Version,
+		// TODO: add ServerURL: options.ServerURL
 		AcceptResources: !disableResourceReferences,
 	})
 	if err != nil {
@@ -348,15 +349,18 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 	}
 
 	prepareCallRequest := func() (*pulumirpc.CallRequest, error) {
-		// Determine the provider and version to use.
+		// Determine the provider, version and url to use.
 		var provider ProviderResource
 		var version string
+		var serverURL string
 		if self != nil {
 			provider = self.getProvider()
 			version = self.getVersion()
+			serverURL = self.getServerURL()
 		} else {
 			provider = mergeProviders(tok, options.Parent, options.Provider, nil)[getPackage(tok)]
 			version = options.Version
+			serverURL = options.ServerURL
 		}
 		var providerRef string
 		if provider != nil {
@@ -420,13 +424,16 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 				Urns: urns,
 			}
 		}
-
+		if serverURL != "" {
+			panic("Used server url")
+		}
 		return &pulumirpc.CallRequest{
 			Tok:             tok,
 			Args:            rpcArgs,
 			ArgDependencies: rpcArgDeps,
 			Provider:        providerRef,
 			Version:         version,
+			// TODO: add server url here
 		}, nil
 	}
 
@@ -581,7 +588,8 @@ func (ctx *Context) ReadResource(
 	provider := getProvider(t, options.Provider, providers)
 
 	// Create resolvers for the resource's outputs.
-	res := ctx.makeResourceState(t, name, resource, providers, provider, options.Version, aliasURNs, transformations)
+	res := ctx.makeResourceState(t, name, resource, providers, provider,
+		options.Version, options.ServerURL, aliasURNs, transformations)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -767,8 +775,8 @@ func (ctx *Context) registerResource(
 	provider := getProvider(t, options.Provider, providers)
 
 	// Create resolvers for the resource's outputs.
-	resState := ctx.makeResourceState(t, name, resource, providers, provider, options.Version, aliasURNs,
-		transformations)
+	resState := ctx.makeResourceState(t, name, resource, providers, provider,
+		options.Version, options.ServerURL, aliasURNs, transformations)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -800,6 +808,9 @@ func (ctx *Context) registerResource(
 			}
 		} else {
 			logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
+			if serverURL := inputs.serverURL; serverURL != "" {
+				panic("Found the server url!!!")
+			}
 			resp, err = ctx.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
 				Type:                    t,
 				Name:                    name,
@@ -820,8 +831,9 @@ func (ctx *Context) registerResource(
 				AcceptResources:         !disableResourceReferences,
 				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 				Version:                 inputs.version,
-				Remote:                  remote,
-				ReplaceOnChanges:        inputs.replaceOnChanges,
+				// TODO: add server url
+				Remote:           remote,
+				ReplaceOnChanges: inputs.replaceOnChanges,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -864,6 +876,7 @@ type resourceState struct {
 	providers       map[string]ProviderResource
 	provider        ProviderResource
 	version         string
+	serverURL       string
 	aliases         []URNOutput
 	name            string
 	transformations []ResourceTransformation
@@ -974,7 +987,7 @@ var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	provider ProviderResource, version string, aliases []URNOutput,
+	provider ProviderResource, version, serverURL string, aliases []URNOutput,
 	transformations []ResourceTransformation) *resourceState {
 
 	// Ensure that the input resource is a pointer to a struct. Note that we don't fail if it is not, and we probably
@@ -1057,6 +1070,8 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		rs.provider = provider
 		state.version = version
 		rs.version = version
+		state.serverURL = serverURL
+		rs.serverURL = serverURL
 		rs.urn = URNOutput{ctx.newOutputState(urnType, resourceV)}
 		state.outputs["urn"] = rs.urn
 		state.name = name
@@ -1164,6 +1179,7 @@ type resourceInputs struct {
 	aliases                 []string
 	additionalSecretOutputs []string
 	version                 string
+	serverURL               string
 	replaceOnChanges        []string
 }
 
@@ -1249,6 +1265,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
+		serverURL:               state.serverURL,
 		replaceOnChanges:        resOpts.replaceOnChanges,
 	}, nil
 }
