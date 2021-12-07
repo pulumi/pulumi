@@ -518,7 +518,6 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 	}
 
 	// Make sure if there were any targets specified, that they all refer to existing resources.
-	targetMapOpt := createTargetMap(opts.RefreshTargets)
 	if res := ex.checkTargets(opts.RefreshTargets, OpRefresh); res != nil {
 		return res
 	}
@@ -528,6 +527,7 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 	// specific targets.
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
+	targetMapOpt := createTargetMap(opts.RefreshTargets)
 	for _, res := range prev.Resources {
 		if targetMapOpt == nil || targetMapOpt[res.URN] {
 			step := NewRefreshStep(ex.deployment, res, nil)
