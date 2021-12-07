@@ -350,6 +350,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// ImportReplacementStep
 		new.ID = goal.ID
 		new.ImportID = goal.ID
+
+		// Imports have no diff, just a goal state
+		newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(nil, goal)}
+		sg.deployment.newPlans.set(urn, newResourcePlan)
+
 		if isReplace := hasOld && !recreating; isReplace {
 			return []Step{
 				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges),
