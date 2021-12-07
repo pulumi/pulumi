@@ -33,6 +33,9 @@ type nullSource struct {
 	project tokens.PackageName
 }
 
+// Deprecated: A NullSource with no project name.
+var NullSource Source = &nullSource{}
+
 func (src *nullSource) Close() error                { return nil }
 func (src *nullSource) Project() tokens.PackageName { return src.project }
 func (src *nullSource) Info() interface{}           { return nil }
