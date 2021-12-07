@@ -295,7 +295,16 @@ func displayValue(v reflect.Value) string {
 	case reflect.Int64:
 		fallthrough
 	case reflect.Int:
+
+		// An int that implements String is assumed to be an enum.
 		actual := v.Int()
+		m, ok := v.Type().MethodByName("String")
+		if ok {
+			r := m.Func.Call([]reflect.Value{v})
+			if len(r) == 1 {
+				return "enum " + r[0].String()
+			}
+		}
 		return fmt.Sprintf("%d", actual)
 	case reflect.Float32:
 		fallthrough
