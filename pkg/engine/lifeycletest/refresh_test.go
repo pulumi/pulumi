@@ -291,6 +291,20 @@ func TestRefreshDeleteDependencies(t *testing.T) {
 	}
 }
 
+// Looks up the provider ID in newResources and sets "Provider" to reference that in every resource in oldResources.
+func setProviderRef(t *testing.T, oldResources, newResources []*resource.State, provURN resource.URN) {
+	for _, r := range newResources {
+		if r.URN == provURN {
+			provRef, err := providers.NewReference(r.URN, r.ID)
+			assert.NoError(t, err)
+			for i := range oldResources {
+				oldResources[i].Provider = provRef.String()
+			}
+			break
+		}
+	}
+}
+
 func validateRefreshDeleteCombination(t *testing.T, names []string, targets []string) {
 	p := &TestPlan{}
 
@@ -384,16 +398,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 
 	// The new resources will of had their default provider urn filled in. We fill this in on
 	// the old resources here as well so that the equal checks below pass
-	for _, r := range snap.Resources {
-		if r.URN == provURN {
-			provRef, err := providers.NewReference(r.URN, r.ID)
-			assert.NoError(t, err)
-			for i := range oldResources {
-				oldResources[i].Provider = provRef.String()
-			}
-			break
-		}
-	}
+	setProviderRef(t, oldResources, snap.Resources, provURN)
 
 	for _, r := range snap.Resources {
 		switch urn := r.URN; urn {
@@ -591,16 +596,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 	// The new resources will of had their default provider urn filled in. We fill this in on
 	// the old resources here as well so that the equal checks below pass
-	for _, r := range snap.Resources {
-		if r.URN == provURN {
-			provRef, err := providers.NewReference(r.URN, r.ID)
-			assert.NoError(t, err)
-			for i := range oldResources {
-				oldResources[i].Provider = provRef.String()
-			}
-			break
-		}
-	}
+	setProviderRef(t, oldResources, snap.Resources, provURN)
 
 	for _, r := range snap.Resources {
 		switch urn := r.URN; urn {
@@ -760,16 +756,7 @@ func TestCanceledRefresh(t *testing.T) {
 
 	// The new resources will of had their default provider urn filled in. We fill this in on
 	// the old resources here as well so that the equal checks below pass
-	for _, r := range snap.Resources {
-		if r.URN == provURN {
-			provRef, err := providers.NewReference(r.URN, r.ID)
-			assert.NoError(t, err)
-			for i := range oldResources {
-				oldResources[i].Provider = provRef.String()
-			}
-			break
-		}
-	}
+	setProviderRef(t, oldResources, snap.Resources, provURN)
 
 	for _, r := range snap.Resources {
 		switch urn := r.URN; urn {
