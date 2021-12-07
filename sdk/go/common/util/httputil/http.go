@@ -23,9 +23,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
 )
 
-// maxRetryCount is the number of times to try an http request before giving up an returning the last error
-const maxRetryCount = 5
-
 // DoWithRetry calls client.Do, and in the case of an error, retries the operation again after a slight delay.
 func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error) {
 	contract.Assertf(req.ContentLength == 0 || req.GetBody != nil,
@@ -35,8 +32,23 @@ func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error)
 		return lower <= test && test <= upper
 	}
 
-	_, res, err := retry.Until(context.Background(), retry.Acceptor{
-		Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+	// maxRetryCount is the number of times to try an http request before
+	// giving up an returning the last error.
+	const maxRetryCount = 5
+
+	// Wait 1s before retrying on failure. Then increase by 2x until the
+	// maximum delay is reached. Stop after maxRetryCount requests have
+	// been made.
+	delay := time.Second
+	backoff := 2.0
+	maxDelay := 30 * time.Second
+
+	acceptor := retry.Acceptor{
+		Delay:    &delay,
+		Backoff:  &backoff,
+		MaxDelay: &maxDelay,
+
+		Accept: func(try int, _ time.Duration) (bool, interface{}, error) {
 			if try > 0 && req.GetBody != nil {
 				// Reset request body, if present, for retries.
 				rc, bodyErr := req.GetBody()
@@ -60,7 +72,8 @@ func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error)
 			}
 			return false, nil, nil
 		},
-	})
+	}
+	_, res, err := retry.Until(context.Background(), acceptor)
 
 	if err != nil {
 		return nil, err
