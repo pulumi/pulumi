@@ -1118,3 +1118,53 @@ func TestProviderVersionInputAndOption(t *testing.T) {
 
 	assert.Equal(t, "1.0.0", version)
 }
+
+func TestServerURLPassthrough(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	pkgAServerURL := "get.pulumi.com/${VERSION}"
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, deploytest.ResourceOptions{
+			ServerURL: pkgAServerURL,
+		})
+		assert.NoError(t, err)
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(provURN, provID)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	steps := MakeBasicLifecycleSteps(t, 2)
+	steps[0].ValidateAnd(func(project workspace.Project, target deploy.Target, entries JournalEntries,
+		_ []Event, res result.Result) result.Result {
+
+		for _, e := range entries {
+			r := e.Step.New()
+			if r.Type == providers.MakeProviderType("pkgA") && r.Inputs["pluginDownloadURL"].StringValue() != pkgAServerURL {
+				return result.Errorf("Found unexpected value %v", r.Inputs["pluginDownloadURL"])
+			}
+		}
+		return nil
+	})
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   steps,
+	}
+	p.Run(t, nil)
+}
