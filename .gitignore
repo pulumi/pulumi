@@ -11,6 +11,7 @@ coverage.cov
 *.coverprofile
 **/obj/
 coverage/
+venv/
 
 **/.idea/
 *.iml
