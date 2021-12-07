@@ -396,7 +396,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
-	// The new resources will of had their default provider urn filled in. We fill this in on
+	// The new resources will have had their default provider urn filled in. We fill this in on
 	// the old resources here as well so that the equal checks below pass
 	setProviderRef(t, oldResources, snap.Resources, provURN)
 
@@ -594,7 +594,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
-	// The new resources will of had their default provider urn filled in. We fill this in on
+	// The new resources will have had their default provider urn filled in. We fill this in on
 	// the old resources here as well so that the equal checks below pass
 	setProviderRef(t, oldResources, snap.Resources, provURN)
 
@@ -754,7 +754,7 @@ func TestCanceledRefresh(t *testing.T) {
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
-	// The new resources will of had their default provider urn filled in. We fill this in on
+	// The new resources will have had their default provider urn filled in. We fill this in on
 	// the old resources here as well so that the equal checks below pass
 	setProviderRef(t, oldResources, snap.Resources, provURN)
 
