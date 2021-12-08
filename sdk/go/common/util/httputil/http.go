@@ -23,8 +23,30 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
 )
 
+// RetryOpts defines options to configure the retry behavior.
+// Leave nil for defaults.
+type RetryOpts struct {
+	// These fields map directly to util.Acceptor.
+	Delay    *time.Duration
+	Backoff  *float64
+	MaxDelay *time.Duration
+
+	MaxRetryCount *int
+}
+
 // DoWithRetry calls client.Do, and in the case of an error, retries the operation again after a slight delay.
+// Uses the default retry delays, starting at 100ms and ramping up to ~1.3s.
 func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error) {
+	var opts RetryOpts
+	return doWithRetry(req, client, opts)
+}
+
+// DoWithRetry calls client.Do, but retrying 500s (even for POSTs). Using the provided delays.
+func DoWithRetryOpts(req *http.Request, client *http.Client, opts RetryOpts) (*http.Response, error) {
+	return doWithRetry(req, client, opts)
+}
+
+func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.Response, error) {
 	contract.Assertf(req.ContentLength == 0 || req.GetBody != nil,
 		"Retryable request must have no body or rewindable body")
 
@@ -34,19 +56,16 @@ func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error)
 
 	// maxRetryCount is the number of times to try an http request before
 	// giving up an returning the last error.
-	const maxRetryCount = 5
-
-	// Wait 1s before retrying on failure. Then increase by 2x until the
-	// maximum delay is reached. Stop after maxRetryCount requests have
-	// been made.
-	delay := time.Second
-	backoff := 2.0
-	maxDelay := 30 * time.Second
+	maxRetryCount := 5
+	if opts.MaxRetryCount != nil {
+		maxRetryCount = *opts.MaxRetryCount
+	}
 
 	acceptor := retry.Acceptor{
-		Delay:    &delay,
-		Backoff:  &backoff,
-		MaxDelay: &maxDelay,
+		// If the opts field is nil, retry.Until will provide defaults.
+		Delay:    opts.Delay,
+		Backoff:  opts.Backoff,
+		MaxDelay: opts.MaxDelay,
 
 		Accept: func(try int, _ time.Duration) (bool, interface{}, error) {
 			if try > 0 && req.GetBody != nil {
