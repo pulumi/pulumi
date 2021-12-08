@@ -1834,15 +1834,15 @@ const (
 )
 
 // Validate an individual name token.
-func (spec *PackageSpec) validateTypeToken(validPrefixes map[string]bool, section, token string) hcl.Diagnostics {
+func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, section, token string) hcl.Diagnostics {
 	diags := hcl.Diagnostics{}
 
 	path := memberPath(section, token)
-	var prefix string
+	var packageName string
 	if i := strings.Index(token, ":"); i != -1 {
-		prefix = token[:i]
+		packageName = token[:i]
 	}
-	if !validPrefixes[prefix] {
+	if !allowedPackageNames[packageName] {
 		error := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
 		diags = diags.Append(error)
 	}
@@ -1853,18 +1853,18 @@ func (spec *PackageSpec) validateTypeToken(validPrefixes map[string]bool, sectio
 // This is for validating non-reference type tokens.
 func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	diags := hcl.Diagnostics{}
-	validPrefixes := map[string]bool{spec.Name: true}
+	allowedPackageNames := map[string]bool{spec.Name: true}
 	for _, prefix := range spec.AllowedPackageNames {
-		validPrefixes[prefix] = true
+		allowedPackageNames[prefix] = true
 	}
 	for t := range spec.Resources {
-		diags = diags.Extend(spec.validateTypeToken(validPrefixes, "resources", t))
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "resources", t))
 	}
 	for t := range spec.Types {
-		diags = diags.Extend(spec.validateTypeToken(validPrefixes, "types", t))
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "types", t))
 	}
 	for t := range spec.Functions {
-		diags = diags.Extend(spec.validateTypeToken(validPrefixes, "functions", t))
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "functions", t))
 	}
 	return diags
 }
