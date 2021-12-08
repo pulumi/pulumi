@@ -17,7 +17,7 @@ include ../../build/common.mk
 TEST_ALL_DEPS = build
 
 ensure::
-	python -m venv venv
+	$(PYTHON) -m venv venv
 	venv/bin/python -m pip install -r requirements.txt
 	mkdir -p $(PYENVSRC)
 
