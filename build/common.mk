@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+# Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
 
 # common.mk provides most of the scalfholding for our build system. It
 # provides default targets for each project we want to build.
@@ -110,9 +110,9 @@ PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
 
-RUN_TESTSUITE = python3 ${PROJECT_ROOT}/scripts/run-testsuite.py
-GO_TEST_FAST = PATH="$(PULUMI_BIN):$(PATH)" python3 ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM}
-GO_TEST = PATH="$(PULUMI_BIN):$(PATH)" python3 $(PROJECT_ROOT)/scripts/go-test.py -count=1 -cover -timeout 1h -tags=all -parallel ${TESTPARALLELISM}
+RUN_TESTSUITE = $(PYTHON) ${PROJECT_ROOT}/scripts/run-testsuite.py
+GO_TEST_FAST = PATH="$(PULUMI_BIN):$(PATH)" $(PYTHON) ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM}
+GO_TEST = PATH="$(PULUMI_BIN):$(PATH)" $(PYTHON) $(PROJECT_ROOT)/scripts/go-test.py -count=1 -cover -timeout 1h -tags=all -parallel ${TESTPARALLELISM}
 GOPROXY = 'https://proxy.golang.org'
 
 .PHONY: default all ensure only_build only_test build lint install test_all core
@@ -157,6 +157,7 @@ all:: build install lint test_all
 ensure::
 	$(call STEP_MESSAGE)
 	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
+
 build::
 	$(call STEP_MESSAGE)
 
@@ -168,7 +169,7 @@ test_fast::
 
 install::
 	$(call STEP_MESSAGE)
-	# Implicitly creates PULUMI_ROOT.
+	@# Implicitly creates PULUMI_ROOT.
 	@mkdir -p $(PULUMI_BIN)
 	@mkdir -p $(PULUMI_NODE_MODULES)
 	@mkdir -p $(PULUMI_NUGET)
@@ -201,7 +202,7 @@ only_test_fast:: lint test_fast
 
 # Generate targets for each sub project. This project's default and
 # all targets will depend on the sub project's targets, and the
-# individual targets for sub projects are added as a convience when
+# individual targets for sub projects are added as a convenience when
 # invoking make from the command line
 ifneq ($(SUB_PROJECTS),)
 $(SUB_PROJECTS:%=%_default):
