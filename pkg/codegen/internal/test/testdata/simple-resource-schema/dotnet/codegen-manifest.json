@@ -1,6 +1,8 @@
 {
   "emittedFiles": [
     "ArgFunction.cs",
+    "BarResource.cs",
+    "FooResource.cs",
     "Inputs/ConfigMapArgs.cs",
     "Inputs/ObjectArgs.cs",
     "Inputs/ObjectWithNodeOptionalInputsArgs.cs",

@@ -5,6 +5,8 @@
     "pulumi_example/_inputs.py",
     "pulumi_example/_utilities.py",
     "pulumi_example/arg_function.py",
+    "pulumi_example/bar_resource.py",
+    "pulumi_example/foo_resource.py",
     "pulumi_example/other_resource.py",
     "pulumi_example/outputs.py",
     "pulumi_example/provider.py",

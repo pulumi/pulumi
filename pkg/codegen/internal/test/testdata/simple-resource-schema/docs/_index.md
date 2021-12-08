@@ -13,6 +13,8 @@ no_edit_this_page: true
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
+    <li><a href="barresource" title="BarResource"><span class="api-symbol api-symbol--resource"></span>BarResource</a></li>
+    <li><a href="fooresource" title="FooResource"><span class="api-symbol api-symbol--resource"></span>FooResource</a></li>
     <li><a href="otherresource" title="OtherResource"><span class="api-symbol api-symbol--resource"></span>OtherResource</a></li>
     <li><a href="overlayresource" title="OverlayResource"><span class="api-symbol api-symbol--resource"></span>OverlayResource</a></li>
     <li><a href="provider" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
