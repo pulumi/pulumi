@@ -28,6 +28,8 @@ type sdkTest struct {
 	Checks map[string]CodegenCheck
 
 	// Skip checks, identified by "$language/$check".
+	// "$language/any" is special, skipping generating the
+	// code as well as all tests.
 	Skip codegen.StringSet
 
 	// Do not compile the generated code for the languages in this set.
@@ -42,9 +44,6 @@ const (
 	golang = "go"
 )
 
-// TODO[pulumi/pulumi#8054]: remove
-// `codegen.NewStringSet("python/test", "nodejs/test")` workaround for
-// schemas with no unit tests.
 var sdkTests = []sdkTest{
 	{
 		Directory:   "naming-collisions",
@@ -180,6 +179,16 @@ var sdkTests = []sdkTest{
 		Description:      "Regress pulumi/pulumi#8403",
 		SkipCompileCheck: codegen.NewStringSet(python, nodejs),
 	},
+	{
+		Directory:   "different-package-name-conflict",
+		Description: "different packages with the same resource",
+		Skip:        codegen.NewStringSet("dotnet/any", "nodejs/any", "python/any", "go/any", "docs/any"),
+	},
+	{
+		Directory:   "different-enum",
+		Description: "An enum in a different package namespace",
+		Skip:        codegen.NewStringSet("dotnet/compile"),
+	},
 }
 
 var genSDKOnly bool
@@ -280,6 +289,12 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			schemaPath := filepath.Join(dirPath, "schema.json")
 			if _, err := os.Stat(schemaPath); err != nil && os.IsNotExist(err) {
 				schemaPath = filepath.Join(dirPath, "schema.yaml")
+			}
+
+			// Any takes place before codegen.
+			if tt.Skip.Has(opts.Language + "/any") {
+				t.Logf("Skipping generation + tests for %s", tt.Directory)
+				return
 			}
 
 			files, err := GeneratePackageFilesFromSchema(schemaPath, opts.GenPackage)

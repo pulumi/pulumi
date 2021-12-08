@@ -1524,6 +1524,9 @@ type PackageSpec struct {
 	// Meta contains information for the importer about this package.
 	Meta *MetadataSpec `json:"meta,omitempty" yaml:"meta,omitempty"`
 
+	// A list of allowed package name in addition to the Name property.
+	AllowedPackageNames []string `json:"allowedPackageNames,omitempty" yaml:"allowedPackageNames,omitempty"`
+
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config" yaml:"config"`
 	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
@@ -1831,12 +1834,15 @@ const (
 )
 
 // Validate an individual name token.
-func (spec *PackageSpec) validateTypeToken(section, token string) hcl.Diagnostics {
+func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, section, token string) hcl.Diagnostics {
 	diags := hcl.Diagnostics{}
 
-	requiredPrefix := spec.Name + ":"
 	path := memberPath(section, token)
-	if !strings.HasPrefix(token, requiredPrefix) {
+	var packageName string
+	if i := strings.Index(token, ":"); i != -1 {
+		packageName = token[:i]
+	}
+	if !allowedPackageNames[packageName] {
 		error := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
 		diags = diags.Append(error)
 	}
@@ -1847,14 +1853,18 @@ func (spec *PackageSpec) validateTypeToken(section, token string) hcl.Diagnostic
 // This is for validating non-reference type tokens.
 func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
 	diags := hcl.Diagnostics{}
+	allowedPackageNames := map[string]bool{spec.Name: true}
+	for _, prefix := range spec.AllowedPackageNames {
+		allowedPackageNames[prefix] = true
+	}
 	for t := range spec.Resources {
-		diags = diags.Extend(spec.validateTypeToken("resources", t))
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "resources", t))
 	}
 	for t := range spec.Types {
-		diags = diags.Extend(spec.validateTypeToken("types", t))
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "types", t))
 	}
 	for t := range spec.Functions {
-		diags = diags.Extend(spec.validateTypeToken("functions", t))
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "functions", t))
 	}
 	return diags
 }
