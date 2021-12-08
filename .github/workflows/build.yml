@@ -1,0 +1,240 @@
+name: Builds CLI and SDK binaries.
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Version of the Go toolchain for the build'
+        default: '1.17.x'
+        required: false
+        type: string
+      python-version:
+        description: 'Version of the Python toolchain for the build'
+        default: '3.9.x'
+        required: false
+        type: string
+      node-version:
+        description: 'Version of the Node toolchain for the build'
+        default: '14.x'
+        required: false
+        type: string
+      dotnet-version:
+        description: 'Version of the .NET toolchain for the build'
+        default: '3.1.x'
+        required: false
+        type: string
+      goreleaser-config:
+        description: 'Config file for goreleaser'
+        default: '.goreleaser.prerelease.yml'
+        required: false
+        type: string
+      goreleaser-flags:
+        description: 'Command-line flags to pass to goreleaser'
+        default: '-p 3 --snapshot --skip-validate'
+        required: false
+        type: string
+      enable-coverage:
+        description: 'Builds executables with coverage analysis enabled'
+        default: false
+        required: false
+        type: boolean
+    secrets: {}
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build_pulumi_go_binaries:
+    strategy:
+      matrix:
+        include:
+          - platform: macos-latest
+            os: darwin
+          - platform: ubuntu-latest
+            os: linux
+          - platform: ubuntu-latest
+            os: windows
+      fail-fast: false
+
+    name: Build Pulumi Go binaries
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Enable code coverage
+        run: |
+          echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> $GITHUB_ENV
+        if: ${{ inputs.enable-coverage }}
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Install goreleaser-filter
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: t0yv0/goreleaser-filter
+      - name: Set up Go ${{ inputs.go-version }}
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ inputs.go-version }}
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+      - name: Go Cache
+        uses: actions/cache@v2
+        id: go-cache
+        with:
+          path: |
+              ${{ steps.go-cache-paths.outputs.go-build }}
+              ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ matrix.os }}-go-cache-${{ hashFiles('**/go.sum') }}
+      - name: Compute current version to inform GoReleaser
+        run: |
+          echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
+      - name: Filter goreleaser config by OS
+        run: |
+          cat ${{ inputs.goreleaser-config }} | goreleaser-filter -no-blobs -goos ${{ matrix.os }} > .goreleaser.current.yml
+      - name: Run GoReleaser to build Go Pulumi binaries
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: -f .goreleaser.current.yml ${{ inputs.goreleaser-flags }}
+      - name: Upload pulumi-${{ matrix.os }}-arm64
+        uses: actions/upload-artifact@v2
+        with:
+            name: pulumi-${{ matrix.os }}-arm64
+            path: goreleaser/pulumi*-${{ matrix.os }}-arm64*
+            retention-days: 2
+      - name: Upload pulumi-${{ matrix.os }}-x64
+        uses: actions/upload-artifact@v2
+        with:
+            name: pulumi-${{ matrix.os }}-x64
+            path: goreleaser/pulumi*-${{ matrix.os }}-x64*
+            retention-days: 2
+
+  build_python_sdk:
+    name: Build Pulumi Python SDK wheel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Set up Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Compute current version to inform wheel build
+        run: |
+          echo "PYPY_VERSION=$(pulumictl get version --language python)" >> $GITHUB_ENV
+      - name: Build Pulumi Python SDK wheel
+        run: |
+            # TODO unify with sdk/python/Makefile once that does not use pipenv
+            cp README.md sdk/python/lib
+            cd sdk/python/lib
+            sed -i.bak "s/\${VERSION}/$PYPY_VERSION/g" setup.py
+            rm setup.py.bak
+            python3 -m venv venv
+            source venv/bin/activate
+            python -m pip install wheel
+            python setup.py build bdist_wheel --python-tag py3
+      - name: Upload pulumi.whl
+        uses: actions/upload-artifact@v2
+        with:
+            name: pulumi.whl
+            path: sdk/python/lib/dist/*.whl
+
+  build_node_sdk:
+    name: Build Pulumi Node SDK tarball
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Set up Node ${{ inputs.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: Install yarn
+        run: |
+          npm install -g yarn
+      - name: Make no-op Go command to avoid Go builds
+        run: |
+          cd sdk/nodejs
+          mkdir -p bin
+          ln -s $(which echo) bin/go
+      - name: Ensure installed dependencies
+        run: |
+          cd sdk/nodejs
+          PATH=./bin:$PATH make ensure
+      - name: Build the Node SDK package
+        run: |
+          cd sdk/nodejs
+          PATH=./bin:$PATH make build_package
+      - name: Pack the Node SDK
+        run: |
+          cd sdk/nodejs/bin
+          npm pack
+      - name: Upload pulumi-node-sdk.tgz
+        uses: actions/upload-artifact@v2
+        with:
+            name: pulumi-node-sdk.tgz
+            path: sdk/nodejs/bin/*.tgz
+
+  build_dotnet_sdk:
+    name: Build Pulumi .NET SDK NuGet packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Set up DotNet ${{ inputs.dotnet-version }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+      - name: Compute current version to inform the NuGet package build
+        run: |
+          echo "DOTNET_VERSION=$(pulumictl get version --language dotnet)" >> $GITHUB_ENV
+      - name: Build the .NET SDK package
+        run: |
+          cd sdk/dotnet
+          dotnet build --configuration Release dotnet.sln /p:Version=$DOTNET_VERSION
+      - name: Pack the .NET SDK package
+        run: |
+          cd sdk/dotnet
+          dotnet pack --configuration Release --output nupkgs dotnet.sln /p:Version=$DOTNET_VERSION
+      - name: Upload the NuGet packages
+        uses: actions/upload-artifact@v2
+        with:
+            name: pulumi-nuget-packages
+            path: sdk/dotnet/nupkgs/*.nupkg
