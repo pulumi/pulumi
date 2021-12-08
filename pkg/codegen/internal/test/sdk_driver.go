@@ -184,6 +184,11 @@ var sdkTests = []sdkTest{
 		Description: "different packages with the same resource",
 		Skip:        codegen.NewStringSet("dotnet/any", "nodejs/any", "python/any", "go/any", "docs/any"),
 	},
+	{
+		Directory:   "different-enum",
+		Description: "An enum in a different package namespace",
+		Skip:        codegen.NewStringSet("dotnet/compile"),
+	},
 }
 
 var genSDKOnly bool
