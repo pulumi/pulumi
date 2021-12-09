@@ -1169,3 +1169,37 @@ func TestServerURLPassthrough(t *testing.T) {
 	}
 	p.Run(t, nil)
 }
+
+// Check that creating a resource with serverURL set will instantiate a default provider with
+// serverURL set.
+func TestServerURLDefaultProvider(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+	url := "get.pulumi.com"
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA::Foo", "foo", true, deploytest.ResourceOptions{
+			ServerURL: url,
+		})
+		return err
+	})
+
+	snapshot := (&TestPlan{
+		Options: UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)},
+		// The first step is the update. We don't want the full lifecycle because we want to see the
+		// created resources.
+		Steps: MakeBasicLifecycleSteps(t, 2)[:1],
+	}).Run(t, nil)
+
+	foundDefaultProvider := false
+	for _, r := range snapshot.Resources {
+		if providers.IsDefaultProvider(r.URN) {
+			assert.Equal(t, url, r.Inputs.Special().ServerURL().Get().StringValue())
+			foundDefaultProvider = true
+		}
+	}
+	assert.Truef(t, foundDefaultProvider, "Found resources: %#v", snapshot.Resources)
+}
