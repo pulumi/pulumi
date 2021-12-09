@@ -288,13 +288,13 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	// problematic for a lot of reasons.
 	if req.Version() != nil {
 		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using version %s from request", req, req.Version())
-		inputs.Special().Version().Set(req.Version().String())
+		providers.SetProviderVersion(inputs, req.Version())
 	} else {
 		logging.V(5).Infof(
 			"newRegisterDefaultProviderEvent(%s): no version specified, falling back to default version", req)
 		if version := d.defaultProviderInfo[req.Package()].Version; version != nil {
 			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default version hit on version %s", req, version)
-			inputs.Special().Version().Set(version.String())
+			providers.SetProviderVersion(inputs, version)
 		} else {
 			logging.V(5).Infof(
 				"newRegisterDefaultProviderEvent(%s): default provider miss, sending nil version to engine", req)
@@ -303,13 +303,13 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 
 	if req.ServerURL() != "" {
 		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using serverURL %s from request", req, req.ServerURL())
-		inputs.Special().ServerURL().Set(req.ServerURL())
+		providers.SetProviderURL(inputs, req.ServerURL())
 	} else {
 		logging.V(5).Infof(
 			"newRegisterDefaultProviderEvent(%s): no serverURL specified, falling back to default serverURL", req)
 		if serverURL := d.defaultProviderInfo[req.Package()].ServerURL; serverURL != "" {
 			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default serverURL hit on %s", req, serverURL)
-			inputs.Special().ServerURL().Set(serverURL)
+			providers.SetProviderURL(inputs, serverURL)
 		} else {
 			logging.V(5).Infof(
 				"newRegisterDefaultProviderEvent(%s): default serverURL miss, sending empty string to engine", req)
@@ -937,10 +937,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 	if providers.IsProviderType(t) {
 		if req.GetVersion() != "" {
-			props.Special().Version().Set(req.GetVersion())
+			version, err := semver.Parse(req.GetVersion())
+			if err != nil {
+				return nil, fmt.Errorf("%s: passed invalid version: %w", label, err)
+			}
+			providers.SetProviderVersion(props, &version)
 		}
 		if req.GetServerURL() != "" {
-			props.Special().ServerURL().Set(req.GetServerURL())
+			providers.SetProviderURL(props, req.GetServerURL())
 		}
 	}
 

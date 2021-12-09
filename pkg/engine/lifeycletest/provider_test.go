@@ -1197,7 +1197,9 @@ func TestServerURLDefaultProvider(t *testing.T) {
 	foundDefaultProvider := false
 	for _, r := range snapshot.Resources {
 		if providers.IsDefaultProvider(r.URN) {
-			assert.Equal(t, url, r.Inputs.Special().ServerURL().Get().StringValue())
+			actualURL, err := providers.GetProviderServerURL(r.Inputs)
+			assert.NoError(t, err)
+			assert.Equal(t, url, actualURL)
 			foundDefaultProvider = true
 		}
 	}

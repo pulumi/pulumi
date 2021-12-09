@@ -240,10 +240,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 		// Calculate the inputs for the provider using the ambient config.
 		if v := req.Version(); v != nil {
-			inputs.Special().Version().Set(v.String())
+			providers.SetProviderVersion(inputs, v)
 		}
 		if url := req.ServerURL(); url != "" {
-			inputs.Special().ServerURL().Set(url)
+			providers.SetProviderURL(inputs, url)
 		}
 		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false)
 		if err != nil {
