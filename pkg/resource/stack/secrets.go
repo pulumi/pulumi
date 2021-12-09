@@ -129,6 +129,10 @@ func (c *cachingCrypter) DecryptValue(ciphertext string) (string, error) {
 	return c.decrypter.DecryptValue(ciphertext)
 }
 
+func (c *cachingCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return c.decrypter.BulkDecrypt(ciphertexts)
+}
+
 // encryptSecret encrypts the plaintext associated with the given secret value.
 func (c *cachingCrypter) encryptSecret(secret *resource.Secret, plaintext string) (string, error) {
 	// If the cache has an entry for this secret and the plaintext has not changed, re-use the ciphertext.
