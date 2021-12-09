@@ -286,10 +286,10 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 		}
 	}
 
-	defaultProviderVersions := make(map[tokens.Package]workspace.PluginInfo)
+	defaultProviderInfo := make(map[tokens.Package]workspace.PluginInfo)
 	for name, plugin := range defaultProviderPlugins {
-		defaultProviderVersions[name] = plugin
+		defaultProviderInfo[name] = plugin
 	}
 
-	return defaultProviderVersions
+	return defaultProviderInfo
 }

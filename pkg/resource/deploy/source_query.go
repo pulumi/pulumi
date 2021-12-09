@@ -195,7 +195,7 @@ func runLangPlugin(src *querySource) result.Result {
 // newQueryResourceMonitor creates a new resource monitor RPC server intended to be used in Pulumi's
 // "query mode".
 func newQueryResourceMonitor(
-	builtins *builtinProvider, defaultProviderVersions map[tokens.Package]workspace.PluginInfo,
+	builtins *builtinProvider, defaultProviderInfo map[tokens.Package]workspace.PluginInfo,
 	provs ProviderSource, reg *providers.Registry, plugctx *plugin.Context,
 	providerRegErrChan chan<- result.Result, tracingSpan opentracing.Span, runinfo *EvalRunInfo) (*queryResmon, error) {
 
@@ -207,7 +207,7 @@ func newQueryResourceMonitor(
 
 	// Create a new default provider manager.
 	d := &defaultProviders{
-		defaultProviderInfo: defaultProviderVersions,
+		defaultProviderInfo: defaultProviderInfo,
 		providers:           make(map[string]providers.Reference),
 		config:              runinfo.Target,
 		requests:            make(chan defaultProviderRequest),

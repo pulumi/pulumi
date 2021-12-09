@@ -55,21 +55,21 @@ type EvalRunInfo struct {
 // a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
 func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo,
-	defaultProviderVersions map[tokens.Package]workspace.PluginInfo, dryRun bool) Source {
+	defaultProviderInfo map[tokens.Package]workspace.PluginInfo, dryRun bool) Source {
 
 	return &evalSource{
-		plugctx:                 plugctx,
-		runinfo:                 runinfo,
-		defaultProviderVersions: defaultProviderVersions,
-		dryRun:                  dryRun,
+		plugctx:             plugctx,
+		runinfo:             runinfo,
+		defaultProviderInfo: defaultProviderInfo,
+		dryRun:              dryRun,
 	}
 }
 
 type evalSource struct {
-	plugctx                 *plugin.Context                         // the plugin context.
-	runinfo                 *EvalRunInfo                            // the directives to use when running the program.
-	defaultProviderVersions map[tokens.Package]workspace.PluginInfo // the default provider versions for this source.
-	dryRun                  bool                                    // true if this is a dry-run operation only.
+	plugctx             *plugin.Context                         // the plugin context.
+	runinfo             *EvalRunInfo                            // the directives to use when running the program.
+	defaultProviderInfo map[tokens.Package]workspace.PluginInfo // the default provider versions for this source.
+	dryRun              bool                                    // true if this is a dry-run operation only.
 }
 
 func (src *evalSource) Close() error {
@@ -436,7 +436,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// Create a new default provider manager.
 	d := &defaultProviders{
-		defaultProviderInfo: src.defaultProviderVersions,
+		defaultProviderInfo: src.defaultProviderInfo,
 		providers:           make(map[string]providers.Reference),
 		config:              src.runinfo.Target,
 		requests:            make(chan defaultProviderRequest),
