@@ -35,7 +35,7 @@ func newStackInitCmd() *cobra.Command {
 	var stackToCopy string
 
 	cmd := &cobra.Command{
-		Use:   "init [<org-name>/]<stack-name>",
+		Use:   "init [<org-name>/<project-name>/]<stack-name>",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
@@ -93,7 +93,7 @@ func newStackInitCmd() *cobra.Command {
 				if b.SupportsOrganizations() {
 					fmt.Print("Please enter your desired stack name.\n" +
 						"To create a stack in an organization, " +
-						"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
+						"use the format [<org-name>/<project-name>/]<stack-name> (e.g. `acmecorp/shipping/dev`).\n")
 				}
 
 				name, nameErr := promptForValue(false, "stack name", "dev", false, b.ValidateStackName, opts)

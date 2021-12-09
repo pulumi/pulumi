@@ -536,7 +536,7 @@ func promptAndCreateStack(prompt promptForValueFunc,
 	if b.SupportsOrganizations() {
 		fmt.Print("Please enter your desired stack name.\n" +
 			"To create a stack in an organization, " +
-			"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
+			"use the format [<org-name>/<project-name>/]<stack-name> (e.g. `acmecorp/shipping/dev`).\n")
 	}
 
 	for {
