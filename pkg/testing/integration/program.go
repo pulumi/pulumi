@@ -287,6 +287,10 @@ type ProgramTestOptions struct {
 	// JSONOutput indicates that the `--json` flag should be passed to `up`, `preview`,
 	// `refresh` and `destroy` commands.
 	JSONOutput bool
+
+	// If set, this hook is called after `pulumi stack export` on the exported file. If `SkipExportImport` is set, this
+	// hook is ignored.
+	ExportStateValidator func(t *testing.T, stack []byte)
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -1268,6 +1272,16 @@ func (pt *ProgramTester) exportImport(dir string) error {
 
 	if err := pt.runPulumiCommand("pulumi-stack-export", exportCmd, dir, false); err != nil {
 		return err
+	}
+
+	if f := pt.opts.ExportStateValidator; f != nil {
+		bytes, err := ioutil.ReadFile(filepath.Join(dir, "stack.json"))
+		if err != nil {
+			pt.t.Logf("Failed to read stack.json: %s", err.Error())
+			return err
+		}
+		pt.t.Logf("Calling ExportStateValidator")
+		f(pt.t, bytes)
 	}
 
 	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
