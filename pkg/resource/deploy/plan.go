@@ -414,8 +414,16 @@ func (rp *ResourcePlan) checkOutputs(
 	contract.Assert(rp.Goal != nil)
 
 	// Check that the property diffs meet the constraints set in the plan.
-	if err := checkDiff(oldOutputs, newOutputs, *rp.Goal.OutputDiff); err != nil {
-		return err
+	if rp.Goal.OutputDiff != nil {
+		if err := checkDiff(oldOutputs, newOutputs, *rp.Goal.OutputDiff); err != nil {
+			return err
+		}
+	} else {
+		// This plan saved no diff for outputs so new up an empty output diff and diff against that
+		outputDiff := PlanDiff{}
+		if err := checkDiff(oldOutputs, newOutputs, outputDiff); err != nil {
+			return err
+		}
 	}
 
 	return nil
