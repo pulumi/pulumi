@@ -1945,6 +1945,19 @@ func getRewritePath(pkg string, gopath string, depRoot string) string {
 
 }
 
+// Fetchs the GOPATH
+func GoPath() (string, error) {
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		usr, userErr := user.Current()
+		if userErr != nil {
+			return "", userErr
+		}
+		gopath = filepath.Join(usr.HomeDir, "go")
+	}
+	return gopath, nil
+}
+
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Go programs are compiled, so we will compile the project first.
@@ -1953,17 +1966,11 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		return fmt.Errorf("locating `go` binary: %w", err)
 	}
 
-	// Ensure GOPATH is known.
-	gopath := os.Getenv("GOPATH")
-	if gopath == "" {
-		usr, userErr := user.Current()
-		if userErr != nil {
-			return userErr
-		}
-		gopath = filepath.Join(usr.HomeDir, "go")
-	}
-
 	depRoot := os.Getenv("PULUMI_GO_DEP_ROOT")
+	gopath, userError := GoPath()
+	if userError != nil {
+		return userError
+	}
 
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {

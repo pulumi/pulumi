@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -1002,4 +1003,72 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 			})
 		})
 	}
+}
+
+func TestProviderDownloadURL(t *testing.T) {
+	lang := "go"
+
+	validate := func(t *testing.T, stdout string) {
+		deployment := &apitype.UntypedDeployment{}
+		err := json.Unmarshal([]byte(stdout), deployment)
+		assert.NoError(t, err)
+		data := &apitype.DeploymentV3{}
+		err = json.Unmarshal(deployment.Deployment, data)
+		assert.NoError(t, err)
+		urlKey := "pluginDownloadURL"
+		for _, resource := range data.Resources {
+			switch {
+			case providers.IsDefaultProvider(resource.URN):
+				assert.Equal(t, "get.com", resource.Outputs[urlKey])
+			case providers.IsProviderType(resource.Type):
+				assert.Equal(t, "get.pulumi/test/providers", resource.Outputs[urlKey])
+			default:
+				_, hasURL := resource.Outputs[urlKey]
+				assert.False(t, hasURL)
+			}
+		}
+	}
+
+	t.Run(lang, func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		dir := filepath.Join("gather_plugin", lang)
+
+		e.ImportDirectory(dir)
+
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+		e.RunCommand("pulumi", "stack", "init", "dev")
+		defer e.RunCommand("pulumi", "stack", "rm", "--yes")
+
+		// Language specific setup
+		switch lang {
+		case "nodejs":
+			e.RunCommand("yarn", "link", "@pulumi/pulumi")
+			e.RunCommand("yarn", "install")
+		case "go":
+			gopath, err := integration.GoPath()
+			assert.NoError(t, err)
+
+			e.RunCommand("go", "mod", "edit", "-replace",
+				fmt.Sprintf(
+					"github.com/pulumi/pulumi/sdk/v3=%s%s",
+					gopath,
+					"/src/github.com/pulumi/pulumi/sdk"))
+			e.RunCommand("go", "mod", "tidy")
+		}
+
+		e.Env = append(e.Env, pathEnv(t,
+			filepath.Join("..", "testprovider")))
+		e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+		defer e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
+		stdout, stderr := e.RunCommand("pulumi", "stack", "export")
+		assert.Empty(t, stderr)
+		validate(t, stdout)
+	})
 }
