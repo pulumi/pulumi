@@ -12,6 +12,10 @@ func SerializePlanDiff(
 	enc config.Encrypter,
 	showSecrets bool) (*apitype.PlanDiffV1, error) {
 
+	if diff == nil {
+		return nil, nil
+	}
+
 	adds, err := SerializeProperties(diff.Adds, enc, showSecrets)
 	if err != nil {
 		return nil, err
