@@ -1008,7 +1008,7 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 func TestProviderDownloadURL(t *testing.T) {
 	validate := func(t *testing.T, stdout []byte) {
 		deployment := &apitype.UntypedDeployment{}
-		err := json.Unmarshal([]byte(stdout), deployment)
+		err := json.Unmarshal(stdout, deployment)
 		assert.NoError(t, err)
 		data := &apitype.DeploymentV3{}
 		err = json.Unmarshal(deployment.Deployment, data)
