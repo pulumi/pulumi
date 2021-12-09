@@ -176,6 +176,13 @@ namespace Pulumi.Tests.Mocks
 
             throw new Exception("Expected to fail");
         }
+
+        [Fact]
+        public async Task TestUrnOutputPropertyIsNeverNull()
+        {
+            await Deployment.TestAsync<Issue7422.Issue7422Stack>(
+                new Issue7422.Issue7422Mocks());
+        }
     }
 
     public static class Testing
