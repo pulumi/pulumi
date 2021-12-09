@@ -17,32 +17,17 @@ import sys
 
 from pulumi import Input, Inputs, ComponentResource, ResourceOptions
 import pulumi
-import pulumi.dynamic as dynamic
 import pulumi.runtime.config as config
 import pulumi.provider as provider
 
-
-_ID = 0
-
-
-class MyDynamicProvider(dynamic.ResourceProvider):
-
-    def create(self, props: Any) -> dynamic.CreateResult:
-        global _ID
-        _ID = _ID + 1
-        return dynamic.CreateResult(id_=str(_ID))
-
-
-class Resource(dynamic.Resource):
-    def __init__(self, name: str, echo: Input[any], opts: Optional[ResourceOptions]=None):
-        super().__init__(MyDynamicProvider(), name, {'echo': echo}, opts)
+from echo import Echo
 
 
 class Component(ComponentResource):
-    def __init__(self, name: str, echo: Input[any], secret: Input[str], opts: Optional[ResourceOptions]=None):
+    def __init__(self, name: str, echo: Input[Any], secret: Input[str], opts: Optional[ResourceOptions]=None):
         super().__init__('testcomponent:index:Component', name, {}, opts)
         self.echo = pulumi.Output.from_input(echo)
-        resource = Resource('child-{}'.format(name), echo, ResourceOptions(parent=self))
+        resource = Echo(f'child-{name}', echo, ResourceOptions(parent=self))
         self.child_id = resource.id
         self.secret = secret
         self.register_outputs({
@@ -63,7 +48,7 @@ class Provider(provider.Provider):
 
         if resource_type != 'testcomponent:index:Component':
             raise Exception('unknown resource type {}'.format(resource_type))
-        
+
 
         secret_key = "secret"
         cfg = pulumi.Config()

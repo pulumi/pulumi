@@ -24,8 +24,10 @@
 
 ### Bug Fixes
 
-- [codegen/schema] - Error on type token names missing the correct prefix.
+- [codegen/schema] - Error on type token names that are not allowed (schema.Name 
+  or specified in allowedPackageNames).
   [#8538](https://github.com/pulumi/pulumi/pull/8538)
+  [#8558](https://github.com/pulumi/pulumi/pull/8558)
 
 - [codegen/go] - Fix `ElementType` for nested collection input and output types.
   [#8535](https://github.com/pulumi/pulumi/pull/8535)

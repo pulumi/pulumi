@@ -77,6 +77,12 @@ type DecryptValueResponse struct {
 	Plaintext []byte `json:"plaintext"`
 }
 
+// Log3rdPartyDecryptionEvent defines the request body for logging a 3rd party secrets provider decryption event.
+type Log3rdPartyDecryptionEvent struct {
+	SecretName  string `json:"secretName,omitempty"`
+	CommandName string `json:"commandName,omitempty"`
+}
+
 // ExportStackResponse defines the response body for exporting a Stack.
 type ExportStackResponse UntypedDeployment
 

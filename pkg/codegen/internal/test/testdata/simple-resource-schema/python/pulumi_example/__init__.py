@@ -6,6 +6,8 @@ from . import _utilities
 import typing
 # Export this package's modules as members:
 from .arg_function import *
+from .bar_resource import *
+from .foo_resource import *
 from .other_resource import *
 from .provider import *
 from .resource import *
@@ -20,9 +22,11 @@ _utilities.register(
   "mod": "",
   "fqn": "pulumi_example",
   "classes": {
+   "bar::BarResource": "BarResource",
    "example::OtherResource": "OtherResource",
    "example::Resource": "Resource",
-   "example::TypeUses": "TypeUses"
+   "example::TypeUses": "TypeUses",
+   "foo::FooResource": "FooResource"
   }
  }
 ]

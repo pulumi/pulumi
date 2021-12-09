@@ -1,7 +1,9 @@
 {
   "emittedFiles": [
     "example/argFunction.go",
+    "example/barResource.go",
     "example/doc.go",
+    "example/fooResource.go",
     "example/init.go",
     "example/otherResource.go",
     "example/provider.go",

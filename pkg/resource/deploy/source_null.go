@@ -22,16 +22,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-// NullSource is a singleton source that never returns any resources.  This may be used in scenarios where the "new"
+// NullSource is a source that never returns any resources.  This may be used in scenarios where the "new"
 // version of the world is meant to be empty, either for testing purposes, or removal of an existing stack.
-var NullSource Source = &nullSource{}
+func NewNullSource(project tokens.PackageName) Source {
+	return &nullSource{project: project}
+}
 
 // A nullSource never returns any resources.
 type nullSource struct {
+	project tokens.PackageName
 }
 
+// Deprecated: A NullSource with no project name.
+var NullSource Source = &nullSource{}
+
 func (src *nullSource) Close() error                { return nil }
-func (src *nullSource) Project() tokens.PackageName { return "" }
+func (src *nullSource) Project() tokens.PackageName { return src.project }
 func (src *nullSource) Info() interface{}           { return nil }
 
 func (src *nullSource) Iterate(

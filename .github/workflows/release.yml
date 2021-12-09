@@ -140,11 +140,9 @@ jobs:
           node-version: ${{ matrix.node-version }}
           registry-url: https://registry.npmjs.org
           always-auth: true
-      - name: Install pipenv
+      - name: Install Python deps
         run: |
-          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
-      - name: Install Twine
-        run: python -m pip install pip twine
+          python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
@@ -242,9 +240,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Install pipenv
+      - name: Install Python deps
         run: |
-          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
+          python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -312,9 +310,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Install pipenv
+      - name: Install Python deps
         run: |
-          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
+          python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -354,9 +352,6 @@ jobs:
       - name: Install
         run: |
           make install_all
-          # Install Pulumi Python SDK globally (on CI only) to workaround a
-          # problem a sub-process in a test failing to find it.
-          python -m pip install -e sdk/python/env/src
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
@@ -412,7 +407,6 @@ jobs:
       - name: Install Python Deps
         run: |
           pip3 install pyenv-win
-          pip3 install pipenv
       - name: Set Build Env Vars
         shell: bash
         run: |
