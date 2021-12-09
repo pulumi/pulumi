@@ -189,7 +189,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Remote:                     opts.Remote,
 		ReplaceOnChanges:           opts.ReplaceOnChanges,
 		Providers:                  opts.Providers,
-		ServerURL:                  opts.ServerURL,
+		PluginDownloadURL:          opts.ServerURL,
 	}
 
 	// submit request

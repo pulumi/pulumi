@@ -33,12 +33,13 @@ import (
 var versionKey resource.PropertyKey = "version"
 var pluginDownloadKey resource.PropertyKey = "pluginDownloadURL"
 
+// SetProviderURL sets the provider plugin download server URL in the given property map.
 func SetProviderURL(inputs resource.PropertyMap, value string) {
 	inputs[pluginDownloadKey] = resource.NewStringProperty(value)
 }
 
-// GetProviderServerURL fetches a provider server URL from the given property map. If the server URL
-// is not set, this function returns "".
+// GetProviderServerURL fetches a provider plugin download server URL from the given property map.
+// If the server URL is not set, this function returns "".
 func GetProviderServerURL(inputs resource.PropertyMap) (string, error) {
 	url, ok := inputs[pluginDownloadKey]
 	if !ok {
@@ -50,12 +51,13 @@ func GetProviderServerURL(inputs resource.PropertyMap) (string, error) {
 	return url.StringValue(), nil
 }
 
+// Sets the provider version in the given property map.
 func SetProviderVersion(inputs resource.PropertyMap, value *semver.Version) {
 	inputs[versionKey] = resource.NewStringProperty(value.String())
 }
 
-// GetProviderVersion fetches and parses a provider version from the given property map. If the version property is not
-// present, this function returns nil.
+// GetProviderVersion fetches and parses a provider version from the given property map. If the
+// version property is not present, this function returns nil.
 func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 	version, ok := inputs[versionKey]
 	if !ok {

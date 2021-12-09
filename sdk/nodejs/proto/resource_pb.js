@@ -549,7 +549,7 @@ proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
     additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
     aliasesList: (f = jspb.Message.getRepeatedField(msg, 11)) == null ? undefined : f,
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
-    serverurl: jspb.Message.getFieldWithDefault(msg, 13, "")
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, "")
   };
 
   if (includeInstance) {
@@ -637,7 +637,7 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
       break;
     case 13:
       var value = /** @type {string} */ (reader.readString());
-      msg.setServerurl(value);
+      msg.setPlugindownloadurl(value);
       break;
     default:
       reader.skipField();
@@ -753,7 +753,7 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
       f
     );
   }
-  f = message.getServerurl();
+  f = message.getPlugindownloadurl();
   if (f.length > 0) {
     writer.writeString(
       13,
@@ -1056,10 +1056,10 @@ proto.pulumirpc.ReadResourceRequest.prototype.setAcceptresources = function(valu
 
 
 /**
- * optional string serverURL = 13;
+ * optional string pluginDownloadURL = 13;
  * @return {string}
  */
-proto.pulumirpc.ReadResourceRequest.prototype.getServerurl = function() {
+proto.pulumirpc.ReadResourceRequest.prototype.getPlugindownloadurl = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 13, ""));
 };
 
@@ -1068,7 +1068,7 @@ proto.pulumirpc.ReadResourceRequest.prototype.getServerurl = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.ReadResourceRequest} returns this
  */
-proto.pulumirpc.ReadResourceRequest.prototype.setServerurl = function(value) {
+proto.pulumirpc.ReadResourceRequest.prototype.setPlugindownloadurl = function(value) {
   return jspb.Message.setProto3StringField(this, 13, value);
 };
 
@@ -1316,7 +1316,7 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
     replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
-    serverurl: jspb.Message.getFieldWithDefault(msg, 24, "")
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 24, "")
   };
 
   if (includeInstance) {
@@ -1453,7 +1453,7 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       break;
     case 24:
       var value = /** @type {string} */ (reader.readString());
-      msg.setServerurl(value);
+      msg.setPlugindownloadurl(value);
       break;
     default:
       reader.skipField();
@@ -1641,7 +1641,7 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       f
     );
   }
-  f = message.getServerurl();
+  f = message.getPlugindownloadurl();
   if (f.length > 0) {
     writer.writeString(
       24,
@@ -2553,10 +2553,10 @@ proto.pulumirpc.RegisterResourceRequest.prototype.clearReplaceonchangesList = fu
 
 
 /**
- * optional string serverURL = 24;
+ * optional string pluginDownloadURL = 24;
  * @return {string}
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.getServerurl = function() {
+proto.pulumirpc.RegisterResourceRequest.prototype.getPlugindownloadurl = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 24, ""));
 };
 
@@ -2565,7 +2565,7 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getServerurl = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.setServerurl = function(value) {
+proto.pulumirpc.RegisterResourceRequest.prototype.setPlugindownloadurl = function(value) {
   return jspb.Message.setProto3StringField(this, 24, value);
 };
 

@@ -573,7 +573,7 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetServerURL())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 	if err != nil {
 		return nil, err
 	}
@@ -623,7 +623,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetServerURL())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 	if err != nil {
 		return nil, err
 	}
@@ -711,7 +711,7 @@ func (rm *resmon) StreamInvoke(
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
 
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetServerURL())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 	if err != nil {
 		return err
 	}
@@ -778,7 +778,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	provider := req.GetProvider()
 	if !providers.IsProviderType(t) && provider == "" {
-		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion(), req.GetServerURL())
+		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 		if err != nil {
 			return nil, err
 		}
@@ -891,7 +891,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRefs map[string]string
 
 	if custom && !providers.IsProviderType(t) || remote {
-		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion(), req.GetServerURL())
+		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 		if err != nil {
 			return nil, err
 		}
@@ -943,8 +943,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 			providers.SetProviderVersion(props, &version)
 		}
-		if req.GetServerURL() != "" {
-			providers.SetProviderURL(props, req.GetServerURL())
+		if req.GetPluginDownloadURL() != "" {
+			providers.SetProviderURL(props, req.GetPluginDownloadURL())
 		}
 	}
 
