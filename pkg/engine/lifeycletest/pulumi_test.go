@@ -3523,3 +3523,136 @@ func TestAliasWithPlans(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
 }
+
+func TestComputedCanBeDropped(t *testing.T) {
+	// This tests that values that show as <computed> in the plan can be dropped in the update (because they may of resolved to undefined)
+	// We're testing both RegisterResource and RegisterResourceOutputs here.
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	var resourceInputs resource.PropertyMap
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		urn, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "stack", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resourceInputs,
+		})
+		assert.NoError(t, err)
+
+		// We're using the same property set on purpose, this is not a test bug
+		err = monitor.RegisterResourceOutputs(urn, resourceInputs)
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// The three property sets we'll use in this test
+	computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+	computedPropertySet := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"baz": map[string]interface{}{
+			"a": 42,
+			"b": computed,
+		},
+		"qux": []interface{}{
+			computed,
+			24,
+		},
+		"zed": computed,
+	})
+	fullPropertySet := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"baz": map[string]interface{}{
+			"a": 42,
+			"b": "alpha",
+		},
+		"qux": []interface{}{
+			"beta",
+			24,
+		},
+		"zed": "grr",
+	})
+	partialPropertySet := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"baz": map[string]interface{}{
+			"a": 42,
+		},
+		"qux": []interface{}{
+			nil, // computed values that resolve to undef don't get dropped from arrays, they just become null
+			24,
+		},
+	})
+
+	// Generate a plan.
+	resourceInputs = computedPropertySet
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Attempt to run an update using the plan with all computed values removed
+	resourceInputs = partialPropertySet
+	p.Options.Plan = plan.Clone()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Check the resource's state.
+	if !assert.Len(t, snap.Resources, 3) {
+		return
+	}
+
+	assert.Equal(t, partialPropertySet, snap.Resources[1].Outputs)
+	assert.Equal(t, partialPropertySet, snap.Resources[2].Outputs)
+
+	// Now run an update to set the values of the computed properties...
+	resourceInputs = fullPropertySet
+	p.Options.Plan = nil
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Check the resource's state.
+	if !assert.Len(t, snap.Resources, 3) {
+		return
+	}
+
+	assert.Equal(t, fullPropertySet, snap.Resources[1].Outputs)
+	assert.Equal(t, fullPropertySet, snap.Resources[2].Outputs)
+
+	// ...and then build a new plan where they're computed updates (vs above where its computed creates)
+	resourceInputs = computedPropertySet
+	plan, res = TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Now run the an update with the plan and check the update is allowed to remove these properties
+	resourceInputs = partialPropertySet
+	p.Options.Plan = plan.Clone()
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Check the resource's state.
+	if !assert.Len(t, snap.Resources, 3) {
+		return
+	}
+
+	assert.Equal(t, partialPropertySet, snap.Resources[1].Outputs)
+	assert.Equal(t, partialPropertySet, snap.Resources[2].Outputs)
+}
