@@ -75,8 +75,9 @@ namespace Pulumi.Tests.Mocks.Issue7422
 
     public sealed class Issue7422Component : ComponentResource
     {
-        public Issue7422Component(string name,
-                           ComponentResourceOptions? options = null)
+        public Issue7422Component(
+            string name,
+            ComponentResourceOptions? options = null)
             : base("issue7422::Component", name, options)
         {
             var parent = this;
