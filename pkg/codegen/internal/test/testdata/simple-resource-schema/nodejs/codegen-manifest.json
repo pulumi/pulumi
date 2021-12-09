@@ -2,6 +2,8 @@
   "emittedFiles": [
     "README.md",
     "argFunction.ts",
+    "barResource.ts",
+    "fooResource.ts",
     "index.ts",
     "otherResource.ts",
     "package.json",

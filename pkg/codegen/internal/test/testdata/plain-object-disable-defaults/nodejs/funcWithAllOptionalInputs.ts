@@ -17,7 +17,7 @@ export function funcWithAllOptionalInputs(args?: FuncWithAllOptionalInputsArgs, 
     if (!opts.version) {
         opts.version = utilities.getVersion();
     }
-    return pulumi.runtime.invoke("example::funcWithAllOptionalInputs", {
+    return pulumi.runtime.invoke("mypkg::funcWithAllOptionalInputs", {
         "a": args.a ? inputs.helmReleaseSettingsProvideDefaults(args.a) : undefined,
         "b": args.b,
     }, opts);

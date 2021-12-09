@@ -2,6 +2,8 @@
   "emittedFiles": [
     "_index.md",
     "argfunction/_index.md",
+    "barresource/_index.md",
+    "fooresource/_index.md",
     "otherresource/_index.md",
     "overlayfunction/_index.md",
     "overlayresource/_index.md",

@@ -77,5 +77,5 @@ func newDestroySource(
 
 	// Create a nil source.  This simply returns "nothing" as the new state, which will cause the
 	// engine to destroy the entire existing state.
-	return deploy.NullSource, nil
+	return deploy.NewNullSource(proj.Name), nil
 }

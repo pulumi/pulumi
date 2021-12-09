@@ -2,6 +2,8 @@
   "version": "0.0.1",
   "name": "example",
 
+  "allowedPackageNames": ["mypkg"],
+
   "provider": {
     "description": "The provider type for the kubernetes package.",
     "type": "object",
@@ -184,7 +186,7 @@
   },
 
   "functions": {
-    "example::funcWithAllOptionalInputs": {
+    "mypkg::funcWithAllOptionalInputs": {
       "description": "Check codegen of functions with all optional inputs.",
       "inputs": {
         "type": "object",
