@@ -44,7 +44,8 @@
       }
     },
     "go": {
-      "importBasePath": "dash-named-schema/foo"
+      "importBasePath": "dash-named-schema/foo",
+      "generateExtraInputTypes": true
     },
     "nodejs": {
       "dependencies": {

@@ -1,5 +1,8 @@
 ### Improvements
 
+- [codegen/go] - Do not generate unreferenced input types by default.
+  [#7943](https://github.com/pulumi/pulumi/pull/7943)
+
 - [codegen/go] - Simplify the application of object defaults in generated SDKs.
   [#8539](https://github.com/pulumi/pulumi/pull/8539)
 

@@ -32,6 +32,9 @@
       "devDependencies": {
         "typescript": "^3.7.0"
       }
+    },
+    "go": {
+      "generateExtraInputTypes": true
     }
   }
 }

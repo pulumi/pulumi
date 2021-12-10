@@ -128,6 +128,10 @@ class TypeUses(pulumi.CustomResource):
             __props__.__dict__["baz"] = baz
             __props__.__dict__["foo"] = foo
             __props__.__dict__["qux"] = qux
+            __props__.__dict__["alpha"] = None
+            __props__.__dict__["beta"] = None
+            __props__.__dict__["gamma"] = None
+            __props__.__dict__["zed"] = None
         super(TypeUses, __self__).__init__(
             'example::TypeUses',
             resource_name,
@@ -150,11 +154,20 @@ class TypeUses(pulumi.CustomResource):
 
         __props__ = TypeUsesArgs.__new__(TypeUsesArgs)
 
+        __props__.__dict__["alpha"] = None
         __props__.__dict__["bar"] = None
         __props__.__dict__["baz"] = None
+        __props__.__dict__["beta"] = None
         __props__.__dict__["foo"] = None
+        __props__.__dict__["gamma"] = None
         __props__.__dict__["qux"] = None
+        __props__.__dict__["zed"] = None
         return TypeUses(resource_name, opts=opts, __props__=__props__)
+
+    @property
+    @pulumi.getter
+    def alpha(self) -> pulumi.Output[Optional['OutputOnlyEnumType']]:
+        return pulumi.get(self, "alpha")
 
     @property
     @pulumi.getter
@@ -168,11 +181,26 @@ class TypeUses(pulumi.CustomResource):
 
     @property
     @pulumi.getter
+    def beta(self) -> pulumi.Output[Optional[Sequence['outputs.OutputOnlyObjectType']]]:
+        return pulumi.get(self, "beta")
+
+    @property
+    @pulumi.getter
     def foo(self) -> pulumi.Output[Optional['outputs.Object']]:
         return pulumi.get(self, "foo")
 
     @property
     @pulumi.getter
+    def gamma(self) -> pulumi.Output[Optional[Mapping[str, 'OutputOnlyEnumType']]]:
+        return pulumi.get(self, "gamma")
+
+    @property
+    @pulumi.getter
     def qux(self) -> pulumi.Output[Optional['RubberTreeVariety']]:
         return pulumi.get(self, "qux")
+
+    @property
+    @pulumi.getter
+    def zed(self) -> pulumi.Output[Optional['outputs.OutputOnlyObjectType']]:
+        return pulumi.get(self, "zed")
 

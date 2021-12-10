@@ -25,7 +25,8 @@
       }
     },
     "go": {
-      "importBasePath": "nested-module/foo"
+      "importBasePath": "nested-module/foo",
+      "generateExtraInputTypes": true
     },
     "nodejs": {
       "dependencies": {

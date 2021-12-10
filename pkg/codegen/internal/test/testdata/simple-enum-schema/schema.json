@@ -247,7 +247,8 @@
       }
     },
     "go": {
-      "importBasePath": "simple-enum-schema/plant"
+      "importBasePath": "simple-enum-schema/plant",
+      "generateExtraInputTypes": true
     },
     "nodejs": {
       "dependencies": {

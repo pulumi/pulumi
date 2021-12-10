@@ -126,7 +126,8 @@
       }
     },
     "go": {
-      "importBasePath": "plain-and-default/foo"
+      "importBasePath": "plain-and-default/foo",
+      "generateExtraInputTypes": true
     },
     "nodejs": {
       "dependencies": {
