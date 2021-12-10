@@ -90,7 +90,7 @@ func (p ProviderRequest) Name() tokens.QName {
 	}
 
 	if p.pluginDownloadURL != "" {
-		base += tokens.IntoQName(p.pluginDownloadURL).String()
+		base += "_" + tokens.IntoQName(p.pluginDownloadURL).String()
 	}
 
 	// This thing that we generated must be a QName.

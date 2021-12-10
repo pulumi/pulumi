@@ -75,7 +75,7 @@ func IntoQName(s string) QName {
 			continue
 		}
 		segment := []byte(s)
-		if !NameRegexp.Match([]byte{segment[0]}) {
+		if !nameFirstCharRegexp.Match([]byte{segment[0]}) {
 			segment[0] = '_'
 		}
 		for i := 1; i < len(s); i++ {
