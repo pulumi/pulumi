@@ -280,13 +280,11 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	opts interface{}) (backend.Stack, error) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stackRef)
-		if err != nil {
-			return nil, err
-		}
-		defer b.Unlock(ctx, stackRef)
+	err := b.Lock(ctx, stackRef)
+	if err != nil {
+		return nil, err
 	}
+	defer b.Unlock(ctx, stackRef)
 
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
@@ -360,13 +358,11 @@ func (b *localBackend) ListStacks(
 
 func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return false, err
-		}
-		defer b.Unlock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return false, err
 	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	stackName := stack.Ref().Name()
 	snapshot, _, err := b.getStack(stackName)
@@ -385,13 +381,11 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	newName tokens.QName) (backend.StackReference, error) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, err
-		}
-		defer b.Unlock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, err
 	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	// Get the current state from the stack to be renamed.
 	stackName := stack.Ref().Name()
@@ -463,13 +457,11 @@ func (b *localBackend) PackPolicies(
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, nil, result.FromError(err)
-		}
-		defer b.Unlock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, nil, result.FromError(err)
 	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
@@ -482,13 +474,11 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-		defer b.Unlock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
 	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
@@ -496,13 +486,11 @@ func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-		defer b.Unlock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
 	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	op.Imports = imports
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
@@ -511,13 +499,11 @@ func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-		defer b.Unlock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
 	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
@@ -796,16 +782,14 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	deployment *apitype.UntypedDeployment) error {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stk.Ref())
-		if err != nil {
-			return err
-		}
-		defer b.Unlock(ctx, stk.Ref())
+	err := b.Lock(ctx, stk.Ref())
+	if err != nil {
+		return err
 	}
+	defer b.Unlock(ctx, stk.Ref())
 
 	stackName := stk.Ref().Name()
-	_, _, err := b.getStack(stackName)
+	_, _, err = b.getStack(stackName)
 	if err != nil {
 		return err
 	}
