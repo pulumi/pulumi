@@ -35,28 +35,6 @@ namespace Pulumi.Tests
             Assert.Same(stack.ImplicitName, outputs["ImplicitName"]);
         }
 
-        private class NullOutputStack : Stack
-        {
-            [Output("foo")]
-            public Output<string>? Foo { get; } = null;
-        }
-
-        [Fact]
-        public async Task StackWithNullOutputsThrows()
-        {
-            try
-            {
-                await Run<NullOutputStack>();
-            }
-            catch (RunException ex)
-            {
-                Assert.Contains("Output(s) 'foo' have no value assigned", ex.ToString());
-                return;
-            }
-
-            throw new XunitException("Should not come here");
-        }
-
         private class InvalidOutputTypeStack : Stack
         {
             [Output("foo")]

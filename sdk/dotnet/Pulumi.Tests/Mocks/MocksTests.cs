@@ -150,6 +150,32 @@ namespace Pulumi.Tests.Mocks
 
             // TODO: It would be good to assert that a warning was logged to the engine but getting hold of warnings requires re-plumbing what TestAsync returns.
         }
+
+        private class NullOutputStack : Stack
+        {
+            [Output("foo")]
+            public Output<string>? Foo { get; } = null;
+        }
+
+        [Fact]
+        public async Task StackWithNullOutputsThrows()
+        {
+            try
+            {
+                await Testing.RunAsync<NullOutputStack>();
+            }
+            catch (Exception ex)
+            {
+                Assert.Contains(
+                    "System.InvalidOperationException: " +
+                    "[Output] Pulumi.Tests.Mocks.MocksTests+NullOutputStack.Foo " +
+                    "did not have a 'set' method",
+                    ex.ToString());
+                return;
+            }
+
+            throw new Exception("Expected to fail");
+        }
     }
 
     public static class Testing
