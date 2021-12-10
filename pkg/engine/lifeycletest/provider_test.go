@@ -1170,8 +1170,8 @@ func TestServerURLPassthrough(t *testing.T) {
 	p.Run(t, nil)
 }
 
-// Check that creating a resource with serverURL set will instantiate a default provider with
-// serverURL set.
+// Check that creating a resource with pluginDownloadURL set will instantiate a default provider with
+// pluginDownloadURL set.
 func TestServerURLDefaultProvider(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1197,7 +1197,7 @@ func TestServerURLDefaultProvider(t *testing.T) {
 	foundDefaultProvider := false
 	for _, r := range snapshot.Resources {
 		if providers.IsDefaultProvider(r.URN) {
-			actualURL, err := providers.GetProviderServerURL(r.Inputs)
+			actualURL, err := providers.GetProviderDownloadURL(r.Inputs)
 			assert.NoError(t, err)
 			assert.Equal(t, url, actualURL)
 			foundDefaultProvider = true

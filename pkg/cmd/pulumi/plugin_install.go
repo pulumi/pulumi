@@ -71,10 +71,10 @@ func newPluginInstallCmd() *cobra.Command {
 					return fmt.Errorf("invalid plugin semver: %w", err)
 				}
 				installs = append(installs, workspace.PluginInfo{
-					Kind:      workspace.PluginKind(args[0]),
-					Name:      args[1],
-					Version:   &version,
-					ServerURL: serverURL, // If empty, will use default plugin source.
+					Kind:              workspace.PluginKind(args[0]),
+					Name:              args[1],
+					Version:           &version,
+					PluginDownloadURL: serverURL, // If empty, will use default plugin source.
 				})
 			} else {
 				if file != "" {
@@ -125,7 +125,7 @@ func newPluginInstallCmd() *cobra.Command {
 				if file == "" {
 					var size int64
 					if tarball, size, err = install.Download(); err != nil {
-						return fmt.Errorf("%s downloading from %s: %w", label, install.ServerURL, err)
+						return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
 					}
 					tarball = workspace.ReadCloserProgressBar(tarball, size, "Downloading plugin", displayOpts.Color)
 				} else {

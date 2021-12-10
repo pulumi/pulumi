@@ -38,9 +38,9 @@ func SetProviderURL(inputs resource.PropertyMap, value string) {
 	inputs[pluginDownloadKey] = resource.NewStringProperty(value)
 }
 
-// GetProviderServerURL fetches a provider plugin download server URL from the given property map.
+// GetProviderDownloadURL fetches a provider plugin download server URL from the given property map.
 // If the server URL is not set, this function returns "".
-func GetProviderServerURL(inputs resource.PropertyMap) (string, error) {
+func GetProviderDownloadURL(inputs resource.PropertyMap) (string, error) {
 	url, ok := inputs[pluginDownloadKey]
 	if !ok {
 		return "", nil

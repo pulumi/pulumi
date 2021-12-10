@@ -301,18 +301,19 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		}
 	}
 
-	if req.ServerURL() != "" {
-		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using serverURL %s from request", req, req.ServerURL())
-		providers.SetProviderURL(inputs, req.ServerURL())
+	if req.PluginDownloadURL() != "" {
+		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using pluginDownloadURL %s from request",
+			req, req.PluginDownloadURL())
+		providers.SetProviderURL(inputs, req.PluginDownloadURL())
 	} else {
 		logging.V(5).Infof(
-			"newRegisterDefaultProviderEvent(%s): no serverURL specified, falling back to default serverURL", req)
-		if serverURL := d.defaultProviderInfo[req.Package()].ServerURL; serverURL != "" {
-			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default serverURL hit on %s", req, serverURL)
-			providers.SetProviderURL(inputs, serverURL)
+			"newRegisterDefaultProviderEvent(%s): no pluginDownloadURL specified, falling back to default pluginDownloadURL", req)
+		if pluginDownloadURL := d.defaultProviderInfo[req.Package()].PluginDownloadURL; pluginDownloadURL != "" {
+			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default pluginDownloadURL hit on %s", req, pluginDownloadURL)
+			providers.SetProviderURL(inputs, pluginDownloadURL)
 		} else {
 			logging.V(5).Infof(
-				"newRegisterDefaultProviderEvent(%s): default serverURL miss, sending empty string to engine", req)
+				"newRegisterDefaultProviderEvent(%s): default pluginDownloadURL miss, sending empty string to engine", req)
 		}
 	}
 
@@ -532,11 +533,10 @@ func getProviderFromSource(
 	return provider, nil
 }
 
-func parseProviderRequest(pkg tokens.Package, version, serverURL string) (providers.ProviderRequest, error) {
+func parseProviderRequest(pkg tokens.Package, version, pluginDownloadURL string) (providers.ProviderRequest, error) {
 	if version == "" {
 		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
-		// return providers.NewProviderRequest(nil, pkg), nil
-		return providers.NewProviderRequest(nil, pkg, serverURL), nil
+		return providers.NewProviderRequest(nil, pkg, pluginDownloadURL), nil
 	}
 
 	parsedVersion, err := semver.Parse(version)
@@ -545,7 +545,7 @@ func parseProviderRequest(pkg tokens.Package, version, serverURL string) (provid
 		return providers.ProviderRequest{}, err
 	}
 
-	return providers.NewProviderRequest(&parsedVersion, pkg, serverURL), nil
+	return providers.NewProviderRequest(&parsedVersion, pkg, pluginDownloadURL), nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,

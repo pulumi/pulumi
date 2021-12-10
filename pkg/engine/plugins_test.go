@@ -37,10 +37,10 @@ func TestDefaultProvidersSingle(t *testing.T) {
 		Kind:    workspace.ResourcePlugin,
 	})
 	languagePlugins.Add(workspace.PluginInfo{
-		Name:      "kubernetes",
-		Version:   mustMakeVersion("0.22.0"),
-		Kind:      workspace.ResourcePlugin,
-		ServerURL: "com.server.url",
+		Name:              "kubernetes",
+		Version:           mustMakeVersion("0.22.0"),
+		Kind:              workspace.ResourcePlugin,
+		PluginDownloadURL: "com.server.url",
 	})
 
 	defaultProviders := computeDefaultProviderPlugins(languagePlugins, newPluginSet())
@@ -57,7 +57,7 @@ func TestDefaultProvidersSingle(t *testing.T) {
 	kubernetesVer := kubernetes.Version
 	assert.NotNil(t, kubernetesVer)
 	assert.Equal(t, "0.22.0", kubernetesVer.String())
-	assert.Equal(t, "com.server.url", kubernetes.ServerURL)
+	assert.Equal(t, "com.server.url", kubernetes.PluginDownloadURL)
 
 }
 

@@ -87,7 +87,7 @@ func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pl
 
 		logging.V(preparePluginLog).Infof(
 			"gatherPluginsFromProgram(): plugin %s %s (%s) is required by language host",
-			plug.Name, plug.Version, plug.ServerURL)
+			plug.Name, plug.Version, plug.PluginDownloadURL)
 		set.Add(plug)
 	}
 	return set, nil
@@ -114,17 +114,17 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 		if err != nil {
 			return set, err
 		}
-		serverURL, err := providers.GetProviderServerURL(res.Inputs)
+		downloadURL, err := providers.GetProviderDownloadURL(res.Inputs)
 		if err != nil {
 			return set, err
 		}
 		logging.V(preparePluginLog).Infof(
 			"gatherPluginsFromSnapshot(): plugin %s %s is required by first-class provider %q", pkg, version, urn)
 		set.Add(workspace.PluginInfo{
-			Name:      pkg.String(),
-			Kind:      workspace.ResourcePlugin,
-			Version:   version,
-			ServerURL: serverURL,
+			Name:              pkg.String(),
+			Kind:              workspace.ResourcePlugin,
+			Version:           version,
+			PluginDownloadURL: downloadURL,
 		})
 	}
 	return set, nil
@@ -203,9 +203,9 @@ func installPlugin(plugin workspace.PluginInfo) error {
 //
 // The justification for favoring language plugins over all else is that, ultimately, it is the language plugin that
 // produces resource registrations and therefore it is the language plugin that should dictate exactly what plugins to
-// use to satisfy a resource registration. SDKs have the opportunity to specify what plugin (serverURL and version)
-// they want to use in RegisterResource. If the plugin is left unspecified, we make a best guess effort to infer the
-// version and url that the language plugin actually wants.
+// use to satisfy a resource registration. SDKs have the opportunity to specify what plugin (pluginDownloadURL and
+// version) they want to use in RegisterResource. If the plugin is left unspecified, we make a best guess effort to
+// infer the version and url that the language plugin actually wants.
 //
 // Whenever a resource arrives via RegisterResource and does not explicitly specify which provider to use, the engine
 // injects a "default" provider resource that will serve as that resource's provider. This function computes the map
