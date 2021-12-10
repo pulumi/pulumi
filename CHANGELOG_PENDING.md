@@ -27,6 +27,9 @@
   `PULUMI_SELF_MANAGED_STATE_LOCKING=1` environment variable.
   [#8565](https://github.com/pulumi/pulumi/pull/8565)
 
+- [{cli,auto}] - Exclude language plugins from `PULUMI_IGNORE_AMBIENT_PLUGINS`.
+  [#8576](https://github.com/pulumi/pulumi/pull/8576)
+
 - [sdk/dotnet] - Fixes a rare race condition that sporadically caused
   NullReferenceException to be raised when constructing resources
   [#8495](https://github.com/pulumi/pulumi/pull/8495)
