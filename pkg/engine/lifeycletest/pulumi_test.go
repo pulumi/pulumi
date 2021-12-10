@@ -3245,6 +3245,88 @@ func TestResoucesWithSames(t *testing.T) {
 	assert.Equal(t, expected, snap.Resources[1].Outputs)
 }
 
+func TestPlannedPreviews(t *testing.T) {
+	// This checks that plans work in previews, this is very similar to TestPlannedUpdate except we only do previews
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	var ins resource.PropertyMap
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
+	}
+
+	project := p.GetProject()
+
+	// Generate a plan.
+	computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"baz": map[string]interface{}{
+			"a": 42,
+			"b": computed,
+		},
+		"qux": []interface{}{
+			computed,
+			24,
+		},
+		"zed": computed,
+	})
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Attempt to run a new preview using the plan, given we've changed the property set this should fail
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"qux": []interface{}{
+			"alpha",
+			24,
+		},
+	})
+	p.Options.Plan = plan.Clone()
+	validate := ExpectDiagMessage(t,
+		"<{%reset%}>resource violates plan: properties changed: -baz, -foo<{%reset%}>\n")
+	_, res = TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate)
+	assert.Nil(t, res)
+
+	// Attempt to run an preview using the plan, such that the property set is now valid
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"baz": map[string]interface{}{
+			"a": 42,
+			"b": computed,
+		},
+		"qux": []interface{}{
+			"beta",
+			24,
+		},
+		"zed": "grr",
+	})
+	p.Options.Plan = plan.Clone()
+	_, res = TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+}
+
 func TestPlannedUpdateChangedStack(t *testing.T) {
 	// This tests the case that we run a planned update against a stack that has changed between preview and update
 

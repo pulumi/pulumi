@@ -196,16 +196,25 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
 	// Preview the operation to the user and ask them if they want to proceed.
 
-	if !op.Opts.SkipPreview && op.Opts.Engine.Plan == nil {
-		// We don't run preview if we've already got a plan
+	if !op.Opts.SkipPreview {
+		// We want to run the preview with the given plan and then run the full update with the initial plan as well,
+		// but because plans are mutated as they're checked we need to clone it here.
+		// We want to use the original plan because a program could be non-deterministic and have a plan of
+		// operations P0, the update preview could return P1, and then the actual update could run P2, were P1 < P2 < P0.
+		var originalPlan *deploy.Plan
+		if op.Opts.Engine.Plan != nil {
+			originalPlan = op.Opts.Engine.Plan.Clone()
+		}
 
 		plan, changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
 		if res != nil || kind == apitype.PreviewUpdate {
 			return changes, res
 		}
 
-		// If we're in experimental mode use the newly generated plan to constraint the following update
-		if op.Opts.ExperimentalPlans {
+		// If we had an original plan use it, else if we're in experimental mode use the newly generated plan
+		if originalPlan != nil {
+			op.Opts.Engine.Plan = originalPlan
+		} else if op.Opts.ExperimentalPlans {
 			op.Opts.Engine.Plan = plan
 		}
 	}
