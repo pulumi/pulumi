@@ -30,8 +30,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-var versionKey resource.PropertyKey = "version"
-var pluginDownloadKey resource.PropertyKey = "pluginDownloadURL"
+const versionKey resource.PropertyKey = "version"
+const pluginDownloadKey resource.PropertyKey = "pluginDownloadURL"
 
 // SetProviderURL sets the provider plugin download server URL in the given property map.
 func SetProviderURL(inputs resource.PropertyMap, value string) {
