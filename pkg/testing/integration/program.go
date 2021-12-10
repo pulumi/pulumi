@@ -2008,16 +2008,8 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 
 	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
 	if localNuget == "" {
-		// We assume that the test is run from a subdirectory of Pulumi. We then search backwards
-		// until we are in a directory called Pulumi.
-		dir, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-		for dir != "" && filepath.Base(dir) != "pulumi" {
-			dir = filepath.Dir(dir)
-		}
-		localNuget = filepath.Join(dir, ".bin", "nuget")
+		home := os.Getenv("HOME")
+		localNuget = filepath.Join(home, ".pulumi-dev", "nuget")
 	}
 
 	for _, dep := range pt.opts.Dependencies {
