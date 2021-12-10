@@ -205,7 +205,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		}
 
 		// If we're in experimental mode use the newly generated plan to constraint the following update
-		if cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) {
+		if op.Opts.ExperimentalPlans {
 			op.Opts.Engine.Plan = plan
 		}
 	}

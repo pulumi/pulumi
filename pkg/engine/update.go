@@ -149,6 +149,9 @@ type UpdateOptions struct {
 
 	// The plan to use for the update, if any.
 	Plan *deploy.Plan
+
+	// true if experimental plans should be generated.
+	ExperimentalPlans bool
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.

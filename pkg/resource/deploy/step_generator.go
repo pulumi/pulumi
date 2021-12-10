@@ -200,16 +200,19 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			}
 		}
 
-		// Resource plan might be aliased
-		urn, isAliased := sg.aliased[s.URN()]
-		if !isAliased {
-			urn = s.URN()
+		// If we're in experimental mode add the operation to the plan being generated
+		if sg.opts.ExperimentalPlans {
+			// Resource plan might be aliased
+			urn, isAliased := sg.aliased[s.URN()]
+			if !isAliased {
+				urn = s.URN()
+			}
+			resourcePlan, ok := sg.deployment.newPlans.get(urn)
+			if !ok {
+				return nil, result.Errorf("Expected a new resource plan for %v", urn)
+			}
+			resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 		}
-		resourcePlan, ok := sg.deployment.newPlans.get(urn)
-		if !ok {
-			return nil, result.Errorf("Expected a new resource plan for %v", urn)
-		}
-		resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 	}
 
 	if !sg.isTargetedUpdate() {
@@ -351,9 +354,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		new.ID = goal.ID
 		new.ImportID = goal.ID
 
-		// Imports have no diff, just a goal state
-		newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(nil, goal)}
-		sg.deployment.newPlans.set(urn, newResourcePlan)
+		// If we're in experimental mode create a plan, Imports have no diff, just a goal state
+		if sg.opts.ExperimentalPlans {
+			newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(nil, goal)}
+			sg.deployment.newPlans.set(urn, newResourcePlan)
+		}
 
 		if isReplace := hasOld && !recreating; isReplace {
 			return []Step{
@@ -387,19 +392,22 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		new.Inputs = inputs
 	}
 
-	var inputDiff *resource.ObjectDiff
-	if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
-		inputDiff = nil
-		oldInputs = nil
-	} else {
-		inputDiff = oldInputs.Diff(inputs)
-	}
+	// If we're in experimental mode generate a plan
+	if sg.opts.ExperimentalPlans {
+		var inputDiff *resource.ObjectDiff
+		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
+			inputDiff = nil
+			oldInputs = nil
+		} else {
+			inputDiff = oldInputs.Diff(inputs)
+		}
 
-	// Generate the output goal plan
-	// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
-	// application. However, it is necessary in the face of computed inputs.
-	newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(inputDiff, goal)}
-	sg.deployment.newPlans.set(urn, newResourcePlan)
+		// Generate the output goal plan
+		// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
+		// application. However, it is necessary in the face of computed inputs.
+		newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(inputDiff, goal)}
+		sg.deployment.newPlans.set(urn, newResourcePlan)
+	}
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
 	// If theres no plan for this resource check that nothing has been changed.
@@ -715,11 +723,14 @@ func (sg *stepGenerator) generateStepsFromDiff(
 							continue
 						}
 
-						if _, ok := sg.deployment.newPlans.get(dependentResource.URN); !ok {
-							// We haven't see this resource before, create a new
-							// resource plan for it with no goal (because it's going to be a delete)
-							resourcePlan := &ResourcePlan{}
-							sg.deployment.newPlans.set(dependentResource.URN, resourcePlan)
+						// If we're in experimental mode create a plan for this delete
+						if sg.opts.ExperimentalPlans {
+							if _, ok := sg.deployment.newPlans.get(dependentResource.URN); !ok {
+								// We haven't see this resource before, create a new
+								// resource plan for it with no goal (because it's going to be a delete)
+								resourcePlan := &ResourcePlan{}
+								sg.deployment.newPlans.set(dependentResource.URN, resourcePlan)
+							}
 						}
 
 						sg.dependentReplaceKeys[dependentResource.URN] = toReplace[i].keys
@@ -851,14 +862,17 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 			}
 		}
 
-		resourcePlan, ok := sg.deployment.newPlans.get(s.URN())
-		if !ok {
-			// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
-			// application. However, it is necessary in the face of computed inputs.
-			resourcePlan = &ResourcePlan{}
-			sg.deployment.newPlans.set(s.URN(), resourcePlan)
+		// If we're in experimental mode add a delete op to the plan for this resource
+		if sg.opts.ExperimentalPlans {
+			resourcePlan, ok := sg.deployment.newPlans.get(s.URN())
+			if !ok {
+				// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
+				// application. However, it is necessary in the face of computed inputs.
+				resourcePlan = &ResourcePlan{}
+				sg.deployment.newPlans.set(s.URN(), resourcePlan)
+			}
+			resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 		}
-		resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 	}
 
 	// If -target was provided to either `pulumi update` or `pulumi destroy` then only delete

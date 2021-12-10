@@ -181,13 +181,15 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 		}
 	}
 
-	// Save these new outputs to the plan
-	if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
-		diff := NewPlanDiff(oldOuts.Diff(outs))
-		resourcePlan.Goal.OutputDiff = diff
-		resourcePlan.Outputs = outs
-	} else {
-		return result.FromError(fmt.Errorf("this should already have a plan from when we called register resources"))
+	// If we're in experimental mode save these new outputs to the plan
+	if se.opts.ExperimentalPlans {
+		if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
+			diff := NewPlanDiff(oldOuts.Diff(outs))
+			resourcePlan.Goal.OutputDiff = diff
+			resourcePlan.Outputs = outs
+		} else {
+			return result.FromError(fmt.Errorf("this should already have a plan from when we called register resources"))
+		}
 	}
 
 	// If there is an event subscription for finishing the resource, execute them.
@@ -326,9 +328,11 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 			se.deployment.news.set(newState.URN, newState)
 		}
 
-		// Update the resource's outputs in the generated plan.
-		if resourcePlan, ok := se.deployment.newPlans.get(newState.URN); ok {
-			resourcePlan.Outputs = newState.Outputs
+		// If we're in experimental mode update the resource's outputs in the generated plan.
+		if se.opts.ExperimentalPlans {
+			if resourcePlan, ok := se.deployment.newPlans.get(newState.URN); ok {
+				resourcePlan.Outputs = newState.Outputs
+			}
 		}
 	}
 

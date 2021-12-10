@@ -2631,7 +2631,7 @@ func TestPlannedUpdate(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -2740,7 +2740,7 @@ func TestUnplannedCreate(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -2805,7 +2805,7 @@ func TestUnplannedDelete(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -2875,7 +2875,7 @@ func TestExpectedDelete(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -2940,7 +2940,7 @@ func TestExpectedCreate(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -3000,7 +3000,7 @@ func TestPropertySetChange(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -3047,7 +3047,7 @@ func TestExpectedUnneededCreate(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -3110,7 +3110,7 @@ func TestExpectedUnneededDelete(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -3185,7 +3185,7 @@ func TestResoucesWithSames(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -3274,7 +3274,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -3353,7 +3353,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -3418,7 +3418,7 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -3499,7 +3499,7 @@ func TestAliasWithPlans(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
@@ -3562,7 +3562,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host},
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
 	}
 
 	project := p.GetProject()
