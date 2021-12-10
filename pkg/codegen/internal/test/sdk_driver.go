@@ -61,12 +61,12 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "nested-module",
 		Description:      "Nested module",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
 		Directory:        "nested-module-thirdparty",
 		Description:      "Third-party nested module",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
 		Directory:   "plain-schema-gh6957",
@@ -177,7 +177,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "regress-8403",
 		Description:      "Regress pulumi/pulumi#8403",
-		SkipCompileCheck: codegen.NewStringSet(python, nodejs),
+		SkipCompileCheck: codegen.NewStringSet(python),
 	},
 	{
 		Directory:   "different-package-name-conflict",

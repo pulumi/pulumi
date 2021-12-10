@@ -20,33 +20,33 @@ namespace Pulumi
         /// The child resources of this resource.  We use these (only from a ComponentResource) to
         /// allow code to dependOn a ComponentResource and have that effectively mean that it is
         /// depending on all the CustomResource children of that component.
-        /// 
+        ///
         /// Important!  We only walk through ComponentResources.They're the only resources that
         /// serve as an aggregation of other primitive(i.e.custom) resources.While a custom resource
         /// can be a parent of other resources, we don't want to ever depend on those child
         /// resource.  If we do, it's simple to end up in a situation where we end up depending on a
         /// child resource that has a data cycle dependency due to the data passed into it. An
         /// example of how this would be bad is:
-        /// 
+        ///
         /// <c>
         ///     var c1 = new CustomResource("c1");
         ///     var c2 = new CustomResource("c2", { parentId = c1.id }, { parent = c1 });
         ///     var c3 = new CustomResource("c3", { parentId = c1.id }, { parent = c1 });
         /// </c>
-        /// 
+        ///
         /// The problem here is that 'c2' has a data dependency on 'c1'.  If it tries to wait on
         /// 'c1' it will walk to the children and wait on them.This will mean it will wait on 'c3'.
         /// But 'c3' will be waiting in the same manner on 'c2', and a cycle forms. This normally
         /// does not happen with ComponentResources as they do not have any data flowing into
         /// them.The only way you would be able to have a problem is if you had this sort of coding
         /// pattern:
-        /// 
+        ///
         /// <c>
         ///     var c1 = new ComponentResource("c1");
         ///     var c2 = new CustomResource("c2", { parentId = c1.urn }, { parent: c1 });
         ///     var c3 = new CustomResource("c3", { parentId = c1.urn }, { parent: c1 });
         /// </c>
-        /// 
+        ///
         /// However, this would be pretty nonsensical as there is zero need for a custom resource to
         /// ever need to reference the urn of a component resource.  So it's acceptable if that sort
         /// of pattern failed in practice.
@@ -103,6 +103,8 @@ namespace Pulumi
         /// </summary>
         internal readonly string? _version;
 
+        internal readonly ImmutableDictionary<string,IOutputCompletionSource> CompletionSources;
+
         /// <summary>
         /// Creates and registers a new resource object.  <paramref name="type"/> is the fully
         /// qualified type token and <paramref name="name"/> is the "name" part to use in creating a
@@ -128,6 +130,7 @@ namespace Pulumi
                 _name = "";
                 _protect = false;
                 _providers = ImmutableDictionary<string, ProviderResource>.Empty;
+                CompletionSources = ImmutableDictionary<string, IOutputCompletionSource>.Empty;
                 return;
             }
 
@@ -136,6 +139,13 @@ namespace Pulumi
 
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentException("'name' cannot be null or empty.", nameof(name));
+
+            // Initialize all Output properties crucially including
+            // `Urn` to non-nil Output values, record
+            // `CompletionSources`. This needs to happen before
+            // partially initialized `this` is exposed to other
+            // threads via `parentResource.ChildResources`.
+            CompletionSources = OutputCompletionSource.InitializeOutputs(this);
 
             // Before anything else - if there are transformations registered, invoke them in order
             // to transform the properties and options assigned to this resource.
