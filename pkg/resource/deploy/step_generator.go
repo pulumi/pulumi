@@ -392,7 +392,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		inputDiff = nil
 		oldInputs = nil
 	} else {
-		inputDiff = oldInputs.DiffIncludeUnknowns(inputs)
+		inputDiff = oldInputs.Diff(inputs)
 	}
 
 	// Generate the output goal plan

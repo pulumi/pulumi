@@ -163,7 +163,7 @@ func (props PropertyMap) diff(other PropertyMap, includeUnknowns bool, ignoreKey
 		if new, has := other[k]; has {
 			// If a new exists, use it; for output properties, however, ignore differences.
 			if new.IsOutput() {
-				sames[k] = old
+				sames[k] = new
 			} else if diff := old.diff(new, includeUnknowns, ignoreKeys); diff != nil {
 				if !old.HasValue() {
 					adds[k] = new
@@ -173,11 +173,16 @@ func (props PropertyMap) diff(other PropertyMap, includeUnknowns bool, ignoreKey
 					updates[k] = *diff
 				}
 			} else {
-				sames[k] = old
+				sames[k] = new
 			}
-		} else if old.HasValue() || (includeUnknowns && old.IsComputed()) {
-			// If there was no new property, it has been deleted.
-			deletes[k] = old
+		} else {
+			if includeUnknowns && old.IsComputed() {
+				// The old property was <computed> it probably resovled to undefined so this isn't a diff,
+				// but it isn't really a same either... just don't add to the diff
+			} else if old.HasValue() {
+				// If there was no new property, it has been deleted.
+				deletes[k] = old
+			}
 		}
 	}
 
@@ -230,7 +235,7 @@ func (v PropertyValue) diff(other PropertyValue, includeUnknowns bool, ignoreKey
 			if diff := old[i].diff(new[i], includeUnknowns, ignoreKeys); diff != nil {
 				updates[i] = *diff
 			} else {
-				sames[i] = old[i]
+				sames[i] = new[i]
 			}
 		}
 
@@ -307,7 +312,7 @@ func (props PropertyMap) deepEquals(other PropertyMap, includeUnknowns bool) boo
 			if !v.deepEquals(p, includeUnknowns) {
 				return false
 			}
-		} else if v.HasValue() {
+		} else if v.HasValue() && !(includeUnknowns && v.IsComputed()) {
 			return false
 		}
 	}

@@ -2662,7 +2662,7 @@ func TestPlannedUpdate(t *testing.T) {
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
-		"<{%reset%}>resource violates plan: properties changed: -baz, -foo, -zed<{%reset%}>\n")
+		"<{%reset%}>resource violates plan: properties changed: -baz, -foo<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.Nil(t, res)
 
@@ -3533,7 +3533,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return "created-id", news, resource.StatusOK, nil
+					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
 				},
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
 					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
@@ -3545,10 +3545,10 @@ func TestComputedCanBeDropped(t *testing.T) {
 
 	var resourceInputs resource.PropertyMap
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		urn, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "stack", true, deploytest.ResourceOptions{})
+		urn, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
-		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resourceInputs,
 		})
 		assert.NoError(t, err)
@@ -3645,7 +3645,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Now run the an update with the plan and check the update is allowed to remove these properties
 	resourceInputs = partialPropertySet
 	p.Options.Plan = plan.Clone()
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Check the resource's state.

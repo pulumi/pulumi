@@ -183,7 +183,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 
 	// Save these new outputs to the plan
 	if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
-		diff := NewPlanDiff(oldOuts.DiffIncludeUnknowns(outs))
+		diff := NewPlanDiff(oldOuts.Diff(outs))
 		resourcePlan.Goal.OutputDiff = diff
 		resourcePlan.Outputs = outs
 	} else {

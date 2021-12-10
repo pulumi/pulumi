@@ -295,7 +295,18 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 
 			if !found {
 				// diff wants to delete this, but not listed as a delete in the constraints
-				changes = append(changes, "-"+string(k))
+
+				// Check if this was recorded as an Update with <computed>
+				if expected, has := planDiff.Updates[k]; has {
+					if expected.IsComputed() {
+						// This was planned as an Update to <computed> it probably resolved to undefined and so became
+						// a delete, this is not a plan violation
+					} else {
+						changes = append(changes, "-"+string(k))
+					}
+				} else {
+					changes = append(changes, "-"+string(k))
+				}
 			}
 		}
 
@@ -346,7 +357,12 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 				}
 			} else {
 				// Not a same, update or an add but constraint wants to add it
-				changes = append(changes, "-"+string(k))
+
+				// Check if this was <computed> origionally because that could of resolved to undefined
+				// and thus it's ok to be missing, else this is a real missing property
+				if !expected.IsComputed() {
+					changes = append(changes, "-"+string(k))
+				}
 			}
 		}
 	}
@@ -372,7 +388,12 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 				}
 			} else {
 				// Not a same or an update but constraint wants to update it
-				changes = append(changes, "-"+string(k))
+
+				// Check if this was <computed> origionally because that could of resolved to undefined
+				// and thus it's ok to be missing, else this is a real missing property
+				if !expected.IsComputed() {
+					changes = append(changes, "-"+string(k))
+				}
 			}
 		}
 	}
