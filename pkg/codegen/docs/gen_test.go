@@ -506,10 +506,6 @@ func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 }
 
 func TestGeneratePackage(t *testing.T) {
-	// When running this test locally, be sure to run
-	// `make generate` first. That will regenerate the
-	// compiled templates file packaged.go. See README.md
-	// in this package for more info.
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "docs",
 		GenPackage: generatePackage,
