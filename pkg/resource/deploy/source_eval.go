@@ -307,9 +307,11 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		providers.SetProviderURL(inputs, req.PluginDownloadURL())
 	} else {
 		logging.V(5).Infof(
-			"newRegisterDefaultProviderEvent(%s): no pluginDownloadURL specified, falling back to default pluginDownloadURL", req)
+			"newRegisterDefaultProviderEvent(%s): no pluginDownloadURL specified, falling back to default pluginDownloadURL",
+			req)
 		if pluginDownloadURL := d.defaultProviderInfo[req.Package()].PluginDownloadURL; pluginDownloadURL != "" {
-			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default pluginDownloadURL hit on %s", req, pluginDownloadURL)
+			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default pluginDownloadURL hit on %s",
+				req, pluginDownloadURL)
 			providers.SetProviderURL(inputs, pluginDownloadURL)
 		} else {
 			logging.V(5).Infof(

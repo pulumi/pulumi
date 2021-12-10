@@ -1119,19 +1119,19 @@ func TestProviderVersionInputAndOption(t *testing.T) {
 	assert.Equal(t, "1.0.0", version)
 }
 
-func TestServerURLPassthrough(t *testing.T) {
+func TestPluginDownloadURLPassthrough(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
 		}),
 	}
 
-	pkgAServerURL := "get.pulumi.com/${VERSION}"
+	pkgAPluginDownloadURL := "get.pulumi.com/${VERSION}"
 	pkgAType := providers.MakeProviderType("pkgA")
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err := monitor.RegisterResource(pkgAType, "provA", true, deploytest.ResourceOptions{
-			ServerURL: pkgAServerURL,
+			PluginDownloadURL: pkgAPluginDownloadURL,
 		})
 		assert.NoError(t, err)
 
@@ -1157,7 +1157,7 @@ func TestServerURLPassthrough(t *testing.T) {
 
 		for _, e := range entries {
 			r := e.Step.New()
-			if r.Type == pkgAType && r.Inputs["pluginDownloadURL"].StringValue() != pkgAServerURL {
+			if r.Type == pkgAType && r.Inputs["pluginDownloadURL"].StringValue() != pkgAPluginDownloadURL {
 				return result.Errorf("Found unexpected value %v", r.Inputs["pluginDownloadURL"])
 			}
 		}
@@ -1172,7 +1172,7 @@ func TestServerURLPassthrough(t *testing.T) {
 
 // Check that creating a resource with pluginDownloadURL set will instantiate a default provider with
 // pluginDownloadURL set.
-func TestServerURLDefaultProvider(t *testing.T) {
+func TestPluginDownloadURLDefaultProvider(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -1182,7 +1182,7 @@ func TestServerURLDefaultProvider(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA::Foo", "foo", true, deploytest.ResourceOptions{
-			ServerURL: url,
+			PluginDownloadURL: url,
 		})
 		return err
 	})
