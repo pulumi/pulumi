@@ -40,11 +40,15 @@ import (
 )
 
 type typeDetails struct {
+	// Note: if any of {ptr,array,map}Input are set, input and the corresponding output field must also be set. The
+	// mark* functions ensure that these invariants hold.
 	input      bool
 	ptrInput   bool
 	arrayInput bool
 	mapInput   bool
 
+	// Note: if any of {ptr,array,map}Output are set, output must also be set. The mark* functions ensure that these
+	// invariants hold.
 	output      bool
 	ptrOutput   bool
 	arrayOutput bool
@@ -61,16 +65,19 @@ func (d *typeDetails) mark(input, output bool) {
 }
 
 func (d *typeDetails) markPtr(input, output bool) {
+	d.mark(input, output)
 	d.ptrInput = d.ptrInput || input
 	d.ptrOutput = d.ptrOutput || input || output
 }
 
 func (d *typeDetails) markArray(input, output bool) {
+	d.mark(input, output)
 	d.arrayInput = d.arrayInput || input
 	d.arrayOutput = d.arrayOutput || input || output
 }
 
 func (d *typeDetails) markMap(input, output bool) {
+	d.mark(input, output)
 	d.mapInput = d.mapInput || input
 	d.mapOutput = d.mapOutput || input || output
 }
