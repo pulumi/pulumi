@@ -31,7 +31,22 @@
   NullReferenceException to be raised when constructing resources
   [#8495](https://github.com/pulumi/pulumi/pull/8495)
 
-- [sdk/dotnet] - Improve collection initializers.
+- [sdk/dotnet] - `InputMap` and `InputList` can now be initialized
+  with any value that implicitly converts to the collection type.
+  These values are then automatically appended, for example:
+
+        var list = new InputList<string>
+        {
+            "V1",
+            Output.Create("V2"),
+            new[] { "V3", "V4" },
+            new List<string> { "V5", "V6" },
+            Output.Create(ImmutableArray.Create("V7", "V8"))
+        };
+
+  This feature simplifies the syntax for constructing resources and
+  specifying resource options such as the `DependsOn` option.
+
   [#8498](https://github.com/pulumi/pulumi/pull/8498)
 
 ### Bug Fixes
