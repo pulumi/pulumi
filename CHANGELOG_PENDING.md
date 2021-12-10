@@ -31,6 +31,9 @@
   NullReferenceException to be raised when constructing resources
   [#8495](https://github.com/pulumi/pulumi/pull/8495)
 
+- [sdk/dotnet] - Improve collection initializers.
+  [#8498](https://github.com/pulumi/pulumi/pull/8498)
+
 ### Bug Fixes
 
 - [codegen/schema] - Error on type token names that are not allowed (schema.Name
