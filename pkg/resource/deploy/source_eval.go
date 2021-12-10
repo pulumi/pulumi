@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -547,7 +548,9 @@ func parseProviderRequest(pkg tokens.Package, version, pluginDownloadURL string)
 		return providers.ProviderRequest{}, err
 	}
 
-	return providers.NewProviderRequest(&parsedVersion, pkg, pluginDownloadURL), nil
+	url := strings.TrimSuffix(pluginDownloadURL, "/")
+
+	return providers.NewProviderRequest(&parsedVersion, pkg, url), nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,
