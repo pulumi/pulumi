@@ -3525,8 +3525,8 @@ func TestAliasWithPlans(t *testing.T) {
 }
 
 func TestComputedCanBeDropped(t *testing.T) {
-	// This tests that values that show as <computed> in the plan can be dropped in the update (because they may of resolved to undefined)
-	// We're testing both RegisterResource and RegisterResourceOutputs here.
+	// This tests that values that show as <computed> in the plan can be dropped in the update (because they may of
+	// resolved to undefined). We're testing both RegisterResource and RegisterResourceOutputs here.
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
