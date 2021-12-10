@@ -1,12 +1,15 @@
 {
   "emittedFiles": [
     "example/argFunction.go",
+    "example/barResource.go",
     "example/doc.go",
+    "example/fooResource.go",
     "example/init.go",
     "example/otherResource.go",
     "example/provider.go",
     "example/pulumiTypes.go",
     "example/pulumiUtilities.go",
+    "example/pulumiplugin.json",
     "example/resource.go",
     "example/typeUses.go"
   ]

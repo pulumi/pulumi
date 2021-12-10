@@ -1524,6 +1524,9 @@ type PackageSpec struct {
 	// Meta contains information for the importer about this package.
 	Meta *MetadataSpec `json:"meta,omitempty" yaml:"meta,omitempty"`
 
+	// A list of allowed package name in addition to the Name property.
+	AllowedPackageNames []string `json:"allowedPackageNames,omitempty" yaml:"allowedPackageNames,omitempty"`
+
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config" yaml:"config"`
 	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
@@ -1644,6 +1647,8 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*
 	if err != nil {
 		diags = diags.Append(errorf("#/meta/moduleFormat", "failed to compile regex: %v", err))
 	}
+
+	diags = diags.Extend(spec.validateTypeTokens())
 
 	pkg := &Package{}
 
@@ -1827,6 +1832,42 @@ const (
 	typesRef     = "types"
 	providerRef  = "provider"
 )
+
+// Validate an individual name token.
+func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, section, token string) hcl.Diagnostics {
+	diags := hcl.Diagnostics{}
+
+	path := memberPath(section, token)
+	var packageName string
+	if i := strings.Index(token, ":"); i != -1 {
+		packageName = token[:i]
+	}
+	if !allowedPackageNames[packageName] {
+		error := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
+		diags = diags.Append(error)
+	}
+
+	return diags
+}
+
+// This is for validating non-reference type tokens.
+func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
+	diags := hcl.Diagnostics{}
+	allowedPackageNames := map[string]bool{spec.Name: true}
+	for _, prefix := range spec.AllowedPackageNames {
+		allowedPackageNames[prefix] = true
+	}
+	for t := range spec.Resources {
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "resources", t))
+	}
+	for t := range spec.Types {
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "types", t))
+	}
+	for t := range spec.Functions {
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "functions", t))
+	}
+	return diags
+}
 
 // Regex used to parse external schema paths. This is declared at the package scope to avoid repeated recompilation.
 var refPathRegex = regexp.MustCompile(`^/?(?P<package>[-\w]+)/(?P<version>v[^/]*)/schema\.json$`)

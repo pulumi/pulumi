@@ -2,6 +2,8 @@
   "version": "0.0.1",
   "name": "example",
 
+  "allowedPackageNames": ["mypkg"],
+
   "provider": {
     "description": "The provider type for the kubernetes package.",
     "type": "object",

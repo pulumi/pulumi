@@ -30,7 +30,8 @@ func TestGetPlugin(t *testing.T) {
 		Mod       *modInfo
 		Expected  *pulumirpc.PluginDependency
 		ShouldErr bool
-		json      *plugin.PulumiPluginJSON
+		JSON      *plugin.PulumiPluginJSON
+		JSONPath  string
 	}{
 		{
 			Name: "valid-pulumi-mod",
@@ -110,7 +111,7 @@ func TestGetPlugin(t *testing.T) {
 				Version: "v1.2.3",
 				Server:  "myserver.com",
 			},
-			json: &plugin.PulumiPluginJSON{
+			JSON: &plugin.PulumiPluginJSON{
 				Resource: true,
 				Name:     "thing1",
 				Version:  "v1.2.3",
@@ -121,7 +122,7 @@ func TestGetPlugin(t *testing.T) {
 			Name:      "non-resource",
 			Mod:       &modInfo{},
 			ShouldErr: true,
-			json: &plugin.PulumiPluginJSON{
+			JSON: &plugin.PulumiPluginJSON{
 				Resource: false,
 			},
 		},
@@ -131,23 +132,84 @@ func TestGetPlugin(t *testing.T) {
 				Dir: "/not/real",
 			},
 			ShouldErr: true,
-			json: &plugin.PulumiPluginJSON{
+			JSON: &plugin.PulumiPluginJSON{
 				Name:    "thing2",
 				Version: "v1.2.3",
 			},
+		},
+		{
+			Name: "pulumiplugin-go-lookup",
+			Mod: &modInfo{
+				Path:    "github.com/me/myself",
+				Version: "v1.2.3",
+			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "name",
+				Resource: true,
+			},
+			JSONPath: "go",
+			Expected: &pulumirpc.PluginDependency{
+				Name:    "name",
+				Version: "v1.2.3",
+			},
+		},
+		{
+			Name: "pulumiplugin-go-name-lookup",
+			Mod: &modInfo{
+				Path:    "github.com/me/myself",
+				Version: "v1.2.3",
+			},
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "name",
+				Resource: true,
+			},
+			JSONPath: filepath.Join("go", "name"),
+			Expected: &pulumirpc.PluginDependency{
+				Name:    "name",
+				Version: "v1.2.3",
+			},
+		},
+		{
+			Name: "pulumiplugin-nested-too-deep",
+			Mod: &modInfo{
+				Path:    "path.com/here",
+				Version: "v0.0",
+			},
+			JSONPath: filepath.Join("go", "valid", "invalid"),
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "name",
+				Resource: true,
+			},
+			ShouldErr: true,
+		},
+		{
+			Name: "nested-wrong-folder",
+			Mod: &modInfo{
+				Path:    "path.com/here",
+				Version: "v0.0",
+			},
+			JSONPath: filepath.Join("invalid", "valid"),
+			JSON: &plugin.PulumiPluginJSON{
+				Name:     "name",
+				Resource: true,
+			},
+			ShouldErr: true,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
 			cwd := t.TempDir()
-			if c.json != nil {
+			if c.JSON != nil {
 				if c.Mod.Dir == "" {
 					c.Mod.Dir = cwd
 				}
-				bytes, err := c.json.JSON()
+				path := filepath.Join(cwd, c.JSONPath)
+				err := os.MkdirAll(path, 0700)
+				assert.NoErrorf(t, err, "Failed to setup test folder", path)
+				bytes, err := c.JSON.JSON()
 				assert.NoError(t, err, "Failed to setup test pulumiplugin.json")
-				err = os.WriteFile(filepath.Join(cwd, "pulumiplugin.json"), bytes, 0600)
+				err = os.WriteFile(filepath.Join(path, "pulumiplugin.json"), bytes, 0600)
 				assert.NoError(t, err, "Failed to write pulumiplugin.json")
 			}
 			actual, err := c.Mod.getPlugin()

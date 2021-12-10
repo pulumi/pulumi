@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -2150,10 +2151,15 @@ func (pkg *pkgContext) addSuffixesToName(typ schema.Type, name string) []string 
 	return names
 }
 
+type nestedTypeInfo struct {
+	resolvedElementType string
+	names               map[string]bool
+}
+
 // collectNestedCollectionTypes builds a deduped mapping of element types -> associated collection types.
 // different shapes of known types can resolve to the same element type. by collecting types in one step and emitting types
 // in a second step, we avoid collision and redeclaration.
-func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]map[string]bool, typ schema.Type) {
+func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]*nestedTypeInfo, typ schema.Type) {
 	var elementTypeName string
 	var names []string
 	switch t := typ.(type) {
@@ -2176,18 +2182,23 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]map[string]
 	default:
 		contract.Failf("unexpected type %T in collectNestedCollectionTypes", t)
 	}
-	if _, ok := types[elementTypeName]; !ok {
-		types[elementTypeName] = map[string]bool{}
+	nti, ok := types[elementTypeName]
+	if !ok {
+		nti = &nestedTypeInfo{
+			names:               map[string]bool{},
+			resolvedElementType: pkg.typeString(codegen.ResolvedType(typ)),
+		}
+		types[elementTypeName] = nti
 	}
 	for _, n := range names {
-		types[elementTypeName][n] = true
+		nti.names[n] = true
 	}
 }
 
 // genNestedCollectionTypes emits nested collection types given the deduped mapping of element types -> associated collection types.
 // different shapes of known types can resolve to the same element type. by collecting types in one step and emitting types
 // in a second step, we avoid collision and redeclaration.
-func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]map[string]bool) []string {
+func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]*nestedTypeInfo) []string {
 	var names []string
 
 	// map iteration is unstable so sort items for deterministic codegen
@@ -2198,8 +2209,10 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]ma
 	sort.Strings(sortedElems)
 
 	for _, elementTypeName := range sortedElems {
+		info := types[elementTypeName]
+
 		collectionTypes := []string{}
-		for k := range types[elementTypeName] {
+		for k := range info.names {
 			collectionTypes = append(collectionTypes, k)
 		}
 		sort.Strings(collectionTypes)
@@ -2207,16 +2220,16 @@ func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]ma
 			names = append(names, name)
 			if strings.HasSuffix(name, "Array") {
 				fmt.Fprintf(w, "type %s []%sInput\n\n", name, elementTypeName)
-				genInputImplementation(w, name, name, elementTypeName, false)
+				genInputImplementation(w, name, name, "[]"+info.resolvedElementType, false)
 
-				genArrayOutput(w, strings.TrimSuffix(name, "Array"), elementTypeName)
+				genArrayOutput(w, strings.TrimSuffix(name, "Array"), info.resolvedElementType)
 			}
 
 			if strings.HasSuffix(name, "Map") {
 				fmt.Fprintf(w, "type %s map[string]%sInput\n\n", name, elementTypeName)
-				genInputImplementation(w, name, name, elementTypeName, false)
+				genInputImplementation(w, name, name, "map[string]"+info.resolvedElementType, false)
 
-				genMapOutput(w, strings.TrimSuffix(name, "Map"), elementTypeName)
+				genMapOutput(w, strings.TrimSuffix(name, "Map"), info.resolvedElementType)
 			}
 			pkg.genInputInterface(w, name)
 		}
@@ -3227,6 +3240,18 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	pathPrefix := packageRoot(pkg)
 
 	files := map[string][]byte{}
+
+	// Generate pulumiplugin.json
+	pulumiPlugin, err := (&plugin.PulumiPluginJSON{
+		Resource: true,
+		Name:     pkg.Name,
+		Server:   pkg.PluginDownloadURL,
+	}).JSON()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to format pulumiplugin.json: %w", err)
+	}
+	files[path.Join(pathPrefix, "pulumiplugin.json")] = pulumiPlugin
+
 	setFile := func(relPath, contents string) {
 		relPath = path.Join(pathPrefix, relPath)
 		if _, ok := files[relPath]; ok {
@@ -3357,7 +3382,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return sortedKnownTypes[i].String() < sortedKnownTypes[j].String()
 			})
 
-			collectionTypes := map[string]map[string]bool{}
+			collectionTypes := map[string]*nestedTypeInfo{}
 			for _, t := range sortedKnownTypes {
 				switch typ := t.(type) {
 				case *schema.ArrayType, *schema.MapType:

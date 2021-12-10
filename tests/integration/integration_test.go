@@ -636,38 +636,7 @@ func testComponentPlainPathEnv(t *testing.T) string {
 }
 
 // nolint: unused,deadcode
-func venvFromPipenv(relativeWorkdir string) (string, error) {
-	workdir, err := filepath.Abs(relativeWorkdir)
-	if err != nil {
-		return "", err
-	}
-	cmd := exec.Command("pipenv", "--venv")
-	cmd.Dir = workdir
-	dir, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-	venv := strings.TrimRight(string(dir), "\r\n")
-	if _, err := os.Stat(venv); os.IsNotExist(err) {
-		return "", fmt.Errorf("Folder '%s' returned by 'pipenv --venv' from %s does not exist: %w",
-			venv, workdir, err)
-	}
-	return venv, nil
-}
-
-// nolint: unused,deadcode
-func pulumiRuntimeVirtualEnv(t *testing.T, pulumiRepoRootDir string) string {
-	venvFolder, err := venvFromPipenv(filepath.Join(pulumiRepoRootDir, "sdk", "python"))
-	if err != nil {
-		t.Fatal(fmt.Errorf("PULUMI_RUNTIME_VIRTUALENV guess failed: %w", err))
-		return ""
-	}
-	r := fmt.Sprintf("PULUMI_RUNTIME_VIRTUALENV=%s", venvFolder)
-	return r
-}
-
-// nolint: unused,deadcode
-func testComponentProviderSchema(t *testing.T, path string, env ...string) {
+func testComponentProviderSchema(t *testing.T, path string) {
 	tests := []struct {
 		name          string
 		env           []string
@@ -694,9 +663,7 @@ func testComponentProviderSchema(t *testing.T, path string, env ...string) {
 		t.Run(test.name, func(t *testing.T) {
 			// Start the plugin binary.
 			cmd := exec.Command(path, "ignored")
-			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, env...)
-			cmd.Env = append(cmd.Env, test.env...)
+			cmd.Env = append(os.Environ(), test.env...)
 			stdout, err := cmd.StdoutPipe()
 			assert.NoError(t, err)
 			err = cmd.Start()
@@ -735,14 +702,12 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_unknown"
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -754,7 +719,7 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 				filepath.Join("..", "testprovider"),
 				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:                    append(test.env, pathEnv),
+				Env:                    []string{pathEnv},
 				Dir:                    filepath.Join(testDir, lang),
 				Dependencies:           dependencies,
 				SkipRefresh:            true,
@@ -775,14 +740,12 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 	const testDir = "construct_component_methods_unknown"
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -794,7 +757,7 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 				filepath.Join("..", "testprovider"),
 				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:                    append(test.env, pathEnv),
+				Env:                    []string{pathEnv},
 				Dir:                    filepath.Join(testDir, lang),
 				Dependencies:           dependencies,
 				SkipRefresh:            true,
@@ -815,14 +778,12 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 	const testDir = "construct_component_methods_resources"
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -834,7 +795,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 				filepath.Join("..", "testprovider"),
 				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          append(test.env, pathEnv),
+				Env:          []string{pathEnv},
 				Dir:          filepath.Join(testDir, lang),
 				Dependencies: dependencies,
 				Quick:        true,
@@ -866,14 +827,12 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 	const testDir = "construct_component_methods_errors"
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -886,7 +845,7 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 
 			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:           append(test.env, pathEnv),
+				Env:           []string{pathEnv},
 				Dir:           filepath.Join(testDir, lang),
 				Dependencies:  dependencies,
 				Quick:         true,
@@ -1018,14 +977,12 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 	const testDir = "construct_component_output_values"
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -1037,7 +994,7 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 				filepath.Join("..", "testprovider"),
 				filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          append(test.env, pathEnv),
+				Env:          []string{pathEnv},
 				Dir:          filepath.Join(testDir, lang),
 				Dependencies: dependencies,
 				Quick:        true,

@@ -6,6 +6,7 @@
     "my8110/provider.go",
     "my8110/pulumiEnums.go",
     "my8110/pulumiTypes.go",
-    "my8110/pulumiUtilities.go"
+    "my8110/pulumiUtilities.go",
+    "my8110/pulumiplugin.json"
   ]
 }

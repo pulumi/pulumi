@@ -4,6 +4,7 @@
     "example/foo.go",
     "example/init.go",
     "example/provider.go",
-    "example/pulumiUtilities.go"
+    "example/pulumiUtilities.go",
+    "example/pulumiplugin.json"
   ]
 }

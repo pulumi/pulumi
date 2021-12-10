@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "name": "example",
   "types": {
-    "Example::Pet": {
+    "example::Pet": {
       "properties": {
         "name": {
           "type": "string"
@@ -33,7 +33,7 @@
         "pets": {
           "type": "array",
           "items": {
-            "$ref": "#/types/Example::Pet"
+            "$ref": "#/types/example::Pet"
           }
         }
       },
@@ -44,7 +44,7 @@
         "pets": {
           "type": "array",
           "items": {
-            "$ref": "#/types/Example::Pet"
+            "$ref": "#/types/example::Pet"
           }
         }
       },

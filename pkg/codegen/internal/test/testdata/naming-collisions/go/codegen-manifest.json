@@ -6,6 +6,7 @@
     "example/pulumiEnums.go",
     "example/pulumiTypes.go",
     "example/pulumiUtilities.go",
+    "example/pulumiplugin.json",
     "example/resource.go",
     "example/resourceInput.go"
   ]

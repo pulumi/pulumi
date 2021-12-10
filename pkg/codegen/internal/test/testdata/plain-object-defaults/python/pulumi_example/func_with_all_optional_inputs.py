@@ -55,7 +55,7 @@ def func_with_all_optional_inputs(a: Optional[pulumi.InputType['HelmReleaseSetti
         opts = pulumi.InvokeOptions()
     if opts.version is None:
         opts.version = _utilities.get_version()
-    __ret__ = pulumi.runtime.invoke('mypkg::funcWithAllOptionalInputs', __args__, opts=opts, typ=FuncWithAllOptionalInputsResult).value
+    __ret__ = pulumi.runtime.invoke('example::funcWithAllOptionalInputs', __args__, opts=opts, typ=FuncWithAllOptionalInputsResult).value
 
     return AwaitableFuncWithAllOptionalInputsResult(
         r=__ret__.r)

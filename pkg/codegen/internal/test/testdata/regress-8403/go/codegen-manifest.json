@@ -5,6 +5,7 @@
     "mongodbatlas/init.go",
     "mongodbatlas/provider.go",
     "mongodbatlas/pulumiTypes.go",
-    "mongodbatlas/pulumiUtilities.go"
+    "mongodbatlas/pulumiUtilities.go",
+    "mongodbatlas/pulumiplugin.json"
   ]
 }

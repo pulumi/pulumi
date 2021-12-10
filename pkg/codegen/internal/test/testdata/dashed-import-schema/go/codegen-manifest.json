@@ -6,6 +6,7 @@
     "plant-provider/pulumiEnums.go",
     "plant-provider/pulumiTypes.go",
     "plant-provider/pulumiUtilities.go",
+    "plant-provider/pulumiplugin.json",
     "plant-provider/tree/v1/init.go",
     "plant-provider/tree/v1/nursery.go",
     "plant-provider/tree/v1/pulumiEnums.go",

@@ -2,7 +2,7 @@
   "name": "xyz",
   "version": "0.0.1",
   "types": {
-    "example:index:Foo": {
+    "xyz:index:Foo": {
       "properties": {
         "a": {
           "type": "boolean"
@@ -20,7 +20,7 @@
           "description": "The HTML content for index.html."
         },
         "foo": {
-          "$ref": "#/types/example:index:Foo",
+          "$ref": "#/types/xyz:index:Foo",
           "plain": true
         }
       },

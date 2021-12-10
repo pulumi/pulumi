@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "name": "example",
+  "allowedPackageNames": ["foo", "bar"],
   "types": {
     "example::Object": {
       "properties": {
@@ -133,6 +134,35 @@
       },
       "type": "object"
     },
+    "bar::BarResource": {
+      "isComponent": true,
+      "properties": {
+        "foo": {
+          "$ref": "#/resources/example::Resource"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/resources/example::Resource"
+        }
+      },
+      "type": "object"
+    },
+    "foo::FooResource": {
+      "isComponent": true,
+      "properties": {
+        "foo": {
+          "$ref": "#/resources/example::Resource"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/resources/example::Resource"
+        }
+      },
+      "type": "object"
+    },
+
     "example::OverlayResource": {
       "isOverlay": true,
       "properties": {
@@ -217,7 +247,7 @@
   "language": {
     "csharp": {
       "projectReferences": [
-         "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
       ],
       "packageReferences": {
         "Pulumi": "3.13"

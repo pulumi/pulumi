@@ -14,6 +14,8 @@
     },
     "files": [
         "argFunction.ts",
+        "barResource.ts",
+        "fooResource.ts",
         "index.ts",
         "otherResource.ts",
         "provider.ts",
