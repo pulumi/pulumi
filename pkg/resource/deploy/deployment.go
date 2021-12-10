@@ -201,8 +201,8 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 				return fmt.Errorf("could not fetch configuration for default provider '%v'", pkg)
 			}
 			if pkgInfo, ok := defaultProviderInfo[pkg]; ok {
-				inputs.Special().Version().Set(pkgInfo.Version.String())
-				inputs.Special().ServerURL().Set(pkgInfo.ServerURL)
+				providers.SetProviderVersion(inputs, pkgInfo.Version)
+				providers.SetProviderURL(inputs, pkgInfo.PluginDownloadURL)
 			}
 
 			uuid, err := uuid.NewV4()

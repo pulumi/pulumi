@@ -21,6 +21,7 @@
 package docs
 
 import (
+	"fmt"
 	"path"
 	"strings"
 
@@ -52,7 +53,7 @@ func (mod *modContext) isComponentResource() bool {
 func getKubernetesOverlayPythonFormalParams(modName string) []formalParam {
 	var params []formalParam
 	switch modName {
-	case "helm/v2", "helm/v3":
+	case "helm.sh/v2", "helm.sh/v3":
 		params = []formalParam{
 			{
 				Name: "config",
@@ -115,6 +116,8 @@ func getKubernetesOverlayPythonFormalParams(modName string) []formalParam {
 				DefaultValue: "=None",
 			},
 		}
+	default:
+		panic(fmt.Sprintf("Unknown kubernetes overlay module %q", modName))
 	}
 	return params
 }

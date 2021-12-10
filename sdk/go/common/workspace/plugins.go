@@ -83,15 +83,15 @@ func (err *MissingError) Error() string {
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
 type PluginInfo struct {
-	Name         string          // the simple name of the plugin.
-	Path         string          // the path that a plugin was loaded from.
-	Kind         PluginKind      // the kind of the plugin (language, resource, etc).
-	Version      *semver.Version // the plugin's semantic version, if present.
-	Size         int64           // the size of the plugin, in bytes.
-	InstallTime  time.Time       // the time the plugin was installed.
-	LastUsedTime time.Time       // the last time the plugin was used.
-	ServerURL    string          // an optional server to use when downloading this plugin.
-	PluginDir    string          // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
+	Name              string          // the simple name of the plugin.
+	Path              string          // the path that a plugin was loaded from.
+	Kind              PluginKind      // the kind of the plugin (language, resource, etc).
+	Version           *semver.Version // the plugin's semantic version, if present.
+	Size              int64           // the size of the plugin, in bytes.
+	InstallTime       time.Time       // the time the plugin was installed.
+	LastUsedTime      time.Time       // the last time the plugin was used.
+	PluginDownloadURL string          // an optional server to use when downloading this plugin.
+	PluginDir         string          // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -240,7 +240,7 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 
 	// If the plugin has a server, associated with it, download from there.  Otherwise use the "default" location, which
 	// is hosted by Pulumi.
-	serverURL := info.ServerURL
+	serverURL := info.PluginDownloadURL
 	if serverURL == "" {
 		serverURL = "https://get.pulumi.com/releases/plugins"
 	}

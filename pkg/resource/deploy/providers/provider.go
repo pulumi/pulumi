@@ -36,17 +36,18 @@ import (
 // is free to cache requests for a provider request that is equal to one that has already been serviced. If you do use
 // ProviderRequest as a hash key, you should call String() to get a usable key for string-based hash maps.
 type ProviderRequest struct {
-	version   *semver.Version
-	pkg       tokens.Package
-	serverURL string
+	version           *semver.Version
+	pkg               tokens.Package
+	pluginDownloadURL string
 }
 
-// NewProviderRequest constructs a new provider request from an optional version, optional serverURL and package.
-func NewProviderRequest(version *semver.Version, pkg tokens.Package, serverURL string) ProviderRequest {
+// NewProviderRequest constructs a new provider request from an optional version, optional
+// pluginDownloadURL and package.
+func NewProviderRequest(version *semver.Version, pkg tokens.Package, pluginDownloadURL string) ProviderRequest {
 	return ProviderRequest{
-		version:   version,
-		pkg:       pkg,
-		serverURL: serverURL,
+		version:           version,
+		pkg:               pkg,
+		pluginDownloadURL: pluginDownloadURL,
 	}
 }
 
@@ -60,9 +61,10 @@ func (p ProviderRequest) Package() tokens.Package {
 	return p.pkg
 }
 
-// ServerURL returns this providers server url. May be "" if no serverURL was provided.
-func (p ProviderRequest) ServerURL() string {
-	return p.serverURL
+// PluginDownloadURL returns this providers server url. May be "" if no pluginDownloadURL was
+// provided.
+func (p ProviderRequest) PluginDownloadURL() string {
+	return p.pluginDownloadURL
 }
 
 // Name returns a QName that is an appropriate name for a default provider constructed from this provider request. The
@@ -99,8 +101,8 @@ func (p ProviderRequest) String() string {
 		version = "-" + p.version.String()
 	}
 	var url string
-	if p.serverURL != "" {
-		url = "-" + p.serverURL
+	if p.pluginDownloadURL != "" {
+		url = "-" + p.pluginDownloadURL
 	}
 	return p.pkg.String() + version + url
 }

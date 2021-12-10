@@ -1761,7 +1761,7 @@ proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
     provider: jspb.Message.getFieldWithDefault(msg, 3, ""),
     version: jspb.Message.getFieldWithDefault(msg, 4, ""),
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
-    serverurl: jspb.Message.getFieldWithDefault(msg, 6, "")
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 6, "")
   };
 
   if (includeInstance) {
@@ -1821,7 +1821,7 @@ proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader = function(msg, reader
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
-      msg.setServerurl(value);
+      msg.setPlugindownloadurl(value);
       break;
     default:
       reader.skipField();
@@ -1888,7 +1888,7 @@ proto.pulumirpc.InvokeRequest.serializeBinaryToWriter = function(message, writer
       f
     );
   }
-  f = message.getServerurl();
+  f = message.getPlugindownloadurl();
   if (f.length > 0) {
     writer.writeString(
       6,
@@ -2008,10 +2008,10 @@ proto.pulumirpc.InvokeRequest.prototype.setAcceptresources = function(value) {
 
 
 /**
- * optional string serverURL = 6;
+ * optional string pluginDownloadURL = 6;
  * @return {string}
  */
-proto.pulumirpc.InvokeRequest.prototype.getServerurl = function() {
+proto.pulumirpc.InvokeRequest.prototype.getPlugindownloadurl = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
 };
 
@@ -2020,7 +2020,7 @@ proto.pulumirpc.InvokeRequest.prototype.getServerurl = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.InvokeRequest} returns this
  */
-proto.pulumirpc.InvokeRequest.prototype.setServerurl = function(value) {
+proto.pulumirpc.InvokeRequest.prototype.setPlugindownloadurl = function(value) {
   return jspb.Message.setProto3StringField(this, 6, value);
 };
 
@@ -2280,7 +2280,7 @@ proto.pulumirpc.CallRequest.toObject = function(includeInstance, msg) {
     argdependenciesMap: (f = msg.getArgdependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.CallRequest.ArgumentDependencies.toObject) : [],
     provider: jspb.Message.getFieldWithDefault(msg, 4, ""),
     version: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    serverurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
     project: jspb.Message.getFieldWithDefault(msg, 6, ""),
     stack: jspb.Message.getFieldWithDefault(msg, 7, ""),
     configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
@@ -2349,7 +2349,7 @@ proto.pulumirpc.CallRequest.deserializeBinaryFromReader = function(msg, reader) 
       break;
     case 13:
       var value = /** @type {string} */ (reader.readString());
-      msg.setServerurl(value);
+      msg.setPlugindownloadurl(value);
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
@@ -2443,7 +2443,7 @@ proto.pulumirpc.CallRequest.serializeBinaryToWriter = function(message, writer) 
       f
     );
   }
-  f = message.getServerurl();
+  f = message.getPlugindownloadurl();
   if (f.length > 0) {
     writer.writeString(
       13,
@@ -2769,10 +2769,10 @@ proto.pulumirpc.CallRequest.prototype.setVersion = function(value) {
 
 
 /**
- * optional string serverURL = 13;
+ * optional string pluginDownloadURL = 13;
  * @return {string}
  */
-proto.pulumirpc.CallRequest.prototype.getServerurl = function() {
+proto.pulumirpc.CallRequest.prototype.getPlugindownloadurl = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 13, ""));
 };
 
@@ -2781,7 +2781,7 @@ proto.pulumirpc.CallRequest.prototype.getServerurl = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.CallRequest} returns this
  */
-proto.pulumirpc.CallRequest.prototype.setServerurl = function(value) {
+proto.pulumirpc.CallRequest.prototype.setPlugindownloadurl = function(value) {
   return jspb.Message.setProto3StringField(this, 13, value);
 };
 

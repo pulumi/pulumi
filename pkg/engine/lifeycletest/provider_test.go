@@ -1119,19 +1119,19 @@ func TestProviderVersionInputAndOption(t *testing.T) {
 	assert.Equal(t, "1.0.0", version)
 }
 
-func TestServerURLPassthrough(t *testing.T) {
+func TestPluginDownloadURLPassthrough(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
 		}),
 	}
 
-	pkgAServerURL := "get.pulumi.com/${VERSION}"
+	pkgAPluginDownloadURL := "get.pulumi.com/${VERSION}"
 	pkgAType := providers.MakeProviderType("pkgA")
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err := monitor.RegisterResource(pkgAType, "provA", true, deploytest.ResourceOptions{
-			ServerURL: pkgAServerURL,
+			PluginDownloadURL: pkgAPluginDownloadURL,
 		})
 		assert.NoError(t, err)
 
@@ -1157,7 +1157,7 @@ func TestServerURLPassthrough(t *testing.T) {
 
 		for _, e := range entries {
 			r := e.Step.New()
-			if r.Type == pkgAType && r.Inputs["pluginDownloadURL"].StringValue() != pkgAServerURL {
+			if r.Type == pkgAType && r.Inputs["pluginDownloadURL"].StringValue() != pkgAPluginDownloadURL {
 				return result.Errorf("Found unexpected value %v", r.Inputs["pluginDownloadURL"])
 			}
 		}
@@ -1168,4 +1168,40 @@ func TestServerURLPassthrough(t *testing.T) {
 		Steps:   steps,
 	}
 	p.Run(t, nil)
+}
+
+// Check that creating a resource with pluginDownloadURL set will instantiate a default provider with
+// pluginDownloadURL set.
+func TestPluginDownloadURLDefaultProvider(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+	url := "get.pulumi.com"
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA::Foo", "foo", true, deploytest.ResourceOptions{
+			PluginDownloadURL: url,
+		})
+		return err
+	})
+
+	snapshot := (&TestPlan{
+		Options: UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)},
+		// The first step is the update. We don't want the full lifecycle because we want to see the
+		// created resources.
+		Steps: MakeBasicLifecycleSteps(t, 2)[:1],
+	}).Run(t, nil)
+
+	foundDefaultProvider := false
+	for _, r := range snapshot.Resources {
+		if providers.IsDefaultProvider(r.URN) {
+			actualURL, err := providers.GetProviderDownloadURL(r.Inputs)
+			assert.NoError(t, err)
+			assert.Equal(t, url, actualURL)
+			foundDefaultProvider = true
+		}
+	}
+	assert.Truef(t, foundDefaultProvider, "Found resources: %#v", snapshot.Resources)
 }

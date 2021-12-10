@@ -30,32 +30,45 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// GetProviderServerURL fetches a provider server URL from the given property map. If the server URL
-// is not set, this function returns "".
-func GetProviderServerURL(inputs resource.PropertyMap) (string, error) {
-	url := inputs.Special().ServerURL()
-	if !url.Exists() {
-		return "", nil
-	}
-	if !url.Get().IsString() {
-		return "", fmt.Errorf("'%s' must be a string", url.Tag())
-	}
-	return url.Get().StringValue(), nil
+var versionKey resource.PropertyKey = "version"
+var pluginDownloadKey resource.PropertyKey = "pluginDownloadURL"
+
+// SetProviderURL sets the provider plugin download server URL in the given property map.
+func SetProviderURL(inputs resource.PropertyMap, value string) {
+	inputs[pluginDownloadKey] = resource.NewStringProperty(value)
 }
 
-// GetProviderVersion fetches and parses a provider version from the given property map. If the version property is not
-// present, this function returns nil.
+// GetProviderDownloadURL fetches a provider plugin download server URL from the given property map.
+// If the server URL is not set, this function returns "".
+func GetProviderDownloadURL(inputs resource.PropertyMap) (string, error) {
+	url, ok := inputs[pluginDownloadKey]
+	if !ok {
+		return "", nil
+	}
+	if !url.IsString() {
+		return "", fmt.Errorf("'%s' must be a string", pluginDownloadKey)
+	}
+	return url.StringValue(), nil
+}
+
+// Sets the provider version in the given property map.
+func SetProviderVersion(inputs resource.PropertyMap, value *semver.Version) {
+	inputs[versionKey] = resource.NewStringProperty(value.String())
+}
+
+// GetProviderVersion fetches and parses a provider version from the given property map. If the
+// version property is not present, this function returns nil.
 func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
-	version := inputs.Special().Version()
-	if !version.Exists() {
+	version, ok := inputs[versionKey]
+	if !ok {
 		return nil, nil
 	}
 
-	if !version.Get().IsString() {
-		return nil, fmt.Errorf("'%s' must be a string", version.Tag())
+	if !version.IsString() {
+		return nil, fmt.Errorf("'%s' must be a string", versionKey)
 	}
 
-	sv, err := semver.ParseTolerant(version.Get().StringValue())
+	sv, err := semver.ParseTolerant(version.StringValue())
 	if err != nil {
 		return nil, fmt.Errorf("could not parse provider version: %v", err)
 	}

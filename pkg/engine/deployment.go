@@ -169,7 +169,7 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 		depl, err = deploy.NewDeployment(
 			plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
-		_, defaultProviderVersions, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
+		_, defaultProviderInfo, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
 			false /*returnInstallErrors*/)
 		if pluginErr != nil {
 			return nil, pluginErr
@@ -184,10 +184,10 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 			}
 			if imp.Provider == "" {
 				if imp.Version == nil {
-					imp.Version = defaultProviderVersions[imp.Type.Package()].Version
+					imp.Version = defaultProviderInfo[imp.Type.Package()].Version
 				}
-				if imp.ServerURL == "" {
-					imp.ServerURL = defaultProviderVersions[imp.Type.Package()].ServerURL
+				if imp.PluginDownloadURL == "" {
+					imp.PluginDownloadURL = defaultProviderInfo[imp.Type.Package()].PluginDownloadURL
 				}
 			}
 		}

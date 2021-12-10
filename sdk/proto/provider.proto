@@ -109,7 +109,7 @@ message InvokeRequest {
     string provider = 3;             // an optional reference to the provider version to use for this invoke.
     string version = 4;              // the version of the provider to use when servicing this request.
     bool acceptResources = 5;        // when true operations should return resource references as strongly typed.
-    string serverURL = 6;            // an optional reference to the provider url to use for this invoke.
+    string pluginDownloadURL = 6;    // an optional reference to the provider url to use for this invoke.
 }
 
 message InvokeResponse {
@@ -128,7 +128,7 @@ message CallRequest {
     map<string, ArgumentDependencies> argDependencies = 3; // a map from argument keys to the dependencies of the argument.
     string provider = 4;                                   // an optional reference to the provider to use for this invoke.
     string version = 5;                                    // the version of the provider to use when servicing this request.
-    string serverURL = 13;                                 // the serverURL of the provider to use when serviving this request.
+    string pluginDownloadURL = 13;                         // the pluginDownloadURL of the provider to use when servicing this request.
 
     string project = 6;             // the project name.
     string stack = 7;               // the name of the stack being deployed into.
