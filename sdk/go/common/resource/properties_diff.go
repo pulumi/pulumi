@@ -177,7 +177,7 @@ func (props PropertyMap) diff(other PropertyMap, includeUnknowns bool, ignoreKey
 			}
 		} else {
 			if includeUnknowns && old.IsComputed() {
-				// The old property was <computed> it probably resovled to undefined so this isn't a diff,
+				// The old property was <computed> it probably resolved to undefined so this isn't a diff,
 				// but it isn't really a same either... just don't add to the diff
 			} else if old.HasValue() {
 				// If there was no new property, it has been deleted.
