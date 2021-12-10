@@ -279,12 +279,12 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	// Now, invoke the RPC to the provider synchronously.
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
-		Tok:             tok,
-		Args:            rpcArgs,
-		Provider:        providerRef,
-		Version:         options.Version,
-		ServerURL:       options.ServerURL,
-		AcceptResources: !disableResourceReferences,
+		Tok:               tok,
+		Args:              rpcArgs,
+		Provider:          providerRef,
+		Version:           options.Version,
+		PluginDownloadURL: options.PluginDownloadURL,
+		AcceptResources:   !disableResourceReferences,
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
@@ -352,15 +352,15 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		// Determine the provider, version and url to use.
 		var provider ProviderResource
 		var version string
-		var serverURL string
+		var pluginURL string
 		if self != nil {
 			provider = self.getProvider()
 			version = self.getVersion()
-			serverURL = self.getServerURL()
+			pluginURL = self.getPluginDownloadURL()
 		} else {
 			provider = mergeProviders(tok, options.Parent, options.Provider, nil)[getPackage(tok)]
 			version = options.Version
-			serverURL = options.ServerURL
+			pluginURL = options.PluginDownloadURL
 		}
 		var providerRef string
 		if provider != nil {
@@ -426,12 +426,12 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		}
 
 		return &pulumirpc.CallRequest{
-			Tok:             tok,
-			Args:            rpcArgs,
-			ArgDependencies: rpcArgDeps,
-			Provider:        providerRef,
-			Version:         version,
-			ServerURL:       serverURL,
+			Tok:               tok,
+			Args:              rpcArgs,
+			ArgDependencies:   rpcArgDeps,
+			Provider:          providerRef,
+			Version:           version,
+			PluginDownloadURL: pluginURL,
 		}, nil
 	}
 
@@ -587,7 +587,7 @@ func (ctx *Context) ReadResource(
 
 	// Create resolvers for the resource's outputs.
 	res := ctx.makeResourceState(t, name, resource, providers, provider,
-		options.Version, options.ServerURL, aliasURNs, transformations)
+		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -774,7 +774,7 @@ func (ctx *Context) registerResource(
 
 	// Create resolvers for the resource's outputs.
 	resState := ctx.makeResourceState(t, name, resource, providers, provider,
-		options.Version, options.ServerURL, aliasURNs, transformations)
+		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -826,7 +826,7 @@ func (ctx *Context) registerResource(
 				AcceptResources:         !disableResourceReferences,
 				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 				Version:                 inputs.version,
-				ServerURL:               inputs.serverURL,
+				PluginDownloadURL:       inputs.pluginDownloadURL,
 				Remote:                  remote,
 				ReplaceOnChanges:        inputs.replaceOnChanges,
 			})
@@ -867,14 +867,14 @@ func (ctx *Context) RegisterRemoteComponentResource(
 
 // resourceState contains the results of a resource registration operation.
 type resourceState struct {
-	outputs         map[string]Output
-	providers       map[string]ProviderResource
-	provider        ProviderResource
-	version         string
-	serverURL       string
-	aliases         []URNOutput
-	name            string
-	transformations []ResourceTransformation
+	outputs           map[string]Output
+	providers         map[string]ProviderResource
+	provider          ProviderResource
+	version           string
+	pluginDownloadURL string
+	aliases           []URNOutput
+	name              string
+	transformations   []ResourceTransformation
 }
 
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.
@@ -982,7 +982,7 @@ var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	provider ProviderResource, version, serverURL string, aliases []URNOutput,
+	provider ProviderResource, version, pluginDownloadURL string, aliases []URNOutput,
 	transformations []ResourceTransformation) *resourceState {
 
 	// Ensure that the input resource is a pointer to a struct. Note that we don't fail if it is not, and we probably
@@ -1065,8 +1065,8 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		rs.provider = provider
 		state.version = version
 		rs.version = version
-		state.serverURL = serverURL
-		rs.serverURL = serverURL
+		state.pluginDownloadURL = pluginDownloadURL
+		rs.pluginDownloadURL = pluginDownloadURL
 		rs.urn = URNOutput{ctx.newOutputState(urnType, resourceV)}
 		state.outputs["urn"] = rs.urn
 		state.name = name
@@ -1174,7 +1174,7 @@ type resourceInputs struct {
 	aliases                 []string
 	additionalSecretOutputs []string
 	version                 string
-	serverURL               string
+	pluginDownloadURL       string
 	replaceOnChanges        []string
 }
 
@@ -1260,7 +1260,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
-		serverURL:               state.serverURL,
+		pluginDownloadURL:       state.pluginDownloadURL,
 		replaceOnChanges:        resOpts.replaceOnChanges,
 	}, nil
 }

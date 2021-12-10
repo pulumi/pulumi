@@ -40,14 +40,14 @@ type ResourceState struct {
 
 	urn URNOutput `pulumi:"urn"`
 
-	children        resourceSet
-	providers       map[string]ProviderResource
-	provider        ProviderResource
-	version         string
-	serverURL       string
-	aliases         []URNOutput
-	name            string
-	transformations []ResourceTransformation
+	children          resourceSet
+	providers         map[string]ProviderResource
+	provider          ProviderResource
+	version           string
+	pluginDownloadURL string
+	aliases           []URNOutput
+	name              string
+	transformations   []ResourceTransformation
 
 	remoteComponent bool
 }
@@ -96,8 +96,8 @@ func (s *ResourceState) getVersion() string {
 	return s.version
 }
 
-func (s *ResourceState) getServerURL() string {
-	return s.serverURL
+func (s *ResourceState) getPluginDownloadURL() string {
+	return s.pluginDownloadURL
 }
 
 func (s *ResourceState) getAliases() []URNOutput {
@@ -197,8 +197,8 @@ type Resource interface {
 	// getVersion returns the version for the resource.
 	getVersion() string
 
-	// getServerURL returns the provider plugin download url
-	getServerURL() string
+	// getPluginDownloadURL returns the provider plugin download url
+	getPluginDownloadURL() string
 
 	// getAliases returns the list of aliases for this resource
 	getAliases() []URNOutput
@@ -295,10 +295,10 @@ type resourceOptions struct {
 	// operating on this resource. This version overrides the version information inferred from the current package and
 	// should rarely be used.
 	Version string
-	// ServerURL is an optional url, corresponding to the download url of the provider plugin that should be used when
-	// operating on this resource. This url overrides the url information inferred from the current package and
-	// should rarely be used.
-	ServerURL string
+	// PluginDownloadURL is an optional url, corresponding to the download url of the provider
+	// plugin that should be used when operating on this resource. This url overrides the url
+	// information inferred from the current package and should rarely be used.
+	PluginDownloadURL string
 }
 
 type invokeOptions struct {
@@ -308,10 +308,10 @@ type invokeOptions struct {
 	Provider ProviderResource
 	// Version is an optional version of the provider plugin to use for the invoke.
 	Version string
-	// ServerURL is an optional url, corresponding to the download url of the provider plugin that should be used when
-	// operating on this resource. This url overrides the url information inferred from the current package and
-	// should rarely be used.
-	ServerURL string
+	// PluginDownloadURL is an optional url, corresponding to the download url of the provider
+	// plugin that should be used when operating on this resource. This url overrides the url
+	// information inferred from the current package and should rarely be used.
+	PluginDownloadURL string
 }
 
 type ResourceOption interface {
@@ -534,16 +534,16 @@ func Version(o string) ResourceOrInvokeOption {
 	})
 }
 
-// ServerURL is an optional url, corresponding to the download url of the provider plugin that should be used when
-// operating on this resource. This url overrides the url information inferred from the current package and
-// should rarely be used.
-func ServerURL(o string) ResourceOrInvokeOption {
+// PluginDownloadURL is an optional url, corresponding to the download url of the provider plugin
+// that should be used when operating on this resource. This url overrides the url information
+// inferred from the current package and should rarely be used.
+func PluginDownloadURL(o string) ResourceOrInvokeOption {
 	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
-			ro.ServerURL = o
+			ro.PluginDownloadURL = o
 		case io != nil:
-			io.ServerURL = o
+			io.PluginDownloadURL = o
 		}
 	})
 }
