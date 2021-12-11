@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package providers
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/blang/semver"
 
@@ -23,10 +24,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// A ProviderRequest is a tuple of an optional semantic version and a package name. Whenever the engine receives a
-// registration for a resource that doesn't explicitly specify a provider, the engine creates a ProviderRequest for
-// that resource's provider, using the version passed to the engine as part of RegisterResource and the package derived
-// from the resource's token.
+// A ProviderRequest is a tuple of an optional semantic version, download server url and a package name. Whenever
+// the engine receives a registration for a resource that doesn't explicitly specify a provider, the engine creates
+// a ProviderRequest for that resource's provider, using the version passed to the engine as part of RegisterResource
+// and the package derived from the resource's token.
 //
 // The source evaluator (source_eval.go) is responsible for servicing provider requests. It does this by interpreting
 // these provider requests and sending resource registrations to the engine for the providers themselves. These are
@@ -47,7 +48,7 @@ func NewProviderRequest(version *semver.Version, pkg tokens.Package, pluginDownl
 	return ProviderRequest{
 		version:           version,
 		pkg:               pkg,
-		pluginDownloadURL: pluginDownloadURL,
+		pluginDownloadURL: strings.TrimSuffix(pluginDownloadURL, "/"),
 	}
 }
 
