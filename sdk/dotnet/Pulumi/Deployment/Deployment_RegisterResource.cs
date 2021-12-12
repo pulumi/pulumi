@@ -21,7 +21,10 @@ namespace Pulumi
             var label = $"resource:{name}[{type}]";
             Log.Debug($"Registering resource start: t={type}, name={name}, custom={custom}, remote={remote}");
 
-            var request = CreateRegisterResourceRequest(type, name, custom, remote, options);
+            // Keep track of whether we've kept output values when serializing.
+            var hasOutputs = remote && await MonitorSupportsOutputValues().ConfigureAwait(false);
+
+            var request = CreateRegisterResourceRequest(type, name, custom, remote, options, hasOutputs);
 
             Log.Debug($"Preparing resource: t={type}, name={name}, custom={custom}, remote={remote}");
             var prepareResult = await PrepareResourceAsync(label, resource, custom, remote, args, options).ConfigureAwait(false);
@@ -65,7 +68,7 @@ namespace Pulumi
         }
 
         private static RegisterResourceRequest CreateRegisterResourceRequest(
-            string type, string name, bool custom, bool remote, ResourceOptions options)
+            string type, string name, bool custom, bool remote, ResourceOptions options, bool hasOutputs)
         {
             var customOpts = options as CustomResourceOptions;
             var deleteBeforeReplace = customOpts?.DeleteBeforeReplace;
@@ -89,6 +92,7 @@ namespace Pulumi
                     Update = TimeoutString(options.CustomTimeouts?.Update),
                 },
                 Remote = remote,
+                HasOutputs = hasOutputs,
             };
 
             if (customOpts != null)

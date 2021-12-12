@@ -105,6 +105,7 @@ message RegisterResourceRequest {
     bool acceptResources = 21;                                  // when true operations should return resource references as strongly typed.
     map<string, string> providers = 22;                         // an optional reference to the provider map to manage this resource's CRUD operations.
     repeated string replaceOnChanges = 23;                      // a list of properties that if changed should force a replacement.
+    bool hasOutputs = 24;                                       // true if the object was serialized with output values.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/blang/semver"
@@ -1125,14 +1126,24 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		dependencies[i] = string(dep)
 	}
 
-	// Marshal the property dependencies.
-	inputDependencies := map[string]*pulumirpc.ConstructRequest_PropertyDependencies{}
-	for name, dependencies := range options.PropertyDependencies {
-		urns := make([]string, len(dependencies))
-		for i, urn := range dependencies {
-			urns[i] = string(urn)
+	// If the provider accepts outputs, the marshaled inputs will have output values with dependencies,
+	// so there's no need to specify the dependencies map.
+	var inputDependencies map[string]*pulumirpc.ConstructRequest_PropertyDependencies
+	if !p.acceptOutputs {
+		// If the provider doesn't accept outputs, pass along the dependencies map.
+		dependenciesMap := options.PropertyDependencies
+		if len(dependenciesMap) == 0 {
+			// If the dependencies map is empty, "polyfill" it based on dependencies gathered from the inputs.
+			dependenciesMap = gatherDependenciesMap(inputs)
 		}
-		inputDependencies[string(name)] = &pulumirpc.ConstructRequest_PropertyDependencies{Urns: urns}
+		inputDependencies = make(map[string]*pulumirpc.ConstructRequest_PropertyDependencies, len(dependenciesMap))
+		for name, dependencies := range dependenciesMap {
+			urns := make([]string, len(dependencies))
+			for i, urn := range dependencies {
+				urns[i] = string(urn)
+			}
+			inputDependencies[string(name)] = &pulumirpc.ConstructRequest_PropertyDependencies{Urns: urns}
+		}
 	}
 
 	// Marshal the config.
@@ -1367,14 +1378,24 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 		return CallResult{}, err
 	}
 
-	// Marshal the arg dependencies.
-	argDependencies := map[string]*pulumirpc.CallRequest_ArgumentDependencies{}
-	for name, dependencies := range options.ArgDependencies {
-		urns := make([]string, len(dependencies))
-		for i, urn := range dependencies {
-			urns[i] = string(urn)
+	// If the provider accepts outputs, the marshaled args will have output values with dependencies,
+	// so there's no need to specify the dependencies map.
+	var argDependencies map[string]*pulumirpc.CallRequest_ArgumentDependencies
+	if !p.acceptOutputs {
+		// If the provider doesn't accept outputs, pass along the dependencies map.
+		dependenciesMap := options.ArgDependencies
+		if len(dependenciesMap) == 0 {
+			// If the dependencies map is empty, "polyfill" it based on dependencies gathered from the args.
+			dependenciesMap = gatherDependenciesMap(args)
 		}
-		argDependencies[string(name)] = &pulumirpc.CallRequest_ArgumentDependencies{Urns: urns}
+		argDependencies = make(map[string]*pulumirpc.CallRequest_ArgumentDependencies, len(dependenciesMap))
+		for name, dependencies := range dependenciesMap {
+			urns := make([]string, len(dependencies))
+			for i, urn := range dependencies {
+				urns[i] = string(urn)
+			}
+			argDependencies[string(name)] = &pulumirpc.CallRequest_ArgumentDependencies{Urns: urns}
+		}
 	}
 
 	// Marshal the config.
@@ -1612,4 +1633,56 @@ func decorateProviderSpans(span opentracing.Span, method string, req, resp inter
 	case "/pulumirpc.ResourceProvider/Invoke":
 		span.SetTag("pulumi-decorator", req.(*pulumirpc.InvokeRequest).Tok)
 	}
+}
+
+// gatherDependenciesMap deeply gathers dependencies in the input's output values and resource
+// references to "polyfill" a dependencies map for providers that don't accept output values.
+func gatherDependenciesMap(inputs resource.PropertyMap) map[resource.PropertyKey][]resource.URN {
+	type urnSet = map[resource.URN]struct{}
+
+	add := func(s urnSet, urn resource.URN) {
+		s[urn] = struct{}{}
+	}
+
+	sortedValues := func(s urnSet) []resource.URN {
+		sorted := make([]resource.URN, 0, len(s))
+		for k := range s {
+			sorted = append(sorted, k)
+		}
+		sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+		return sorted
+	}
+
+	var gatherDeps func(v resource.PropertyValue, deps urnSet)
+	gatherDeps = func(v resource.PropertyValue, deps urnSet) {
+		switch {
+		case v.IsSecret():
+			gatherDeps(v.SecretValue().Element, deps)
+		case v.IsComputed():
+			gatherDeps(v.Input().Element, deps)
+		case v.IsOutput():
+			for _, urn := range v.OutputValue().Dependencies {
+				add(deps, urn)
+			}
+			gatherDeps(v.OutputValue().Element, deps)
+		case v.IsResourceReference():
+			add(deps, v.ResourceReferenceValue().URN)
+		case v.IsArray():
+			for _, e := range v.ArrayValue() {
+				gatherDeps(e, deps)
+			}
+		case v.IsObject():
+			for _, e := range v.ObjectValue() {
+				gatherDeps(e, deps)
+			}
+		}
+	}
+
+	result := make(map[resource.PropertyKey][]resource.URN, len(inputs))
+	for k, v := range inputs {
+		deps := urnSet{}
+		gatherDeps(v, deps)
+		result[k] = sortedValues(deps)
+	}
+	return result
 }

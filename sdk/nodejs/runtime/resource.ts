@@ -54,6 +54,7 @@ import {
     getStack,
     isDryRun,
     isLegacyApplyEnabled,
+    monitorSupportsOutputValues,
     rpcKeepAlive,
     serialize,
     terminateRpcs,
@@ -89,6 +90,8 @@ interface ResourceResolverOperation {
     aliases: URN[];
     // An ID to import, if any.
     import: ID | undefined;
+    // true if the object was serialized with output values.
+    hasOutputs: boolean;
 }
 
 /**
@@ -317,6 +320,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setSupportspartialvalues(true);
         req.setRemote(remote);
         req.setReplaceonchangesList(opts.replaceOnChanges || []);
+        req.setHasoutputs(resop.hasOutputs);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {
@@ -513,8 +517,12 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
         const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props, {
             // To initially scope the use of this new feature, we only keep output values when
             // remote is true (for multi-lang components).
+            // Note: The serializer will check with the monitor to see if it supports output values.
             keepOutputValues: remote,
         });
+
+        // Keep track of whether we've kept output values when serializing.
+        const hasOutputs = remote && await monitorSupportsOutputValues();
 
         // Wait for the parent to complete.
         // If no parent was provided, parent to the root resource.
@@ -586,6 +594,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
             propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
             aliases: aliases,
             import: importID,
+            hasOutputs,
         };
 
     } finally {

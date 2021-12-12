@@ -29,6 +29,7 @@ import {
     getMonitor,
     rpcKeepAlive,
     terminateRpcs,
+    monitorSupportsOutputValues,
 } from "./settings";
 
 import { DependencyResource, ProviderResource, Resource } from "../resource";
@@ -400,16 +401,20 @@ async function createCallRequest(tok: string, serialized: Record<string, any>,
     req.setProvider(provider);
     req.setVersion(version || "");
 
-    const argDependencies = req.getArgdependenciesMap();
-    for (const [key, propertyDeps] of serializedDeps) {
-        const urns = new Set<string>();
-        for (const dep of propertyDeps) {
-            const urn = await dep.urn.promise();
-            urns.add(urn);
+    // Only include `argDependencies` in the request when the monitor does *not* support output values.
+    // When the monitor *does* support output values, the dependencies will already exist within the args.
+    if (!await monitorSupportsOutputValues()) {
+        const argDependencies = req.getArgdependenciesMap();
+        for (const [key, propertyDeps] of serializedDeps) {
+            const urns = new Set<string>();
+            for (const dep of propertyDeps) {
+                const urn = await dep.urn.promise();
+                urns.add(urn);
+            }
+            const deps = new providerproto.CallRequest.ArgumentDependencies();
+            deps.setUrnsList(Array.from(urns));
+            argDependencies.set(key, deps);
         }
-        const deps = new providerproto.CallRequest.ArgumentDependencies();
-        deps.setUrnsList(Array.from(urns));
-        argDependencies.set(key, deps);
     }
 
     return req;

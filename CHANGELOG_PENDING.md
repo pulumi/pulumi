@@ -37,6 +37,9 @@
   NullReferenceException to be raised when constructing resources
   [#8495](https://github.com/pulumi/pulumi/pull/8495)
 
+- Deprecate use of dependencies maps when sending output values.
+  [#8410](https://github.com/pulumi/pulumi/pull/8410)
+
 ### Bug Fixes
 
 - [codegen/schema] - Error on type token names that are not allowed (schema.Name

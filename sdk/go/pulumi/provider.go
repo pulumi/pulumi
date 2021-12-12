@@ -215,6 +215,13 @@ func (ci constructInput) Dependencies(ctx *Context) []Resource {
 	return result
 }
 
+// HasEquivalentDependencies returns true if the deps are equal to or a subset of the gathered nested dependencies.
+func (ci constructInput) HasEquivalentDependencies() bool {
+	deps := urnSet{}
+	gatherDeps(ci.value, deps)
+	return deps.contains(ci.deps)
+}
+
 // constructInputsMap returns the inputs as a Map.
 func constructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error) {
 	result := make(Map, len(inputs))
@@ -577,13 +584,9 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 				continue
 			}
 
-			// Find all nested dependencies.
-			deps := urnSet{}
-			gatherDeps(ci.value, deps)
-
-			// If the top-level property dependencies are equal to (or a subset of) the gathered nested
-			// dependencies, we don't necessarily need to create a top-level output for the property.
-			if deps.contains(ci.deps) {
+			// If there aren't any dependencies or the dependencies are equivalent, we don't necessarily
+			// need to create a top-level output for the property.
+			if len(ci.deps) == 0 || ci.HasEquivalentDependencies() {
 				if err := copyInputTo(ctx, ci.value, fieldV); err != nil {
 					return fmt.Errorf("copying input %q: %w", k, err)
 				}
