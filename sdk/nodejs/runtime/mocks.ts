@@ -147,7 +147,7 @@ export class MockMonitor {
                 name: req.getName(),
                 inputs: deserializeProperties(req.getProperties()),
                 provider: req.getProvider(),
-                custom: req.getCustom(),
+                custom: true,
                 id: req.getId(),
             });
 

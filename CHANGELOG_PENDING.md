@@ -46,3 +46,6 @@
 
 - [codegen/go] - Fix `ElementType` for nested collection input and output types.
   [#8535](https://github.com/pulumi/pulumi/pull/8535)
+
+- [sdk/nodejs] - Fix `MockMonitor.readResource` to always call `mocks.newResource` with
+  `custom: true` rather than crash.

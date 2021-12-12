@@ -93,6 +93,11 @@ pulumi.runtime.registerResourceModule("aws", "ec2/instance", {
 
 class MyCustom extends pulumi.CustomResource {
     instance!: pulumi.Output<Instance>;
+
+    public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: Record<string, any>, opts?: pulumi.CustomResourceOptions): MyCustom {
+        return new MyCustom(name, state, { ...opts, id });
+    }
+
     constructor(name: string, props?: Record<string, any>, opts?: CustomResourceOptions) {
         super("pkg:index:MyCustom", name, props, opts);
     }
@@ -139,6 +144,20 @@ describe("mocks", function() {
         it("mycustom has expected output value", done => {
             mycustom.instance.apply(instance => {
                 done();
+            });
+        });
+
+        describe("get", function() {
+            it("has expected id output value", done => {
+                const myc = MyCustom.get("mycustom", "myid");
+                myc.id.apply(id => {
+                    try {
+                        assert.strictEqual(id, "myid");
+                        done();
+                    } catch (e) {
+                        done(e);
+                    }
+                });
             });
         });
     });
