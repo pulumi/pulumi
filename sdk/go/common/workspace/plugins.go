@@ -219,10 +219,10 @@ func interpolateURL(serverURL string, version semver.Version, os, arch string) s
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
 func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	// Figure out the OS/ARCH pair for the download URL.
-	var os string
+	var opSy string
 	switch runtime.GOOS {
 	case "darwin", "linux", "windows":
-		os = runtime.GOOS
+		opSy = runtime.GOOS
 	default:
 		return nil, -1, errors.Errorf("unsupported plugin OS: %s", runtime.GOOS)
 	}
@@ -239,25 +239,69 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 		return nil, -1, errors.Errorf("unknown version for plugin %s", info.Name)
 	}
 
-	// If the plugin has a server, associated with it, download from there.  Otherwise use the "default" location, which
-	// is hosted by Pulumi.
-	serverURL := info.PluginDownloadURL
-	if serverURL == "" {
-		serverURL = "https://get.pulumi.com/releases/plugins"
+	if info.PluginDownloadURL != "" {
+		return getPluginResponse(
+			buildUserSpecifiedPluginURL(info.PluginDownloadURL, info.Kind, info.Name, info.Version, opSy, arch))
 	}
-	serverURL = interpolateURL(serverURL, *info.Version, os, arch)
+
+	if _, ok := os.LookupEnv("PULUMI_EXPERIMENTAL"); ok {
+		pluginURL := buildGitHubReleasesPluginURL(info.Kind, info.Name, info.Version, opSy, arch)
+
+		resp, length, err := getPluginResponse(pluginURL)
+		if err == nil {
+			return resp, length, nil
+		}
+
+		// we threw an error talking to GitHub so lets fallback to get.pulumi.com for the provider
+		logging.V(1).Infof("cannot find plugin on github.com/pulumi/pulumi-%s/releases", info.Name)
+	}
+
+	return getPluginResponse(buildPulumiHostedPluginURL(info.Kind, info.Name, info.Version, opSy, arch))
+}
+
+func buildGitHubReleasesPluginURL(kind PluginKind, name string, version *semver.Version, opSy, arch string) string {
+	logging.V(1).Infof("%s downloading from github.com/pulumi/pulumi-%s/releases", name, name)
+
+	return fmt.Sprintf("https://github.com/pulumi/pulumi-%s/releases/download/v%s/%s",
+		name, version.String(), url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz",
+			kind, name, version.String(), opSy, arch)))
+}
+
+func buildPulumiHostedPluginURL(kind PluginKind, name string, version *semver.Version, opSy, arch string) string {
+	serverURL := "https://get.pulumi.com/releases/plugins"
+
+	logging.V(1).Infof("%s downloading from %s", name, serverURL)
+
+	serverURL = interpolateURL(serverURL, *version, opSy, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
 
-	logging.V(1).Infof("%s downloading from %s", info.Name, serverURL)
-
-	// URL escape the path value to ensure we have the correct path for S3/CloudFront.
+	logging.V(1).Infof("%s downloading from %s", name, serverURL)
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
-		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", info.Kind, info.Name, info.Version, os, arch)))
+		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", kind, name, version.String(), opSy, arch)))
 
-	logging.V(9).Infof("full plugin download url: %s", endpoint)
+	return endpoint
+}
 
-	req, err := http.NewRequest("GET", endpoint, nil)
+func buildUserSpecifiedPluginURL(serverURL string, kind PluginKind, name string, version *semver.Version,
+	opSy, arch string) string {
+	logging.V(1).Infof("%s downloading from %s", name, serverURL)
+
+	serverURL = interpolateURL(serverURL, *version, opSy, arch)
+	serverURL = strings.TrimSuffix(serverURL, "/")
+
+	logging.V(1).Infof("%s downloading from %s", name, serverURL)
+	endpoint := fmt.Sprintf("%s/%s",
+		serverURL,
+		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", kind, name, version.String(), opSy, arch)))
+
+	return endpoint
+}
+
+func getPluginResponse(pluginEndpoint string) (io.ReadCloser, int64, error) {
+	logging.V(9).Infof("full plugin download url: %s", pluginEndpoint)
+
+	req, err := http.NewRequest("GET", pluginEndpoint, nil)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -275,7 +319,7 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, -1, errors.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, endpoint)
+		return nil, -1, errors.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, pluginEndpoint)
 	}
 
 	return resp.Body, resp.ContentLength, nil
