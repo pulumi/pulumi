@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This is the implementation of the Pulumi CLI, including logic related to the CLI lifecycle such as updating, tracing,
-// profiling, and environmental config options. All of the command logic is dispatched using the Cobra CLI package and
-// is wrapped in a panic handler.
 package main
 
 import (
@@ -72,14 +69,15 @@ func newDocCmd() *cobra.Command {
 				return fmt.Errorf("Failed to get docs: %w", err)
 			}
 
-			lang, helper := "", codegen.DocLanguageHelper(nil)
+			var lang string
+			var helper codegen.DocLanguageHelper
 			switch proj.Runtime.Name() {
 			case "dotnet":
 				lang, helper = "csharp", dotnetgen.DocLanguageHelper{}
 			case "go":
 				lang, helper = "go", gogen.DocLanguageHelper{}
-			case "python":
-				lang, helper = "python", pythongen.DocLanguageHelper{}
+			case langPython:
+				lang, helper = langPython, pythongen.DocLanguageHelper{}
 			default:
 				lang, helper = "typescript", nodejsgen.DocLanguageHelper{}
 			}
@@ -116,7 +114,7 @@ func getPackageSchema(pkg string) (*schema.Package, error) {
 	defer contract.IgnoreClose(ctx)
 
 	loader := schema.NewPluginLoader(ctx.Host)
-	return loader.LoadPackage(string(pkg), nil)
+	return loader.LoadPackage(pkg, nil)
 }
 
 func findDocstring(pointer, lang string, helper codegen.DocLanguageHelper) (string, bool, error) {
@@ -165,25 +163,25 @@ func findDocstring(pointer, lang string, helper codegen.DocLanguageHelper) (stri
 		object = member
 	}
 
+	var docstring string
+	err = nil
 	switch object := object.(type) {
 	case *schema.Property:
-		docstring, err := genPropertyDocstring(object, pkg, lang, helper)
-		return docstring, true, err
+		docstring, err = genPropertyDocstring(object, pkg, lang, helper)
 	case *schema.Enum:
-		return object.Comment, true, nil
+		docstring = genEnumDocstring(object, lang, helper)
 	case *schema.EnumType:
-		docstring := genEnumTypeDocstring(object, lang, helper)
-		return docstring, true, nil
+		docstring = genEnumTypeDocstring(object, lang, helper)
 	case *schema.ObjectType:
-		return object.Comment, true, nil
+		docstring = genObjectTypeDocstring(object, lang, helper)
 	case *schema.Resource:
-		docstring, err := genResourceDocstring(object, lang, helper)
-		return docstring, true, err
+		docstring, err = genResourceDocstring(object, lang, helper)
 	case *schema.Function:
-		return object.Comment, true, nil
+		docstring = genFunctionDocstring(object, lang, helper)
 	default:
 		return "", false, fmt.Errorf("unexpected member of type %T", member)
 	}
+	return docstring, true, err
 }
 
 type propertySummary struct {
@@ -191,7 +189,8 @@ type propertySummary struct {
 	Type string
 }
 
-func summarizeProperty(property *schema.Property, pkg *schema.Package, helper codegen.DocLanguageHelper) (propertySummary, error) {
+func summarizeProperty(property *schema.Property, pkg *schema.Package,
+	helper codegen.DocLanguageHelper) (propertySummary, error) {
 	name, err := helper.GetPropertyName(property)
 	if err != nil {
 		return propertySummary{}, err
@@ -205,7 +204,8 @@ func summarizeProperty(property *schema.Property, pkg *schema.Package, helper co
 	}, nil
 }
 
-func summarizeProperties(properties []*schema.Property, pkg *schema.Package, helper codegen.DocLanguageHelper) ([]propertySummary, error) {
+func summarizeProperties(properties []*schema.Property, pkg *schema.Package,
+	helper codegen.DocLanguageHelper) ([]propertySummary, error) {
 	summaries := make([]propertySummary, len(properties))
 	for i, p := range properties {
 		summary, err := summarizeProperty(p, pkg, helper)
@@ -217,7 +217,8 @@ func summarizeProperties(properties []*schema.Property, pkg *schema.Package, hel
 	return summaries, nil
 }
 
-func summarizeObjectProperties(object *schema.ObjectType, pkg *schema.Package, helper codegen.DocLanguageHelper) ([]propertySummary, error) {
+func summarizeObjectProperties(object *schema.ObjectType, pkg *schema.Package,
+	helper codegen.DocLanguageHelper) ([]propertySummary, error) {
 	if object != nil {
 		return summarizeProperties(object.Properties, pkg, helper)
 	}
@@ -228,7 +229,8 @@ func summarizeObjectProperties(object *schema.ObjectType, pkg *schema.Package, h
 var propertyTemplateText string
 var propertyTemplate = template.Must(template.New("property").Parse(propertyTemplateText))
 
-func genPropertyDocstring(property *schema.Property, pkg *schema.Package, lang string, helper codegen.DocLanguageHelper) (string, error) {
+func genPropertyDocstring(property *schema.Property, pkg *schema.Package,
+	lang string, helper codegen.DocLanguageHelper) (string, error) {
 	summary, err := summarizeProperty(property, pkg, helper)
 	if err != nil {
 		return "", err

@@ -1,12 +1,24 @@
+// Copyright 2016-2021, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/alecthomas/chroma"
-	"github.com/atotto/clipboard"
 	"github.com/gdamore/tcell/v2"
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/markdown-kit/renderer"
@@ -47,7 +59,6 @@ func textDimensions(text string) (int, int) {
 
 type textDialog struct {
 	x, y, w, h int
-	visible    bool
 	text       string
 	textWidth  int
 	textHeight int
@@ -111,7 +122,10 @@ func (td *textDialog) InputHandler() func(event *tcell.EventKey, setFocus func(p
 	return td.textView.InputHandler()
 }
 
-func (td *textDialog) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
+type MouseHandlerFunc = func(action tview.MouseAction, event *tcell.EventMouse,
+	setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive)
+
+func (td *textDialog) MouseHandler() MouseHandlerFunc {
 	return td.textView.MouseHandler()
 }
 
@@ -141,12 +155,6 @@ func openInBrowser(url string) error {
 	return open.Run(url)
 }
 
-func sendToClipboard(value string) {
-	if !clipboard.Unsupported {
-		clipboard.WriteAll(value)
-	}
-}
-
 type markdownReader struct {
 	view *mdk.MarkdownView
 
@@ -162,7 +170,6 @@ type markdownReader struct {
 	rootPages  *tview.Pages
 
 	backstack []*renderer.NodeSpan
-	query     *regexp.Regexp
 }
 
 func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Application) *markdownReader {
@@ -260,7 +267,7 @@ func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus fun
 	}
 }
 
-func (r *markdownReader) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
+func (r *markdownReader) MouseHandler() MouseHandlerFunc {
 	return r.rootPages.MouseHandler()
 }
 
