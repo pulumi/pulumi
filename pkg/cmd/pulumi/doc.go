@@ -92,7 +92,7 @@ func newDocCmd() *cobra.Command {
 			docstring = codegen.FilterExamples(docstring, lang)
 			if term.IsTerminal(int(os.Stdout.Fd())) {
 
-				return renderLiveView(docstring)
+				return renderLiveView(pointer, docstring)
 			}
 			// Rendering into a pipe
 			return renderDocstring(os.Stdout, docstring)
@@ -163,25 +163,28 @@ func findDocstring(pointer, lang string, helper codegen.DocLanguageHelper) (stri
 		object = member
 	}
 
-	var docstring string
-	err = nil
 	switch object := object.(type) {
 	case *schema.Property:
-		docstring, err = genPropertyDocstring(object, pkg, lang, helper)
+		docstring, err := genPropertyDocstring(object, pkg, lang, helper)
+		return docstring, true, err
 	case *schema.Enum:
-		docstring = genEnumDocstring(object, lang, helper)
+		docstring := genEnumDocstring(object, lang, helper)
+		return docstring, true, nil
 	case *schema.EnumType:
-		docstring = genEnumTypeDocstring(object, lang, helper)
+		docstring := genEnumTypeDocstring(object, lang, helper)
+		return docstring, true, nil
 	case *schema.ObjectType:
-		docstring = genObjectTypeDocstring(object, lang, helper)
+		docstring := genObjectTypeDocstring(object, lang, helper)
+		return docstring, true, nil
 	case *schema.Resource:
-		docstring, err = genResourceDocstring(object, lang, helper)
+		docstring, err := genResourceDocstring(object, lang, helper)
+		return docstring, true, err
 	case *schema.Function:
-		docstring = genFunctionDocstring(object, lang, helper)
+		docstring := genFunctionDocstring(object, lang, helper)
+		return docstring, true, nil
 	default:
 		return "", false, fmt.Errorf("unexpected member of type %T", member)
 	}
-	return docstring, true, err
 }
 
 type propertySummary struct {
@@ -319,12 +322,12 @@ func genFunctionDocstring(function *schema.Function, lang string, helper codegen
 	return function.Comment
 }
 
-func renderLiveView(docstring string) error {
+func renderLiveView(title, docstring string) error {
 	if ti, _, err := dynamic.LoadTerminfo(os.Getenv("TERM")); err == nil {
 		terminfo.AddTerminfo(ti)
 	}
 	app := tview.NewApplication()
-	reader := newMarkdownReader("Pulumi Docs", docstring, styles.Pulumi, app)
+	reader := newMarkdownReader(title, docstring, styles.Pulumi, app)
 	app.SetRoot(reader, true)
 	app.SetFocus(reader)
 	return app.Run()

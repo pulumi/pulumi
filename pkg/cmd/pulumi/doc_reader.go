@@ -248,7 +248,7 @@ func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus fun
 						r.backstack = r.backstack[:len(r.backstack)-1]
 						r.view.SelectSpan(last, true)
 					}
-				case 'h' | '?':
+				case 'h', '?':
 					// Show the help
 					r.showDialog(r.helpDialog)
 					return nil
