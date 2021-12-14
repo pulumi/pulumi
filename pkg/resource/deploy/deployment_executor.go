@@ -67,7 +67,9 @@ func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op StepOp) re
 	olds := ex.deployment.olds
 	var news map[resource.URN]bool
 	if ex.stepGen != nil {
-		news = ex.stepGen.urns
+		for urn, seen := range ex.stepGen.urns {
+			news[urn] = (seen == FinalSeen)
+		}
 	}
 
 	hasUnknownTarget := false

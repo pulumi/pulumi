@@ -30,6 +30,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
+// UrnSeen states if a urn has been seen before. If it has it's either a initial placeholder or a final goal state
+type UrnSeen int64
+
+const (
+	NotSeen     UrnSeen = 0
+	PartialSeen         = 1
+	FinalSeen           = 2
+)
+
 // stepGenerator is responsible for turning resource events into steps that can be fed to the deployment executor.
 // It does this by consulting the deployment and calculating the appropriate step action based on the requested goal
 // state and the existing state of the world.
@@ -45,13 +54,13 @@ type stepGenerator struct {
 	// report them all at once.
 	sawError bool
 
-	urns     map[resource.URN]bool // set of URNs discovered for this deployment
-	reads    map[resource.URN]bool // set of URNs read for this deployment
-	deletes  map[resource.URN]bool // set of URNs deleted in this deployment
-	replaces map[resource.URN]bool // set of URNs replaced in this deployment
-	updates  map[resource.URN]bool // set of URNs updated in this deployment
-	creates  map[resource.URN]bool // set of URNs created in this deployment
-	sames    map[resource.URN]bool // set of URNs that were not changed in this deployment
+	urns     map[resource.URN]UrnSeen // set of URNs discovered for this deployment
+	reads    map[resource.URN]bool    // set of URNs read for this deployment
+	deletes  map[resource.URN]bool    // set of URNs deleted in this deployment
+	replaces map[resource.URN]bool    // set of URNs replaced in this deployment
+	updates  map[resource.URN]bool    // set of URNs updated in this deployment
+	creates  map[resource.URN]bool    // set of URNs created in this deployment
+	sames    map[resource.URN]bool    // set of URNs that were not changed in this deployment
 
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target
@@ -228,12 +237,19 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	goal := event.Goal()
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(goal.Parent, goal.Type, goal.Name)
-	if sg.urns[urn] {
+	if sg.urns[urn] == FinalSeen {
 		invalid = true
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		sg.deployment.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 	}
-	sg.urns[urn] = true
+
+	// Check if this resource has placeholder options
+	// TODO(CYCLES) This should look at a placeholders property not ignoreChanges
+	if len(goal.IgnoreChanges) == 0 {
+		sg.urns[urn] = FinalSeen
+	} else {
+		sg.urns[urn] = PartialSeen
+	}
 
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
@@ -1443,7 +1459,11 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 	// any resources that depend on the root must not yet have been registered, which in turn implies that resources
 	// that have already been registered must not depend on the root. Thus, we ignore these resources if they are
 	// encountered while walking the old dependency graph to determine the set of dependents.
-	impossibleDependents := sg.urns
+	impossibleDependents := make(map[resource.URN]bool)
+	for urn, seen := range sg.urns {
+		impossibleDependents[urn] = (seen == FinalSeen)
+	}
+
 	for _, d := range sg.deployment.depGraph.DependingOn(root, impossibleDependents, false) {
 		replace, keys, res := requiresReplacement(d)
 		if res != nil {
@@ -1533,7 +1553,7 @@ func newStepGenerator(
 		opts:                 opts,
 		updateTargetsOpt:     updateTargetsOpt,
 		replaceTargetsOpt:    replaceTargetsOpt,
-		urns:                 make(map[resource.URN]bool),
+		urns:                 make(map[resource.URN]UrnSeen),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),
 		sames:                make(map[resource.URN]bool),
