@@ -1079,13 +1079,13 @@ var StepOps = []StepOp{
 // Color returns a suggested color for lines of this op type.
 func (op StepOp) Color() string {
 	switch op {
-	case OpSame:
+	case OpSame, OpFinaliseSame:
 		return colors.SpecUnimportant
 	case OpCreate, OpImport:
 		return colors.SpecCreate
 	case OpDelete:
 		return colors.SpecDelete
-	case OpUpdate:
+	case OpUpdate, OpFinaliseUpdate:
 		return colors.SpecUpdate
 	case OpReplace:
 		return colors.SpecReplace
@@ -1155,6 +1155,10 @@ func (op StepOp) RawPrefix() string {
 		return "= "
 	case OpImportReplacement:
 		return "=>"
+	case OpFinaliseSame:
+		return "=="
+	case OpFinaliseUpdate:
+		return "=~"
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
@@ -1163,6 +1167,8 @@ func (op StepOp) RawPrefix() string {
 
 func (op StepOp) PastTense() string {
 	switch op {
+	case OpFinaliseSame, OpFinaliseUpdate:
+		return string(op) + "d"
 	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate, OpReadReplacement:
 		return string(op) + "d"
 	case OpRefresh:
@@ -1182,7 +1188,7 @@ func (op StepOp) PastTense() string {
 // Suffix returns a suggested suffix for lines of this op type.
 func (op StepOp) Suffix() string {
 	switch op {
-	case OpCreateReplacement, OpUpdate, OpReplace, OpReadReplacement, OpRefresh, OpImportReplacement:
+	case OpFinaliseUpdate, OpCreateReplacement, OpUpdate, OpReplace, OpReadReplacement, OpRefresh, OpImportReplacement:
 		return colors.Reset // updates and replacements colorize individual lines; get has none
 	}
 	return ""

@@ -505,6 +505,16 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		if !isTargeted {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
+		} else if sg.deployment.preview && wasPartial {
+			// TODO(CYCLES) We can't currently call diff with ID=nil which happens in preview mode for partial resources
+			sg.updates[urn] = true
+			if logging.V(7) {
+				logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v)", urn, oldInputs, new.Inputs)
+			}
+			return []Step{
+				NewUpdateStep(sg.deployment, event, old, new, nil, nil, nil, goal.IgnoreChanges, true),
+			}, nil
+
 		} else {
 			updateSteps, res := sg.generateStepsFromDiff(
 				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, wasPartial)

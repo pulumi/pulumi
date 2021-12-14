@@ -925,7 +925,8 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(urn != "")
-	contract.Assert(id != "")
+	// TODO(CYCLES) In preview we will call update with a nil id for circular resources
+	//contract.Assert(id != "")
 	contract.Assert(news != nil)
 	contract.Assert(olds != nil)
 
