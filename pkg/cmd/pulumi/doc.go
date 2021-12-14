@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This is the implementation of the Pulumi CLI, including logic related to the CLI lifecycle such as updating, tracing,
-// profiling, and environmental config options. All of the command logic is dispatched using the Cobra CLI package and
-// is wrapped in a panic handler.
 package main
 
 import (
@@ -25,7 +22,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/alecthomas/chroma"
+	"github.com/gdamore/tcell/terminfo"
+	"github.com/gdamore/tcell/terminfo/dynamic"
 	"github.com/pgavlin/goldmark"
 	"github.com/pgavlin/goldmark/extension"
 	goldmark_parser "github.com/pgavlin/goldmark/parser"
@@ -34,6 +32,7 @@ import (
 	"github.com/pgavlin/goldmark/util"
 	"github.com/pgavlin/markdown-kit/renderer"
 	"github.com/pgavlin/markdown-kit/styles"
+	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -67,17 +66,18 @@ func newDocCmd() *cobra.Command {
 			// Fetch the project and filter examples to the project's language.
 			proj, _, err := readProject()
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to get docs: %w", err)
 			}
 
-			lang, helper := "", codegen.DocLanguageHelper(nil)
+			var lang string
+			var helper codegen.DocLanguageHelper
 			switch proj.Runtime.Name() {
 			case "dotnet":
 				lang, helper = "csharp", dotnetgen.DocLanguageHelper{}
 			case "go":
 				lang, helper = "go", gogen.DocLanguageHelper{}
-			case "python":
-				lang, helper = "python", pythongen.DocLanguageHelper{}
+			case langPython:
+				lang, helper = langPython, pythongen.DocLanguageHelper{}
 			default:
 				lang, helper = "typescript", nodejsgen.DocLanguageHelper{}
 			}
@@ -90,7 +90,11 @@ func newDocCmd() *cobra.Command {
 				return fmt.Errorf("could not find package member %v", pointer)
 			}
 			docstring = codegen.FilterExamples(docstring, lang)
+			if term.IsTerminal(int(os.Stdout.Fd())) {
 
+				return renderLiveView(pointer, docstring)
+			}
+			// Rendering into a pipe
 			return renderDocstring(os.Stdout, docstring)
 		}),
 	}
@@ -110,7 +114,7 @@ func getPackageSchema(pkg string) (*schema.Package, error) {
 	defer contract.IgnoreClose(ctx)
 
 	loader := schema.NewPluginLoader(ctx.Host)
-	return loader.LoadPackage(string(pkg), nil)
+	return loader.LoadPackage(pkg, nil)
 }
 
 func findDocstring(pointer, lang string, helper codegen.DocLanguageHelper) (string, bool, error) {
@@ -164,16 +168,20 @@ func findDocstring(pointer, lang string, helper codegen.DocLanguageHelper) (stri
 		docstring, err := genPropertyDocstring(object, pkg, lang, helper)
 		return docstring, true, err
 	case *schema.Enum:
-		return object.Comment, true, nil
+		docstring := genEnumDocstring(object, lang, helper)
+		return docstring, true, nil
 	case *schema.EnumType:
-		return object.Comment, true, nil
+		docstring := genEnumTypeDocstring(object, lang, helper)
+		return docstring, true, nil
 	case *schema.ObjectType:
-		return object.Comment, true, nil
+		docstring := genObjectTypeDocstring(object, lang, helper)
+		return docstring, true, nil
 	case *schema.Resource:
 		docstring, err := genResourceDocstring(object, lang, helper)
 		return docstring, true, err
 	case *schema.Function:
-		return object.Comment, true, nil
+		docstring := genFunctionDocstring(object, lang, helper)
+		return docstring, true, nil
 	default:
 		return "", false, fmt.Errorf("unexpected member of type %T", member)
 	}
@@ -184,7 +192,8 @@ type propertySummary struct {
 	Type string
 }
 
-func summarizeProperty(property *schema.Property, pkg *schema.Package, helper codegen.DocLanguageHelper) (propertySummary, error) {
+func summarizeProperty(property *schema.Property, pkg *schema.Package,
+	helper codegen.DocLanguageHelper) (propertySummary, error) {
 	name, err := helper.GetPropertyName(property)
 	if err != nil {
 		return propertySummary{}, err
@@ -198,7 +207,8 @@ func summarizeProperty(property *schema.Property, pkg *schema.Package, helper co
 	}, nil
 }
 
-func summarizeProperties(properties []*schema.Property, pkg *schema.Package, helper codegen.DocLanguageHelper) ([]propertySummary, error) {
+func summarizeProperties(properties []*schema.Property, pkg *schema.Package,
+	helper codegen.DocLanguageHelper) ([]propertySummary, error) {
 	summaries := make([]propertySummary, len(properties))
 	for i, p := range properties {
 		summary, err := summarizeProperty(p, pkg, helper)
@@ -210,7 +220,8 @@ func summarizeProperties(properties []*schema.Property, pkg *schema.Package, hel
 	return summaries, nil
 }
 
-func summarizeObjectProperties(object *schema.ObjectType, pkg *schema.Package, helper codegen.DocLanguageHelper) ([]propertySummary, error) {
+func summarizeObjectProperties(object *schema.ObjectType, pkg *schema.Package,
+	helper codegen.DocLanguageHelper) ([]propertySummary, error) {
 	if object != nil {
 		return summarizeProperties(object.Properties, pkg, helper)
 	}
@@ -221,7 +232,8 @@ func summarizeObjectProperties(object *schema.ObjectType, pkg *schema.Package, h
 var propertyTemplateText string
 var propertyTemplate = template.Must(template.New("property").Parse(propertyTemplateText))
 
-func genPropertyDocstring(property *schema.Property, pkg *schema.Package, lang string, helper codegen.DocLanguageHelper) (string, error) {
+func genPropertyDocstring(property *schema.Property, pkg *schema.Package,
+	lang string, helper codegen.DocLanguageHelper) (string, error) {
 	summary, err := summarizeProperty(property, pkg, helper)
 	if err != nil {
 		return "", err
@@ -310,20 +322,18 @@ func genFunctionDocstring(function *schema.Function, lang string, helper codegen
 	return function.Comment
 }
 
-func renderDocstring(w io.Writer, docstring string) error {
-	var termWidth int
-	var theme *chroma.Style
-	if f, ok := w.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
-		theme = styles.Pulumi
-
-		if termWidth == 0 {
-			w, _, err := term.GetSize(int(os.Stdout.Fd()))
-			if err == nil {
-				termWidth = int(w)
-			}
-		}
+func renderLiveView(title, docstring string) error {
+	if ti, _, err := dynamic.LoadTerminfo(os.Getenv("TERM")); err == nil {
+		terminfo.AddTerminfo(ti)
 	}
+	app := tview.NewApplication()
+	reader := newMarkdownReader(title, docstring, styles.Pulumi, app)
+	app.SetRoot(reader, true)
+	app.SetFocus(reader)
+	return app.Run()
+}
 
+func renderDocstring(w io.Writer, docstring string) error {
 	source := []byte(docstring)
 	parser := goldmark.DefaultParser()
 	parser.AddOptions(goldmark_parser.WithParagraphTransformers(
@@ -333,9 +343,7 @@ func renderDocstring(w io.Writer, docstring string) error {
 	document := parser.Parse(text.NewReader(source))
 
 	r := renderer.New(
-		renderer.WithTheme(theme),
-		renderer.WithWordWrap(termWidth),
-		renderer.WithSoftBreak(termWidth != 0))
+		renderer.WithSoftBreak(false))
 	renderer := goldmark_renderer.NewRenderer(goldmark_renderer.WithNodeRenderers(util.Prioritized(r, 100)))
 	return renderer.Render(w, source, document)
 }
