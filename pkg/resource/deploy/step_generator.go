@@ -598,6 +598,8 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// If there were changes check for a replacement vs. an in-place update.
 	if diff.Changes == plugin.DiffSome {
 		if diff.Replace() {
+			// TODO(CYCLES) not valid to replace as part of the final update for a circular resource, error out here if wasPartial==true
+
 			// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
 			// therefore incompatible with the goal state.
 			if goal.ID != "" {
