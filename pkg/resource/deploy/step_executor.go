@@ -273,9 +273,10 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
-			if prior, has := se.pendingNews.Load(step.URN()); has {
-				return fmt.Errorf("resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
-			}
+			// TODO(CYCLES) This should be smarter to allow partials to update but nothing else
+			//if prior, has := se.pendingNews.Load(step.URN()); has {
+			//	return fmt.Errorf("resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
+			//}
 
 			se.pendingNews.Store(step.URN(), step)
 		}
