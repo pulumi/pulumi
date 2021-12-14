@@ -143,7 +143,7 @@ func (i *importer) registerExistingResources(ctx context.Context) bool {
 
 			new := *r
 			new.ID = ""
-			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, &new)) {
+			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, &new, false)) {
 				return false
 			}
 		}

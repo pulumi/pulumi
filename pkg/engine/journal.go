@@ -77,7 +77,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 				if old := e.Step.Old(); !old.PendingReplacement {
 					dones[old] = true
 				}
-			case deploy.OpReplace:
+			case deploy.OpReplace, deploy.OpFinaliseSame, deploy.OpFinaliseUpdate:
 				// do nothing.
 			case deploy.OpRead, deploy.OpReadReplacement:
 				resources = append(resources, e.Step.New())

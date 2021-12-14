@@ -60,6 +60,7 @@ type SameStep struct {
 	reg        RegisterResourceEvent // the registration intent to convey a URN back to.
 	old        *resource.State       // the state of the resource before this step.
 	new        *resource.State       // the state of the resource after this step.
+	finalise   bool                  // true if this is the operation to finalise a circular resource
 
 	// If this is a same-step for a resource being created but which was not --target'ed by the user
 	// (and thus was skipped).
@@ -68,7 +69,7 @@ type SameStep struct {
 
 var _ Step = (*SameStep)(nil)
 
-func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State) Step {
+func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State, isFinalise bool) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -84,6 +85,7 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *re
 		reg:        reg,
 		old:        old,
 		new:        new,
+		finalise:   isFinalise,
 	}
 }
 
@@ -109,7 +111,13 @@ func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new
 	}
 }
 
-func (s *SameStep) Op() StepOp              { return OpSame }
+func (s *SameStep) Op() StepOp {
+	if s.finalise {
+		return OpFinaliseSame
+	} else {
+		return OpSame
+	}
+}
 func (s *SameStep) Deployment() *Deployment { return s.deployment }
 func (s *SameStep) Type() tokens.Type       { return s.new.Type }
 func (s *SameStep) Provider() string        { return s.new.Provider }
@@ -402,6 +410,7 @@ type UpdateStep struct {
 	diffs         []resource.PropertyKey         // the keys causing a diff.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
+	finalise      bool                           // true if this is the finalise step for a circular resource
 }
 
 var _ Step = (*UpdateStep)(nil)
@@ -409,11 +418,10 @@ var _ Step = (*UpdateStep)(nil)
 func NewUpdateStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State,
 	stables, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
 
-	ignoreChanges []string) Step {
+	ignoreChanges []string, isFinalise bool) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	// TODO(CYCLES) ID can be null in preview for partial updates
-	//contract.Assert(old.ID != "" || !old.Custom)
+	contract.Assert(old.ID != "" || !old.Custom || isFinalise)
 	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
 	contract.Assert(!old.Delete)
 	contract.Assert(new != nil)
@@ -432,10 +440,17 @@ func NewUpdateStep(deployment *Deployment, reg RegisterResourceEvent, old, new *
 		diffs:         diffs,
 		detailedDiff:  detailedDiff,
 		ignoreChanges: ignoreChanges,
+		finalise:      isFinalise,
 	}
 }
 
-func (s *UpdateStep) Op() StepOp                                   { return OpUpdate }
+func (s *UpdateStep) Op() StepOp {
+	if s.finalise {
+		return OpFinaliseUpdate
+	} else {
+		return OpUpdate
+	}
+}
 func (s *UpdateStep) Deployment() *Deployment                      { return s.deployment }
 func (s *UpdateStep) Type() tokens.Type                            { return s.new.Type }
 func (s *UpdateStep) Provider() string                             { return s.new.Provider }
@@ -1034,6 +1049,10 @@ const (
 	OpRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
 	OpImport               StepOp = "import"                 // import an existing resource.
 	OpImportReplacement    StepOp = "import-replacement"     // replace an existing resource with an imported resource.
+	OpFinaliseSame         StepOp = "finalise-same"          // final same for a circular resource
+	OpFinaliseUpdate       StepOp = "finalise-update"        // final update for a circular resource
+
+	// TODO(CYCLES) Fill in below for finalise ops so they have the right colors etc
 )
 
 // StepOps contains the full set of step operation types.
@@ -1053,6 +1072,8 @@ var StepOps = []StepOp{
 	OpRemovePendingReplace,
 	OpImport,
 	OpImportReplacement,
+	OpFinaliseSame,
+	OpFinaliseUpdate,
 }
 
 // Color returns a suggested color for lines of this op type.

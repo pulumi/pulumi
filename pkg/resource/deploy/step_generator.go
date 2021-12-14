@@ -507,7 +507,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
 			updateSteps, res := sg.generateStepsFromDiff(
-				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
+				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, wasPartial)
 
 			if res != nil {
 				return nil, res
@@ -525,7 +525,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 		// No need to update anything, the properties didn't change.
 		sg.sames[urn] = true
-		return []Step{NewSameStep(sg.deployment, event, old, new)}, nil
+		return []Step{NewSameStep(sg.deployment, event, old, new, wasPartial)}, nil
 	}
 
 	// Case 4: Not Case 1, 2, or 3
@@ -566,7 +566,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
-	prov plugin.Provider, goal *resource.Goal) ([]Step, result.Result) {
+	prov plugin.Provider, goal *resource.Goal, isFinalise bool) ([]Step, result.Result) {
 
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.deployment.preview
@@ -713,7 +713,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 		}
 		return []Step{
 			NewUpdateStep(sg.deployment, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff,
-				goal.IgnoreChanges),
+				goal.IgnoreChanges, isFinalise),
 		}, nil
 	}
 
@@ -721,7 +721,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// step to attempt to "continue" awaiting initialization.
 	if hasInitErrors {
 		sg.updates[urn] = true
-		return []Step{NewUpdateStep(sg.deployment, event, old, new, diff.StableKeys, nil, nil, nil)}, nil
+		return []Step{NewUpdateStep(sg.deployment, event, old, new, diff.StableKeys, nil, nil, nil, isFinalise)}, nil
 	}
 
 	// Else there are no changes needed
