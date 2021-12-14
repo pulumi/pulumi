@@ -610,6 +610,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	ignoreChanges []string) (DiffResult, error) {
 
 	contract.Assert(urn != "")
+	// TODO(CYCLES) id can be null in previews for partial updates
 	//contract.Assert(id != "")
 	contract.Assert(news != nil)
 	contract.Assert(olds != nil)
