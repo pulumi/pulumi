@@ -25,7 +25,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/alecthomas/chroma"
+	"github.com/gdamore/tcell/terminfo"
+	"github.com/gdamore/tcell/terminfo/dynamic"
 	"github.com/pgavlin/goldmark"
 	"github.com/pgavlin/goldmark/extension"
 	goldmark_parser "github.com/pgavlin/goldmark/parser"
@@ -34,6 +35,7 @@ import (
 	"github.com/pgavlin/goldmark/util"
 	"github.com/pgavlin/markdown-kit/renderer"
 	"github.com/pgavlin/markdown-kit/styles"
+	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -67,7 +69,7 @@ func newDocCmd() *cobra.Command {
 			// Fetch the project and filter examples to the project's language.
 			proj, _, err := readProject()
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to get docs: %w", err)
 			}
 
 			lang, helper := "", codegen.DocLanguageHelper(nil)
@@ -90,7 +92,11 @@ func newDocCmd() *cobra.Command {
 				return fmt.Errorf("could not find package member %v", pointer)
 			}
 			docstring = codegen.FilterExamples(docstring, lang)
+			if term.IsTerminal(int(os.Stdout.Fd())) {
 
+				return renderLiveView(docstring)
+			}
+			// Rendering into a pipe
 			return renderDocstring(os.Stdout, docstring)
 		}),
 	}
@@ -166,7 +172,8 @@ func findDocstring(pointer, lang string, helper codegen.DocLanguageHelper) (stri
 	case *schema.Enum:
 		return object.Comment, true, nil
 	case *schema.EnumType:
-		return object.Comment, true, nil
+		docstring := genEnumTypeDocstring(object, lang, helper)
+		return docstring, true, nil
 	case *schema.ObjectType:
 		return object.Comment, true, nil
 	case *schema.Resource:
@@ -310,20 +317,18 @@ func genFunctionDocstring(function *schema.Function, lang string, helper codegen
 	return function.Comment
 }
 
-func renderDocstring(w io.Writer, docstring string) error {
-	var termWidth int
-	var theme *chroma.Style
-	if f, ok := w.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
-		theme = styles.Pulumi
-
-		if termWidth == 0 {
-			w, _, err := term.GetSize(int(os.Stdout.Fd()))
-			if err == nil {
-				termWidth = int(w)
-			}
-		}
+func renderLiveView(docstring string) error {
+	if ti, _, err := dynamic.LoadTerminfo(os.Getenv("TERM")); err == nil {
+		terminfo.AddTerminfo(ti)
 	}
+	app := tview.NewApplication()
+	reader := newMarkdownReader("Pulumi Docs", docstring, styles.Pulumi, app)
+	app.SetRoot(reader, true)
+	app.SetFocus(reader)
+	return app.Run()
+}
 
+func renderDocstring(w io.Writer, docstring string) error {
 	source := []byte(docstring)
 	parser := goldmark.DefaultParser()
 	parser.AddOptions(goldmark_parser.WithParagraphTransformers(
@@ -333,9 +338,7 @@ func renderDocstring(w io.Writer, docstring string) error {
 	document := parser.Parse(text.NewReader(source))
 
 	r := renderer.New(
-		renderer.WithTheme(theme),
-		renderer.WithWordWrap(termWidth),
-		renderer.WithSoftBreak(termWidth != 0))
+		renderer.WithSoftBreak(false))
 	renderer := goldmark_renderer.NewRenderer(goldmark_renderer.WithNodeRenderers(util.Prioritized(r, 100)))
 	return renderer.Render(w, source, document)
 }
