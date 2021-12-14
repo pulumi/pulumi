@@ -243,6 +243,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		sg.deployment.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 	}
 
+	// wasPartial is true if this resource was seen partially before with placeholders. If true this should
+	// not issue a create step.
+	// TODO(CYCLES) We should check that all the goal properties are the same
+	wasPartial = sg.urns[urn] == PartialSeen
+
 	// Check if this resource has placeholder options
 	// TODO(CYCLES) This should look at a placeholders property not ignoreChanges
 	if len(goal.IgnoreChanges) == 0 {
@@ -287,6 +292,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}
 		inputs = processedInputs
 	}
+
+	// TODO(CYCLES) If wasPartial is true this should edit the goal state, not replace it
 
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
@@ -346,6 +353,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var err error
 	if prov != nil {
 		var failures []plugin.CheckFailure
+
+		// TODO(CYLCES) We PROBABLY need to do something different here when wasPartial is true,
+		// we will have the old input state + the partial input state + the new goal properties for the final state.
 
 		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
@@ -466,6 +476,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	if isTargeted && sg.updateTargetsOpt != nil {
 		sg.updateTargetsOpt[urn] = true
 	}
+
+	// TODO(CYCLES) I think this should be hasOld OR wasPartial in which case we're doing an update on the result of the
+	// partial steps.
 
 	// Case 3: hasOld
 	//  In this case, the resource we are operating upon now exists in the old snapshot.

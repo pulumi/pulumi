@@ -2580,3 +2580,73 @@ func TestComponentDeleteDependencies(t *testing.T) {
 	}
 	p.Run(t, nil)
 }
+
+func TestCyclicResources(t *testing.T) {
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID(urn.Name()), news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, outs, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:        resource.NewPropertyMapFromMap(map[string]interface{}{"a": 0}),
+			IgnoreChanges: []string{"a"},
+		})
+		assert.NoError(t, err)
+
+		_, _, outs, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"value": outs["a"]}),
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"a": outs["value"]}),
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps: []TestStep{
+			{
+				Op: Update,
+				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+					events []Event, res result.Result) result.Result {
+					for _, event := range events {
+						if event.Type == ResourcePreEvent {
+							//payload := event.Payload().(ResourcePreEventPayload)
+							//assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
+						}
+					}
+					return res
+				},
+			},
+		},
+	}
+	snap := p.Run(t, nil)
+
+	assert.Equal(t, 3, len(snap.Resources))
+
+	snap = p.Run(t, snap)
+
+	assert.Equal(t, 3, len(snap.Resources))
+	//snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]interface{}{
+	//	"a": 1,
+	//	"b": map[string]interface{}{
+	//		"c": "foo",
+	//	},
+	//}), []string{"a", "b.c"}, []deploy.StepOp{deploy.OpCreate})
+}
