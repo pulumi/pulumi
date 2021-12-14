@@ -89,6 +89,8 @@ func newStackGraphCmd() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	cmd.RegisterFlagCompletionFunc("stack", validStackArgs)
+
 	cmd.PersistentFlags().BoolVar(&ignoreParentEdges, "ignore-parent-edges", false,
 		"Ignores edges introduced by parent/child resource relationships")
 	cmd.PersistentFlags().BoolVar(&ignoreDependencyEdges, "ignore-dependency-edges", false,

@@ -90,6 +90,7 @@ func newConsoleCmd() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to view")
+	cmd.RegisterFlagCompletionFunc("stack", validStackArgs)
 	return cmd
 }
 

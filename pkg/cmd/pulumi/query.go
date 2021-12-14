@@ -87,6 +87,7 @@ func newQueryCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.RegisterFlagCompletionFunc("stack", validStackArgs)
 
 	return cmd
 }

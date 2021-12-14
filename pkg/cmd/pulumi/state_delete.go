@@ -94,6 +94,7 @@ pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.RegisterFlagCompletionFunc("stack", validStackArgs)
 	cmd.Flags().BoolVar(&force, "force", false, "Force deletion of protected resources")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
 	return cmd

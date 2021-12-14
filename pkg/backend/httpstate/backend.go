@@ -271,7 +271,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 		// If there's already a token from the environment, use it.
 		_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", AccessTokenEnvVar)
 		contract.IgnoreError(err)
-	} else if !cmdutil.Interactive() {
+	} else if !cmdutil.Interactive() || !opts.IsInteractive {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
 		// Fail the attempt to login.
 		return nil, fmt.Errorf("%s must be set for login during non-interactive CLI sessions", AccessTokenEnvVar)

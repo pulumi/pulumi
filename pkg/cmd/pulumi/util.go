@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/spf13/cobra"
 
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
@@ -293,22 +294,8 @@ func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (
 	return chooseStack(b, offerNew, opts, setCurrent)
 }
 
-// chooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
-// true, then the option to create an entirely new stack is provided and will create one as desired.
-func chooseStack(
-	b backend.Backend, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
+func listAvailableStackNames(b backend.Backend) ([]string, error) {
 	ctx := commandContext()
-
-	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
-	var chooseStackErr string
-	if offerNew {
-		chooseStackErr = "no stack selected; please use `pulumi stack select` or `pulumi stack init` to choose one"
-	} else {
-		chooseStackErr = "no stack selected; please use `pulumi stack select` to choose one"
-	}
-	if !cmdutil.Interactive() {
-		return nil, errors.New(chooseStackErr)
-	}
 
 	proj, err := workspace.DetectProject()
 	if err != nil {
@@ -342,6 +329,45 @@ func chooseStack(
 		options = append(options, name)
 	}
 	sort.Strings(options)
+
+	return options, nil
+}
+
+func validStackArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	b, err := currentBackend(display.Options{IsInteractive: false})
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	stackNames, err := listAvailableStackNames(b)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	return stackNames, cobra.ShellCompDirectiveDefault
+}
+
+// chooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
+// true, then the option to create an entirely new stack is provided and will create one as desired.
+func chooseStack(
+	b backend.Backend, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
+	ctx := commandContext()
+
+	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
+	var chooseStackErr string
+	if offerNew {
+		chooseStackErr = "no stack selected; please use `pulumi stack select` or `pulumi stack init` to choose one"
+	} else {
+		chooseStackErr = "no stack selected; please use `pulumi stack select` to choose one"
+	}
+	if !cmdutil.Interactive() {
+		return nil, errors.New(chooseStackErr)
+	}
+
+	options, err := listAvailableStackNames(b)
+	if err != nil {
+		return nil, err
+	}
 
 	// If we are offering to create a new stack, add that to the end of the list.
 	const newOption = "<create a new stack>"

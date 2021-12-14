@@ -164,6 +164,7 @@ func newLogsCmd() *cobra.Command {
 	logsCmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	logsCmd.RegisterFlagCompletionFunc("stack", validStackArgs)
 	logsCmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")

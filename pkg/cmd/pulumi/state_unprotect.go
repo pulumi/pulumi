@@ -61,6 +61,7 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.RegisterFlagCompletionFunc("stack", validStackArgs)
 	cmd.Flags().BoolVar(&unprotectAll, "all", false, "Unprotect all resources in the checkpoint")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
 

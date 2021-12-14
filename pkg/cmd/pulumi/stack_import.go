@@ -147,6 +147,8 @@ func newStackImportCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	cmd.RegisterFlagCompletionFunc("stack", validStackArgs)
+
 	cmd.PersistentFlags().BoolVarP(
 		&force, "force", "f", false,
 		"Force the import to occur, even if apparent errors are discovered beforehand (not recommended)")

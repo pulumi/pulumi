@@ -69,6 +69,8 @@ This command displays data about previous updates for a stack.`,
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose a stack other than the currently selected one")
+	cmd.RegisterFlagCompletionFunc("stack", validStackArgs)
+
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show secret values when listing config instead of displaying blinded values")

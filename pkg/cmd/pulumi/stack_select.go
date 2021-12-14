@@ -41,7 +41,8 @@ func newStackSelectCmd() *cobra.Command {
 			"\n" +
 			"If no <stack> argument is supplied, you will be prompted to select one interactively.\n" +
 			"If provided stack name is not found you may pass the --create flag to create and select it",
-		Args: cmdutil.MaximumNArgs(1),
+		Args:              cmdutil.MaximumNArgs(1),
+		ValidArgsFunction: validStackArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

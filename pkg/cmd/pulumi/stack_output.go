@@ -92,6 +92,7 @@ func newStackOutputCmd() *cobra.Command {
 		&jsonOut, "json", "j", false, "Emit output as JSON")
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	cmd.RegisterFlagCompletionFunc("stack", validStackArgs)
 	cmd.PersistentFlags().BoolVar(
 		&showSecrets, "show-secrets", false, "Display outputs which are marked as secret in plaintext")
 
