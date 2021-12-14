@@ -246,7 +246,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// wasPartial is true if this resource was seen partially before with placeholders. If true this should
 	// not issue a create step.
 	// TODO(CYCLES) We should check that all the goal properties are the same
-	wasPartial = sg.urns[urn] == PartialSeen
+	wasPartial := sg.urns[urn] == PartialSeen
 
 	// Check if this resource has placeholder options
 	// TODO(CYCLES) This should look at a placeholders property not ignoreChanges
@@ -293,13 +293,16 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		inputs = processedInputs
 	}
 
-	// TODO(CYCLES) If wasPartial is true this should edit the goal state, not replace it
-
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "")
+
+	// TODO(CYCLES) If wasPartial is true this should edit the goal state, not replace it
+	if sg.urns[urn] == PartialSeen {
+		sg.deployment.Olds()[urn] = new
+	}
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -494,7 +497,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	//
 	//  - Otherwise, we invoke the resource's provider's `Diff` method. If this method indicates that the resource must
 	//    be replaced, we do so. If it does not, we update the resource in place.
-	if hasOld {
+	if hasOld || wasPartial {
 		contract.Assert(old != nil)
 
 		// If the user requested only specific resources to update, and this resource was not in

@@ -279,6 +279,8 @@ func NewPropertyValueRepl(v interface{},
 
 	// Else, check for some known primitive types.
 	switch t := v.(type) {
+	case PropertyValue:
+		return v.(PropertyValue)
 	case bool:
 		return NewBoolProperty(t)
 	case int:

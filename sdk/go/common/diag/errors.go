@@ -80,3 +80,8 @@ func GetResourceWillBeDestroyedButWasNotSpecifiedInTargetList(urn resource.URN) 
 	return newError(urn, 2014, `Resource '%v' will be destroyed but was not specified in --target list.
 Either include resource in --target list or pass --target-dependents to proceed.`)
 }
+
+func GetMissingPartialStateError(urn resource.URN) *Diag {
+	return newError(urn, 2015,
+		"Resource with URN '%v' was missing its partial state")
+}

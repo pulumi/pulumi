@@ -2600,18 +2600,18 @@ func TestCyclicResources(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, outs, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:        resource.NewPropertyMapFromMap(map[string]interface{}{"a": 0}),
-			IgnoreChanges: []string{"a"},
+			Inputs:        resource.NewPropertyMapFromMap(map[string]interface{}{"input": 0, "output": "someValue"}),
+			IgnoreChanges: []string{"input"},
 		})
 		assert.NoError(t, err)
 
 		_, _, outs, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"value": outs["a"]}),
+			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"input": outs["output"], "result": 1}),
 		})
 		assert.NoError(t, err)
 
 		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"a": outs["value"]}),
+			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"input": outs["result"], "output": "someValue"}),
 		})
 		assert.NoError(t, err)
 
