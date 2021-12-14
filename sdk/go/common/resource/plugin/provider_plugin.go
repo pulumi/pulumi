@@ -610,7 +610,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	ignoreChanges []string) (DiffResult, error) {
 
 	contract.Assert(urn != "")
-	contract.Assert(id != "")
+	//contract.Assert(id != "")
 	contract.Assert(news != nil)
 	contract.Assert(olds != nil)
 

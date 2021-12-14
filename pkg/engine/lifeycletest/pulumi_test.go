@@ -2592,7 +2592,11 @@ func TestCyclicResources(t *testing.T) {
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID(urn.Name()), news, resource.StatusOK, nil
+					var id resource.ID
+					if !preview {
+						id = resource.ID(urn.Name())
+					}
+					return id, news, resource.StatusOK, nil
 				},
 			}, nil
 		}),

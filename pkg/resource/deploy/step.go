@@ -412,7 +412,7 @@ func NewUpdateStep(deployment *Deployment, reg RegisterResourceEvent, old, new *
 	ignoreChanges []string) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.Custom)
+	//contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
 	contract.Assert(!old.Delete)
 	contract.Assert(new != nil)
