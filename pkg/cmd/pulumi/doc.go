@@ -257,11 +257,11 @@ func getSchemaPath(t schema.Type, pkg *schema.Package) string {
 
 	// These are package specific types. We link to these.
 	case *schema.EnumType:
-		return t.String()
+		return t.Token
 	case *schema.ResourceType:
-		return t.String()
+		return t.Token
 	case *schema.ObjectType:
-		return t.String()
+		return t.Token
 	default:
 		return ""
 	}
@@ -388,11 +388,13 @@ func renderLiveView(title, docstring string, r *docstringResolver) error {
 	}
 	app := tview.NewApplication()
 	reader := newMarkdownReader(title, docstring, styles.Pulumi, app)
-	reader.externalURLResolver = func(link string, reader *markdownReader) (bool, error) {
+	reader.externalLinkResolver = func(link string, reader *markdownReader) (bool, error) {
 		docstring, err := r.findDocstring(link)
 		if err != nil {
 			return true, err
 		}
+		currentPage, _ := reader.rootPages.GetFrontPage()
+		reader.backstack = append(reader.backstack, location{page: currentPage})
 		reader.SetSource(link, docstring)
 		return true, nil
 	}

@@ -169,9 +169,14 @@ type markdownReader struct {
 	helpDialog *textDialog
 	rootPages  *tview.Pages
 
-	backstack []*renderer.NodeSpan
+	backstack []location
 
-	externalURLResolver func(url string, reader *markdownReader) (bool, error)
+	externalLinkResolver func(url string, reader *markdownReader) (bool, error)
+}
+
+type location struct {
+	span *renderer.NodeSpan
+	page string
 }
 
 func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Application) *markdownReader {
@@ -185,7 +190,7 @@ func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Appl
 	r.view.SetGutter(true)
 
 	rootPages := tview.NewPages()
-	rootPages.AddAndSwitchToPage("markdown", r.view, true)
+	rootPages.AddAndSwitchToPage(name, r.view, true)
 	rootPages.AddPage("help", r.helpDialog, true, false)
 	r.rootPages = rootPages
 
@@ -199,7 +204,7 @@ func (r *markdownReader) SetSource(name, source string) {
 	view.SetText(name, source)
 	r.view.SetGutter(true)
 
-	r.rootPages.AddAndSwitchToPage("markdown", view, true)
+	r.rootPages.AddAndSwitchToPage(name, view, true)
 }
 
 func (r *markdownReader) Draw(screen tcell.Screen) {
@@ -231,14 +236,14 @@ func (r *markdownReader) OpenLink() {
 	if anchor, ok := getDocumentAnchor(link); ok {
 		selection := r.view.Selection()
 		if r.view.SelectAnchor(anchor) && selection != nil {
-			r.backstack = append(r.backstack, selection)
+			r.backstack = append(r.backstack, location{span: selection})
 		}
 		return
 	}
-	if r.externalURLResolver != nil {
-		ok, err := r.externalURLResolver(link, r)
+	if r.externalLinkResolver != nil {
+		ok, err := r.externalLinkResolver(link, r)
 		if err != nil {
-			r.showErrorDialog("failed to resolve url", err)
+			r.showErrorDialog(fmt.Sprintf("failed to resolve link %q", link), err)
 		}
 		if ok {
 			return
@@ -271,8 +276,31 @@ func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus fun
 					if len(r.backstack) != 0 {
 						last := r.backstack[len(r.backstack)-1]
 						r.backstack = r.backstack[:len(r.backstack)-1]
-						r.view.SelectSpan(last, true)
+						if last.page != "" {
+							r.rootPages.SwitchToPage(last.page)
+						}
+						if last.span != nil {
+							r.view.SelectSpan(last.span, true)
+						}
 					}
+				case 'b':
+					var back string
+					for i, b := range r.backstack {
+						var item string
+						if b.page != "" {
+							item += fmt.Sprintf("%s", b.page)
+						}
+
+						if b.span != nil {
+							if item != "" {
+								item += "#"
+							}
+							back += fmt.Sprintf("%#v", b.span.Node)
+						}
+						back += fmt.Sprintf("%d: %s\n", i, item)
+					}
+					backDialog := newTextDialog(back, "Backstack")
+					r.showDialog(backDialog)
 				case 'h', '?':
 					// Show the help
 					r.showDialog(r.helpDialog)
