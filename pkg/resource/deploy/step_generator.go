@@ -250,10 +250,12 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// Check if this resource has placeholder options
 	// TODO(CYCLES) This should look at a placeholders property not ignoreChanges
+	var isPartial bool
 	if len(goal.IgnoreChanges) == 0 {
 		sg.urns[urn] = FinalSeen
 	} else {
 		sg.urns[urn] = PartialSeen
+		isPartial = true
 	}
 
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
@@ -300,8 +302,17 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "")
 
 	// TODO(CYCLES) If wasPartial is true this should edit the goal state, not replace it
-	if sg.urns[urn] == PartialSeen {
+	if isPartial {
 		sg.deployment.Olds()[urn] = new
+	} else if wasPartial {
+		// Our partial new state will of been written to Olds()[urn] because of the above code
+		// we want to go and reset our dependencies to that initial state so we don't get loops in the dependency graph
+		// TODO This feels a bit hacky, I feel it would be better to fix this in the state file to correctly record
+		// the dependency loop but mark it as OK and where to break it (on this resource which is being updated multiple times)
+		// for cases where we need a total sort
+		oldNewState := sg.deployment.Olds()[urn]
+		new.Dependencies = oldNewState.Dependencies
+		new.PropertyDependencies = oldNewState.PropertyDependencies
 	}
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
