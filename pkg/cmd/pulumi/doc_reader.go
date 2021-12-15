@@ -155,6 +155,10 @@ func openInBrowser(url string) error {
 	return open.Run(url)
 }
 
+// The bool indicates if the link resolver took action. If it is false, the next link resolver
+// should attempt the same link.
+type LinkResolver = func(link string, reader *markdownReader) (bool, error)
+
 type markdownReader struct {
 	view *mdk.MarkdownView
 
@@ -169,7 +173,19 @@ type markdownReader struct {
 	helpDialog *textDialog
 	rootPages  *tview.Pages
 
-	backstack []*renderer.NodeSpan
+	backstack []location
+
+	externalLinkResolver LinkResolver
+}
+
+type location struct {
+	span        *renderer.NodeSpan
+	displaySpan string
+	page        string
+}
+
+func (l *location) isEmpty() bool {
+	return l == nil || (l.span == nil && l.page == "")
 }
 
 func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Application) *markdownReader {
@@ -183,13 +199,21 @@ func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Appl
 	r.view.SetGutter(true)
 
 	rootPages := tview.NewPages()
-	rootPages.AddAndSwitchToPage("markdown", r.view, true)
+	rootPages.AddAndSwitchToPage(name, r.view, true)
 	rootPages.AddPage("help", r.helpDialog, true, false)
 	r.rootPages = rootPages
 
 	r.focused = r.view
 
 	return r
+}
+
+func (r *markdownReader) SetSource(name, source string) {
+	view := mdk.NewMarkdownView(nil)
+	view.SetText(name, source)
+	r.view.SetGutter(true)
+
+	r.rootPages.AddAndSwitchToPage(name, view, true)
 }
 
 func (r *markdownReader) Draw(screen tcell.Screen) {
@@ -216,11 +240,50 @@ func (r *markdownReader) focusedLink() string {
 	return ""
 }
 
+func (r *markdownReader) OpenLink() {
+	link := r.focusedLink()
+	currentPage, _ := r.rootPages.GetFrontPage()
+	selection := r.view.Selection()
+	back := location{
+		span:        selection,
+		displaySpan: link,
+		page:        currentPage,
+	}
+
+	anchorLink := func(link string, reader *markdownReader) (bool, error) {
+		anchor, ok := getDocumentAnchor(link)
+		if !ok {
+			return false, nil
+		}
+		return r.view.SelectAnchor(anchor) && selection != nil, nil
+	}
+
+	browserLink := func(link string, reader *markdownReader) (bool, error) {
+		return true, openInBrowser(link)
+	}
+
+	for _, f := range []LinkResolver{anchorLink, r.externalLinkResolver, browserLink} {
+		finished, err := f(link, r)
+		if err != nil {
+			r.showErrorDialog("opening error", err)
+			return
+		}
+		if finished {
+			if !back.isEmpty() {
+				r.backstack = append(r.backstack, back)
+			}
+			return
+		}
+	}
+	r.showErrorDialog("Not Found", fmt.Errorf(""))
+}
+
 func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 		event = func() *tcell.EventKey {
 			if r.visibleDialog != nil {
-				if event.Key() == tcell.KeyEscape || event.Rune() == 'h' || event.Rune() == '?' && r.visibleDialog == r.helpDialog {
+				if event.Key() == tcell.KeyEscape ||
+					((event.Rune() == 'h' || event.Rune() == '?') && r.visibleDialog == r.helpDialog) {
 					r.hideDialog()
 					return nil
 				}
@@ -229,25 +292,38 @@ func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus fun
 
 			switch event.Key() {
 			case tcell.KeyCtrlO:
-				link := r.focusedLink()
-				if anchor, ok := getDocumentAnchor(link); ok {
-					selection := r.view.Selection()
-					if r.view.SelectAnchor(anchor) && selection != nil {
-						r.backstack = append(r.backstack, selection)
-					}
-				} else {
-					if err := openInBrowser(link); err != nil {
-						r.showErrorDialog("opening issue", err)
-					}
-				}
+				r.OpenLink()
 			case tcell.KeyRune:
 				switch event.Rune() {
 				case '<':
 					if len(r.backstack) != 0 {
 						last := r.backstack[len(r.backstack)-1]
 						r.backstack = r.backstack[:len(r.backstack)-1]
-						r.view.SelectSpan(last, true)
+						if last.page != "" {
+							r.rootPages.SwitchToPage(last.page)
+						}
+						if last.span != nil {
+							r.view.SelectSpan(last.span, true)
+						}
 					}
+				case 'b':
+					var back string
+					for i, b := range r.backstack {
+						var item string
+						if b.page != "" {
+							item += fmt.Sprintf("%s", b.page)
+						}
+
+						if b.span != nil {
+							if item != "" {
+								item += "#"
+							}
+							item += fmt.Sprintf("%s", b.displaySpan)
+						}
+						back += fmt.Sprintf("%d: %s\n", i, item)
+					}
+					backDialog := newTextDialog(back, "Backstack")
+					r.showDialog(backDialog)
 				case 'h', '?':
 					// Show the help
 					r.showDialog(r.helpDialog)

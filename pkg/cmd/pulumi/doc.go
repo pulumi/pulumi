@@ -16,6 +16,7 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -69,30 +70,15 @@ func newDocCmd() *cobra.Command {
 				return fmt.Errorf("Failed to get docs: %w", err)
 			}
 
-			var lang string
-			var helper codegen.DocLanguageHelper
-			switch proj.Runtime.Name() {
-			case "dotnet":
-				lang, helper = "csharp", dotnetgen.DocLanguageHelper{}
-			case "go":
-				lang, helper = "go", gogen.DocLanguageHelper{}
-			case langPython:
-				lang, helper = langPython, pythongen.DocLanguageHelper{}
-			default:
-				lang, helper = "typescript", nodejsgen.DocLanguageHelper{}
-			}
+			res := newDocstringResolver(proj.Runtime.Name())
 
-			docstring, ok, err := findDocstring(pointer, lang, helper)
+			docstring, err := res.findDocstring(pointer)
 			if err != nil {
 				return err
 			}
-			if !ok {
-				return fmt.Errorf("could not find package member %v", pointer)
-			}
-			docstring = codegen.FilterExamples(docstring, lang)
 			if term.IsTerminal(int(os.Stdout.Fd())) {
 
-				return renderLiveView(pointer, docstring)
+				return renderLiveView(pointer, docstring, res)
 			}
 			// Rendering into a pipe
 			return renderDocstring(os.Stdout, docstring)
@@ -100,6 +86,30 @@ func newDocCmd() *cobra.Command {
 	}
 
 	return cmd
+}
+
+type docstringResolver struct {
+	lang   string
+	helper codegen.DocLanguageHelper
+	pkg    *schema.Package
+}
+
+func newDocstringResolver(runtime string) *docstringResolver {
+	var lang string
+	var helper codegen.DocLanguageHelper
+	switch runtime {
+	case "dotnet":
+		lang, helper = "csharp", dotnetgen.DocLanguageHelper{}
+	case "go":
+		lang, helper = "go", gogen.DocLanguageHelper{}
+	case langPython:
+		lang, helper = langPython, pythongen.DocLanguageHelper{}
+	default:
+		lang, helper = "typescript", nodejsgen.DocLanguageHelper{}
+	}
+
+	return &docstringResolver{lang, helper, nil}
+
 }
 
 func getPackageSchema(pkg string) (*schema.Package, error) {
@@ -117,7 +127,38 @@ func getPackageSchema(pkg string) (*schema.Package, error) {
 	return loader.LoadPackage(pkg, nil)
 }
 
-func findDocstring(pointer, lang string, helper codegen.DocLanguageHelper) (string, bool, error) {
+func (r *docstringResolver) ensureSchema(pkgName string) error {
+	if r.pkg == nil || r.pkg.Name != pkgName {
+		pkg, err := getPackageSchema(pkgName)
+		if err != nil {
+			return err
+		}
+		r.pkg = pkg
+	}
+	return nil
+}
+
+type memberNotFound struct {
+	pointer string
+}
+
+func (err *memberNotFound) Error() string {
+	return fmt.Sprintf("could not find package member %v", err.pointer)
+}
+
+func (r *docstringResolver) findDocstring(pointer string) (string, error) {
+	docstring, ok, err := r.findWholeDocstring(pointer)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", &memberNotFound{pointer}
+	}
+	return codegen.FilterExamples(docstring, r.lang), nil
+
+}
+
+func (r *docstringResolver) findWholeDocstring(pointer string) (string, bool, error) {
 	// path should be in `member` or `member#/pointer` format.
 	pkgName, member := "", pointer
 	if hash := strings.Index(pointer, "#"); hash != -1 {
@@ -135,21 +176,21 @@ func findDocstring(pointer, lang string, helper codegen.DocLanguageHelper) (stri
 	}
 
 	// get the package's schema
-	pkg, err := getPackageSchema(pkgName)
+	err := r.ensureSchema(pkgName)
 	if err != nil {
 		return "", false, err
 	}
 
-	object := interface{}(pkg)
+	object := interface{}(r.pkg)
 	if member != "" {
 		// find the referenced member
 		if member == "provider" {
-			object = pkg.Provider
-		} else if res, ok := pkg.GetResource(member); ok {
+			object = r.pkg.Provider
+		} else if res, ok := r.pkg.GetResource(member); ok {
 			object = res
-		} else if fn, ok := pkg.GetFunction(member); ok {
+		} else if fn, ok := r.pkg.GetFunction(member); ok {
 			object = fn
-		} else if typ, ok := pkg.GetType(member); ok {
+		} else if typ, ok := r.pkg.GetType(member); ok {
 			object = typ.(schema.HasMembers)
 		}
 	}
@@ -165,22 +206,22 @@ func findDocstring(pointer, lang string, helper codegen.DocLanguageHelper) (stri
 
 	switch object := object.(type) {
 	case *schema.Property:
-		docstring, err := genPropertyDocstring(object, pkg, lang, helper)
+		docstring, err := genPropertyDocstring(object, r.pkg, r.lang, r.helper)
 		return docstring, true, err
 	case *schema.Enum:
-		docstring := genEnumDocstring(object, lang, helper)
+		docstring := genEnumDocstring(object, r.lang, r.helper)
 		return docstring, true, nil
 	case *schema.EnumType:
-		docstring := genEnumTypeDocstring(object, lang, helper)
+		docstring := genEnumTypeDocstring(object, r.lang, r.helper)
 		return docstring, true, nil
 	case *schema.ObjectType:
-		docstring := genObjectTypeDocstring(object, lang, helper)
+		docstring := genObjectTypeDocstring(object, r.lang, r.helper)
 		return docstring, true, nil
 	case *schema.Resource:
-		docstring, err := genResourceDocstring(object, lang, helper)
+		docstring, err := genResourceDocstring(object, r.lang, r.helper)
 		return docstring, true, err
 	case *schema.Function:
-		docstring := genFunctionDocstring(object, lang, helper)
+		docstring := genFunctionDocstring(object, r.lang, r.helper)
 		return docstring, true, nil
 	default:
 		return "", false, fmt.Errorf("unexpected member of type %T", member)
@@ -201,10 +242,38 @@ func summarizeProperty(property *schema.Property, pkg *schema.Package,
 
 	typ := helper.GetLanguageTypeString(pkg, "", property.Type, false)
 
+	if path := getSchemaPath(property.Type, pkg); path != "" {
+		typ = fmt.Sprintf("[%s](%s)", typ, path)
+	}
+
 	return propertySummary{
 		Name: name,
 		Type: typ,
 	}, nil
+}
+
+func getSchemaPath(t schema.Type, pkg *schema.Package) string {
+	t = codegen.UnwrapType(t)
+	if schema.IsPrimitiveType(t) {
+		return ""
+	}
+	switch t := t.(type) {
+	// We are really interested in the element type. We link directly to that.
+	case *schema.MapType:
+		return getSchemaPath(t.ElementType, pkg)
+	case *schema.ArrayType:
+		return getSchemaPath(t.ElementType, pkg)
+
+	// These are package specific types. We link to these.
+	case *schema.EnumType:
+		return t.Token
+	case *schema.ResourceType:
+		return t.Token
+	case *schema.ObjectType:
+		return t.Token
+	default:
+		return ""
+	}
 }
 
 func summarizeProperties(properties []*schema.Property, pkg *schema.Package,
@@ -322,12 +391,24 @@ func genFunctionDocstring(function *schema.Function, lang string, helper codegen
 	return function.Comment
 }
 
-func renderLiveView(title, docstring string) error {
+func renderLiveView(title, docstring string, r *docstringResolver) error {
 	if ti, _, err := dynamic.LoadTerminfo(os.Getenv("TERM")); err == nil {
 		terminfo.AddTerminfo(ti)
 	}
 	app := tview.NewApplication()
 	reader := newMarkdownReader(title, docstring, styles.Pulumi, app)
+	reader.externalLinkResolver = func(link string, reader *markdownReader) (bool, error) {
+		docstring, err := r.findDocstring(link)
+		memberError := &memberNotFound{}
+		if errors.Is(err, memberError) {
+			return false, nil
+		}
+		if err != nil {
+			return true, err
+		}
+		reader.SetSource(link, docstring)
+		return true, nil
+	}
 	app.SetRoot(reader, true)
 	app.SetFocus(reader)
 	return app.Run()
@@ -343,7 +424,10 @@ func renderDocstring(w io.Writer, docstring string) error {
 	document := parser.Parse(text.NewReader(source))
 
 	r := renderer.New(
-		renderer.WithSoftBreak(false))
-	renderer := goldmark_renderer.NewRenderer(goldmark_renderer.WithNodeRenderers(util.Prioritized(r, 100)))
+		renderer.WithSoftBreak(false),
+		renderer.WithHyperlinks(true),
+	)
+	renderer := goldmark_renderer.NewRenderer(
+		goldmark_renderer.WithNodeRenderers(util.Prioritized(r, 100)))
 	return renderer.Render(w, source, document)
 }
