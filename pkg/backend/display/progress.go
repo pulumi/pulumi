@@ -1234,7 +1234,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	getDescription := func() string {
 		if failed {
 			switch op {
-			case deploy.OpSame:
+			case deploy.OpSame, deploy.OpFinaliseSame:
 				return "failed"
 			case deploy.OpCreate, deploy.OpCreateReplacement:
 				return "creating failed"
@@ -1252,10 +1252,12 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "discarding failed"
 			case deploy.OpImport, deploy.OpImportReplacement:
 				return "importing failed"
+			case deploy.OpFinaliseUpdate:
+				return "finalise updating failed"
 			}
 		} else {
 			switch op {
-			case deploy.OpSame:
+			case deploy.OpSame, deploy.OpFinaliseSame:
 				return ""
 			case deploy.OpCreate:
 				return "created"
@@ -1284,6 +1286,8 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 				return "imported"
 			case deploy.OpImportReplacement:
 				return "imported replacement"
+			case deploy.OpFinaliseUpdate:
+				return "finalise updated"
 			}
 		}
 
