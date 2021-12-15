@@ -130,11 +130,11 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
 
 	switch step.Op() {
-	case deploy.OpSame:
+	case deploy.OpSame, deploy.OpFinaliseSame:
 		return &sameSnapshotMutation{sm}, nil
 	case deploy.OpCreate, deploy.OpCreateReplacement:
 		return sm.doCreate(step)
-	case deploy.OpUpdate:
+	case deploy.OpUpdate, deploy.OpFinaliseUpdate:
 		return sm.doUpdate(step)
 	case deploy.OpDelete, deploy.OpDeleteReplaced, deploy.OpReadDiscard, deploy.OpDiscardReplaced:
 		return sm.doDelete(step)

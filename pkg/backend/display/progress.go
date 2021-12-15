@@ -1363,6 +1363,10 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 		return "discard"
 	case deploy.OpImport, deploy.OpImportReplacement:
 		return "import"
+	case deploy.OpFinaliseSame:
+		return "finalise same"
+	case deploy.OpFinaliseUpdate:
+		return "finalise update"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
@@ -1441,6 +1445,10 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return "importing"
 		case deploy.OpImportReplacement:
 			return "importing replacement"
+		case deploy.OpFinaliseSame:
+			return ""
+		case deploy.OpFinaliseUpdate:
+			return "updating to finalise"
 		}
 
 		contract.Failf("Unrecognized resource step op: %v", op)
