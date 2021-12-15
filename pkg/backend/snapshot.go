@@ -524,6 +524,8 @@ func (sm *SnapshotManager) markNew(state *resource.State, isFinalise bool) {
 		var found bool
 		for i := range sm.resources {
 			if sm.resources[i].URN == state.URN {
+				state.Dependencies = sm.resources[i].Dependencies
+				state.PropertyDependencies = sm.resources[i].PropertyDependencies
 				sm.resources[i] = state
 				found = true
 				break
