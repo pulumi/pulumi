@@ -16,6 +16,7 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -137,13 +138,21 @@ func (r *docstringResolver) ensureSchema(pkgName string) error {
 	return nil
 }
 
+type memberNotFound struct {
+	pointer string
+}
+
+func (err *memberNotFound) Error() string {
+	return fmt.Sprintf("could not find package member %v", err.pointer)
+}
+
 func (r *docstringResolver) findDocstring(pointer string) (string, error) {
 	docstring, ok, err := r.findWholeDocstring(pointer)
 	if err != nil {
 		return "", err
 	}
 	if !ok {
-		return "", fmt.Errorf("could not find package member %v", pointer)
+		return "", &memberNotFound{pointer}
 	}
 	return codegen.FilterExamples(docstring, r.lang), nil
 
@@ -390,11 +399,13 @@ func renderLiveView(title, docstring string, r *docstringResolver) error {
 	reader := newMarkdownReader(title, docstring, styles.Pulumi, app)
 	reader.externalLinkResolver = func(link string, reader *markdownReader) (bool, error) {
 		docstring, err := r.findDocstring(link)
+		memberError := &memberNotFound{}
+		if errors.Is(err, memberError) {
+			return false, nil
+		}
 		if err != nil {
 			return true, err
 		}
-		currentPage, _ := reader.rootPages.GetFrontPage()
-		reader.backstack = append(reader.backstack, location{page: currentPage})
 		reader.SetSource(link, docstring)
 		return true, nil
 	}

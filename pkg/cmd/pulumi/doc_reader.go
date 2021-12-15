@@ -155,6 +155,10 @@ func openInBrowser(url string) error {
 	return open.Run(url)
 }
 
+// The bool indicates if the link resolver took action. If it is false, the next link resolver
+// should attempt the same link.
+type LinkResolver = func(link string, reader *markdownReader) (bool, error)
+
 type markdownReader struct {
 	view *mdk.MarkdownView
 
@@ -171,12 +175,17 @@ type markdownReader struct {
 
 	backstack []location
 
-	externalLinkResolver func(url string, reader *markdownReader) (bool, error)
+	externalLinkResolver LinkResolver
 }
 
 type location struct {
-	span *renderer.NodeSpan
-	page string
+	span        *renderer.NodeSpan
+	displaySpan string
+	page        string
+}
+
+func (l *location) isEmpty() bool {
+	return l == nil || (l.span == nil && l.page == "")
 }
 
 func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Application) *markdownReader {
@@ -233,34 +242,48 @@ func (r *markdownReader) focusedLink() string {
 
 func (r *markdownReader) OpenLink() {
 	link := r.focusedLink()
-	if anchor, ok := getDocumentAnchor(link); ok {
-		selection := r.view.Selection()
-		if r.view.SelectAnchor(anchor) && selection != nil {
-			r.backstack = append(r.backstack, location{span: selection})
-		}
-		return
+	currentPage, _ := r.rootPages.GetFrontPage()
+	selection := r.view.Selection()
+	back := location{
+		span:        selection,
+		displaySpan: link,
+		page:        currentPage,
 	}
-	if r.externalLinkResolver != nil {
-		ok, err := r.externalLinkResolver(link, r)
-		if err != nil {
-			r.showErrorDialog(fmt.Sprintf("failed to resolve link %q", link), err)
+
+	anchorLink := func(link string, reader *markdownReader) (bool, error) {
+		anchor, ok := getDocumentAnchor(link)
+		if !ok {
+			return false, nil
 		}
-		if ok {
+		return r.view.SelectAnchor(anchor) && selection != nil, nil
+	}
+
+	browserLink := func(link string, reader *markdownReader) (bool, error) {
+		return true, openInBrowser(link)
+	}
+
+	for _, f := range []LinkResolver{anchorLink, r.externalLinkResolver, browserLink} {
+		finished, err := f(link, r)
+		if err != nil {
+			r.showErrorDialog("opening error", err)
+			return
+		}
+		if finished {
+			if !back.isEmpty() {
+				r.backstack = append(r.backstack, back)
+			}
 			return
 		}
 	}
-
-	if err := openInBrowser(link); err != nil {
-		r.showErrorDialog("opening issue", err)
-	}
-
+	r.showErrorDialog("Not Found", fmt.Errorf(""))
 }
 
 func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 		event = func() *tcell.EventKey {
 			if r.visibleDialog != nil {
-				if event.Key() == tcell.KeyEscape || event.Rune() == 'h' || event.Rune() == '?' && r.visibleDialog == r.helpDialog {
+				if event.Key() == tcell.KeyEscape ||
+					((event.Rune() == 'h' || event.Rune() == '?') && r.visibleDialog == r.helpDialog) {
 					r.hideDialog()
 					return nil
 				}
@@ -295,7 +318,7 @@ func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus fun
 							if item != "" {
 								item += "#"
 							}
-							back += fmt.Sprintf("%#v", b.span.Node)
+							item += fmt.Sprintf("%s", b.displaySpan)
 						}
 						back += fmt.Sprintf("%d: %s\n", i, item)
 					}
