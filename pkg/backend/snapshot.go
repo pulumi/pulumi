@@ -261,7 +261,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 
 func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Require(step != nil, "step != nil")
-	contract.Require(step.Op() == deploy.OpSame, "step.Op() == deploy.OpSame")
+	contract.Require(step.Op() == deploy.OpSame || step.Op() == deploy.OpFinaliseSame, "step.Op() == deploy.OpSame || step.Op() == deploy.OpFinaliseSame")
 	contract.Assert(successful)
 	logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End(..., %v)", successful)
 	return ssm.manager.mutate(func() bool {
@@ -277,7 +277,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 			return false
 		}
 
-		ssm.manager.markNew(step.New())
+		ssm.manager.markNew(step.New(), step.Op() == deploy.OpFinaliseSame)
 
 		// Note that "Same" steps only consider input and provider diffs, so it is possible to see a same step for a
 		// resource with new dependencies, outputs, parent, protection. etc.
@@ -326,7 +326,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 			// Since we are storing the base snapshot and all resources by reference
 			// (we have pointers to engine-allocated objects), this transparently
 			// "just works" for the SnapshotManager.
-			csm.manager.markNew(step.New())
+			csm.manager.markNew(step.New(), false)
 
 			// If we had an old state that was marked as pending-replacement, mark its replacement as complete such
 			// that it is flushed from the state file.
@@ -362,7 +362,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 		usm.manager.markOperationComplete(step.New())
 		if successful {
 			usm.manager.markDone(step.Old())
-			usm.manager.markNew(step.New())
+			usm.manager.markNew(step.New(), step.Op() == deploy.OpFinaliseUpdate)
 		}
 		return true
 	})
@@ -436,7 +436,7 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 				rsm.manager.markDone(step.Old())
 			}
 
-			rsm.manager.markNew(step.New())
+			rsm.manager.markNew(step.New(), false)
 		}
 		return true
 	})
@@ -499,7 +499,7 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 	return ism.manager.mutate(func() bool {
 		ism.manager.markOperationComplete(step.New())
 		if successful {
-			ism.manager.markNew(step.New())
+			ism.manager.markNew(step.New(), false)
 		}
 		return true
 	})
@@ -516,9 +516,21 @@ func (sm *SnapshotManager) markDone(state *resource.State) {
 // markNew marks a resource as existing in the new snapshot. This occurs on
 // successful non-deletion operations where the given state is the new state
 // of a resource that will be persisted to the snapshot.
-func (sm *SnapshotManager) markNew(state *resource.State) {
+func (sm *SnapshotManager) markNew(state *resource.State, isFinalise bool) {
 	contract.Assert(state != nil)
-	sm.resources = append(sm.resources, state)
+	if !isFinalise {
+		sm.resources = append(sm.resources, state)
+	} else {
+		var found bool
+		for i := range sm.resources {
+			if sm.resources[i].URN == state.URN {
+				sm.resources[i] = state
+				found = true
+				break
+			}
+		}
+		contract.Assert(found)
+	}
 	logging.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
 }
 
