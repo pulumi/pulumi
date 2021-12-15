@@ -170,6 +170,8 @@ type markdownReader struct {
 	rootPages  *tview.Pages
 
 	backstack []*renderer.NodeSpan
+
+	externalURLResolver func(url string, reader *markdownReader) (bool, error)
 }
 
 func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Application) *markdownReader {
@@ -190,6 +192,14 @@ func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Appl
 	r.focused = r.view
 
 	return r
+}
+
+func (r *markdownReader) SetSource(name, source string) {
+	view := mdk.NewMarkdownView(nil)
+	view.SetText(name, source)
+	r.view.SetGutter(true)
+
+	r.rootPages.AddAndSwitchToPage("markdown", view, true)
 }
 
 func (r *markdownReader) Draw(screen tcell.Screen) {
@@ -216,6 +226,31 @@ func (r *markdownReader) focusedLink() string {
 	return ""
 }
 
+func (r *markdownReader) OpenLink() {
+	link := r.focusedLink()
+	if anchor, ok := getDocumentAnchor(link); ok {
+		selection := r.view.Selection()
+		if r.view.SelectAnchor(anchor) && selection != nil {
+			r.backstack = append(r.backstack, selection)
+		}
+		return
+	}
+	if r.externalURLResolver != nil {
+		ok, err := r.externalURLResolver(link, r)
+		if err != nil {
+			r.showErrorDialog("failed to resolve url", err)
+		}
+		if ok {
+			return
+		}
+	}
+
+	if err := openInBrowser(link); err != nil {
+		r.showErrorDialog("opening issue", err)
+	}
+
+}
+
 func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 	return func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
 		event = func() *tcell.EventKey {
@@ -229,17 +264,7 @@ func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus fun
 
 			switch event.Key() {
 			case tcell.KeyCtrlO:
-				link := r.focusedLink()
-				if anchor, ok := getDocumentAnchor(link); ok {
-					selection := r.view.Selection()
-					if r.view.SelectAnchor(anchor) && selection != nil {
-						r.backstack = append(r.backstack, selection)
-					}
-				} else {
-					if err := openInBrowser(link); err != nil {
-						r.showErrorDialog("opening issue", err)
-					}
-				}
+				r.OpenLink()
 			case tcell.KeyRune:
 				switch event.Rune() {
 				case '<':
