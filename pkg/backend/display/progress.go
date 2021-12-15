@@ -1329,6 +1329,10 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 		return "import"
 	case deploy.OpImportReplacement:
 		return "import replacement"
+	case deploy.OpFinaliseSame:
+		return "finalise same"
+	case deploy.OpFinaliseUpdate:
+		return "finalise update"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
