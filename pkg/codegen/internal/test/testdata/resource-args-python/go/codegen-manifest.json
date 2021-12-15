@@ -5,8 +5,8 @@
     "example/person.go",
     "example/pet.go",
     "example/provider.go",
+    "example/pulumi-plugin.json",
     "example/pulumiTypes.go",
-    "example/pulumiUtilities.go",
-    "example/pulumiplugin.json"
+    "example/pulumiUtilities.go"
   ]
 }

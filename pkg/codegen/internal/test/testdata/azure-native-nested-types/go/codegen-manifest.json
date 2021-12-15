@@ -6,7 +6,7 @@
     "azure/documentdb/sqlResourceSqlContainer.go",
     "azure/init.go",
     "azure/provider.go",
-    "azure/pulumiUtilities.go",
-    "azure/pulumiplugin.json"
+    "azure/pulumi-plugin.json",
+    "azure/pulumiUtilities.go"
   ]
 }

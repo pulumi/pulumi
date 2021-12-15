@@ -48,7 +48,7 @@ setup(name='pulumi_myedgeorder',
       package_data={
           'pulumi_myedgeorder': [
               'py.typed',
-              'pulumiplugin.json',
+              'pulumi-plugin.json',
           ]
       },
       install_requires=[

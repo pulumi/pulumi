@@ -5,9 +5,9 @@
     "example/init.go",
     "example/otherResource.go",
     "example/provider.go",
+    "example/pulumi-plugin.json",
     "example/pulumiTypes.go",
     "example/pulumiUtilities.go",
-    "example/pulumiplugin.json",
     "example/resource.go"
   ]
 }

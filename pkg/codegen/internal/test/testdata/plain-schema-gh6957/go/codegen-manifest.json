@@ -3,9 +3,9 @@
     "xyz/doc.go",
     "xyz/init.go",
     "xyz/provider.go",
+    "xyz/pulumi-plugin.json",
     "xyz/pulumiTypes.go",
     "xyz/pulumiUtilities.go",
-    "xyz/pulumiplugin.json",
     "xyz/staticPage.go"
   ]
 }

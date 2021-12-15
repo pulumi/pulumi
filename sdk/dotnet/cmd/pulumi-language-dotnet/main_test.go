@@ -147,12 +147,12 @@ func TestDeterminePluginDependency(t *testing.T) {
 				t.Logf("Wrote version.txt file to %q", path)
 			}
 			if c.PulumiPlugin != nil {
-				path := filepath.Join(artifactPath, "pulumiplugin.json")
+				path := filepath.Join(artifactPath, "pulumi-plugin.json")
 				bytes, err := c.PulumiPlugin.JSON()
 				assert.NoError(t, err)
 				err = os.WriteFile(path, bytes, 0600)
 				assert.NoError(t, err)
-				t.Logf("Wrote pulumiplugin.json file to %q", path)
+				t.Logf("Wrote pulumi-plugin.json file to %q", path)
 			}
 
 			// Update expected for the common case.
