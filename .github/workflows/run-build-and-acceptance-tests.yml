@@ -245,7 +245,7 @@ jobs:
         with:
           directory: coverage
           files: '*'
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           verbose: true
       - name: Summarize Test Time by Package
         run: |
