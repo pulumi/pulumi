@@ -413,7 +413,10 @@ func renderDocstring(w io.Writer, docstring string) error {
 	document := parser.Parse(text.NewReader(source))
 
 	r := renderer.New(
-		renderer.WithSoftBreak(false))
-	renderer := goldmark_renderer.NewRenderer(goldmark_renderer.WithNodeRenderers(util.Prioritized(r, 100)))
+		renderer.WithSoftBreak(false),
+		renderer.WithHyperlinks(true),
+	)
+	renderer := goldmark_renderer.NewRenderer(
+		goldmark_renderer.WithNodeRenderers(util.Prioritized(r, 100)))
 	return renderer.Render(w, source, document)
 }
