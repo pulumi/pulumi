@@ -40,6 +40,10 @@
 - [cli] Log secret decryption events when a project uses the Pulumi Service and a 3rd party secrets provider
   [#8563](https://github.com/pulumi/pulumi/pull/8563)
 
+- [schema] Do not validate against the metaschema in ImportSpec. Clients that need to
+  validate input schemas should use the BindSpec API instead.
+  [#8543](https://github.com/pulumi/pulumi/pull/8543)
+
 ### Bug Fixes
 
 - [codegen/schema] - Error on type token names that are not allowed (schema.Name
