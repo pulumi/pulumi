@@ -5,9 +5,9 @@
     "myedgeorder/listConfigurations.go",
     "myedgeorder/listProductFamilies.go",
     "myedgeorder/provider.go",
+    "myedgeorder/pulumi-plugin.json",
     "myedgeorder/pulumiEnums.go",
     "myedgeorder/pulumiTypes.go",
-    "myedgeorder/pulumiUtilities.go",
-    "myedgeorder/pulumiplugin.json"
+    "myedgeorder/pulumiUtilities.go"
   ]
 }

@@ -4,9 +4,9 @@
     "my8110/exampleFunc.go",
     "my8110/init.go",
     "my8110/provider.go",
+    "my8110/pulumi-plugin.json",
     "my8110/pulumiEnums.go",
     "my8110/pulumiTypes.go",
-    "my8110/pulumiUtilities.go",
-    "my8110/pulumiplugin.json"
+    "my8110/pulumiUtilities.go"
   ]
 }

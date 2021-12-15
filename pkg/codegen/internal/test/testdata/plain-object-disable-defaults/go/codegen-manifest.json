@@ -8,8 +8,8 @@
     "example/mod2/pulumiTypes.go",
     "example/moduleTest.go",
     "example/provider.go",
+    "example/pulumi-plugin.json",
     "example/pulumiTypes.go",
-    "example/pulumiUtilities.go",
-    "example/pulumiplugin.json"
+    "example/pulumiUtilities.go"
   ]
 }

@@ -3343,16 +3343,16 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 	files := map[string][]byte{}
 
-	// Generate pulumiplugin.json
+	// Generate pulumi-plugin.json
 	pulumiPlugin, err := (&plugin.PulumiPluginJSON{
 		Resource: true,
 		Name:     pkg.Name,
 		Server:   pkg.PluginDownloadURL,
 	}).JSON()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to format pulumiplugin.json: %w", err)
+		return nil, fmt.Errorf("Failed to format pulumi-plugin.json: %w", err)
 	}
-	files[path.Join(pathPrefix, "pulumiplugin.json")] = pulumiPlugin
+	files[path.Join(pathPrefix, "pulumi-plugin.json")] = pulumiPlugin
 
 	setFile := func(relPath, contents string) {
 		relPath = path.Join(pathPrefix, relPath)
