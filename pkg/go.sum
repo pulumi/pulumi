@@ -135,7 +135,6 @@ github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310/go.mod h1:ufUuZ+zHj
 github.com/armon/go-radix v1.0.0/go.mod h1:ufUuZ+zHj4x4TnLV4JWEpy2hxWSpsRywHrMgIH9cCH8=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
-github.com/atotto/clipboard v0.1.2 h1:YZCtFu5Ie8qX2VmVTBnrqLSiU9XOWwqNRmdT3gIQzbY=
 github.com/atotto/clipboard v0.1.2/go.mod h1:ZY9tmq7sm5xIbd9bOK4onWV4S6X0u6GY7Vn0Yu86PYI=
 github.com/aws/aws-sdk-go v1.15.27/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZoCYDt7FT0=
 github.com/aws/aws-sdk-go v1.23.20/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
@@ -584,8 +583,8 @@ github.com/pgavlin/ansicsi v0.0.0-20210128180815-facca45e1fdd h1:zo3gi6FOEW0KnRM
 github.com/pgavlin/ansicsi v0.0.0-20210128180815-facca45e1fdd/go.mod h1:EgxeiakKhj1sKJPP8Vcj/6DjHWDTA+5WqdU61WgDyRM=
 github.com/pgavlin/goldmark v1.1.33-0.20210916052350-16f491902b32 h1:6dWdvpLPcMW+FQ4k3K/mrPr+y3M8AgwvNL+jkC0i3iM=
 github.com/pgavlin/goldmark v1.1.33-0.20210916052350-16f491902b32/go.mod h1:MRxHTJrf9FhdfNQ8Hdeh9gmHevC9RJE/fu8M3JIGjoE=
-github.com/pgavlin/markdown-kit v0.0.0-20210919233640-5ae943a10f6e h1:PKh2+pDjMcdzY+WSaMlNwz/MEKwct5e3BNOQE7rC4os=
-github.com/pgavlin/markdown-kit v0.0.0-20210919233640-5ae943a10f6e/go.mod h1:Mf7q6tJtnCfU1kTwRScn57bvm38p5gdil/MVmwPcxDA=
+github.com/pgavlin/markdown-kit v0.0.0-20211216181825-66ecaafef0ad h1:ObHIkPBSXOQxldfCxlnfMWJHEZBHfInRr4q7bn5Bpgo=
+github.com/pgavlin/markdown-kit v0.0.0-20211216181825-66ecaafef0ad/go.mod h1:Mf7q6tJtnCfU1kTwRScn57bvm38p5gdil/MVmwPcxDA=
 github.com/pgavlin/svg2 v0.0.0-20210919231505-4ace7308edc1 h1:pZyspNrqK1cqSk3oIUYgwE2/Si20ZYSGypML1Br3zEU=
 github.com/pgavlin/svg2 v0.0.0-20210919231505-4ace7308edc1/go.mod h1:/bl9WWdq/0JAXp6wvglMkCf9fcBPhT2SoxG7jP+hYqc=
 github.com/pierrec/lz4 v2.0.5+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=

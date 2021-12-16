@@ -35,7 +35,6 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pgavlin/goldmark v1.1.33-0.20210916052350-16f491902b32
-	github.com/pgavlin/markdown-kit v0.0.0-20210919233640-5ae943a10f6e
 	github.com/pulumi/pulumi/sdk/v3 v3.19.0
 	github.com/rjeczalik/notify v0.9.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
@@ -178,9 +177,9 @@ require (
 )
 
 require (
-	github.com/atotto/clipboard v0.1.2
 	github.com/gdamore/tcell v1.4.0
 	github.com/gdamore/tcell/v2 v2.0.1-0.20201017141208-acf90d56d591
+	github.com/pgavlin/markdown-kit v0.0.0-20211216181825-66ecaafef0ad
 	github.com/rivo/tview v0.0.0-20210125085121-dbc1f32bb1d0
 )
 

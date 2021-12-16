@@ -160,7 +160,8 @@ func openInBrowser(url string) error {
 type LinkResolver = func(link string, reader *markdownReader) (bool, error)
 
 type markdownReader struct {
-	view *mdk.MarkdownView
+	view  *mdk.MarkdownView
+	theme *chroma.Style
 
 	app *tview.Application
 
@@ -193,6 +194,7 @@ func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Appl
 		view:       mdk.NewMarkdownView(theme),
 		app:        app,
 		helpDialog: newTextDialog(helpText, "Help"),
+		theme:      theme,
 	}
 
 	r.view.SetText(name, source)
@@ -209,9 +211,9 @@ func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Appl
 }
 
 func (r *markdownReader) SetSource(name, source string) {
-	view := mdk.NewMarkdownView(nil)
+	view := mdk.NewMarkdownView(r.theme)
 	view.SetText(name, source)
-	r.view.SetGutter(true)
+	view.SetGutter(true)
 
 	r.rootPages.AddAndSwitchToPage(name, view, true)
 }
