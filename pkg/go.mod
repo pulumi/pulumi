@@ -179,7 +179,7 @@ require (
 require (
 	github.com/gdamore/tcell v1.4.0
 	github.com/gdamore/tcell/v2 v2.0.1-0.20201017141208-acf90d56d591
-	github.com/pgavlin/markdown-kit v0.0.0-20211214185658-303d75212708
+	github.com/pgavlin/markdown-kit v0.0.0-20211216181825-66ecaafef0ad
 	github.com/rivo/tview v0.0.0-20210125085121-dbc1f32bb1d0
 )
 
