@@ -47,9 +47,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newDocCmd() *cobra.Command {
+	var runtime string
+
 	var cmd = &cobra.Command{
 		Use:   "doc <member>[#/<json-pointer>]",
 		Args:  cmdutil.ExactArgs(1),
@@ -65,12 +68,14 @@ func newDocCmd() *cobra.Command {
 			pointer := args[0]
 
 			// Fetch the project and filter examples to the project's language.
-			proj, _, err := readProject()
-			if err != nil {
-				return fmt.Errorf("Failed to get docs: %w", err)
+			if runtime == "" {
+				r, err := getRuntimeName()
+				if err != nil {
+					return fmt.Errorf("Failed to get docs: %w", err)
+				}
+				runtime = r
 			}
-
-			res := newDocstringResolver(proj.Runtime.Name())
+			res := newDocstringResolver(runtime)
 
 			docstring, err := res.findDocstring(pointer)
 			if err != nil {
@@ -85,7 +90,34 @@ func newDocCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().StringVarP(&runtime, "language", "l", "",
+		"The language to use for example code. When unset, will default to the language of the current project "+
+			"or Typescript if no project exists.")
+
 	return cmd
+}
+
+func getRuntimeName() (string, error) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	// Now that we got here, we have a path, so we will try to load it.
+	path, err := workspace.DetectProjectPathFrom(pwd)
+	if err != nil {
+		return "", fmt.Errorf("failed to find current Pulumi project because of "+
+			"an error when searching for the Pulumi.yaml file (searching upwards from %s)"+": %w", pwd, err)
+
+	} else if path == "" {
+		// Default to NodeJS if we're not within a project.
+		return langNodejs, nil
+	}
+	proj, err := workspace.LoadProject(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to load Pulumi project located at %q: %w", path, err)
+	}
+	return proj.Runtime.Name(), nil
 }
 
 type docstringResolver struct {
@@ -98,7 +130,7 @@ func newDocstringResolver(runtime string) *docstringResolver {
 	var lang string
 	var helper codegen.DocLanguageHelper
 	switch runtime {
-	case "dotnet":
+	case "dotnet", "csharp":
 		lang, helper = "csharp", dotnetgen.DocLanguageHelper{}
 	case "go":
 		lang, helper = "go", gogen.DocLanguageHelper{}
