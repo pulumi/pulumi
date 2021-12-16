@@ -814,7 +814,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 	isDockerImageResource := mod.pkg.Name == "docker" && resourceName(r) == "Image"
 
 	// Kubernetes overlay resources use a different ordering of formal params in Python.
-	if isK8sOverlayMod {
+	if isK8sOverlayMod && r.IsOverlay {
 		return getKubernetesOverlayPythonFormalParams(mod.mod)
 	} else if isDockerImageResource {
 		return getDockerImagePythonFormalParams()
