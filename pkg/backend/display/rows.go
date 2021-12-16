@@ -52,7 +52,7 @@ type ResourceRow interface {
 	// ellipses to show progress for in-flight resources.
 	Tick() int
 
-	IsDone() bool
+	IsDone(step *engine.StepEventMetadata) bool
 
 	SetFailed()
 
@@ -238,7 +238,7 @@ const (
 	infoColumn   column = 4
 )
 
-func (data *resourceRowData) IsDone() bool {
+func (data *resourceRowData) IsDone(step *engine.StepEventMetadata) bool {
 	if data.failed {
 		// consider a failed resource 'done'.
 		return true
@@ -249,7 +249,7 @@ func (data *resourceRowData) IsDone() bool {
 		return true
 	}
 
-	if isRootStack(data.steps[0]) {
+	if isRootStack(*step) {
 		// the root stack only becomes 'done' once the program has completed (i.e. the condition
 		// checked just above this).  If the program is not finished, then always show the root
 		// stack as not done so the user sees "running..." presented for it.
@@ -257,7 +257,7 @@ func (data *resourceRowData) IsDone() bool {
 	}
 
 	// We're done if we have the output-step for whatever step operation we're performing
-	return data.ContainsOutputsStep(data.steps[len(data.steps)-1].Op)
+	return data.ContainsOutputsStep(step.Op)
 }
 
 func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
@@ -271,9 +271,10 @@ func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
 }
 
 func (data *resourceRowData) ColorizedSuffix() string {
-	if !data.IsDone() && data.display.isTerminal {
-		op := data.display.getStepOp(data.steps[len(data.steps)-1])
-		if op != deploy.OpSame || isRootURN(data.steps[len(data.steps)-1].URN) {
+	step := data.steps[len(data.steps)-1]
+	if !data.IsDone(&step) && data.display.isTerminal {
+		op := data.display.getStepOp(step)
+		if op != deploy.OpSame || isRootURN(step.URN) {
 			suffixes := data.display.suffixesArray
 			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
@@ -295,7 +296,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	name := string(urn.Name())
 	typ := simplifyTypeName(urn.Type())
 
-	done := data.IsDone()
+	done := data.IsDone(&data.steps[len(data.steps)-1])
 
 	columns := make([]string, 5)
 	columns[opColumn] = data.display.getStepOpLabel(step, done)
@@ -303,12 +304,33 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	columns[nameColumn] = name
 
 	diagInfo := data.diagInfo
+	failed := data.failed || diagInfo.ErrorCount > 0
 
-	if done {
-		failed := data.failed || diagInfo.ErrorCount > 0
-		columns[statusColumn] = data.display.getStepDoneDescription(step, failed)
-	} else {
-		columns[statusColumn] = data.display.getStepInProgressDescription(step)
+	first := true
+	for i, step := range data.steps {
+		var skip bool
+		if data.IsDone(&step) {
+			// if this is before the IsDone step skip it
+			for j, other := range data.steps {
+				if step.Op == other.Op && j > i {
+					skip = true
+					break
+				}
+			}
+		}
+
+		if !skip {
+			if !first {
+				columns[statusColumn] += ", "
+			}
+			first = false
+
+			if data.IsDone(&step) {
+				columns[statusColumn] += data.display.getStepDoneDescription(step, failed)
+			} else {
+				columns[statusColumn] += data.display.getStepInProgressDescription(step)
+			}
+		}
 	}
 
 	columns[infoColumn] = data.getInfoColumn()

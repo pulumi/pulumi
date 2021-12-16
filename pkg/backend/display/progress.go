@@ -710,7 +710,8 @@ func (display *ProgressDisplay) processEndSteps() {
 	inProgressRows := []ResourceRow{}
 
 	for _, v := range display.eventUrnToResourceRow {
-		if !v.IsDone() {
+		steps := v.Steps()
+		if !v.IsDone(&steps[len(steps)-1]) {
 			inProgressRows = append(inProgressRows, v)
 		}
 	}
@@ -1339,7 +1340,7 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 	case deploy.OpFinaliseSame:
 		return "same"
 	case deploy.OpFinaliseUpdate:
-		return "create, patch"
+		return "patch"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
@@ -1373,7 +1374,7 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 	case deploy.OpFinaliseSame:
 		return "same"
 	case deploy.OpFinaliseUpdate:
-		return "create, patch"
+		return "patch"
 	}
 
 	contract.Failf("Unrecognized resource step op: %v", step.Op)
