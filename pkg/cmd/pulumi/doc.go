@@ -215,8 +215,8 @@ func (r *docstringResolver) findWholeDocstring(pointer string) (string, bool, er
 		docstring := genEnumTypeDocstring(object, r.lang, r.helper)
 		return docstring, true, nil
 	case *schema.ObjectType:
-		docstring := genObjectTypeDocstring(object, r.lang, r.helper)
-		return docstring, true, nil
+		docstring, err := genObjectTypeDocstring(object, r.lang, r.helper)
+		return docstring, true, err
 	case *schema.Resource:
 		docstring, err := genResourceDocstring(object, r.lang, r.helper)
 		return docstring, true, err
@@ -242,6 +242,11 @@ func summarizeProperty(property *schema.Property, pkg *schema.Package,
 
 	typ := helper.GetLanguageTypeString(pkg, "", property.Type, false)
 
+	// Union types in TypeScript are displayed with the `|` operator, which conflicts with how
+	// markdown renders tables.
+	if strings.Contains(typ, "|") {
+		typ = fmt.Sprintf("`%s`", typ)
+	}
 	if path := getSchemaPath(property.Type, pkg); path != "" {
 		typ = fmt.Sprintf("[%s](%s)", typ, path)
 	}
@@ -342,8 +347,25 @@ func genEnumTypeDocstring(enumType *schema.EnumType, lang string, helper codegen
 	return enumType.Comment
 }
 
-func genObjectTypeDocstring(object *schema.ObjectType, lang string, helper codegen.DocLanguageHelper) string {
-	return object.Comment
+//go:embed doc_object_type.tmpl
+var objectTemplateText string
+var objectTemplate = template.Must(template.New("object").Parse(objectTemplateText))
+
+func genObjectTypeDocstring(object *schema.ObjectType, lang string, helper codegen.DocLanguageHelper) (string, error) {
+	properties, err := summarizeProperties(object.Properties, object.Package, helper)
+	if err != nil {
+		return "", err
+	}
+	context := map[string]interface{}{
+		"Name":       object.Token,
+		"Comment":    object.Comment,
+		"Properties": properties,
+	}
+	var buf strings.Builder
+	if err := objectTemplate.Execute(&buf, context); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 //go:embed doc_resource.tmpl
