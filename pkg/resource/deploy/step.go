@@ -1049,8 +1049,8 @@ const (
 	OpRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
 	OpImport               StepOp = "import"                 // import an existing resource.
 	OpImportReplacement    StepOp = "import-replacement"     // replace an existing resource with an imported resource.
-	OpFinaliseSame         StepOp = "finalise-same"          // final same for a circular resource
-	OpFinaliseUpdate       StepOp = "finalise-update"        // final update for a circular resource
+	OpFinaliseSame         StepOp = "patch-same"             // final same for a circular resource
+	OpFinaliseUpdate       StepOp = "patch"                  // final update for a circular resource
 
 	// TODO(CYCLES) Fill in below for finalise ops so they have the right colors etc
 )
