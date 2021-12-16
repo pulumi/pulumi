@@ -1291,7 +1291,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			case deploy.OpImportReplacement:
 				return "imported replacement"
 			case deploy.OpFinaliseUpdate:
-				return "created, patched"
+				return "patched"
 			}
 		}
 

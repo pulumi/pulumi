@@ -306,29 +306,39 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	diagInfo := data.diagInfo
 	failed := data.failed || diagInfo.ErrorCount > 0
 
-	first := true
-	for i, step := range data.steps {
-		var skip bool
+	// The stack is only done at program end but we don't want to print every create step made for it
+	if isRootStack(data.steps[0]) {
+		step := data.steps[len(data.steps)-1]
 		if data.IsDone(&step) {
-			// if this is before the IsDone step skip it
-			for j, other := range data.steps {
-				if step.Op == other.Op && j > i {
-					skip = true
-					break
+			columns[statusColumn] += data.display.getStepDoneDescription(step, failed)
+		} else {
+			columns[statusColumn] += data.display.getStepInProgressDescription(step)
+		}
+	} else {
+		first := true
+		for i, step := range data.steps {
+			var skip bool
+			if data.IsDone(&step) {
+				// if this is before the IsDone step skip it
+				for j, other := range data.steps {
+					if step.Op == other.Op && j > i {
+						skip = true
+						break
+					}
 				}
 			}
-		}
 
-		if !skip {
-			if !first {
-				columns[statusColumn] += ", "
-			}
-			first = false
+			if !skip {
+				if !first {
+					columns[statusColumn] += ", "
+				}
+				first = false
 
-			if data.IsDone(&step) {
-				columns[statusColumn] += data.display.getStepDoneDescription(step, failed)
-			} else {
-				columns[statusColumn] += data.display.getStepInProgressDescription(step)
+				if data.IsDone(&step) {
+					columns[statusColumn] += data.display.getStepDoneDescription(step, failed)
+				} else {
+					columns[statusColumn] += data.display.getStepInProgressDescription(step)
+				}
 			}
 		}
 	}
