@@ -516,7 +516,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		if !isTargeted {
 			logging.V(7).Infof(
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
-		} else if sg.deployment.preview && wasPartial {
+		} else if sg.deployment.preview && oldOutputs.ContainsUnknowns() {
 			// TODO(CYCLES) We can't currently call diff with ID=nil which happens in preview mode for partial resources
 
 			if old.Inputs.DeepEquals(new.Inputs) {
