@@ -288,7 +288,7 @@ func (data *resourceRowData) ColorizedSuffix() string {
 func (data *resourceRowData) ColorizedColumns() []string {
 	step := data.steps[len(data.steps)-1]
 
-	urn := data.steps[len(data.steps)-1].URN
+	urn := step.URN
 	if urn == "" {
 		// If we don't have a URN yet, mock parent it to the global stack.
 		urn = resource.DefaultRootStackURN(data.display.stack, data.display.proj)
@@ -296,7 +296,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	name := string(urn.Name())
 	typ := simplifyTypeName(urn.Type())
 
-	done := data.IsDone(&data.steps[len(data.steps)-1])
+	done := data.IsDone(&step)
 
 	columns := make([]string, 5)
 	columns[opColumn] = data.display.getStepOpLabel(step, done)
@@ -307,15 +307,13 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	failed := data.failed || diagInfo.ErrorCount > 0
 
 	// The stack is only done at program end but we don't want to print every create step made for it
-	if isRootStack(data.steps[0]) {
-		step := data.steps[len(data.steps)-1]
+	if isRootStack(step) {
 		if data.IsDone(&step) {
-			columns[statusColumn] += data.display.getStepDoneDescription(step, failed)
+			columns[statusColumn] = data.display.getStepDoneDescription(step, failed)
 		} else {
-			columns[statusColumn] += data.display.getStepInProgressDescription(step)
+			columns[statusColumn] = data.display.getStepInProgressDescription(step)
 		}
 	} else {
-		first := true
 		for i, step := range data.steps {
 			var skip bool
 			if data.IsDone(&step) {
@@ -329,16 +327,17 @@ func (data *resourceRowData) ColorizedColumns() []string {
 			}
 
 			if !skip {
-				if !first {
+				var text string
+				if data.IsDone(&step) {
+					text = data.display.getStepDoneDescription(step, failed)
+				} else {
+					text = data.display.getStepInProgressDescription(step)
+				}
+
+				if columns[statusColumn] != "" && text != "" {
 					columns[statusColumn] += ", "
 				}
-				first = false
-
-				if data.IsDone(&step) {
-					columns[statusColumn] += data.display.getStepDoneDescription(step, failed)
-				} else {
-					columns[statusColumn] += data.display.getStepInProgressDescription(step)
-				}
+				columns[statusColumn] += text
 			}
 		}
 	}
