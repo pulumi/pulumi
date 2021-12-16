@@ -488,7 +488,8 @@ func (display *ProgressDisplay) getOrCreateTreeNode(
 	if urn != "" && urn != display.stackUrn {
 		var parentURN resource.URN
 
-		res := row.Step().Res
+		steps := row.Steps()
+		res := steps[len(steps)-1].Res
 		if res != nil {
 			parentURN = res.Parent
 		}
@@ -896,7 +897,8 @@ func (display *ProgressDisplay) printOutputs() {
 		return
 	}
 
-	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
+	steps := display.eventUrnToResourceRow[display.stackUrn].Steps()
+	stackStep := steps[len(steps)-1]
 
 	props := engine.GetResourceOutputsPropertiesString(
 		stackStep, 1, display.isPreview, display.opts.Debug,
@@ -989,7 +991,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 		display.stackUrn = urn
 
 		if row, has = display.eventUrnToResourceRow[""]; has {
-			row.SetStep(step)
+			row.AddStep(step)
 			display.eventUrnToResourceRow[urn] = row
 			delete(display.eventUrnToResourceRow, "")
 			return row
@@ -1001,7 +1003,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
 		policyPayloads:       policyPayloads,
-		step:                 step,
+		steps:                []engine.StepEventMetadata{step},
 		hideRowIfUnnecessary: true,
 	}
 
@@ -1098,9 +1100,10 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	if event.Type == engine.ResourcePreEvent {
 		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
-		row.SetStep(step)
+		row.AddStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
-		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
+		steps := row.Steps()
+		isRefresh := display.getStepOp(steps[len(steps)-1]) == deploy.OpRefresh
 		step := event.Payload().(engine.ResourceOutputsEventPayload).Metadata
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
@@ -1108,7 +1111,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 			display.seenStackOutputs = true
 		}
 
-		row.SetStep(step)
+		row.AddStep(step)
 		row.AddOutputStep(step)
 
 		// If we're not in a terminal, we may not want to display this row again: if we're displaying a preview or if
@@ -1174,7 +1177,7 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
 		policyPayloads:       policyPayloads,
-		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
+		steps:                []engine.StepEventMetadata{engine.StepEventMetadata{Op: deploy.OpSame}},
 		hideRowIfUnnecessary: false,
 	}
 

@@ -44,8 +44,8 @@ type Row interface {
 type ResourceRow interface {
 	Row
 
-	Step() engine.StepEventMetadata
-	SetStep(step engine.StepEventMetadata)
+	Steps() []engine.StepEventMetadata
+	AddStep(step engine.StepEventMetadata)
 	AddOutputStep(step engine.StepEventMetadata)
 
 	// The tick we were on when we created this row.  Purely used for generating an
@@ -114,7 +114,7 @@ type resourceRowData struct {
 	display *ProgressDisplay
 
 	// The change that the engine wants apply to that resource.
-	step        engine.StepEventMetadata
+	steps       []engine.StepEventMetadata
 	outputSteps []engine.StepEventMetadata
 
 	// The tick we were on when we created this row.  Purely used for generating an
@@ -152,12 +152,12 @@ func (data *resourceRowData) SetHideRowIfUnnecessary(value bool) {
 	data.hideRowIfUnnecessary = value
 }
 
-func (data *resourceRowData) Step() engine.StepEventMetadata {
-	return data.step
+func (data *resourceRowData) Steps() []engine.StepEventMetadata {
+	return data.steps
 }
 
-func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
-	data.step = step
+func (data *resourceRowData) AddStep(step engine.StepEventMetadata) {
+	data.steps = append(data.steps, step)
 }
 
 func (data *resourceRowData) AddOutputStep(step engine.StepEventMetadata) {
@@ -249,7 +249,7 @@ func (data *resourceRowData) IsDone() bool {
 		return true
 	}
 
-	if isRootStack(data.step) {
+	if isRootStack(data.steps[0]) {
 		// the root stack only becomes 'done' once the program has completed (i.e. the condition
 		// checked just above this).  If the program is not finished, then always show the root
 		// stack as not done so the user sees "running..." presented for it.
@@ -257,7 +257,7 @@ func (data *resourceRowData) IsDone() bool {
 	}
 
 	// We're done if we have the output-step for whatever step operation we're performing
-	return data.ContainsOutputsStep(data.step.Op)
+	return data.ContainsOutputsStep(data.steps[len(data.steps)-1].Op)
 }
 
 func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
@@ -272,8 +272,8 @@ func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
 
 func (data *resourceRowData) ColorizedSuffix() string {
 	if !data.IsDone() && data.display.isTerminal {
-		op := data.display.getStepOp(data.step)
-		if op != deploy.OpSame || isRootURN(data.step.URN) {
+		op := data.display.getStepOp(data.steps[len(data.steps)-1])
+		if op != deploy.OpSame || isRootURN(data.steps[len(data.steps)-1].URN) {
 			suffixes := data.display.suffixesArray
 			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
@@ -285,9 +285,9 @@ func (data *resourceRowData) ColorizedSuffix() string {
 }
 
 func (data *resourceRowData) ColorizedColumns() []string {
-	step := data.step
+	step := data.steps[len(data.steps)-1]
 
-	urn := data.step.URN
+	urn := data.steps[len(data.steps)-1].URN
 	if urn == "" {
 		// If we don't have a URN yet, mock parent it to the global stack.
 		urn = resource.DefaultRootStackURN(data.display.stack, data.display.proj)
@@ -316,7 +316,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 }
 
 func (data *resourceRowData) getInfoColumn() string {
-	step := data.step
+	step := data.steps[len(data.steps)-1]
 	switch step.Op {
 	case deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
 		// if we're doing a replacement, see if we can find a replace step that contains useful

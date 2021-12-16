@@ -155,7 +155,7 @@ func isRootURN(urn resource.URN) bool {
 // shouldShow returns true if a step should show in the output.
 func shouldShow(step engine.StepEventMetadata, opts Options) bool {
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
-	if step.Op == deploy.OpSame {
+	if step.Op == deploy.OpSame || step.Op == deploy.OpFinaliseSame {
 		// If the op is the same, it is possible that the resource's metadata changed.  In that case, still show it.
 		if step.Old.Protect != step.New.Protect {
 			return true
