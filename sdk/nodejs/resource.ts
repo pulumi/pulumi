@@ -68,6 +68,39 @@ function inheritedChildAlias(childName: string, parentName: string, parentAlias:
     return createUrn(aliasName, childType, parentAlias);
 }
 
+// Extract the type and name parts of a URN
+function urnTypeAndName(urn: URN) {
+    const parts = urn.split("::");
+    const typeParts = parts[2].split("$");
+    return {
+        name: parts[3], 
+        type: typeParts[typeParts.length-1],
+    };
+}
+
+// Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
+// If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
+// or, as calculated in the logic below, N+(M*(1+N)).
+export function allAliases(childAliases: Input<URN | Alias>[], childName: string, childType: string, parent: Resource, parentName: string): Output<URN>[] {
+    const aliases: Output<URN>[] = [];
+    for (const childAlias of childAliases) {
+        aliases.push(collapseAliasToUrn(childAlias, childName, childType, parent));
+    }
+    for (const parentAlias of (parent.__aliases || [])) { 
+        // For each parent alias, add an alias that uses that base child name and the parent alias
+        aliases.push(inheritedChildAlias(childName, parentName, parentAlias, childType));
+        // Also add an alias for each child alias and the parent alias
+        for (const childAlias of childAliases) {
+            const inheritedAlias = collapseAliasToUrn(childAlias, childName, childType, parent).apply(childAliasURN => {
+                const {name: aliasedChildName, type: aliasedChildType} = urnTypeAndName(childAliasURN);
+                return inheritedChildAlias(aliasedChildName, parentName, parentAlias, aliasedChildType);
+            });
+            aliases.push(inheritedAlias);
+        }
+    }
+    return aliases;
+}
+
 /**
  * Resource represents a class whose CRUD operations are implemented by a provider plugin.
  */
@@ -287,13 +320,8 @@ export abstract class Resource {
                 opts.protect = opts.parent.__protect;
             }
 
-            // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
-            opts.aliases = [...(opts.aliases || [])];
-            if (opts.parent.__name) {
-                for (const parentAlias of (opts.parent.__aliases || [])) {
-                    opts.aliases.push(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
-                }
-            }
+            // Update aliases to include the full set of aliases implied by the child and parent aliases.
+            opts.aliases = allAliases(opts.aliases || [], name, t, opts.parent, opts.parent.__name!);
 
             this.__providers = opts.parent.__providers;
         }
