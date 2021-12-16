@@ -1,13 +1,20 @@
 package display
 
 import (
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -72,13 +79,8 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
-		// Convert the config bag.
-		cfg := make(map[string]string)
-		for k, v := range p.Config {
-			cfg[k] = v
-		}
 		apiEvent.PreludeEvent = &apitype.PreludeEvent{
-			Config: cfg,
+			Config: p.Config,
 		}
 
 	case engine.SummaryEvent:
@@ -214,6 +216,185 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata) *apitype.S
 		Delete:     md.Delete,
 		ID:         string(md.ID),
 		Parent:     string(md.Parent),
+		Protect:    md.Protect,
+		Inputs:     inputs,
+		Outputs:    outputs,
+		InitErrors: md.InitErrors,
+	}
+}
+
+// ConvertJSONEvent converts an apitype.EngineEvent from the Pulumi REST API into a raw engine.Event
+// Returns an error if the engine event is unknown or not in an expected format.
+//
+// IMPORTANT: Any resource secret data stored in the engine event will be encrypted using the
+// blinding encrypter, and unrecoverable. So this operation is inherently lossy.
+func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
+	var event engine.Event
+
+	switch {
+	case apiEvent.CancelEvent != nil:
+		event = engine.NewEvent(engine.CancelEvent, nil)
+
+	case apiEvent.StdoutEvent != nil:
+		p := apiEvent.StdoutEvent
+		event = engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+			Message: p.Message,
+			Color:   colors.Colorization(p.Color),
+		})
+
+	case apiEvent.DiagnosticEvent != nil:
+		p := apiEvent.DiagnosticEvent
+		event = engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+			URN:       resource.URN(p.URN),
+			Prefix:    p.Prefix,
+			Message:   p.Message,
+			Color:     colors.Colorization(p.Color),
+			Severity:  diag.Severity(p.Severity),
+			Ephemeral: p.Ephemeral,
+		})
+		apiEvent.DiagnosticEvent = &apitype.DiagnosticEvent{}
+
+	case apiEvent.PolicyEvent != nil:
+		p := apiEvent.PolicyEvent
+		event = engine.NewEvent(engine.PolicyViolationEvent, engine.PolicyViolationEventPayload{
+			ResourceURN:       resource.URN(p.ResourceURN),
+			Message:           p.Message,
+			Color:             colors.Colorization(p.Color),
+			PolicyName:        p.PolicyName,
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			EnforcementLevel:  apitype.EnforcementLevel(p.EnforcementLevel),
+		})
+
+	case apiEvent.PreludeEvent != nil:
+		p := apiEvent.PreludeEvent
+
+		// Convert the config bag.
+		event = engine.NewEvent(engine.PreludeEvent, engine.PreludeEventPayload{
+			Config: p.Config,
+		})
+
+	case apiEvent.SummaryEvent != nil:
+		p := apiEvent.SummaryEvent
+		// Convert the resource changes.
+		changes := engine.ResourceChanges{}
+		for op, count := range p.ResourceChanges {
+			changes[deploy.StepOp(op)] = count
+		}
+		event = engine.NewEvent(engine.SummaryEvent, engine.SummaryEventPayload{
+			MaybeCorrupt:    p.MaybeCorrupt,
+			Duration:        time.Duration(p.DurationSeconds) * time.Second,
+			ResourceChanges: changes,
+			PolicyPacks:     p.PolicyPacks,
+		})
+
+	case apiEvent.ResourcePreEvent != nil:
+		p := apiEvent.ResourcePreEvent
+		event = engine.NewEvent(engine.ResourcePreEvent, engine.ResourcePreEventPayload{
+			Metadata: convertJSONStepEventMetadata(p.Metadata),
+			Planning: p.Planning,
+		})
+
+	case apiEvent.ResOutputsEvent != nil:
+		p := apiEvent.ResOutputsEvent
+		event = engine.NewEvent(engine.ResourceOutputsEvent, engine.ResourceOutputsEventPayload{
+			Metadata: convertJSONStepEventMetadata(p.Metadata),
+			Planning: p.Planning,
+		})
+
+	case apiEvent.ResOpFailedEvent != nil:
+		p := apiEvent.ResOpFailedEvent
+		event = engine.NewEvent(engine.ResourceOperationFailed, engine.ResourceOperationFailedPayload{
+			Metadata: convertJSONStepEventMetadata(p.Metadata),
+			Status:   resource.Status(p.Status),
+			Steps:    p.Steps,
+		})
+
+	default:
+		return event, errors.New("unknown event type")
+	}
+
+	return event, nil
+}
+
+func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEventMetadata {
+	keys := make([]resource.PropertyKey, len(md.Keys))
+	for i, v := range md.Keys {
+		keys[i] = resource.PropertyKey(v)
+	}
+	var diffs []resource.PropertyKey
+	for _, v := range md.Diffs {
+		diffs = append(diffs, resource.PropertyKey(v))
+	}
+	var detailedDiff map[string]plugin.PropertyDiff
+	if md.DetailedDiff != nil {
+		detailedDiff = make(map[string]plugin.PropertyDiff)
+		for k, v := range md.DetailedDiff {
+			var d plugin.DiffKind
+			switch v.Kind {
+			case apitype.DiffAdd:
+				d = plugin.DiffAdd
+			case apitype.DiffAddReplace:
+				d = plugin.DiffAddReplace
+			case apitype.DiffDelete:
+				d = plugin.DiffDelete
+			case apitype.DiffDeleteReplace:
+				d = plugin.DiffDeleteReplace
+			case apitype.DiffUpdate:
+				d = plugin.DiffUpdate
+			case apitype.DiffUpdateReplace:
+				d = plugin.DiffUpdateReplace
+			default:
+				contract.Failf("unrecognized diff kind %v", v)
+			}
+			detailedDiff[k] = plugin.PropertyDiff{
+				Kind:      d,
+				InputDiff: v.InputDiff,
+			}
+		}
+	}
+
+	return engine.StepEventMetadata{
+		Op:   deploy.StepOp(md.Op),
+		URN:  resource.URN(md.URN),
+		Type: tokens.Type(md.Type),
+
+		Old: convertJSONStepEventStateMetadata(md.Old),
+		New: convertJSONStepEventStateMetadata(md.New),
+
+		Keys:         keys,
+		Diffs:        diffs,
+		DetailedDiff: detailedDiff,
+		Logical:      md.Logical,
+		Provider:     md.Provider,
+	}
+}
+
+// convertJSONStepEventStateMetadata converts the internal StepEventStateMetadata to the API type
+// we send over the wire.
+//
+// IMPORTANT: Any secret values are encrypted using the blinding encrypter. So any secret data
+// in the resource state will be lost and unrecoverable.
+func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engine.StepEventStateMetadata {
+	if md == nil {
+		return nil
+	}
+
+	crypter := config.BlindingCrypter
+	inputs, err := stack.DeserializeProperties(md.Inputs, crypter, crypter)
+	contract.IgnoreError(err)
+
+	outputs, err := stack.DeserializeProperties(md.Outputs, crypter, crypter)
+	contract.IgnoreError(err)
+
+	return &engine.StepEventStateMetadata{
+		Type: tokens.Type(md.Type),
+		URN:  resource.URN(md.URN),
+
+		Custom:     md.Custom,
+		Delete:     md.Delete,
+		ID:         resource.ID(md.ID),
+		Parent:     resource.URN(md.Parent),
 		Protect:    md.Protect,
 		Inputs:     inputs,
 		Outputs:    outputs,

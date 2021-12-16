@@ -27,7 +27,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/docker/docker/pkg/term"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -335,7 +334,8 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 			}
 
 			// Fetch the canonical stdout stream, configured appropriately.
-			_, stdout, _ = term.StdStreams()
+			stdout, err = EnableANSITerminal()
+			contract.IgnoreError(err)
 		}
 	}
 

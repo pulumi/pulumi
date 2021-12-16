@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//go:build !windows && !js
-// +build !windows,!js
+//go:build js
+// +build js
 
 package cmdutil
 
@@ -38,5 +38,5 @@ func KillChildren(pid int) error {
 // child process. When it comes time to kill this process, we'll kill all processes
 // in the same process group.
 func RegisterProcessGroup(cmd *exec.Cmd) {
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	// noop
 }
