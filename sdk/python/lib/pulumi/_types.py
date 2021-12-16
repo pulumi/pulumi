@@ -415,10 +415,6 @@ def _py_properties(cls: type) -> Iterator[Tuple[str, str, builtins.property]]:
                 if pulumi_name is not MISSING:
                     yield (python_name, cast(str, pulumi_name), prop)
 
-# MYPYPATH=./stubs venv/bin/python -m mypy ./lib/pulumi --config-file=mypy.ini
-# lib/pulumi/_types.py:416: error: Incompatible types in "yield"
-# (actual type "Tuple[str, Union[Any, _MISSING_TYPE], property]", expected type "Tuple[str, str, property]")
-# Found 1 error in 1 file (checked 65 source files)
 
 def input_type(cls: Type[T]) -> Type[T]:
     """
