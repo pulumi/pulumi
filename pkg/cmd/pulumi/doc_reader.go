@@ -180,9 +180,13 @@ type markdownReader struct {
 }
 
 type location struct {
+	// If a span is specified, then its associated string must also be specified.
 	span        *renderer.NodeSpan
 	displaySpan string
-	page        string
+
+	// If a page is specified, then its associated view must also be specified.
+	page string
+	view *mdk.MarkdownView
 }
 
 func (l *location) isEmpty() bool {
@@ -252,6 +256,7 @@ func (r *markdownReader) OpenLink() {
 		span:        selection,
 		displaySpan: link,
 		page:        currentPage,
+		view:        r.view,
 	}
 
 	anchorLink := func(link string, reader *markdownReader) (bool, error) {
@@ -304,10 +309,11 @@ func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus fun
 						last := r.backstack[len(r.backstack)-1]
 						r.backstack = r.backstack[:len(r.backstack)-1]
 						if last.page != "" {
-							r.rootPages.SwitchToPage(last.page)
-							_, page := r.rootPages.GetFrontPage()
-							r.view = page.(*mdk.MarkdownView)
-							r.focused = r.view
+							page := r.rootPages.SwitchToPage(last.page)
+							if page != nil {
+								r.focused = page
+								r.view = last.view
+							}
 						}
 						if last.span != nil {
 							r.view.SelectSpan(last.span, true)
