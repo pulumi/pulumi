@@ -18,7 +18,6 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/net/context"
 )
 
 // AssetOrArchive represents either an Asset or an Archive.
@@ -30,10 +29,6 @@ type AssetOrArchive interface {
 // of sources, including local filesystem paths, in-memory blobs of text, or remote files referenced by a URL.
 type Asset interface {
 	AssetOrArchive
-	AssetInput
-
-	ToAssetOrArchiveOutput() AssetOrArchiveOutput
-	ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput
 
 	// Path returns the filesystem path, for file-based assets.
 	Path() string
@@ -76,17 +71,12 @@ func (a *asset) Text() string { return a.text }
 // URI returns the asset's URL, if this is a remote asset, or an empty string otherwise.
 func (a *asset) URI() string { return a.uri }
 
-func (a *asset) isAsset() {}
-
+func (a *asset) isAsset()          {}
 func (a *asset) isAssetOrArchive() {}
 
 // Archive represents a collection of Assets.
 type Archive interface {
 	AssetOrArchive
-	ArchiveInput
-
-	ToAssetOrArchiveOutput() AssetOrArchiveOutput
-	ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput
 
 	// Assets returns a map of named assets or archives, for collections.
 	Assets() map[string]interface{}
@@ -137,6 +127,5 @@ func (a *archive) Path() string { return a.path }
 // URI returns the archive's URL, if this is a remote archive, or an empty string otherwise.
 func (a *archive) URI() string { return a.uri }
 
-func (a *archive) isArchive() {}
-
+func (a *archive) isArchive()        {}
 func (a *archive) isAssetOrArchive() {}

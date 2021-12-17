@@ -5,20 +5,29 @@ import (
 	"io"
 )
 
-func Printf(format string, args ...interface{}) IntOutput {
-	return All(args...).ApplyT(func(args []interface{}) (int, error) {
-		return fmt.Printf(format, args...)
-	}).(IntOutput)
+func Printf(format string, args ...AnyOutput) Output[int] {
+	return Cast[int](
+		All(args...).ApplyTErr(func(arr interface{}) (interface{}, error) {
+			args := arr.([]interface{})
+			return fmt.Printf(format, args...)
+		}),
+	)
 }
 
-func Fprintf(w io.Writer, format string, args ...interface{}) IntOutput {
-	return All(args...).ApplyT(func(args []interface{}) (int, error) {
-		return fmt.Fprintf(w, format, args...)
-	}).(IntOutput)
+func Fprintf(w io.Writer, format string, args ...AnyOutput) Output[int] {
+	return Cast[int](
+		All(args...).ApplyTErr(func(arr interface{}) (interface{}, error) {
+			args := arr.([]interface{})
+			return fmt.Fprintf(w, format, args...)
+		}),
+	)
 }
 
-func Sprintf(format string, args ...interface{}) StringOutput {
-	return All(args...).ApplyT(func(args []interface{}) string {
-		return fmt.Sprintf(format, args...)
-	}).(StringOutput)
+func Sprintf(format string, args ...AnyOutput) Output[string] {
+	return Cast[string](
+		All(args...).ApplyT(func(arr interface{}) interface{} {
+			args := arr.([]interface{})
+			return fmt.Sprintf(format, args...)
+		}),
+	)
 }

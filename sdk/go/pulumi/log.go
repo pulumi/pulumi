@@ -88,7 +88,7 @@ func (log *logState) _log(severity pulumirpc.LogSeverity, message string, args *
 
 	var urn string
 	if args.Resource != nil {
-		resolvedUrn, _, _, err := args.Resource.URN().awaitURN(log.ctx)
+		resolvedUrn, _, _, err := await(log.ctx, args.Resource.URN())
 		if err != nil {
 			return err
 		}

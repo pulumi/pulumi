@@ -45,7 +45,7 @@ func linkedConstructInputsCopyTo(ctx *Context, inputs map[string]interface{}, ar
 }
 
 //go:linkname linkedNewConstructResult github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedNewConstructResult
-func linkedNewConstructResult(resource ComponentResource) (URNInput, Input, error) {
+func linkedNewConstructResult(resource ComponentResource) (*Output[URN], Map, error) {
 	return newConstructResult(resource)
 }
 
@@ -66,7 +66,7 @@ func linkedCallArgsSelf(ctx *Context, source map[string]interface{}) (Resource, 
 }
 
 //go:linkname linkedNewCallResult github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedNewCallResult
-func linkedNewCallResult(result interface{}) (Input, error) {
+func linkedNewCallResult(result interface{}) (Map, error) {
 	return newCallResult(result)
 }
 

@@ -45,7 +45,7 @@ type Context struct {
 	ctx         context.Context
 	info        RunInfo
 	stack       Resource
-	exports     map[string]Input
+	exports     map[string]AnyOutput
 	monitor     pulumirpc.ResourceMonitorClient
 	monitorConn *grpc.ClientConn
 	engine      pulumirpc.EngineClient
@@ -129,7 +129,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	context := &Context{
 		ctx:              ctx,
 		info:             info,
-		exports:          make(map[string]Input),
+		exports:          make(map[string]AnyOutput),
 		monitorConn:      monitorConn,
 		monitor:          monitor,
 		engineConn:       engineConn,
@@ -328,12 +328,10 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 // Call will invoke a provider call function, identified by its token tok.
 //
 // output is used to determine the output type to return; self is optional for methods.
-func (ctx *Context) Call(tok string, args Input, output Output, self Resource, opts ...InvokeOption) (Output, error) {
+func (ctx *Context) Call(tok string, args Map, output AnyOutput, self Resource, opts ...InvokeOption) (AnyOutput, error) {
 	if tok == "" {
 		return nil, errors.New("call token must not be empty")
 	}
-
-	output = ctx.newOutput(reflect.TypeOf(output))
 
 	options := &invokeOptions{}
 	for _, o := range opts {
@@ -381,7 +379,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 				return nil, fmt.Errorf("marshaling __self__: %w", err)
 			}
 			for _, dep := range selfDeps {
-				depURN, _, _, err := dep.URN().awaitURN(context.TODO())
+				depURN, _, _, err := await(context.TODO(), dep.URN())
 				if err != nil {
 					return nil, err
 				}
@@ -447,7 +445,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			}
 			if err != nil {
 				logging.V(9).Infof("Call(%s, ...): success: w/ unmarshal error: %v", tok, err)
-				output.getState().reject(err)
+				output.getUnsafeResolvers().reject(err)
 				return
 			}
 
@@ -457,9 +455,9 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			known := !outprops.ContainsUnknowns()
 			secret, err = unmarshalOutput(ctx, resource.NewObjectProperty(outprops), dest)
 			if err != nil {
-				output.getState().reject(err)
+				output.getUnsafeResolvers().reject(err)
 			} else {
-				output.getState().resolve(dest.Interface(), known, secret, deps)
+				output.getUnsafeResolvers().resolve(dest.Interface(), known, secret, deps)
 			}
 
 			logging.V(9).Infof("Call(%s, ...): success: w/ %d outs (err=%v)", tok, len(outprops), err)
@@ -530,12 +528,12 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 //     err := ctx.ReadResource(tok, name, id, nil, &resource, opts...)
 //
 func (ctx *Context) ReadResource(
-	t, name string, id IDInput, props Input, resource CustomResource, opts ...ResourceOption) error {
+	t, name string, id Output[ID], props Map, resource CustomResource, opts ...ResourceOption) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
 		return errors.New("resource name argument (for URN creation) cannot be empty")
-	} else if id == nil {
+	} else if id.Nil() {
 		return errors.New("resource ID is required for lookup and cannot be empty")
 	}
 
@@ -595,7 +593,7 @@ func (ctx *Context) ReadResource(
 			ctx.endRPC(err)
 		}()
 
-		idToRead, known, _, err := id.ToIDOutput().awaitID(context.TODO())
+		idToRead, known, _, err := await(context.TODO(), id)
 		if !known || err != nil {
 			return
 		}
@@ -658,7 +656,7 @@ func (ctx *Context) ReadResource(
 //     err := ctx.RegisterResource(tok, name, props, &resource, opts...)
 //
 func (ctx *Context) RegisterResource(
-	t, name string, props Input, resource Resource, opts ...ResourceOption) error {
+	t, name string, props Map, resource Resource, opts ...ResourceOption) error {
 
 	return ctx.registerResource(t, name, props, resource, false /*remote*/, opts...)
 }
@@ -709,7 +707,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 }
 
 func (ctx *Context) registerResource(
-	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption) error {
+	t, name string, props Map, resource Resource, remote bool, opts ...ResourceOption) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -836,7 +834,7 @@ func (ctx *Context) registerResource(
 			for key, propertyDependencies := range resp.GetPropertyDependencies() {
 				var resources []Resource
 				for _, urn := range propertyDependencies.GetUrns() {
-					resources = append(resources, &ResourceState{urn: URNInput(URN(urn)).ToURNOutput()})
+					resources = append(resources, &ResourceState{urn: In(URN(urn))})
 				}
 				deps[key] = resources
 			}
@@ -853,25 +851,25 @@ func (ctx *Context) RegisterComponentResource(
 }
 
 func (ctx *Context) RegisterRemoteComponentResource(
-	t, name string, props Input, resource ComponentResource, opts ...ResourceOption) error {
+	t, name string, props Map, resource ComponentResource, opts ...ResourceOption) error {
 
 	return ctx.registerResource(t, name, props, resource, true /*remote*/, opts...)
 }
 
 // resourceState contains the results of a resource registration operation.
 type resourceState struct {
-	outputs         map[string]Output
+	outputs         map[string]AnyOutput
 	providers       map[string]ProviderResource
 	provider        ProviderResource
 	version         string
-	aliases         []URNOutput
+	aliases         []Output[URN]
 	name            string
 	transformations []ResourceTransformation
 }
 
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.
-func applyTransformations(t, name string, props Input, resource Resource, opts []ResourceOption,
-	options *resourceOptions) (Input, *resourceOptions, []ResourceTransformation, error) {
+func applyTransformations(t, name string, props Map, resource Resource, opts []ResourceOption,
+	options *resourceOptions) (Map, *resourceOptions, []ResourceTransformation, error) {
 
 	transformations := options.Transformations
 	if options.Parent != nil {
@@ -947,10 +945,10 @@ func getPackage(t string) string {
 }
 
 // collapseAliases collapses a list of Aliases into alist of URNs.
-func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Resource) ([]URNOutput, error) {
+func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Resource) ([]Output[URN], error) {
 	project, stack := ctx.Project(), ctx.Stack()
 
-	var aliasURNs []URNOutput
+	var aliasURNs []Output[URN]
 	if parent != nil {
 		for _, alias := range parent.getAliases() {
 			urn := inheritedChildAlias(name, parent.getName(), t, project, stack, alias)
@@ -963,18 +961,18 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 		if err != nil {
 			return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
 		}
-		aliasURNs = append(aliasURNs, urn)
+		aliasURNs = append(aliasURNs, *urn)
 	}
 
 	return aliasURNs, nil
 }
 
-var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
+var mapOutputType = reflect.TypeOf((*Output[map[string]interface{}])(nil)).Elem()
 
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	provider ProviderResource, version string, aliases []URNOutput,
+	provider ProviderResource, version string, aliases []Output[URN],
 	transformations []ResourceTransformation) *resourceState {
 
 	// Ensure that the input resource is a pointer to a struct. Note that we don't fail if it is not, and we probably
@@ -1005,7 +1003,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	// former is used for any URN or ID fields; the latter are used to determine the expected outputs of the resource
 	// after its RegisterResource call completes. For each of those fields, create an appropriately-typed Output and
 	// map the Output to its property name so we can resolve it later.
-	state := &resourceState{outputs: map[string]Output{}}
+	state := &resourceState{outputs: map[string]AnyOutput{}}
 	for i := 0; i < typ.NumField(); i++ {
 		fieldV := resource.Field(i)
 		if !fieldV.CanSet() {
@@ -1026,11 +1024,17 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 				continue
 			}
 
-			output := ctx.newOutput(field.Type, resourceV)
-			fieldV.Set(reflect.ValueOf(output))
+			// This is a little awkward. Go doesn't support generics in reflection APIs yet,
+			// so we need to initialize the output field in a roundabout way. Namely, we must
+			// zero it out, and then invoke a special method we know exists (init).
+			fieldV.Set(reflect.Zero(field.Type))
+			empty := fieldV.Addr().Interface().(emptyOutput)
+			initDynamicOutputFromContext(ctx, empty, field.Type, resourceV)
+			output := fieldV.Interface().(AnyOutput)
 
 			if tag == "" && field.Type != mapOutputType {
-				output.getState().reject(fmt.Errorf("the field %v must be a MapOutput or its tag must be non-empty", field.Name))
+				output.getUnsafeResolvers().reject(
+					fmt.Errorf("the field %v must be a MapOutput or its tag must be non-empty", field.Name))
 			}
 
 			state.outputs[tag] = output
@@ -1044,7 +1048,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	}
 	if crs != nil {
 		rs = &crs.ResourceState
-		crs.id = IDOutput{ctx.newOutputState(idType, resourceV)}
+		crs.id = newOutputFromContext[ID](ctx, resourceV)
 		state.outputs["id"] = crs.id
 	}
 
@@ -1057,7 +1061,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		rs.provider = provider
 		state.version = version
 		rs.version = version
-		rs.urn = URNOutput{ctx.newOutputState(urnType, resourceV)}
+		rs.urn = newOutputFromContext[URN](ctx, resourceV)
 		state.outputs["urn"] = rs.urn
 		state.name = name
 		rs.name = name
@@ -1095,7 +1099,7 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 	if err != nil {
 		// If there was an error, we must reject everything.
 		for _, output := range state.outputs {
-			output.getState().reject(err)
+			output.getUnsafeResolvers().reject(err)
 		}
 		return
 	}
@@ -1140,9 +1144,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		dest := reflect.New(output.ElementType()).Elem()
 		secret, err := unmarshalOutput(ctx, v, dest)
 		if err != nil {
-			output.getState().reject(err)
+			output.getUnsafeResolvers().reject(err)
 		} else {
-			output.getState().resolve(dest.Interface(), known, secret, deps[k])
+			output.getUnsafeResolvers().resolve(dest.Interface(), known, secret, deps[k])
 		}
 	}
 }
@@ -1168,7 +1172,7 @@ type resourceInputs struct {
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
-func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, opts *resourceOptions,
+func (ctx *Context) prepareResourceInputs(res Resource, props Map, t string, opts *resourceOptions,
 	state *resourceState, remote bool) (*resourceInputs, error) {
 
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
@@ -1226,7 +1230,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	// Await alias URNs
 	aliases := make([]string, len(state.aliases))
 	for i, alias := range state.aliases {
-		urn, _, _, err := alias.awaitURN(context.Background())
+		urn, _, _, err := await(context.Background(), alias)
 		if err != nil {
 			return nil, fmt.Errorf("error waiting for alias URN to resolve: %w", err)
 		}
@@ -1284,7 +1288,7 @@ func (ctx *Context) getOpts(res Resource, t string, provider ProviderResource, o
 
 	var importID ID
 	if opts.Import != nil {
-		id, _, _, err := opts.Import.ToIDOutput().awaitID(context.TODO())
+		id, _, _, err := await(context.TODO(), *opts.Import)
 		if err != nil {
 			return resourceOpts{}, err
 		}
@@ -1295,7 +1299,7 @@ func (ctx *Context) getOpts(res Resource, t string, provider ProviderResource, o
 	if opts.Parent != nil {
 		opts.Parent.addChild(res)
 
-		urn, _, _, err := opts.Parent.URN().awaitURN(context.TODO())
+		urn, _, _, err := await(context.TODO(), opts.Parent.URN())
 		if err != nil {
 			return resourceOpts{}, err
 		}
@@ -1353,11 +1357,11 @@ func (ctx *Context) getOpts(res Resource, t string, provider ProviderResource, o
 }
 
 func (ctx *Context) resolveProviderReference(provider ProviderResource) (string, error) {
-	urn, _, _, err := provider.URN().awaitURN(context.TODO())
+	urn, _, _, err := await(context.TODO(), provider.URN())
 	if err != nil {
 		return "", err
 	}
-	id, known, _, err := provider.ID().awaitID(context.TODO())
+	id, known, _, err := await(context.TODO(), provider.ID())
 	if err != nil {
 		return "", err
 	}
@@ -1415,7 +1419,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 			ctx.endRPC(err)
 		}()
 
-		urn, _, _, err := resource.URN().awaitURN(context.TODO())
+		urn, _, _, err := await(context.TODO(), resource.URN())
 		if err != nil {
 			return
 		}
@@ -1449,7 +1453,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 }
 
 // Export registers a key and value pair with the current context's stack.
-func (ctx *Context) Export(name string, value Input) {
+func (ctx *Context) Export(name string, value AnyOutput) {
 	ctx.exports[name] = value
 }
 
@@ -1459,16 +1463,20 @@ func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error 
 	return nil
 }
 
-func (ctx *Context) newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
-	return newOutputState(&ctx.join, elementType, deps...)
+func newOutputFromContext[T any](ctx *Context, deps ...Resource) Output[T] {
+	return newOutput[T](&ctx.join, deps...)
 }
 
-func (ctx *Context) newOutput(typ reflect.Type, deps ...Resource) Output {
-	return newOutput(&ctx.join, typ, deps...)
+func newDynamicOutputFromContext(ctx *Context, elemType reflect.Type, deps ...Resource) AnyOutput {
+	return newDynamicOutput(&ctx.join, elemType, deps...)
+}
+
+func initDynamicOutputFromContext(ctx *Context, empty emptyOutput, elemType reflect.Type, deps ...Resource) {
+	empty.dynamicInit(&ctx.join, elemType, deps...)
 }
 
 // NewOutput creates a new output associated with this context.
-func (ctx *Context) NewOutput() (Output, func(interface{}), func(error)) {
+func (ctx *Context) NewOutput() (AnyOutput, func(interface{}), func(error)) {
 	return newAnyOutput(&ctx.join)
 }
 

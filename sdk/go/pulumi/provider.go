@@ -31,7 +31,7 @@ import (
 )
 
 type constructFunc func(ctx *Context, typ, name string, inputs map[string]interface{},
-	options ResourceOption) (URNInput, Input, error)
+	options ResourceOption) (Output[URN], Map, error)
 
 // construct adapts the gRPC ConstructRequest/ConstructResponse to/from the Pulumi Go SDK programming model.
 func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,
@@ -87,7 +87,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	// Rebuild the resource options.
 	aliases := make([]Alias, len(req.GetAliases()))
 	for i, urn := range req.GetAliases() {
-		aliases[i] = Alias{URN: URN(urn)}
+		aliases[i] = Alias{URN: Inp(URN(urn))}
 	}
 	dependencyURNs := urnSet{}
 	for _, urn := range req.GetDependencies() {
@@ -127,7 +127,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		return nil, err
 	}
 
-	rpcURN, _, _, err := urn.ToURNOutput().awaitURN(ctx)
+	rpcURN, _, _, err := await(ctx, urn)
 	if err != nil {
 		return nil, err
 	}
@@ -227,13 +227,8 @@ func constructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error
 			return nil, fmt.Errorf("unmarshaling input %q: %w", k, err)
 		}
 
-		resultType := anyOutputType
-		if ot, ok := concreteTypeToOutputType.Load(reflect.TypeOf(value)); ok {
-			resultType = ot.(reflect.Type)
-		}
-
-		output := ctx.newOutput(resultType, ci.Dependencies(ctx)...)
-		output.getState().resolve(value, known, secret, nil)
+		output := newDynamicOutputFromContext(ctx, reflect.TypeOf(value), ci.Dependencies(ctx)...)
+		output.getUnsafeResolvers().resolve(value, known, secret, nil)
 		result[k] = output
 	}
 	return result, nil
@@ -300,8 +295,8 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 			return copyInputTo(ctx, v.OutputValue().Element, dest)
 		}
 
-		if !dest.Type().Implements(outputType) && !dest.Type().Implements(inputType) {
-			return fmt.Errorf("expected destination type to implement %v or %v, got %v", inputType, outputType, dest.Type())
+		if !dest.Type().Implements(outputType) {
+			return fmt.Errorf("expected destination type to implement %v, got %v", outputType, dest.Type())
 		}
 
 		resourceDeps := make([]Resource, len(v.OutputValue().Dependencies))
@@ -319,99 +314,6 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 	}
 
 	if dest.Type().Implements(outputType) {
-		result, err := createOutput(ctx, dest.Type(), v, true /*known*/, false /*secret*/, nil)
-		if err != nil {
-			return err
-		}
-		dest.Set(result)
-		return nil
-	}
-
-	if dest.Type().Implements(inputType) {
-		// Try to determine the input type from the interface.
-		if it, ok := inputInterfaceTypeToConcreteType.Load(dest.Type()); ok {
-			inputType := it.(reflect.Type)
-
-			for inputType.Kind() == reflect.Ptr {
-				inputType = inputType.Elem()
-			}
-
-			switch inputType.Kind() {
-			case reflect.Bool:
-				if !v.IsBool() {
-					return fmt.Errorf("expected a %v, got a %s", inputType, v.TypeString())
-				}
-				dest.Set(reflect.ValueOf(Bool(v.BoolValue())))
-				return nil
-			case reflect.Int:
-				if !v.IsNumber() {
-					return fmt.Errorf("expected an %v, got a %s", inputType, v.TypeString())
-				}
-				dest.Set(reflect.ValueOf(Int(int64(v.NumberValue()))))
-				return nil
-			case reflect.Float64:
-				if !v.IsNumber() {
-					return fmt.Errorf("expected an %v, got a %s", inputType, v.TypeString())
-				}
-				dest.Set(reflect.ValueOf(Float64(v.NumberValue())))
-				return nil
-			case reflect.String:
-				if !v.IsString() {
-					return fmt.Errorf("expected a %v, got a %s", inputType, v.TypeString())
-				}
-				dest.Set(reflect.ValueOf(String(v.StringValue())))
-				return nil
-			case reflect.Slice:
-				return copyToSlice(ctx, v, inputType, dest)
-			case reflect.Map:
-				return copyToMap(ctx, v, inputType, dest)
-			case reflect.Interface:
-				if !anyType.Implements(inputType) {
-					return fmt.Errorf("cannot unmarshal into non-empty interface type %v", inputType)
-				}
-				result, _, err := unmarshalPropertyValue(ctx, v)
-				if err != nil {
-					return err
-				}
-				dest.Set(reflect.ValueOf(result))
-				return nil
-			case reflect.Struct:
-				return copyToStruct(ctx, v, inputType, dest)
-			default:
-				panic(fmt.Sprintf("%v", inputType.Kind()))
-			}
-		}
-
-		if v.IsAsset() {
-			if !assetType.AssignableTo(dest.Type()) {
-				return fmt.Errorf("expected a %s, got an asset", dest.Type())
-			}
-			asset, _, err := unmarshalPropertyValue(ctx, v)
-			if err != nil {
-				return err
-			}
-			dest.Set(reflect.ValueOf(asset))
-			return nil
-		}
-
-		if v.IsArchive() {
-			if !archiveType.AssignableTo(dest.Type()) {
-				return fmt.Errorf("expected a %s, got an archive", dest.Type())
-			}
-			archive, _, err := unmarshalPropertyValue(ctx, v)
-			if err != nil {
-				return err
-			}
-			dest.Set(reflect.ValueOf(archive))
-			return nil
-		}
-
-		// For plain structs that implements the Input interface.
-		if dest.Type().Kind() == reflect.Struct {
-			return copyToStruct(ctx, v, dest.Type(), dest)
-		}
-
-		// Otherwise, create an output.
 		result, err := createOutput(ctx, dest.Type(), v, true /*known*/, false /*secret*/, nil)
 		if err != nil {
 			return err
@@ -440,41 +342,19 @@ func createOutput(ctx *Context, destType reflect.Type, v resource.PropertyValue,
 	deps []Resource) (reflect.Value, error) {
 
 	outputType := getOutputType(destType)
-	output := ctx.newOutput(outputType, deps...)
+	output := newDynamicOutputFromContext(ctx, outputType, deps...)
 	outputValueDest := reflect.New(output.ElementType()).Elem()
 	_, err := unmarshalOutput(ctx, v, outputValueDest)
 	if err != nil {
 		return reflect.Value{}, fmt.Errorf("unmarshaling value: %w", err)
 	}
-	output.getState().resolve(outputValueDest.Interface(), known, secret, nil)
+	output.getUnsafeResolvers().resolve(outputValueDest.Interface(), known, secret, nil)
 	return reflect.ValueOf(output), nil
 }
 
 func getOutputType(typ reflect.Type) reflect.Type {
-	if typ.Implements(outputType) {
-		return typ
-	} else if typ.Implements(inputType) && typ.Kind() == reflect.Interface {
-		// Attempt to determine the output type by looking up the registered input type,
-		// getting the input type's element type, and then looking up the registered output
-		// type by the element type.
-		if inputStructType, found := inputInterfaceTypeToConcreteType.Load(typ); found {
-			input := reflect.New(inputStructType.(reflect.Type)).Elem().Interface().(Input)
-			elementType := input.ElementType()
-			if outputType, ok := concreteTypeToOutputType.Load(elementType); ok {
-				return outputType.(reflect.Type)
-			}
-		}
-
-		// Otherwise, look for a `To<Name>Output` method that returns an output.
-		toOutputMethodName := "To" + strings.TrimSuffix(typ.Name(), "Input") + "Output"
-		if toOutputMethod, found := typ.MethodByName(toOutputMethodName); found {
-			mt := toOutputMethod.Type
-			if mt.NumIn() == 0 && mt.NumOut() == 1 && mt.Out(0).Implements(outputType) {
-				return mt.Out(0)
-			}
-		}
-	}
-	return anyOutputType
+	// TODO: how to produce a typed Output[T] type, given that it doesn't support reflection?
+	return outputType
 }
 
 func copyToSlice(ctx *Context, v resource.PropertyValue, typ reflect.Type, dest reflect.Value) error {
@@ -593,19 +473,19 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 			handleField := func(typ reflect.Type, value resource.PropertyValue,
 				deps []Resource) (reflect.Value, error) {
 				resultType := getOutputType(typ)
-				output := ctx.newOutput(resultType, deps...)
+				output := newDynamicOutputFromContext(ctx, resultType, deps...)
 				dest := reflect.New(output.ElementType()).Elem()
 				known := !ci.value.ContainsUnknowns()
 				secret, err := unmarshalOutput(ctx, value, dest)
 				if err != nil {
 					return reflect.Value{}, err
 				}
-				output.getState().resolve(dest.Interface(), known, secret, nil)
+				output.getUnsafeResolvers().resolve(dest.Interface(), known, secret, nil)
 				return reflect.ValueOf(output), nil
 			}
 
 			isOutputOrInputType := func(typ reflect.Type) bool {
-				return typ.Implements(outputType) || typ.Implements(inputType)
+				return typ.Implements(outputType)
 			}
 
 			if isOutputOrInputType(field.Type) {
@@ -649,8 +529,8 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 			}
 
 			if len(ci.deps) > 0 {
-				return fmt.Errorf("copying input %q: %s.%s is typed as %v but must be a type that implements %v or "+
-					"%v for input with dependencies", k, typ, field.Name, field.Type, inputType, outputType)
+				return fmt.Errorf("copying input %q: %s.%s is typed as %v but must be a type that implements %v "+
+					"for input with dependencies", k, typ, field.Name, field.Type, outputType)
 			}
 			dest := reflect.New(field.Type).Elem()
 			secret, err := unmarshalOutput(ctx, ci.value, dest)
@@ -658,8 +538,8 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 				return fmt.Errorf("copying input %q: unmarshaling value: %w", k, err)
 			}
 			if secret {
-				return fmt.Errorf("copying input %q: %s.%s is typed as %v but must be a type that implements %v or "+
-					"%v for secret input", k, typ, field.Name, field.Type, inputType, outputType)
+				return fmt.Errorf("copying input %q: %s.%s is typed as %v but must be a type that implements %v "+
+					"for secret input", k, typ, field.Name, field.Type, outputType)
 			}
 			fieldV.Set(reflect.ValueOf(dest.Interface()))
 		}
@@ -669,7 +549,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 }
 
 // newConstructResult converts a resource into its associated URN and state.
-func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
+func newConstructResult(resource ComponentResource) (*Output[URN], Map, error) {
 	if resource == nil {
 		return nil, nil, errors.New("resource must not be nil")
 	}
@@ -693,14 +573,15 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 			continue
 		}
 		val := fieldV.Interface()
-		if v, ok := val.(Input); ok {
+		if v, ok := val.(AnyOutput); ok {
 			state[tag] = v
 		} else {
 			state[tag] = ToOutput(val)
 		}
 	}
 
-	return resource.URN(), state, nil
+	urn := resource.URN()
+	return &urn, state, nil
 }
 
 // callFailure indicates that a call to Call failed; it contains the property and reason for the failure.
@@ -709,7 +590,7 @@ type callFailure struct {
 	Reason   string
 }
 
-type callFunc func(ctx *Context, tok string, args map[string]interface{}) (Input, []interface{}, error)
+type callFunc func(ctx *Context, tok string, args map[string]interface{}) (Map, []interface{}, error)
 
 // call adapts the gRPC CallRequest/CallResponse to/from the Pulumi Go SDK programming model.
 func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
@@ -865,7 +746,7 @@ func callArgsSelf(ctx *Context, source map[string]interface{}) (Resource, error)
 }
 
 // newCallResult converts a result struct into an input Map that can be marshalled.
-func newCallResult(result interface{}) (Input, error) {
+func newCallResult(result interface{}) (Map, error) {
 	if result == nil {
 		return nil, errors.New("result must not be nil")
 	}
@@ -889,7 +770,7 @@ func newCallResult(result interface{}) (Input, error) {
 			continue
 		}
 		val := fieldV.Interface()
-		if v, ok := val.(Input); ok {
+		if v, ok := val.(AnyOutput); ok {
 			ret[tag] = v
 		} else {
 			ret[tag] = ToOutput(val)

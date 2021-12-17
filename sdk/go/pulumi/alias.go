@@ -25,25 +25,25 @@ import (
 type Alias struct {
 	// Optional URN that uniquely identifies a resource. If specified, it takes preference and
 	// other members of the struct are ignored.
-	URN URNInput
+	URN *Output[URN]
 	// The previous name of the resource.  If not provided, the current name of the resource is used.
-	Name StringInput
+	Name *Output[string]
 	// The previous type of the resource.  If not provided, the current type of the resource is used.
-	Type StringInput
+	Type *Output[string]
 	// The previous parent of the resource. If not provided, the current parent of the resource is used by default.
 	// This option is mutually exclusive to `ParentURN` and `NoParent`.
 	// Use `Alias { NoParent: pulumi.Bool(true) }` to avoid defaulting to the current parent.
-	Parent Resource
+	Parent *Resource
 	// The previous parent of the resource in URN format, mutually exclusive to `Parent` and `ParentURN`.
 	// To specify no original parent, use `Alias { NoParent: pulumi.Bool(true) }`.
-	ParentURN URNInput
+	ParentURN *Output[URN]
 	// When true, indicates that the resource previously had no parent.
 	// This option is mutually exclusive to `Parent` and `ParentURN`.
-	NoParent BoolInput
+	NoParent *Output[bool]
 	// The name of the previous stack of the resource.  If not provided, defaults to `context.GetStack()
-	Stack StringInput
+	Stack *Output[string]
 	// The previous project of the resource. If not provided, defaults to `context.GetProject()`.
-	Project StringInput
+	Project *Output[string]
 }
 
 // More then one bool is set to true.
@@ -60,59 +60,74 @@ func multipleTrue(booleans ...bool) bool {
 }
 
 func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Resource,
-	defaultProject, defaultStack string) (URNOutput, error) {
+	defaultProject, defaultStack string) (*Output[URN], error) {
 
 	if a.URN != nil {
-		return a.URN.ToURNOutput(), nil
+		return a.URN, nil
 	}
 
-	n := a.Name
-	if n == nil {
-		n = String(defaultName)
+	var n Output[string]
+	if a.Name != nil {
+		n = *a.Name
+	} else {
+		n = In(defaultName)
 	}
-	t := a.Type
-	if t == nil {
-		t = String(defaultType)
+	var t Output[string]
+	if a.Type != nil {
+		t = *a.Type
+	} else {
+		t = In(defaultType)
 	}
 
-	var parent StringInput = String("")
+	var parent Output[string] = In("")
 	if defaultParent != nil {
-		parent = defaultParent.URN().ToStringOutput()
+		parent = ToString(defaultParent.URN())
 	}
 	if multipleTrue(a.Parent != nil, a.ParentURN != nil, a.NoParent != nil) {
-		return URNOutput{}, errors.New("alias can specify Parent, ParentURN or NoParent but not more then one")
+		return nil, errors.New("alias can specify Parent, ParentURN or NoParent but not more then one")
 	}
 	if a.Parent != nil {
-		parent = a.Parent.URN().ToStringOutput()
+		parent = ToString((*a.Parent).URN())
 	}
 	if a.ParentURN != nil {
-		parent = a.ParentURN.ToURNOutput()
+		parent = ToString(*a.ParentURN)
 	}
 	if a.NoParent != nil {
-		parent = All(a.NoParent.ToBoolOutput(), parent).ApplyT(func(a []interface{}) string {
-			if a[0].(bool) {
-				return ""
-			}
-			return a[1].(string)
-		}).(StringOutput)
+		parent = Cast[string](
+			All(a.NoParent, parent).ApplyT(func(arr interface{}) interface{} {
+				a := arr.([]interface{})
+				if a[0].(bool) {
+					return ""
+				}
+				return a[1].(string)
+			}),
+		)
 	}
 
-	project := a.Project
-	if project == nil {
-		project = String(defaultProject)
+	var project Output[string]
+	if a.Project != nil {
+		project = *a.Project
+	} else {
+		project = In(defaultProject)
 	}
-	stack := a.Stack
-	if stack == nil {
-		stack = String(defaultStack)
+	var stack Output[string]
+	if a.Stack != nil {
+		stack = *a.Stack
+	} else {
+		stack = In(defaultStack)
 	}
 
-	return CreateURN(n, t, parent, project, stack), nil
+	urn := CreateURN(n, t, &parent, project, stack)
+	return &urn, nil
 }
 
 // CreateURN computes a URN from the combination of a resource name, resource type, and optional parent,
-func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
-	if parent == nil {
-		parent = String("")
+func CreateURN(name, t Output[string], parent *Output[string], project, stack Output[string]) Output[URN] {
+	var par Output[string]
+	if parent != nil {
+		par = *parent
+	} else {
+		par = In("")
 	}
 	createURN := func(parent, stack, project, t, name string) URN {
 		var parentPrefix string
@@ -127,24 +142,28 @@ func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 		}
 		return URN(parentPrefix + t + "::" + name)
 	}
-	// The explicit call to `ToStringOutput` is necessary because `URNOutput`
-	// conforms to `StringInput` so `parent.(string)` can fail without the
+	// The explicit call to `ToStringOutput` is necessary because `Output[URN]`
+	// conforms to `Output[string]` so `parent.(string)` can fail without the
 	// explicit conversion.
-	return All(parent.ToStringOutput(), stack, project, t, name).ApplyT(func(a []interface{}) URN {
-		return createURN(a[0].(string), a[1].(string), a[2].(string), a[3].(string), a[4].(string))
-	}).(URNOutput)
+	return Cast[URN](
+		All(par, stack, project, t, name).ApplyT(func(arr interface{}) interface{} {
+			a := arr.([]interface{})
+			return createURN(a[0].(string), a[1].(string), a[2].(string), a[3].(string), a[4].(string))
+		}),
+	)
 }
 
 // inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
 // This may involve changing the name of the resource in cases where the resource has a named derived from the name of
 // the parent, and the parent name changed.
-func inheritedChildAlias(childName, parentName, childType, project, stack string, parentURN URNOutput) URNOutput {
-	aliasName := StringInput(String(childName))
+func inheritedChildAlias(childName, parentName, childType, project, stack string, parentURN Output[URN]) Output[URN] {
+	aliasName := In(childName)
 	if strings.HasPrefix(childName, parentName) {
-		aliasName = parentURN.ApplyT(func(urn URN) string {
+		aliasName = Apply(parentURN, func(urn URN) string {
 			parentPrefix := urn[strings.LastIndex(string(urn), "::")+2:]
 			return string(parentPrefix) + childName[len(parentName):]
-		}).(StringOutput)
+		})
 	}
-	return CreateURN(aliasName, String(childType), parentURN.ToStringOutput(), String(project), String(stack))
+	parent := ToString(parentURN)
+	return CreateURN(aliasName, In(childType), &parent, In(project), In(stack))
 }

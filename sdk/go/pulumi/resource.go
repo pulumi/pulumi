@@ -38,20 +38,20 @@ var providerResourceStateType = reflect.TypeOf(ProviderResourceState{})
 type ResourceState struct {
 	m sync.RWMutex
 
-	urn URNOutput `pulumi:"urn"`
+	urn Output[URN] `pulumi:"urn"`
 
 	children        resourceSet
 	providers       map[string]ProviderResource
 	provider        ProviderResource
 	version         string
-	aliases         []URNOutput
+	aliases         []Output[URN]
 	name            string
 	transformations []ResourceTransformation
 
 	remoteComponent bool
 }
 
-func (s *ResourceState) URN() URNOutput {
+func (s *ResourceState) URN() Output[URN] {
 	return s.urn
 }
 
@@ -95,7 +95,7 @@ func (s *ResourceState) getVersion() string {
 	return s.version
 }
 
-func (s *ResourceState) getAliases() []URNOutput {
+func (s *ResourceState) getAliases() []Output[URN] {
 	return s.aliases
 }
 
@@ -123,8 +123,8 @@ func (*ResourceState) isResource() {}
 
 func (ctx *Context) newDependencyResource(urn URN) Resource {
 	var res ResourceState
-	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
-	res.urn.resolve(urn, true, false, nil)
+	res.urn = newOutputFromContext[URN](ctx, &res)
+	res.urn.getUnsafeResolvers().resolve(urn, true, false, nil)
 
 	// For the purposes of dependency management, dependency resources are treated like remote components.
 	res.remoteComponent = true
@@ -134,10 +134,10 @@ func (ctx *Context) newDependencyResource(urn URN) Resource {
 type CustomResourceState struct {
 	ResourceState
 
-	id IDOutput `pulumi:"id"`
+	id Output[ID] `pulumi:"id"`
 }
 
-func (s *CustomResourceState) ID() IDOutput {
+func (s *CustomResourceState) ID() Output[ID] {
 	return s.id
 }
 
@@ -145,10 +145,10 @@ func (*CustomResourceState) isCustomResource() {}
 
 func (ctx *Context) newDependencyCustomResource(urn URN, id ID) CustomResource {
 	var res CustomResourceState
-	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
-	res.urn.resolve(urn, true, false, nil)
-	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
-	res.id.resolve(id, id != "", false, nil)
+	res.urn = newOutputFromContext[URN](ctx, &res)
+	res.urn.getUnsafeResolvers().resolve(urn, true, false, nil)
+	res.id = newOutputFromContext[ID](ctx, &res)
+	res.id.getUnsafeResolvers().resolve(id, id != "", false, nil)
 	return &res
 }
 
@@ -164,10 +164,10 @@ func (s *ProviderResourceState) getPackage() string {
 
 func (ctx *Context) newDependencyProviderResource(urn URN, id ID) ProviderResource {
 	var res ProviderResourceState
-	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
-	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
-	res.urn.resolve(urn, true, false, nil)
-	res.id.resolve(id, id != "", false, nil)
+	res.urn = newOutputFromContext[URN](ctx, &res)
+	res.urn.getUnsafeResolvers().resolve(urn, true, false, nil)
+	res.id = newOutputFromContext[ID](ctx, &res)
+	res.id.getUnsafeResolvers().resolve(id, id != "", false, nil)
 	res.pkg = string(resource.URN(urn).Type().Name())
 	return &res
 }
@@ -175,7 +175,7 @@ func (ctx *Context) newDependencyProviderResource(urn URN, id ID) ProviderResour
 // Resource represents a cloud resource managed by Pulumi.
 type Resource interface {
 	// URN is this resource's stable logical URN used to distinctly address it before, during, and after deployments.
-	URN() URNOutput
+	URN() Output[URN]
 
 	// getChildren returns the resource's children.
 	getChildren() []Resource
@@ -193,7 +193,7 @@ type Resource interface {
 	getVersion() string
 
 	// getAliases returns the list of aliases for this resource
-	getAliases() []URNOutput
+	getAliases() []Output[URN]
 
 	// getName returns the name of the resource
 	getName() string
@@ -221,7 +221,7 @@ type CustomResource interface {
 	Resource
 	// ID is the provider-assigned unique identifier for this managed resource.  It is set during deployments,
 	// but might be missing ("") during planning phases.
-	ID() IDOutput
+	ID() Output[ID]
 
 	isCustomResource()
 }
@@ -264,7 +264,7 @@ type resourceOptions struct {
 	// the cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's
 	// current state. Once a resource has been imported, the import property must be removed from the resource's
 	// options.
-	Import IDInput
+	Import *Output[ID]
 	// Parent is an optional parent resource to which this resource belongs.
 	Parent Resource
 	// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
@@ -378,12 +378,10 @@ func DependsOn(o []Resource) ResourceOption {
 //     var ro ResourceOutput
 //     allDeps := NewResourceArrayOutput(NewResourceOutput(r), ri.ToResourceOutput(), ro)
 //     DependsOnInputs(allDeps)
-func DependsOnInputs(o ResourceArrayInput) ResourceOption {
+func DependsOnInputs(o Output[[]Resource]) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) (urnSet, error) {
-			out := o.ToResourceArrayOutput()
-
-			value, known, _ /* secret */, _ /* deps */, err := out.await(ctx)
+			value, known, _ /* secret */, _ /* deps */, err := o.await(ctx)
 			if err != nil || !known {
 				return nil, err
 			}
@@ -395,7 +393,7 @@ func DependsOnInputs(o ResourceArrayInput) ResourceOption {
 			}
 
 			// For some reason, deps returned above are incorrect; instead:
-			toplevelDeps := out.dependencies()
+			toplevelDeps := o.dependencies()
 
 			return expandDependencies(ctx, append(resources, toplevelDeps...))
 		})
@@ -413,9 +411,9 @@ func IgnoreChanges(o []string) ResourceOption {
 // the cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's
 // current state. Once a resource has been imported, the import property must be removed from the resource's
 // options.
-func Import(o IDInput) ResourceOption {
+func Import(o Output[ID]) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.Import = o
+		ro.Import = &o
 	})
 }
 
