@@ -117,6 +117,18 @@ type TestStep struct {
 	Validate      ValidateFunc
 }
 
+func (t *TestStep) ValidateAnd(f ValidateFunc) {
+	o := t.Validate
+	t.Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
+		events []Event, res result.Result) result.Result {
+		r := o(project, target, entries, events, res)
+		if r != nil {
+			return r
+		}
+		return f(project, target, entries, events, res)
+	}
+}
+
 type TestPlan struct {
 	Project        string
 	Stack          string

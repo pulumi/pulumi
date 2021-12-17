@@ -93,6 +93,7 @@ type ResourceOptions struct {
 	PropertyDeps          map[resource.PropertyKey][]resource.URN
 	DeleteBeforeReplace   *bool
 	Version               string
+	PluginDownloadURL     string
 	IgnoreChanges         []string
 	ReplaceOnChanges      []string
 	Aliases               []resource.URN
@@ -188,6 +189,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Remote:                     opts.Remote,
 		ReplaceOnChanges:           opts.ReplaceOnChanges,
 		Providers:                  opts.Providers,
+		PluginDownloadURL:          opts.PluginDownloadURL,
 	}
 
 	// submit request
