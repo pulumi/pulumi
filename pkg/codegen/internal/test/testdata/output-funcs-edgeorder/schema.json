@@ -12,6 +12,9 @@
       "projectReferences": [
         "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
       ]
+    },
+    "go": {
+      "generateExtraInputTypes": true
     }
   },
   "functions": {

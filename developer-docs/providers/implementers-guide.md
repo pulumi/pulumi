@@ -269,7 +269,10 @@ operations and funtion calls. After calling `SignalCancellation`, the client cal
 `Close` to inform the provider that it should release any resources it holds.
 
 `SignalCancellation` is advisory and non-blocking; it is up to the client to decide how
-long to wait after calling `SignalCancellation` to call `Close`.
+long to wait after calling `SignalCancellation` to call `Close`. Typically, a provider should
+check for the cancellation signal while polling for completion of an operation. If cancelling
+while waiting for a create operation to be completed, then a "partial state" should be
+returned in the error to include the provider-created id.
 
 ## Custom Resource Lifecycle
 

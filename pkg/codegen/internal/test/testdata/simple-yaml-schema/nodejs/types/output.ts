@@ -29,6 +29,10 @@ export interface ObjectWithNodeOptionalInputs {
     foo: string;
 }
 
+export interface OutputOnlyObjectType {
+    foo?: string;
+}
+
 export interface SomeOtherObject {
     baz?: string;
 }

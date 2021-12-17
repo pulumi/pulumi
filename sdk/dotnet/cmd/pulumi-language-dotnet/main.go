@@ -330,10 +330,10 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v, %v",
 		packageDir, packageName, packageVersion)
 
-	// Check for a `~/.nuget/packages/package_name/package_version/content/{pulumiplugin.json,version.txt}` file.
+	// Check for a `~/.nuget/packages/package_name/package_version/content/{pulumi-plugin.json,version.txt}` file.
 
 	artifactPath := filepath.Join(packageDir, strings.ToLower(packageName), packageVersion, "content")
-	pulumiPluginFilePath := filepath.Join(artifactPath, "pulumiplugin.json")
+	pulumiPluginFilePath := filepath.Join(artifactPath, "pulumi-plugin.json")
 	versionFilePath := filepath.Join(artifactPath, "version.txt")
 	logging.V(5).Infof("GetRequiredPlugins: plugin file path: %v", versionFilePath)
 	logging.V(5).Infof("GetRequiredPlugins: version file path: %v", versionFilePath)
@@ -362,7 +362,7 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 
 	defaultName := strings.ToLower(strings.TrimPrefix(packageName, "Pulumi."))
 
-	// No pulumiplugin.json or version.txt
+	// No pulumi-plugin.json or version.txt
 	// That means this is not a resource.
 	if pulumiPlugin == nil && vf == nil {
 		return nil, nil

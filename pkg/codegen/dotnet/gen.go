@@ -2150,7 +2150,7 @@ func genPackageMetadata(pkg *schema.Package,
 
 	files.add(assemblyName+".csproj", projectFile)
 	files.add("logo.png", logo)
-	files.add("pulumiplugin.json", plugin)
+	files.add("pulumi-plugin.json", plugin)
 	return nil
 }
 

@@ -208,9 +208,9 @@ func TestGetPlugin(t *testing.T) {
 				err := os.MkdirAll(path, 0700)
 				assert.NoErrorf(t, err, "Failed to setup test folder", path)
 				bytes, err := c.JSON.JSON()
-				assert.NoError(t, err, "Failed to setup test pulumiplugin.json")
-				err = os.WriteFile(filepath.Join(path, "pulumiplugin.json"), bytes, 0600)
-				assert.NoError(t, err, "Failed to write pulumiplugin.json")
+				assert.NoError(t, err, "Failed to setup test pulumi-plugin.json")
+				err = os.WriteFile(filepath.Join(path, "pulumi-plugin.json"), bytes, 0600)
+				assert.NoError(t, err, "Failed to write pulumi-plugin.json")
 			}
 			actual, err := c.Mod.getPlugin()
 			if c.ShouldErr {

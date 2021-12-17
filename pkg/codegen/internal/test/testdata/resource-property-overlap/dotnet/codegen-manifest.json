@@ -6,6 +6,6 @@
     "Rec.cs",
     "Utilities.cs",
     "logo.png",
-    "pulumiplugin.json"
+    "pulumi-plugin.json"
   ]
 }
