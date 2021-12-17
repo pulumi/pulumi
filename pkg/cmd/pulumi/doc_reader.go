@@ -180,9 +180,13 @@ type markdownReader struct {
 }
 
 type location struct {
+	// If a span is specified, then its associated string must also be specified.
 	span        *renderer.NodeSpan
 	displaySpan string
-	page        string
+
+	// If a page is specified, then its associated view must also be specified.
+	page string
+	view *mdk.MarkdownView
 }
 
 func (l *location) isEmpty() bool {
@@ -210,14 +214,18 @@ func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Appl
 	return r
 }
 
+func (r *markdownReader) SetView(name string, view *mdk.MarkdownView) {
+	r.rootPages.RemovePage(name)
+	r.rootPages.AddAndSwitchToPage(name, view, true)
+	r.focused = view
+	r.view = view
+}
+
 func (r *markdownReader) SetSource(name, source string) {
 	view := mdk.NewMarkdownView(r.theme)
 	view.SetText(name, source)
 	view.SetGutter(true)
-
-	r.rootPages.AddAndSwitchToPage(name, view, true)
-	r.view = view
-	r.focused = r.view
+	r.SetView(name, view)
 }
 
 func (r *markdownReader) Draw(screen tcell.Screen) {
@@ -252,6 +260,7 @@ func (r *markdownReader) OpenLink() {
 		span:        selection,
 		displaySpan: link,
 		page:        currentPage,
+		view:        r.view,
 	}
 
 	anchorLink := func(link string, reader *markdownReader) (bool, error) {
@@ -305,9 +314,7 @@ func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus fun
 						r.backstack = r.backstack[:len(r.backstack)-1]
 						if last.page != "" {
 							r.rootPages.SwitchToPage(last.page)
-							_, page := r.rootPages.GetFrontPage()
-							r.view = page.(*mdk.MarkdownView)
-							r.focused = r.view
+							r.SetView(last.page, last.view)
 						}
 						if last.span != nil {
 							r.view.SelectSpan(last.span, true)
