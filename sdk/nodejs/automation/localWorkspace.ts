@@ -409,7 +409,13 @@ export class LocalWorkspace implements Workspace {
      */
     async setConfig(stackName: string, key: string, value: ConfigValue): Promise<void> {
         const secretArg = value.secret ? "--secret" : "--plaintext";
-        await this.runPulumiCmd(["config", "set", key, value.value, secretArg, "--stack", stackName]);
+        await this.runPulumiCmd(["config", "set", key,
+                                 "--stack", stackName,
+                                 secretArg,
+                                 "--non-interactive",
+                                 "--",
+                                 value.value,
+                                ]);
     }
     /**
      * Sets all values in the provided config map for the specified stack name.

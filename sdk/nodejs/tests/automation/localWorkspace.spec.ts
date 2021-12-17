@@ -131,6 +131,34 @@ describe("LocalWorkspace", () => {
 
         await ws.removeStack(stackName);
     }));
+    it(`config_flag_like`, asyncTest(async () => {
+        const projectName = "config_flag_like";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
+        const ws = await LocalWorkspace.create({ projectSettings });
+        const stackName = fullyQualifiedStackName(getTestOrg(),
+                                                  projectName,
+                                                  `int_test${getTestSuffix()}`);
+        const stack = await Stack.create(stackName, ws);
+        await stack.setConfig("key", {value: "-value"});
+        await stack.setConfig("secret-key", {value: "-value", secret: true});
+        let values = await stack.getAllConfig();
+        assert.strictEqual(values["config_flag_like:key"].value, "-value");
+        assert.strictEqual(values["config_flag_like:key"].secret, false);
+        assert.strictEqual(values["config_flag_like:secret-key"].value, "-value");
+        assert.strictEqual(values["config_flag_like:secret-key"].secret, true);
+        await stack.setAllConfig({
+            "key": {value: "-value2"},
+            "secret-key": {value: "-value2", secret: true},
+        });
+        let values2 = await stack.getAllConfig();
+        assert.strictEqual(values2["config_flag_like:key"].value, "-value2");
+        assert.strictEqual(values2["config_flag_like:key"].secret, false);
+        assert.strictEqual(values2["config_flag_like:secret-key"].value, "-value2");
+        assert.strictEqual(values2["config_flag_like:secret-key"].secret, true);
+    }));
     it(`nested_config`, asyncTest(async () => {
         if (getTestOrg() !== "pulumi-test") {
             return;
