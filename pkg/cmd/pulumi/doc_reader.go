@@ -214,14 +214,18 @@ func newMarkdownReader(name, source string, theme *chroma.Style, app *tview.Appl
 	return r
 }
 
+func (r *markdownReader) SetView(name string, view *mdk.MarkdownView) {
+	r.rootPages.RemovePage(name)
+	r.rootPages.AddAndSwitchToPage(name, view, true)
+	r.focused = view
+	r.view = view
+}
+
 func (r *markdownReader) SetSource(name, source string) {
 	view := mdk.NewMarkdownView(r.theme)
 	view.SetText(name, source)
 	view.SetGutter(true)
-
-	r.rootPages.AddAndSwitchToPage(name, view, true)
-	r.view = view
-	r.focused = r.view
+	r.SetView(name, view)
 }
 
 func (r *markdownReader) Draw(screen tcell.Screen) {
@@ -309,11 +313,8 @@ func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus fun
 						last := r.backstack[len(r.backstack)-1]
 						r.backstack = r.backstack[:len(r.backstack)-1]
 						if last.page != "" {
-							page := r.rootPages.SwitchToPage(last.page)
-							if page != nil {
-								r.focused = page
-								r.view = last.view
-							}
+							r.rootPages.SwitchToPage(last.page)
+							r.SetView(last.page, last.view)
 						}
 						if last.span != nil {
 							r.view.SelectSpan(last.span, true)
