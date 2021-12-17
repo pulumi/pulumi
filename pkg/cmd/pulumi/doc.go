@@ -57,9 +57,10 @@ func newDocCmd() *cobra.Command {
 	var schemas []string
 
 	var cmd = &cobra.Command{
-		Use:   "doc <member>[#/<json-pointer>]",
-		Args:  cmdutil.ExactArgs(1),
-		Short: "Display docs for a package member",
+		Use:               "doc <member>[#/<json-pointer>]",
+		Args:              cmdutil.ExactArgs(1),
+		ValidArgsFunction: getValidDocArgs,
+		Short:             "Display docs for a package member",
 		Long: "Display docs for a package member.\n" +
 			"\n" +
 			"This command prints the documentation associated with the package\n" +
@@ -87,7 +88,6 @@ func newDocCmd() *cobra.Command {
 				return err
 			}
 			if term.IsTerminal(int(os.Stdout.Fd())) {
-
 				return renderLiveView(pointer, docstring, res)
 			}
 			// Rendering into a pipe
@@ -295,6 +295,9 @@ func (r *docstringResolver) findWholeDocstring(pointer string) (string, bool, er
 	case *schema.Function:
 		docstring := genFunctionDocstring(object, r.lang, r.helper)
 		return docstring, true, nil
+	case *schema.Package:
+		docstring, err := genPackageDocstring(pkg)
+		return docstring, true, err
 	default:
 		return "", false, fmt.Errorf("unexpected member of type %T", member)
 	}
@@ -485,6 +488,31 @@ func genFunctionDocstring(function *schema.Function, lang string, helper codegen
 	return function.Comment
 }
 
+//go:embed doc_package.tmpl
+var packageTemplateText string
+var packageTemplate = template.Must(template.New("package").Funcs(template.FuncMap{
+	"getTypes": getPackageDefinedTypes,
+}).Parse(packageTemplateText))
+
+func getPackageDefinedTypes(pkg *schema.Package) []schema.Type {
+	var types []schema.Type
+	for _, t := range pkg.Types {
+		switch t := t.(type) {
+		case *schema.EnumType, *schema.ObjectType:
+			types = append(types, t)
+		}
+	}
+	return types
+}
+
+func genPackageDocstring(pkg *schema.Package) (string, error) {
+	var buf strings.Builder
+	if err := packageTemplate.Execute(&buf, pkg); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
 func renderLiveView(title, docstring string, r *docstringResolver) error {
 	if ti, _, err := dynamic.LoadTerminfo(os.Getenv("TERM")); err == nil {
 		terminfo.AddTerminfo(ti)
@@ -524,4 +552,107 @@ func renderDocstring(w io.Writer, docstring string) error {
 	renderer := goldmark_renderer.NewRenderer(
 		goldmark_renderer.WithNodeRenderers(util.Prioritized(r, 100)))
 	return renderer.Render(w, source, document)
+}
+
+func getValidDocArgs(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// do we have a valid member token? if so, list available pointers
+	member := ""
+	if hash := strings.Index(toComplete, "#"); hash != -1 {
+		member = toComplete[:hash]
+	}
+	if memberToken, err := tokens.ParseModuleMember(member); err == nil {
+		pointers, err := listAvailablePointers(memberToken)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		return pointers, cobra.ShellCompDirectiveDefault
+	}
+
+	// do we have a partial member token from which we can pull a package name? if so, list available tokens
+	if idx := strings.IndexByte(member, ':'); idx != -1 {
+		tokens, err := listAvailableTokens(member[:idx])
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		return tokens, cobra.ShellCompDirectiveDefault
+	}
+
+	// otherwise, return either the list of pacakges or the list of available tokens if the package is present in
+	// the list.
+	packages, err := listAvailablePackages()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	for _, p := range packages {
+		if p == toComplete {
+			tokens, err := listAvailableTokens(p)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			return tokens, cobra.ShellCompDirectiveDefault
+		}
+	}
+	return packages, cobra.ShellCompDirectiveDefault
+}
+
+func listAvailablePackages() ([]string, error) {
+	plugins, err := workspace.GetPlugins()
+	if err != nil {
+		return nil, err
+	}
+
+	var pkgs []string
+	for _, p := range plugins {
+		if p.Kind == workspace.ResourcePlugin {
+			pkgs = append(pkgs, p.Name)
+		}
+	}
+	return pkgs, nil
+}
+
+func listAvailableTokens(pkgName string) ([]string, error) {
+	pkg, err := getPackageSchema(pkgName)
+	if err != nil {
+		return nil, err
+	}
+
+	var tokens []string
+	for _, r := range pkg.Resources {
+		tokens = append(tokens, r.Token)
+	}
+	for _, f := range pkg.Functions {
+		tokens = append(tokens, f.Token)
+	}
+	for _, t := range pkg.Types {
+		switch t := t.(type) {
+		case *schema.EnumType:
+			tokens = append(tokens, t.Token)
+		case *schema.ObjectType:
+			tokens = append(tokens, t.Token)
+		}
+	}
+	return tokens, nil
+}
+
+func listAvailablePointers(member tokens.ModuleMember) ([]string, error) {
+	pkg, err := getPackageSchema(string(member.Package()))
+	if err != nil {
+		return nil, err
+	}
+
+	object := interface{}(pkg)
+	if member != "" {
+		// find the referenced member
+		if member == "provider" {
+			object = pkg.Provider
+		} else if res, ok := pkg.GetResource(string(member)); ok {
+			object = res
+		} else if fn, ok := pkg.GetFunction(string(member)); ok {
+			object = fn
+		} else if typ, ok := pkg.GetType(string(member)); ok {
+			object = typ.(schema.HasMembers)
+		}
+	}
+
+	return object.(schema.HasMembers).ListMembers(), nil
 }

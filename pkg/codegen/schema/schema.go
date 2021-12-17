@@ -44,6 +44,7 @@ import (
 
 type HasMembers interface {
 	GetMember(pointer string) (interface{}, bool)
+	ListMembers() []string
 
 	getOwnMember(path []string) (member interface{}, rest []string, ok bool)
 }
@@ -212,6 +213,14 @@ func (t *EnumType) GetMember(pointer string) (interface{}, bool) {
 	return GetMember(t, pointer)
 }
 
+func (t *EnumType) ListMembers() []string {
+	members := make([]string, len(t.Elements))
+	for i := 0; i < len(t.Elements); i++ {
+		members[i] = strconv.FormatInt(int64(i), 10)
+	}
+	return members
+}
+
 func (t *EnumType) getOwnMember(path []string) (interface{}, []string, bool) {
 	if len(path) < 2 || path[0] != "enum" {
 		return nil, nil, false
@@ -331,6 +340,14 @@ func (t *ObjectType) String() string {
 
 func (t *ObjectType) GetMember(pointer string) (interface{}, bool) {
 	return GetMember(t, pointer)
+}
+
+func (t *ObjectType) ListMembers() []string {
+	properties := make([]string, len(t.Properties))
+	for i, p := range t.Properties {
+		properties[i] = p.Name
+	}
+	return properties
 }
 
 func (t *ObjectType) getOwnMember(path []string) (interface{}, []string, bool) {
@@ -477,6 +494,15 @@ type Resource struct {
 
 func (r *Resource) GetMember(pointer string) (interface{}, bool) {
 	return GetMember(r, pointer)
+}
+
+func (r *Resource) ListMembers() []string {
+	return []string{
+		"properties",
+		"inputProperties",
+		"stateInputs",
+		"methods",
+	}
 }
 
 func (r *Resource) getOwnMember(path []string) (interface{}, []string, bool) {
@@ -646,6 +672,13 @@ type Function struct {
 
 func (f *Function) GetMember(pointer string) (interface{}, bool) {
 	return GetMember(f, pointer)
+}
+
+func (f *Function) ListMembers() []string {
+	return []string{
+		"inputs",
+		"outputs",
+	}
 }
 
 func (f *Function) getOwnMember(path []string) (interface{}, []string, bool) {
@@ -997,6 +1030,14 @@ func (pkg *Package) GetType(token string) (Type, bool) {
 
 func (pkg *Package) GetMember(pointer string) (interface{}, bool) {
 	return GetMember(pkg, pointer)
+}
+
+func (pkg *Package) ListMembers() []string {
+	return []string{
+		"types",
+		"resources",
+		"functions",
+	}
 }
 
 func (pkg *Package) getOwnMember(refs []string) (interface{}, []string, bool) {

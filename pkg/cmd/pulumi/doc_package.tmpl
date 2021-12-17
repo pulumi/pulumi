@@ -1,0 +1,18 @@
+# Package {{with .DisplayName}}{{.}}{{else}}{{.Name}}{{end}}
+
+{{.Description}}
+
+## Resources
+
+{{range .Resources}}- [{{.Token}}]({{.Token}})
+{{end}}
+
+## Functions
+
+{{range .Functions}}- [{{.Token}}]({{.Token}})
+{{end}}
+
+## Types
+
+{{range (getTypes .)}}- [{{.Token}}]({{.Token}})
+{{end}}

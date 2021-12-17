@@ -216,6 +216,8 @@ func (r *markdownReader) SetSource(name, source string) {
 	view.SetGutter(true)
 
 	r.rootPages.AddAndSwitchToPage(name, view, true)
+	r.view = view
+	r.focused = r.view
 }
 
 func (r *markdownReader) Draw(screen tcell.Screen) {
@@ -303,6 +305,9 @@ func (r *markdownReader) InputHandler() func(event *tcell.EventKey, setFocus fun
 						r.backstack = r.backstack[:len(r.backstack)-1]
 						if last.page != "" {
 							r.rootPages.SwitchToPage(last.page)
+							_, page := r.rootPages.GetFrontPage()
+							r.view = page.(*mdk.MarkdownView)
+							r.focused = r.view
 						}
 						if last.span != nil {
 							r.view.SelectSpan(last.span, true)
