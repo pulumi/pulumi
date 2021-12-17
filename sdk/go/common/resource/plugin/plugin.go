@@ -44,9 +44,10 @@ import (
 )
 
 // PulumiPluginJSON represents additional information about a package's associated Pulumi plugin.
-// For Python, the content is inside a pulumiplugin.json file inside the package.
+// For Python, the content is inside a pulumi-plugin.json file inside the package.
 // For Node.js, the content is within the package.json file, under the "pulumi" node.
-// This is not currently used for .NET or Go, but we could consider adopting it for those languages.
+// For .NET, the content is inside a pulumi-plugin.json file inside the NuGet package.
+// For Go, the content is inside a pulumi-plugin.json file inside the module.
 type PulumiPluginJSON struct {
 	// Indicates whether the package has an associated resource plugin. Set to false to indicate no plugin.
 	Resource bool `json:"resource"`

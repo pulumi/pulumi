@@ -1612,15 +1612,18 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 //   are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
 //   diagnostic error that is appropriately tagged with a JSON pointer.
 //
-func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*Package, hcl.Diagnostics, error) {
+func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
+	validate bool) (*Package, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Validate the package against the metaschema.
-	validationDiags, err := validateSpec(spec)
-	if err != nil {
-		return nil, nil, fmt.Errorf("validating spec: %w", err)
+	if validate {
+		validationDiags, err := validateSpec(spec)
+		if err != nil {
+			return nil, nil, fmt.Errorf("validating spec: %w", err)
+		}
+		diags = diags.Extend(validationDiags)
 	}
-	diags = diags.Extend(validationDiags)
 
 	// Validate that there is a name
 	if spec.Name == "" {
@@ -1767,13 +1770,16 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*
 // BindSpec converts a serializable PackageSpec into a Package. Any semantic errors encountered during binding are
 // contained in the returned diagnostics. The returned error is only non-nil if a fatal error was encountered.
 func BindSpec(spec PackageSpec, languages map[string]Language) (*Package, hcl.Diagnostics, error) {
-	return bindSpec(spec, languages, nil)
+	return bindSpec(spec, languages, nil, true)
 }
 
-// ImportSpec converts a serializable PackageSpec into a Package.
+// ImportSpec converts a serializable PackageSpec into a Package. Unlike BindSpec, ImportSpec does not validate its
+// input against the Pulumi package metaschema. ImportSpec should only be used to load packages that are assumed to be
+// well-formed (e.g. packages referenced for program code generation or by a root package being used for SDK
+// generation). BindSpec should be used to load and validate a package spec prior to generating its SDKs.
 func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, error) {
 	// Call the internal implementation that includes a loader parameter.
-	pkg, diags, err := bindSpec(spec, languages, nil)
+	pkg, diags, err := bindSpec(spec, languages, nil, false)
 	if err != nil {
 		return nil, err
 	}

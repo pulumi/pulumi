@@ -43,7 +43,7 @@ func TestProviderRequestNameDevURL(t *testing.T) {
 	assert.Equal(t, "pkg-0.17.7-dev.1555435978+gb7030aa4.dirty-company.com/artifact-storage/pkg", req.String())
 }
 
-func TestCanonicalizeURL(t *testing.T) {
+func TestProviderRequestCanonicalizeURL(t *testing.T) {
 	req := NewProviderRequest(nil, "pkg", "company.com/")
 	assert.Equal(t, "company.com", req.PluginDownloadURL())
 	assert.Equal(t, "default_company.com", req.Name().String())

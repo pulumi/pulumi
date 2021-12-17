@@ -74,20 +74,21 @@ func (p ProviderRequest) PluginDownloadURL() string {
 // If a version is not provided, "default" is returned. Otherwise, Name returns a name starting with "default" and
 // followed by a QName-legal representation of the semantic version of the requested provider.
 func (p ProviderRequest) Name() tokens.QName {
-	if p.version == nil {
-		return "default"
+	base := "default"
+	if v := p.version; v != nil {
+		// QNames are forbidden to contain dashes, so we construct a string here using the semantic
+		// version's component parts.
+		base += fmt.Sprintf("_%d_%d_%d", v.Major, v.Minor, v.Patch)
+		for _, pre := range v.Pre {
+			base += "_" + pre.String()
+		}
+		for _, build := range v.Build {
+			base += "_" + build
+		}
 	}
 
-	// QNames are forbidden to contain dashes, so we construct a string here using the semantic version's component
-	// parts.
-	v := p.version
-	base := fmt.Sprintf("default_%d_%d_%d", v.Major, v.Minor, v.Patch)
-	for _, pre := range v.Pre {
-		base += "_" + pre.String()
-	}
-
-	for _, build := range v.Build {
-		base += "_" + build
+	if url := p.pluginDownloadURL; url != "" {
+		base += "_" + tokens.IntoQName(url).String()
 	}
 
 	if p.pluginDownloadURL != "" {

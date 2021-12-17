@@ -15,6 +15,7 @@ __all__ = [
     'ConfigMap',
     'Object',
     'ObjectWithNodeOptionalInputs',
+    'OutputOnlyObjectType',
     'SomeOtherObject',
 ]
 
@@ -121,6 +122,19 @@ class ObjectWithNodeOptionalInputs(dict):
     @pulumi.getter
     def bar(self) -> Optional[int]:
         return pulumi.get(self, "bar")
+
+
+@pulumi.output_type
+class OutputOnlyObjectType(dict):
+    def __init__(__self__, *,
+                 foo: Optional[str] = None):
+        if foo is not None:
+            pulumi.set(__self__, "foo", foo)
+
+    @property
+    @pulumi.getter
+    def foo(self) -> Optional[str]:
+        return pulumi.get(self, "foo")
 
 
 @pulumi.output_type

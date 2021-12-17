@@ -811,6 +811,10 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 		})
 	}
 
+	if showSecrets {
+		log3rdPartySecretsProviderDecryptionEvent(commandContext(), stack, "", "pulumi config")
+	}
+
 	return nil
 }
 
@@ -863,6 +867,8 @@ func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
 		} else {
 			fmt.Printf("%v\n", raw)
 		}
+
+		log3rdPartySecretsProviderDecryptionEvent(commandContext(), stack, key.Name(), "")
 
 		return nil
 	}

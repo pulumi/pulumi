@@ -48,7 +48,7 @@ setup(name='pulumi_registrygeoreplication',
       package_data={
           'pulumi_registrygeoreplication': [
               'py.typed',
-              'pulumiplugin.json',
+              'pulumi-plugin.json',
           ]
       },
       install_requires=[

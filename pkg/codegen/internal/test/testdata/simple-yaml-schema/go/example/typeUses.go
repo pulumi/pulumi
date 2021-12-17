@@ -13,10 +13,14 @@ import (
 type TypeUses struct {
 	pulumi.CustomResourceState
 
-	Bar SomeOtherObjectPtrOutput              `pulumi:"bar"`
-	Baz ObjectWithNodeOptionalInputsPtrOutput `pulumi:"baz"`
-	Foo ObjectPtrOutput                       `pulumi:"foo"`
-	Qux RubberTreeVarietyPtrOutput            `pulumi:"qux"`
+	Alpha OutputOnlyEnumTypePtrOutput           `pulumi:"alpha"`
+	Bar   SomeOtherObjectPtrOutput              `pulumi:"bar"`
+	Baz   ObjectWithNodeOptionalInputsPtrOutput `pulumi:"baz"`
+	Beta  OutputOnlyObjectTypeArrayOutput       `pulumi:"beta"`
+	Foo   ObjectPtrOutput                       `pulumi:"foo"`
+	Gamma OutputOnlyEnumTypeMapOutput           `pulumi:"gamma"`
+	Qux   RubberTreeVarietyPtrOutput            `pulumi:"qux"`
+	Zed   OutputOnlyObjectTypePtrOutput         `pulumi:"zed"`
 }
 
 // NewTypeUses registers a new resource with the given unique name, arguments, and options.

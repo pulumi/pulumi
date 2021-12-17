@@ -322,7 +322,7 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 }
 
 // These packages are known not to have any plugins.
-// TODO[pulumi/pulumi#5863]: Remove this once the `pulumi-policy` package includes a `pulumiplugin.json`
+// TODO[pulumi/pulumi#5863]: Remove this once the `pulumi-policy` package includes a `pulumi-plugin.json`
 // file that indicates the package does not have an associated plugin, and enough time has passed.
 var packagesWithoutPlugins = map[string]struct{}{
 	"pulumi-policy": {},
@@ -338,7 +338,7 @@ type pythonPackage struct {
 // Returns if pkg is a pulumi package.
 //
 // We check:
-// 1. If there is a pulumiplugin.json file.
+// 1. If there is a pulumi-plugin.json file.
 // 2. If the first segment is "pulumi". This implies a first party package.
 func (pkg *pythonPackage) isPulumiPackage() bool {
 	plugin, err := pkg.readPulumiPluginJSON()
@@ -359,8 +359,8 @@ func (pkg *pythonPackage) readPulumiPluginJSON() (*plugin.PulumiPluginJSON, erro
 	// "pulumi-aws" will have a module named "pulumi_aws", so we can determine the module
 	// by replacing hyphens with underscores.
 	packageModuleName := strings.ReplaceAll(pkg.Name, "-", "_")
-	pulumiPluginFilePath := filepath.Join(pkg.Location, packageModuleName, "pulumiplugin.json")
-	logging.V(5).Infof("readPulumiPluginJSON: pulumiplugin.json file path: %s", pulumiPluginFilePath)
+	pulumiPluginFilePath := filepath.Join(pkg.Location, packageModuleName, "pulumi-plugin.json")
+	logging.V(5).Infof("readPulumiPluginJSON: pulumi-plugin.json file path: %s", pulumiPluginFilePath)
 
 	plugin, err := plugin.LoadPulumiPluginJSON(pulumiPluginFilePath)
 	if os.IsNotExist(err) {
@@ -412,10 +412,10 @@ func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
 }
 
 // determinePluginDependency attempts to determine a plugin associated with a package. It checks to see if the package
-// contains a pulumiplugin.json file and uses the information in that file to determine the plugin. If `resource` in
-// pulumiplugin.json is set to false, nil is returned. If the name or version aren't specified in the file, these values
-// are derived from the package name and version. If the plugin version cannot be determined from the package version,
-// nil is returned.
+// contains a pulumi-plugin.json file and uses the information in that file to determine the plugin. If `resource` in
+// pulumi-plugin.json is set to false, nil is returned. If the name or version aren't specified in the file, these
+// values are derived from the package name and version. If the plugin version cannot be determined from the package
+// version, nil is returned.
 func determinePluginDependency(
 	virtualenv, cwd string, pkg pythonPackage) (*pulumirpc.PluginDependency, error) {
 

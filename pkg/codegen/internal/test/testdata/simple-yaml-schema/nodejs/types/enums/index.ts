@@ -2,6 +2,13 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 
+export const OutputOnlyEnumType = {
+    Foo: "foo",
+    Bar: "bar",
+} as const;
+
+export type OutputOnlyEnumType = (typeof OutputOnlyEnumType)[keyof typeof OutputOnlyEnumType];
+
 export const RubberTreeVariety = {
     /**
      * A burgundy rubber tree.

@@ -5,8 +5,14 @@
 from enum import Enum
 
 __all__ = [
+    'OutputOnlyEnumType',
     'RubberTreeVariety',
 ]
+
+
+class OutputOnlyEnumType(str, Enum):
+    FOO = "foo"
+    BAR = "bar"
 
 
 class RubberTreeVariety(str, Enum):

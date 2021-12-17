@@ -217,6 +217,9 @@
         "NUnit": "3.12.0",
         "NUnit3TestAdapter": "3.16.1"
       }
+    },
+    "go": {
+      "generateExtraInputTypes": true
     }
   }
 }

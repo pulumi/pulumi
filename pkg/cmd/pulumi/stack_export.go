@@ -89,6 +89,7 @@ func newStackExportCmd() *cobra.Command {
 			}
 
 			if showSecrets {
+				// log show secrets event
 				snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
 				if err != nil {
 					return checkDeploymentVersionError(err, stackName)
@@ -108,6 +109,8 @@ func newStackExportCmd() *cobra.Command {
 					Version:    3,
 					Deployment: data,
 				}
+
+				log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack export")
 			}
 
 			// Write the deployment.

@@ -2453,6 +2453,17 @@ func (i FilterablePropertyArrayMap) ToFilterablePropertyArrayMapOutputWithContex
 	return pulumi.ToOutputWithContext(ctx, i).(FilterablePropertyArrayMapOutput)
 }
 
+// FilterablePropertyArrayMapInput is an input type that accepts FilterablePropertyArrayMap and FilterablePropertyArrayMapOutput values.
+// You can construct a concrete instance of `FilterablePropertyArrayMapInput` via:
+//
+//          FilterablePropertyArrayMap{ "key": FilterablePropertyArray{ FilterablePropertyArgs{...} } }
+type FilterablePropertyArrayMapInput interface {
+	pulumi.Input
+
+	ToFilterablePropertyArrayMapOutput() FilterablePropertyArrayMapOutput
+	ToFilterablePropertyArrayMapOutputWithContext(context.Context) FilterablePropertyArrayMapOutput
+}
+
 type FilterablePropertyArrayMapOutput struct{ *pulumi.OutputState }
 
 func (FilterablePropertyArrayMapOutput) ElementType() reflect.Type {
@@ -2471,17 +2482,6 @@ func (o FilterablePropertyArrayMapOutput) MapIndex(k pulumi.StringInput) Filtera
 	return pulumi.All(o, k).ApplyT(func(vs []interface{}) []FilterableProperty {
 		return vs[0].(map[string][]FilterableProperty)[vs[1].(string)]
 	}).(FilterablePropertyArrayOutput)
-}
-
-// FilterablePropertyArrayMapInput is an input type that accepts FilterablePropertyArrayMap and FilterablePropertyArrayMapOutput values.
-// You can construct a concrete instance of `FilterablePropertyArrayMapInput` via:
-//
-//          FilterablePropertyArrayMap{ "key": FilterablePropertyArray{ FilterablePropertyArgs{...} } }
-type FilterablePropertyArrayMapInput interface {
-	pulumi.Input
-
-	ToFilterablePropertyArrayMapOutput() FilterablePropertyArrayMapOutput
-	ToFilterablePropertyArrayMapOutputWithContext(context.Context) FilterablePropertyArrayMapOutput
 }
 
 func init() {

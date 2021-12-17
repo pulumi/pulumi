@@ -17,9 +17,17 @@
       ]
     },
     "go": {
-      "generateResourceContainerTypes": true
+      "generateResourceContainerTypes": true,
+      "generateExtraInputTypes": true
     },
-    "nodejs": {},
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
     "python": {}
   }
 }

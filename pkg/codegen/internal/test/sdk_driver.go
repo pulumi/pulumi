@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -61,12 +62,12 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "nested-module",
 		Description:      "Nested module",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
 		Directory:        "nested-module-thirdparty",
 		Description:      "Third-party nested module",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
 		Directory:   "plain-schema-gh6957",
@@ -177,7 +178,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "regress-8403",
 		Description:      "Regress pulumi/pulumi#8403",
-		SkipCompileCheck: codegen.NewStringSet(python, nodejs),
+		SkipCompileCheck: codegen.NewStringSet(python),
 	},
 	{
 		Directory:   "different-package-name-conflict",
@@ -189,6 +190,10 @@ var sdkTests = []sdkTest{
 		Description: "An enum in a different package namespace",
 		Skip:        codegen.NewStringSet("dotnet/compile"),
 	},
+	{
+		Directory:   "azure-native-nested-types",
+		Description: "Condensed example of nested collection types from Azure Native",
+	},
 }
 
 var genSDKOnly bool
@@ -198,7 +203,12 @@ func NoSDKCodegenChecks() bool {
 }
 
 func init() {
-	flag.BoolVar(&genSDKOnly, "sdk.no-checks", false, "when set, skips all post-SDK-generation checks")
+	noChecks := false
+	if env, ok := os.LookupEnv("PULUMI_TEST_SDK_NO_CHECKS"); ok {
+		noChecks, _ = strconv.ParseBool(env)
+	}
+	flag.BoolVar(&genSDKOnly, "sdk.no-checks", noChecks, "when set, skips all post-SDK-generation checks")
+
 	// NOTE: the testing package will call flag.Parse.
 }
 
