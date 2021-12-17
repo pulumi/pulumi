@@ -16,9 +16,11 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"strings"
 	"text/template"
@@ -52,6 +54,7 @@ import (
 
 func newDocCmd() *cobra.Command {
 	var runtime string
+	var schemas []string
 
 	var cmd = &cobra.Command{
 		Use:   "doc <member>[#/<json-pointer>]",
@@ -76,7 +79,9 @@ func newDocCmd() *cobra.Command {
 				runtime = r
 			}
 			res := newDocstringResolver(runtime)
-
+			if err := loadSchemaList(res, schemas); err != nil {
+				return err
+			}
 			docstring, err := res.findDocstring(pointer)
 			if err != nil {
 				return err
@@ -94,7 +99,34 @@ func newDocCmd() *cobra.Command {
 		"The language to use for example code. When unset, will default to the language of the current project "+
 			"or Typescript if no project exists.")
 
+	cmd.PersistentFlags().StringSliceVarP(&schemas, "schema", "s", nil,
+		"A set of schema to be read in. These schema take precedence over standard package loading.")
+
 	return cmd
+}
+
+func loadSchemaList(res *docstringResolver, schemas []string) error {
+	for _, s := range schemas {
+		// Load schema
+		var spec schema.PackageSpec
+		schemaBytes, err := ioutil.ReadFile(s)
+		if err != nil {
+			return fmt.Errorf("Failed to read schema %s: %w", s, err)
+		}
+		if err := json.Unmarshal(schemaBytes, &spec); err != nil {
+			return err
+		}
+
+		p, diags, err := schema.BindSpec(spec, nil)
+		if err != nil {
+			return err
+		}
+		if diags.HasErrors() {
+			return diags
+		}
+		res.storePackage(p)
+	}
+	return nil
 }
 
 func getRuntimeName() (string, error) {
@@ -123,7 +155,7 @@ func getRuntimeName() (string, error) {
 type docstringResolver struct {
 	lang   string
 	helper codegen.DocLanguageHelper
-	pkg    *schema.Package
+	pkgs   []*schema.Package
 }
 
 func newDocstringResolver(runtime string) *docstringResolver {
@@ -159,15 +191,23 @@ func getPackageSchema(pkg string) (*schema.Package, error) {
 	return loader.LoadPackage(pkg, nil)
 }
 
-func (r *docstringResolver) ensureSchema(pkgName string) error {
-	if r.pkg == nil || r.pkg.Name != pkgName {
-		pkg, err := getPackageSchema(pkgName)
-		if err != nil {
-			return err
+func (r *docstringResolver) storePackage(pkg *schema.Package) {
+	contract.Assert(pkg != nil)
+	r.pkgs = append(r.pkgs, pkg)
+}
+
+func (r *docstringResolver) ensureSchema(pkgName string) (*schema.Package, error) {
+	for _, p := range r.pkgs {
+		if p.Name == pkgName {
+			return p, nil
 		}
-		r.pkg = pkg
 	}
-	return nil
+	pkg, err := getPackageSchema(pkgName)
+	if err != nil {
+		return nil, err
+	}
+	r.storePackage(pkg)
+	return pkg, nil
 }
 
 type memberNotFound struct {
@@ -208,21 +248,21 @@ func (r *docstringResolver) findWholeDocstring(pointer string) (string, bool, er
 	}
 
 	// get the package's schema
-	err := r.ensureSchema(pkgName)
+	pkg, err := r.ensureSchema(pkgName)
 	if err != nil {
 		return "", false, err
 	}
 
-	object := interface{}(r.pkg)
+	object := interface{}(pkg)
 	if member != "" {
 		// find the referenced member
 		if member == "provider" {
-			object = r.pkg.Provider
-		} else if res, ok := r.pkg.GetResource(member); ok {
+			object = pkg.Provider
+		} else if res, ok := pkg.GetResource(member); ok {
 			object = res
-		} else if fn, ok := r.pkg.GetFunction(member); ok {
+		} else if fn, ok := pkg.GetFunction(member); ok {
 			object = fn
-		} else if typ, ok := r.pkg.GetType(member); ok {
+		} else if typ, ok := pkg.GetType(member); ok {
 			object = typ.(schema.HasMembers)
 		}
 	}
@@ -238,7 +278,7 @@ func (r *docstringResolver) findWholeDocstring(pointer string) (string, bool, er
 
 	switch object := object.(type) {
 	case *schema.Property:
-		docstring, err := genPropertyDocstring(object, r.pkg, r.lang, r.helper)
+		docstring, err := genPropertyDocstring(object, pkg, r.lang, r.helper)
 		return docstring, true, err
 	case *schema.Enum:
 		docstring := genEnumDocstring(object, r.lang, r.helper)
