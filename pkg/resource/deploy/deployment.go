@@ -20,7 +20,6 @@ import (
 	"math"
 	"sync"
 
-	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -32,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // BackendClient is used to retrieve information about stacks from a backend.
@@ -174,9 +174,9 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 	}
 
 	// Pull the versions we'll use for default providers from the snapshot's manifest.
-	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
+	defaultProviderInfo := make(map[tokens.Package]workspace.PluginInfo)
 	for _, p := range prev.Manifest.Plugins {
-		defaultProviderVersions[tokens.Package(p.Name)] = p.Version
+		defaultProviderInfo[tokens.Package(p.Name)] = p
 	}
 
 	// Determine the necessary set of default providers and inject references to default providers as appropriate.
@@ -200,8 +200,9 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 			if err != nil {
 				return fmt.Errorf("could not fetch configuration for default provider '%v'", pkg)
 			}
-			if version, ok := defaultProviderVersions[pkg]; ok {
-				inputs["version"] = resource.NewStringProperty(version.String())
+			if pkgInfo, ok := defaultProviderInfo[pkg]; ok {
+				providers.SetProviderVersion(inputs, pkgInfo.Version)
+				providers.SetProviderURL(inputs, pkgInfo.PluginDownloadURL)
 			}
 
 			uuid, err := uuid.NewV4()

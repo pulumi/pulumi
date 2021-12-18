@@ -76,3 +76,23 @@ func TestNameNamespace(t *testing.T) {
 	assert.Equal(t, "ns1/ns2/ns3/ns4", string(AsQName("ns1/ns2/ns3/ns4/complex").Namespace()))
 	assert.Equal(t, "_/_/_/_/a0", string(AsQName("_/_/_/_/a0/c0Mpl3x_").Namespace()))
 }
+
+func TestIntoQName(t *testing.T) {
+	cases := []struct {
+		input    string
+		expected string
+	}{
+		{"foo/bar", "foo/bar"},
+		{input: "https:", expected: "https_"},
+		{"https://github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go#L61-L86",
+			"https_/github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go_L61_L86"},
+		{"", "_"},
+		{"///", "_"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.input, func(t *testing.T) {
+			assert.Equal(t, AsQName(c.expected), IntoQName(c.input))
+		})
+	}
+}

@@ -7,7 +7,7 @@
     "pulumi_azure_native/documentdb/outputs.py",
     "pulumi_azure_native/documentdb/sql_resource_sql_container.py",
     "pulumi_azure_native/provider.py",
-    "pulumi_azure_native/pulumiplugin.json",
+    "pulumi_azure_native/pulumi-plugin.json",
     "pulumi_azure_native/py.typed",
     "setup.py"
   ]

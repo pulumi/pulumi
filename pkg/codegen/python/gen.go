@@ -2038,7 +2038,7 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "      package_data={\n")
 	fmt.Fprintf(w, "          '%s': [\n", pyPkgName)
 	fmt.Fprintf(w, "              'py.typed',\n")
-	fmt.Fprintf(w, "              'pulumiplugin.json',\n")
+	fmt.Fprintf(w, "              'pulumi-plugin.json',\n")
 
 	fmt.Fprintf(w, "          ]\n")
 	fmt.Fprintf(w, "      },\n")
@@ -2820,12 +2820,12 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		}
 	}
 
-	// Generate pulumiplugin.json
+	// Generate pulumi-plugin.json
 	plugin, err := genPulumiPluginFile(pkg)
 	if err != nil {
 		return nil, err
 	}
-	files.add(filepath.Join(pkgName, "pulumiplugin.json"), plugin)
+	files.add(filepath.Join(pkgName, "pulumi-plugin.json"), plugin)
 
 	// Finally emit the package metadata (setup.py).
 	setup, err := genPackageMetadata(tool, pkg, pkgName, info.Requires, info.PythonRequires)

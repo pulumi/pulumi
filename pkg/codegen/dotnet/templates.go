@@ -164,8 +164,8 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
   </ItemGroup>
 
    <ItemGroup>
-    <EmbeddedResource Include="pulumiplugin.json" />
-    <None Include="pulumiplugin.json" Pack="True" PackagePath="content" />
+    <EmbeddedResource Include="pulumi-plugin.json" />
+    <None Include="pulumi-plugin.json" Pack="True" PackagePath="content" />
   </ItemGroup>
 
   <ItemGroup>

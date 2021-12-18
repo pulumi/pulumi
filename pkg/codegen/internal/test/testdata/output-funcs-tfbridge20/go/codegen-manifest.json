@@ -5,8 +5,8 @@
     "mypkg/init.go",
     "mypkg/listStorageAccountKeys.go",
     "mypkg/provider.go",
+    "mypkg/pulumi-plugin.json",
     "mypkg/pulumiTypes.go",
-    "mypkg/pulumiUtilities.go",
-    "mypkg/pulumiplugin.json"
+    "mypkg/pulumiUtilities.go"
   ]
 }

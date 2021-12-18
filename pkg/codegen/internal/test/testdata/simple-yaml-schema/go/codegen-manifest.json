@@ -5,10 +5,10 @@
     "example/init.go",
     "example/otherResource.go",
     "example/provider.go",
+    "example/pulumi-plugin.json",
     "example/pulumiEnums.go",
     "example/pulumiTypes.go",
     "example/pulumiUtilities.go",
-    "example/pulumiplugin.json",
     "example/resource.go",
     "example/typeUses.go"
   ]
