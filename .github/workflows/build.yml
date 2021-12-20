@@ -180,11 +180,11 @@ jobs:
       - name: Install yarn
         run: |
           npm install -g yarn
-      - name: Make no-op Go command to avoid Go builds
-        run: |
-          cd sdk/nodejs
-          mkdir -p bin
-          ln -s $(which echo) bin/go
+      # - name: Make no-op Go command to avoid Go builds
+      #   run: |
+      #     cd sdk/nodejs
+      #     mkdir -p bin
+      #     ln -s $(which echo) bin/go
       - name: Ensure installed dependencies
         run: |
           cd sdk/nodejs
