@@ -32,6 +32,9 @@ builds:
   main: ./cmd/pulumi
 - id: pulumi-language-nodejs-windows
   binary: pulumi-language-nodejs
+  # TODO[pulumi/pulumi#8615] - uncomment gobinary line below to enable
+  # coverage-aware builds of the language providers.
+  #
   # gobinary: ../scripts/go-wrapper.sh
   dir: sdk
   goarch:
