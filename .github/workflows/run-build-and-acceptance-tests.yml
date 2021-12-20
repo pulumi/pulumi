@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
       - name: Set up Python ${{ matrix.python-version }}
@@ -95,9 +95,9 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Install pipenv
+      - name: Install Python deps
         run: |
-          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
+          python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -116,7 +116,7 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Ensure
@@ -134,7 +134,9 @@ jobs:
 
   build:
     name: Build
-    uses: pulumi/pulumi/.github/workflows/build.yml@8e2f80d5147fbf30d06370f87c02c5d361198a55
+    uses: pulumi/pulumi/.github/workflows/build.yml@dafb6e5b805c0de91efa8c2c41af9f315f181a76
+    with:
+      enable-coverage: true
 
   test:
     name: Test
@@ -243,9 +245,9 @@ jobs:
       - name: Install yarn
         run: |
           npm install -g yarn
-      - name: Install pipenv
+      - name: Install Python deps
         run: |
-          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
+          python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -261,7 +263,7 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Install gotestsum from source
@@ -274,12 +276,12 @@ jobs:
       # expected by the action.
       #
       # - name: Install gotestsum
-      #   uses: jaxxstorm/action-install-gh-release@v1.2.0
+      #   uses: jaxxstorm/action-install-gh-release@v1.3.1
       #   with:
       #     repo: gotestyourself/gotestsum
       #     tag: v1.7.0
       - name: Install goteststats
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: t0yv0/goteststats
           tag: v0.0.7
@@ -338,7 +340,7 @@ jobs:
         with:
           directory: coverage
           files: '*'
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           verbose: true
       - name: Summarize Test Time by Package
         run: |
