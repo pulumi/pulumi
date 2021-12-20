@@ -201,47 +201,6 @@ jobs:
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
           chocolatey uninstall pulumi
-      - name: Download Pulumi Go Binaries (linux-x64)
-        if: ${{ matrix.platform == 'ubuntu-latest' }}
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-linux-x64.tar.gz
-          path: artifacts/go
-      - name: Download Pulumi Go Binaries (darwin-x64)
-        if: ${{ matrix.platform == 'macos-latest' }}
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-darwin-x64.tar.gz
-          path: artifacts/go
-      - name: Download Pulumi Go Binaries (windows-x64)
-        if: ${{ matrix.platform == 'windows-latest' }}
-        uses: actions/download-artifact@v2
-        with:
-          name: pulumi-windows-x64.zip
-          path: artifacts/go
-      - name: Install Pulumi Go Binaries (non-windows)
-        if: ${{ matrix.platform != 'windows-latest' }}
-        run: |
-          mkdir -p bin
-          tar -xf artifacts/go/*.tar.gz -C bin
-      - name: Install Pulumi Go Binaries (windows)
-        if: ${{ matrix.platform == 'windows-latest' }}
-        run: |
-          mkdir -p $PWD/bin
-          unzip -d $PWD/bin artifacts/go/*.zip
-          mv $PWD/bin/pulumi/bin/* $PWD/bin
-          rm -rf $PWD/bin/pulumi
-          echo "Checking contents of $PWD/bin"
-          find $PWD/bin
-      - name: Add ./bin to PATH
-        run: |
-          LOCAL_PATH=$(./scripts/normpath "${{ github.workspace }}/bin")
-          echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
-          echo $LOCAL_PATH >> $GITHUB_PATH
-      - name: Verify Pulumi Version
-        run: |
-          which pulumi   || echo "no pulumi"
-          pulumi version || echo "no pulumi"
       - name: Install yarn
         run: |
           npm install -g yarn
@@ -285,6 +244,47 @@ jobs:
         with:
           repo: t0yv0/goteststats
           tag: v0.0.7
+      - name: Download Pulumi Go Binaries (linux-x64)
+        if: ${{ matrix.platform == 'ubuntu-latest' }}
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-x64
+          path: artifacts/go
+      - name: Download Pulumi Go Binaries (darwin-x64)
+        if: ${{ matrix.platform == 'macos-latest' }}
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-x64
+          path: artifacts/go
+      - name: Download Pulumi Go Binaries (windows-x64)
+        if: ${{ matrix.platform == 'windows-latest' }}
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-x64
+          path: artifacts/go
+      - name: Install Pulumi Go Binaries (non-windows)
+        if: ${{ matrix.platform != 'windows-latest' }}
+        run: |
+          mkdir -p bin
+          tar -xf artifacts/go/*.tar.gz -C bin
+      - name: Install Pulumi Go Binaries (windows)
+        if: ${{ matrix.platform == 'windows-latest' }}
+        run: |
+          mkdir -p $PWD/bin
+          unzip -d $PWD/bin artifacts/go/*.zip
+          mv $PWD/bin/pulumi/bin/* $PWD/bin
+          rm -rf $PWD/bin/pulumi
+          echo "Checking contents of $PWD/bin"
+          find $PWD/bin
+      - name: Add ./bin to PATH
+        run: |
+          LOCAL_PATH=$(./scripts/normpath "${{ github.workspace }}/bin")
+          echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
+          echo $LOCAL_PATH >> $GITHUB_PATH
+      - name: Verify Pulumi Version
+        run: |
+          which pulumi   || echo "no pulumi"
+          pulumi version || echo "no pulumi"
       - name: Download Pulumi .NET NuGet packages
         uses: actions/download-artifact@v2
         with:
