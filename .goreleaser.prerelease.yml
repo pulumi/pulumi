@@ -21,7 +21,11 @@ builds:
 # Windows builds
 - id: pulumi-windows
   binary: pulumi
-  gobinary: ../scripts/go-wrapper.sh
+  # TODO: coverage-enabled builds of pulumi CLI on Windows fail to
+  # parse CLI arguments correctly as in `pulumi version`, disabling
+  # coverage-enabled builds for now:
+  #
+  # gobinary: ../scripts/go-wrapper.sh
   dir: pkg
   goarch:
     - amd64
