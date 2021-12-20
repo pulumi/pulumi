@@ -83,6 +83,17 @@ type Log3rdPartyDecryptionEvent struct {
 	CommandName string `json:"commandName,omitempty"`
 }
 
+// BulkDecryptValueRequest defines the request body for bulk decrypting secret values.
+type BulkDecryptValueRequest struct {
+	Ciphertexts [][]byte `json:"ciphertexts"`
+}
+
+// BulkDecryptValueResponse defines the response body for bulk decrypted secret values. The key in
+// the map is the base64 encoding of the ciphertext.
+type BulkDecryptValueResponse struct {
+	Plaintexts map[string][]byte `json:"plaintexts"`
+}
+
 // ExportStackResponse defines the response body for exporting a Stack.
 type ExportStackResponse UntypedDeployment
 
