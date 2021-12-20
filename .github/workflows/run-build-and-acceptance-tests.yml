@@ -130,7 +130,7 @@ jobs:
 
   build:
     name: Build
-    uses: pulumi/pulumi/.github/workflows/build.yml@1e2aeb1fa5ba85eec0c35629c180cf658d8cf3a5
+    uses: pulumi/pulumi/.github/workflows/build.yml@047dfbe3546c2b70a1b74a4cd3357c5472eb78c7
     with:
       enable-coverage: true
 
