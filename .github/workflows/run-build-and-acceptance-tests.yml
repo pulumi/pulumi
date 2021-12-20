@@ -265,9 +265,11 @@ jobs:
       - name: Install Pulumi Go Binaries (non-windows)
         if: ${{ matrix.platform != 'windows-latest' }}
         run: |
+          mkdir -p pulumi-bin
+          tar -xf artifacts/go/*.tar.gz -C pulumi-bin
           mkdir -p bin
-          tar -xf artifacts/go/*.tar.gz -C bin
-          mv bin/pulumi/* bin/
+          mv pulumi-bin/pulumi/* bin/
+          rm -rf pulumi-bin
       - name: Install Pulumi Go Binaries (windows)
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
