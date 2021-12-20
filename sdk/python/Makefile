@@ -51,19 +51,22 @@ test_fast:: $(TEST_ALL_DEPS)
 	$(GO_TEST) ${PROJECT_PKGS}
 	venv/bin/python -m pip install -e ./env/src
 	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
-	PATH=venv/bin:$$PATH $(RUN_TESTSUITE) python/lib/test coverage run -m pytest lib/test --ignore lib/test/automation --ignore lib/test/langhost/resource_thens/test_resource_thens.py
-	PATH=venv/bin:$$PATH $(RUN_TESTSUITE) python/lib/test/langhost/resource_thens coverage run -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
+	$(TESTSUITE_SKIPPED) python/lib/test || \
+		coverage run -m pytest lib/test --ignore lib/test/automation --ignore lib/test/langhost/resource_thens/test_resource_thens.py
+	$(TESTSUITE_SKIPPED) python/lib/test/langhost/resource_thens || \
+		coverage run -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
 	# Using python -m also adds lib/test_with_mocks to sys.path which avoids package resolution issues.
-	pushd lib/test_with_mocks; PATH=../../venv/bin:$$PATH $(RUN_TESTSUITE) python/lib/test_with_mocks coverage run -m pytest; popd
+	pushd lib/test_with_mocks; $(TESTSUITE_SKIPPED) python/lib/test_with_mocks || coverage run -m pytest; popd
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .coverage ]; then PATH=venv/bin:$$PATH coverage xml -o $(PULUMI_TEST_COVERAGE_PATH)/python-fast.xml; fi
+	if [ -e .coverage ]; then coverage xml -o $(PULUMI_TEST_COVERAGE_PATH)/python-fast.xml; fi
 endif
 
 test_auto:: test_fast $(TEST_ALL_DEPS)
 	# Note that this target depends on test-fast for the call to `pip install`
-	PATH=venv/bin:$$PATH $(RUN_TESTSUITE) auto-python coverage run -m pytest lib/test/automation
+	$(TESTSUITE_SKIPPED) auto-python || \
+		coverage run -m pytest lib/test/automation
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .coverage ]; then PATH=venv/bin:$$PATH coverage xml -o $(PULUMI_TEST_COVERAGE_PATH)/python-auto.xml; fi
+	if [ -e .coverage ]; then coverage xml -o $(PULUMI_TEST_COVERAGE_PATH)/python-auto.xml; fi
 endif
 
 test_all:: test_fast test_auto
