@@ -921,8 +921,7 @@ class ComponentResource(Resource):
 
         :param dict output: A dictionary of outputs to associate with this resource.
         """
-        if outputs:
-            register_resource_outputs(self, outputs)
+        register_resource_outputs(self, outputs)
 
 
 class ProviderResource(CustomResource):
