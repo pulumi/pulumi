@@ -267,6 +267,7 @@ jobs:
         run: |
           mkdir -p bin
           tar -xf artifacts/go/*.tar.gz -C bin
+          mv bin/pulumi/* bin/
       - name: Install Pulumi Go Binaries (windows)
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
