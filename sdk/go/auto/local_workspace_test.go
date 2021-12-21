@@ -49,6 +49,7 @@ var pulumiOrg = getTestOrg()
 
 const pName = "testproj"
 const agent = "pulumi/pulumi/test"
+const pulumiTestOrg = "pulumi-test"
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	ctx := context.Background()
@@ -1209,7 +1210,7 @@ func TestImportExportStack(t *testing.T) {
 }
 
 func TestConfigFlagLike(t *testing.T) {
-	if getTestOrg() != "pulumi-test" {
+	if getTestOrg() != pulumiTestOrg {
 		return
 	}
 	ctx := context.Background()
@@ -1242,7 +1243,7 @@ func TestConfigFlagLike(t *testing.T) {
 }
 
 func TestNestedConfig(t *testing.T) {
-	if getTestOrg() != "pulumi-test" {
+	if getTestOrg() != pulumiTestOrg {
 		return
 	}
 	ctx := context.Background()
@@ -2354,7 +2355,7 @@ func BenchmarkBulkSetConfigSecret(b *testing.B) {
 }
 
 func getTestOrg() string {
-	testOrg := "pulumi-test"
+	testOrg := pulumiTestOrg
 	if _, set := os.LookupEnv("PULUMI_TEST_ORG"); set {
 		testOrg = os.Getenv("PULUMI_TEST_ORG")
 	}
