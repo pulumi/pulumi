@@ -138,13 +138,11 @@ describe("LocalWorkspace", () => {
             runtime: "nodejs",
         };
         const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = fullyQualifiedStackName(getTestOrg(),
-                                                  projectName,
-                                                  `int_test${getTestSuffix()}`);
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
         await stack.setConfig("key", {value: "-value"});
         await stack.setConfig("secret-key", {value: "-value", secret: true});
-        let values = await stack.getAllConfig();
+        const values = await stack.getAllConfig();
         assert.strictEqual(values["config_flag_like:key"].value, "-value");
         assert.strictEqual(values["config_flag_like:key"].secret, false);
         assert.strictEqual(values["config_flag_like:secret-key"].value, "-value");
@@ -153,7 +151,7 @@ describe("LocalWorkspace", () => {
             "key": {value: "-value2"},
             "secret-key": {value: "-value2", secret: true},
         });
-        let values2 = await stack.getAllConfig();
+        const values2 = await stack.getAllConfig();
         assert.strictEqual(values2["config_flag_like:key"].value, "-value2");
         assert.strictEqual(values2["config_flag_like:key"].secret, false);
         assert.strictEqual(values2["config_flag_like:secret-key"].value, "-value2");
