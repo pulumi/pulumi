@@ -1,38 +1,29 @@
 ### Improvements
 
-- [codegen/go] - Simplify the application of object defaults in generated SDKs.
-  [#8539](https://github.com/pulumi/pulumi/pull/8539)
+- [engine] - Interpret `pluginDownloadURL` as the provider host url when
+  downloading plugins.
+  [#8544](https://github.com/pulumi/pulumi/pull/8544)
 
-- [codegen/{python,dotnet}] - Emit `pulumiplugin.json` unconditionally.
-  [#8527](https://github.com/pulumi/pulumi/pull/8527)
-  [#8532](https://github.com/pulumi/pulumi/pull/8532)
+- [sdk/dotnet] - `InputMap` and `InputList` can now be initialized
+  with any value that implicitly converts to the collection type.
+  These values are then automatically appended, for example:
 
-- [sdk/python] - Lookup Pulumi packages by searching for `pulumiplugin.json`.
-  Pulumi packages need not be prefixed by `pulumi-` anymore.
-  [#8515](https://github.com/pulumi/pulumi/pull/8515)
+        var list = new InputList<string>
+        {
+            "V1",
+            Output.Create("V2"),
+            new[] { "V3", "V4" },
+            new List<string> { "V5", "V6" },
+            Output.Create(ImmutableArray.Create("V7", "V8"))
+        };
 
-- [sdk/go] - Lookup packages by searching for `pulumiplugin.json`.
-  Pulumi packages need not be prefixed by `github.com/pulumi/pulumi-` anymore.
-  [#8516](https://github.com/pulumi/pulumi/pull/8516)
+  This feature simplifies the syntax for constructing resources and
+  specifying resource options such as the `DependsOn` option.
 
-- [sdk/dotnet] - Lookup packages by searching for `pulumiplugin.json`.
-  Pulumi packages need not be prefixed by `Pulumi.` anymore.
-  [#8517](https://github.com/pulumi/pulumi/pull/8517)
-
-- [sdk/go] - Emit `pulumiplugin.json`
-  [#8530](https://github.com/pulumi/pulumi/pull/8530)
-
-- [cli] - Always use locking in filestate backends. This feature was
-  previously disabled by default and activated by setting the
-  `PULUMI_SELF_MANAGED_STATE_LOCKING=1` environment variable.
-  [#8565](https://github.com/pulumi/pulumi/pull/8565)
+  [#8498](https://github.com/pulumi/pulumi/pull/8498)
 
 ### Bug Fixes
 
-- [codegen/schema] - Error on type token names that are not allowed (schema.Name
-  or specified in allowedPackageNames).
-  [#8538](https://github.com/pulumi/pulumi/pull/8538)
-  [#8558](https://github.com/pulumi/pulumi/pull/8558)
-
-- [codegen/go] - Fix `ElementType` for nested collection input and output types.
-  [#8535](https://github.com/pulumi/pulumi/pull/8535)
+- [sdk/python] - Fixes an issue with stack outputs persisting after
+  they are removed from the Pulumi program
+  [#8583](https://github.com/pulumi/pulumi/pull/8583)

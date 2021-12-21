@@ -6,9 +6,9 @@
     "configstation/doc.go",
     "configstation/init.go",
     "configstation/provider.go",
+    "configstation/pulumi-plugin.json",
     "configstation/pulumiEnums.go",
     "configstation/pulumiTypes.go",
-    "configstation/pulumiUtilities.go",
-    "configstation/pulumiplugin.json"
+    "configstation/pulumiUtilities.go"
   ]
 }

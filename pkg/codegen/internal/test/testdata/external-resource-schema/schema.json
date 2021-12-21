@@ -153,7 +153,8 @@
       }
     },
     "go": {
-      "generateResourceContainerTypes": true
+      "generateResourceContainerTypes": true,
+      "generateExtraInputTypes": true
     },
     "nodejs": {
       "dependencies": {

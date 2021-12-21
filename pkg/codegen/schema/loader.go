@@ -155,7 +155,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return nil, err
 	}
 
-	p, diags, err := bindSpec(spec, nil, l)
+	p, diags, err := bindSpec(spec, nil, l, false)
 	if err != nil {
 		return nil, err
 	}

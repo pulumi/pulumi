@@ -34,10 +34,14 @@ export class TypeUses extends pulumi.CustomResource {
         return obj['__pulumiType'] === TypeUses.__pulumiType;
     }
 
+    public /*out*/ readonly alpha!: pulumi.Output<enums.OutputOnlyEnumType | undefined>;
     public readonly bar!: pulumi.Output<outputs.SomeOtherObject | undefined>;
     public readonly baz!: pulumi.Output<outputs.ObjectWithNodeOptionalInputs | undefined>;
+    public /*out*/ readonly beta!: pulumi.Output<outputs.OutputOnlyObjectType[] | undefined>;
     public readonly foo!: pulumi.Output<outputs.Object | undefined>;
+    public /*out*/ readonly gamma!: pulumi.Output<{[key: string]: enums.OutputOnlyEnumType} | undefined>;
     public readonly qux!: pulumi.Output<enums.RubberTreeVariety | undefined>;
+    public /*out*/ readonly zed!: pulumi.Output<outputs.OutputOnlyObjectType | undefined>;
 
     /**
      * Create a TypeUses resource with the given unique name, arguments, and options.
@@ -54,11 +58,19 @@ export class TypeUses extends pulumi.CustomResource {
             resourceInputs["baz"] = args ? args.baz : undefined;
             resourceInputs["foo"] = args ? args.foo : undefined;
             resourceInputs["qux"] = args ? args.qux : undefined;
+            resourceInputs["alpha"] = undefined /*out*/;
+            resourceInputs["beta"] = undefined /*out*/;
+            resourceInputs["gamma"] = undefined /*out*/;
+            resourceInputs["zed"] = undefined /*out*/;
         } else {
+            resourceInputs["alpha"] = undefined /*out*/;
             resourceInputs["bar"] = undefined /*out*/;
             resourceInputs["baz"] = undefined /*out*/;
+            resourceInputs["beta"] = undefined /*out*/;
             resourceInputs["foo"] = undefined /*out*/;
+            resourceInputs["gamma"] = undefined /*out*/;
             resourceInputs["qux"] = undefined /*out*/;
+            resourceInputs["zed"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});

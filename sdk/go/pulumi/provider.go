@@ -341,25 +341,33 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 				if !v.IsBool() {
 					return fmt.Errorf("expected a %v, got a %s", inputType, v.TypeString())
 				}
-				dest.Set(reflect.ValueOf(Bool(v.BoolValue())))
+				result := reflect.New(inputType).Elem()
+				result.SetBool(v.BoolValue())
+				dest.Set(result)
 				return nil
 			case reflect.Int:
 				if !v.IsNumber() {
 					return fmt.Errorf("expected an %v, got a %s", inputType, v.TypeString())
 				}
-				dest.Set(reflect.ValueOf(Int(int64(v.NumberValue()))))
+				result := reflect.New(inputType).Elem()
+				result.SetInt(int64(v.NumberValue()))
+				dest.Set(result)
 				return nil
 			case reflect.Float64:
 				if !v.IsNumber() {
 					return fmt.Errorf("expected an %v, got a %s", inputType, v.TypeString())
 				}
-				dest.Set(reflect.ValueOf(Float64(v.NumberValue())))
+				result := reflect.New(inputType).Elem()
+				result.SetFloat(v.NumberValue())
+				dest.Set(result)
 				return nil
 			case reflect.String:
 				if !v.IsString() {
 					return fmt.Errorf("expected a %v, got a %s", inputType, v.TypeString())
 				}
-				dest.Set(reflect.ValueOf(String(v.StringValue())))
+				result := reflect.New(inputType).Elem()
+				result.SetString(v.StringValue())
+				dest.Set(result)
 				return nil
 			case reflect.Slice:
 				return copyToSlice(ctx, v, inputType, dest)

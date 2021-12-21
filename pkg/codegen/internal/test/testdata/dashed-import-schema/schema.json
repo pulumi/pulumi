@@ -247,7 +247,8 @@
       }
     },
     "go": {
-      "importBasePath": "dashed-import-schema/plant-provider"
+      "importBasePath": "dashed-import-schema/plant-provider",
+      "generateExtraInputTypes": true
     },
     "nodejs": {
       "dependencies": {

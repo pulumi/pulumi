@@ -141,8 +141,8 @@ type modInfo struct {
 	Dir     string
 }
 
-// Returns the pulumiplugin.json if found. If not found, then returns nil, nil.
-// The lookup path for pulumiplugin.json is
+// Returns the pulumi-plugin.json if found. If not found, then returns nil, nil.
+// The lookup path for pulumi-plugin.json is
 // 1. m.Dir
 // 2. m.Dir/go
 // 3. m.Dir/go/*
@@ -151,9 +151,9 @@ func (m *modInfo) readPulumiPluginJSON() (*plugin.PulumiPluginJSON, error) {
 		return nil, nil
 	}
 
-	path1 := filepath.Join(m.Dir, "pulumiplugin.json")
-	path2 := filepath.Join(m.Dir, "go", "pulumiplugin.json")
-	path3, err := filepath.Glob(filepath.Join(m.Dir, "go", "*", "pulumiplugin.json"))
+	path1 := filepath.Join(m.Dir, "pulumi-plugin.json")
+	path2 := filepath.Join(m.Dir, "go", "pulumi-plugin.json")
+	path3, err := filepath.Glob(filepath.Join(m.Dir, "go", "*", "pulumi-plugin.json"))
 	if err != nil {
 		path3 = []string{}
 	}
@@ -201,7 +201,7 @@ func normalizeVersion(version string) (string, error) {
 func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 	pulumiPlugin, err := m.readPulumiPluginJSON()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load pulumiplugin.json: %w", err)
+		return nil, fmt.Errorf("Failed to load pulumi-plugin.json: %w", err)
 	}
 
 	if (!strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") && pulumiPlugin == nil) ||
@@ -230,7 +230,7 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 	var server string
 
 	if pulumiPlugin != nil {
-		// There is no way to specify server without using `pulumiplugin.json`.
+		// There is no way to specify server without using `pulumi-plugin.json`.
 		server = pulumiPlugin.Server
 	}
 

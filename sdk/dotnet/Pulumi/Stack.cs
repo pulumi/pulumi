@@ -50,7 +50,7 @@ namespace Pulumi
         /// Create a Stack with stack resources defined in derived class constructor.
         /// </summary>
         public Stack(StackOptions? options = null)
-            : base(_rootPulumiStackTypeName, 
+            : base(_rootPulumiStackTypeName,
                 $"{Deployment.Instance.ProjectName}-{Deployment.Instance.StackName}",
                 ConvertOptions(options))
         {
@@ -103,8 +103,7 @@ namespace Pulumi
                               select kv.Key).ToList();
             if (wrongTypes.Any())
             {
-                var message = $"Output(s) '{string.Join(", ", wrongTypes)}' have incorrect type. [Output] attributed properties must be instances of Output<T>.";
-                throw new RunException(message);
+                throw RunException.OutputsHaveIncorrectType(wrongTypes);
             }
 
             IDictionary<string, object?> dict = new Dictionary<string, object?>(outputs);
@@ -117,12 +116,12 @@ namespace Pulumi
             var dictionary = await init().ConfigureAwait(false);
             return dictionary.ToImmutableDictionary();
         }
-        
+
         private static ComponentResourceOptions? ConvertOptions(StackOptions? options)
         {
             if (options == null)
                 return null;
-            
+
             return new ComponentResourceOptions
             {
                 ResourceTransformations = options.ResourceTransformations

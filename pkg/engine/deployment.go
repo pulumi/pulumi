@@ -169,7 +169,7 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 		depl, err = deploy.NewDeployment(
 			plugctx, target, target.Snapshot, opts.Plan, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
-		_, defaultProviderVersions, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
+		_, defaultProviderInfo, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
 			false /*returnInstallErrors*/)
 		if pluginErr != nil {
 			return nil, pluginErr
@@ -182,8 +182,13 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 					"Type tokens must be of the format <package>:<module>:<type> - "+
 					"refer to the import section of the provider resource documentation.", imp.Type.String())
 			}
-			if imp.Provider == "" && imp.Version == nil {
-				imp.Version = defaultProviderVersions[imp.Type.Package()]
+			if imp.Provider == "" {
+				if imp.Version == nil {
+					imp.Version = defaultProviderInfo[imp.Type.Package()].Version
+				}
+				if imp.PluginDownloadURL == "" {
+					imp.PluginDownloadURL = defaultProviderInfo[imp.Type.Package()].PluginDownloadURL
+				}
 			}
 		}
 

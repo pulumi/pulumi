@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Xunit;
@@ -45,6 +46,22 @@ namespace Pulumi.Tests.Core
             });
 
         [Fact]
+        public Task InputMapCollectionInitializers()
+            => RunInPreview(async () =>
+            {
+                var map = new InputMap<string>
+                {
+                    { "K1", "V1" },
+                    { "K2", Output.Create("V2") },
+                    new Dictionary<string, string> { { "K3", "V3" }, { "K4", "V4"} },
+                    Output.Create(new Dictionary<string, string> { ["K5"] = "V5", ["K6"] = "V6" }.ToImmutableDictionary())
+                };
+                var data = await map.ToOutput().DataTask.ConfigureAwait(false);
+                Assert.Equal(6, data.Value.Count);
+                Assert.Equal(new Dictionary<string, string> { ["K1"] = "V1", ["K2"] = "V2", ["K3"] = "V3", ["K4"] = "V4", ["K5"] = "V5", ["K6"] = "V6" }, data.Value);
+            });
+
+        [Fact]
         public Task InputMapUnionInitializer()
             => RunInPreview(async () =>
             {
@@ -61,7 +78,24 @@ namespace Pulumi.Tests.Core
                 Assert.True(data.Value.ContainsValue("testValue"));
                 Assert.True(data.Value.ContainsValue(123));
             });
-        
+
+        [Fact]
+        public Task InputListCollectionInitializers()
+            => RunInPreview(async () =>
+            {
+                var list = new InputList<string>
+                {
+                    "V1",
+                    Output.Create("V2"),
+                    new[] { "V3", "V4" },
+                    new List<string> { "V5", "V6" },
+                    Output.Create(ImmutableArray.Create("V7", "V8"))
+                };
+                var data = await list.ToOutput().DataTask.ConfigureAwait(false);
+                Assert.Equal(8, data.Value.Length);
+                Assert.Equal(new[] { "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8" }, data.Value);
+            });
+
         [Fact]
         public Task InputListUnionInitializer()
             => RunInPreview(async () =>

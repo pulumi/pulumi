@@ -10,6 +10,6 @@
     "Utilities.cs",
     "Workload.cs",
     "logo.png",
-    "pulumiplugin.json"
+    "pulumi-plugin.json"
   ]
 }

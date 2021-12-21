@@ -64,6 +64,10 @@ type GoPackageInfo struct {
 	// Feature flag to disable generating Pulumi object default functions. This is a
 	// space saving measure.
 	DisableObjectDefaults bool `json:"disableObjectDefaults,omitempty"`
+
+	// GenerateExtraInputTypes determines whether or not the code generator generates input (and output) types for
+	// all plain types, instead of for only types that are used as input/output types.
+	GenerateExtraInputTypes bool `json:"generateExtraInputTypes,omitempty"`
 }
 
 // Importer implements schema.Language for Go.

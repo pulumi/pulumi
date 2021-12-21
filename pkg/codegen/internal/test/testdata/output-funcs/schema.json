@@ -634,6 +634,9 @@
         "tests/codegen.spec.ts"
       ]
     },
+    "go": {
+      "generateExtraInputTypes": true
+    },
     "python": {},
     "csharp": {
       "projectReferences": [

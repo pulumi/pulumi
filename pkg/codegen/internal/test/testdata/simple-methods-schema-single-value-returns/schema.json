@@ -44,7 +44,8 @@
     },
     "go": {
       "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-methods-schema/go/example",
-      "liftSingleValueMethodReturns": true
+      "liftSingleValueMethodReturns": true,
+      "generateExtraInputTypes": true
     },
     "nodejs": {
       "devDependencies": {

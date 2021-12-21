@@ -72,7 +72,8 @@
       }
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/input-collision/go/example"
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/input-collision/go/example",
+      "generateExtraInputTypes": true
     },
     "nodejs": {
       "dependencies": {

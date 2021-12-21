@@ -4,8 +4,8 @@
     "doc.go",
     "init.go",
     "provider.go",
+    "pulumi-plugin.json",
     "pulumiTypes.go",
-    "pulumiUtilities.go",
-    "pulumiplugin.json"
+    "pulumiUtilities.go"
   ]
 }
