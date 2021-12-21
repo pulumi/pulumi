@@ -299,7 +299,7 @@ class TestLocalWorkspace(unittest.TestCase):
         stack = Stack.create(stack_name, ws)
         stack.set_config("key", ConfigValue(value="-value"))
         stack.set_config("secret-key", ConfigValue(value="-value", secret=True))
-        cfg = stack.get_all_config()
+        all_config = stack.get_all_config()
         self.assertFalse(all_config["python_test:key"].secret)
         self.assertEqual(all_config["python_test:key"].value, "-value")
         self.assertTrue(all_config["python_test:secret-key"].secret)
