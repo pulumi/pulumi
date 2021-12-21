@@ -295,6 +295,40 @@ namespace Pulumi.Automation.Tests
         }
 
         [Fact]
+        public async Task SupportConfigFlagLike()
+        {
+            var projectName = "config_flag_like";
+            var projectSettings = new ProjectSettings(projectName, ProjectRuntimeName.NodeJS);
+
+            using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
+            {
+                ProjectSettings = projectSettings
+            });
+
+            var stackName = $"{RandomStackName()}";
+            var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
+            var plainKey = NormalizeConfigKey("key", projectName);
+            var secretKey = NormalizeConfigKey("secret-key", projectName);
+
+            try
+            {
+                await stack.SetConfigAsync("key", new ConfigValue("-value"));
+                await stack.SetConfigAsync("secret-key", new ConfigValue("-value", isSecret: true));
+                var values = await stack.GetAllConfigAsync();
+                Assert.True(values.TryGetValue(plainKey, out var plainValue));
+                Assert.Equal("-value", plainValue!.Value);
+                Assert.False(plainValue.IsSecret);
+                Assert.True(values.TryGetValue(secretKey, out var secretValue));
+                Assert.Equal("-value", secretValue!.Value);
+                Assert.True(secretValue.IsSecret);
+            }
+            finally
+            {
+                await workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
         public async Task ListStackAndCurrentlySelected()
         {
             var projectSettings = new ProjectSettings(
