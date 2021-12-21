@@ -1208,6 +1208,39 @@ func TestImportExportStack(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+func TestConfigFlagLike(t *testing.T) {
+	if getTestOrg() != "pulumi-test" {
+		return
+	}
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	err = s.SetConfig(ctx, "key", ConfigValue{"-value", false})
+	if err != nil {
+		t.Error(err)
+	}
+	err = s.SetConfig(ctx, "secret-key", ConfigValue{"-value", true})
+	if err != nil {
+		t.Error(err)
+	}
+	cm, err := s.GetAllConfig(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equalf(t, "-value", cm["testproj:key"].Value, "wrong key")
+	assert.Equalf(t, "-value", cm["testproj:secret-key"].Value, "wrong secret-key")
+	assert.Equalf(t, false, cm["testproj:key"].Secret, "key should not be secret")
+	assert.Equalf(t, true, cm["testproj:secret-key"].Secret, "secret-key should be secret")
+}
+
 func TestNestedConfig(t *testing.T) {
 	if getTestOrg() != "pulumi-test" {
 		return
