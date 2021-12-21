@@ -394,13 +394,10 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// If we're in experimental mode generate a plan
 	if sg.opts.ExperimentalPlans {
-		var inputDiff *resource.ObjectDiff
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
-			inputDiff = nil
 			oldInputs = nil
-		} else {
-			inputDiff = oldInputs.Diff(inputs)
 		}
+		inputDiff := oldInputs.Diff(inputs)
 
 		// Generate the output goal plan
 		// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default

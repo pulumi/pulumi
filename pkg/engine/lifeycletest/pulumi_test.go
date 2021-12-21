@@ -3738,3 +3738,121 @@ func TestComputedCanBeDropped(t *testing.T) {
 	assert.Equal(t, partialPropertySet, snap.Resources[1].Outputs)
 	assert.Equal(t, partialPropertySet, snap.Resources[2].Outputs)
 }
+
+func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+				CheckF: func(urn resource.URN, olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					// If we have name use it, else use olds name, else make one up
+					if _, has := news["name"]; has {
+						return news, nil, nil
+					}
+					if _, has := olds["name"]; has {
+						result := news.Copy()
+						result["name"] = olds["name"]
+						return result, nil, nil
+					}
+
+					name, err := resource.NewUniqueHex(string(urn), 8, 512)
+					assert.Nil(t, err)
+
+					result := news.Copy()
+					result["name"] = resource.NewStringProperty(name)
+					return result, nil, nil
+				},
+			}, nil
+		}),
+	}
+
+	var ins resource.PropertyMap
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, outs, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"other": outs["name"],
+			}),
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
+	}
+
+	project := p.GetProject()
+
+	// Generate a plan.
+	computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"zed": computed,
+	})
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Attempt to run an update using the plan.
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"zed": "baz",
+	})
+	p.Options.Plan = plan.Clone()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Check the resource's state.
+	if !assert.Len(t, snap.Resources, 3) {
+		return
+	}
+
+	// Check we can do an update not just a create
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar2",
+		"zed": computed,
+	})
+	plan, res = TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Do the actual update
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar2",
+		"zed": "baz2",
+	})
+	p.Options.Plan = plan.Clone()
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Check the resource's state.
+	if !assert.Len(t, snap.Resources, 3) {
+		return
+	}
+
+	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"baz": map[string]interface{}{
+			"a": 42,
+			"b": "alpha",
+		},
+		"qux": []interface{}{
+			"beta",
+			24,
+		},
+		"zed": "grr",
+	})
+	assert.Equal(t, expected, snap.Resources[1].Outputs)
+}

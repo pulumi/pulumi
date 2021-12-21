@@ -1,0 +1,167 @@
+
+ref ::= Output.mkRef([]) : Ref<int[]>
+
+// ref.value : Output<int[]>
+
+a = new ResourceA({ thing: ref.value })
+
+b = new ResourceB({ theA: a.id })
+
+// resolve :: Output<int[]> => void
+
+ref.resolve(b.someValue.apply(x => [x]))
+
+// If SDK side:
+// See their is a cycle from b.someValue back to ref
+// Resolve ref to []
+// UpdateResource(id, args)
+
+
+// If A doesn't exist
+// MakeRef(1111-2222-3333-4444)
+// RegisterResource(A, { thing: { "$ref": { "id": 1111-2222-3333-4444, "default": []} }})
+// Issue a create for A={thing=[]}
+// Resolve A, RegisterResource(B, {theA: a.id})
+// ResolveRef(1111-2222-3333-4444, [123])
+
+// If A does exist
+// MakeRef(1111-2222-3333-4444)
+// RegisterResource(A, { thing: { "$ref": { "id": 1111-2222-3333-4444, "default": []} }})
+// Issue a same for A{thing=[123]}
+// Resolve A, RegisterResource(B, {theA: a.id})
+// ResolveRef(1111-2222-3333-4444, [123])
+
+
+ref ::= Output.mkRef([]) : Ref<int[]>
+ref2 := ...
+a = new ResourceA({ thing: ref.value, foo: "bar", baz: ref2.value })
+b = new ResourceB({ theA: a.id })
+evt = ref.resolve(b.someValue.apply(x => [456, x]))
+
+finalA = evt.apply(_ => ResourceA.read(a.id))
+
+// Run up on the above
+// MakeRef(1111-2222-3333-4444)
+// RegisterResource(A, { thing: { "$ref": { "id": 1111-2222-3333-4444, "default": []} }})
+// Issue an update for A{thing=[123], foo: "bar"}
+// Resolve A, RegisterResource(B, {theA: a.id})
+// ResolveRef(1111-2222-3333-4444, [456, 123])
+// Issue an update for A{thing=[456,123], foo: "bar"}
+
+// Map<ID, Set<Resource>>
+
+
+// Simple update method, but can't translate to our GRPC interface
+a = new A({thing: 0})
+b = new B({a = a.id})
+na = a.update({thing: b.value})
+
+// Simple refs, but have to read to get new values
+ref = new Ref("ref", 0)
+a = new A({thing: ref.value})
+b = new B({a = a.id})
+na : Output<A> = ref.resolve(b.value).apply(_ => A.read(a.id))
+
+// Simple ref with refresh method
+ref = new Ref("ref", 0)
+a = new A({thing: ref.value})
+b = new B({a = a.id})
+na : Output<A> = ref.resolve(b.value).apply(_ => a.refresh())
+// maybe reload/refetch/getLatestOutput
+
+
+// resolve returns a resource
+ref = new Ref("ref", 0)
+a = new A({thing: ref.value})
+b = new B({a = a.id})
+na : A = ref.resolve(b.value, a)
+
+
+
+// implict ref objects
+a = new A("a", {thing: new Placeholder(0), foo: "bar"})
+// RegisterResource({thing: { "$ref": 0 }})
+// If create thing=0 if update thing=last input
+b = new B("b", {a = a.id})
+// UpdateResource({thing: 123})
+na : A = new A("a", {thing: b.value, foo: "baz"}, {allowUpdate:PlaceholdersOnly/Everything})
+
+// Via opts
+a = new A("a", {thing: 0, foo: "bar"}, { ignoreUpdates: ["thing"] })
+b = new B("b", {a = a.id})
+na : A = new A("a", {thing: b.value, foo: "baz"}, { allowUpdate:true })
+// RegisterResource(urn, propertySet, opts:allowUpdate=true)
+
+
+
+// via transforms
+a = new A("a", {thing: 0, foo: "bar"}, { ignoreUpdates: ["thing"] })
+b = new B("b", {a = a.id})
+newPropertyMap = Stack.UpdateResource(a, { "thing": b.value })
+// UpdateResource(urn, propertiesToChange)
+
+
+
+// Resource fixpoints, a way to recall the constructor after creating other resources
+(na, b) = A.Fixpoint(
+    "a", {thing: 0}, // RegisterOrReadResource(a, {thing:0}), i.e. this property set is only used for create, it is not the final resource goal state
+    a => { // Either we've just created, or just read "a" pass it in here
+        return new B({a = a.id})
+    },
+    b => { // Now UpdateResource(a, {thing:123})
+        return {thing: b.value}
+    }
+)
+
+// Fixpoints via a variable
+(a, b) = Fixpoint(0, ref => {
+    a = new A({thing: ref}) // RegisterResource(a, {thing:{"$ref": 0}}) # $ref allows us to use the given value for create or the last seen input for update
+    b = new B({theA: a.id}) // b depends on a RegisterResource(b, {theA: idofa})
+
+    return (a, b), b.value // return whatever as first arg, and the final value for the ref for the second arg
+
+    // Now call ResolveRef(12-34-5-6, 123) this gets the engine to update any resources that used the ref and mutate the resource props sdk side (we're at a safe point to do that)
+})
+// Return the objecs with their outputs sets mutated to the up to date values
+
+
+
+// Via updates this isn't really winning us anything, we want to declare up front that the first prop set is only to be used for creates
+a = new A("a", {thing: 0, foo: "bar"})
+b = new B("b", {a = a.id})
+na : A = a.Update("a", {thing: b.value, foo: "baz"})
+
+// Via replacer, this can error if pa.Update is never called and only use the initial property set for create
+pa : Placeholder<A, AArgs> = A.Placeholder("a", {thing: 0, foo: "bar"})
+b = new B("b", {a = pa.value.id})
+na : A = pa.Update({thing: b.value, foo: "baz"})
+
+
+// Via opts but more explict we're doing updates
+a = new A("a", {thing: 0, foo: "bar"}, { allowUpdate:true})
+// This would be the first RegisterResource call the engine sees but because allowUpdate is true it knows to only use the property set passed
+// if this is a create, else to do a same with the last input set and to expect another RegisterResource call
+b = new B("b", {a = a.id})
+// This second new would cause a second RegisterResource call that the engine could then do an Update with and mark "a" as being fully resolved. If we got another RegisterResource call we would then error.
+na : A = new A("a", {thing: b.value, foo: "baz"}, { allowUpdate:true })
+
+// Do deletes play into this? We can pretty easy get whole program deletes with something like
+a = new A("a", args, { temporary:true})
+// Which would have the semantics to create and delete this resource on every deployment, but it won't delete it till the very end of the program.
+// Something like...
+a = new A("a", args, { temporary:some_unit_output})
+// ...could delete once the output resolved. Because it's Option<Output<Unit>> we know it's a temporary and if the output never resolved could delete at end of program. BUT this has a similar issue to updates in that the output
+// probably depends on something later in the program. Which leads my thinking back to RefCells.... maybe OutputRef makes sense as just a plain ref cell for this?
+// Maybe better is an imperative Delete method
+a = new A("a", args, { temporary:true})
+some_output.apply(_ => a.Delete()) // This could send a grpc DeleteResource call which would only be valid for resources that had temporary:true and if it wasn't seen we would still delete at program end
+
+// Can we do something like the above for Update? Well yes clearly but the output is flipped...
+a = new A("a", {thing: 0, foo: "bar"}, { allowUpdate:true})
+new_a = a.Update({thing: some_output, foo:"bar"})
+// but as Mikhail said this means generating Update methods per-type (Delete is one method on Resource so yay no code gen) while the constructor style is just one opt change.
+
+// Final thinking for the night. It obv only makes sense to delete once, but you could potentially do multiple updates as the deployment runs.
+// What does that mean in the context of a final declarative state model that pulumi is trying to express?
+
+
