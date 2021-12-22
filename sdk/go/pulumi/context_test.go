@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -117,4 +118,99 @@ func TestWaitingCausesNoPanics(t *testing.T) {
 		}, WithMocks("project", "stack", mocks))
 		assert.NoError(t, err)
 	}
+}
+
+func TestCollapseAliases(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			assert.Equal(t, "test:resource:type", args.TypeToken)
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	testCases := []struct {
+		parentAliases  []Alias
+		childAliases   []Alias
+		totalAliasUrns int
+		results        []URN
+	}{
+		{
+			parentAliases:  []Alias{},
+			childAliases:   []Alias{},
+			totalAliasUrns: 0,
+			results:        []URN{},
+		},
+		{
+			parentAliases:  []Alias{},
+			childAliases:   []Alias{{Type: String("test:resource:child2")}},
+			totalAliasUrns: 1,
+			results:        []URN{"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child"},
+		},
+		{
+			parentAliases:  []Alias{},
+			childAliases:   []Alias{{Name: String("child2")}},
+			totalAliasUrns: 1,
+			results:        []URN{"urn:pulumi:stack::project::test:resource:type$test:resource:child::child2"},
+		},
+		{
+			parentAliases:  []Alias{{Type: String("test:resource:type3")}},
+			childAliases:   []Alias{{Name: String("myres-child2")}},
+			totalAliasUrns: 3,
+			results: []URN{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+				"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child",
+				"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child2",
+			},
+		},
+		{
+			parentAliases:  []Alias{{Name: String("myres2")}},
+			childAliases:   []Alias{{Name: String("myres-child2")}},
+			totalAliasUrns: 3,
+			results: []URN{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2",
+			},
+		},
+		{
+			parentAliases:  []Alias{{Name: String("myres2")}, {Type: String("test:resource:type3")}, {Name: String("myres3")}},
+			childAliases:   []Alias{{Name: String("myres-child2")}, {Type: String("test:resource:child2")}},
+			totalAliasUrns: 11,
+			results: []URN{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres2-child",
+				"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child",
+				"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child2",
+				"urn:pulumi:stack::project::test:resource:type3$test:resource:child2::myres-child",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres3-child",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres3-child2",
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres3-child",
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		err := RunErr(func(ctx *Context) error {
+			var res testResource2
+			err := ctx.RegisterResource("test:resource:type", "myres", &testResource2Inputs{}, &res, Aliases(testCase.parentAliases))
+			assert.NoError(t, err)
+			urns, err := ctx.collapseAliases(testCase.childAliases, "test:resource:child", "myres-child", &res)
+			assert.NoError(t, err)
+			assert.Len(t, urns, testCase.totalAliasUrns)
+			var items []interface{}
+			for _, item := range urns {
+				items = append(items, item)
+			}
+			All(items...).ApplyT(func(urns interface{}) bool {
+				assert.ElementsMatch(t, urns, testCase.results)
+				return true
+			})
+			return nil
+		}, WithMocks("project", "stack", mocks))
+		assert.NoError(t, err)
+	}
+
 }

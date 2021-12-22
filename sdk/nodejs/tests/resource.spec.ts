@@ -15,7 +15,7 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { Output, concat, interpolate, output } from "../output";
+import { Output, all, concat, interpolate, output } from "../output";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
 import { allAliases, createUrn, ComponentResource, CustomResourceOptions, DependencyProviderResource } from "../resource";
@@ -65,11 +65,17 @@ describe("createUrn", () => {
     }));
 });
 
+class TestResource extends ComponentResource {
+    constructor(name: string, opts?: CustomResourceOptions) {
+        super("test:resource:type", name, {}, opts);
+    }
+}
+
 describe("allAliases", () => {
     before(() => {
         runtime._setTestModeEnabled(true);
-        runtime._setProject("myproject");
-        runtime._setStack("mystack");
+        runtime._setProject("project");
+        runtime._setStack("stack");
     });
 
     after(() => {
@@ -78,41 +84,76 @@ describe("allAliases", () => {
         runtime._setStack(undefined);
     });
 
-    it("no aliases", asyncTest(async () => {
-        const res = new MyResource("myres");
-        const aliases = allAliases([], "n", "t", res, "myres");
-        assert.strictEqual(aliases.length, 0);
-    }));
+    const testCases = [
+        {
+            name: "no aliases",
+            parentAliases: [],
+            childAliases: [],
+            results: [],
+        },
+        {
+            name: "one child alias (type), no parent aliases",
+            parentAliases: [],
+            childAliases: [{ type: "test:resource:child2" }],
+            results: ["urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child"],
+        },
+        {
+            name: "one child alias (name), no parent aliases",
+            parentAliases: [],
+            childAliases: [{ name: "child2" }],
+            results: ["urn:pulumi:stack::project::test:resource:type$test:resource:child::child2"],
+        },
+        {
+            name: "one child alias (name), one parent alias (type)",
+        	parentAliases:  [{type: "test:resource:type3"}],
+        	childAliases:   [{name: "myres-child2"}],
+        	results: [
+        		"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+        		"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child",
+        		"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child2",
+            ],
+        },
+        {
+            name: "one child alias (name), one parent alias (name)",
+        	parentAliases:  [{name: "myres2"}],
+        	childAliases:   [{name: "myres-child2"}],
+        	results: [
+        		"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+        		"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child",
+        		"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2",
+            ],
+        },
+        {
+            name: "two child aliases, three parent aliases",
+            parentAliases: [{ name: "myres2" }, { type: "test:resource:type3" }, { name: "myres3" }],
+            childAliases: [{ name: "myres-child2" }, { type: "test:resource:child2" }],
+            results: [
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child",
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child",
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2",
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres2-child",
+                "urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child",
+                "urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child2",
+                "urn:pulumi:stack::project::test:resource:type3$test:resource:child2::myres-child",
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child::myres3-child",
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child::myres3-child2",
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres3-child",
+            ],
+        },
+    ];
 
-    it("one child alias (type), no parent aliases", asyncTest(async () => {
-        const res = new MyResource("myres");
-        const aliases = allAliases([{ type: "t2" }], "n", "t", res, "myres");
-        assert.strictEqual(aliases.length, 1);
-    }));
-
-    it("one child alias (name), no parent aliases", asyncTest(async () => {
-        const res = new MyResource("myres");
-        const aliases = allAliases([{ name: "n2" }], "n", "t", res, "myres");
-        assert.strictEqual(aliases.length, 1);
-    }));
-
-    it("one child alias (name), one parent alias (type)", asyncTest(async () => {
-        const res = new MyResource("myres", { aliases: [{ type: "t3" }] });
-        const aliases = allAliases([{ name: "n2" }], "n", "t", res, "myres");
-        assert.strictEqual(aliases.length, 3);
-    }));
-
-    it("one child alias (name), one parent alias (name)", asyncTest(async () => {
-        const res = new MyResource("myres", { aliases: [{ name: "myres2" }] });
-        const aliases = allAliases([{ name: "n2" }], "n", "t", res, "myres");
-        assert.strictEqual(aliases.length, 3);
-    }));
-
-    it("two child aliases, three parent aliases ", asyncTest(async () => {
-        const res = new MyResource("myres", { aliases: [{ name: "myres2" }, { type: "t3" }, { name: "myres3" }] });
-        const aliases = allAliases([{ name: "n2" }, { type: "t2" }], "n", "t", res, "myres");
-        assert.strictEqual(aliases.length, 11);
-    }));
+    for (const testCase of testCases) {
+        it(testCase.name, asyncTest(async () => {
+            const res = new TestResource("myres", { aliases: testCase.parentAliases });
+            const aliases = allAliases(testCase.childAliases, "myres-child", "test:resource:child", res, "myres");
+            assert.strictEqual(aliases.length, testCase.results.length);
+            const aliasURNs = await all(aliases).promise();
+            for (let i = 0; i < aliasURNs.length; i++) {
+                assert.strictEqual(aliasURNs[i], testCase.results[i]);
+            }
+        }));
+    }
 });
 
 describe("DependencyProviderResource", () => {
