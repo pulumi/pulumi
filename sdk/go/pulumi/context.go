@@ -963,24 +963,25 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 	}
 
 	if parent != nil {
-		for _, parentAlias := range parent.getAliases() {
+		parentAliases := parent.getAliases()
+		for i := range parentAliases {
+			parentAlias := parentAliases[i]
 			urn := inheritedChildAlias(name, parent.getName(), t, project, stack, parentAlias)
 			aliasURNs = append(aliasURNs, urn)
-			for _, childAlias := range aliases {
+			for j := range aliases {
+				childAlias := aliases[j]
 				urn, err := childAlias.collapseToURN(name, t, parent, project, stack)
 				if err != nil {
 					return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
 				}
-				func(parentAlias URNOutput, childAlias Alias) {
-					inheritedAlias := urn.ApplyT(func(urn URN) URNOutput {
-						aliasedChildName := string(resource.URN(urn).Name())
-						aliasedChildType := string(resource.URN(urn).Type())
-						return inheritedChildAlias(aliasedChildName, parent.getName(), aliasedChildType, project, stack, parentAlias)
-					}).ApplyT(func(urn interface{}) URN {
-						return urn.(URN)
-					}).(URNOutput)
-					aliasURNs = append(aliasURNs, inheritedAlias)
-				}(parentAlias, childAlias)
+				inheritedAlias := urn.ApplyT(func(urn URN) URNOutput {
+					aliasedChildName := string(resource.URN(urn).Name())
+					aliasedChildType := string(resource.URN(urn).Type())
+					return inheritedChildAlias(aliasedChildName, parent.getName(), aliasedChildType, project, stack, parentAlias)
+				}).ApplyT(func(urn interface{}) URN {
+					return urn.(URN)
+				}).(URNOutput)
+				aliasURNs = append(aliasURNs, inheritedAlias)
 			}
 		}
 	}

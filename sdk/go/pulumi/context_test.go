@@ -192,7 +192,8 @@ func TestCollapseAliases(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range testCases {
+	for i := range testCases {
+		testCase := testCases[i]
 		err := RunErr(func(ctx *Context) error {
 			var res testResource2
 			err := ctx.RegisterResource("test:resource:type", "myres", &testResource2Inputs{}, &res,
