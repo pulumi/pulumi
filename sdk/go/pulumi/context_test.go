@@ -124,7 +124,7 @@ func TestCollapseAliases(t *testing.T) {
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			assert.Equal(t, "test:resource:type", args.TypeToken)
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return "myID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
 		},
 	}
 
@@ -195,7 +195,8 @@ func TestCollapseAliases(t *testing.T) {
 	for _, testCase := range testCases {
 		err := RunErr(func(ctx *Context) error {
 			var res testResource2
-			err := ctx.RegisterResource("test:resource:type", "myres", &testResource2Inputs{}, &res, Aliases(testCase.parentAliases))
+			err := ctx.RegisterResource("test:resource:type", "myres", &testResource2Inputs{}, &res,
+				Aliases(testCase.parentAliases))
 			assert.NoError(t, err)
 			urns, err := ctx.collapseAliases(testCase.childAliases, "test:resource:child", "myres-child", &res)
 			assert.NoError(t, err)

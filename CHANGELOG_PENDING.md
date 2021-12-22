@@ -34,3 +34,6 @@
 
 - [sdk/dotnet] - Don't throw converting value types that don't match schema
   [#8628](https://github.com/pulumi/pulumi/pull/8628)
+
+- [sdk/{go,nodejs}] - Compute full set of aliases when both parent and child are aliased.
+  [#8627](https://github.com/pulumi/pulumi/pull/8627)

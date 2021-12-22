@@ -73,7 +73,7 @@ function urnTypeAndName(urn: URN) {
     const parts = urn.split("::");
     const typeParts = parts[2].split("$");
     return {
-        name: parts[3], 
+        name: parts[3],
         type: typeParts[typeParts.length-1],
     };
 }
@@ -86,7 +86,7 @@ export function allAliases(childAliases: Input<URN | Alias>[], childName: string
     for (const childAlias of childAliases) {
         aliases.push(collapseAliasToUrn(childAlias, childName, childType, parent));
     }
-    for (const parentAlias of (parent.__aliases || [])) { 
+    for (const parentAlias of (parent.__aliases || [])) {
         // For each parent alias, add an alias that uses that base child name and the parent alias
         aliases.push(inheritedChildAlias(childName, parentName, parentAlias, childType));
         // Also add an alias for each child alias and the parent alias
