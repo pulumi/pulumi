@@ -70,6 +70,7 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 
 	// Add plugin binary to included files.
 	files["pulumi-resource-test"] = nil
+	files["pulumi-resource-test.exe"] = nil
 
 	tgz, err := createTGZ(files)
 	assert.NoError(t, err)
