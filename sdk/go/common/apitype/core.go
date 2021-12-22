@@ -324,6 +324,8 @@ type ResourceV3 struct {
 	CustomTimeouts *resource.CustomTimeouts `json:"customTimeouts,omitempty" yaml:"customTimeouts,omitempty"`
 	// ImportID is the import input used for imported resources.
 	ImportID resource.ID `json:"importID,omitempty" yaml:"importID,omitempty"`
+	// An auto-incrementing sequence number for each time this resource gets created/replaced.
+	SequenceNumber int `json:"sequenceNumber,omitempty" yaml:"sequenceNumber,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

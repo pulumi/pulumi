@@ -132,6 +132,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil, /* aliases */
 		nil, /* customTimeouts */
 		"",  /* importID */
+		0,   /* sequneceNumber */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -276,7 +277,10 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "")
+		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "", 0)
+	if hasOld {
+		new.SequenceNumber = old.SequenceNumber
+	}
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
