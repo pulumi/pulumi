@@ -174,7 +174,7 @@ func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string,
 // LocalURL returns a URL that uses the "fire and forget", storing its data inside the test folder (so multiple tests)
 // may reuse stack names.
 func (e *Environment) LocalURL() string {
-	return "file://" + e.RootPath
+	return "file://" + filepath.ToSlash(e.RootPath)
 }
 
 // GetCommandResults runs the given command and args in the Environments CWD, returning
