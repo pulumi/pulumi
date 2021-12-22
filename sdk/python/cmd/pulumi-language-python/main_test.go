@@ -15,13 +15,14 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDeterminePluginVersion(t *testing.T) {
@@ -121,18 +122,35 @@ func TestDeterminePulumiPackages(t *testing.T) {
 	t.Run("pulumiplugin", func(t *testing.T) {
 		cwd := t.TempDir()
 		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pip-install-test")
-		assert.NoError(t, err)
-		sitePackages, err := runPythonCommand("venv", cwd, "-c", "import site; print(site.getsitepackages()[0])")
-		assert.NoError(t, err)
-		path := filepath.Join(strings.TrimSpace(string(sitePackages)), "pip_install_test", "pulumi-plugin.json")
-		t.Logf("Wrote pulumipluing.json file: %s", path)
+		require.NoError(t, err)
+		// Find sitePackages folder in Python that contains pip_install_test subfolder.
+		var sitePackages string
+		possibleSitePackages, err := runPythonCommand("venv", cwd, "-c", "import site; import json; print(json.dumps(site.getsitepackages()))")
+		require.NoError(t, err)
+		var possibleSitePackagePaths []string
+		err = json.Unmarshal(possibleSitePackages, &possibleSitePackagePaths)
+		require.NoError(t, err)
+		for _, dir := range possibleSitePackagePaths {
+			_, err := os.Stat(filepath.Join(dir, "pip_install_test"))
+			if os.IsNotExist(err) {
+				continue
+			}
+			require.NoError(t, err)
+			sitePackages = dir
+		}
+		if sitePackages == "" {
+			t.Error("None of Python site.getsitepackages() folders contain a pip_install_test subfolder")
+			t.FailNow()
+		}
+		path := filepath.Join(sitePackages, "pip_install_test", "pulumi-plugin.json")
 		bytes := []byte(`{ "name": "thing1", "version": "thing2", "server": "thing3", "resource": true }` + "\n")
 		err = os.WriteFile(path, bytes, 0600)
-		assert.NoError(t, err)
+		require.NoError(t, err)
+		t.Logf("Wrote pulumipluing.json file: %s", path)
 		packages, err := determinePulumiPackages("venv", cwd)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, 1, len(packages))
 		pipInstallTest := packages[0]
 		assert.NotNil(t, pipInstallTest.plugin)
