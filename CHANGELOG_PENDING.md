@@ -27,3 +27,6 @@
 - [sdk/python] - Fixes an issue with stack outputs persisting after
   they are removed from the Pulumi program
   [#8583](https://github.com/pulumi/pulumi/pull/8583)
+
+- [sdk/dotnet] - Don't throw converting value types that don't match schema
+  [#8628](https://github.com/pulumi/pulumi/pull/8628)
