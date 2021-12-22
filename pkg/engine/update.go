@@ -24,6 +24,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/blang/semver"
+
+	"github.com/pulumi/pulumi/pkg/v3/engine/events"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -147,21 +150,7 @@ type UpdateOptions struct {
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.
-type ResourceChanges map[deploy.StepOp]int
-
-// HasChanges returns true if there are any non-same changes in the resulting summary.
-func (changes ResourceChanges) HasChanges() bool {
-	var c int
-	for op, count := range changes {
-		if op != deploy.OpSame &&
-			op != deploy.OpRead &&
-			op != deploy.OpReadDiscard &&
-			op != deploy.OpReadReplacement {
-			c += count
-		}
-	}
-	return c > 0
-}
+type ResourceChanges = events.ResourceChanges
 
 func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, result.Result) {
 	contract.Require(u != nil, "update")
@@ -479,7 +468,7 @@ func abbreviateFilePath(path string) string {
 type updateActions struct {
 	Context *Context
 	Steps   int
-	Ops     map[deploy.StepOp]int
+	Ops     map[events.StepOp]int
 	Seen    map[resource.URN]deploy.Step
 	MapLock sync.Mutex
 	Update  UpdateInfo
@@ -491,7 +480,7 @@ type updateActions struct {
 func newUpdateActions(context *Context, u UpdateInfo, opts deploymentOptions) *updateActions {
 	return &updateActions{
 		Context: context,
-		Ops:     make(map[deploy.StepOp]int),
+		Ops:     make(map[events.StepOp]int),
 		Seen:    make(map[resource.URN]deploy.Step),
 		Update:  u,
 		Opts:    opts,
@@ -560,7 +549,7 @@ func (acts *updateActions) OnResourceStepPost(
 			// Increment the counters.
 			acts.MapLock.Lock()
 			acts.Steps++
-			acts.Ops[op]++
+			acts.Ops[events.StepOp(op)]++
 			acts.MapLock.Unlock()
 		}
 
@@ -631,7 +620,7 @@ func (acts *updateActions) Changes() ResourceChanges {
 }
 
 type previewActions struct {
-	Ops     map[deploy.StepOp]int
+	Ops     map[events.StepOp]int
 	Opts    deploymentOptions
 	Seen    map[resource.URN]deploy.Step
 	MapLock sync.Mutex
@@ -657,7 +646,7 @@ func ShouldRecordReadStep(step deploy.Step) bool {
 
 func newPreviewActions(opts deploymentOptions) *previewActions {
 	return &previewActions{
-		Ops:  make(map[deploy.StepOp]int),
+		Ops:  make(map[events.StepOp]int),
 		Opts: opts,
 		Seen: make(map[resource.URN]deploy.Step),
 	}
@@ -709,7 +698,7 @@ func (acts *previewActions) OnResourceStepPost(ctx interface{},
 		// Track the operation if shown and/or if it is a logically meaningful operation.
 		if record {
 			acts.MapLock.Lock()
-			acts.Ops[op]++
+			acts.Ops[events.StepOp(op)]++
 			acts.MapLock.Unlock()
 		}
 

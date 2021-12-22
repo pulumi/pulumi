@@ -107,6 +107,12 @@ func loadProvider(pkg tokens.Package, version *semver.Version, host plugin.Host,
 	return host.Provider(pkg, version)
 }
 
+func mustNewReference(urn resource.URN, id resource.ID) Reference {
+	ref, err := NewReference(urn, id)
+	contract.Assert(err == nil)
+	return ref
+}
+
 // NewRegistry creates a new provider registry using the given host and old resources. Each provider present in the old
 // resources will be loaded, configured, and added to the returned registry under its reference. If any provider is not
 // loadable/configurable or has an invalid ID, this function returns an error.

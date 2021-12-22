@@ -17,6 +17,7 @@ package engine
 import (
 	"github.com/opentracing/opentracing-go"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine/events"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -49,7 +50,7 @@ type QueryInfo interface {
 // a way for the engine to persist snapshots, using the `SnapshotManager`.
 type Context struct {
 	Cancel          *cancel.Context
-	Events          chan<- Event
+	Events          chan<- events.Event
 	SnapshotManager SnapshotManager
 	BackendClient   deploy.BackendClient
 	ParentSpan      opentracing.SpanContext

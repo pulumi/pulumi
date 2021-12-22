@@ -29,15 +29,13 @@ import (
 
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/engine/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/termutil"
 )
 
 // Progress describes a message we want to show in the display.  There are two types of messages,
@@ -69,11 +67,11 @@ type DiagInfo struct {
 	// this out in the non-interactive mode whenever we get new events. Importantly, we don't want
 	// to print out the most significant diagnostic, as that means a flurry of event swill cause us
 	// to keep printing out the most significant diagnostic over and over again.
-	LastDiag *engine.DiagEventPayload
+	LastDiag *events.DiagEventPayload
 
 	// The last error we received.  If we have an error, and we're in tree-view, we'll prefer to
 	// show this over the last non-error diag so that users know about something bad early on.
-	LastError *engine.DiagEventPayload
+	LastError *events.DiagEventPayload
 
 	// All the diagnostic events we've heard about this resource.  We'll print the last diagnostic
 	// in the status region while a resource is in progress.  At the end we'll print out all
@@ -81,7 +79,7 @@ type DiagInfo struct {
 	//
 	// Diagnostic events are bucketed by their associated stream ID (with 0 being the default
 	// stream).
-	StreamIDToDiagPayloads map[int32][]engine.DiagEventPayload
+	StreamIDToDiagPayloads map[int32][]events.DiagEventPayload
 }
 
 // ProgressDisplay organizes all the information needed for a dynamically updated "progress" view of an update.
@@ -112,10 +110,10 @@ type ProgressDisplay struct {
 	// The summary event from the engine.  If we get this, we'll print this after all
 	// normal resource events are heard.  That way we don't interfere with all the progress
 	// messages we're outputting for them.
-	summaryEventPayload *engine.SummaryEventPayload
+	summaryEventPayload *events.SummaryEventPayload
 
 	// Any system events we've received.  They will be printed at the bottom of all the status rows
-	systemEventPayloads []engine.StdoutEventPayload
+	systemEventPayloads []events.StdoutEventPayload
 
 	// Used to record the order that rows are created in.  That way, when we present in a tree, we
 	// can keep things ordered so they will not jump around.
@@ -127,7 +125,7 @@ type ProgressDisplay struct {
 
 	// A spinner to use to show that we're still doing work even when no output has been
 	// printed to the console in a while.
-	nonInteractiveSpinner cmdutil.Spinner
+	nonInteractiveSpinner termutil.Spinner
 
 	headerRow    Row
 	resourceRows []ResourceRow
@@ -167,7 +165,7 @@ type ProgressDisplay struct {
 
 var (
 	// policyPayloads is a collection of policy violation events for a single resource.
-	policyPayloads []engine.PolicyViolationEventPayload
+	policyPayloads []events.PolicyViolationEventPayload
 )
 
 func camelCase(s string) string {
@@ -209,21 +207,21 @@ func simplifyTypeName(typ tokens.Type) string {
 // getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
-func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEventMetadata) {
+func getEventUrnAndMetadata(event events.Event) (resource.URN, *events.StepEventMetadata) {
 	switch event.Type {
-	case engine.ResourcePreEvent:
-		payload := event.Payload().(engine.ResourcePreEventPayload)
+	case events.ResourcePreEvent:
+		payload := event.Payload().(events.ResourcePreEventPayload)
 		return payload.Metadata.URN, &payload.Metadata
-	case engine.ResourceOutputsEvent:
-		payload := event.Payload().(engine.ResourceOutputsEventPayload)
+	case events.ResourceOutputsEvent:
+		payload := event.Payload().(events.ResourceOutputsEventPayload)
 		return payload.Metadata.URN, &payload.Metadata
-	case engine.ResourceOperationFailed:
-		payload := event.Payload().(engine.ResourceOperationFailedPayload)
+	case events.ResourceOperationFailed:
+		payload := event.Payload().(events.ResourceOperationFailedPayload)
 		return payload.Metadata.URN, &payload.Metadata
-	case engine.DiagEvent:
-		return event.Payload().(engine.DiagEventPayload).URN, nil
-	case engine.PolicyViolationEvent:
-		return event.Payload().(engine.PolicyViolationEventPayload).ResourceURN, nil
+	case events.DiagEvent:
+		return event.Payload().(events.DiagEventPayload).URN, nil
+	case events.PolicyViolationEvent:
+		return event.Payload().(events.PolicyViolationEventPayload).ResourceURN, nil
 	default:
 		return "", nil
 	}
@@ -270,7 +268,7 @@ func (display *ProgressDisplay) writeBlankLine() {
 
 // ShowProgressEvents displays the engine events with docker's progress view.
 func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
+	events <-chan events.Event, done chan<- bool, opts Options, isPreview bool) {
 
 	stdout := opts.Stdout
 	if stdout == nil {
@@ -284,11 +282,11 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to
 	// let the user know what is still being worked on.
-	var spinner cmdutil.Spinner
+	var spinner termutil.Spinner
 	var ticker *time.Ticker
 	if stdout == os.Stdout && stderr == os.Stderr && opts.IsInteractive {
-		spinner, ticker = cmdutil.NewSpinnerAndTicker(
-			fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
+		spinner, ticker = termutil.NewSpinnerAndTicker(
+			fmt.Sprintf("%s%s...", termutil.EmojiOr("✨ ", "@ "), op),
 			nil, 1 /*timesPerSecond*/)
 	} else {
 		spinner = &nopSpinner{}
@@ -764,7 +762,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 				// For the non-default stream merge all the messages from the stream into a single
 				// message.
 				p := display.mergeStreamPayloadsToSinglePayload(payloads)
-				payloads = []engine.DiagEventPayload{p}
+				payloads = []events.DiagEventPayload{p}
 			}
 
 			// Did we write any diagnostic information for the resource x stream?
@@ -817,7 +815,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 // grouped by policy pack. If no policy violations were encountered, prints nothing.
 func (display *ProgressDisplay) printPolicyViolations() bool {
 	// Loop through every resource and gather up all policy violations encountered.
-	var policyEvents []engine.PolicyViolationEventPayload
+	var policyEvents []events.PolicyViolationEventPayload
 	for _, row := range display.eventUrnToResourceRow {
 		policyPayloads := row.PolicyPayloads()
 		if len(policyPayloads) == 0 {
@@ -898,7 +896,7 @@ func (display *ProgressDisplay) printOutputs() {
 
 	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 
-	props := engine.GetResourceOutputsPropertiesString(
+	props := events.GetResourceOutputsPropertiesString(
 		stackStep, 1, display.isPreview, display.opts.Debug,
 		false /* refresh */, display.opts.ShowSameResources)
 	if props != "" {
@@ -919,7 +917,7 @@ func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
 }
 
 func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
-	payloads []engine.DiagEventPayload) engine.DiagEventPayload {
+	payloads []events.DiagEventPayload) events.DiagEventPayload {
 	buf := bytes.Buffer{}
 
 	for _, p := range payloads {
@@ -928,7 +926,7 @@ func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
 
 	firstPayload := payloads[0]
 	msg := buf.String()
-	return engine.DiagEventPayload{
+	return events.DiagEventPayload{
 		URN:       firstPayload.URN,
 		Message:   msg,
 		Prefix:    firstPayload.Prefix,
@@ -970,7 +968,7 @@ func (display *ProgressDisplay) processTick() {
 	}
 }
 
-func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {
+func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *events.StepEventMetadata) ResourceRow {
 	// If there's already a row for this URN, return it.
 	row, has := display.eventUrnToResourceRow[urn]
 	if has {
@@ -978,7 +976,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	}
 
 	// First time we're hearing about this resource. Create an initial nearly-empty status for it.
-	step := engine.StepEventMetadata{URN: urn, Op: deploy.OpSame}
+	step := events.StepEventMetadata{URN: urn, Op: events.OpSame}
 	if metadata != nil {
 		step = *metadata
 	}
@@ -1012,38 +1010,38 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	return row
 }
 
-func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
+func (display *ProgressDisplay) processNormalEvent(event events.Event) {
 	switch event.Type {
-	case engine.PreludeEvent:
+	case events.PreludeEvent:
 		// A prelude event can just be printed out directly to the console.
 		// Note: we should probably make sure we don't get any prelude events
 		// once we start hearing about actual resource events.
-		payload := event.Payload().(engine.PreludeEventPayload)
+		payload := event.Payload().(events.PreludeEventPayload)
 		preludeEventString := renderPreludeEvent(payload, display.opts)
 		if display.isTerminal {
-			display.processNormalEvent(engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+			display.processNormalEvent(events.NewEvent(events.DiagEvent, events.DiagEventPayload{
 				Ephemeral: false,
-				Severity:  diag.Info,
-				Color:     cmdutil.GetGlobalColorization(),
+				Severity:  apitype.SeverityInfo,
+				Color:     termutil.GetGlobalColorization(),
 				Message:   preludeEventString,
 			}))
 		} else {
 			display.writeSimpleMessage(preludeEventString)
 		}
 		return
-	case engine.SummaryEvent:
+	case events.SummaryEvent:
 		// keep track of the summary event so that we can display it after all other
 		// resource-related events we receive.
-		payload := event.Payload().(engine.SummaryEventPayload)
+		payload := event.Payload().(events.SummaryEventPayload)
 		display.summaryEventPayload = &payload
 		return
-	case engine.DiagEvent:
-		msg := display.renderProgressDiagEvent(event.Payload().(engine.DiagEventPayload), true /*includePrefix:*/)
+	case events.DiagEvent:
+		msg := display.renderProgressDiagEvent(event.Payload().(events.DiagEventPayload), true /*includePrefix:*/)
 		if msg == "" {
 			return
 		}
-	case engine.StdoutColorEvent:
-		display.handleSystemEvent(event.Payload().(engine.StdoutEventPayload))
+	case events.StdoutColorEvent:
+		display.handleSystemEvent(event.Payload().(events.StdoutEventPayload))
 		return
 	}
 
@@ -1053,22 +1051,22 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	// If we're suppressing reads from the tree-view, then convert notifications about reads into
 	// ephemeral messages that will go into the info column.
 	if metadata != nil && !display.opts.ShowReads {
-		if metadata.Op == deploy.OpReadDiscard || metadata.Op == deploy.OpReadReplacement {
+		if metadata.Op == events.OpReadDiscard || metadata.Op == events.OpReadReplacement {
 			// just flat out ignore read discards/replace.  They're only relevant in the context of
 			// 'reads', and we only present reads as an ephemeral diagnostic anyways.
 			return
 		}
 
-		if metadata.Op == deploy.OpRead {
+		if metadata.Op == events.OpRead {
 			// Don't show reads as operations on a specific resource.  It's an underlying detail
 			// that we don't want to clutter up the display with.  However, to help users know
 			// what's going on, we can show them as ephemeral diagnostic messages that are
 			// associated at the top level with the stack.  That way if things are taking a while,
 			// there's insight in the display as to what's going on.
-			display.processNormalEvent(engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+			display.processNormalEvent(events.NewEvent(events.DiagEvent, events.DiagEventPayload{
 				Ephemeral: true,
-				Severity:  diag.Info,
-				Color:     cmdutil.GetGlobalColorization(),
+				Severity:  apitype.SeverityInfo,
+				Color:     termutil.GetGlobalColorization(),
 				Message:   fmt.Sprintf("read %v %v", simplifyTypeName(eventUrn.Type()), eventUrn.Name()),
 			}))
 			return
@@ -1091,17 +1089,17 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	// Always show row if there's a policy violation event. Policy violations prevent resource
 	// registration, so if we don't show the row, the violation gets attributed to the stack
 	// resource rather than the resources whose policy failed.
-	hideRowIfUnnecessary = hideRowIfUnnecessary || event.Type == engine.PolicyViolationEvent
+	hideRowIfUnnecessary = hideRowIfUnnecessary || event.Type == events.PolicyViolationEvent
 	if !hideRowIfUnnecessary {
 		row.SetHideRowIfUnnecessary(false)
 	}
 
-	if event.Type == engine.ResourcePreEvent {
-		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
+	if event.Type == events.ResourcePreEvent {
+		step := event.Payload().(events.ResourcePreEventPayload).Metadata
 		row.SetStep(step)
-	} else if event.Type == engine.ResourceOutputsEvent {
-		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
-		step := event.Payload().(engine.ResourceOutputsEventPayload).Metadata
+	} else if event.Type == events.ResourceOutputsEvent {
+		isRefresh := display.getStepOp(row.Step()) == events.OpRefresh
+		step := event.Payload().(events.ResourceOutputsEventPayload).Metadata
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
 		if step.URN == display.stackUrn {
@@ -1114,16 +1112,16 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		// If we're not in a terminal, we may not want to display this row again: if we're displaying a preview or if
 		// this step is a no-op for a custom resource, refreshing this row will simply duplicate its earlier output.
 		hasMeaningfulOutput := isRefresh ||
-			!display.isPreview && (step.Res == nil || step.Res.Custom && step.Op != deploy.OpSame)
+			!display.isPreview && (step.Res == nil || step.Res.Custom && step.Op != events.OpSame)
 		if !display.isTerminal && !hasMeaningfulOutput {
 			return
 		}
-	} else if event.Type == engine.ResourceOperationFailed {
+	} else if event.Type == events.ResourceOperationFailed {
 		row.SetFailed()
-	} else if event.Type == engine.DiagEvent {
+	} else if event.Type == events.DiagEvent {
 		// also record this diagnostic so we print it at the end.
 		row.RecordDiagEvent(event)
-	} else if event.Type == engine.PolicyViolationEvent {
+	} else if event.Type == events.PolicyViolationEvent {
 		// also record this policy violation so we print it at the end.
 		row.RecordPolicyViolationEvent(event)
 	} else {
@@ -1139,7 +1137,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	}
 }
 
-func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayload) {
+func (display *ProgressDisplay) handleSystemEvent(payload events.StdoutEventPayload) {
 	// Make sure we have a header to display
 	display.ensureHeaderAndStackRows()
 
@@ -1174,7 +1172,7 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
 		policyPayloads:       policyPayloads,
-		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
+		step:                 events.StepEventMetadata{Op: events.OpSame},
 		hideRowIfUnnecessary: false,
 	}
 
@@ -1182,7 +1180,7 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 	display.resourceRows = append(display.resourceRows, stackRow)
 }
 
-func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event) {
+func (display *ProgressDisplay) processEvents(ticker *time.Ticker, eventsC <-chan events.Event) {
 	// Main processing loop.  The purpose of this func is to read in events from the engine
 	// and translate them into Status objects and progress messages to be presented to the
 	// command line.
@@ -1191,11 +1189,11 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 		case <-ticker.C:
 			display.processTick()
 
-		case event := <-events:
-			if event.Type == "" || event.Type == engine.CancelEvent {
+		case event := <-eventsC:
+			if event.Type == "" || event.Type == events.CancelEvent {
 				// Engine finished sending events.  Do all the final processing and return
 				// from this local func.  This will print out things like full diagnostic
-				// events, as well as the summary event from the engine.
+				// events, as well as the summary event from the events.
 				display.processEndSteps()
 				return
 			}
@@ -1205,8 +1203,8 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 	}
 }
 
-func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEventPayload, includePrefix bool) string {
-	if payload.Severity == diag.Debug && !display.opts.Debug {
+func (display *ProgressDisplay) renderProgressDiagEvent(payload events.DiagEventPayload, includePrefix bool) string {
+	if payload.Severity == apitype.SeverityDebug && !display.opts.Debug {
 		return ""
 	}
 
@@ -1218,7 +1216,7 @@ func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEvent
 	return strings.TrimRightFunc(msg, unicode.IsSpace)
 }
 
-func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {
+func (display *ProgressDisplay) getStepDoneDescription(step events.StepEventMetadata, failed bool) string {
 	makeError := func(v string) string {
 		return colors.SpecError + "**" + v + "**" + colors.Reset
 	}
@@ -1234,55 +1232,55 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	getDescription := func() string {
 		if failed {
 			switch op {
-			case deploy.OpSame:
+			case events.OpSame:
 				return "failed"
-			case deploy.OpCreate, deploy.OpCreateReplacement:
+			case events.OpCreate, events.OpCreateReplacement:
 				return "creating failed"
-			case deploy.OpUpdate:
+			case events.OpUpdate:
 				return "updating failed"
-			case deploy.OpDelete, deploy.OpDeleteReplaced:
+			case events.OpDelete, events.OpDeleteReplaced:
 				return "deleting failed"
-			case deploy.OpReplace:
+			case events.OpReplace:
 				return "replacing failed"
-			case deploy.OpRead, deploy.OpReadReplacement:
+			case events.OpRead, events.OpReadReplacement:
 				return "reading failed"
-			case deploy.OpRefresh:
+			case events.OpRefresh:
 				return "refreshing failed"
-			case deploy.OpReadDiscard, deploy.OpDiscardReplaced:
+			case events.OpReadDiscard, events.OpDiscardReplaced:
 				return "discarding failed"
-			case deploy.OpImport, deploy.OpImportReplacement:
+			case events.OpImport, events.OpImportReplacement:
 				return "importing failed"
 			}
 		} else {
 			switch op {
-			case deploy.OpSame:
+			case events.OpSame:
 				return ""
-			case deploy.OpCreate:
+			case events.OpCreate:
 				return "created"
-			case deploy.OpUpdate:
+			case events.OpUpdate:
 				return "updated"
-			case deploy.OpDelete:
+			case events.OpDelete:
 				return "deleted"
-			case deploy.OpReplace:
+			case events.OpReplace:
 				return "replaced"
-			case deploy.OpCreateReplacement:
+			case events.OpCreateReplacement:
 				return "created replacement"
-			case deploy.OpDeleteReplaced:
+			case events.OpDeleteReplaced:
 				return "deleted original"
-			case deploy.OpRead:
+			case events.OpRead:
 				// nolint: goconst
 				return "read"
-			case deploy.OpReadReplacement:
+			case events.OpReadReplacement:
 				return "read for replacement"
-			case deploy.OpRefresh:
+			case events.OpRefresh:
 				return "refresh"
-			case deploy.OpReadDiscard:
+			case events.OpReadDiscard:
 				return "discarded"
-			case deploy.OpDiscardReplaced:
+			case events.OpDiscardReplaced:
 				return "discarded original"
-			case deploy.OpImport:
+			case events.OpImport:
 				return "imported"
-			case deploy.OpImportReplacement:
+			case events.OpImportReplacement:
 				return "imported replacement"
 			}
 		}
@@ -1298,36 +1296,36 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	return op.Color() + getDescription() + colors.Reset
 }
 
-func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) string {
+func (display *ProgressDisplay) getPreviewText(step events.StepEventMetadata) string {
 	switch step.Op {
-	case deploy.OpSame:
+	case events.OpSame:
 		return ""
-	case deploy.OpCreate:
+	case events.OpCreate:
 		return "create"
-	case deploy.OpUpdate:
+	case events.OpUpdate:
 		return "update"
-	case deploy.OpDelete:
+	case events.OpDelete:
 		return "delete"
-	case deploy.OpReplace:
+	case events.OpReplace:
 		return "replace"
-	case deploy.OpCreateReplacement:
+	case events.OpCreateReplacement:
 		return "create replacement"
-	case deploy.OpDeleteReplaced:
+	case events.OpDeleteReplaced:
 		return "delete original"
-	case deploy.OpRead:
+	case events.OpRead:
 		// nolint: goconst
 		return "read"
-	case deploy.OpReadReplacement:
+	case events.OpReadReplacement:
 		return "read for replacement"
-	case deploy.OpRefresh:
+	case events.OpRefresh:
 		return "refreshing"
-	case deploy.OpReadDiscard:
+	case events.OpReadDiscard:
 		return "discard"
-	case deploy.OpDiscardReplaced:
+	case events.OpDiscardReplaced:
 		return "discard original"
-	case deploy.OpImport:
+	case events.OpImport:
 		return "import"
-	case deploy.OpImportReplacement:
+	case events.OpImportReplacement:
 		return "import replacement"
 	}
 
@@ -1337,27 +1335,27 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 
 // getPreviewDoneText returns a textual representation for this step, suitable for display during a preview once the
 // preview has completed.
-func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata) string {
+func (display *ProgressDisplay) getPreviewDoneText(step events.StepEventMetadata) string {
 	switch step.Op {
-	case deploy.OpSame:
+	case events.OpSame:
 		return ""
-	case deploy.OpCreate:
+	case events.OpCreate:
 		return "create"
-	case deploy.OpUpdate:
+	case events.OpUpdate:
 		return "update"
-	case deploy.OpDelete:
+	case events.OpDelete:
 		return "delete"
-	case deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced, deploy.OpReadReplacement,
-		deploy.OpDiscardReplaced:
+	case events.OpReplace, events.OpCreateReplacement, events.OpDeleteReplaced, events.OpReadReplacement,
+		events.OpDiscardReplaced:
 		return "replace"
-	case deploy.OpRead:
+	case events.OpRead:
 		// nolint: goconst
 		return "read"
-	case deploy.OpRefresh:
+	case events.OpRefresh:
 		return "refresh"
-	case deploy.OpReadDiscard:
+	case events.OpReadDiscard:
 		return "discard"
-	case deploy.OpImport, deploy.OpImportReplacement:
+	case events.OpImport, events.OpImportReplacement:
 		return "import"
 	}
 
@@ -1365,7 +1363,7 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 	return ""
 }
 
-func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.StepOp {
+func (display *ProgressDisplay) getStepOp(step events.StepEventMetadata) events.StepOp {
 	op := step.Op
 
 	// We will commonly hear about replacements as an actual series of steps.  i.e. 'create
@@ -1381,8 +1379,8 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.
 		// Once done, show the steps for replacing as a single 'replaced' step.
 		// During update, we'll show these individual steps.
 		if display.isPreview || display.done {
-			if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced || op == deploy.OpDiscardReplaced {
-				return deploy.OpReplace
+			if op == events.OpCreateReplacement || op == events.OpDeleteReplaced || op == events.OpDiscardReplaced {
+				return events.OpReplace
 			}
 		}
 	}
@@ -1390,14 +1388,14 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.
 	return op
 }
 
-func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata, done bool) string {
+func (display *ProgressDisplay) getStepOpLabel(step events.StepEventMetadata, done bool) string {
 	return display.getStepOp(step).Prefix(done) + colors.Reset
 }
 
-func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
+func (display *ProgressDisplay) getStepInProgressDescription(step events.StepEventMetadata) string {
 	op := display.getStepOp(step)
 
-	if isRootStack(step) && op == deploy.OpSame {
+	if isRootStack(step) && op == events.OpSame {
 		// most of the time a stack is unchanged.  in that case we just show it as "running->done".
 		// otherwise, we show what is actually happening to it.
 		return "running"
@@ -1409,33 +1407,33 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		}
 
 		switch op {
-		case deploy.OpSame:
+		case events.OpSame:
 			return ""
-		case deploy.OpCreate:
+		case events.OpCreate:
 			return "creating"
-		case deploy.OpUpdate:
+		case events.OpUpdate:
 			return "updating"
-		case deploy.OpDelete:
+		case events.OpDelete:
 			return "deleting"
-		case deploy.OpReplace:
+		case events.OpReplace:
 			return "replacing"
-		case deploy.OpCreateReplacement:
+		case events.OpCreateReplacement:
 			return "creating replacement"
-		case deploy.OpDeleteReplaced:
+		case events.OpDeleteReplaced:
 			return "deleting original"
-		case deploy.OpRead:
+		case events.OpRead:
 			return "reading"
-		case deploy.OpReadReplacement:
+		case events.OpReadReplacement:
 			return "reading for replacement"
-		case deploy.OpRefresh:
+		case events.OpRefresh:
 			return "refreshing"
-		case deploy.OpReadDiscard:
+		case events.OpReadDiscard:
 			return "discarding"
-		case deploy.OpDiscardReplaced:
+		case events.OpDiscardReplaced:
 			return "discarding original"
-		case deploy.OpImport:
+		case events.OpImport:
 			return "importing"
-		case deploy.OpImportReplacement:
+		case events.OpImportReplacement:
 			return "importing replacement"
 		}
 

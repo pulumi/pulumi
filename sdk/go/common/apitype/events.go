@@ -32,6 +32,14 @@ type StdoutEngineEvent struct {
 	Color   string `json:"color"`
 }
 
+const (
+	SeverityDebug   = "debug"
+	SeverityInfo    = "info"
+	SeverityInfoerr = "info#err"
+	SeverityWarning = "warning"
+	SeverityError   = "error"
+)
+
 // DiagnosticEvent is emitted whenever a diagnostic message is provided, for example errors from
 // a cloud resource provider while trying to create or update a resource.
 type DiagnosticEvent struct {

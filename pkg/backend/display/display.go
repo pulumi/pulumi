@@ -21,15 +21,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/engine/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/termutil"
 )
 
 // ShowEvents reads events from the `events` channel until it is closed, displaying each event as
@@ -37,13 +35,13 @@ import (
 // channel so the caller can await all the events being written.
 func ShowEvents(
 	op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
+	events <-chan events.Event, done chan<- bool, opts Options, isPreview bool) {
 
 	if opts.EventLogPath != "" {
 		events, done = startEventLogger(events, done, opts)
 	}
 
-	streamPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_STREAMING_JSON_PREVIEW"))
+	streamPreview := termutil.IsTruthy(os.Getenv("PULUMI_ENABLE_STREAMING_JSON_PREVIEW"))
 
 	if opts.JSONDisplay {
 		if isPreview && !streamPreview {
@@ -69,7 +67,7 @@ func ShowEvents(
 	}
 }
 
-func logJSONEvent(encoder *json.Encoder, event engine.Event, opts Options, seq int) error {
+func logJSONEvent(encoder *json.Encoder, event events.Event, opts Options, seq int) error {
 	apiEvent, err := ConvertEngineEvent(event)
 	if err != nil {
 		return err
@@ -97,15 +95,14 @@ func logJSONEvent(encoder *json.Encoder, event engine.Event, opts Options, seq i
 	return encoder.Encode(apiEvent)
 }
 
-func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options) (<-chan engine.Event, chan<- bool) {
+func startEventLogger(eventsC <-chan events.Event, done chan<- bool, opts Options) (<-chan events.Event, chan<- bool) {
 	// Before moving further, attempt to open the log file.
 	logFile, err := os.Create(opts.EventLogPath)
 	if err != nil {
-		logging.V(7).Infof("could not create event log: %v", err)
-		return events, done
+		return eventsC, done
 	}
 
-	outEvents, outDone := make(chan engine.Event), make(chan bool)
+	outEvents, outDone := make(chan events.Event), make(chan bool)
 	go func() {
 		defer close(done)
 		defer func() {
@@ -115,15 +112,14 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options
 		sequence := 0
 		encoder := json.NewEncoder(logFile)
 		encoder.SetEscapeHTML(false)
-		for e := range events {
-			if err = logJSONEvent(encoder, e, opts, sequence); err != nil {
-				logging.V(7).Infof("failed to log event: %v", err)
-			}
+		for e := range eventsC {
+			err = logJSONEvent(encoder, e, opts, sequence)
+			contract.IgnoreError(err)
 			sequence++
 
 			outEvents <- e
 
-			if e.Type == engine.CancelEvent {
+			if e.Type == events.CancelEvent {
 				break
 			}
 		}
@@ -144,7 +140,7 @@ func (s *nopSpinner) Reset() {
 }
 
 // isRootStack returns true if the step pertains to the rootmost stack component.
-func isRootStack(step engine.StepEventMetadata) bool {
+func isRootStack(step events.StepEventMetadata) bool {
 	return isRootURN(step.URN)
 }
 
@@ -153,9 +149,9 @@ func isRootURN(urn resource.URN) bool {
 }
 
 // shouldShow returns true if a step should show in the output.
-func shouldShow(step engine.StepEventMetadata, opts Options) bool {
+func shouldShow(step events.StepEventMetadata, opts Options) bool {
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
-	if step.Op == deploy.OpSame {
+	if step.Op == events.OpSame {
 		// If the op is the same, it is possible that the resource's metadata changed.  In that case, still show it.
 		if step.Old.Protect != step.New.Protect {
 			return true

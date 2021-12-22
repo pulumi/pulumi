@@ -1,9 +1,9 @@
 package display
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/engine/events"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -38,7 +38,7 @@ func getProperty(key interface{}, v resource.PropertyValue) resource.PropertyVal
 // property named by the first element of the path exists in both parents, we snip off the first element of the path
 // and recurse into the property itself. If the property does not exist in one parent or the other, the diff kind is
 // disregarded and the change is treated as either an Add or a Delete.
-func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.ValueDiff,
+func addDiff(path resource.PropertyPath, kind apitype.DiffKind, parent *resource.ValueDiff,
 	oldParent, newParent resource.PropertyValue) {
 
 	contract.Require(len(path) > 0, "len(path) > 0")
@@ -62,11 +62,11 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 		// difference from the old and new property values.
 		if len(path) == 1 {
 			switch kind {
-			case plugin.DiffAdd, plugin.DiffAddReplace:
+			case apitype.DiffAdd, apitype.DiffAddReplace:
 				parent.Array.Adds[element] = new
-			case plugin.DiffDelete, plugin.DiffDeleteReplace:
+			case apitype.DiffDelete, apitype.DiffDeleteReplace:
 				parent.Array.Deletes[element] = old
-			case plugin.DiffUpdate, plugin.DiffUpdateReplace:
+			case apitype.DiffUpdate, apitype.DiffUpdateReplace:
 				valueDiff := resource.ValueDiff{Old: old, New: new}
 				if d := old.Diff(new); d != nil {
 					valueDiff = *d
@@ -100,11 +100,11 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 		e := resource.PropertyKey(element)
 		if len(path) == 1 {
 			switch kind {
-			case plugin.DiffAdd, plugin.DiffAddReplace:
+			case apitype.DiffAdd, apitype.DiffAddReplace:
 				parent.Object.Adds[e] = new
-			case plugin.DiffDelete, plugin.DiffDeleteReplace:
+			case apitype.DiffDelete, apitype.DiffDeleteReplace:
 				parent.Object.Deletes[e] = old
-			case plugin.DiffUpdate, plugin.DiffUpdateReplace:
+			case apitype.DiffUpdate, apitype.DiffUpdateReplace:
 				valueDiff := resource.ValueDiff{Old: old, New: new}
 				if d := old.Diff(new); d != nil {
 					valueDiff = *d
@@ -132,7 +132,7 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 
 // translateDetailedDiff converts the detailed diff stored in the step event into an ObjectDiff that is appropriate
 // for display.
-func translateDetailedDiff(step engine.StepEventMetadata) *resource.ObjectDiff {
+func translateDetailedDiff(step events.StepEventMetadata) *resource.ObjectDiff {
 	contract.Assert(step.DetailedDiff != nil)
 
 	// The rich diff is presented as a list of simple JS property paths and corresponding diffs. We translate this to

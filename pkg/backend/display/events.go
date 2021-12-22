@@ -5,37 +5,34 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/engine/events"
+	stack_events "github.com/pulumi/pulumi/pkg/v3/resource/stack/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// ConvertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
+// ConvertEngineEvent converts a raw events.Event into an apitype.EngineEvent used in the Pulumi
 // REST API. Returns an error if the engine event is unknown or not in an expected format.
 // EngineEvent.{ Sequence, Timestamp } are expected to be set by the caller.
 //
 // IMPORTANT: Any resource secret data stored in the engine event will be encrypted using the
 // blinding encrypter, and unrecoverable. So this operation is inherently lossy.
-func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
+func ConvertEngineEvent(e events.Event) (apitype.EngineEvent, error) {
 	var apiEvent apitype.EngineEvent
 
 	// Error to return if the payload doesn't match expected.
 	eventTypePayloadMismatch := fmt.Errorf("unexpected payload for event type %v", e.Type)
 
 	switch e.Type {
-	case engine.CancelEvent:
+	case events.CancelEvent:
 		apiEvent.CancelEvent = &apitype.CancelEvent{}
 
-	case engine.StdoutColorEvent:
-		p, ok := e.Payload().(engine.StdoutEventPayload)
+	case events.StdoutColorEvent:
+		p, ok := e.Payload().(events.StdoutEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -44,8 +41,8 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			Color:   string(p.Color),
 		}
 
-	case engine.DiagEvent:
-		p, ok := e.Payload().(engine.DiagEventPayload)
+	case events.DiagEvent:
+		p, ok := e.Payload().(events.DiagEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -58,8 +55,8 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			Ephemeral: p.Ephemeral,
 		}
 
-	case engine.PolicyViolationEvent:
-		p, ok := e.Payload().(engine.PolicyViolationEventPayload)
+	case events.PolicyViolationEvent:
+		p, ok := e.Payload().(events.PolicyViolationEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -74,8 +71,8 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			EnforcementLevel:     string(p.EnforcementLevel),
 		}
 
-	case engine.PreludeEvent:
-		p, ok := e.Payload().(engine.PreludeEventPayload)
+	case events.PreludeEvent:
+		p, ok := e.Payload().(events.PreludeEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -83,8 +80,8 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			Config: p.Config,
 		}
 
-	case engine.SummaryEvent:
-		p, ok := e.Payload().(engine.SummaryEventPayload)
+	case events.SummaryEvent:
+		p, ok := e.Payload().(events.SummaryEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -100,8 +97,8 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			PolicyPacks:     p.PolicyPacks,
 		}
 
-	case engine.ResourcePreEvent:
-		p, ok := e.Payload().(engine.ResourcePreEventPayload)
+	case events.ResourcePreEvent:
+		p, ok := e.Payload().(events.ResourcePreEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -110,8 +107,8 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			Planning: p.Planning,
 		}
 
-	case engine.ResourceOutputsEvent:
-		p, ok := e.Payload().(engine.ResourceOutputsEventPayload)
+	case events.ResourceOutputsEvent:
+		p, ok := e.Payload().(events.ResourceOutputsEventPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -120,8 +117,8 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			Planning: p.Planning,
 		}
 
-	case engine.ResourceOperationFailed:
-		p, ok := e.Payload().(engine.ResourceOperationFailedPayload)
+	case events.ResourceOperationFailed:
+		p, ok := e.Payload().(events.ResourceOperationFailedPayload)
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
@@ -138,7 +135,7 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 	return apiEvent, nil
 }
 
-func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMetadata {
+func convertStepEventMetadata(md events.StepEventMetadata) apitype.StepEventMetadata {
 	keys := make([]string, len(md.Keys))
 	for i, v := range md.Keys {
 		keys[i] = string(v)
@@ -146,33 +143,6 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 	var diffs []string
 	for _, v := range md.Diffs {
 		diffs = append(diffs, string(v))
-	}
-	var detailedDiff map[string]apitype.PropertyDiff
-	if md.DetailedDiff != nil {
-		detailedDiff = make(map[string]apitype.PropertyDiff)
-		for k, v := range md.DetailedDiff {
-			var d apitype.DiffKind
-			switch v.Kind {
-			case plugin.DiffAdd:
-				d = apitype.DiffAdd
-			case plugin.DiffAddReplace:
-				d = apitype.DiffAddReplace
-			case plugin.DiffDelete:
-				d = apitype.DiffDelete
-			case plugin.DiffDeleteReplace:
-				d = apitype.DiffDeleteReplace
-			case plugin.DiffUpdate:
-				d = apitype.DiffUpdate
-			case plugin.DiffUpdateReplace:
-				d = apitype.DiffUpdateReplace
-			default:
-				contract.Failf("unrecognized diff kind %v", v)
-			}
-			detailedDiff[k] = apitype.PropertyDiff{
-				Kind:      d,
-				InputDiff: v.InputDiff,
-			}
-		}
 	}
 
 	return apitype.StepEventMetadata{
@@ -185,7 +155,7 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 
 		Keys:         keys,
 		Diffs:        diffs,
-		DetailedDiff: detailedDiff,
+		DetailedDiff: md.DetailedDiff,
 		Logical:      md.Logical,
 		Provider:     md.Provider,
 	}
@@ -196,16 +166,16 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 //
 // IMPORTANT: Any secret values are encrypted using the blinding encrypter. So any secret data
 // in the resource state will be lost and unrecoverable.
-func convertStepEventStateMetadata(md *engine.StepEventStateMetadata) *apitype.StepEventStateMetadata {
+func convertStepEventStateMetadata(md *events.StepEventStateMetadata) *apitype.StepEventStateMetadata {
 	if md == nil {
 		return nil
 	}
 
 	encrypter := config.BlindingCrypter
-	inputs, err := stack.SerializeProperties(md.Inputs, encrypter, false /* showSecrets */)
+	inputs, err := stack_events.SerializeProperties(md.Inputs, encrypter, false /* showSecrets */)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.SerializeProperties(md.Outputs, encrypter, false /* showSecrets */)
+	outputs, err := stack_events.SerializeProperties(md.Outputs, encrypter, false /* showSecrets */)
 	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{
@@ -228,35 +198,35 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata) *apitype.S
 //
 // IMPORTANT: Any resource secret data stored in the engine event will be encrypted using the
 // blinding encrypter, and unrecoverable. So this operation is inherently lossy.
-func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
-	var event engine.Event
+func ConvertJSONEvent(apiEvent apitype.EngineEvent) (events.Event, error) {
+	var event events.Event
 
 	switch {
 	case apiEvent.CancelEvent != nil:
-		event = engine.NewEvent(engine.CancelEvent, nil)
+		event = events.NewEvent(events.CancelEvent, nil)
 
 	case apiEvent.StdoutEvent != nil:
 		p := apiEvent.StdoutEvent
-		event = engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+		event = events.NewEvent(events.StdoutColorEvent, events.StdoutEventPayload{
 			Message: p.Message,
 			Color:   colors.Colorization(p.Color),
 		})
 
 	case apiEvent.DiagnosticEvent != nil:
 		p := apiEvent.DiagnosticEvent
-		event = engine.NewEvent(engine.DiagEvent, engine.DiagEventPayload{
+		event = events.NewEvent(events.DiagEvent, events.DiagEventPayload{
 			URN:       resource.URN(p.URN),
 			Prefix:    p.Prefix,
 			Message:   p.Message,
 			Color:     colors.Colorization(p.Color),
-			Severity:  diag.Severity(p.Severity),
+			Severity:  p.Severity,
 			Ephemeral: p.Ephemeral,
 		})
 		apiEvent.DiagnosticEvent = &apitype.DiagnosticEvent{}
 
 	case apiEvent.PolicyEvent != nil:
 		p := apiEvent.PolicyEvent
-		event = engine.NewEvent(engine.PolicyViolationEvent, engine.PolicyViolationEventPayload{
+		event = events.NewEvent(events.PolicyViolationEvent, events.PolicyViolationEventPayload{
 			ResourceURN:       resource.URN(p.ResourceURN),
 			Message:           p.Message,
 			Color:             colors.Colorization(p.Color),
@@ -270,18 +240,18 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		p := apiEvent.PreludeEvent
 
 		// Convert the config bag.
-		event = engine.NewEvent(engine.PreludeEvent, engine.PreludeEventPayload{
+		event = events.NewEvent(events.PreludeEvent, events.PreludeEventPayload{
 			Config: p.Config,
 		})
 
 	case apiEvent.SummaryEvent != nil:
 		p := apiEvent.SummaryEvent
 		// Convert the resource changes.
-		changes := engine.ResourceChanges{}
+		changes := events.ResourceChanges{}
 		for op, count := range p.ResourceChanges {
-			changes[deploy.StepOp(op)] = count
+			changes[events.StepOp(op)] = count
 		}
-		event = engine.NewEvent(engine.SummaryEvent, engine.SummaryEventPayload{
+		event = events.NewEvent(events.SummaryEvent, events.SummaryEventPayload{
 			MaybeCorrupt:    p.MaybeCorrupt,
 			Duration:        time.Duration(p.DurationSeconds) * time.Second,
 			ResourceChanges: changes,
@@ -290,21 +260,21 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 
 	case apiEvent.ResourcePreEvent != nil:
 		p := apiEvent.ResourcePreEvent
-		event = engine.NewEvent(engine.ResourcePreEvent, engine.ResourcePreEventPayload{
+		event = events.NewEvent(events.ResourcePreEvent, events.ResourcePreEventPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Planning: p.Planning,
 		})
 
 	case apiEvent.ResOutputsEvent != nil:
 		p := apiEvent.ResOutputsEvent
-		event = engine.NewEvent(engine.ResourceOutputsEvent, engine.ResourceOutputsEventPayload{
+		event = events.NewEvent(events.ResourceOutputsEvent, events.ResourceOutputsEventPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Planning: p.Planning,
 		})
 
 	case apiEvent.ResOpFailedEvent != nil:
 		p := apiEvent.ResOpFailedEvent
-		event = engine.NewEvent(engine.ResourceOperationFailed, engine.ResourceOperationFailedPayload{
+		event = events.NewEvent(events.ResourceOperationFailed, events.ResourceOperationFailedPayload{
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Status:   resource.Status(p.Status),
 			Steps:    p.Steps,
@@ -317,7 +287,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 	return event, nil
 }
 
-func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEventMetadata {
+func convertJSONStepEventMetadata(md apitype.StepEventMetadata) events.StepEventMetadata {
 	keys := make([]resource.PropertyKey, len(md.Keys))
 	for i, v := range md.Keys {
 		keys[i] = resource.PropertyKey(v)
@@ -326,36 +296,9 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 	for _, v := range md.Diffs {
 		diffs = append(diffs, resource.PropertyKey(v))
 	}
-	var detailedDiff map[string]plugin.PropertyDiff
-	if md.DetailedDiff != nil {
-		detailedDiff = make(map[string]plugin.PropertyDiff)
-		for k, v := range md.DetailedDiff {
-			var d plugin.DiffKind
-			switch v.Kind {
-			case apitype.DiffAdd:
-				d = plugin.DiffAdd
-			case apitype.DiffAddReplace:
-				d = plugin.DiffAddReplace
-			case apitype.DiffDelete:
-				d = plugin.DiffDelete
-			case apitype.DiffDeleteReplace:
-				d = plugin.DiffDeleteReplace
-			case apitype.DiffUpdate:
-				d = plugin.DiffUpdate
-			case apitype.DiffUpdateReplace:
-				d = plugin.DiffUpdateReplace
-			default:
-				contract.Failf("unrecognized diff kind %v", v)
-			}
-			detailedDiff[k] = plugin.PropertyDiff{
-				Kind:      d,
-				InputDiff: v.InputDiff,
-			}
-		}
-	}
 
-	return engine.StepEventMetadata{
-		Op:   deploy.StepOp(md.Op),
+	return events.StepEventMetadata{
+		Op:   events.StepOp(md.Op),
 		URN:  resource.URN(md.URN),
 		Type: tokens.Type(md.Type),
 
@@ -364,7 +307,7 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 
 		Keys:         keys,
 		Diffs:        diffs,
-		DetailedDiff: detailedDiff,
+		DetailedDiff: md.DetailedDiff,
 		Logical:      md.Logical,
 		Provider:     md.Provider,
 	}
@@ -375,19 +318,19 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 //
 // IMPORTANT: Any secret values are encrypted using the blinding encrypter. So any secret data
 // in the resource state will be lost and unrecoverable.
-func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engine.StepEventStateMetadata {
+func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *events.StepEventStateMetadata {
 	if md == nil {
 		return nil
 	}
 
 	crypter := config.BlindingCrypter
-	inputs, err := stack.DeserializeProperties(md.Inputs, crypter, crypter)
+	inputs, err := stack_events.DeserializeProperties(md.Inputs, crypter, crypter)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.DeserializeProperties(md.Outputs, crypter, crypter)
+	outputs, err := stack_events.DeserializeProperties(md.Outputs, crypter, crypter)
 	contract.IgnoreError(err)
 
-	return &engine.StepEventStateMetadata{
+	return &events.StepEventStateMetadata{
 		Type: tokens.Type(md.Type),
 		URN:  resource.URN(md.URN),
 

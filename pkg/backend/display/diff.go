@@ -25,21 +25,19 @@ import (
 
 	"github.com/dustin/go-humanize/english"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/engine/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/termutil"
 )
 
 // ShowDiffEvents displays the engine events with the diff view.
 func ShowDiffEvents(op string, action apitype.UpdateKind,
-	events <-chan engine.Event, done chan<- bool, opts Options) {
+	eventsC <-chan events.Event, done chan<- bool, opts Options) {
 
-	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
+	prefix := fmt.Sprintf("%s%s...", termutil.EmojiOr("✨ ", "@ "), op)
 
 	stdout := opts.Stdout
 	if stdout == nil {
@@ -50,10 +48,10 @@ func ShowDiffEvents(op string, action apitype.UpdateKind,
 		stderr = os.Stderr
 	}
 
-	var spinner cmdutil.Spinner
+	var spinner termutil.Spinner
 	var ticker *time.Ticker
 	if stdout == os.Stdout && stderr == os.Stderr && opts.IsInteractive {
-		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
+		spinner, ticker = termutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)
@@ -65,19 +63,19 @@ func ShowDiffEvents(op string, action apitype.UpdateKind,
 		close(done)
 	}()
 
-	seen := make(map[resource.URN]engine.StepEventMetadata)
+	seen := make(map[resource.URN]events.StepEventMetadata)
 
 	for {
 		select {
 		case <-ticker.C:
 			spinner.Tick()
-		case event := <-events:
+		case event := <-eventsC:
 			spinner.Reset()
 
 			out := stdout
-			if event.Type == engine.DiagEvent {
-				payload := event.Payload().(engine.DiagEventPayload)
-				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
+			if event.Type == events.DiagEvent {
+				payload := event.Payload().(events.DiagEventPayload)
+				if payload.Severity == apitype.SeverityError || payload.Severity == apitype.SeverityWarning {
 					out = stderr
 				}
 			}
@@ -87,43 +85,43 @@ func ShowDiffEvents(op string, action apitype.UpdateKind,
 				fprintIgnoreError(out, msg)
 			}
 
-			if event.Type == engine.CancelEvent {
+			if event.Type == events.CancelEvent {
 				return
 			}
 		}
 	}
 }
 
-func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
-	seen map[resource.URN]engine.StepEventMetadata, opts Options) string {
+func RenderDiffEvent(action apitype.UpdateKind, event events.Event,
+	seen map[resource.URN]events.StepEventMetadata, opts Options) string {
 
 	switch event.Type {
-	case engine.CancelEvent:
+	case events.CancelEvent:
 		return ""
 
 		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
 		// progress displays.
-	case engine.PreludeEvent:
-		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
-	case engine.SummaryEvent:
+	case events.PreludeEvent:
+		return renderPreludeEvent(event.Payload().(events.PreludeEventPayload), opts)
+	case events.SummaryEvent:
 		const wroteDiagnosticHeader = false
-		return renderSummaryEvent(action, event.Payload().(engine.SummaryEventPayload), wroteDiagnosticHeader, opts)
-	case engine.StdoutColorEvent:
-		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
+		return renderSummaryEvent(action, event.Payload().(events.SummaryEventPayload), wroteDiagnosticHeader, opts)
+	case events.StdoutColorEvent:
+		return renderStdoutColorEvent(event.Payload().(events.StdoutEventPayload), opts)
 
 		// Resource operations have very specific displays for either diff or progress displays.
 		// These functions should not be directly used by the progress display without validating
 		// that the display is appropriate for both.
-	case engine.ResourceOperationFailed:
-		return renderDiffResourceOperationFailedEvent(event.Payload().(engine.ResourceOperationFailedPayload), opts)
-	case engine.ResourceOutputsEvent:
-		return renderDiffResourceOutputsEvent(event.Payload().(engine.ResourceOutputsEventPayload), seen, opts)
-	case engine.ResourcePreEvent:
-		return renderDiffResourcePreEvent(event.Payload().(engine.ResourcePreEventPayload), seen, opts)
-	case engine.DiagEvent:
-		return renderDiffDiagEvent(event.Payload().(engine.DiagEventPayload), opts)
-	case engine.PolicyViolationEvent:
-		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), opts)
+	case events.ResourceOperationFailed:
+		return renderDiffResourceOperationFailedEvent(event.Payload().(events.ResourceOperationFailedPayload), opts)
+	case events.ResourceOutputsEvent:
+		return renderDiffResourceOutputsEvent(event.Payload().(events.ResourceOutputsEventPayload), seen, opts)
+	case events.ResourcePreEvent:
+		return renderDiffResourcePreEvent(event.Payload().(events.ResourcePreEventPayload), seen, opts)
+	case events.DiagEvent:
+		return renderDiffDiagEvent(event.Payload().(events.DiagEventPayload), opts)
+	case events.PolicyViolationEvent:
+		return renderDiffPolicyViolationEvent(event.Payload().(events.PolicyViolationEventPayload), opts)
 
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
@@ -131,22 +129,22 @@ func RenderDiffEvent(action apitype.UpdateKind, event engine.Event,
 	}
 }
 
-func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
-	if payload.Severity == diag.Debug && !opts.Debug {
+func renderDiffDiagEvent(payload events.DiagEventPayload, opts Options) string {
+	if payload.Severity == apitype.SeverityDebug && !opts.Debug {
 		return ""
 	}
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
-func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload, opts Options) string {
+func renderDiffPolicyViolationEvent(payload events.PolicyViolationEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
-func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) string {
+func renderStdoutColorEvent(payload events.StdoutEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayload,
+func renderSummaryEvent(action apitype.UpdateKind, event events.SummaryEventPayload,
 	wroteDiagnosticHeader bool, opts Options) string {
 
 	changes := event.ResourceChanges
@@ -170,17 +168,17 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 
 	var changeKindCount = 0
 	var changeCount = 0
-	var sameCount = changes[deploy.OpSame]
+	var sameCount = changes[events.OpSame]
 
 	// Now summarize all of the changes; we print sames a little differently.
-	for _, op := range deploy.StepOps {
+	for _, op := range events.StepOps {
 		// Ignore anything that didn't change, or is related to 'reads'.  'reads' are just an
 		// indication of the operations we were performing, and are not indicative of any sort of
 		// change to the system.
-		if op != deploy.OpSame &&
-			op != deploy.OpRead &&
-			op != deploy.OpReadDiscard &&
-			op != deploy.OpReadReplacement {
+		if op != events.OpSame &&
+			op != events.OpRead &&
+			op != events.OpReadDiscard &&
+			op != events.OpReadReplacement {
 
 			if c := changes[op]; c > 0 {
 				opDescription := string(op)
@@ -271,7 +269,7 @@ func renderPolicyPacks(out io.Writer, policyPacks map[string]string, opts Option
 	}
 }
 
-func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
+func renderPreludeEvent(event events.PreludeEventPayload, opts Options) string {
 	// Only if we have been instructed to show configuration values will we print anything during the prelude.
 	if !opts.ShowConfig {
 		return ""
@@ -294,7 +292,7 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 }
 
 func renderDiffResourceOperationFailedEvent(
-	payload engine.ResourceOperationFailedPayload, opts Options) string {
+	payload events.ResourceOperationFailedPayload, opts Options) string {
 
 	// It's not actually useful or interesting to print out any details about
 	// the resource state here, because we always assume that the resource state
@@ -308,26 +306,26 @@ func renderDiffResourceOperationFailedEvent(
 
 func renderDiff(
 	out io.Writer,
-	metadata engine.StepEventMetadata,
+	metadata events.StepEventMetadata,
 	planning, debug bool,
-	seen map[resource.URN]engine.StepEventMetadata,
+	seen map[resource.URN]events.StepEventMetadata,
 	opts Options) {
 
-	indent := engine.GetIndent(metadata, seen)
-	summary := engine.GetResourcePropertiesSummary(metadata, indent)
+	indent := events.GetIndent(metadata, seen)
+	summary := events.GetResourcePropertiesSummary(metadata, indent)
 
 	var details string
 	if metadata.DetailedDiff != nil {
 		var buf bytes.Buffer
 		if diff := translateDetailedDiff(metadata); diff != nil {
-			engine.PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, debug)
+			events.PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, debug)
 		} else {
-			engine.PrintObject(
-				&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, debug)
+			events.PrintObject(
+				&buf, metadata.Old.Inputs, planning, indent+1, events.OpSame, true /*prefix*/, debug)
 		}
 		details = buf.String()
 	} else {
-		details = engine.GetResourcePropertiesDetails(
+		details = events.GetResourcePropertiesDetails(
 			metadata, indent, planning, opts.SummaryDiff, debug)
 	}
 
@@ -337,12 +335,12 @@ func renderDiff(
 }
 
 func renderDiffResourcePreEvent(
-	payload engine.ResourcePreEventPayload,
-	seen map[resource.URN]engine.StepEventMetadata,
+	payload events.ResourcePreEventPayload,
+	seen map[resource.URN]events.StepEventMetadata,
 	opts Options) string {
 
 	seen[payload.Metadata.URN] = payload.Metadata
-	if payload.Metadata.Op == deploy.OpRefresh || payload.Metadata.Op == deploy.OpImport {
+	if payload.Metadata.Op == events.OpRefresh || payload.Metadata.Op == events.OpImport {
 		return ""
 	}
 
@@ -354,36 +352,36 @@ func renderDiffResourcePreEvent(
 }
 
 func renderDiffResourceOutputsEvent(
-	payload engine.ResourceOutputsEventPayload,
-	seen map[resource.URN]engine.StepEventMetadata,
+	payload events.ResourceOutputsEventPayload,
+	seen map[resource.URN]events.StepEventMetadata,
 	opts Options) string {
 
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		// If this is the output step for an import, we actually want to display the diff at this point.
-		if payload.Metadata.Op == deploy.OpImport {
+		if payload.Metadata.Op == events.OpImport {
 			renderDiff(out, payload.Metadata, payload.Planning, payload.Debug, seen, opts)
 			return out.String()
 		}
 
-		indent := engine.GetIndent(payload.Metadata, seen)
+		indent := events.GetIndent(payload.Metadata, seen)
 
 		refresh := false // are these outputs from a refresh?
-		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
+		if m, has := seen[payload.Metadata.URN]; has && m.Op == events.OpRefresh {
 			refresh = true
-			summary := engine.GetResourcePropertiesSummary(payload.Metadata, indent)
+			summary := events.GetResourcePropertiesSummary(payload.Metadata, indent)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}
 
 		if !opts.SuppressOutputs {
 			// We want to hide same outputs if we're doing a read and the user didn't ask to see
 			// things that are the same.
-			text := engine.GetResourceOutputsPropertiesString(
+			text := events.GetResourceOutputsPropertiesString(
 				payload.Metadata, indent+1, payload.Planning,
 				payload.Debug, refresh, opts.ShowSameResources)
 			if text != "" {
 				header := fmt.Sprintf("%v%v--outputs:--%v\n",
-					payload.Metadata.Op.Color(), engine.GetIndentationString(indent+1), colors.Reset)
+					payload.Metadata.Op.Color(), events.GetIndentationString(indent+1), colors.Reset)
 				fprintfIgnoreError(out, opts.Color.Colorize(header))
 				fprintIgnoreError(out, opts.Color.Colorize(text))
 			}

@@ -15,14 +15,8 @@
 package providers
 
 import (
-	"errors"
-	"fmt"
-	"strings"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // A provider reference is (URN, ID) tuple that refers to a particular provider instance. A provider reference's
@@ -30,98 +24,38 @@ import (
 
 // UnknownID is a distinguished token used to indicate that a provider's ID is not known (e.g. because we are
 // performing a preview).
-const UnknownID = plugin.UnknownStringValue
+const UnknownID = resource.UnknownID
 
 // IsProviderType returns true if the supplied type token refers to a Pulumi provider.
 func IsProviderType(typ tokens.Type) bool {
-	// Tokens without a module member are definitely not provider types.
-	if !tokens.Token(typ).HasModuleMember() {
-		return false
-	}
-	return typ.Module() == "pulumi:providers" && typ.Name() != ""
+	return resource.IsProviderType(typ)
 }
 
 // IsDefaultProvider returns true if this URN refers to a default Pulumi provider.
 func IsDefaultProvider(urn resource.URN) bool {
-	return IsProviderType(urn.Type()) && strings.HasPrefix(urn.Name().String(), "default")
+	return resource.IsDefaultProvider(urn)
 }
 
 // MakeProviderType returns the provider type token for the given package.
 func MakeProviderType(pkg tokens.Package) tokens.Type {
-	return tokens.Type("pulumi:providers:" + pkg)
+	return resource.MakeProviderType(pkg)
 }
 
 // GetProviderPackage returns the provider package for the given type token.
 func GetProviderPackage(typ tokens.Type) tokens.Package {
-	contract.Require(IsProviderType(typ), "typ")
-	return tokens.Package(typ.Name())
-}
-
-func validateURN(urn resource.URN) error {
-	if !urn.IsValid() {
-		return fmt.Errorf("%s is not a valid URN", urn)
-	}
-	typ := urn.Type()
-	if typ.Module() != "pulumi:providers" {
-		return fmt.Errorf("invalid module in type: expected 'pulumi:providers', got '%v'", typ.Module())
-	}
-	if typ.Name() == "" {
-		return errors.New("provider URNs must specify a type name")
-	}
-	return nil
+	return resource.GetProviderPackage(typ)
 }
 
 // Reference represents a reference to a particular provider.
-type Reference struct {
-	urn resource.URN
-	id  resource.ID
-}
-
-// URN returns the provider reference's URN.
-func (r Reference) URN() resource.URN {
-	return r.urn
-}
-
-// ID returns the provider reference's ID.
-func (r Reference) ID() resource.ID {
-	return r.id
-}
-
-// String returns the string representation of this provider reference.
-func (r Reference) String() string {
-	if r.urn == "" && r.id == "" {
-		return ""
-	}
-
-	return string(r.urn) + resource.URNNameDelimiter + string(r.id)
-}
+type Reference = resource.ProviderReference
 
 // NewReference creates a new reference for the given URN and ID.
 func NewReference(urn resource.URN, id resource.ID) (Reference, error) {
-	if err := validateURN(urn); err != nil {
-		return Reference{}, err
-	}
-	return Reference{urn: urn, id: id}, nil
-}
-
-func mustNewReference(urn resource.URN, id resource.ID) Reference {
-	ref, err := NewReference(urn, id)
-	contract.Assert(err == nil)
-	return ref
+	return resource.NewProviderReference(urn, id)
 }
 
 // ParseReference parses the URN and ID from the string representation of a provider reference. If parsing was
 // not possible, this function returns false.
 func ParseReference(s string) (Reference, error) {
-	// If this is not a valid URN + ID, return false. Note that we don't try terribly hard to validate the URN portion
-	// of the reference.
-	lastSep := strings.LastIndex(s, resource.URNNameDelimiter)
-	if lastSep == -1 {
-		return Reference{}, fmt.Errorf("expected '%v' in provider reference '%v'", resource.URNNameDelimiter, s)
-	}
-	urn, id := resource.URN(s[:lastSep]), resource.ID(s[lastSep+len(resource.URNNameDelimiter):])
-	if err := validateURN(urn); err != nil {
-		return Reference{}, err
-	}
-	return Reference{urn: urn, id: id}, nil
+	return resource.ParseProviderReference(s)
 }

@@ -22,10 +22,8 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/engine/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -44,9 +42,9 @@ type Row interface {
 type ResourceRow interface {
 	Row
 
-	Step() engine.StepEventMetadata
-	SetStep(step engine.StepEventMetadata)
-	AddOutputStep(step engine.StepEventMetadata)
+	Step() events.StepEventMetadata
+	SetStep(step events.StepEventMetadata)
+	AddOutputStep(step events.StepEventMetadata)
 
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
@@ -57,10 +55,10 @@ type ResourceRow interface {
 	SetFailed()
 
 	DiagInfo() *DiagInfo
-	PolicyPayloads() []engine.PolicyViolationEventPayload
+	PolicyPayloads() []events.PolicyViolationEventPayload
 
-	RecordDiagEvent(diagEvent engine.Event)
-	RecordPolicyViolationEvent(diagEvent engine.Event)
+	RecordDiagEvent(diagEvent events.Event)
+	RecordPolicyViolationEvent(diagEvent events.Event)
 }
 
 // Implementation of a Row, used for the header of the grid.
@@ -114,8 +112,8 @@ type resourceRowData struct {
 	display *ProgressDisplay
 
 	// The change that the engine wants apply to that resource.
-	step        engine.StepEventMetadata
-	outputSteps []engine.StepEventMetadata
+	step        events.StepEventMetadata
+	outputSteps []events.StepEventMetadata
 
 	// The tick we were on when we created this row.  Purely used for generating an
 	// ellipses to show progress for in-flight resources.
@@ -125,7 +123,7 @@ type resourceRowData struct {
 	failed bool
 
 	diagInfo       *DiagInfo
-	policyPayloads []engine.PolicyViolationEventPayload
+	policyPayloads []events.PolicyViolationEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
@@ -152,15 +150,15 @@ func (data *resourceRowData) SetHideRowIfUnnecessary(value bool) {
 	data.hideRowIfUnnecessary = value
 }
 
-func (data *resourceRowData) Step() engine.StepEventMetadata {
+func (data *resourceRowData) Step() events.StepEventMetadata {
 	return data.step
 }
 
-func (data *resourceRowData) SetStep(step engine.StepEventMetadata) {
+func (data *resourceRowData) SetStep(step events.StepEventMetadata) {
 	data.step = step
 }
 
-func (data *resourceRowData) AddOutputStep(step engine.StepEventMetadata) {
+func (data *resourceRowData) AddOutputStep(step events.StepEventMetadata) {
 	data.outputSteps = append(data.outputSteps, step)
 }
 
@@ -180,21 +178,21 @@ func (data *resourceRowData) DiagInfo() *DiagInfo {
 	return data.diagInfo
 }
 
-func (data *resourceRowData) RecordDiagEvent(event engine.Event) {
-	payload := event.Payload().(engine.DiagEventPayload)
+func (data *resourceRowData) RecordDiagEvent(event events.Event) {
+	payload := event.Payload().(events.DiagEventPayload)
 	data.recordDiagEventPayload(payload)
 }
 
-func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayload) {
+func (data *resourceRowData) recordDiagEventPayload(payload events.DiagEventPayload) {
 	diagInfo := data.diagInfo
 	diagInfo.LastDiag = &payload
 
-	if payload.Severity == diag.Error {
+	if payload.Severity == apitype.SeverityError {
 		diagInfo.LastError = &payload
 	}
 
 	if diagInfo.StreamIDToDiagPayloads == nil {
-		diagInfo.StreamIDToDiagPayloads = make(map[int32][]engine.DiagEventPayload)
+		diagInfo.StreamIDToDiagPayloads = make(map[int32][]events.DiagEventPayload)
 	}
 
 	payloads := diagInfo.StreamIDToDiagPayloads[payload.StreamID]
@@ -203,28 +201,28 @@ func (data *resourceRowData) recordDiagEventPayload(payload engine.DiagEventPayl
 
 	if !payload.Ephemeral {
 		switch payload.Severity {
-		case diag.Error:
+		case apitype.SeverityError:
 			diagInfo.ErrorCount++
-		case diag.Warning:
+		case apitype.SeverityWarning:
 			diagInfo.WarningCount++
-		case diag.Infoerr:
+		case apitype.SeverityInfoerr:
 			diagInfo.InfoCount++
-		case diag.Info:
+		case apitype.SeverityInfo:
 			diagInfo.InfoCount++
-		case diag.Debug:
+		case apitype.SeverityDebug:
 			diagInfo.DebugCount++
 		}
 	}
 }
 
 // PolicyInfo returns the PolicyInfo object associated with the resourceRowData.
-func (data *resourceRowData) PolicyPayloads() []engine.PolicyViolationEventPayload {
+func (data *resourceRowData) PolicyPayloads() []events.PolicyViolationEventPayload {
 	return data.policyPayloads
 }
 
 // RecordPolicyViolationEvent records a policy event with the resourceRowData.
-func (data *resourceRowData) RecordPolicyViolationEvent(event engine.Event) {
-	pePayload := event.Payload().(engine.PolicyViolationEventPayload)
+func (data *resourceRowData) RecordPolicyViolationEvent(event events.Event) {
+	pePayload := event.Payload().(events.PolicyViolationEventPayload)
 	data.policyPayloads = append(data.policyPayloads, pePayload)
 }
 
@@ -260,7 +258,7 @@ func (data *resourceRowData) IsDone() bool {
 	return data.ContainsOutputsStep(data.step.Op)
 }
 
-func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
+func (data *resourceRowData) ContainsOutputsStep(op events.StepOp) bool {
 	for _, s := range data.outputSteps {
 		if s.Op == op {
 			return true
@@ -273,7 +271,7 @@ func (data *resourceRowData) ContainsOutputsStep(op deploy.StepOp) bool {
 func (data *resourceRowData) ColorizedSuffix() string {
 	if !data.IsDone() && data.display.isTerminal {
 		op := data.display.getStepOp(data.step)
-		if op != deploy.OpSame || isRootURN(data.step.URN) {
+		if op != events.OpSame || isRootURN(data.step.URN) {
 			suffixes := data.display.suffixesArray
 			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
@@ -318,16 +316,16 @@ func (data *resourceRowData) ColorizedColumns() []string {
 func (data *resourceRowData) getInfoColumn() string {
 	step := data.step
 	switch step.Op {
-	case deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
+	case events.OpCreateReplacement, events.OpDeleteReplaced:
 		// if we're doing a replacement, see if we can find a replace step that contains useful
 		// information to display.
 		for _, outputStep := range data.outputSteps {
-			if outputStep.Op == deploy.OpReplace {
+			if outputStep.Op == events.OpReplace {
 				step = outputStep
 			}
 		}
 
-	case deploy.OpImport, deploy.OpImportReplacement:
+	case events.OpImport, events.OpImportReplacement:
 		// If we're doing an import, see if we have the imported state to diff.
 		for _, outputStep := range data.outputSteps {
 			if outputStep.Op == step.Op {
@@ -400,7 +398,7 @@ func (data *resourceRowData) getInfoColumn() string {
 	return diagMsg
 }
 
-func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) string {
+func getDiffInfo(step events.StepEventMetadata, action apitype.UpdateKind) string {
 	diffOutputs := action == apitype.RefreshUpdate
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
@@ -468,9 +466,9 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 				}
 			}
 
-			writePropertyKeys(changesBuf, filteredKeys(diff.Adds), deploy.OpCreate)
-			writePropertyKeys(changesBuf, filteredKeys(diff.Deletes), deploy.OpDelete)
-			writePropertyKeys(changesBuf, filteredKeys(updates), deploy.OpUpdate)
+			writePropertyKeys(changesBuf, filteredKeys(diff.Adds), events.OpCreate)
+			writePropertyKeys(changesBuf, filteredKeys(diff.Deletes), events.OpDelete)
+			writePropertyKeys(changesBuf, filteredKeys(updates), events.OpUpdate)
 		}
 	}
 
@@ -478,7 +476,7 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 	return changesBuf.String()
 }
 
-func writePropertyKeys(b io.StringWriter, keys []string, op deploy.StepOp) {
+func writePropertyKeys(b io.StringWriter, keys []string, op events.StepOp) {
 	if len(keys) > 0 {
 		writeString(b, strings.Trim(op.Prefix(true /*done*/), " "))
 

@@ -20,16 +20,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/engine/events"
+	stack_events "github.com/pulumi/pulumi/pkg/v3/resource/stack/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
@@ -91,21 +88,20 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 }
 
 // ShowJSONEvents renders incremental engine events to stdout.
-func ShowJSONEvents(events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowJSONEvents(eventsC <-chan events.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 
 	sequence := 0
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetEscapeHTML(false)
-	for e := range events {
-		if err := logJSONEvent(encoder, e, opts, sequence); err != nil {
-			logging.V(7).Infof("failed to log event: %v", err)
-		}
+	for e := range eventsC {
+		err := logJSONEvent(encoder, e, opts, sequence)
+		contract.IgnoreError(err)
 		sequence++
 
 		// In the event of cancellation, break out of the loop.
-		if e.Type == engine.CancelEvent {
+		if e.Type == events.CancelEvent {
 			break
 		}
 	}
@@ -115,53 +111,53 @@ func ShowJSONEvents(events <-chan engine.Event, done chan<- bool, opts Options) 
 // emit events incrementally so that it can guarantee anything emitted to stdout is well-formed. This means that,
 // if used interactively, the experience will lead to potentially very long pauses. If run in CI, it is up to the
 // end user to ensure that output is periodically printed to prevent tools from thinking preview has hung.
-func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowPreviewDigest(eventsC <-chan events.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 
 	// Now loop and accumulate our digest until the event stream is closed, or we hit a cancellation.
 	var digest previewDigest
-	for e := range events {
+	for e := range eventsC {
 		// In the event of cancellation, break out of the loop immediately.
-		if e.Type == engine.CancelEvent {
+		if e.Type == events.CancelEvent {
 			break
 		}
 
 		// For all other events, use the payload to build up the JSON digest we'll emit later.
 		switch e.Type {
 		// Events occurring early:
-		case engine.PreludeEvent:
+		case events.PreludeEvent:
 			// Capture the config map from the prelude. Note that all secrets will remain blinded for safety.
-			digest.Config = e.Payload().(engine.PreludeEventPayload).Config
+			digest.Config = e.Payload().(events.PreludeEventPayload).Config
 
 		// Events throughout the execution:
-		case engine.DiagEvent:
+		case events.DiagEvent:
 			// Skip any ephemeral or debug messages, and elide all colorization.
-			p := e.Payload().(engine.DiagEventPayload)
-			if !p.Ephemeral && p.Severity != diag.Debug {
+			p := e.Payload().(events.DiagEventPayload)
+			if !p.Ephemeral && p.Severity != apitype.SeverityDebug {
 				digest.Diagnostics = append(digest.Diagnostics, previewDiagnostic{
 					URN:      p.URN,
 					Message:  colors.Never.Colorize(p.Prefix + p.Message),
 					Severity: p.Severity,
 				})
 			}
-		case engine.StdoutColorEvent:
+		case events.StdoutColorEvent:
 			// Append stdout events as informational messages, and elide all colorization.
-			p := e.Payload().(engine.StdoutEventPayload)
+			p := e.Payload().(events.StdoutEventPayload)
 			digest.Diagnostics = append(digest.Diagnostics, previewDiagnostic{
 				Message:  colors.Never.Colorize(p.Message),
-				Severity: diag.Info,
+				Severity: apitype.SeverityInfo,
 			})
-		case engine.ResourcePreEvent:
+		case events.ResourcePreEvent:
 			// Create the detailed metadata for this step and the initial state of its resource. Later,
 			// if new outputs arrive, we'll search for and swap in those new values.
-			if m := e.Payload().(engine.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
+			if m := e.Payload().(events.ResourcePreEventPayload).Metadata; shouldShow(m, opts) || isRootStack(m) {
 				var detailedDiff map[string]propertyDiff
 				if m.DetailedDiff != nil {
 					detailedDiff = make(map[string]propertyDiff)
 					for k, v := range m.DetailedDiff {
 						detailedDiff[k] = propertyDiff{
-							Kind:      v.Kind.String(),
+							Kind:      string(v.Kind),
 							InputDiff: v.InputDiff,
 						}
 					}
@@ -178,36 +174,32 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 
 				if m.Old != nil {
 					oldState := stateForJSONOutput(m.Old.State, opts)
-					res, err := stack.SerializeResource(oldState, config.NewPanicCrypter(), false /* showSecrets */)
+					res, err := stack_events.SerializeResource(oldState, config.NewPanicCrypter(), false /* showSecrets */)
 					if err == nil {
 						step.OldState = &res
-					} else {
-						logging.V(7).Infof("not adding old state as there was an error serializing: %s", err)
 					}
 				}
 				if m.New != nil {
 					newState := stateForJSONOutput(m.New.State, opts)
-					res, err := stack.SerializeResource(newState, config.NewPanicCrypter(), false /* showSecrets */)
+					res, err := stack_events.SerializeResource(newState, config.NewPanicCrypter(), false /* showSecrets */)
 					if err == nil {
 						step.NewState = &res
-					} else {
-						logging.V(7).Infof("not adding new state as there was an error serializing: %s", err)
 					}
 				}
 
 				digest.Steps = append(digest.Steps, step)
 			}
-		case engine.ResourceOutputsEvent, engine.ResourceOperationFailed:
+		case events.ResourceOutputsEvent, events.ResourceOperationFailed:
 		// Because we are only JSON serializing previews, we don't need to worry about outputs
 		// resolving or operations failing.
 
 		// Events occurring late:
-		case engine.PolicyViolationEvent:
+		case events.PolicyViolationEvent:
 			// At this point in time, we don't handle policy events in JSON serialization
 			continue
-		case engine.SummaryEvent:
+		case events.SummaryEvent:
 			// At the end of the preview, a summary event indicates the final conclusions.
-			p := e.Payload().(engine.SummaryEventPayload)
+			p := e.Payload().(events.SummaryEventPayload)
 			digest.Duration = p.Duration
 			digest.ChangeSummary = p.ResourceChanges
 			digest.MaybeCorrupt = p.MaybeCorrupt
@@ -235,7 +227,7 @@ type previewDigest struct {
 	// Duration records the amount of time it took to perform the preview.
 	Duration time.Duration `json:"duration,omitempty"`
 	// ChangeSummary contains a map of count per operation (create, update, etc).
-	ChangeSummary engine.ResourceChanges `json:"changeSummary,omitempty"`
+	ChangeSummary events.ResourceChanges `json:"changeSummary,omitempty"`
 	// MaybeCorrupt indicates whether one or more resources may be corrupt.
 	MaybeCorrupt bool `json:"maybeCorrupt,omitempty"`
 }
@@ -251,7 +243,7 @@ type propertyDiff struct {
 // previewStep is a detailed overview of a step the engine intends to take.
 type previewStep struct {
 	// Op is the kind of operation being performed.
-	Op deploy.StepOp `json:"op"`
+	Op events.StepOp `json:"op"`
 	// URN is the resource being affected by this operation.
 	URN resource.URN `json:"urn"`
 	// Provider is the provider that will perform this step.
@@ -270,8 +262,8 @@ type previewStep struct {
 
 // previewDiagnostic is a warning or error emitted during the execution of the preview.
 type previewDiagnostic struct {
-	URN      resource.URN  `json:"urn,omitempty"`
-	Prefix   string        `json:"prefix,omitempty"`
-	Message  string        `json:"message,omitempty"`
-	Severity diag.Severity `json:"severity,omitempty"`
+	URN      resource.URN `json:"urn,omitempty"`
+	Prefix   string       `json:"prefix,omitempty"`
+	Message  string       `json:"message,omitempty"`
+	Severity string       `json:"severity,omitempty"`
 }
