@@ -132,7 +132,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil, /* aliases */
 		nil, /* customTimeouts */
 		"",  /* importID */
-		0,   /* sequneceNumber */
+		0,   /* sequenceNumber */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
