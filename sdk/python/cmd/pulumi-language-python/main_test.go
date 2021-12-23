@@ -127,7 +127,8 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		require.NoError(t, err)
 		// Find sitePackages folder in Python that contains pip_install_test subfolder.
 		var sitePackages string
-		possibleSitePackages, err := runPythonCommand("venv", cwd, "-c", "import site; import json; print(json.dumps(site.getsitepackages()))")
+		possibleSitePackages, err := runPythonCommand("venv", cwd, "-c",
+			"import site; import json; print(json.dumps(site.getsitepackages()))")
 		require.NoError(t, err)
 		var possibleSitePackagePaths []string
 		err = json.Unmarshal(possibleSitePackages, &possibleSitePackagePaths)
