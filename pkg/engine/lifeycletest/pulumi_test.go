@@ -178,7 +178,7 @@ func TestCheckFailureRecord(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, nil, errors.New("oh no, check had an error")
 				},
 			}, nil
@@ -225,7 +225,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, []plugin.CheckFailure{{
 						Property: "someprop",
 						Reason:   "field is not valid",

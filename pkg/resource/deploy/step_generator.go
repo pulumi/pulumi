@@ -277,7 +277,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "", 0)
+		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "", 1)
 	if hasOld {
 		new.SequenceNumber = old.SequenceNumber
 	}
@@ -317,6 +317,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 	isImport := goal.Custom && goal.ID != "" && (!hasOld || old.External || oldImportID != goal.ID)
 	if isImport {
+		// TODO(seqnum) Not sure how sequence numbers should interact with imports
+
 		// Write the ID of the resource to import into the new state and return an ImportStep or an
 		// ImportReplacementStep
 		new.ID = goal.ID
@@ -340,9 +342,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) {
-			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+			// TODO(seqnum) Not totally sure about sequence numbers here but I think a recreate at least should increment the sequence.
+			if recreating {
+				new.SequenceNumber++
+			}
+			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, new.SequenceNumber)
 		} else {
-			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
+			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, new.SequenceNumber)
 		}
 
 		if err != nil {
@@ -589,8 +595,11 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			//
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
+				// Increment the sequence number before calling check so we get a new autoname
+				new.SequenceNumber++
+
 				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, new.SequenceNumber)
 				if err != nil {
 					return nil, result.FromError(err)
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
