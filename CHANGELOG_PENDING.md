@@ -31,3 +31,6 @@
 - [auto/*] - Fixes `stack.setConfig()` breaking when trying to set
   values that look like flags (such as `-value`)
   [#8518](https://github.com/pulumi/pulumi/pull/8614)
+
+- [sdk/dotnet] - Don't throw converting value types that don't match schema
+  [#8628](https://github.com/pulumi/pulumi/pull/8628)
