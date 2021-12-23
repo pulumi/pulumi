@@ -112,6 +112,9 @@ func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randlen, maxlen 
 		return "", errors.Errorf("randLen is longer than 32, %d", randlen)
 	}
 
+	// TODO(seqnum) This is seeded by urn and sequence number, and urn has the stack and project names in it.
+	// But do we care about org name as well?
+	// Do we need a config source of randomness so if users hit a collision they can set a config value to get out of it?
 	hasher := crypto.SHA512.New()
 
 	_, err := hasher.Write([]byte(urn))
