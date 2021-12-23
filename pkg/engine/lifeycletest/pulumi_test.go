@@ -2580,3 +2580,72 @@ func TestComponentDeleteDependencies(t *testing.T) {
 	}
 	p.Run(t, nil)
 }
+
+func TestProviderDeterministicPreview(t *testing.T) {
+	var generatedName resource.PropertyValue
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(urn resource.URN, olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					// make a deterministic autoname
+					if _, has := news["name"]; !has {
+						if name, has := olds["name"]; has {
+							news["name"] = name
+						} else {
+							name, err := resource.NewUniqueHexV2(urn, sequenceNumber, urn.Name().String(), -1, -1)
+							assert.Nil(t, err)
+							generatedName = resource.NewStringProperty(name)
+							news["name"] = generatedName
+						}
+					}
+
+					return news, nil, nil
+				},
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+			"foo": "bar",
+		})
+
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run a preview, this should want to create resA with a given name
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.True(t, generatedName.IsString())
+	assert.NotEqual(t, "", generatedName.StringValue())
+	expectedName := generatedName
+
+	// Run an update, we should get the same name as we saw in preview
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, expectedName, snap.Resources[1].Inputs["name"])
+	assert.Equal(t, expectedName, snap.Resources[1].Outputs["name"])
+}
