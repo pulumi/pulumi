@@ -48,7 +48,11 @@ export function runPulumiCmd(
 ): Promise<CommandResult> {
     // all commands should be run in non-interactive mode.
     // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
-    args.push("--non-interactive");
+
+    if (!args.includes("--non-interactive")) {
+        args.push("--non-interactive");
+    }
+
     const env = { ...process.env, ...additionalEnv };
 
     return new Promise<CommandResult>((resolve, reject) => {
