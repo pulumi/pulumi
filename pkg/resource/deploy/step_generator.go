@@ -343,7 +343,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) {
 			// TODO(seqnum) Not totally sure about sequence numbers here but I think a recreate at least should increment the sequence.
-			if recreating {
+			if recreating && new.SequenceNumber != 0 {
 				new.SequenceNumber++
 			}
 			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, new.SequenceNumber)
@@ -595,8 +595,10 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			//
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
-				// Increment the sequence number before calling check so we get a new autoname
-				new.SequenceNumber++
+				// Increment the sequence number (if it's known) before calling check so we get a new autoname
+				if new.SequenceNumber != 0 {
+					new.SequenceNumber++
+				}
 
 				var failures []plugin.CheckFailure
 				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, new.SequenceNumber)
