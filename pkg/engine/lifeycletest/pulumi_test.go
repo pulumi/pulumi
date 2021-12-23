@@ -2602,6 +2602,16 @@ func TestProviderDeterministicPreview(t *testing.T) {
 
 					return news, nil, nil
 				},
+				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					if !olds["foo"].DeepEquals(news["foo"]) {
+						// If foo changes do a replace, we use this to check we get a new name
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
@@ -2614,10 +2624,11 @@ func TestProviderDeterministicPreview(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
-			"foo": "bar",
-		})
 
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
@@ -2648,4 +2659,15 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, expectedName, snap.Resources[1].Inputs["name"])
 	assert.Equal(t, expectedName, snap.Resources[1].Outputs["name"])
+
+	// Run a new update which will cause a replace and check we get a new name
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.NotEqual(t, expectedName, snap.Resources[1].Inputs["name"])
+	assert.NotEqual(t, expectedName, snap.Resources[1].Outputs["name"])
 }
