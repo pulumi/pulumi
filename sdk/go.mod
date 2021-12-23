@@ -9,7 +9,6 @@ require (
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/djherbis/times v1.2.0
 	github.com/fatih/color v1.9.0 // indirect
-	github.com/gofrs/flock v0.7.1
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -52,6 +51,8 @@ require (
 	pgregory.net/rapid v0.4.7
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0
 )
+
+require github.com/rogpeppe/go-internal v1.8.1
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
