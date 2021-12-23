@@ -93,7 +93,7 @@ func NewUniqueHexID(prefix string, randlen, maxlen int) (ID, error) {
 // and append randlen random characters (defaulting to 8 if not > 0).  The result must not exceed maxlen total
 // characterss (if > 0).  Note that capping to maxlen necessarily increases the risk of collisions.
 // The randomness for this method is a function of urn and sequenceNumber iff sequenceNUmber > 0, else it falls back to
-// a non-determinisitc source of randomness.
+// a non-deterministic source of randomness.
 func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randlen, maxlen int) (string, error) {
 	if randlen <= 0 {
 		randlen = 8
@@ -122,7 +122,7 @@ func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randlen, maxlen 
 
 	bytes := make([]byte, 4)
 	binary.LittleEndian.PutUint32(bytes, uint32(sequenceNumber))
-	_, err = hasher.Write([]byte(bytes))
+	_, err = hasher.Write(bytes)
 	contract.AssertNoError(err)
 
 	bs := hasher.Sum(nil)

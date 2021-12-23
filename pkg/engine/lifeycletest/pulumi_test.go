@@ -2587,7 +2587,10 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CheckF: func(urn resource.URN, olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				CheckF: func(
+					urn resource.URN,
+					olds, news resource.PropertyMap,
+					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					// make a deterministic autoname
 					if _, has := news["name"]; !has {
 						if name, has := olds["name"]; has {
@@ -2602,7 +2605,11 @@ func TestProviderDeterministicPreview(t *testing.T) {
 
 					return news, nil, nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffF: func(
+					urn resource.URN,
+					id resource.ID,
+					olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
 					if !olds["foo"].DeepEquals(news["foo"]) {
 						// If foo changes do a replace, we use this to check we get a new name
 						return plugin.DiffResult{

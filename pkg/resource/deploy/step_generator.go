@@ -342,7 +342,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) {
-			// TODO(seqnum) Not totally sure about sequence numbers here but I think a recreate at least should increment the sequence.
+			// TODO(seqnum) Not totally sure about sequence numbers here
+			// but I think a recreate at least should increment the sequence.
 			if recreating && new.SequenceNumber != 0 {
 				new.SequenceNumber++
 			}
