@@ -94,33 +94,32 @@ def urn_type_and_name(urn: str) -> Tuple[str, str]:
     return (parts[3], type_parts[-1])
 
 def all_aliases(
-    child_aliases: Optional[Sequence['Input[Union[str, Alias]]']], 
-    child_name: str, 
-    child_type: str, 
-    parent: Optional['Resource']) -> 'List[Output[str]]':
+    child_aliases: Optional[Sequence['Input[Union[str, Alias]]']],
+    child_name: str,
+    child_type: str,
+    parent: Optional['Resource']) -> 'List[Input[str]]':
     """
     Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
     If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
     or, as calculated in the logic below, N+(M*(1+N)).
     """
-    aliases: List[Output[str]] = []
-    # if child_aliases is None:
-    #     child_aliases = []
+    aliases: 'List[Input[str]]' = []
 
-    for child_alias in child_aliases:
+    for child_alias in child_aliases or []:
         aliases.append(collapse_alias_to_urn(child_alias, child_name, child_type, parent))
 
     if parent is not None:
+        parent_name = parent._name
         for parent_alias in parent._aliases:
             aliases.append(inherited_child_alias(child_name, parent._name, parent_alias, child_type))
-            for child_alias in child_aliases:
+            for child_alias in child_aliases or []:
                 child_alias_urn = collapse_alias_to_urn(child_alias, child_name, child_type, parent)
-                def inherited_alias_for_child_urn(child_alias_urn: str) -> 'Output[str]':
+                def inherited_alias_for_child_urn(child_alias_urn: str, parent_alias=parent_alias) -> 'Output[str]':
                     aliased_child_name, aliased_child_type = urn_type_and_name(child_alias_urn)
-                    return inherited_child_alias(aliased_child_name, parent._name, parent_alias, aliased_child_type)
-                inherited_alias = child_alias_urn.apply(inherited_alias_for_child_urn)
+                    return inherited_child_alias(aliased_child_name, parent_name, parent_alias, aliased_child_type)
+                inherited_alias: Output[str] = child_alias_urn.apply(inherited_alias_for_child_urn)
                 aliases.append(inherited_alias)
-                
+
     return aliases
 
 
@@ -800,7 +799,7 @@ class Resource:
         self._protect = bool(opts.protect)
         self._provider = opts.provider if custom else None
         self._version = opts.version
-        self._aliases: 'List[Input[str]]' = all_aliases(opts.aliases, name, t, opts.parent)
+        self._aliases = all_aliases(opts.aliases, name, t, opts.parent)
 
         if opts.urn is not None:
             # This is a resource that already exists. Read its state from the engine.

@@ -76,12 +76,12 @@ namespace Pulumi
             return urn;
         }
 
-        internal static string Type(string urn) {
+        internal static string Name(string urn) {
             var parts = urn.Split("::");
             return parts[3];
         }
 
-        internal static string Name(string urn) {
+        internal static string Type(string urn) {
             var parts = urn.Split("::");
             var typeParts = parts[2].Split("$");
             return typeParts[typeParts.Length-1];
