@@ -63,7 +63,7 @@ test_auto:: test_fast $(TEST_ALL_DEPS)
 	# Note that this target depends on test-fast for the call to `pip install`
 	PATH=venv/bin:$$PATH $(RUN_TESTSUITE) auto-python coverage run -m pytest lib/test/automation
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .coverage ]; then PATH=venv/bin:$$PATH coverage xml -o $(PULUMI_TEST_COVERAGE_PATH)/python-auto.xml; fi
+	if [ -e .coverage ]; then PATH=venv/bin:$$PATH coverage xml -i -o $(PULUMI_TEST_COVERAGE_PATH)/python-auto.xml; fi
 endif
 
 test_all:: test_fast test_auto
