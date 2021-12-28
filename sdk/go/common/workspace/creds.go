@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/rogpeppe/go-internal/lockedfile"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -184,7 +186,7 @@ func GetStoredCredentials() (Credentials, error) {
 		return Credentials{}, err
 	}
 
-	c, err := ioutil.ReadFile(credsFile)
+	c, err := lockedfile.Read(credsFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return Credentials{}, nil
@@ -229,23 +231,7 @@ func StoreCredentials(creds Credentials) error {
 		return errors.Wrapf(err, "marshalling credentials object")
 	}
 
-	// Use a temporary file and atomic os.Rename to ensure the file contents are
-	// updated atomically to ensure concurrent `pulumi` CLI operations are safe.
-	tempCredsFile, err := ioutil.TempFile(filepath.Dir(credsFile), "credentials-*.json")
-	if err != nil {
-		return err
-	}
-	_, err = tempCredsFile.Write(raw)
-	if err != nil {
-		return err
-	}
-	err = tempCredsFile.Close()
-	if err != nil {
-		return err
-	}
-	err = os.Rename(tempCredsFile.Name(), credsFile)
-	if err != nil {
-		contract.IgnoreError(os.Remove(tempCredsFile.Name()))
+	if err := lockedfile.Write(credsFile, bytes.NewReader(raw), 0600); err != nil {
 		return err
 	}
 
