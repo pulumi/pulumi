@@ -3,7 +3,6 @@ package syntax
 import (
 	"bytes"
 	"io/ioutil"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -23,7 +22,7 @@ func commentString(trivia []Trivia) string {
 			}
 		}
 	}
-	return s
+	return normString(s)
 }
 
 func validateTokenLeadingTrivia(t *testing.T, token Token) {
@@ -213,10 +212,6 @@ func (v *validator) Exit(n hclsyntax.Node) hcl.Diagnostics {
 }
 
 func TestComments(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: TODO newline handling")
-	}
-
 	contents, err := ioutil.ReadFile("./testdata/comments_all.hcl")
 	if err != nil {
 		t.Fatalf("failed to read test data: %v", err)
@@ -231,4 +226,8 @@ func TestComments(t *testing.T) {
 	f := parser.Files[0]
 	diags := hclsyntax.Walk(f.Body, &validator{t: t, tokens: f.Tokens})
 	assert.Nil(t, diags)
+}
+
+func normString(s string) string {
+	return strings.TrimSuffix(s, "\r")
 }
