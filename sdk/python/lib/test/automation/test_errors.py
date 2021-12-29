@@ -56,7 +56,8 @@ class TestErrors(unittest.TestCase):
                 subprocess.run(["npm", "install"], check=True, cwd=project_dir, capture_output=True)
             if lang == "python":
                 subprocess.run(["python3", "-m", "venv", "venv"], check=True, cwd=project_dir, capture_output=True)
-                subprocess.run([os.path.join("venv", "bin", "pip"), "install", "-r", "requirements.txt"],
+                subprocess.run([os.path.join("venv", "bin", "python"),
+                                "-m", "pip", "install", "-r", "requirements.txt"],
                                check=True, cwd=project_dir, capture_output=True)
 
             stack = create_stack(stack_name, work_dir=project_dir)
