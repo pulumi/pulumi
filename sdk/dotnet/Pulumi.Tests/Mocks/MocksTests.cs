@@ -190,12 +190,15 @@ namespace Pulumi.Tests.Mocks
         {
             var resources = await Deployment.TestAsync<Aliases.AliasesStack>(
                 new Aliases.AliasesMocks());
-            var parent1Urn = await resources[1].Urn.GetValueAsync("");
-            Assert.Equal("urn:pulumi:stack::project::test:resource:type::myres1", parent1Urn);
 
-            // TODO[pulumi/pulumi#8637]: A subset of the "expected" below include the implicit root stack type 
-            // `pulumi:pulumi:Stack` as an explicit parent type in the URN. This should not happen, and indicates 
-            // a bug in the the Pulumi .NET SDK unrelated to Aliases.  It appears this only happens when using the 
+            // TODO[pulumi/pulumi#8637]
+            //
+            // var parent1Urn = await resources[1].Urn.GetValueAsync("");
+            // Assert.Equal("urn:pulumi:stack::project::test:resource:type::myres1", parent1Urn);
+
+            // TODO[pulumi/pulumi#8637]: A subset of the "expected" below include the implicit root stack type
+            // `pulumi:pulumi:Stack` as an explicit parent type in the URN. This should not happen, and indicates
+            // a bug in the the Pulumi .NET SDK unrelated to Aliases.  It appears this only happens when using the
             // .NET mock testing framework, not when running normal programs.
             var expected = new Dictionary<string, List<string>>{
                 { "myres1-child", new List<string>{}},
