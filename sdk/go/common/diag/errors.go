@@ -38,7 +38,7 @@ func GetResourceInvalidError(urn resource.URN) *Diag {
 }
 
 func GetResourcePropertyInvalidValueError(urn resource.URN) *Diag {
-	return newError(urn, 2003, "%v resource '%v's property '%v' value %v has a problem: %v")
+	return newError(urn, 2003, "%v resource '%v': property %v value %v has a problem: %v")
 }
 
 func GetPreviewFailedError(urn resource.URN) *Diag {

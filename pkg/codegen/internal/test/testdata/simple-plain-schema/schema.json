@@ -5,22 +5,28 @@
     "example::Foo": {
       "properties": {
         "a": {
-          "type": "boolean", "plain": true
+          "type": "boolean",
+          "plain": true
         },
         "b": {
-          "type": "boolean", "plain": true
+          "type": "boolean",
+          "plain": true
         },
         "c": {
-          "type": "integer", "plain": true
+          "type": "integer",
+          "plain": true
         },
         "d": {
-          "type": "integer", "plain": true
+          "type": "integer",
+          "plain": true
         },
         "e": {
-          "type": "string", "plain": true
+          "type": "string",
+          "plain": true
         },
         "f": {
-          "type": "string", "plain": true
+          "type": "string",
+          "plain": true
         }
       },
       "required": ["a", "c", "e"],
@@ -65,28 +71,35 @@
       "required": ["a", "c", "e"],
       "inputProperties": {
         "a": {
-          "type": "boolean", "plain": true
+          "type": "boolean",
+          "plain": true
         },
         "b": {
-          "type": "boolean", "plain": true
+          "type": "boolean",
+          "plain": true
         },
         "c": {
-          "type": "integer", "plain": true
+          "type": "integer",
+          "plain": true
         },
         "d": {
-          "type": "integer", "plain": true
+          "type": "integer",
+          "plain": true
         },
         "e": {
-          "type": "string", "plain": true
+          "type": "string",
+          "plain": true
         },
         "f": {
-          "type": "string", "plain": true
+          "type": "string",
+          "plain": true
         },
         "foo": {
           "$ref": "#/types/example::Foo"
         },
         "bar": {
-          "$ref": "#/types/example::Foo", "plain": true
+          "$ref": "#/types/example::Foo",
+          "plain": true
         },
         "baz": {
           "type": "array",
@@ -121,11 +134,23 @@
     }
   },
   "language": {
-    "csharp": {},
-    "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-plain-schema/go/example"
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.12"
+      }
     },
-    "nodejs": {},
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-plain-schema/go/example",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
     "python": {}
   }
 }

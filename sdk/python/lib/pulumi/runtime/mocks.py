@@ -139,7 +139,7 @@ class MockMonitor:
 
     def __init__(self, mocks: Mocks):
         self.mocks = mocks
-        self.resources = dict()
+        self.resources = {}
 
     def make_urn(self, parent: str, type_: str, name: str) -> str:
         if parent != "":
@@ -226,8 +226,10 @@ class MockMonitor:
         return empty_pb2.Empty()
 
     def SupportsFeature(self, request):
-        # pylint: disable=unused-argument
-        return type('SupportsFeatureResponse', (object,), {'hasSupport' : True})
+        # Support for "outputValues" is deliberately disabled for the mock monitor so
+        # instances of `Output` don't show up in `MockResourceArgs` inputs.
+        has_support = request.id in {"secrets", "resourceReferences"}
+        return type('SupportsFeatureResponse', (object,), {'hasSupport' : has_support})
 
 
 class MockEngine:

@@ -114,12 +114,13 @@ class ConfigureResponse:
     def __init__(self,
                  acceptSecrets: bool=False,
                  supportsPreview: bool=False,
-                 acceptResources: bool=False) -> None: ...
+                 acceptResources: bool=False,
+                 acceptOutputs: bool=False) -> None: ...
 
     acceptSecrets: bool
     supportsPreview: bool
     acceptResources: bool
-
+    acceptOutputs: bool
 
 class GetSchemaRequest:
     version: int

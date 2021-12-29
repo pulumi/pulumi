@@ -31,7 +31,7 @@ export class Foo extends pulumi.ComponentResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: FooArgs, opts?: pulumi.ComponentResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
         } else {
@@ -39,7 +39,7 @@ export class Foo extends pulumi.ComponentResource {
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        super(Foo.__pulumiType, name, inputs, opts, true /*remote*/);
+        super(Foo.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 
     /**

@@ -13,10 +13,6 @@ namespace Pulumi
 
         private protected override void ValidateMember(Type memberType, string fullName)
         {
-            if (typeof(IInput).IsAssignableFrom(memberType))
-            {
-                throw new InvalidOperationException($"{fullName} must not be an Input<T>");
-            }
         }
 
         private class EmptyInvokeArgs : InvokeArgs

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,9 +44,10 @@ import (
 )
 
 // PulumiPluginJSON represents additional information about a package's associated Pulumi plugin.
-// For Python, the content is inside a pulumiplugin.json file inside the package.
+// For Python, the content is inside a pulumi-plugin.json file inside the package.
 // For Node.js, the content is within the package.json file, under the "pulumi" node.
-// This is not currently used for .NET or Go, but we could consider adopting it for those languages.
+// For .NET, the content is inside a pulumi-plugin.json file inside the NuGet package.
+// For Go, the content is inside a pulumi-plugin.json file inside the module.
 type PulumiPluginJSON struct {
 	// Indicates whether the package has an associated resource plugin. Set to false to indicate no plugin.
 	Resource bool `json:"resource"`
@@ -63,7 +64,7 @@ func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json, nil
+	return append(json, '\n'), nil
 }
 
 func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
@@ -74,7 +75,7 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 		return nil, err
 	}
 
-	var plugin *PulumiPluginJSON
+	plugin := &PulumiPluginJSON{}
 	if err := json.Unmarshal(b, plugin); err != nil {
 		return nil, err
 	}

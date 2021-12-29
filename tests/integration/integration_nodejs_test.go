@@ -1,4 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+//go:build nodejs || all
 // +build nodejs all
 
 package ints
@@ -35,6 +36,8 @@ func TestEmptyNodeJS(t *testing.T) {
 
 // Tests emitting many engine events doesn't result in a performance problem.
 func TestEngineEventPerf(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7883]
+
 	// Prior to pulumi/pulumi#2303, a preview or update would take ~40s.
 	// Since then, it should now be down to ~4s, with additional padding,
 	// since some Travis machines (especially the macOS ones) seem quite slow
@@ -856,7 +859,6 @@ func TestConstructNode(t *testing.T) {
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
-		env                   []string
 	}{
 		{
 			componentDir:          "testcomponent",
@@ -865,7 +867,6 @@ func TestConstructNode(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -875,9 +876,11 @@ func TestConstructNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
-				optsForConstructNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructNode(t, test.expectedResourceCount, pathEnv))
 		})
 	}
 }
@@ -961,7 +964,6 @@ func TestConstructPlainNode(t *testing.T) {
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
-		env                   []string
 	}{
 		{
 			componentDir:          "testcomponent",
@@ -970,7 +972,6 @@ func TestConstructPlainNode(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -980,9 +981,11 @@ func TestConstructPlainNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
-				optsForConstructPlainNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructPlainNode(t, test.expectedResourceCount, pathEnv))
 		})
 	}
 }
@@ -1010,14 +1013,12 @@ func TestConstructUnknownNode(t *testing.T) {
 func TestConstructMethodsNode(t *testing.T) {
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -1027,7 +1028,7 @@ func TestConstructMethodsNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          append(test.env, pathEnv),
+				Env:          []string{pathEnv},
 				Dir:          filepath.Join("construct_component_methods", "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
@@ -1044,18 +1045,24 @@ func TestConstructMethodsUnknownNode(t *testing.T) {
 	testConstructMethodsUnknown(t, "nodejs", "@pulumi/pulumi")
 }
 
+func TestConstructMethodsResourcesNode(t *testing.T) {
+	testConstructMethodsResources(t, "nodejs", "@pulumi/pulumi")
+}
+
+func TestConstructMethodsErrorsNode(t *testing.T) {
+	testConstructMethodsErrors(t, "nodejs", "@pulumi/pulumi")
+}
+
 func TestConstructProviderNode(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -1065,7 +1072,7 @@ func TestConstructProviderNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          append(test.env, pathEnv),
+				Env:          []string{pathEnv},
 				Dir:          filepath.Join(testDir, "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
@@ -1124,4 +1131,66 @@ func TestConstructNodeErrorApply(t *testing.T) {
 	t.Run(componentDir, func(t *testing.T) {
 		integration.ProgramTest(t, opts)
 	})
+}
+
+// Test targeting `es2016` in `tsconfig.json` works.
+func TestCompilerOptionsNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "compiler_options"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+// Test that the about command works as expected. Because about parses the
+// results of each runtime independently, we have an integration test in each
+// language.
+func TestAboutNodeJS(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Skip on windows because we lack yarn")
+	}
+
+	dir := filepath.Join("about", "nodejs")
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	e.ImportDirectory(dir)
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
+	e.RunCommand("pulumi", "stack", "select", "about-nodejs")
+	stdout, stderr := e.RunCommand("pulumi", "about")
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
+	// Assert we parsed the dependencies
+	assert.Containsf(t, stdout, "@types/node",
+		"Did not contain expected output. stderr: \n%q", stderr)
+}
+
+func TestConstructOutputValuesNode(t *testing.T) {
+	testConstructOutputValues(t, "nodejs", "@pulumi/pulumi")
+}
+
+func TestTSConfigOption(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Skip on windows because we lack yarn")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	e.ImportDirectory("tsconfig")
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
+	e.RunCommand("pulumi", "preview")
 }

@@ -30,7 +30,13 @@ func (nm Name) String() string { return string(nm) }
 func (nm Name) Q() QName { return QName(nm) }
 
 var NameRegexp = regexp.MustCompile(NameRegexpPattern)
-var NameRegexpPattern = "[A-Za-z_.][A-Za-z0-9_.]*"
+var nameFirstCharRegexp = regexp.MustCompile("^" + nameFirstCharRegexpPattern + "$")
+var nameRestCharRegexp = regexp.MustCompile("^" + nameRestCharRegexpPattern + "$")
+
+var NameRegexpPattern = nameFirstCharRegexpPattern + nameRestCharRegexpPattern
+
+const nameFirstCharRegexpPattern = "[A-Za-z_.]"
+const nameRestCharRegexpPattern = `[A-Za-z0-9_.]*`
 
 // IsName checks whether a string is a legal Name.
 func IsName(s string) bool {
@@ -58,6 +64,32 @@ var QNameRegexpPattern = "(" + NameRegexpPattern + "\\" + QNameDelimiter + ")*" 
 // IsQName checks whether a string is a legal Name.
 func IsQName(s string) bool {
 	return s != "" && QNameRegexp.FindString(s) == s
+}
+
+// IntoQName converts an arbitrary string into a QName, converting the string to a valid QName if
+// necessary. The conversion is deterministic, but also lossy.
+func IntoQName(s string) QName {
+	output := []string{}
+	for _, s := range strings.Split(s, QNameDelimiter) {
+		if s == "" {
+			continue
+		}
+		segment := []byte(s)
+		if !nameFirstCharRegexp.Match([]byte{segment[0]}) {
+			segment[0] = '_'
+		}
+		for i := 1; i < len(s); i++ {
+			if !nameRestCharRegexp.Match([]byte{segment[i]}) {
+				segment[i] = '_'
+			}
+		}
+		output = append(output, string(segment))
+	}
+	result := strings.Join(output, QNameDelimiter)
+	if result == "" {
+		result = "_"
+	}
+	return AsQName(result)
 }
 
 // AsQName converts a given string to a QName, asserting its validity.

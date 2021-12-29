@@ -94,6 +94,7 @@ class Server implements grpc.UntypedServiceImplementation {
         const resp = new provproto.ConfigureResponse();
         resp.setAcceptsecrets(true);
         resp.setAcceptresources(true);
+        resp.setAcceptoutputs(true);
         callback(undefined, resp);
     }
 
@@ -390,14 +391,17 @@ class Server implements grpc.UntypedServiceImplementation {
 
             const resp = new provproto.CallResponse();
 
-            const [ret, retDependencies] = await runtime.serializeResourceProperties(`call(${req.getTok()})`, result.outputs);
-            const returnDependenciesMap = resp.getReturndependenciesMap();
-            for (const [key, resources] of retDependencies) {
-                const deps = new provproto.CallResponse.ReturnDependencies();
-                deps.setUrnsList(await Promise.all(Array.from(resources).map(r => r.urn.promise())));
-                returnDependenciesMap.set(key, deps);
+            if (result.outputs) {
+                const [ret, retDependencies] =
+                    await runtime.serializeResourceProperties(`call(${req.getTok()})`, result.outputs);
+                const returnDependenciesMap = resp.getReturndependenciesMap();
+                for (const [key, resources] of retDependencies) {
+                    const deps = new provproto.CallResponse.ReturnDependencies();
+                    deps.setUrnsList(await Promise.all(Array.from(resources).map(r => r.urn.promise())));
+                    returnDependenciesMap.set(key, deps);
+                }
+                resp.setReturn(structproto.Struct.fromJavaScript(ret));
             }
-            resp.setReturn(structproto.Struct.fromJavaScript(ret));
 
             if ((result.failures || []).length !== 0) {
                 const failureList = [];
@@ -481,31 +485,76 @@ function configureRuntime(req: any, engineAddr: string) {
     runtime.setAllConfig(pulumiConfig, req.getConfigsecretkeysList());
 }
 
-// deserializeInputs deserializes the inputs struct and applies appropriate dependencies.
-async function deserializeInputs(inputsStruct: any, inputDependencies: any): Promise<Inputs> {
+/**
+ * deserializeInputs deserializes the inputs struct and applies appropriate dependencies.
+ * @internal
+ */
+export async function deserializeInputs(inputsStruct: any, inputDependencies: any): Promise<Inputs> {
     const result: Inputs = {};
+
     const deserializedInputs = runtime.deserializeProperties(inputsStruct);
     for (const k of Object.keys(deserializedInputs)) {
-        const inputDeps = inputDependencies.get(k);
-        const depsUrns: resource.URN[] = inputDeps?.getUrnsList() ?? [];
-        const deps = depsUrns.map(depUrn => new resource.DependencyResource(depUrn));
         const input = deserializedInputs[k];
         const isSecret = runtime.isRpcSecret(input);
-        const isResourceReference = resource.Resource.isInstance(input)
-            && depsUrns.length === 1
-            && depsUrns[0] === await input.urn.promise();
-        if (isResourceReference || (!isSecret && deps.length === 0)) {
-            // If it's a prompt value, return it directly without wrapping it as an output.
+        const depsUrns: resource.URN[] = inputDependencies.get(k)?.getUrnsList() ?? [];
+
+        if (!isSecret && (depsUrns.length === 0 || containsOutputs(input) || await isResourceReference(input, depsUrns))) {
+            // If the input isn't a secret and either doesn't have any dependencies, already contains Outputs (from
+            // deserialized output values), or is a resource reference, then we can return it directly without
+            // wrapping it as an output.
             result[k] = input;
         } else {
             // Otherwise, wrap it in an output so we can handle secrets and/or track dependencies.
             // Note: If the value is or contains an unknown value, the Output will mark its value as
             // unknown automatically, so we just pass true for isKnown here.
+            const deps = depsUrns.map(depUrn => new resource.DependencyResource(depUrn));
             result[k] = new Output(deps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
                 Promise.resolve(isSecret), Promise.resolve([]));
         }
     }
+
     return result;
+}
+
+/**
+ * Returns true if the input is a resource reference.
+ */
+async function isResourceReference(input: any, deps: string[]): Promise<boolean> {
+    return resource.Resource.isInstance(input)
+        && deps.length === 1
+        && deps[0] === await input.urn.promise();
+}
+
+/**
+ * Returns true if the deserialized input contains Outputs (deeply), excluding properties of Resources.
+ * @internal
+ */
+export function containsOutputs(input: any): boolean {
+    if (Array.isArray(input)) {
+        for (const e of input) {
+            if (containsOutputs(e)) {
+                return true;
+            }
+        }
+    }
+    else if (typeof input === "object") {
+        if (Output.isInstance(input)) {
+            return true;
+        }
+        else if (resource.Resource.isInstance(input)) {
+            // Do not drill into instances of Resource because they will have properties that are
+            // instances of Output (e.g. urn, id, etc.) and we're only looking for instances of
+            // Output that aren't associated with a Resource.
+            return false;
+        }
+
+        for (const k of Object.keys(input)) {
+            if (containsOutputs(input[k])) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 // grpcResponseFromError creates a gRPC response representing an error from a dynamic provider's

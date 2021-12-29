@@ -9,8 +9,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
@@ -27,8 +27,8 @@ func (g *generator) lowerExpression(expr model.Expression) model.Expression {
 	if g.asyncMain {
 		expr = g.awaitInvokes(expr)
 	}
-	expr = hcl2.RewritePropertyReferences(expr)
-	expr, _ = hcl2.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
+	expr = pcl.RewritePropertyReferences(expr)
+	expr, _ = pcl.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
 	expr, _ = g.lowerProxyApplies(expr)
 	return expr
 }
@@ -176,7 +176,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
-	applyArgs, then := hcl2.ParseApplyCall(expr)
+	applyArgs, then := pcl.ParseApplyCall(expr)
 
 	// If all of the arguments are promises, use promise methods. If any argument is an output, convert all other args
 	// to outputs and use output methods.
@@ -214,7 +214,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	tokenRange := tokenArg.SyntaxNode().Range()
 
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
+	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	return pkg, strings.Replace(module, "/", ".", -1), member, diagnostics
 }
 
@@ -270,12 +270,14 @@ var functionImports = map[string]string{
 	intrinsicInterpolate: "@pulumi/pulumi",
 	"fileArchive":        "@pulumi/pulumi",
 	"fileAsset":          "@pulumi/pulumi",
+	"filebase64":         "fs",
 	"readFile":           "fs",
 	"readDir":            "fs",
+	"sha1":               "crypto",
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
-	if x.Name != hcl2.Invoke {
+	if x.Name != pcl.Invoke {
 		return functionImports[x.Name]
 	}
 
@@ -286,7 +288,7 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
-	case hcl2.IntrinsicApply:
+	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
 	case intrinsicAwait:
 		g.Fgenf(w, "await %.17v", expr.Args[0])
@@ -318,14 +320,19 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "new pulumi.asset.FileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "new pulumi.asset.FileAsset(%.v)", expr.Args[0])
-	case hcl2.Invoke:
+	case "filebase64":
+		g.Fgenf(w, "Buffer.from(fs.readFileSync(%v), 'binary').toString('base64')", expr.Args[0])
+	case pcl.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module != "" {
 			module = "." + module
 		}
+		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		name := fmt.Sprintf("%s%s.%s", makeValidIdentifier(pkg), module, fn)
-
+		if isOut {
+			name = fmt.Sprintf("%sOutput", name)
+		}
 		g.Fprintf(w, "%s(", name)
 		if len(expr.Args) >= 2 {
 			g.Fgenf(w, "%.v", expr.Args[1])
@@ -357,6 +364,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "Buffer.from(%v).toString(\"base64\")", expr.Args[0])
 	case "toJSON":
 		g.Fgenf(w, "JSON.stringify(%v)", expr.Args[0])
+	case "sha1":
+		g.Fgenf(w, "crypto.createHash('sha1').update(%v).digest('hex')", expr.Args[0])
+
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {

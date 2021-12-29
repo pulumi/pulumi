@@ -17,6 +17,7 @@
 
 from enum import Enum
 from typing import Optional, List, Mapping, Any, MutableMapping
+from ._representable import _Representable
 
 
 class OpType(str, Enum):
@@ -43,13 +44,8 @@ class OpType(str, Enum):
 OpMap = MutableMapping[OpType, int]
 
 
-class BaseEvent:
-    def __repr__(self):
-        # pylint: disable=duplicate-code
-        inputs = self.__dict__
-        fields = [f"{key}={inputs[key]!r}" for key in inputs]  # pylint: disable=consider-using-dict-items
-        fields = ", ".join(fields)
-        return f"{self.__class__.__name__}({fields})"
+class BaseEvent(_Representable):
+    pass
 
 
 class CancelEvent(BaseEvent):
@@ -435,7 +431,9 @@ class ResourcePreEvent(BaseEvent):
 
     @classmethod
     def from_json(cls, data: dict) -> 'ResourcePreEvent':
-        return cls(**data)
+        metadata: dict = data.get("metadata", {})
+        return cls(metadata=StepEventMetadata.from_json(metadata),
+                   planning=data.get("planning"))
 
 
 class ResOutputsEvent(BaseEvent):
@@ -450,7 +448,9 @@ class ResOutputsEvent(BaseEvent):
 
     @classmethod
     def from_json(cls, data: dict) -> 'ResOutputsEvent':
-        return cls(**data)
+        metadata: dict = data.get("metadata", {})
+        return cls(metadata=StepEventMetadata.from_json(metadata),
+                   planning=data.get("planning"))
 
 
 class ResOpFailedEvent(BaseEvent):
@@ -468,7 +468,10 @@ class ResOpFailedEvent(BaseEvent):
 
     @classmethod
     def from_json(cls, data: dict) -> 'ResOpFailedEvent':
-        return cls(**data)
+        metadata: dict = data.get("metadata", {})
+        return cls(metadata=StepEventMetadata.from_json(metadata),
+                   status=data.get("status", 0),
+                   steps=data.get("steps", 0))
 
 
 class EngineEvent(BaseEvent):

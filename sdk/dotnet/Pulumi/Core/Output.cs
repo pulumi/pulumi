@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation
+// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
@@ -102,7 +102,7 @@ namespace Pulumi
         }
 
         internal static Output<ImmutableArray<T>> Concat<T>(Output<ImmutableArray<T>> values1, Output<ImmutableArray<T>> values2)
-            => Tuple(values1, values2).Apply(a => a.Item1.AddRange(a.Item2));
+            => Tuple(values1, values2).Apply(tuple => tuple.Item1.AddRange(tuple.Item2));
     }
 
     /// <summary>
@@ -127,8 +127,8 @@ namespace Pulumi
     /// created, these are represented using the special <see cref="Output{T}"/>s type, which
     /// internally represents two things:
     /// <list type="number">
-    /// <item>An eventually available value of the output</item>
-    /// <item>The dependency on the source(s) of the output value</item>
+    /// <item><description>An eventually available value of the output</description></item>
+    /// <item><description>The dependency on the source(s) of the output value</description></item>
     /// </list>
     /// In fact, <see cref="Output{T}"/>s is quite similar to <see cref="Task{TResult}"/>.
     /// Additionally, they carry along dependency information.
@@ -148,10 +148,10 @@ namespace Pulumi
             }
         }
 
-        internal async Task<T> GetValueAsync()
+        internal async Task<T> GetValueAsync(T whenUnknown)
         {
             var data = await DataTask.ConfigureAwait(false);
-            return data.Value;
+            return data.IsKnown ? data.Value : whenUnknown;
         }
 
         async Task<ImmutableHashSet<Resource>> IOutput.GetResourcesAsync()

@@ -1,0 +1,11 @@
+{
+  "emittedFiles": [
+    "xyz/doc.go",
+    "xyz/init.go",
+    "xyz/provider.go",
+    "xyz/pulumi-plugin.json",
+    "xyz/pulumiTypes.go",
+    "xyz/pulumiUtilities.go",
+    "xyz/staticPage.go"
+  ]
+}

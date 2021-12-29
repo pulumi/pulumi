@@ -21,6 +21,8 @@ import (
 	"net/url"
 	"path/filepath"
 	"reflect"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -310,12 +312,23 @@ func Test_parseTypeSpecRef(t *testing.T) {
 				Token:   "pulumi:providers:kubernetes",
 			},
 		},
+		{
+			name: "hyphenatedUrlPath",
+			ref:  "/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp",
+			want: typeSpecRef{
+				URL:     toURL("/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp"),
+				Package: "azure-native",
+				Version: toVersionPtr("1.22.0"),
+				Kind:    "resources",
+				Token:   "azure-native:web:WebApp",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := typs.parseTypeSpecRef(tt.ref)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseTypeSpecRef() error = %v, wantErr %v", err, tt.wantErr)
+			got, diags := typs.parseTypeSpecRef("ref", tt.ref)
+			if diags.HasErrors() != tt.wantErr {
+				t.Errorf("parseTypeSpecRef() diags = %v, wantErr %v", diags, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -359,27 +372,27 @@ func TestMethods(t *testing.T) {
 		},
 		{
 			filename:      "bad-methods-1.json",
-			expectedError: "unknown function xyz:index:Foo/bar for method bar",
+			expectedError: "unknown function xyz:index:Foo/bar",
 		},
 		{
 			filename:      "bad-methods-2.json",
-			expectedError: "function xyz:index:Foo/bar for method baz is already a method",
+			expectedError: "function xyz:index:Foo/bar is already a method",
 		},
 		{
 			filename:      "bad-methods-3.json",
-			expectedError: "invalid function token format xyz:index:Foo for method bar",
+			expectedError: "invalid function token format xyz:index:Foo",
 		},
 		{
 			filename:      "bad-methods-4.json",
-			expectedError: "invalid function token format xyz:index:Baz/bar for method bar",
+			expectedError: "invalid function token format xyz:index:Baz/bar",
 		},
 		{
 			filename:      "bad-methods-5.json",
-			expectedError: "function xyz:index:Foo/bar for method bar is missing __self__ parameter",
+			expectedError: "function xyz:index:Foo/bar has no __self__ parameter",
 		},
 		{
 			filename:      "bad-methods-6.json",
-			expectedError: "property and method have the same name bar",
+			expectedError: "xyz:index:Foo already has a property named bar",
 		},
 	}
 	for _, tt := range tests {
@@ -395,6 +408,177 @@ func TestMethods(t *testing.T) {
 					t.Error(err)
 				}
 				tt.validator(pkg)
+			}
+		})
+	}
+}
+
+// TestIsOverlay tests that the IsOverlay field is set correctly for resources, types, and functions. Does not test
+// codegen.
+func TestIsOverlay(t *testing.T) {
+	t.Run("overlay", func(t *testing.T) {
+		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay.json"))
+
+		pkg, err := ImportSpec(pkgSpec, nil)
+		if err != nil {
+			t.Error(err)
+		}
+		for _, v := range pkg.Resources {
+			if strings.Contains(v.Token, "Overlay") {
+				assert.Truef(t, v.IsOverlay, "resource %q", v.Token)
+			} else {
+				assert.Falsef(t, v.IsOverlay, "resource %q", v.Token)
+			}
+		}
+		for _, v := range pkg.Types {
+			switch v := v.(type) {
+			case *ObjectType:
+				if strings.Contains(v.Token, "Overlay") {
+					assert.Truef(t, v.IsOverlay, "object type %q", v.Token)
+				} else {
+					assert.Falsef(t, v.IsOverlay, "object type %q", v.Token)
+				}
+			}
+		}
+		for _, v := range pkg.Functions {
+			if strings.Contains(v.Token, "Overlay") {
+				assert.Truef(t, v.IsOverlay, "function %q", v.Token)
+			} else {
+				assert.Falsef(t, v.IsOverlay, "function %q", v.Token)
+			}
+		}
+	})
+}
+
+// Tests that the method ReplaceOnChanges works as expected. Does not test
+// codegen.
+func TestReplaceOnChanges(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		filePath string
+		resource string
+		result   []string
+		errors   []string
+	}{
+		{
+			name:     "Simple case",
+			filePath: "replace-on-changes-1.json",
+			resource: "example::Dog",
+			result:   []string{"bone"},
+		},
+		{
+			name:     "No replaceOnChanges",
+			filePath: "replace-on-changes-2.json",
+			resource: "example::Dog",
+		},
+		{
+			name:     "Mutually Recursive",
+			filePath: "replace-on-changes-3.json",
+			resource: "example::Pets",
+			result: []string{
+				"cat.fish",
+				"dog.bone",
+				"dog.cat.fish",
+				"cat.dog.bone"},
+			errors: []string{
+				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"cat\"",
+				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\""},
+		},
+		{
+			name:     "Singularly Recursive",
+			filePath: "replace-on-changes-4.json",
+			resource: "example::Pets",
+			result:   []string{"dog.bone"},
+			errors:   []string{"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\""},
+		},
+		{
+			name:     "Drill Correctly",
+			filePath: "replace-on-changes-5.json",
+			resource: "example::Pets",
+			result:   []string{"foes.*.color", "friends[*].color", "name", "toy.color"},
+		},
+		{
+			name:     "No replace on changes and recursive",
+			filePath: "replace-on-changes-6.json",
+			resource: "example::Child",
+			result:   []string{},
+			errors:   []string{},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			// We sort each result before comparison. We don't enforce that the
+			// results have the same order, just the same content.
+			sort.Strings(tt.result)
+			sort.Strings(tt.errors)
+			pkgSpec := readSchemaFile(
+				filepath.Join("schema", tt.filePath))
+			pkg, err := ImportSpec(pkgSpec, nil)
+			assert.NoError(t, err, "Import should be successful")
+			resource, found := pkg.GetResource(tt.resource)
+			assert.True(t, found, "The resource should exist")
+			replaceOnChanges, errListErrors := resource.ReplaceOnChanges()
+			errList := make([]string, len(errListErrors))
+			for i, e := range errListErrors {
+				errList[i] = e.Error()
+			}
+			actualResult := PropertyListJoinToString(replaceOnChanges,
+				func(x string) string { return x })
+			sort.Strings(actualResult)
+			if tt.result != nil || len(actualResult) > 0 {
+				assert.Equal(t, tt.result, actualResult,
+					"Get the correct result")
+			}
+			if tt.errors != nil || len(errList) > 0 {
+				assert.Equal(t, tt.errors, errList,
+					"Get correct error messages")
+			}
+		})
+	}
+}
+
+func TestValidateTypeToken(t *testing.T) {
+	cases := []struct {
+		name          string
+		input         string
+		expectError   bool
+		allowedExtras []string
+	}{
+		{
+			name:  "valid",
+			input: "example::typename",
+		},
+		{
+			name:        "invalid",
+			input:       "xyz::typename",
+			expectError: true,
+		},
+		{
+			name:  "valid-has-subsection",
+			input: "example:index:typename",
+		},
+		{
+			name:        "invalid-has-subsection",
+			input:       "not:index:typename",
+			expectError: true,
+		},
+		{
+			name:          "allowed-extras-valid",
+			input:         "other:index:typename",
+			allowedExtras: []string{"other"},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			spec := &PackageSpec{Name: "example"}
+			allowed := map[string]bool{"example": true}
+			for _, e := range c.allowedExtras {
+				allowed[e] = true
+			}
+			errors := spec.validateTypeToken(allowed, "type", c.input)
+			if c.expectError {
+				assert.True(t, errors.HasErrors())
+			} else {
+				assert.False(t, errors.HasErrors())
 			}
 		})
 	}

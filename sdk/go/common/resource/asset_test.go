@@ -368,6 +368,9 @@ func findRepositoryRoot() (string, error) {
 }
 
 func TestArchiveTarFiles(t *testing.T) {
+	// TODO[pulumi/pulumi#7976] flaky
+	t.Skip("Disabled due to flakiness. See #7976.")
+
 	repoRoot, err := findRepositoryRoot()
 	assert.Nil(t, err)
 
@@ -379,6 +382,7 @@ func TestArchiveTarFiles(t *testing.T) {
 }
 
 func TestArchiveZipFiles(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7147]
 	repoRoot, err := findRepositoryRoot()
 	assert.Nil(t, err)
 

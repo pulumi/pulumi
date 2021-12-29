@@ -23,7 +23,7 @@ namespace Pulumi.Tests
             Assert.IsType<RunException>(deployResult.Exception!);
             Assert.Contains("Deliberate test error", deployResult.Exception!.Message);
             var stack = (TerminatesEarlyOnExceptionStack)deployResult.Resources[0];
-            Assert.False(stack.SlowOutput.GetValueAsync().IsCompleted);
+            Assert.False(stack.SlowOutput.GetValueAsync(whenUnknown: default!).IsCompleted);
         }
 
         class TerminatesEarlyOnExceptionStack : Stack

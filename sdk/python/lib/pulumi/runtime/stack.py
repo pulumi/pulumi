@@ -123,11 +123,11 @@ class Stack(ComponentResource):
             raise Exception('Only one root Pulumi Stack may be active at once')
 
         # Now invoke the registration to begin creating this resource.
-        name = '%s-%s' % (get_project(), get_stack())
+        name = f'{get_project()}-{get_stack()}'
         super().__init__('pulumi:pulumi:Stack', name, None, None)
 
         # Invoke the function while this stack is active and then register its outputs.
-        self.outputs = dict()
+        self.outputs = {}
         set_root_resource(self)
         try:
             func()

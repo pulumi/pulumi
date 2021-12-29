@@ -1,11 +1,16 @@
 package schema
 
 import (
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -51,13 +56,69 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 		Name:    pkg,
 		Version: version,
 	}
-	if !workspace.HasPlugin(pkgPlugin) {
-		tarball, _, err := pkgPlugin.Download()
+
+	tryDownload := func(dst io.WriteCloser) error {
+		defer dst.Close()
+		tarball, expectedByteCount, err := pkgPlugin.Download()
 		if err != nil {
-			return errors.Wrapf(err, "failed to download plugin: %s", pkgPlugin)
+			return err
 		}
-		if err := pkgPlugin.Install(tarball); err != nil {
-			return errors.Wrapf(err, "failed to install plugin %s", pkgPlugin)
+		defer tarball.Close()
+		copiedByteCount, err := io.Copy(dst, tarball)
+		if err != nil {
+			return err
+		}
+		if copiedByteCount != expectedByteCount {
+			return fmt.Errorf("Expected %d bytes but copied %d when downloading plugin %s",
+				expectedByteCount, copiedByteCount, pkgPlugin)
+		}
+		return nil
+	}
+
+	tryDownloadToFile := func() (string, error) {
+		file, err := ioutil.TempFile("" /* default temp dir */, "pulumi-plugin-tar")
+		if err != nil {
+			return "", err
+		}
+		err = tryDownload(file)
+		if err != nil {
+			err2 := os.Remove(file.Name())
+			if err2 != nil {
+				return "", fmt.Errorf("Error while removing tempfile: %v. Context: %w", err2, err)
+			}
+			return "", err
+		}
+		return file.Name(), nil
+	}
+
+	downloadToFileWithRetry := func() (string, error) {
+		delay := 80 * time.Millisecond
+		for attempt := 0; ; attempt++ {
+			tempFile, err := tryDownloadToFile()
+			if err == nil {
+				return tempFile, nil
+			}
+
+			if err != nil && attempt >= 5 {
+				return tempFile, err
+			}
+			time.Sleep(delay)
+			delay = delay * 2
+		}
+	}
+
+	if !workspace.HasPlugin(pkgPlugin) {
+		tarball, err := downloadToFileWithRetry()
+		if err != nil {
+			return fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
+		}
+		defer os.Remove(tarball)
+		reader, err := os.Open(tarball)
+		if err != nil {
+			return fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
+		}
+		if err := pkgPlugin.Install(reader); err != nil {
+			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
 		}
 	}
 
@@ -94,9 +155,12 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return nil, err
 	}
 
-	p, err := importSpec(spec, nil, l)
+	p, diags, err := bindSpec(spec, nil, l, false)
 	if err != nil {
 		return nil, err
+	}
+	if diags.HasErrors() {
+		return nil, diags
 	}
 
 	l.m.Lock()

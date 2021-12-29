@@ -2,7 +2,6 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import { input as inputs, output as outputs, enums } from "./types";
 import * as utilities from "./utilities";
 
 import {Resource} from "./index";
@@ -27,4 +26,12 @@ export interface ArgFunctionArgs {
 
 export interface ArgFunctionResult {
     readonly result?: Resource;
+}
+
+export function argFunctionOutput(args?: ArgFunctionOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ArgFunctionResult> {
+    return pulumi.output(args).apply(a => argFunction(a, opts))
+}
+
+export interface ArgFunctionOutputArgs {
+    arg1?: pulumi.Input<Resource>;
 }

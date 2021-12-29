@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -25,16 +26,16 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/importer"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -187,12 +188,12 @@ func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
 			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
 				"Please update your version of the Pulumi CLI", s.Ref().Name())
 		}
-		return nil, errors.Wrap(err, "could not deserialize deployment")
+		return nil, fmt.Errorf("could not deserialize deployment: %w", err)
 	}
 	return snap, err
 }
 
-type programGeneratorFunc func(p *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error)
+type programGeneratorFunc func(p *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
 func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
@@ -248,7 +249,7 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectN
 		return false, err
 	}
 	loader := schema.NewPluginLoader(ctx.Host)
-	return true, importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *hcl2.Program) error {
+	return true, importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *pcl.Program) error {
 		files, _, err := programGenerator(p)
 		if err != nil {
 			return err
@@ -285,7 +286,7 @@ func newImportCmd() *cobra.Command {
 	var showConfig bool
 	var skipPreview bool
 	var suppressOutputs bool
-	var suppressPermaLink string
+	var suppressPermalink string
 	var yes bool
 	var protectResources bool
 
@@ -351,7 +352,7 @@ func newImportCmd() *cobra.Command {
 				}
 				f, err := readImportFile(importFilePath)
 				if err != nil {
-					return result.FromError(errors.Wrap(err, "could not read import file"))
+					return result.FromError(fmt.Errorf("could not read import file: %w", err))
 				}
 				importFile = f
 			} else {
@@ -409,10 +410,10 @@ func newImportCmd() *cobra.Command {
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
-			if suppressPermaLink == "true" {
-				opts.Display.SuppressPermaLink = true
+			if suppressPermalink == "true" {
+				opts.Display.SuppressPermalink = true
 			} else {
-				opts.Display.SuppressPermaLink = false
+				opts.Display.SuppressPermalink = false
 			}
 
 			filestateBackend, err := isFilestateBackend(opts.Display)
@@ -421,9 +422,9 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// by default, we are going to suppress the permalink when using self-managed backends
-			// this can be re-enabled by explicitly passing "false" to the `supppress-permalink` flag
-			if suppressPermaLink != "false" && filestateBackend {
-				opts.Display.SuppressPermaLink = true
+			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
+			if suppressPermalink != "false" && filestateBackend {
+				opts.Display.SuppressPermalink = true
 			}
 
 			// Fetch the project.
@@ -454,17 +455,17 @@ func newImportCmd() *cobra.Command {
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
 			sm, err := getStackSecretsManager(s)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
 			cfg, err := getStackConfiguration(s, sm)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
 			opts.Engine = engine.UpdateOptions{
@@ -493,7 +494,7 @@ func newImportCmd() *cobra.Command {
 				protectResources)
 			if err != nil {
 				if _, ok := err.(*importer.DiagnosticsError); ok {
-					err = errors.Wrap(err, "internal error")
+					err = fmt.Errorf("internal error: %w", err)
 				}
 				return result.FromError(err)
 			}
@@ -575,7 +576,7 @@ func newImportCmd() *cobra.Command {
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().StringVar(
-		&suppressPermaLink, "suppress-permalink", "",
+		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVarP(

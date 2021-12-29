@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
+using System;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
 using Pulumi.Serialization;
@@ -18,7 +19,7 @@ namespace Pulumi.Tests.Serialization
                     Fields =
                     {
                         { Constants.SpecialSigKey, new Value { StringValue = Constants.SpecialSecretSig } },
-                        { Constants.SecretValueName, value },
+                        { Constants.ValueName, value },
                     }
                 }
             };
@@ -34,6 +35,11 @@ namespace Pulumi.Tests.Serialization
         {
             var v = Deserializer.Deserialize(value).Value;
             return v == null ? default! : (T)v;
+        }
+
+        protected static void NoWarn(string error)
+        {
+            throw new Exception("Test did not expect warn to be called");
         }
     }
 }

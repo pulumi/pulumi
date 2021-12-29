@@ -8,6 +8,8 @@
     <NodeJSSdkDirectory>$(SdkDirectory)\nodejs\</NodeJSSdkDirectory>
     <DotNetSdkDirectory>$(SdkDirectory)\dotnet\</DotNetSdkDirectory>
     <PythonSdkDirectory>$(SdkDirectory)\python\</PythonSdkDirectory>
+    <PythonSdkVenvDirectory>$(PythonSdkDirectory)\venv\</PythonSdkVenvDirectory>
+    <PythonSdkVenvBinDirectory>$(PythonSdkVenvDirectory)\Scripts\</PythonSdkVenvBinDirectory>
     <TestParallelism>20</TestParallelism>
     <MSVSVersion>2019</MSVSVersion>
     <PulumiRoot Condition="'$(PulumiRoot)' == ''">C:\Pulumi\</PulumiRoot>
@@ -190,8 +192,10 @@
 
   <Target Name="PythonDependencies">
     <MakeDir Directories="$(PythonSdkDirectory)\env\src"/>
-    <Exec Command="pipenv install --dev"
-          WorkingDirectory="$(PythonSdkDirectory)\env\src" />
+    <Exec Command="python -m venv venv"
+          WorkingDirectory="$(PythonSdkDirectory)" />
+    <Exec Command="$(PythonSdkVenvBinDirectory)\python -m pip install -r requirements.txt"
+          WorkingDirectory="$(PythonSdkDirectory)" />
   </Target>
 
   <Target Name="PythonBuild">
@@ -217,7 +221,7 @@
     </ItemGroup>
     <Copy SourceFiles="@(ReadMeFile)"
           DestinationFolder="$(PythonSdkDirectory)\env\src" />
-    <Exec Command="pipenv run python setup.py build bdist_wheel --universal"
+    <Exec Command="$(PythonSdkVenvBinDirectory)\python setup.py build bdist_wheel --universal"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python"
     WorkingDirectory="$(SdkDirectory)"/>
@@ -270,6 +274,18 @@
       WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
+    <Exec Command="python -m venv venv"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent-python" />
+    <Exec Command="venv\Scripts\python -m pip install -e $(PythonSdkDirectory)\env\src"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent-python" />
+    <Exec Command="yarn install"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_output_values\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_output_values\testcomponent" />
+    <Exec Command="python -m venv venv"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_output_values\testcomponent-python" />
+    <Exec Command="venv\Scripts\python -m pip install -e $(PythonSdkDirectory)\env\src"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_output_values\testcomponent-python" />
     <Exec Command="yarn install"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_slow\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
@@ -278,14 +294,26 @@
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_plain\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_plain\testcomponent" />
+    <Exec Command="python -m venv venv"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_plain\testcomponent-python" />
+    <Exec Command="venv\Scripts\python -m pip install -e $(PythonSdkDirectory)\env\src"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_plain\testcomponent-python" />
     <Exec Command="yarn install"
       WorkingDirectory="$(TestsDirectory)\integration\component_provider_schema\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
       WorkingDirectory="$(TestsDirectory)\integration\component_provider_schema\testcomponent" />
+    <Exec Command="python -m venv venv"
+      WorkingDirectory="$(TestsDirectory)\integration\component_provider_schema\testcomponent-python" />
+    <Exec Command="venv\Scripts\python -m pip install -e $(PythonSdkDirectory)\env\src"
+      WorkingDirectory="$(TestsDirectory)\integration\component_provider_schema\testcomponent-python" />
     <Exec Command="yarn install"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_unknown\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_unknown\testcomponent" />
+    <Exec Command="python -m venv venv"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_unknown\testcomponent-python" />
+    <Exec Command="venv\Scripts\python -m pip install -e $(PythonSdkDirectory)\env\src"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_unknown\testcomponent-python" />
     <Exec Command="yarn install"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_error_apply\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
@@ -294,20 +322,50 @@
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent" />
+    <Exec Command="python -m venv venv"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent-python" />
+    <Exec Command="venv\Scripts\python -m pip install -e $(PythonSdkDirectory)\env\src"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent-python" />
     <Exec Command="yarn install"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent" />
+    <Exec Command="python -m venv venv"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent-python" />
+    <Exec Command="venv\Scripts\python -m pip install -e $(PythonSdkDirectory)\env\src"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent-python" />
+    <Exec Command="yarn install"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_resources\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_resources\testcomponent" />
+    <Exec Command="python -m venv venv"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_resources\testcomponent-python" />
+    <Exec Command="venv\Scripts\python -m pip install -e $(PythonSdkDirectory)\env\src"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_resources\testcomponent-python" />
+    <Exec Command="yarn install"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_errors\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_errors\testcomponent" />
+    <Exec Command="python -m venv venv"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_errors\testcomponent-python" />
+    <Exec Command="venv\Scripts\python -m pip install -e $(PythonSdkDirectory)\env\src"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_errors\testcomponent-python" />
     <Exec Command="yarn install"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent" />
+    <Exec Command="python -m venv venv"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent-python" />
+    <Exec Command="venv\Scripts\python -m pip install -e $(PythonSdkDirectory)\env\src"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent-python" />
   </Target>
 
   <Target Name="TestBuild">
     <Exec Command="go build -o pulumi-resource-testprovider.exe" WorkingDirectory="$(TestsDirectory)\testprovider" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent-go" />
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_output_values\testcomponent" />
+    <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_output_values\testcomponent-go" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_slow\testcomponent" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_plain\testcomponent" />
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_plain\testcomponent-go" />
@@ -320,12 +378,12 @@
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent-go" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent" />
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent-go" />
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_resources\testcomponent" />
+    <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_resources\testcomponent-go" />
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_errors\testcomponent" />
+    <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_errors\testcomponent-go" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent" />
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent-go" />
-
-    <!-- Install pulumi SDK into the venv managed by pipenv. -->
-    <Exec Command="pipenv run pip install -e ."
-          WorkingDirectory="$(PythonSdkDirectory)\env\src" />
   </Target>
 
   <!-- Tests -->
@@ -338,7 +396,7 @@
       <Output TaskParameter="ExitCode" PropertyName="BackendTestsExitCode" />
     </Exec>
 
-    <Exec Command="pipenv run pytest -ra lib\test\automation"
+    <Exec Command="venv\Scripts\python -m pytest -ra lib\test\automation"
           WorkingDirectory="$(PythonSdkDirectory)" />
 
     <Error Text="backend tests (.\pkg\backend) failed"

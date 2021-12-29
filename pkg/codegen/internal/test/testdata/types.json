@@ -6,7 +6,7 @@
   },
   "config": {},
   "types": {
-    "types::object": {
+    "typetests::object": {
       "type": "object"
     },
     "typetests::plainCollections": {
@@ -528,7 +528,7 @@
         "inputUnion": {
           "oneOf": [
             {
-              "$ref": "#/types/types::object"
+              "$ref": "#/types/typetests::object"
             },
             {
               "type": "array",
@@ -541,8 +541,8 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "InputUnion<Pulumi.Types.ObjectArgs, ImmutableArray<System.Text.Json.JsonElement>>?",
-                  "plain": "Union<Pulumi.Types.Object, ImmutableArray<System.Text.Json.JsonElement>>?"
+                  "input": "InputUnion<ObjectArgs, ImmutableArray<System.Text.Json.JsonElement>>?",
+                  "plain": "Union<Object, ImmutableArray<System.Text.Json.JsonElement>>?"
                 },
                 "go": {
                   "input": "pulumi.Input",

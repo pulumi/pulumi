@@ -25,7 +25,7 @@ import (
 func TestWorkGroupActsAsWaitGroup(t *testing.T) {
 	check := func(j int) func(*testing.T) {
 		return func(*testing.T) {
-			var n int32 = 0
+			var n int32
 			wg := &workGroup{}
 			wg.Add(j)
 

@@ -8,7 +8,7 @@ namespace Pulumi
     public sealed class DeploymentInstance : IDeployment
     {
         private readonly IDeployment _deployment;
-        
+
         internal DeploymentInstance(IDeployment deployment)
         {
             _deployment = deployment;
@@ -33,6 +33,22 @@ namespace Pulumi
         /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
         /// provider plugin.
         /// <para/>
+        /// The result of <see cref="Invoke"/> will be a <see cref="Output"/> resolved to the
+        /// result value of the provider plugin.
+        /// <para/>
+        /// Similar to the earlier <see cref="InvokeAsync"/>, but supports passing input values
+        /// and returns an Output value.
+        /// <para/>
+        /// The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
+        /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
+        /// </summary>
+        public Output<T> Invoke<T>(string token, InvokeArgs args, InvokeOptions? options = null)
+            => _deployment.Invoke<T>(token, args, options);
+
+        /// <summary>
+        /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
+        /// provider plugin.
+        /// <para/>
         /// The result of <see cref="InvokeAsync"/> will be a <see cref="Task"/> resolved to the
         /// result value of the provider plugin.
         /// <para/>
@@ -48,6 +64,25 @@ namespace Pulumi
         /// </summary>
         public Task InvokeAsync(string token, InvokeArgs args, InvokeOptions? options = null)
             => _deployment.InvokeAsync(token, args, options);
+
+        /// <summary>
+        /// Dynamically calls the function '<paramref name="token"/>', which is offered by a
+        /// provider plugin.
+        /// <para/>
+        /// The result of <see cref="Call{T}"/> will be a <see cref="Output{T}"/> resolved to the
+        /// result value of the provider plugin.
+        /// <para/>
+        /// The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
+        /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
+        /// </summary>
+        public Output<T> Call<T>(string token, CallArgs args, Resource? self = null, CallOptions? options = null)
+            => _deployment.Call<T>(token, args, self, options);
+
+        /// <summary>
+        /// Same as <see cref="Call{T}"/>, however the return value is ignored.
+        /// </summary>
+        public void Call(string token, CallArgs args, Resource? self = null, CallOptions? options = null)
+            => _deployment.Call(token, args, self, options);
 
         internal IDeploymentInternal Internal => (IDeploymentInternal)_deployment;
     }

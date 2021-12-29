@@ -16,11 +16,15 @@ package stack
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"reflect"
+	"strings"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -29,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
 const (
@@ -54,6 +59,46 @@ var (
 	// untyped deployment being deserialized is too new to understand.
 	ErrDeploymentSchemaVersionTooNew = fmt.Errorf("this stack's deployment version is too new")
 )
+
+var deploymentSchema *jsonschema.Schema
+var resourceSchema *jsonschema.Schema
+var propertyValueSchema *jsonschema.Schema
+
+func init() {
+	compiler := jsonschema.NewCompiler()
+	compiler.LoadURL = func(s string) (io.ReadCloser, error) {
+		var schema string
+		switch s {
+		case apitype.DeploymentSchemaID:
+			schema = apitype.DeploymentSchema()
+		case apitype.ResourceSchemaID:
+			schema = apitype.ResourceSchema()
+		case apitype.PropertyValueSchemaID:
+			schema = apitype.PropertyValueSchema()
+		default:
+			return jsonschema.LoadURL(s)
+		}
+		return ioutil.NopCloser(strings.NewReader(schema)), nil
+	}
+	deploymentSchema = compiler.MustCompile(apitype.DeploymentSchemaID)
+	resourceSchema = compiler.MustCompile(apitype.ResourceSchemaID)
+	propertyValueSchema = compiler.MustCompile(apitype.PropertyValueSchemaID)
+}
+
+// ValidateUntypedDeployment validates a deployment against the Deployment JSON schema.
+func ValidateUntypedDeployment(deployment *apitype.UntypedDeployment) error {
+	bytes, err := json.Marshal(deployment)
+	if err != nil {
+		return err
+	}
+
+	var raw interface{}
+	if err := json.Unmarshal(bytes, &raw); err != nil {
+		return err
+	}
+
+	return deploymentSchema.Validate(raw)
+}
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
 func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets bool) (*apitype.DeploymentV3, error) {
@@ -87,7 +132,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 	if sm != nil {
 		e, err := sm.Encrypter()
 		if err != nil {
-			return nil, errors.Wrap(err, "getting encrypter for deployment")
+			return nil, fmt.Errorf("getting encrypter for deployment: %w", err)
 		}
 		enc = e
 	} else {
@@ -99,7 +144,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 	for _, res := range snap.Resources {
 		sres, err := SerializeResource(res, enc, showSecrets)
 		if err != nil {
-			return nil, errors.Wrap(err, "serializing resources")
+			return nil, fmt.Errorf("serializing resources: %w", err)
 		}
 		resources = append(resources, sres)
 	}
@@ -307,7 +352,7 @@ func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bo
 func SerializeOperation(op resource.Operation, enc config.Encrypter, showSecrets bool) (apitype.OperationV2, error) {
 	res, err := SerializeResource(op.Resource, enc, showSecrets)
 	if err != nil {
-		return apitype.OperationV2{}, errors.Wrap(err, "serializing resource")
+		return apitype.OperationV2{}, fmt.Errorf("serializing resource: %w", err)
 	}
 	return apitype.OperationV2{
 		Resource: res,
@@ -394,7 +439,7 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		}
 		bytes, err := json.Marshal(value)
 		if err != nil {
-			return nil, errors.Wrap(err, "encoding serialized property value")
+			return nil, fmt.Errorf("encoding serialized property value: %w", err)
 		}
 		plaintext := string(bytes)
 
@@ -407,7 +452,7 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 			ciphertext, err = enc.EncryptValue(plaintext)
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to encrypt secret value")
+			return nil, fmt.Errorf("failed to encrypt secret value: %w", err)
 		}
 		contract.AssertNoErrorf(err, "marshalling underlying secret value to JSON")
 
@@ -441,15 +486,15 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 	}
 
 	if res.URN == "" {
-		return nil, errors.Errorf("resource missing required 'urn' field")
+		return nil, fmt.Errorf("resource missing required 'urn' field")
 	}
 
 	if res.Type == "" {
-		return nil, errors.Errorf("resource '%s' missing required 'type' field", res.URN)
+		return nil, fmt.Errorf("resource '%s' missing required 'type' field", res.URN)
 	}
 
 	if !res.Custom && res.ID != "" {
-		return nil, errors.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
+		return nil, fmt.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
 	}
 
 	return resource.NewState(
@@ -541,14 +586,14 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					if plainOk {
 						encryptedText, err := enc.EncryptValue(plaintext)
 						if err != nil {
-							return resource.PropertyValue{}, errors.Wrap(err, "encrypting secret value")
+							return resource.PropertyValue{}, fmt.Errorf("encrypting secret value: %w", err)
 						}
 						ciphertext = encryptedText
 
 					} else {
 						unencryptedText, err := dec.DecryptValue(ciphertext)
 						if err != nil {
-							return resource.PropertyValue{}, errors.Wrap(err, "decrypting secret value")
+							return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
 						}
 						plaintext = unencryptedText
 					}
@@ -623,14 +668,14 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					}
 					return resource.MakeComponentResourceReference(urn, packageVersion), nil
 				default:
-					return resource.PropertyValue{}, errors.Errorf("unrecognized signature '%v' in property map", sig)
+					return resource.PropertyValue{}, fmt.Errorf("unrecognized signature '%v' in property map", sig)
 				}
 			}
 
 			// Otherwise, it's just a weakly typed object map.
 			return resource.NewObjectProperty(obj), nil
 		default:
-			contract.Failf("Unrecognized property type: %v", reflect.ValueOf(v))
+			contract.Failf("Unrecognized property type %T: %v", v, reflect.ValueOf(v))
 		}
 	}
 

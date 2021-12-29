@@ -32,7 +32,7 @@ type Goal struct {
 	InitErrors              []string              // errors encountered as we attempted to initialize the resource.
 	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
 	DeleteBeforeReplace     *bool                 // true if this resource should be deleted prior to replacement.
-	IgnoreChanges           []string              // a list of property names to ignore during changes.
+	IgnoreChanges           []string              // a list of property paths to ignore when diffing.
 	AdditionalSecretOutputs []PropertyKey         // outputs that should always be treated as secrets.
 	Aliases                 []URN                 // additional URNs that should be aliased to this resource.
 	ID                      ID                    // the expected ID of the resource, if any.

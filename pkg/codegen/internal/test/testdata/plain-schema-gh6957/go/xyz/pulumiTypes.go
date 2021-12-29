@@ -144,6 +144,8 @@ func (o FooPtrOutput) A() pulumi.BoolPtrOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*FooInput)(nil)).Elem(), FooArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*FooPtrInput)(nil)).Elem(), FooArgs{})
 	pulumi.RegisterOutputType(FooOutput{})
 	pulumi.RegisterOutputType(FooPtrOutput{})
 }

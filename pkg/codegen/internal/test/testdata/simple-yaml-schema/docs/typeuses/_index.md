@@ -3,6 +3,8 @@
 title: "TypeUses"
 title_tag: "example.TypeUses"
 meta_desc: "Documentation for the example.TypeUses resource with examples, input properties, output properties, lookup functions, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 
@@ -315,7 +317,39 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="alpha_csharp">
+<a href="#alpha_csharp" style="color: inherit; text-decoration: inherit;">Alpha</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyenumtype">Pulumi.<wbr>Example.<wbr>Output<wbr>Only<wbr>Enum<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="beta_csharp">
+<a href="#beta_csharp" style="color: inherit; text-decoration: inherit;">Beta</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyobjecttype">List&lt;Output<wbr>Only<wbr>Object<wbr>Type&gt;</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="gamma_csharp">
+<a href="#gamma_csharp" style="color: inherit; text-decoration: inherit;">Gamma</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Example.<wbr>Output<wbr>Only<wbr>Enum<wbr>Type&gt;</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="zed_csharp">
+<a href="#zed_csharp" style="color: inherit; text-decoration: inherit;">Zed</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyobjecttype">Output<wbr>Only<wbr>Object<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -327,7 +361,39 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="alpha_go">
+<a href="#alpha_go" style="color: inherit; text-decoration: inherit;">Alpha</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyenumtype">Output<wbr>Only<wbr>Enum<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="beta_go">
+<a href="#beta_go" style="color: inherit; text-decoration: inherit;">Beta</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyobjecttype">[]Output<wbr>Only<wbr>Object<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="gamma_go">
+<a href="#gamma_go" style="color: inherit; text-decoration: inherit;">Gamma</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">map[string]Output<wbr>Only<wbr>Enum<wbr>Type</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="zed_go">
+<a href="#zed_go" style="color: inherit; text-decoration: inherit;">Zed</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyobjecttype">Output<wbr>Only<wbr>Object<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -339,7 +405,39 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="alpha_nodejs">
+<a href="#alpha_nodejs" style="color: inherit; text-decoration: inherit;">alpha</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyenumtype">Output<wbr>Only<wbr>Enum<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="beta_nodejs">
+<a href="#beta_nodejs" style="color: inherit; text-decoration: inherit;">beta</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyobjecttype">Output<wbr>Only<wbr>Object<wbr>Type[]</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="gamma_nodejs">
+<a href="#gamma_nodejs" style="color: inherit; text-decoration: inherit;">gamma</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">{[key: string]: Output<wbr>Only<wbr>Enum<wbr>Type}</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="zed_nodejs">
+<a href="#zed_nodejs" style="color: inherit; text-decoration: inherit;">zed</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyobjecttype">Output<wbr>Only<wbr>Object<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -351,7 +449,39 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="alpha_python">
+<a href="#alpha_python" style="color: inherit; text-decoration: inherit;">alpha</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyenumtype">Output<wbr>Only<wbr>Enum<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="beta_python">
+<a href="#beta_python" style="color: inherit; text-decoration: inherit;">beta</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyobjecttype">Sequence[Output<wbr>Only<wbr>Object<wbr>Type]</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="gamma_python">
+<a href="#gamma_python" style="color: inherit; text-decoration: inherit;">gamma</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Mapping[str, Output<wbr>Only<wbr>Enum<wbr>Type]</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
+            title="">
+        <span id="zed_python">
+<a href="#zed_python" style="color: inherit; text-decoration: inherit;">zed</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#outputonlyobjecttype">Output<wbr>Only<wbr>Object<wbr>Type</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 
@@ -670,6 +800,82 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+<h4 id="outputonlyenumtype">Output<wbr>Only<wbr>Enum<wbr>Type</h4>
+
+{{% choosable language csharp %}}
+<dl class="tabular"><dt>Foo</dt>
+    <dd>foo</dd><dt>Bar</dt>
+    <dd>bar</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language go %}}
+<dl class="tabular"><dt>Output<wbr>Only<wbr>Enum<wbr>Type<wbr>Foo</dt>
+    <dd>foo</dd><dt>Output<wbr>Only<wbr>Enum<wbr>Type<wbr>Bar</dt>
+    <dd>bar</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language nodejs %}}
+<dl class="tabular"><dt>Foo</dt>
+    <dd>foo</dd><dt>Bar</dt>
+    <dd>bar</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language python %}}
+<dl class="tabular"><dt>FOO</dt>
+    <dd>foo</dd><dt>BAR</dt>
+    <dd>bar</dd></dl>
+{{% /choosable %}}
+
+<h4 id="outputonlyobjecttype">Output<wbr>Only<wbr>Object<wbr>Type</h4>
+
+{{% choosable language csharp %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="foo_csharp">
+<a href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language go %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="foo_go">
+<a href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language nodejs %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="foo_nodejs">
+<a href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">string</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language python %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="foo_python">
+<a href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

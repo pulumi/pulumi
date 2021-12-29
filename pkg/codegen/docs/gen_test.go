@@ -19,6 +19,7 @@
 package docs
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
@@ -60,6 +61,7 @@ func initTestPackageSpec(t *testing.T) {
 	}
 	testPackageSpec = schema.PackageSpec{
 		Name:        providerPackage,
+		Version:     "0.0.1",
 		Description: "A fake provider package used for testing.",
 		Meta: &schema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
@@ -127,7 +129,95 @@ func initTestPackageSpec(t *testing.T) {
 				},
 			},
 		},
+		Provider: schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Description: fmt.Sprintf("The provider type for the %s package.", providerPackage),
+				Type:        "object",
+			},
+			InputProperties: map[string]schema.PropertySpec{
+				"stringProp": {
+					Description: "A stringProp for the provider resource.",
+					TypeSpec: schema.TypeSpec{
+						Type: "string",
+					},
+				},
+			},
+		},
 		Resources: map[string]schema.ResourceSpec{
+			"prov:module2/resource2:Resource2": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: `This is a module-level resource called Resource.
+{{% examples %}}
+## Example Usage
+
+{{% example %}}
+### Basic Example
+
+` + codeFence + `typescript
+					// Some TypeScript code.
+` + codeFence + `
+` + codeFence + `python
+					# Some Python code.
+` + codeFence + `
+{{% /example %}}
+{{% example %}}
+### Custom Sub-Domain Example
+
+` + codeFence + `typescript
+					// Some typescript code
+` + codeFence + `
+` + codeFence + `python
+					# Some Python code.
+` + codeFence + `
+{{% /example %}}
+{{% /examples %}}
+
+## Import
+
+The import docs would be here
+
+` + codeFence + `sh
+$ pulumi import prov:module/resource:Resource test test
+` + codeFence + `
+`,
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"integerProp": {
+						Description: "This is integerProp's description.",
+						TypeSpec: schema.TypeSpec{
+							Type: "integer",
+						},
+					},
+					"stringProp": {
+						Description: "This is stringProp's description.",
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
+					},
+					"boolProp": {
+						Description: "A bool prop.",
+						TypeSpec: schema.TypeSpec{
+							Type: "boolean",
+						},
+					},
+					"optionsProp": {
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						},
+					},
+					"options2Prop": {
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions2:ResourceOptions2",
+						},
+					},
+					"recursiveType": {
+						Description: "I am a recursive type.",
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						},
+					},
+				},
+			},
 			"prov:module/resource:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Description: `This is a module-level resource called Resource.
@@ -156,12 +246,12 @@ func initTestPackageSpec(t *testing.T) {
 {{% /example %}}
 {{% /examples %}}
 
-## Import 
+## Import
 
 The import docs would be here
 
 ` + codeFence + `sh
-$ pulumi import prov:module/resource:Resource test test		
+$ pulumi import prov:module/resource:Resource test test
 ` + codeFence + `
 `,
 				},
@@ -283,6 +373,7 @@ func getFunctionFromModule(function string, mod *modContext) *schema.Function {
 }
 
 func TestFunctionHeaders(t *testing.T) {
+	dctx := newDocGenContext()
 	initTestPackageSpec(t)
 
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
@@ -309,7 +400,7 @@ func TestFunctionHeaders(t *testing.T) {
 		},
 	}
 
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	modules := dctx.generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
 	for _, test := range tests {
 		t.Run(test.FunctionName, func(t *testing.T) {
 			mod, ok := modules[test.ModuleName]
@@ -329,6 +420,7 @@ func TestFunctionHeaders(t *testing.T) {
 }
 
 func TestResourceDocHeader(t *testing.T) {
+	dctx := newDocGenContext()
 	initTestPackageSpec(t)
 
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
@@ -358,7 +450,7 @@ func TestResourceDocHeader(t *testing.T) {
 		},
 	}
 
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	modules := dctx.generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			mod, ok := modules[test.ModuleName]
@@ -379,9 +471,10 @@ func TestResourceDocHeader(t *testing.T) {
 
 func TestExamplesProcessing(t *testing.T) {
 	initTestPackageSpec(t)
+	dctx := newDocGenContext()
 
 	description := testPackageSpec.Resources["prov:module/resource:Resource"].Description
-	docInfo := decomposeDocstring(description)
+	docInfo := dctx.decomposeDocstring(description)
 	examplesSection := docInfo.examples
 	importSection := docInfo.importDetails
 
@@ -407,9 +500,14 @@ func TestExamplesProcessing(t *testing.T) {
 }
 
 func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	return GeneratePackage(tool, pkg)
+	dctx := newDocGenContext()
+	dctx.initialize(tool, pkg)
+	return dctx.generatePackage(tool, pkg)
 }
 
 func TestGeneratePackage(t *testing.T) {
-	test.TestSDKCodegen(t, "docs", generatePackage)
+	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
+		Language:   "docs",
+		GenPackage: generatePackage,
+	})
 }

@@ -15,10 +15,10 @@
 package provider
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -48,7 +48,7 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 	}
 	host, err := NewHostClient(args[0])
 	if err != nil {
-		return errors.Errorf("fatal: could not connect to host RPC: %v", err)
+		return fmt.Errorf("fatal: could not connect to host RPC: %v", err)
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
@@ -63,7 +63,7 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 		},
 	}, nil)
 	if err != nil {
-		return errors.Errorf("fatal: %v", err)
+		return fmt.Errorf("fatal: %v", err)
 	}
 
 	// The resource provider protocol requires that we now write out the port we have chosen to listen on.
@@ -71,7 +71,7 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 
 	// Finally, wait for the server to stop serving.
 	if err := <-done; err != nil {
-		return errors.Errorf("fatal: %v", err)
+		return fmt.Errorf("fatal: %v", err)
 	}
 
 	return nil

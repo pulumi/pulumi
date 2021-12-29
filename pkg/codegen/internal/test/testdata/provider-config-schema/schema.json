@@ -1,6 +1,24 @@
 {
   "version": "0.0.1",
   "name": "configstation",
+  "provider": {
+    "inputProperties": {
+      "favoriteColor": {
+        "description": "this is a relaxed string enum which can also be set via env var",
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "#/types/configstation:index:color"
+          }
+        ],
+        "defaultInfo": {
+          "environment": ["FAVE_COLOR"]
+        }
+      }
+    }
+  },
   "config": {
     "variables": {
       "name": {
@@ -23,10 +41,7 @@
         "type": "string",
         "description": "This is a huge secret",
         "defaultInfo": {
-          "environment": [
-            "SECRET_CODE",
-            "MY_SUPER_SECRET_CODE"
-          ]
+          "environment": ["SECRET_CODE", "MY_SUPER_SECRET_CODE"]
         }
       },
       "favoriteSandwich": {
@@ -37,9 +52,7 @@
         "$ref": "#/types/configstation:index:child"
       }
     },
-    "defaults": [
-      "name"
-    ]
+    "defaults": ["name"]
   },
   "types": {
     "configstation:config:sandwich": {
@@ -66,12 +79,32 @@
         }
       },
       "type": "object"
+    },
+    "configstation:index:color": {
+      "enum": [
+        {"value": "blue"},
+        {"value": "red"}
+      ],
+      "type": "string"
     }
   },
   "language": {
-    "csharp": {},
-    "go": {},
-    "nodejs": {},
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.12"
+      }
+    },
+    "go": {
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
     "python": {}
   }
 }

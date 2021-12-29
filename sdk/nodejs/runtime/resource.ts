@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -205,7 +205,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
 
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
-        const resolvedID = await serializeProperty(label, id, new Set());
+        const resolvedID = await serializeProperty(label, id, new Set(), { keepOutputValues: false });
         log.debug(`ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
 
@@ -510,7 +510,11 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
 
         // Serialize out all our props to their final values.  In doing so, we'll also collect all
         // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-        const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props);
+        const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props, {
+            // To initially scope the use of this new feature, we only keep output values when
+            // remote is true (for multi-lang components).
+            keepOutputValues: remote,
+        });
 
         // Wait for the parent to complete.
         // If no parent was provided, parent to the root resource.
@@ -596,7 +600,8 @@ function addAll<T>(to: Set<T>, from: Set<T>) {
     }
 }
 
-async function getAllTransitivelyReferencedResourceURNs(resources: Set<Resource>): Promise<Set<string>> {
+/** @internal */
+export async function getAllTransitivelyReferencedResourceURNs(resources: Set<Resource>): Promise<Set<string>> {
     // Go through 'resources', but transitively walk through **Component** resources, collecting any
     // of their child resources.  This way, a Component acts as an aggregation really of all the
     // reachable resources it parents.  This walking will stop when it hits custom resources.
@@ -619,7 +624,7 @@ async function getAllTransitivelyReferencedResourceURNs(resources: Set<Resource>
     // Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
     // It will *not* include:
     // * Cust4 because it is a child of a custom resource
-    // * Comp2 because it is a non-remote component resoruce
+    // * Comp2 because it is a non-remote component resource
     // * Comp3 and Cust5 because Comp3 is a child of a remote component resource
 
     // To do this, first we just get the transitively reachable set of resources (not diving
@@ -720,7 +725,7 @@ async function resolveOutputs(res: Resource, t: string, name: string,
                 // input prop the engine didn't give us a final value for.  Just use the value passed into the resource
                 // after round-tripping it through serialization. We do the round-tripping primarily s.t. we ensure that
                 // Output values are handled properly w.r.t. unknowns.
-                const inputProp = await serializeProperty(label, props[key], new Set());
+                const inputProp = await serializeProperty(label, props[key], new Set(), { keepOutputValues: false });
                 if (inputProp === undefined) {
                     continue;
                 }

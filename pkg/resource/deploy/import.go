@@ -31,13 +31,14 @@ import (
 
 // An Import specifies a resource to import.
 type Import struct {
-	Type     tokens.Type     // The type token for the resource. Required.
-	Name     tokens.QName    // The name of the resource. Required.
-	ID       resource.ID     // The ID of the resource. Required.
-	Parent   resource.URN    // The parent of the resource, if any.
-	Provider resource.URN    // The specific provider to use for the resource, if any.
-	Version  *semver.Version // The provider version to use for the resource, if any.
-	Protect  bool            // Whether to mark the resource as protected after import
+	Type              tokens.Type     // The type token for the resource. Required.
+	Name              tokens.QName    // The name of the resource. Required.
+	ID                resource.ID     // The ID of the resource. Required.
+	Parent            resource.URN    // The parent of the resource, if any.
+	Provider          resource.URN    // The specific provider to use for the resource, if any.
+	Version           *semver.Version // The provider version to use for the resource, if any.
+	PluginDownloadURL string          // The provider PluginDownloadURL to use for the resource, if any.
+	Protect           bool            // Whether to mark the resource as protected after import
 }
 
 // ImportOptions controls the import process.
@@ -199,7 +200,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if imp.Type.Package() == "" {
 			return nil, result.Error("incorrect package type specified"), false
 		}
-		req := providers.NewProviderRequest(imp.Version, imp.Type.Package())
+		req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL)
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
@@ -239,7 +240,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 		// Calculate the inputs for the provider using the ambient config.
 		if v := req.Version(); v != nil {
-			inputs["version"] = resource.NewStringProperty(v.String())
+			providers.SetProviderVersion(inputs, v)
+		}
+		if url := req.PluginDownloadURL(); url != "" {
+			providers.SetProviderURL(inputs, url)
 		}
 		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false)
 		if err != nil {
@@ -322,7 +326,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 
 		providerURN := imp.Provider
 		if providerURN == "" {
-			req := providers.NewProviderRequest(imp.Version, imp.Type.Package())
+			req := providers.NewProviderRequest(imp.Version, imp.Type.Package(), imp.PluginDownloadURL)
 			typ, name := providers.MakeProviderType(req.Package()), req.Name()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}

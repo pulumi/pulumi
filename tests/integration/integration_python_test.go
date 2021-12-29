@@ -1,4 +1,5 @@
-// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build python || all
 // +build python all
 
 package ints
@@ -13,7 +14,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -359,6 +359,7 @@ func TestResourceWithSecretSerializationPython(t *testing.T) {
 // Tests that we issue an error if we fail to locate the Python command when running
 // a Python example.
 func TestPython3NotInstalled(t *testing.T) {
+	// TODO[pulumi/pulumi#6304]
 	t.Skip("Temporarily skipping failing test - pulumi/pulumi#6304")
 	stderr := &bytes.Buffer{}
 	badPython := "python3000"
@@ -407,11 +408,18 @@ func TestDynamicPython(t *testing.T) {
 	})
 }
 
-func TestDynamicPythonNonMain(t *testing.T) {
+// Tests custom resource type name of dynamic provider in Python.
+func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("dynamic", "python-non-main"),
+		Dir: filepath.Join("dynamic", "python-resource-type-name"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urnOut := stack.Outputs["urn"].(string)
+			urn := resource.URN(urnOut)
+			typ := urn.Type().String()
+			assert.Equal(t, "pulumi-python:dynamic/custom-provider:CustomResource", typ)
 		},
 	})
 }
@@ -546,7 +554,6 @@ func TestConstructPython(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -556,7 +563,9 @@ func TestConstructPython(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -667,7 +676,6 @@ func TestConstructPlainPython(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -677,7 +685,9 @@ func TestConstructPlainPython(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -710,14 +720,12 @@ func TestConstructUnknownPython(t *testing.T) {
 func TestConstructMethodsPython(t *testing.T) {
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -727,7 +735,7 @@ func TestConstructMethodsPython(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env: append(test.env, pathEnv),
+				Env: []string{pathEnv},
 				Dir: filepath.Join("construct_component_methods", "python"),
 				Dependencies: []string{
 					filepath.Join("..", "..", "sdk", "python", "env", "src"),
@@ -746,18 +754,24 @@ func TestConstructMethodsUnknownPython(t *testing.T) {
 	testConstructMethodsUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
+func TestConstructMethodsResourcesPython(t *testing.T) {
+	testConstructMethodsResources(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
+func TestConstructMethodsErrorsPython(t *testing.T) {
+	testConstructMethodsErrors(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
 func TestConstructProviderPython(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -767,7 +781,7 @@ func TestConstructProviderPython(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env: append(test.env, pathEnv),
+				Env: []string{pathEnv},
 				Dir: filepath.Join(testDir, "python"),
 				Dependencies: []string{
 					filepath.Join("..", "..", "sdk", "python", "env", "src"),
@@ -1080,29 +1094,28 @@ func TestComponentProviderSchemaPython(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		path += ".cmd"
 	}
-	testComponentProviderSchema(t, path, pulumiRuntimeVirtualEnv(t, filepath.Join("..", "..")))
+	testComponentProviderSchema(t, path)
 }
 
-// Regresses an issue with Pulumi hanging when buggy dynamic providers
-// emit outputs that do not match the advertised type.
-func TestBrokenDynamicProvider(t *testing.T) {
+// Test that the about command works as expected. Because about parses the
+// results of each runtime independently, we have an integration test in each
+// language.
+func TestAboutPython(t *testing.T) {
+	dir := filepath.Join("about", "python")
 
-	// NOTE: this had some trouble on Windows CI runner with 120
-	// sec max, but passed on a Windows VM locally. IF this
-	// continues to blow the deadline, or be flaky, we should skip
-	// on Windows.
-
-	go func() {
-		<-time.After(600 * time.Second)
-		panic("TestBrokenDynamicProvider: test timed out after 600 seconds, suspect pulumi hanging")
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironmentFallible()
+		}
 	}()
+	e.ImportDirectory(dir)
 
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("dynamic", "python-broken"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick:         true,
-		ExpectFailure: true,
-	})
+	stdout, _ := e.RunCommand("pulumi", "about", "--json")
+	// Assert we parsed the dependencies
+	assert.Contains(t, stdout, "pulumi-kubernetes")
+}
+
+func TestConstructOutputValuesPython(t *testing.T) {
+	testConstructOutputValues(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }

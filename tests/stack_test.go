@@ -408,6 +408,7 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 }
 
 func TestLocalStateLocking(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7269] flaky test
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -422,12 +423,10 @@ func TestLocalStateLocking(t *testing.T) {
 	e.RunCommand("yarn", "install")
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 
-	// Enable self-managed backend locking
-	e.SetEnvVars([]string{fmt.Sprintf("%s=1", filestate.PulumiFilestateLockingEnvVar)})
-
-	// Run 10 concurrent updates
 	count := 10
 	stderrs := make(chan string, count)
+
+	// Run 10 concurrent updates
 	for i := 0; i < count; i++ {
 		go func() {
 			_, stderr, err := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
@@ -458,6 +457,25 @@ func TestLocalStateLocking(t *testing.T) {
 			}
 		}
 	}
+
+	// Run 10 concurrent previews
+	for i := 0; i < count; i++ {
+		go func() {
+			_, stderr, err := e.GetCommandResults("pulumi", "preview", "--non-interactive")
+			if err == nil {
+				stderrs <- "" // success marker
+			} else {
+				stderrs <- stderr
+			}
+		}()
+	}
+
+	// Ensure that all of the concurrent previews succeed.
+	for i := 0; i < count; i++ {
+		stderr := <-stderrs
+		assert.Equal(t, "", stderr)
+	}
+
 }
 
 func getFileNames(infos []os.FileInfo) []string {

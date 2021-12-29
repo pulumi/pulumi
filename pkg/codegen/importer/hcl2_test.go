@@ -24,10 +24,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -162,7 +162,7 @@ func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) resource.
 	}
 }
 
-func renderResource(t *testing.T, r *hcl2.Resource) *resource.State {
+func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 	inputs := resource.PropertyMap{}
 	for _, attr := range r.Inputs {
 		inputs[resource.PropertyKey(attr.Name)] = renderExpr(t, attr.Value)
@@ -256,7 +256,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				t.Fatal()
 			}
 
-			p, diags, err := hcl2.BindProgram(parser.Files, hcl2.Loader(loader), hcl2.AllowMissingVariables)
+			p, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
 			assert.NoError(t, err)
 			assert.False(t, diags.HasErrors())
 
@@ -264,7 +264,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				t.Fatal()
 			}
 
-			res, isResource := p.Nodes[0].(*hcl2.Resource)
+			res, isResource := p.Nodes[0].(*pcl.Resource)
 			if !assert.True(t, isResource) {
 				t.Fatal()
 			}
@@ -286,7 +286,9 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				ab, err := json.MarshalIndent(actual, "", "    ")
 				contract.IgnoreError(err)
 
-				t.Logf("%v\n\n%v\n\n%v\n", text, string(sb), string(ab))
+				t.Logf("%v", text)
+				// We know this will fail, but we want the diff
+				assert.Equal(t, string(sb), string(ab))
 			}
 		})
 	}

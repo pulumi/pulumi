@@ -63,9 +63,10 @@ func (mod *modContext) genMethods(r *schema.Resource) []methodDocArgs {
 }
 
 func (mod *modContext) genMethod(r *schema.Resource, m *schema.Method) methodDocArgs {
+	dctx := mod.docGenContext
 	f := m.Function
 	inputProps, outputProps := make(map[string][]property), make(map[string][]property)
-	for _, lang := range supportedLanguages {
+	for _, lang := range dctx.supportedLanguages {
 		if f.Inputs != nil {
 			exclude := func(name string) bool {
 				return name == "__self__"
@@ -84,12 +85,12 @@ func (mod *modContext) genMethod(r *schema.Resource, m *schema.Method) methodDoc
 
 	// Generate the per-language map for the method name.
 	methodNameMap := map[string]string{}
-	for _, lang := range supportedLanguages {
-		docHelper := getLanguageDocHelper(lang)
+	for _, lang := range dctx.supportedLanguages {
+		docHelper := dctx.getLanguageDocHelper(lang)
 		methodNameMap[lang] = docHelper.GetMethodName(m)
 	}
 
-	docInfo := decomposeDocstring(f.Comment)
+	docInfo := dctx.decomposeDocstring(f.Comment)
 	args := methodDocArgs{
 		Title: title(m.Name, ""),
 
@@ -187,7 +188,8 @@ func (mod *modContext) genMethodCS(f *schema.Function, resourceName, methodName 
 }
 
 func (mod *modContext) genMethodPython(f *schema.Function) []formalParam {
-	docLanguageHelper := getLanguageDocHelper("python")
+	dctx := mod.docGenContext
+	docLanguageHelper := dctx.getLanguageDocHelper("python")
 	var params []formalParam
 
 	params = append(params, formalParam{
@@ -236,10 +238,11 @@ func (mod *modContext) genMethodPython(f *schema.Function) []formalParam {
 func (mod *modContext) genMethodArgs(r *schema.Resource, m *schema.Method,
 	methodNameMap map[string]string) map[string]string {
 
+	dctx := mod.docGenContext
 	f := m.Function
 
 	functionParams := make(map[string]string)
-	for _, lang := range supportedLanguages {
+	for _, lang := range dctx.supportedLanguages {
 		var (
 			paramTemplate string
 			params        []formalParam
@@ -283,7 +286,7 @@ func (mod *modContext) genMethodArgs(r *schema.Resource, m *schema.Method,
 			paramTemplate = "py_formal_param"
 			paramSeparatorTemplate = "py_param_separator"
 
-			docHelper := getLanguageDocHelper(lang)
+			docHelper := dctx.getLanguageDocHelper(lang)
 			methodName := docHelper.GetMethodName(m)
 			ps = paramSeparator{Indent: strings.Repeat(" ", len("def (")+len(methodName))}
 		}
@@ -295,11 +298,11 @@ func (mod *modContext) genMethodArgs(r *schema.Resource, m *schema.Method,
 		}
 
 		for i, p := range params {
-			if err := templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
+			if err := dctx.templates.ExecuteTemplate(b, paramTemplate, p); err != nil {
 				panic(err)
 			}
 			if i != n-1 {
-				if err := templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
+				if err := dctx.templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
 					panic(err)
 				}
 			}
@@ -314,10 +317,12 @@ func (mod *modContext) genMethodArgs(r *schema.Resource, m *schema.Method,
 func (mod *modContext) getMethodResult(r *schema.Resource, m *schema.Method) map[string]propertyType {
 	resourceMap := make(map[string]propertyType)
 
+	dctx := mod.docGenContext
+
 	var resultTypeName string
-	for _, lang := range supportedLanguages {
+	for _, lang := range dctx.supportedLanguages {
 		if m.Function.Outputs != nil && len(m.Function.Outputs.Properties) > 0 {
-			resultTypeName = getLanguageDocHelper(lang).GetMethodResultName(r, m)
+			resultTypeName = dctx.getLanguageDocHelper(lang).GetMethodResultName(mod.pkg, mod.mod, r, m)
 		}
 		resourceMap[lang] = propertyType{
 			Name: resultTypeName,

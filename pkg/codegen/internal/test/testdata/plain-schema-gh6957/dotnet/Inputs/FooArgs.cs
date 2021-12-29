@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Example.Inputs
+namespace Pulumi.Xyz.Inputs
 {
 
     public sealed class FooArgs : Pulumi.ResourceArgs

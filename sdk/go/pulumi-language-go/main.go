@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
@@ -137,22 +138,46 @@ func newLanguageHost(engineAddress, tracing, binary string) pulumirpc.LanguageRu
 type modInfo struct {
 	Path    string
 	Version string
+	Dir     string
 }
 
-func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
-	if !strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") {
-		return nil, errors.New("module is not a pulumi provider")
+// Returns the pulumi-plugin.json if found. If not found, then returns nil, nil.
+// The lookup path for pulumi-plugin.json is
+// 1. m.Dir
+// 2. m.Dir/go
+// 3. m.Dir/go/*
+func (m *modInfo) readPulumiPluginJSON() (*plugin.PulumiPluginJSON, error) {
+	if m.Dir == "" {
+		return nil, nil
 	}
 
-	// github.com/pulumi/pulumi-aws/sdk/... => aws
-	pluginPart := strings.Split(m.Path, "/")[2]
-	name := strings.SplitN(pluginPart, "-", 2)[1]
-
-	v, err := semver.ParseTolerant(m.Version)
+	path1 := filepath.Join(m.Dir, "pulumi-plugin.json")
+	path2 := filepath.Join(m.Dir, "go", "pulumi-plugin.json")
+	path3, err := filepath.Glob(filepath.Join(m.Dir, "go", "*", "pulumi-plugin.json"))
 	if err != nil {
-		return nil, errors.New("module does not have semver compatible version")
+		path3 = []string{}
 	}
-	version := m.Version
+	paths := append([]string{path1, path2}, path3...)
+
+	for _, path := range paths {
+		plugin, err := plugin.LoadPulumiPluginJSON(path)
+		switch {
+		case os.IsNotExist(err):
+			continue
+		case err != nil:
+			return nil, err
+		default:
+			return plugin, nil
+		}
+	}
+	return nil, nil
+}
+
+func normalizeVersion(version string) (string, error) {
+	v, err := semver.ParseTolerant(version)
+	if err != nil {
+		return "", errors.New("module does not have semver compatible version")
+	}
 
 	// psuedoversions are commits that don't have a corresponding tag at the specified git hash
 	// https://golang.org/cmd/go/#hdr-Pseudo_versions
@@ -160,7 +185,7 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 	if buildutil.IsPseudoVersion(version) {
 		// no prior tag means there was never a release build
 		if v.Major == 0 && v.Minor == 0 && v.Patch == 0 {
-			return nil, errors.New("invalid pseduoversion with no prior tag")
+			return "", errors.New("invalid pseduoversion with no prior tag")
 		}
 		// patch is typically bumped from the previous tag when using pseudo version
 		// downgrade the patch by 1 to make sure we match a release that exists
@@ -170,11 +195,50 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 		}
 		version = fmt.Sprintf("v%v.%v.%v", v.Major, v.Minor, patch)
 	}
+	return version, nil
+}
+
+func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
+	pulumiPlugin, err := m.readPulumiPluginJSON()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to load pulumi-plugin.json: %w", err)
+	}
+
+	if (!strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") && pulumiPlugin == nil) ||
+		(pulumiPlugin != nil && !pulumiPlugin.Resource) {
+		return nil, errors.New("module is not a pulumi provider")
+	}
+
+	var name string
+	if pulumiPlugin != nil && pulumiPlugin.Name != "" {
+		name = pulumiPlugin.Name
+	} else {
+		// github.com/pulumi/pulumi-aws/sdk/... => aws
+		pluginPart := strings.Split(m.Path, "/")[2]
+		name = strings.SplitN(pluginPart, "-", 2)[1]
+	}
+
+	version := m.Version
+	if pulumiPlugin != nil && pulumiPlugin.Version != "" {
+		version = pulumiPlugin.Version
+	}
+	version, err = normalizeVersion(version)
+	if err != nil {
+		return nil, err
+	}
+
+	var server string
+
+	if pulumiPlugin != nil {
+		// There is no way to specify server without using `pulumi-plugin.json`.
+		server = pulumiPlugin.Server
+	}
 
 	plugin := &pulumirpc.PluginDependency{
 		Name:    name,
 		Version: version,
 		Kind:    "resource",
+		Server:  server,
 	}
 
 	return plugin, nil

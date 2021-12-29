@@ -15,6 +15,7 @@
     "files": [
         "foo.ts",
         "index.ts",
+        "nested/index.ts",
         "provider.ts",
         "types/index.ts",
         "types/input.ts",

@@ -10,6 +10,116 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+type OutputOnlyEnumType string
+
+const (
+	OutputOnlyEnumTypeFoo = OutputOnlyEnumType("foo")
+	OutputOnlyEnumTypeBar = OutputOnlyEnumType("bar")
+)
+
+type OutputOnlyEnumTypeOutput struct{ *pulumi.OutputState }
+
+func (OutputOnlyEnumTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*OutputOnlyEnumType)(nil)).Elem()
+}
+
+func (o OutputOnlyEnumTypeOutput) ToOutputOnlyEnumTypeOutput() OutputOnlyEnumTypeOutput {
+	return o
+}
+
+func (o OutputOnlyEnumTypeOutput) ToOutputOnlyEnumTypeOutputWithContext(ctx context.Context) OutputOnlyEnumTypeOutput {
+	return o
+}
+
+func (o OutputOnlyEnumTypeOutput) ToOutputOnlyEnumTypePtrOutput() OutputOnlyEnumTypePtrOutput {
+	return o.ToOutputOnlyEnumTypePtrOutputWithContext(context.Background())
+}
+
+func (o OutputOnlyEnumTypeOutput) ToOutputOnlyEnumTypePtrOutputWithContext(ctx context.Context) OutputOnlyEnumTypePtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v OutputOnlyEnumType) *OutputOnlyEnumType {
+		return &v
+	}).(OutputOnlyEnumTypePtrOutput)
+}
+
+func (o OutputOnlyEnumTypeOutput) ToStringOutput() pulumi.StringOutput {
+	return o.ToStringOutputWithContext(context.Background())
+}
+
+func (o OutputOnlyEnumTypeOutput) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e OutputOnlyEnumType) string {
+		return string(e)
+	}).(pulumi.StringOutput)
+}
+
+func (o OutputOnlyEnumTypeOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o OutputOnlyEnumTypeOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e OutputOnlyEnumType) *string {
+		v := string(e)
+		return &v
+	}).(pulumi.StringPtrOutput)
+}
+
+type OutputOnlyEnumTypePtrOutput struct{ *pulumi.OutputState }
+
+func (OutputOnlyEnumTypePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**OutputOnlyEnumType)(nil)).Elem()
+}
+
+func (o OutputOnlyEnumTypePtrOutput) ToOutputOnlyEnumTypePtrOutput() OutputOnlyEnumTypePtrOutput {
+	return o
+}
+
+func (o OutputOnlyEnumTypePtrOutput) ToOutputOnlyEnumTypePtrOutputWithContext(ctx context.Context) OutputOnlyEnumTypePtrOutput {
+	return o
+}
+
+func (o OutputOnlyEnumTypePtrOutput) Elem() OutputOnlyEnumTypeOutput {
+	return o.ApplyT(func(v *OutputOnlyEnumType) OutputOnlyEnumType {
+		if v != nil {
+			return *v
+		}
+		var ret OutputOnlyEnumType
+		return ret
+	}).(OutputOnlyEnumTypeOutput)
+}
+
+func (o OutputOnlyEnumTypePtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o OutputOnlyEnumTypePtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e *OutputOnlyEnumType) *string {
+		if e == nil {
+			return nil
+		}
+		v := string(*e)
+		return &v
+	}).(pulumi.StringPtrOutput)
+}
+
+type OutputOnlyEnumTypeMapOutput struct{ *pulumi.OutputState }
+
+func (OutputOnlyEnumTypeMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]OutputOnlyEnumType)(nil)).Elem()
+}
+
+func (o OutputOnlyEnumTypeMapOutput) ToOutputOnlyEnumTypeMapOutput() OutputOnlyEnumTypeMapOutput {
+	return o
+}
+
+func (o OutputOnlyEnumTypeMapOutput) ToOutputOnlyEnumTypeMapOutputWithContext(ctx context.Context) OutputOnlyEnumTypeMapOutput {
+	return o
+}
+
+func (o OutputOnlyEnumTypeMapOutput) MapIndex(k pulumi.StringInput) OutputOnlyEnumTypeOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) OutputOnlyEnumType {
+		return vs[0].(map[string]OutputOnlyEnumType)[vs[1].(string)]
+	}).(OutputOnlyEnumTypeOutput)
+}
+
 // types of rubber trees
 type RubberTreeVariety string
 
@@ -180,6 +290,11 @@ func (in *rubberTreeVarietyPtr) ToRubberTreeVarietyPtrOutputWithContext(ctx cont
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*RubberTreeVarietyInput)(nil)).Elem(), RubberTreeVariety("Burgundy"))
+	pulumi.RegisterInputType(reflect.TypeOf((*RubberTreeVarietyPtrInput)(nil)).Elem(), RubberTreeVariety("Burgundy"))
+	pulumi.RegisterOutputType(OutputOnlyEnumTypeOutput{})
+	pulumi.RegisterOutputType(OutputOnlyEnumTypePtrOutput{})
+	pulumi.RegisterOutputType(OutputOnlyEnumTypeMapOutput{})
 	pulumi.RegisterOutputType(RubberTreeVarietyOutput{})
 	pulumi.RegisterOutputType(RubberTreeVarietyPtrOutput{})
 }

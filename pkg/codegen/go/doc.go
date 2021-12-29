@@ -53,7 +53,7 @@ func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName
 
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
 func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, moduleName string, typeName string) string {
-	path := fmt.Sprintf("%s/%s", goPackage(pkg.Name), moduleName)
+	path := fmt.Sprintf("%s/%s", packageName(pkg), moduleName)
 	typeNameParts := strings.Split(typeName, ".")
 	typeName = typeNameParts[len(typeNameParts)-1]
 	typeName = strings.TrimPrefix(typeName, "*")
@@ -139,8 +139,22 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return Title(m.Name)
 }
 
-func (d DocLanguageHelper) GetMethodResultName(r *schema.Resource, m *schema.Method) string {
-	return fmt.Sprintf("%s%sResultOutput", resourceName(r), d.GetMethodName(m))
+func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
+	m *schema.Method) string {
+
+	if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
+		if info.LiftSingleValueMethodReturns && m.Function.Outputs != nil && len(m.Function.Outputs.Properties) == 1 {
+			t := m.Function.Outputs.Properties[0].Type
+			modPkg, ok := d.packages[modName]
+			if !ok {
+				glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q",
+					t.String(), modName)
+				os.Exit(1)
+			}
+			return modPkg.outputType(t)
+		}
+	}
+	return fmt.Sprintf("%s%sResultOutput", rawResourceName(r), d.GetMethodName(m))
 }
 
 // GetModuleDocLink returns the display name and the link for a module.
@@ -148,9 +162,9 @@ func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string)
 	var displayName string
 	var link string
 	if modName == "" {
-		displayName = goPackage(pkg.Name)
+		displayName = packageName(pkg)
 	} else {
-		displayName = fmt.Sprintf("%s/%s", goPackage(pkg.Name), modName)
+		displayName = fmt.Sprintf("%s/%s", packageName(pkg), modName)
 	}
 	link = d.GetDocLinkForResourceType(pkg, modName, "")
 	return displayName, link

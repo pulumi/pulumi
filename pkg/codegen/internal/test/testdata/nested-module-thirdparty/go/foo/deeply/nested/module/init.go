@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi-foo-bar/sdk/v2/go/foo-bar"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"nested-module-thirdparty/foo"
 )
 
 type module struct {
@@ -32,7 +32,7 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 }
 
 func init() {
-	version, err := foo - bar.PkgVersion()
+	version, err := foo.PkgVersion()
 	if err != nil {
 		fmt.Printf("failed to determine package version. defaulting to v1: %v\n", err)
 	}

@@ -32,6 +32,7 @@ import (
 )
 
 const (
+	//nolint: gosec
 	pulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 )
 
@@ -120,7 +121,14 @@ func (e *Environment) ImportDirectory(path string) {
 func (e *Environment) DeleteEnvironment() {
 	e.Helper()
 	err := os.RemoveAll(e.RootPath)
-	assert.NoError(e, err, "cleaning up the test directory")
+	assert.NoErrorf(e, err, "cleaning up test directory %q", e.RootPath)
+}
+
+// DeleteEnvironment deletes the environment's RootPath, and everything
+// underneath it. It tolerates failing to delete the environment.
+func (e *Environment) DeleteEnvironmentFallible() error {
+	e.Helper()
+	return os.RemoveAll(e.RootPath)
 }
 
 // DeleteIfNotFailed deletes the environment's RootPath if the test hasn't failed. Otherwise

@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -77,7 +77,7 @@ func (g *generator) genAnonymousFunctionExpression(
 	leadingSep := ""
 	for _, param := range expr.Signature.Parameters {
 		isInput := isInputty(param.Type)
-		g.Fgenf(w, "%s%s %s", leadingSep, param.Name, g.argumentTypeName(nil, param.Type, isInput))
+		g.Fgenf(w, "%s%s %s", leadingSep, makeValidIdentifier(param.Name), g.argumentTypeName(nil, param.Type, isInput))
 		leadingSep = ", "
 	}
 
@@ -148,7 +148,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) { /
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	//nolint:goconst
 	switch expr.Name {
-	case hcl2.IntrinsicConvert:
+	case pcl.IntrinsicConvert:
 		switch arg := expr.Args[0].(type) {
 		case *model.TupleConsExpression:
 			g.genTupleConsExpression(w, arg, expr.Type())
@@ -164,7 +164,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		default:
 			g.Fgenf(w, "%.v", expr.Args[0])
 		}
-	case hcl2.IntrinsicApply:
+	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
 	case "element":
 		g.genNYI(w, "element")
@@ -186,13 +186,27 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.NewFileAsset(%.v)", expr.Args[0])
-	case hcl2.Invoke:
+	case "filebase64":
+		// Assuming the existence of the following helper method
+		g.Fgenf(w, "filebase64OrPanic(%v)", expr.Args[0])
+	case pcl.Invoke:
 		pkg, module, fn, diags := g.functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module == "" {
 			module = pkg
 		}
-		name := fmt.Sprintf("%s.%s", module, fn)
+		isOut, outArgs, outArgsType := pcl.RecognizeOutputVersionedInvoke(expr)
+		if isOut {
+			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType)
+			if err != nil {
+				panic(fmt.Errorf("Error when generating an output-versioned Invoke: %w", err))
+			}
+			g.Fgenf(w, "%s.%sOutput(ctx, ", module, fn)
+			g.genObjectConsExpressionWithTypeName(w, outArgs, outArgsType, outTypeName)
+		} else {
+			g.Fgenf(w, "%s.%s(ctx, ", module, fn)
+			g.Fgenf(w, "%.v", expr.Args[1])
+		}
 
 		optionsBag := ""
 		var buf bytes.Buffer
@@ -202,9 +216,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.Fgenf(&buf, ", nil")
 		}
 		optionsBag = buf.String()
-
-		g.Fgenf(w, "%s(ctx, ", name)
-		g.Fgenf(w, "%.v", expr.Args[1])
 		g.Fgenf(w, "%v)", optionsBag)
 	case "join":
 		g.Fgenf(w, "strings.Join(%v, %v)", expr.Args[1], expr.Args[0])
@@ -217,7 +228,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genNYI(w, "call %v", expr.Name)
 		// g.genRange(w, expr, false)
 	case "readFile":
-		g.genNYI(w, "ReadFile")
+		// Assuming the existence of the following helper method located earlier in the preamble
+		g.Fgenf(w, "readFileOrPanic(%v)", expr.Args[0])
 	case "readDir":
 		contract.Failf("unlowered readDir function expression @ %v", expr.SyntaxNode().Range())
 	case "secret":
@@ -235,9 +247,37 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
 	case "mimeType":
 		g.Fgenf(w, "mime.TypeByExtension(path.Ext(%.v))", expr.Args[0])
+	case "sha1":
+		g.Fgenf(w, "sha1Hash(%v)", expr.Args[0])
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
+}
+
+// Currently args type for output-versioned invokes are named
+// `FOutputArgs`, but this is not yet understood by `tokenToType`. Use
+// this function to compensate.
+func outputVersionFunctionArgTypeName(t model.Type) (string, error) {
+	schemaType, ok := pcl.GetSchemaForType(t)
+	if !ok {
+		return "", fmt.Errorf("No schema.Type type found for the given model.Type")
+	}
+
+	objType, ok := schemaType.(*schema.ObjectType)
+	if !ok {
+		return "", fmt.Errorf("Expected a schema.ObjectType, got %s", schemaType.String())
+	}
+
+	pkg := &pkgContext{pkg: &schema.Package{Name: "main"}}
+
+	var ty string
+	if pkg.isExternalReference(objType) {
+		ty = pkg.contextForExternalReferenceType(objType).tokenToType(objType.Token)
+	} else {
+		ty = pkg.tokenToType(objType.Token)
+	}
+
+	return fmt.Sprintf("%sOutputArgs", strings.TrimSuffix(ty, "Args")), nil
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
@@ -310,17 +350,12 @@ func (g *generator) genObjectConsExpression(
 	w io.Writer,
 	expr *model.ObjectConsExpression,
 	destType model.Type,
-	isInput bool,
-) {
-	if len(expr.Items) == 0 {
-		g.Fgenf(w, "nil")
-		return
-	}
+	isInput bool) {
 
-	var temps []interface{}
 	isInput = isInput || isInputty(destType)
+
 	typeName := g.argumentTypeName(expr, destType, isInput)
-	if schemaType, ok := hcl2.GetSchemaForType(destType); ok {
+	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok {
 			if g.useLookupInvokeForm(obj.Token) {
 				typeName = strings.Replace(typeName, ".Get", ".Lookup", 1)
@@ -328,6 +363,21 @@ func (g *generator) genObjectConsExpression(
 		}
 	}
 
+	g.genObjectConsExpressionWithTypeName(w, expr, destType, typeName)
+}
+
+func (g *generator) genObjectConsExpressionWithTypeName(
+	w io.Writer,
+	expr *model.ObjectConsExpression,
+	destType model.Type,
+	typeName string) {
+
+	if len(expr.Items) == 0 {
+		g.Fgenf(w, "nil")
+		return
+	}
+
+	var temps []interface{}
 	// TODO: @pgavlin --- ineffectual assignment, was there some work in flight here?
 	// if strings.HasSuffix(typeName, "Args") {
 	// 	isInput = true
@@ -343,6 +393,7 @@ func (g *generator) genObjectConsExpression(
 	// first lower all inner expressions and emit temps
 	for i, item := range expr.Items {
 		// don't treat keys as inputs
+		//nolint: revive
 		k, kTemps := g.lowerExpression(item.Key, item.Key.Type())
 		temps = append(temps, kTemps...)
 		item.Key = k
@@ -353,7 +404,7 @@ func (g *generator) genObjectConsExpression(
 	}
 	g.genTemps(w, temps)
 
-	if isMap || !strings.HasSuffix(typeName, "Args") {
+	if isMap || !strings.HasSuffix(typeName, "Args") || strings.HasSuffix(typeName, "OutputArgs") {
 		g.Fgenf(w, "%s", typeName)
 	} else {
 		g.Fgenf(w, "&%s", typeName)
@@ -383,7 +434,7 @@ func (g *generator) genRelativeTraversalExpression(
 	if _, ok := expr.Parts[0].(*model.PromiseType); ok {
 		isInput = false
 	}
-	if _, ok := expr.Parts[0].(*hcl2.Resource); ok {
+	if _, ok := expr.Parts[0].(*pcl.Resource); ok {
 		isInput = false
 	}
 	if isInput {
@@ -400,7 +451,7 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 	isRootResource := false
 	if ie, ok := expr.Source.(*model.IndexExpression); ok {
 		if se, ok := ie.Collection.(*model.ScopeTraversalExpression); ok {
-			if _, ok := se.Parts[0].(*hcl2.Resource); ok {
+			if _, ok := se.Parts[0].(*pcl.Resource); ok {
 				isRootResource = true
 			}
 		}
@@ -423,13 +474,13 @@ func (g *generator) genScopeTraversalExpression(
 	genIDCall := false
 
 	isInput := false
-	if schemaType, ok := hcl2.GetSchemaForType(destType); ok {
+	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		_, isInput = schemaType.(*schema.InputType)
 	}
 
-	if resource, ok := expr.Parts[0].(*hcl2.Resource); ok {
+	if resource, ok := expr.Parts[0].(*pcl.Resource); ok {
 		isInput = false
-		if _, ok := hcl2.GetSchemaForType(resource.InputType); ok {
+		if _, ok := pcl.GetSchemaForType(resource.InputType); ok {
 			// convert .id into .ID()
 			last := expr.Traversal[len(expr.Traversal)-1]
 			if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
@@ -572,7 +623,7 @@ var typeNameID = 0
 // argumentTypeName computes the go type for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type, isInput bool) (result string) {
 	//	defer func(id int, t model.Type) {
-	//		schemaType, _ := hcl2.GetSchemaForType(destType)
+	//		schemaType, _ := pcl.GetSchemaForType(destType)
 	//		log.Printf("%v: argumentTypeName(%v, %v, %v) = %v", id, t, isInput, schemaType, result)
 	//	}(typeNameID, destType)
 	typeNameID++
@@ -586,7 +637,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 		return ""
 	}
 
-	if schemaType, ok := hcl2.GetSchemaForType(destType); ok {
+	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		pkg := &pkgContext{pkg: &schema.Package{Name: "main"}}
 		return pkg.argsType(schemaType)
 	}
@@ -757,9 +808,9 @@ func (nameInfo) Format(name string) string {
 // lowerExpression amends the expression with intrinsics for Go generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	model.Expression, []interface{}) {
-	expr = hcl2.RewritePropertyReferences(expr)
-	expr, diags := hcl2.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
-	expr = hcl2.RewriteConversions(expr, typ)
+	expr = pcl.RewritePropertyReferences(expr)
+	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
+	expr = pcl.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr)
 	expr, rTemps, readDirDiags := g.rewriteReadDir(expr, g.readDirTempSpiller)
@@ -803,13 +854,19 @@ func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
-	applyArgs, then := hcl2.ParseApplyCall(expr)
+	applyArgs, then := pcl.ParseApplyCall(expr)
 	isInput := false
 	retType := g.argumentTypeName(nil, then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
-	typeAssertion := fmt.Sprintf(".(%sOutput)", retType)
-	if !strings.HasPrefix(retType, "pulumi.") {
-		typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+	// TODO[pulumi/pulumi#8453] incomplete pattern code below.
+	var typeAssertion string
+	if retType == "[]string" {
+		typeAssertion = ".(pulumi.StringArrayOutput)"
+	} else {
+		typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
+		if !strings.HasPrefix(retType, "pulumi.") {
+			typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+		}
 	}
 
 	if len(applyArgs) == 1 {
@@ -935,7 +992,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 	tokenRange := tokenArg.SyntaxNode().Range()
 
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
+	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 	if strings.HasPrefix(member, "get") {
 		if g.useLookupInvokeForm(token) {
 			member = strings.Replace(member, "get", "lookup", 1)
@@ -947,11 +1004,14 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 }
 
 var functionPackages = map[string][]string{
-	"join":     {"strings"},
-	"mimeType": {"mime", "path"},
-	"readDir":  {"io/ioutil"},
-	"toBase64": {"encoding/base64"},
-	"toJSON":   {"encoding/json"},
+	"join":       {"strings"},
+	"mimeType":   {"mime", "path"},
+	"readDir":    {"io/ioutil"},
+	"readFile":   {"io/ioutil"},
+	"filebase64": {"io/ioutil", "encoding/base64"},
+	"toBase64":   {"encoding/base64"},
+	"toJSON":     {"encoding/json"},
+	"sha1":       {"fmt", "crypto/sha1"},
 }
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {

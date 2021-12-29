@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -83,15 +84,15 @@ func (err *MissingError) Error() string {
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
 type PluginInfo struct {
-	Name         string          // the simple name of the plugin.
-	Path         string          // the path that a plugin was loaded from.
-	Kind         PluginKind      // the kind of the plugin (language, resource, etc).
-	Version      *semver.Version // the plugin's semantic version, if present.
-	Size         int64           // the size of the plugin, in bytes.
-	InstallTime  time.Time       // the time the plugin was installed.
-	LastUsedTime time.Time       // the last time the plugin was used.
-	ServerURL    string          // an optional server to use when downloading this plugin.
-	PluginDir    string          // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
+	Name              string          // the simple name of the plugin.
+	Path              string          // the path that a plugin was loaded from.
+	Kind              PluginKind      // the kind of the plugin (language, resource, etc).
+	Version           *semver.Version // the plugin's semantic version, if present.
+	Size              int64           // the size of the plugin, in bytes.
+	InstallTime       time.Time       // the time the plugin was installed.
+	LastUsedTime      time.Time       // the last time the plugin was used.
+	PluginDownloadURL string          // an optional server to use when downloading this plugin.
+	PluginDir         string          // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -207,6 +208,14 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 	return nil
 }
 
+func interpolateURL(serverURL string, version semver.Version, os, arch string) string {
+	replacer := strings.NewReplacer(
+		"${VERSION}", url.QueryEscape(version.String()),
+		"${OS}", url.QueryEscape(os),
+		"${ARCH}", url.QueryEscape(arch))
+	return replacer.Replace(serverURL)
+}
+
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
 func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	// Figure out the OS/ARCH pair for the download URL.
@@ -225,12 +234,18 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 		return nil, -1, errors.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
 	}
 
+	// The plugin version is necessary for the endpoint. If it's not present, return an error.
+	if info.Version == nil {
+		return nil, -1, errors.Errorf("unknown version for plugin %s", info.Name)
+	}
+
 	// If the plugin has a server, associated with it, download from there.  Otherwise use the "default" location, which
 	// is hosted by Pulumi.
-	serverURL := info.ServerURL
+	serverURL := info.PluginDownloadURL
 	if serverURL == "" {
 		serverURL = "https://get.pulumi.com/releases/plugins"
 	}
+	serverURL = interpolateURL(serverURL, *info.Version, os, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
 
 	logging.V(1).Infof("%s downloading from %s", info.Name, serverURL)
@@ -606,7 +621,8 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
-	if _, isFound := os.LookupEnv("PULUMI_IGNORE_AMBIENT_PLUGINS"); !isFound {
+	optOut, isFound := os.LookupEnv("PULUMI_IGNORE_AMBIENT_PLUGINS")
+	if !(isFound && cmdutil.IsTruthy(optOut)) || kind == LanguagePlugin {
 		filename = (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
 		if path, err := exec.LookPath(filename); err == nil {
 			logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)

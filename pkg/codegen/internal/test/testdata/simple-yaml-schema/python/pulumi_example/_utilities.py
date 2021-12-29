@@ -3,11 +3,13 @@
 # *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 
+import importlib.util
+import inspect
 import json
 import os
-import sys
-import importlib.util
 import pkg_resources
+import sys
+import typing
 
 import pulumi
 import pulumi.runtime
@@ -209,3 +211,26 @@ def register(resource_modules, resource_packages):
             mod_info['pkg'],
             mod_info['mod'],
             Module(mod_info))
+
+
+_F = typing.TypeVar('_F', bound=typing.Callable[..., typing.Any])
+
+
+def lift_output_func(func: typing.Any) -> typing.Callable[[_F], _F]:
+    """Decorator internally used on {fn}_output lifted function versions
+    to implement them automatically from the un-lifted function."""
+
+    func_sig = inspect.signature(func)
+
+    def lifted_func(*args, opts=None, **kwargs):
+        bound_args = func_sig.bind(*args, **kwargs)
+        # Convert tuple to list, see pulumi/pulumi#8172
+        args_list = list(bound_args.args)
+        return pulumi.Output.from_input({
+            'args': args_list,
+            'kwargs': bound_args.kwargs
+        }).apply(lambda resolved_args: func(*resolved_args['args'],
+                                            opts=opts,
+                                            **resolved_args['kwargs']))
+
+    return (lambda _: lifted_func)

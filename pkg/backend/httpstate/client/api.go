@@ -19,6 +19,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -26,12 +27,12 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -114,6 +115,18 @@ func (t updateAccessToken) String() string {
 	return string(t)
 }
 
+func float64Ptr(f float64) *float64 {
+	return &f
+}
+
+func durationPtr(d time.Duration) *time.Duration {
+	return &d
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
 // pulumiAPICall makes an HTTP request to the Pulumi API.
 func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path string, body []byte, tok accessToken,
 	opts httpCallOptions) (string, *http.Response, error) {
@@ -134,14 +147,14 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 		writer := gzip.NewWriter(&buf)
 		defer contract.IgnoreClose(writer)
 		if _, err := writer.Write(body); err != nil {
-			return "", nil, errors.Wrapf(err, "compressing payload")
+			return "", nil, fmt.Errorf("compressing payload: %w", err)
 		}
 
 		// gzip.Writer will not actually write anything unless it is flushed,
 		//  and it will not actually write the GZip footer unless it is closed. (Close also flushes)
 		// Without this, the compressed bytes do not decompress properly e.g. in python.
 		if err := writer.Close(); err != nil {
-			return "", nil, errors.Wrapf(err, "closing compressed payload")
+			return "", nil, fmt.Errorf("closing compressed payload: %w", err)
 		}
 
 		logging.V(apiRequestDetailLogLevel).Infof("gzip compression ratio: %f, original size: %d bytes",
@@ -153,7 +166,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 
 	req, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
-		return "", nil, errors.Wrapf(err, "creating new HTTP request")
+		return "", nil, fmt.Errorf("creating new HTTP request: %w", err)
 	}
 
 	requestSpan, requestContext := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
@@ -204,13 +217,23 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 
 	var resp *http.Response
 	if req.Method == "GET" || opts.RetryAllMethods {
-		resp, err = httputil.DoWithRetry(req, http.DefaultClient)
+		// Wait 1s before retrying on failure. Then increase by 2x until the
+		// maximum delay is reached. Stop after maxRetryCount requests have
+		// been made.
+		opts := httputil.RetryOpts{
+			Delay:    durationPtr(time.Second),
+			Backoff:  float64Ptr(2.0),
+			MaxDelay: durationPtr(30 * time.Second),
+
+			MaxRetryCount: intPtr(4),
+		}
+		resp, err = httputil.DoWithRetryOpts(req, http.DefaultClient, opts)
 	} else {
 		resp, err = http.DefaultClient.Do(req)
 	}
 
 	if err != nil {
-		return "", nil, errors.Wrapf(err, "performing HTTP request")
+		return "", nil, fmt.Errorf("performing HTTP request: %w", err)
 	}
 	logging.V(apiRequestLogLevel).Infof("Pulumi API call response code (%s): %v", url, resp.Status)
 
@@ -228,8 +251,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 		// type, and if not just return the raw response text.
 		respBody, err := readBody(resp)
 		if err != nil {
-			return "", nil, errors.Wrapf(
-				err, "API call failed (%s), could not read response", resp.Status)
+			return "", nil, fmt.Errorf("API call failed (%s), could not read response: %w", resp.Status, err)
 		}
 
 		// Provide a better error if using an authenticated call without having logged in first.
@@ -260,7 +282,7 @@ func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path 
 	if queryObj != nil {
 		queryValues, err := query.Values(queryObj)
 		if err != nil {
-			return errors.Wrapf(err, "marshalling query object as JSON")
+			return fmt.Errorf("marshalling query object as JSON: %w", err)
 		}
 		query := queryValues.Encode()
 		if len(query) > 0 {
@@ -274,7 +296,7 @@ func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path 
 	if reqObj != nil {
 		reqBody, err = json.Marshal(reqObj)
 		if err != nil {
-			return errors.Wrapf(err, "marshalling request object as JSON")
+			return fmt.Errorf("marshalling request object as JSON: %w", err)
 		}
 	}
 
@@ -287,7 +309,7 @@ func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path 
 	// Read API response
 	respBody, err := readBody(resp)
 	if err != nil {
-		return errors.Wrapf(err, "reading response from API")
+		return fmt.Errorf("reading response from API: %w", err)
 	}
 	if logging.V(apiRequestDetailLogLevel) {
 		logging.V(apiRequestDetailLogLevel).Infof("Pulumi API call response body (%s): %v", url, string(respBody))
@@ -303,7 +325,7 @@ func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path 
 		} else {
 			// Else, unmarshal as JSON.
 			if err = json.Unmarshal(respBody, respObj); err != nil {
-				return errors.Wrapf(err, "unmarshalling response object")
+				return fmt.Errorf("unmarshalling response object: %w", err)
 			}
 		}
 	}
@@ -323,7 +345,7 @@ func readBody(resp *http.Response) ([]byte, error) {
 
 	if len(contentEncoding) > 1 {
 		// We only know how to deal with gzip. We can't handle additional encodings layered on top of it.
-		return nil, errors.Errorf("can't handle content encodings %v", contentEncoding)
+		return nil, fmt.Errorf("can't handle content encodings %v", contentEncoding)
 	}
 
 	switch contentEncoding[0] {
@@ -337,11 +359,11 @@ func readBody(resp *http.Response) ([]byte, error) {
 			defer contract.IgnoreClose(reader)
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, "reading gzip-compressed body")
+			return nil, fmt.Errorf("reading gzip-compressed body: %w", err)
 		}
 
 		return ioutil.ReadAll(reader)
 	default:
-		return nil, errors.Errorf("unrecognized encoding %s", contentEncoding[0])
+		return nil, fmt.Errorf("unrecognized encoding %s", contentEncoding[0])
 	}
 }

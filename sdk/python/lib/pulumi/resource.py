@@ -24,6 +24,7 @@ from .runtime.resource import get_resource, register_resource, register_resource
     convert_providers
 from .runtime.settings import get_root_resource
 from .output import _is_prompt, _map_input, _map2_input, T, Output
+from . import urn as urn_util
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
@@ -85,6 +86,41 @@ def inherited_child_alias(
             lambda u: u[u.rfind("::") + 2:] + child_name[len(parent_name):])
 
     return create_urn(alias_name, child_type, parent_alias)
+
+# Extract the type and name parts of a URN
+def urn_type_and_name(urn: str) -> Tuple[str, str]:
+    parts = urn.split("::")
+    type_parts = parts[2].split("$")
+    return (parts[3], type_parts[-1])
+
+def all_aliases(
+    child_aliases: Optional[Sequence['Input[Union[str, Alias]]']],
+    child_name: str,
+    child_type: str,
+    parent: Optional['Resource']) -> 'List[Input[str]]':
+    """
+    Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
+    If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
+    or, as calculated in the logic below, N+(M*(1+N)).
+    """
+    aliases: 'List[Input[str]]' = []
+
+    for child_alias in child_aliases or []:
+        aliases.append(collapse_alias_to_urn(child_alias, child_name, child_type, parent))
+
+    if parent is not None:
+        parent_name = parent._name
+        for parent_alias in parent._aliases:
+            aliases.append(inherited_child_alias(child_name, parent._name, parent_alias, child_type))
+            for child_alias in child_aliases or []:
+                child_alias_urn = collapse_alias_to_urn(child_alias, child_name, child_type, parent)
+                def inherited_alias_for_child_urn(child_alias_urn: str, parent_alias=parent_alias) -> 'Output[str]':
+                    aliased_child_name, aliased_child_type = urn_type_and_name(child_alias_urn)
+                    return inherited_child_alias(aliased_child_name, parent_name, parent_alias, aliased_child_type)
+                inherited_alias: Output[str] = child_alias_urn.apply(inherited_alias_for_child_urn)
+                aliases.append(inherited_alias)
+
+    return aliases
 
 
 ROOT_STACK_RESOURCE = None
@@ -739,17 +775,6 @@ class Resource:
             if opts.protect is None:
                 opts.protect = opts.parent._protect
 
-            # Make a copy of the aliases array, and add to it any implicit aliases inherited from
-            # its parent
-            if opts.aliases is None:
-                opts.aliases = []
-
-            opts.aliases = list(opts.aliases)
-            for parent_alias in opts.parent._aliases:
-                child_alias = inherited_child_alias(
-                    name, opts.parent._name, parent_alias, t)
-                opts.aliases.append(cast('Output[Union[str, Alias]]', child_alias))
-
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
 
@@ -774,15 +799,7 @@ class Resource:
         self._protect = bool(opts.protect)
         self._provider = opts.provider if custom else None
         self._version = opts.version
-
-        # Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we
-        # do not know the default `name` and `type` to apply until we are inside the resource
-        # constructor.
-        self._aliases: 'List[Input[str]]' = []
-        if opts.aliases is not None:
-            for alias in opts.aliases:
-                self._aliases.append(collapse_alias_to_urn(
-                    alias, name, t, opts.parent))
+        self._aliases = all_aliases(opts.aliases, name, t, opts.parent)
 
         if opts.urn is not None:
             # This is a resource that already exists. Read its state from the engine.
@@ -920,8 +937,7 @@ class ComponentResource(Resource):
 
         :param dict output: A dictionary of outputs to associate with this resource.
         """
-        if outputs:
-            register_resource_outputs(self, outputs)
+        register_resource_outputs(self, outputs)
 
 
 class ProviderResource(CustomResource):
@@ -985,12 +1001,11 @@ class DependencyProviderResource(ProviderResource):
 
     def __init__(self, ref: str) -> None:
         ref_urn, ref_id = _parse_resource_reference(ref)
-        urn_parts = ref_urn.split("::")
-        qualified_type = urn_parts[2]
-        typ = qualified_type.split("$")[-1]
-        typ_parts = typ.split(":")
-        # typ will be "pulumi:providers:<package>" and we want the last part.
-        pkg = typ_parts[2] if len(typ_parts) > 2 else ""
+        urn_parts = urn_util._parse_urn(ref_urn)
+
+        # `typ` will be `pulumi:providers:<package>` and we want the
+        # last part, which normally parses as `typ_name`.
+        pkg = urn_parts.typ_name
 
         super().__init__(pkg=pkg, name="", props={}, opts=None, dependency=True)
 

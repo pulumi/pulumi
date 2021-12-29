@@ -8,8 +8,8 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-enum-schema/plant"
 )
 
 type RubberTree struct {
@@ -29,16 +29,19 @@ func NewRubberTree(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
-	if args.Diameter == nil {
-		args.Diameter = Diameter(6)
+	if args.Container != nil {
+		args.Container = args.Container.ToContainerPtrOutput().ApplyT(func(v *plant.Container) *plant.Container { return v.Defaults() }).(plant.ContainerPtrOutput)
 	}
-	if args.Farm == nil {
+	if isZero(args.Diameter) {
+		args.Diameter = Diameter(6.0)
+	}
+	if isZero(args.Farm) {
 		args.Farm = pulumi.StringPtr("(unknown)")
 	}
-	if args.Size == nil {
+	if isZero(args.Size) {
 		args.Size = TreeSize("medium")
 	}
-	if args.Type == nil {
+	if isZero(args.Type) {
 		args.Type = RubberTreeVariety("Burgundy")
 	}
 	var resource RubberTree
@@ -103,7 +106,7 @@ type RubberTreeInput interface {
 }
 
 func (*RubberTree) ElementType() reflect.Type {
-	return reflect.TypeOf((*RubberTree)(nil))
+	return reflect.TypeOf((**RubberTree)(nil)).Elem()
 }
 
 func (i *RubberTree) ToRubberTreeOutput() RubberTreeOutput {
@@ -117,7 +120,7 @@ func (i *RubberTree) ToRubberTreeOutputWithContext(ctx context.Context) RubberTr
 type RubberTreeOutput struct{ *pulumi.OutputState }
 
 func (RubberTreeOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*RubberTree)(nil))
+	return reflect.TypeOf((**RubberTree)(nil)).Elem()
 }
 
 func (o RubberTreeOutput) ToRubberTreeOutput() RubberTreeOutput {
@@ -129,5 +132,6 @@ func (o RubberTreeOutput) ToRubberTreeOutputWithContext(ctx context.Context) Rub
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*RubberTreeInput)(nil)).Elem(), &RubberTree{})
 	pulumi.RegisterOutputType(RubberTreeOutput{})
 }

@@ -7,9 +7,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -52,7 +52,7 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 		keyVal, objectKey := key.AsString(), false
 
 		receiver := parts[i]
-		if _, ok := hcl2.GetSchemaForType(model.GetTraversableType(receiver)); ok {
+		if _, ok := pcl.GetSchemaForType(model.GetTraversableType(receiver)); ok {
 			objectKey, keyVal = true, PyName(keyVal)
 			switch t := traverser.(type) {
 			case hcl.TraverseAttr:

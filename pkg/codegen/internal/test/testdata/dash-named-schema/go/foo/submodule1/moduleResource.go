@@ -7,7 +7,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/dash-named-schema/go/foo"
+	"dash-named-schema/foo"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -76,7 +76,7 @@ type ModuleResourceInput interface {
 }
 
 func (*ModuleResource) ElementType() reflect.Type {
-	return reflect.TypeOf((*ModuleResource)(nil))
+	return reflect.TypeOf((**ModuleResource)(nil)).Elem()
 }
 
 func (i *ModuleResource) ToModuleResourceOutput() ModuleResourceOutput {
@@ -90,7 +90,7 @@ func (i *ModuleResource) ToModuleResourceOutputWithContext(ctx context.Context) 
 type ModuleResourceOutput struct{ *pulumi.OutputState }
 
 func (ModuleResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ModuleResource)(nil))
+	return reflect.TypeOf((**ModuleResource)(nil)).Elem()
 }
 
 func (o ModuleResourceOutput) ToModuleResourceOutput() ModuleResourceOutput {
@@ -102,5 +102,6 @@ func (o ModuleResourceOutput) ToModuleResourceOutputWithContext(ctx context.Cont
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ModuleResourceInput)(nil)).Elem(), &ModuleResource{})
 	pulumi.RegisterOutputType(ModuleResourceOutput{})
 }

@@ -52,7 +52,7 @@ type OtherResourceInput interface {
 }
 
 func (*OtherResource) ElementType() reflect.Type {
-	return reflect.TypeOf((*OtherResource)(nil))
+	return reflect.TypeOf((**OtherResource)(nil)).Elem()
 }
 
 func (i *OtherResource) ToOtherResourceOutput() OtherResourceOutput {
@@ -66,7 +66,7 @@ func (i *OtherResource) ToOtherResourceOutputWithContext(ctx context.Context) Ot
 type OtherResourceOutput struct{ *pulumi.OutputState }
 
 func (OtherResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*OtherResource)(nil))
+	return reflect.TypeOf((**OtherResource)(nil)).Elem()
 }
 
 func (o OtherResourceOutput) ToOtherResourceOutput() OtherResourceOutput {
@@ -78,5 +78,6 @@ func (o OtherResourceOutput) ToOtherResourceOutputWithContext(ctx context.Contex
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*OtherResourceInput)(nil)).Elem(), &OtherResource{})
 	pulumi.RegisterOutputType(OtherResourceOutput{})
 }

@@ -7,7 +7,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/pulumi/pulumi-random/sdk/v2/go/random"
+	"github.com/pulumi/pulumi-random/sdk/v4/go/random"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -235,6 +235,8 @@ func (o PetPtrOutput) RequiredNameMap() random.RandomPetMapOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*PetInput)(nil)).Elem(), PetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*PetPtrInput)(nil)).Elem(), PetArgs{})
 	pulumi.RegisterOutputType(PetOutput{})
 	pulumi.RegisterOutputType(PetPtrOutput{})
 }

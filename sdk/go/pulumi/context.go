@@ -51,7 +51,8 @@ type Context struct {
 	engine      pulumirpc.EngineClient
 	engineConn  *grpc.ClientConn
 
-	keepResources bool // true if resources should be marshaled as strongly-typed references.
+	keepResources    bool // true if resources should be marshaled as strongly-typed references.
+	keepOutputValues bool // true if outputs should be marshaled as strongly-type output values.
 
 	rpcs     int        // the number of outstanding RPC requests.
 	rpcsDone *sync.Cond // an event signaling completion of RPCs.
@@ -104,26 +105,37 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		engine = &mockEngine{}
 	}
 
-	var keepResources bool
-	if monitor != nil {
-		supportsFeatureResp, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{
-			Id: "resourceReferences",
-		})
-		if err != nil {
-			return nil, fmt.Errorf("checking monitor features: %w", err)
+	supportsFeature := func(id string) (bool, error) {
+		if monitor != nil {
+			resp, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: id})
+			if err != nil {
+				return false, fmt.Errorf("checking monitor features: %w", err)
+			}
+			return resp.GetHasSupport(), nil
 		}
-		keepResources = supportsFeatureResp.GetHasSupport()
+		return false, nil
+	}
+
+	keepResources, err := supportsFeature("resourceReferences")
+	if err != nil {
+		return nil, err
+	}
+
+	keepOutputValues, err := supportsFeature("outputValues")
+	if err != nil {
+		return nil, err
 	}
 
 	context := &Context{
-		ctx:           ctx,
-		info:          info,
-		exports:       make(map[string]Input),
-		monitorConn:   monitorConn,
-		monitor:       monitor,
-		engineConn:    engineConn,
-		engine:        engine,
-		keepResources: keepResources,
+		ctx:              ctx,
+		info:             info,
+		exports:          make(map[string]Input),
+		monitorConn:      monitorConn,
+		monitor:          monitor,
+		engineConn:       engineConn,
+		engine:           engine,
+		keepResources:    keepResources,
+		keepOutputValues: keepOutputValues,
 	}
 	context.rpcsDone = sync.NewCond(&context.rpcsLock)
 	context.Log = &logState{
@@ -383,8 +395,9 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		rpcArgs, err := plugin.MarshalProperties(
 			resolvedArgs,
 			ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
-				KeepSecrets:   true,
-				KeepResources: ctx.keepResources,
+				KeepSecrets:      true,
+				KeepResources:    ctx.keepResources,
+				KeepOutputValues: ctx.keepOutputValues,
 			}))
 		if err != nil {
 			return nil, fmt.Errorf("marshaling args: %w", err)
@@ -538,6 +551,7 @@ func (ctx *Context) ReadResource(
 	}
 
 	options := merge(opts...)
+	aliasParent := options.Parent
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -550,7 +564,7 @@ func (ctx *Context) ReadResource(
 	}
 
 	// Collapse aliases to URNs.
-	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
+	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, aliasParent)
 	if err != nil {
 		return err
 	}
@@ -723,6 +737,7 @@ func (ctx *Context) registerResource(
 	}
 
 	options := merge(opts...)
+	parent := options.Parent
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -735,7 +750,7 @@ func (ctx *Context) registerResource(
 	}
 
 	// Collapse aliases to URNs.
-	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
+	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, parent)
 	if err != nil {
 		return err
 	}
@@ -931,17 +946,13 @@ func getPackage(t string) string {
 	return components[0]
 }
 
-// collapseAliases collapses a list of Aliases into alist of URNs.
+// collapseAliases collapses a list of Aliases into a list of URNs. Parent aliases
+// are also included. If there are N child aliases, and M parent aliases, there will
+// be (M+1)*(N+1)-1 total aliases, or, as calculated in the logic below, N+(M*(1+N)).
 func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Resource) ([]URNOutput, error) {
 	project, stack := ctx.Project(), ctx.Stack()
 
 	var aliasURNs []URNOutput
-	if parent != nil {
-		for _, alias := range parent.getAliases() {
-			urn := inheritedChildAlias(name, parent.getName(), t, project, stack, alias)
-			aliasURNs = append(aliasURNs, urn)
-		}
-	}
 
 	for _, alias := range aliases {
 		urn, err := alias.collapseToURN(name, t, parent, project, stack)
@@ -949,6 +960,30 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 			return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
 		}
 		aliasURNs = append(aliasURNs, urn)
+	}
+
+	if parent != nil {
+		parentAliases := parent.getAliases()
+		for i := range parentAliases {
+			parentAlias := parentAliases[i]
+			urn := inheritedChildAlias(name, parent.getName(), t, project, stack, parentAlias)
+			aliasURNs = append(aliasURNs, urn)
+			for j := range aliases {
+				childAlias := aliases[j]
+				urn, err := childAlias.collapseToURN(name, t, parent, project, stack)
+				if err != nil {
+					return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
+				}
+				inheritedAlias := urn.ApplyT(func(urn URN) URNOutput {
+					aliasedChildName := string(resource.URN(urn).Name())
+					aliasedChildType := string(resource.URN(urn).Type())
+					return inheritedChildAlias(aliasedChildName, parent.getName(), aliasedChildType, project, stack, parentAlias)
+				}).ApplyT(func(urn interface{}) URN {
+					return urn.(URN)
+				}).(URNOutput)
+				aliasURNs = append(aliasURNs, inheritedAlias)
+			}
+		}
 	}
 
 	return aliasURNs, nil
@@ -1175,6 +1210,9 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		ctx.withKeepOrRejectUnknowns(plugin.MarshalOptions{
 			KeepSecrets:   true,
 			KeepResources: ctx.keepResources,
+			// To initially scope the use of this new feature, we only keep output values when
+			// remote is true (for multi-lang components).
+			KeepOutputValues: remote && ctx.keepOutputValues,
 		}))
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
@@ -1231,6 +1269,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
+		replaceOnChanges:        resOpts.replaceOnChanges,
 	}, nil
 }
 
@@ -1255,6 +1294,7 @@ type resourceOpts struct {
 	importID                ID
 	ignoreChanges           []string
 	additionalSecretOutputs []string
+	replaceOnChanges        []string
 }
 
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
@@ -1328,6 +1368,7 @@ func (ctx *Context) getOpts(res Resource, t string, provider ProviderResource, o
 		importID:                importID,
 		ignoreChanges:           opts.IgnoreChanges,
 		additionalSecretOutputs: opts.AdditionalSecretOutputs,
+		replaceOnChanges:        opts.ReplaceOnChanges,
 	}, nil
 }
 

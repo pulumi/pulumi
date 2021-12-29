@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -109,7 +107,7 @@ func (snap *Snapshot) NormalizeURNReferences() error {
 				// same resource multiple times.  That's fine, only error if we see the same alias,
 				// but it maps to *different* resources.
 				if otherUrn, has := aliased[alias]; has && otherUrn != state.URN {
-					return errors.Errorf("Two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
+					return fmt.Errorf("Two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
 				}
 				aliased[alias] = state.URN
 			}
@@ -133,7 +131,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 	if snap != nil {
 		// Ensure the magic cookie checks out.
 		if snap.Manifest.Magic != snap.Manifest.NewMagic() {
-			return errors.Errorf("magic cookie mismatch; possible tampering/corruption detected")
+			return fmt.Errorf("magic cookie mismatch; possible tampering/corruption detected")
 		}
 
 		// Now check the resources.  For now, we just verify that parents come before children, and that there aren't
@@ -146,17 +144,17 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			if providers.IsProviderType(state.Type) {
 				ref, err := providers.NewReference(urn, state.ID)
 				if err != nil {
-					return errors.Errorf("provider %s is not referenceable: %v", urn, err)
+					return fmt.Errorf("provider %s is not referenceable: %v", urn, err)
 				}
 				provs[ref] = struct{}{}
 			}
 			if provider := state.Provider; provider != "" {
 				ref, err := providers.ParseReference(provider)
 				if err != nil {
-					return errors.Errorf("failed to parse provider reference for resource %s: %v", urn, err)
+					return fmt.Errorf("failed to parse provider reference for resource %s: %v", urn, err)
 				}
 				if _, has := provs[ref]; !has {
-					return errors.Errorf("resource %s refers to unknown provider %s", urn, ref)
+					return fmt.Errorf("resource %s refers to unknown provider %s", urn, ref)
 				}
 			}
 
@@ -166,10 +164,10 @@ func (snap *Snapshot) VerifyIntegrity() error {
 					// whether it comes later in the snapshot (neither of which should ever happen).
 					for _, other := range snap.Resources[i+1:] {
 						if other.URN == par {
-							return errors.Errorf("child resource %s's parent %s comes after it", urn, par)
+							return fmt.Errorf("child resource %s's parent %s comes after it", urn, par)
 						}
 					}
-					return errors.Errorf("child resource %s refers to missing parent %s", urn, par)
+					return fmt.Errorf("child resource %s refers to missing parent %s", urn, par)
 				}
 			}
 
@@ -178,17 +176,17 @@ func (snap *Snapshot) VerifyIntegrity() error {
 					// same as above - doing this for better error messages
 					for _, other := range snap.Resources[i+1:] {
 						if other.URN == dep {
-							return errors.Errorf("resource %s's dependency %s comes after it", urn, other.URN)
+							return fmt.Errorf("resource %s's dependency %s comes after it", urn, other.URN)
 						}
 					}
 
-					return errors.Errorf("resource %s dependency %s refers to missing resource", urn, dep)
+					return fmt.Errorf("resource %s dependency %s refers to missing resource", urn, dep)
 				}
 			}
 
 			if _, has := urns[urn]; has && !state.Delete {
 				// The only time we should have duplicate URNs is when all but one of them are marked for deletion.
-				return errors.Errorf("duplicate resource %s (not marked for deletion)", urn)
+				return fmt.Errorf("duplicate resource %s (not marked for deletion)", urn)
 			}
 
 			urns[urn] = state

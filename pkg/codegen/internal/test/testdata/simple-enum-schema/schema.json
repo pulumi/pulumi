@@ -19,7 +19,7 @@
           "description": "The sizes of trees available"
         }
       },
-      "requiredInputs": [ "varieties"]
+      "requiredInputs": ["varieties"]
     },
     "plant:tree/v1:RubberTree": {
       "inputProperties": {
@@ -32,8 +32,8 @@
         },
         "farm": {
           "oneOf": [
-            {"$ref": "#/types/plant:tree/v1:Farm"},
-            {"type": "string"}
+            { "$ref": "#/types/plant:tree/v1:Farm" },
+            { "type": "string" }
           ],
           "default": "(unknown)"
         },
@@ -50,8 +50,8 @@
         "properties": {
           "farm": {
             "oneOf": [
-              {"$ref": "#/types/plant:tree/v1:Farm"},
-              {"type": "string"}
+              { "$ref": "#/types/plant:tree/v1:Farm" },
+              { "type": "string" }
             ],
             "default": "(unknown)"
           }
@@ -66,8 +66,8 @@
         },
         "farm": {
           "oneOf": [
-            {"$ref": "#/types/plant:tree/v1:Farm"},
-            {"type": "string"}
+            { "$ref": "#/types/plant:tree/v1:Farm" },
+            { "type": "string" }
           ]
         },
         "size": {
@@ -84,6 +84,32 @@
     }
   },
   "types": {
+    "plant::CloudAuditOptionsLogName": {
+      "description": "The log_name to populate in the Cloud Audit Record. This is added to regress pulumi/pulumi issue #7913",
+      "type": "string",
+      "enum": [
+        {
+          "name": "UnspecifiedLogName",
+          "description": "Default. Should not be used.",
+          "value": "UNSPECIFIED_LOG_NAME"
+        },
+        {
+          "name": "AdminActivity",
+          "description": "Corresponds to \"cloudaudit.googleapis.com/activity\"",
+          "value": "ADMIN_ACTIVITY"
+        },
+        {
+          "name": "DataAccess",
+          "description": "Corresponds to \"cloudaudit.googleapis.com/data_access\"",
+          "value": "DATA_ACCESS"
+        },
+        {
+          "name": "Synthetic",
+          "description": "What if triple quotes \"\"\" are used in the description",
+          "value": "SYNTHETIC"
+        }
+      ]
+    },
     "plant::Container": {
       "type": "object",
       "properties": {
@@ -95,8 +121,8 @@
         },
         "color": {
           "oneOf": [
-            {"$ref": "#/types/plant::ContainerColor"},
-            {"type": "string"}
+            { "$ref": "#/types/plant::ContainerColor" },
+            { "type": "string" }
           ]
         },
         "brightness": {
@@ -171,13 +197,6 @@
         }
       ]
     },
-    "plant:tree/v1:VarietiesSupported": {
-      "type": "array",
-      "items": {
-        "$ref": "#/types/plant:tree/v1:RubberTreeVariety"
-      },
-      "description": "The rubber tree varieties supported"
-    },
     "plant:tree/v1:Farm": {
       "type": "string",
       "enum": [
@@ -222,15 +241,23 @@
       "namespaces": {
         "plant": "Plant",
         "tree/v1": "Tree.V1"
+      },
+      "packageReferences": {
+        "Pulumi": "3.12"
       }
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant",
-      "packageImportAliases": {
-        "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1": "treev1"
+      "importBasePath": "simple-enum-schema/plant",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
       }
     },
-    "nodejs": {},
     "python": {
       "moduleNameOverrides": {
         "tree/v1": "tree/v1"

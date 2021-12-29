@@ -15,7 +15,7 @@
 import asyncio
 import base64
 import pickle
-from typing import Any, Optional, List, TYPE_CHECKING, no_type_check, cast
+from typing import Any, ClassVar, Optional, List, TYPE_CHECKING, no_type_check, cast
 
 import dill
 from .. import CustomResource, ResourceOptions
@@ -222,18 +222,10 @@ def serialize_provider(provider: ResourceProvider) -> str:
     pickle.Pickler.save_dict = save_dict_sorted
 
     # Use dill to recursively pickle the provider and store base64 encoded form
-    pty = type(provider)
-    oldptymod = pty.__module__
     try:
-        # TODO[uqfoundation/dill#424]: Dill currently only serializes classes by value when they are in `__main__`.
-        # Since we need to ensure classes are serialized by value for dynamic provider serialization to work, we
-        # for now will overwrite the `__module__` to be `__main__` on the provider class.  When uqfoundation/dill#424
-        # is addressed, we may be able to accomplish the desired results in a less invasive way.
-        pty.__module__ = '__main__'
         byts = dill.dumps(provider, protocol=pickle.DEFAULT_PROTOCOL, recurse=True)
         return base64.b64encode(byts).decode('utf-8')
     finally:
-        pty.__module__ = oldptymod
         # Restore the original pickler
         pickle.Pickler = old_pickler
 
@@ -241,6 +233,13 @@ class Resource(CustomResource):
     """
     Resource represents a Pulumi Resource that incorporates an inline implementation of the Resource's CRUD operations.
     """
+
+    _resource_type_name: ClassVar[str]
+
+    def __init_subclass__(cls, module: str = '', name: str = 'Resource'):
+        if module:
+            module = f'/{module}'
+        cls._resource_type_name = f'dynamic{module}:{name}'
 
     def __init__(self,
                  provider: ResourceProvider,
@@ -261,4 +260,4 @@ class Resource(CustomResource):
         props = cast(dict, props)
         props[PROVIDER_KEY] = serialize_provider(provider)
 
-        super().__init__("pulumi-python:dynamic:Resource", name, props, opts)
+        super().__init__(f"pulumi-python:{self._resource_type_name}", name, props, opts)

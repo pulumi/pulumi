@@ -3,6 +3,8 @@
 title: "StaticPage"
 title_tag: "xyz.StaticPage"
 meta_desc: "Documentation for the xyz.StaticPage resource with examples, input properties, output properties, lookup functions, and supporting types."
+layout: api
+no_edit_this_page: true
 ---
 
 
@@ -168,7 +170,7 @@ The StaticPage resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Pulumi.<wbr>Example.<wbr>Inputs.<wbr>Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -163,9 +163,20 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     <None Include="version.txt" Pack="True" PackagePath="content" />
   </ItemGroup>
 
+   <ItemGroup>
+    <EmbeddedResource Include="pulumi-plugin.json" />
+    <None Include="pulumi-plugin.json" Pack="True" PackagePath="content" />
+  </ItemGroup>
+
   <ItemGroup>
     {{- range $package, $version := .PackageReferences}}
     <PackageReference Include="{{$package}}" Version="{{$version}}"{{if ispulumipkg $package}} ExcludeAssets="contentFiles"{{end}} />
+    {{- end}}
+  </ItemGroup>
+
+  <ItemGroup>
+    {{- range $projdir := .ProjectReferences}}
+    <ProjectReference Include="{{$projdir}}"  />
     {{- end}}
   </ItemGroup>
 
@@ -194,5 +205,6 @@ type csharpProjectFileTemplateContext struct {
 	XMLDoc            string
 	Package           *schema.Package
 	PackageReferences map[string]string
+	ProjectReferences []string
 	Version           string
 }

@@ -21,6 +21,16 @@ Pulumi.Asset
 Pulumi.AssetArchive
 Pulumi.AssetArchive.AssetArchive(System.Collections.Generic.IDictionary<string, Pulumi.AssetOrArchive> assets) -> void
 Pulumi.AssetOrArchive
+Pulumi.CallArgs
+Pulumi.CallArgs.CallArgs() -> void
+Pulumi.CallOptions
+Pulumi.CallOptions.CallOptions() -> void
+Pulumi.CallOptions.Parent.get -> Pulumi.Resource
+Pulumi.CallOptions.Parent.set -> void
+Pulumi.CallOptions.Provider.get -> Pulumi.ProviderResource
+Pulumi.CallOptions.Provider.set -> void
+Pulumi.CallOptions.Version.get -> string
+Pulumi.CallOptions.Version.set -> void
 Pulumi.ComponentResource
 Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ComponentResourceOptions options = null) -> void
 Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.ComponentResourceOptions options = null, bool remote = false) -> void
@@ -73,6 +83,8 @@ Pulumi.DictionaryResourceArgs
 Pulumi.DictionaryResourceArgs.DictionaryResourceArgs(System.Collections.Immutable.ImmutableDictionary<string, object> dictionary) -> void
 Pulumi.Deployment
 Pulumi.DeploymentInstance
+Pulumi.DeploymentInstance.Call(string token, Pulumi.CallArgs args, Pulumi.Resource self = null, Pulumi.CallOptions options = null) -> void
+Pulumi.DeploymentInstance.Call<T>(string token, Pulumi.CallArgs args, Pulumi.Resource self = null, Pulumi.CallOptions options = null) -> Pulumi.Output<T>
 Pulumi.DeploymentInstance.InvokeAsync(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task
 Pulumi.DeploymentInstance.InvokeAsync<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task<T>
 Pulumi.DeploymentInstance.IsDryRun.get -> bool
@@ -96,11 +108,15 @@ Pulumi.InputJson
 Pulumi.InputJson.InputJson() -> void
 Pulumi.InputList<T>
 Pulumi.InputList<T>.Add(params Pulumi.Input<T>[] inputs) -> void
+Pulumi.InputList<T>.Add(Pulumi.InputList<T> inputs) -> void
+Pulumi.InputList<T>.AddRange(Pulumi.InputList<T> inputs) -> void
 Pulumi.InputList<T>.Concat(Pulumi.InputList<T> other) -> Pulumi.InputList<T>
 Pulumi.InputList<T>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<T>>
 Pulumi.InputList<T>.InputList() -> void
 Pulumi.InputMap<V>
+Pulumi.InputMap<V>.Add(Pulumi.InputMap<V> values) -> void
 Pulumi.InputMap<V>.Add(string key, Pulumi.Input<V> value) -> void
+Pulumi.InputMap<V>.AddRange(Pulumi.InputMap<V> values) -> void
 Pulumi.InputMap<V>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<System.Collections.Generic.KeyValuePair<string, V>>>
 Pulumi.InputMap<V>.InputMap() -> void
 Pulumi.InputMap<V>.this[string key].set -> void
@@ -166,6 +182,8 @@ Pulumi.ResourceOptions.Protect.get -> bool?
 Pulumi.ResourceOptions.Protect.set -> void
 Pulumi.ResourceOptions.Provider.get -> Pulumi.ProviderResource
 Pulumi.ResourceOptions.Provider.set -> void
+Pulumi.ResourceOptions.ReplaceOnChanges.get -> System.Collections.Generic.List<string>
+Pulumi.ResourceOptions.ReplaceOnChanges.set -> void
 Pulumi.ResourceOptions.ResourceOptions() -> void
 Pulumi.ResourceOptions.ResourceTransformations.get -> System.Collections.Generic.List<Pulumi.ResourceTransformation>
 Pulumi.ResourceOptions.ResourceTransformations.set -> void
@@ -357,5 +375,7 @@ static Pulumi.Union<T0, T1>.FromT1(T1 input) -> Pulumi.Union<T0, T1>
 static Pulumi.Union<T0, T1>.implicit operator Pulumi.Union<T0, T1>(T0 t) -> Pulumi.Union<T0, T1>
 static Pulumi.Union<T0, T1>.implicit operator Pulumi.Union<T0, T1>(T1 t) -> Pulumi.Union<T0, T1>
 static Pulumi.Urn.Create(Pulumi.Input<string> name, Pulumi.Input<string> type, Pulumi.Resource parent = null, Pulumi.Input<string> parentUrn = null, Pulumi.Input<string> project = null, Pulumi.Input<string> stack = null) -> Pulumi.Output<string>
+static readonly Pulumi.CallArgs.Empty -> Pulumi.CallArgs
 static readonly Pulumi.InvokeArgs.Empty -> Pulumi.InvokeArgs
 static readonly Pulumi.ResourceArgs.Empty -> Pulumi.ResourceArgs
+Pulumi.DeploymentInstance.Invoke<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> Pulumi.Output<T>

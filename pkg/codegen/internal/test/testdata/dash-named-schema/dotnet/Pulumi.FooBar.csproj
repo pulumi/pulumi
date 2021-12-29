@@ -39,6 +39,18 @@
     <None Include="version.txt" Pack="True" PackagePath="content" />
   </ItemGroup>
 
+   <ItemGroup>
+    <EmbeddedResource Include="pulumi-plugin.json" />
+    <None Include="pulumi-plugin.json" Pack="True" PackagePath="content" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Pulumi" Version="3.12" />
+    <PackageReference Include="Pulumi.Aws" Version="4.20" ExcludeAssets="contentFiles" />
+    <PackageReference Include="Pulumi.Kubernetes" Version="3.7" ExcludeAssets="contentFiles" />
+    <PackageReference Include="Pulumi.Random" Version="4.2" ExcludeAssets="contentFiles" />
+  </ItemGroup>
+
   <ItemGroup>
   </ItemGroup>
 

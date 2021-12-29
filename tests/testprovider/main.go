@@ -17,13 +17,10 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
-	"math/big"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
@@ -31,10 +28,30 @@ import (
 )
 
 const (
-	providerName   = "testprovider"
-	version        = "0.0.1"
-	randomResource = "testprovider:index:Random"
+	providerName = "testprovider"
+	version      = "0.0.1"
 )
+
+// Minimal set of methods to implement a basic provider.
+type resourceProvider interface {
+	Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error)
+	Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error)
+	Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error)
+	Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error)
+	Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error)
+	Delete(ctx context.Context, req *rpc.DeleteRequest) (*pbempty.Empty, error)
+}
+
+var resourceProviders = map[string]resourceProvider{
+	"testprovider:index:Random": &randomResourceProvider{},
+	"testprovider:index:Echo":   &echoResourceProvider{},
+}
+
+func providerForURN(urn string) (resourceProvider, string, bool) {
+	ty := string(resource.URN(urn).Type())
+	provider, ok := resourceProviders[ty]
+	return provider, ty, ok
+}
 
 //nolint: unused,deadcode
 func main() {
@@ -95,124 +112,57 @@ func (k *testproviderProvider) Call(_ context.Context, req *rpc.CallRequest) (*r
 }
 
 func (k *testproviderProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
-	urn := resource.URN(req.GetUrn())
-	ty := urn.Type()
-	if ty != randomResource {
+	provider, ty, ok := providerForURN(req.GetUrn())
+	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
 	}
-	return &rpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
+	return provider.Check(ctx, req)
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (k *testproviderProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
-	urn := resource.URN(req.GetUrn())
-	ty := urn.Type()
-	if ty != randomResource {
+	provider, ty, ok := providerForURN(req.GetUrn())
+	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
 	}
-
-	olds, err := plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
-	if err != nil {
-		return nil, err
-	}
-
-	news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
-	if err != nil {
-		return nil, err
-	}
-
-	d := olds.Diff(news)
-	changes := rpc.DiffResponse_DIFF_NONE
-	if d.Changed("length") {
-		changes = rpc.DiffResponse_DIFF_SOME
-	}
-
-	return &rpc.DiffResponse{
-		Changes:  changes,
-		Replaces: []string{"length"},
-	}, nil
+	return provider.Diff(ctx, req)
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.
 func (k *testproviderProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
-	urn := resource.URN(req.GetUrn())
-	ty := urn.Type()
-	if ty != randomResource {
+	provider, ty, ok := providerForURN(req.GetUrn())
+	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
 	}
-
-	inputs, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
-		KeepUnknowns: true,
-		SkipNulls:    true,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if !inputs["length"].IsNumber() {
-		return nil, fmt.Errorf("Expected input property 'length' of type 'number' but got '%s", inputs["length"].TypeString())
-	}
-
-	n := int(inputs["length"].NumberValue())
-
-	// Actually "create" the random number
-	result, err := makeRandom(n)
-	if err != nil {
-		return nil, err
-	}
-
-	outputs := map[string]interface{}{
-		"length": n,
-		"result": result,
-	}
-
-	outputProperties, err := plugin.MarshalProperties(
-		resource.NewPropertyMapFromMap(outputs),
-		plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &rpc.CreateResponse{
-		Id:         result,
-		Properties: outputProperties,
-	}, nil
+	return provider.Create(ctx, req)
 }
 
 // Read the current live state associated with a resource.
 func (k *testproviderProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
-	urn := resource.URN(req.GetUrn())
-	ty := urn.Type()
-	if ty != randomResource {
+	provider, ty, ok := providerForURN(req.GetUrn())
+	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
 	}
-
-	panic("Read not implemented for 'testprovider:index:Random'")
+	return provider.Read(ctx, req)
 }
 
 // Update updates an existing resource with new values.
 func (k *testproviderProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
-	urn := resource.URN(req.GetUrn())
-	ty := urn.Type()
-	if ty != randomResource {
+	provider, ty, ok := providerForURN(req.GetUrn())
+	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
 	}
-
-	// Our Random resource will never be updated - if there is a diff, it will be a replacement.
-	panic("Update not implemented")
+	return provider.Update(ctx, req)
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed
 // to still exist.
 func (k *testproviderProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*pbempty.Empty, error) {
-	urn := resource.URN(req.GetUrn())
-	ty := urn.Type()
-	if ty != randomResource {
+	provider, ty, ok := providerForURN(req.GetUrn())
+	if !ok {
 		return nil, fmt.Errorf("Unknown resource type '%s'", ty)
 	}
-
-	// Note that for our Random resource, we don't have to do anything on Delete.
-	return &pbempty.Empty{}, nil
+	return provider.Delete(ctx, req)
 }
 
 // Construct creates a new component resource.
@@ -240,17 +190,4 @@ func (k *testproviderProvider) GetSchema(ctx context.Context,
 // hard-closing any gRPC connection.
 func (k *testproviderProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
 	return &pbempty.Empty{}, nil
-}
-
-func makeRandom(length int) (string, error) {
-	charset := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	result := make([]rune, length)
-	for i := range result {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
-		if err != nil {
-			return "", err
-		}
-		result[i] = charset[num.Int64()]
-	}
-	return string(result), nil
 }

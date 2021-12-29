@@ -17,6 +17,7 @@ package lifecycletest
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -26,7 +27,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -146,11 +147,11 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Now run a preview. Expect a warning because the diff is unavailable.
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -158,7 +159,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 			for _, e := range events {
 				if e.Type == DiagEvent {
 					p := e.Payload().(DiagEventPayload)
-					if p.URN == resURN && p.Severity == diag.Warning && p.Message == "diff unavailable" {
+					if p.URN == resURN && p.Severity == diag.Warning && p.Message == "<{%reset%}>diff unavailable<{%reset%}>\n" {
 						found = true
 						break
 					}
@@ -472,7 +473,7 @@ func TestProviderCancellation(t *testing.T) {
 		Parallel: resourceCount,
 		Host:     deploytest.NewPluginHost(nil, nil, program, loaders...),
 	}
-	project, target := p.GetProject(), p.GetTarget(nil)
+	project, target := p.GetProject(), p.GetTarget(t, nil)
 
 	_, res := op.RunWithContext(ctx, project, target, options, false, nil, nil)
 	assertIsErrorOrBailResult(t, res)
@@ -525,7 +526,7 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 
 	op := TestOp(Update)
 	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
-	project, target := p.GetProject(), p.GetTarget(old)
+	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// A preview should succeed despite the pending operations.
 	_, res := op.Run(project, target, options, true, nil, nil)
@@ -656,7 +657,7 @@ func TestStackReference(t *testing.T) {
 						"foo": "bar",
 					}), nil
 				default:
-					return nil, errors.Errorf("unknown stack \"%s\"", name)
+					return nil, fmt.Errorf("unknown stack \"%s\"", name)
 				}
 			},
 		},
@@ -835,7 +836,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 	op := TestOp(Update)
 	sink := diag.DefaultSink(sinkWriter, sinkWriter, diag.FormatOptions{Color: colors.Raw})
 	options := UpdateOptions{Host: deploytest.NewPluginHost(sink, sink, program, loaders...)}
-	project, target := p.GetProject(), p.GetTarget(old)
+	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	_, res := op.Run(project, target, options, true, nil, nil)
 	assertIsErrorOrBailResult(t, res)
@@ -943,156 +944,147 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 	}, []string{"a", "b"}, []deploy.StepOp{deploy.OpUpdate})
 }
 
-func objectDiffToDetailedDiff(prefix string, d *resource.ObjectDiff) map[string]plugin.PropertyDiff {
-	ret := map[string]plugin.PropertyDiff{}
-	for k, vd := range d.Updates {
-		var nestedPrefix string
-		if prefix == "" {
-			nestedPrefix = string(k)
-		} else {
-			nestedPrefix = fmt.Sprintf("%s.%s", prefix, string(k))
-		}
-		for kk, pd := range valueDiffToDetailedDiff(nestedPrefix, vd) {
-			ret[kk] = pd
-		}
-	}
-	return ret
-}
+type DiffFunc = func(urn resource.URN, id resource.ID,
+	olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error)
 
-func arrayDiffToDetailedDiff(prefix string, d *resource.ArrayDiff) map[string]plugin.PropertyDiff {
-	ret := map[string]plugin.PropertyDiff{}
-	for i, vd := range d.Updates {
-		for kk, pd := range valueDiffToDetailedDiff(fmt.Sprintf("%s[%d]", prefix, i), vd) {
-			ret[kk] = pd
+func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
+	t.Run(name, func(t *testing.T) {
+		loaders := []*deploytest.ProviderLoader{
+			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+				return &deploytest.Provider{
+					DiffF: diffFunc,
+					UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+						ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+						return news, resource.StatusOK, nil
+					},
+					CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+						preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+						return resource.ID("id123"), inputs, resource.StatusOK, nil
+					},
+				}, nil
+			}),
 		}
-	}
-	return ret
-}
 
-func valueDiffToDetailedDiff(prefix string, vd resource.ValueDiff) map[string]plugin.PropertyDiff {
-	ret := map[string]plugin.PropertyDiff{}
-	if vd.Object != nil {
-		for kk, pd := range objectDiffToDetailedDiff(prefix, vd.Object) {
-			ret[kk] = pd
+		updateProgramWithProps := func(snap *deploy.Snapshot, props resource.PropertyMap, replaceOnChanges []string,
+			allowedOps []deploy.StepOp) *deploy.Snapshot {
+			program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+					Inputs:           props,
+					ReplaceOnChanges: replaceOnChanges,
+				})
+				assert.NoError(t, err)
+				return nil
+			})
+			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+			p := &TestPlan{
+				Options: UpdateOptions{Host: host},
+				Steps: []TestStep{
+					{
+						Op: Update,
+						Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+							events []Event, res result.Result) result.Result {
+							for _, event := range events {
+								if event.Type == ResourcePreEvent {
+									payload := event.Payload().(ResourcePreEventPayload)
+									assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
+								}
+							}
+							return res
+						},
+					},
+				},
+			}
+			return p.Run(t, snap)
 		}
-	} else if vd.Array != nil {
-		for kk, pd := range arrayDiffToDetailedDiff(prefix, vd.Array) {
-			ret[kk] = pd
+
+		snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"a": 1,
+			"b": map[string]interface{}{
+				"c": "foo",
+			},
+		}), []string{"a", "b.c"}, []deploy.StepOp{deploy.OpCreate})
+
+		// Ensure that a change to a replaceOnChange property results in an OpReplace
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"a": 2,
+			"b": map[string]interface{}{
+				"c": "foo",
+			},
+		}), []string{"a"}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+
+		// Ensure that a change to a nested replaceOnChange property results in an OpReplace
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"a": 2,
+			"b": map[string]interface{}{
+				"c": "bar",
+			},
+		}), []string{"b.c"}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+
+		// Ensure that a change to any property of a "*" replaceOnChange results in an OpReplace
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"a": 3,
+			"b": map[string]interface{}{
+				"c": "baz",
+			},
+		}), []string{"*"}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+
+		// Ensure that a change to an non-replaceOnChange property results in an OpUpdate
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"a": 4,
+			"b": map[string]interface{}{
+				"c": "qux",
+			},
+		}), nil, []deploy.StepOp{deploy.OpUpdate})
+
+		// We ensure that we are listing to the engine diff function only when the provider function
+		// is nil. We do this by adding some weirdness to the provider diff function.
+		allowed := []deploy.StepOp{deploy.OpCreateReplacement, deploy.OpReplace, deploy.OpDeleteReplaced}
+		if diffFunc != nil {
+			allowed = []deploy.StepOp{deploy.OpSame}
 		}
-	} else {
-		ret[prefix] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
-	}
-	return ret
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"a": 42, // 42 is a special value in the "provider" diff function.
+			"b": map[string]interface{}{
+				"c": "qux",
+			},
+		}), []string{"a"}, allowed)
+
+		_ = snap
+	})
 }
 
 func TestReplaceOnChanges(t *testing.T) {
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
 
-					diff := olds.Diff(news)
-					if diff == nil {
-						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
-					}
-					detailedDiff := objectDiffToDetailedDiff("", diff)
-					var changedKeys []resource.PropertyKey
-					for _, k := range diff.Keys() {
-						if diff.Changed(k) {
-							changedKeys = append(changedKeys, k)
-						}
-					}
-					return plugin.DiffResult{
-						Changes:      plugin.DiffSome,
-						ChangedKeys:  changedKeys,
-						DetailedDiff: detailedDiff,
-					}, nil
-				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-					return news, resource.StatusOK, nil
-				},
-				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					return resource.ID("id123"), inputs, resource.StatusOK, nil
-				},
+	// We simulate a provider that has it's own diff function.
+	replaceOnChangesTest(t, "provider diff",
+		func(urn resource.URN, id resource.ID,
+			olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+			// To establish a observable difference between the provider and engine diff function,
+			// we treat 42 as an OpSame. We use this to check that the right diff function is being
+			// used.
+			for k, v := range news {
+				if v == resource.NewNumberProperty(42) {
+					news[k] = olds[k]
+				}
+			}
+			diff := olds.Diff(news)
+			if diff == nil {
+				return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+			}
+			detailedDiff := plugin.NewDetailedDiffFromObjectDiff(diff)
+			changedKeys := diff.ChangedKeys()
+
+			return plugin.DiffResult{
+				Changes:      plugin.DiffSome,
+				ChangedKeys:  changedKeys,
+				DetailedDiff: detailedDiff,
 			}, nil
-		}),
-	}
-
-	updateProgramWithProps := func(snap *deploy.Snapshot, props resource.PropertyMap, replaceOnChanges []string,
-		allowedOps []deploy.StepOp) *deploy.Snapshot {
-		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs:           props,
-				ReplaceOnChanges: replaceOnChanges,
-			})
-			assert.NoError(t, err)
-			return nil
 		})
-		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-		p := &TestPlan{
-			Options: UpdateOptions{Host: host},
-			Steps: []TestStep{
-				{
-					Op: Update,
-					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result) result.Result {
-						for _, event := range events {
-							if event.Type == ResourcePreEvent {
-								payload := event.Payload().(ResourcePreEventPayload)
-								assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
-							}
-						}
-						return res
-					},
-				},
-			},
-		}
-		return p.Run(t, snap)
-	}
 
-	snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"a": 1,
-		"b": map[string]interface{}{
-			"c": "foo",
-		},
-	}), []string{"a", "b.c"}, []deploy.StepOp{deploy.OpCreate})
-
-	// Ensure that a change to a replaceOnChange property results in an OpReplace
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"a": 2,
-		"b": map[string]interface{}{
-			"c": "foo",
-		},
-	}), []string{"a"}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
-
-	// Ensure that a change to a nested replaceOnChange property results in an OpReplace
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"a": 2,
-		"b": map[string]interface{}{
-			"c": "bar",
-		},
-	}), []string{"b.c"}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
-
-	// Ensure that a change to any property of a "*" replaceOnChange results in an OpReplace
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"a": 3,
-		"b": map[string]interface{}{
-			"c": "baz",
-		},
-	}), []string{"*"}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
-
-	// Ensure that a change to an non-replaceOnChange property results in an OpUpdate
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"a": 4,
-		"b": map[string]interface{}{
-			"c": "qux",
-		},
-	}), nil, []deploy.StepOp{deploy.OpUpdate})
-
-	_ = snap
+	// We simulate a provider that does not have it's own diff function. This tests the engines diff
+	// function instead.
+	replaceOnChangesTest(t, "engine diff", nil)
 }
 
 // Resource is an abstract representation of a resource graph
@@ -1460,12 +1452,12 @@ func TestPersistentDiff(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -1486,7 +1478,7 @@ func TestPersistentDiff(t *testing.T) {
 
 	// Next, enable legacy diff behavior. We should see no changes to the resource.
 	p.Options.UseLegacyDiff = true
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -1541,12 +1533,12 @@ func TestDetailedDiffReplace(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
 
@@ -1784,19 +1776,19 @@ func TestProviderPreview(t *testing.T) {
 
 	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
 	preview, sawPreview = true, false
-	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
 	preview, sawPreview = true, false
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 }
@@ -1869,19 +1861,19 @@ func TestProviderPreviewGrpc(t *testing.T) {
 
 	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
 	preview, sawPreview = true, false
-	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
 	preview, sawPreview = true, false
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
 }
@@ -1963,20 +1955,20 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 	// Run a preview. The inputs should not be propagated to the outputs by the provider during the create because the
 	// provider has unknown inputs.
 	preview, sawPreview = true, false
-	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	require.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
 	require.Nil(t, res)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should not be propagated to the outputs during the update because the provider
 	// has unknown inputs.
 	preview, sawPreview = true, false
-	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
 	require.Nil(t, res)
 	assert.False(t, sawPreview)
 }
@@ -2044,7 +2036,7 @@ type updateContext struct {
 	updateResult chan result.Result
 }
 
-func startUpdate(host plugin.Host) (*updateContext, error) {
+func startUpdate(t *testing.T, host plugin.Host) (*updateContext, error) {
 	ctx := &updateContext{
 		resmon:       make(chan *deploytest.ResourceMonitor),
 		programErr:   make(chan error),
@@ -2072,7 +2064,7 @@ func startUpdate(host plugin.Host) (*updateContext, error) {
 	}
 
 	go func() {
-		snap, res := TestOp(Update).Run(p.GetProject(), p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+		snap, res := TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 		ctx.snap <- snap
 		close(ctx.snap)
 		ctx.updateResult <- res
@@ -2104,7 +2096,7 @@ func (ctx *updateContext) Run(_ context.Context, req *pulumirpc.RunRequest) (*pu
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not connect to resource monitor")
+		return nil, fmt.Errorf("could not connect to resource monitor: %w", err)
 	}
 	defer contract.IgnoreClose(conn)
 
@@ -2132,7 +2124,7 @@ func TestLanguageClient(t *testing.T) {
 		}),
 	}
 
-	update, err := startUpdate(deploytest.NewPluginHost(nil, nil, nil, loaders...))
+	update, err := startUpdate(t, deploytest.NewPluginHost(nil, nil, nil, loaders...))
 	if err != nil {
 		t.Fatalf("failed to start update: %v", err)
 	}
@@ -2254,7 +2246,7 @@ func TestConfigSecrets(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	if !assert.Len(t, snap.Resources, 2) {
@@ -2449,6 +2441,142 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 	p := &TestPlan{
 		Options: UpdateOptions{Host: host},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
+	}
+	p.Run(t, nil)
+}
+
+// This tests a scenario involving two remote components with interdependencies that are only represented in the
+// user program.
+func TestComponentDeleteDependencies(t *testing.T) {
+
+	var (
+		firstURN  resource.URN
+		nestedURN resource.URN
+		sgURN     resource.URN
+		secondURN resource.URN
+		ruleURN   resource.URN
+
+		err error
+	)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
+					inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+					switch typ {
+					case "pkgB:m:first":
+						firstURN, _, _, err = monitor.RegisterResource("pkgB:m:first", name, false)
+						require.NoError(t, err)
+
+						nestedURN, _, _, err = monitor.RegisterResource("nested", "nested", false,
+							deploytest.ResourceOptions{
+								Parent: firstURN,
+							})
+						require.NoError(t, err)
+
+						sgURN, _, _, err = monitor.RegisterResource("pkgA:m:sg", "sg", true, deploytest.ResourceOptions{
+							Parent: nestedURN,
+						})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(nestedURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(firstURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						return plugin.ConstructResult{URN: firstURN}, nil
+					case "pkgB:m:second":
+						secondURN, _, _, err = monitor.RegisterResource("pkgB:m:second", name, false,
+							deploytest.ResourceOptions{
+								Dependencies: options.Dependencies,
+							})
+						require.NoError(t, err)
+
+						ruleURN, _, _, err = monitor.RegisterResource("pkgA:m:rule", "rule", true,
+							deploytest.ResourceOptions{
+								Parent:       secondURN,
+								Dependencies: options.PropertyDependencies["sgID"],
+							})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(secondURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						return plugin.ConstructResult{URN: secondURN}, nil
+					default:
+						return plugin.ConstructResult{}, fmt.Errorf("unexpected type %v", typ)
+					}
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err = monitor.RegisterResource("pkgB:m:first", "first", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgB:m:second", "second", false, deploytest.ResourceOptions{
+			Remote: true,
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"sgID": {sgURN},
+			},
+			Dependencies: []resource.URN{firstURN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				firstIndex, nestedIndex, sgIndex, secondIndex, ruleIndex := -1, -1, -1, -1, -1
+
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case firstURN:
+						firstIndex = i
+					case nestedURN:
+						nestedIndex = i
+					case sgURN:
+						sgIndex = i
+					case secondURN:
+						secondIndex = i
+					case ruleURN:
+						ruleIndex = i
+					}
+				}
+
+				assert.Less(t, ruleIndex, sgIndex)
+				assert.Less(t, ruleIndex, secondIndex)
+				assert.Less(t, secondIndex, firstIndex)
+				assert.Less(t, secondIndex, sgIndex)
+				assert.Less(t, sgIndex, nestedIndex)
+				assert.Less(t, nestedIndex, firstIndex)
+
+				return res
+			},
+		},
 	}
 	p.Run(t, nil)
 }

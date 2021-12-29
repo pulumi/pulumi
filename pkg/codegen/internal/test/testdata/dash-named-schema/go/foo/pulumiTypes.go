@@ -144,6 +144,8 @@ func (o TopLevelPtrOutput) Buzz() pulumi.StringPtrOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*TopLevelInput)(nil)).Elem(), TopLevelArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TopLevelPtrInput)(nil)).Elem(), TopLevelArgs{})
 	pulumi.RegisterOutputType(TopLevelOutput{})
 	pulumi.RegisterOutputType(TopLevelPtrOutput{})
 }

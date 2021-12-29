@@ -82,11 +82,14 @@ func main() {
 	var tracing string
 	var typescript bool
 	var root string
+	var tsconfigpath string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.BoolVar(&typescript, "typescript", true,
 		"Use ts-node at runtime to support typescript source natively")
 	flag.StringVar(&root, "root", "", "Project root path to use")
+	flag.StringVar(&tsconfigpath, "tsconfig", "",
+		"Path to tsconfig.json to use")
 	flag.Parse()
 
 	args := flag.Args()
@@ -118,7 +121,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript)
+			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript, tsconfigpath)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -155,16 +158,18 @@ type nodeLanguageHost struct {
 	engineAddress string
 	tracing       string
 	typescript    bool
+	tsconfigpath  string
 }
 
 func newLanguageHost(nodePath, runPath, engineAddress,
-	tracing string, typescript bool) pulumirpc.LanguageRuntimeServer {
+	tracing string, typescript bool, tsconfigpath string) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		nodeBin:       nodePath,
 		runPath:       runPath,
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		typescript:    typescript,
+		tsconfigpath:  tsconfigpath,
 	}
 }
 
@@ -503,6 +508,9 @@ func (host *nodeLanguageHost) execNodejs(
 
 		if host.typescript {
 			env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
+		}
+		if host.tsconfigpath != "" {
+			env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
 		}
 
 		if logging.V(5) {

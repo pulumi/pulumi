@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -44,7 +43,7 @@ func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not connect to resource monitor")
+		return nil, fmt.Errorf("could not connect to resource monitor: %w", err)
 	}
 	resmon := pulumirpc.NewResourceMonitorClient(conn)
 
@@ -94,6 +93,7 @@ type ResourceOptions struct {
 	PropertyDeps          map[resource.PropertyKey][]resource.URN
 	DeleteBeforeReplace   *bool
 	Version               string
+	PluginDownloadURL     string
 	IgnoreChanges         []string
 	ReplaceOnChanges      []string
 	Aliases               []resource.URN
@@ -101,6 +101,7 @@ type ResourceOptions struct {
 	CustomTimeouts        *resource.CustomTimeouts
 	SupportsPartialValues *bool
 	Remote                bool
+	Providers             map[string]string
 
 	DisableSecrets            bool
 	DisableResourceReferences bool
@@ -187,6 +188,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		SupportsPartialValues:      supportsPartialValues,
 		Remote:                     opts.Remote,
 		ReplaceOnChanges:           opts.ReplaceOnChanges,
+		Providers:                  opts.Providers,
+		PluginDownloadURL:          opts.PluginDownloadURL,
 	}
 
 	// submit request

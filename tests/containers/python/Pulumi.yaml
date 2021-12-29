@@ -1,3 +1,0 @@
-name: trivial-python
-runtime: python
-description: A trivial Pulumi program for Python

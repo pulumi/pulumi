@@ -55,6 +55,12 @@ func (diff *ObjectDiff) Same(k PropertyKey) bool {
 	return !diff.Changed(k)
 }
 
+// Returns true if there are no changes (adds, deletes, updates) in the diff. Also returns true if
+// diff is nil. Otherwise returns false.
+func (diff *ObjectDiff) AnyChanges() bool {
+	return diff != nil && len(diff.Adds)+len(diff.Deletes)+len(diff.Updates) > 0
+}
+
 // Keys returns a stable snapshot of all keys known to this object, across adds, deletes, sames, and updates.
 func (diff *ObjectDiff) Keys() []PropertyKey {
 	var ks []PropertyKey
@@ -71,6 +77,19 @@ func (diff *ObjectDiff) Keys() []PropertyKey {
 		ks = append(ks, k)
 	}
 	sort.Slice(ks, func(i, j int) bool { return ks[i] < ks[j] })
+	return ks
+}
+
+// All keys where Changed(k) = true.
+func (diff *ObjectDiff) ChangedKeys() []PropertyKey {
+	var ks []PropertyKey
+	if diff != nil {
+		for _, k := range diff.Keys() {
+			if diff.Changed(k) {
+				ks = append(ks, k)
+			}
+		}
+	}
 	return ks
 }
 
@@ -340,6 +359,34 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 			return true
 		}
 		return vid.DeepEquals(oid)
+	}
+
+	// Outputs are equal if each of their fields is deeply equal.
+	if v.IsOutput() {
+		if !other.IsOutput() {
+			return false
+		}
+		vo := v.OutputValue()
+		oo := other.OutputValue()
+
+		if vo.Known != oo.Known {
+			return false
+		}
+		if vo.Secret != oo.Secret {
+			return false
+		}
+
+		// Note that the dependencies are assumed to be sorted.
+		if len(vo.Dependencies) != len(oo.Dependencies) {
+			return false
+		}
+		for i, dep := range vo.Dependencies {
+			if dep != oo.Dependencies[i] {
+				return false
+			}
+		}
+
+		return vo.Element.DeepEquals(oo.Element)
 	}
 
 	// For all other cases, primitives are equal if their values are equal.
