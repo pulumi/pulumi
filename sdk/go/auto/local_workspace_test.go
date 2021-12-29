@@ -429,7 +429,7 @@ func rangeIn(low, hi int) int {
 
 func TestNewStackRemoteSource(t *testing.T) {
 	if runtime.GOOS == windows {
-		t.Skip("TODO update github.com/pulumi/test-repo to fix Go compilation on Windows")
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
@@ -525,7 +525,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 func TestUpsertStackRemoteSource(t *testing.T) {
 	if runtime.GOOS == windows {
-		t.Skip("TODO update github.com/pulumi/test-repo to fix Go compilation on Windows")
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
@@ -621,7 +621,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 
 func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	if runtime.GOOS == windows {
-		t.Skip("TODO update github.com/pulumi/test-repo to fix Go compilation on Windows")
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
@@ -729,7 +729,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 
 func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	if runtime.GOOS == windows {
-		t.Skip("TODO update github.com/pulumi/test-repo to fix Go compilation on Windows")
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
