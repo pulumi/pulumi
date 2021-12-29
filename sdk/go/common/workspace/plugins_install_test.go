@@ -157,7 +157,7 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 
 func TestInstallNoDeps(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: issues with TEMP dir")
+		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
 	}
 
 	name := "foo.txt"
@@ -180,7 +180,7 @@ func TestInstallNoDeps(t *testing.T) {
 
 func TestConcurrentInstalls(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: issues with TEMP dir")
+		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
 	}
 
 	name := "foo.txt"

@@ -44,7 +44,7 @@ func TestIgnoreSimple(t *testing.T) {
 
 func TestIgnoreNegate(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("Skipped on Windows: TODO handle Windows paths in test logic")
+		t.Skip("Skipped on Windows: TODO[pulumi/pulumi#8648] handle Windows paths in test logic")
 	}
 
 	doArchiveTest(t,
