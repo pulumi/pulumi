@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
+using System.Collections.Generic;
 
 namespace Pulumi
 {
@@ -48,7 +49,7 @@ namespace Pulumi
         /// resource in cases where the resource has a named derived from the name of the parent,
         /// and the parent name changed.
         /// </summary>
-        internal static Output<Alias> InheritedChildAlias(string childName, string parentName, Input<string> parentAlias, string childType)
+        internal static Output<string> InheritedChildAlias(string childName, string parentName, Input<string> parentAlias, string childType)
         {
             // If the child name has the parent name as a prefix, then we make the assumption that
             // it was constructed from the convention of using '{name}-details' as the name of the
@@ -72,7 +73,19 @@ namespace Pulumi
             var urn = Create(
                 aliasName, childType, parent: null,
                 parentUrn: parentAlias, project: null, stack: null);
-            return urn.Apply(u => new Alias { Urn = u });
+            return urn;
         }
+
+        internal static string Name(string urn) {
+            var parts = urn.Split("::");
+            return parts[3];
+        }
+
+        internal static string Type(string urn) {
+            var parts = urn.Split("::");
+            var typeParts = parts[2].Split("$");
+            return typeParts[typeParts.Length-1];
+        }
+
     }
 }
