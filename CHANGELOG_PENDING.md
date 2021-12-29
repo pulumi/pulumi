@@ -37,3 +37,9 @@
 
 - [sdk/{go,nodejs,dotnet,python}] - Compute full set of aliases when both parent and child are aliased.
   [#8627](https://github.com/pulumi/pulumi/pull/8627)
+
+- [cli/import] - Fix import of resource with non-identifier map keys
+  [#8645](https://github.com/pulumi/pulumi/pull/8645)
+
+- [backend/filestate] - Allow preview on locked stack
+  [#8642](https://github.com/pulumi/pulumi/pull/8642)
