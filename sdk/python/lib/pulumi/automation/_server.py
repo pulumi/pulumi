@@ -110,10 +110,10 @@ class LanguageServer(LanguageRuntimeServicer):
         return plugin_pb2.PluginInfo()
 
 
-"""Suppresses logs about faulted unobserved tasks. This is similar to
-Python Pulumi user programs. See rationale in
-`sdk/python/cmd/pulumi-language-python-exec`.
-
-"""
 def _suppress_unobserved_task_logging():
+    """Suppresses logs about faulted unobserved tasks. This is similar to
+    Python Pulumi user programs. See rationale in
+    `sdk/python/cmd/pulumi-language-python-exec`.
+
+    """
     logging.getLogger('asyncio').setLevel(logging.CRITICAL)
