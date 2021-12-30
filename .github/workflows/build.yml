@@ -100,12 +100,12 @@ jobs:
           echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
       - name: Filter goreleaser config by OS
         run: |
-          cat ${{ inputs.goreleaser-config }} | goreleaser-filter -no-blobs -goos ${{ matrix.os }} > .goreleaser.current.yml
+          cat ${{ inputs.goreleaser-config }} | goreleaser-filter -no-blobs -goos ${{ matrix.os }} > /tmp/.goreleaser.current.yml
       - name: Run GoReleaser to build Go Pulumi binaries
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -f .goreleaser.current.yml ${{ inputs.goreleaser-flags }}
+          args: -f /tmp/.goreleaser.current.yml ${{ inputs.goreleaser-flags }}
       - name: Upload pulumi-${{ matrix.os }}-arm64
         uses: actions/upload-artifact@v2
         with:
