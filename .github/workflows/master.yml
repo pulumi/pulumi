@@ -281,8 +281,9 @@ jobs:
       # TODO: when this file is promoted to release.yml, switch to:
       # goreleaser-config: '.goreleaser.yml'
       goreleaser-config: '.goreleaser.test.yml'
-      # TODO: do we need --skip-validate here before promoting to release.yml?
-      goreleaser-flags: '--release-notes=CHANGELOG_PENDING.md --skip-publish --skip-announce'
+      # TODO: when this file is promoted to release.yml, omit --skip-validate, switch to:
+      # goreleaser-flags: '--release-notes=CHANGELOG_PENDING.md --skip-publish --skip-announce'
+      goreleaser-flags: '--release-notes=CHANGELOG_PENDING.md --skip-publish --skip-announce --skip-validate'
 
   # dispatch-docker-containers-release-build:
   #   name: Dispatch Docker containers release build
