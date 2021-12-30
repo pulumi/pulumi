@@ -1,8 +1,6 @@
 ### Improvements
 
-### Bug Fixes
+- [sdk/nodejs] Support using native ES modules as Pulumi scripts
+  [#7764](https://github.com/pulumi/pulumi/pull/7764)
 
-- [auto/python] - Fixes an issue with exception isolation in a
-  sequence of inline programs that caused all inline programs to fail
-  after the first one failed
-  [#8643](https://github.com/pulumi/pulumi/pull/8643)
+### Bug Fixes
