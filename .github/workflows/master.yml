@@ -201,22 +201,22 @@ jobs:
           version: latest
           # TODO: remove --skip-* when promoting to release.yml
           args: -p 3 -f .goreleaser.test.yml --release-notes=CHANGELOG_PENDING.md --skip-validate --skip-publish --skip-announce
-      - name: Download pulumi-windows-checkums
+      - name: Download pulumi-windows-checksums
         uses: actions/download-artifact@v2
         with:
-          name: pulumi-windows-checkums
+          name: pulumi-windows-checksums
           path: artifacts/checksums/windows
       - name: Download pulumi-linux-checksums
         uses: actions/download-artifact@v2
         with:
-          name: pulumi-linux-checkums
+          name: pulumi-linux-checksums
           path: artifacts/checksums/linux
       - name: Download pulumi-darwin-checksums
         uses: actions/download-artifact@v2
         with:
-          name: pulumi-darwin-checkums
+          name: pulumi-darwin-checksums
           path: artifacts/checksums/darwin
-      - name: Verify checkums
+      - name: Verify checksums
         run: |
           C=artifacts/checksums/pulumi-tested-checksums.txt
           cat artifacts/checksums/*/* | sort | tee $C
