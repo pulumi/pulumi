@@ -299,8 +299,11 @@ jobs:
     name: Build
     # TODO: back to build.yml@master when #8662 lands
     # uses: pulumi/pulumi/.github/workflows/build.yml@master
-    uses: pulumi/pulumi/.github/workflows/build.yml@d874564a29da41079676f00e5c4c8580e34dcf91
+    uses: pulumi/pulumi/.github/workflows/build.yml@d0ba9f84211068212c615d06280b6eaaf774a6ea
     with:
+      # Cross-compiling from ubuntu-latest is faster but the artifact
+      # checksums will not match what publish-binaries expects.
+      default-build-platform: macos-latest
       enable-coverage: false
       # TODO: when this file is promoted to release.yml, switch to:
       # goreleaser-config: '.goreleaser.yml'
