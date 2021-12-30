@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import asyncio
-import logging
 import sys
 import traceback
 from contextlib import suppress
@@ -23,7 +22,6 @@ from ._workspace import PulumiFn
 from .. import log
 from ..runtime.proto import language_pb2, plugin_pb2, LanguageRuntimeServicer
 from ..runtime import run_in_stack, reset_options, set_all_config
-from ..runtime.rpc_manager import RPC_MANAGER
 from ..errors import RunError
 
 _py_version_less_than_3_7 = sys.version_info[0] == 3 and sys.version_info[1] < 7
@@ -44,8 +42,6 @@ class LanguageServer(LanguageRuntimeServicer):
         return language_pb2.GetRequiredPluginsResponse()
 
     def Run(self, request, context):
-        _suppress_unobserved_task_logging()
-
         # Configure the runtime so that the user program hooks up to Pulumi as appropriate.
         engine_address = request.args[0] if request.args else ""
         reset_options(
@@ -102,18 +98,8 @@ class LanguageServer(LanguageRuntimeServicer):
             loop.close()
             sys.stdout.flush()
             sys.stderr.flush()
-            RPC_MANAGER.clear()
 
         return result
 
     def GetPluginInfo(self, request, context):
         return plugin_pb2.PluginInfo()
-
-
-def _suppress_unobserved_task_logging():
-    """Suppresses logs about faulted unobserved tasks. This is similar to
-    Python Pulumi user programs. See rationale in
-    `sdk/python/cmd/pulumi-language-python-exec`.
-
-    """
-    logging.getLogger('asyncio').setLevel(logging.CRITICAL)

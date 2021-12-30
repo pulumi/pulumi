@@ -78,7 +78,7 @@ class RPCManager:
         return rpc_wrapper
 
     def clear(self) -> None:
-        """Clears any tracked state."""
+        """Clears any tracked state. For use in testing to ensure test isolation."""
         self.rpcs = []
         self.exception_traceback = None
         self.unhandled_exception = None
