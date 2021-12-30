@@ -192,7 +192,6 @@ jobs:
           role-external-id: upload-pulumi-release
           role-session-name: pulumi@githubActions
           role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
-      # TODO need artifact checkum validation here.
       - name: Set Release Version
         run: |
           echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
@@ -202,6 +201,26 @@ jobs:
           version: latest
           # TODO: remove --skip-validate when promoting to release.yml
           args: -p 3 -f .goreleaser.test.yml --release-notes=CHANGELOG_PENDING.md --skip-validate
+      - name: Download pulumi-windows-checkums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-checkums
+          path: artifacts/checksums/windows
+      - name: Download pulumi-linux-checksums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-checkums
+          path: artifacts/checksums/linux
+      - name: Download pulumi-darwin-checksums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-checkums
+          path: artifacts/checksums/darwin
+      - name: Verify checkums
+        run: |
+          C=artifacts/checksums/pulumi-tested-checksums.txt
+          cat artifacts/checksums/*/* | sort | tee $C
+          diff <(sort goreleaser/*-checksums.txt) $C
   lint:
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
