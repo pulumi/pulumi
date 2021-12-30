@@ -118,6 +118,12 @@ jobs:
             name: pulumi-${{ matrix.os }}-x64
             path: goreleaser/pulumi*-${{ matrix.os }}-x64*
             retention-days: 2
+      - name: Upload pulumi-${{ matrix.os }}-checksums
+        uses: actions/upload-artifact@v2
+        with:
+            name: pulumi-${{ matrix.os }}-checksums
+            path: goreleaser/pulumi*-checksums.txt
+            retention-days: 2
 
   build_python_sdk:
     name: Build Pulumi Python SDK wheel
