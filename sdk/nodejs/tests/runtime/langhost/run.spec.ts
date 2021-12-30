@@ -1181,6 +1181,17 @@ describe("rpc", () => {
                 };
             },
         },
+        // A program that allocates a single resource using a native ES module
+        "native_es_module": {
+            // Dynamic import won't automatically resolve to /index.js on a directory, specifying explicitly
+            program: path.join(base, "067.native_es_module/index.js"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
