@@ -83,6 +83,7 @@ func main() {
 	var typescript bool
 	var root string
 	var tsconfigpath string
+	var nodeargs string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.BoolVar(&typescript, "typescript", true,
@@ -90,6 +91,7 @@ func main() {
 	flag.StringVar(&root, "root", "", "Project root path to use")
 	flag.StringVar(&tsconfigpath, "tsconfig", "",
 		"Path to tsconfig.json to use")
+	flag.StringVar(&nodeargs, "nodeargs", "", "Arguments for the Node process")
 	flag.Parse()
 
 	args := flag.Args()
@@ -121,7 +123,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript, tsconfigpath)
+			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript, tsconfigpath, nodeargs)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -159,10 +161,11 @@ type nodeLanguageHost struct {
 	tracing       string
 	typescript    bool
 	tsconfigpath  string
+	nodeargs      string
 }
 
 func newLanguageHost(nodePath, runPath, engineAddress,
-	tracing string, typescript bool, tsconfigpath string) pulumirpc.LanguageRuntimeServer {
+	tracing string, typescript bool, tsconfigpath string, nodeargs string) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		nodeBin:       nodePath,
 		runPath:       runPath,
@@ -170,6 +173,7 @@ func newLanguageHost(nodePath, runPath, engineAddress,
 		tracing:       tracing,
 		typescript:    typescript,
 		tsconfigpath:  tsconfigpath,
+		nodeargs:      nodeargs,
 	}
 }
 
@@ -513,15 +517,21 @@ func (host *nodeLanguageHost) execNodejs(
 			env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
 		}
 
+		var nodeargs []string
+		if host.nodeargs != "" {
+			nodeargs = strings.Split(host.nodeargs, " ")
+		}
+		nodeargs = append(nodeargs, args...)
+
 		if logging.V(5) {
-			commandStr := strings.Join(args, " ")
+			commandStr := strings.Join(nodeargs, " ")
 			logging.V(5).Infoln("Language host launching process: ", host.nodeBin, commandStr)
 		}
 
 		// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 		var errResult string
 		// #nosec G204
-		cmd := exec.Command(host.nodeBin, args...)
+		cmd := exec.Command(host.nodeBin, nodeargs...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Env = env

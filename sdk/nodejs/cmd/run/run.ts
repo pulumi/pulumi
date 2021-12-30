@@ -260,6 +260,10 @@ ${defaultMessage}`);
 
             // We use dynamic import instead of require for projects using native ES modules instead of commonjs
             if (packageObject["type"] === "module") {
+                // Use the same behavior for loading the main entrypoint as `node <program>`.
+                // See https://github.com/nodejs/node/blob/master/lib/internal/modules/run_main.js#L74.
+                const mainPath: string = require("module").Module._findPath(path.resolve(program), null, true) || program;
+                const main = path.isAbsolute(mainPath) ? url.pathToFileURL(mainPath).href : mainPath;
                 // Workaround for typescript transpiling dynamic import into `Promise.resolve().then(() => require`
                 // Follow this issue for progress on when we can remove this:
                 // https://github.com/microsoft/TypeScript/issues/43329
@@ -271,7 +275,7 @@ ${defaultMessage}`);
                 // Import the module and capture any module outputs it exported. Finally, await the value we get
                 // back.  That way, if it is async and throws an exception, we properly capture it here
                 // and handle it.
-                return await dynamicImport(url.pathToFileURL(program).toString());
+                return await dynamicImport(main);
             }
 
             // Execute the module and capture any module outputs it exported. If the exported value
