@@ -2,6 +2,8 @@ module github.com/pulumi/pulumi/sdk/v3
 
 go 1.17
 
+replace golang.org/x/text => golang.org/x/text v0.3.6
+
 require (
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/blang/semver v3.5.1+incompatible
