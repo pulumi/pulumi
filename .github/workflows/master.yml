@@ -200,7 +200,8 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -p 3 -f .goreleaser.test.yml --release-notes=CHANGELOG_PENDING.md
+          # TODO: remove --skip-validate when promoting to release.yml
+          args: -p 3 -f .goreleaser.test.yml --release-notes=CHANGELOG_PENDING.md --skip-validate
   lint:
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
