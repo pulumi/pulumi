@@ -10,14 +10,13 @@ go mod tidy
 go mod download
 popd
 
-
-COMMIT_TIME=$(git show -s --format=%ci HEAD)
+COMMIT_TIME=$(git log -n1 --pretty='format:%cd' --date=format:'%Y%m%d%H%M')
 
 install_file () {
     src="$1"
     dest=$(basename "$src")
     cp "$src" "$dest"
-    touch -d "$COMMIT_TIME" "$dest"
+    touch -t "$COMMIT_TIME" "$dest"
 }
 
 install_file sdk/nodejs/dist/pulumi-resource-pulumi-nodejs
