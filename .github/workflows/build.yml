@@ -38,6 +38,11 @@ on:
         default: false
         required: false
         type: boolean
+      default-build-platform:
+        description: 'Default platform to cross-compile on'
+        default: 'ubuntu-latest'
+        required: false
+        type: string
     secrets: {}
 
 env:
@@ -50,9 +55,9 @@ jobs:
         include:
           - platform: macos-latest
             os: darwin
-          - platform: ubuntu-latest
+          - platform: ${{ inputs.default-build-platform }}
             os: linux
-          - platform: ubuntu-latest
+          - platform: ${{ inputs.default-build-platform }}
             os: windows
       fail-fast: false
 
