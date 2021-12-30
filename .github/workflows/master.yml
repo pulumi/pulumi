@@ -273,7 +273,9 @@ jobs:
 
   build:
     name: Build
-    uses: pulumi/pulumi/.github/workflows/build.yml@master
+    # TODO: back to build.yml@master when #8662 lands
+    # uses: pulumi/pulumi/.github/workflows/build.yml@master
+    uses: pulumi/pulumi/.github/workflows/build.yml@9995b4dfcb789bd0a032020d9f41ca011a6af3e1
     with:
       enable-coverage: false
       # TODO: when this file is promoted to release.yml, switch to:
