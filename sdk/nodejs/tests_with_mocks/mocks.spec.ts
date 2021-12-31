@@ -151,4 +151,20 @@ describe("mocks", function() {
             });
         });
     });
+
+    describe("stackTransformations", function() {
+        it("gets invoked", done => {
+            pulumi.runtime.registerStackTransformation((args) => {
+                if (args.type === "pkg:index:MyCustom") {
+                    if (args.props["x"] === 42) {
+                        done();
+                    } else {
+                        done(new Error("received stack transform event for pkg:index:Custom, but x !== 42"));
+                    }
+                }
+                return undefined;
+            });
+            new MyCustom("mycustom", { x: 42 });
+        });
+    });
 });

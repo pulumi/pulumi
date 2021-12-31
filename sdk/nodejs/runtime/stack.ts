@@ -33,6 +33,16 @@ export function getStackResource(): Stack | undefined {
 }
 
 /**
+ * ensureMockStackResource creates and populates a Stack component. This is only used during mock
+ * testing mode, since in normal runs, the Pulumi runtime is responsible for setting it up.
+ */
+export function ensureMockStackResource() {
+    if (!stackResource) {
+        stackResource = new Stack(async () => ({}));
+    }
+}
+
+/**
  * runInPulumiStack creates a new Pulumi stack resource and executes the callback inside of it.  Any outputs
  * returned by the callback will be stored as output properties on this resulting Stack object.
  */

@@ -14,6 +14,7 @@
 
 import { deserializeProperties, serializeProperties } from "./rpc";
 import { getProject, getStack, setMockOptions } from "./settings";
+import { ensureMockStackResource } from "./stack";
 
 const provproto = require("../proto/provider_pb.js");
 const resproto = require("../proto/resource_pb.js");
@@ -228,4 +229,5 @@ export class MockMonitor {
  */
 export function setMocks(mocks: Mocks, project?: string, stack?: string, preview?: boolean) {
     setMockOptions(new MockMonitor(mocks), project, stack, preview);
+    ensureMockStackResource();
 }
