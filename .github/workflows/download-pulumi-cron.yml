@@ -1,14 +1,21 @@
 on:
-  workflow_dispatch: {}
+  push:
+    tags:
+      - v*.*.*-**
+    paths-ignore:
+      - "CHANGELOG.md"
+      - "CHANGELOG_PENDING.md"
+      - "README.md"
 env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
-  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PULUMI_TEST_OWNER: "moolumi"
   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
   NUGET_PUBLISH_KEY: ${{ secrets.NUGET_PUBLISH_KEY }}
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
   TRAVIS_PUBLISH_PACKAGES: true
+  IS_PRERELEASE: true
 
 jobs:
   publish-binaries:
@@ -42,14 +49,13 @@ jobs:
           role-external-id: upload-pulumi-release
           role-session-name: pulumi@githubActions
           role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
-      - name: Set Release Version
-        run: |
-          echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
+      - name: Set PreRelease Version
+        run: echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -p 3 -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md --skip-validate
+          args: -p 3 -f .goreleaser.prerelease.yml --rm-dist
       - name: Download pulumi-windows-checksums
         uses: actions/download-artifact@v2
         with:
@@ -151,8 +157,8 @@ jobs:
       # checksums will not match what publish-binaries expects.
       default-build-platform: macos-latest
       enable-coverage: false
-      goreleaser-config: '.goreleaser.yml'
-      goreleaser-flags: '-p 3 --release-notes=CHANGELOG_PENDING.md --skip-publish --skip-announce --skip-validate'
+      goreleaser-config: '.goreleaser.prerelease.yml'
+      goreleaser-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
   test:
     name: Test
     needs: build
