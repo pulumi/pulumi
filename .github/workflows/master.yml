@@ -83,6 +83,13 @@ jobs:
       matrix:
         go-version: [1.17.x]
     steps:
+      # This step rebuilds binaries to publish and validates that
+      # their checksums match the checksums of the tested binaries;
+      # since the tested binaries were build with coverage support we
+      # need to match it here for checksums to match.
+      - name: Enable code coverage
+        run: |
+          echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v2
         with:
