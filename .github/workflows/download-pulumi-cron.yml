@@ -49,7 +49,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -p 3 -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md
+          args: -p 3 -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md --skip-validate
       - name: Download pulumi-windows-checksums
         uses: actions/download-artifact@v2
         with:
