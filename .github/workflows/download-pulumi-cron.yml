@@ -1,11 +1,5 @@
 on:
-  push:
-    tags:
-      - v*.*.*
-    paths-ignore:
-      - "CHANGELOG.md"
-      - "CHANGELOG_PENDING.md"
-      - "README.md"
+  workflow_dispatch: {}
 env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
