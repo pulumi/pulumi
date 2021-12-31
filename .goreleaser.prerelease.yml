@@ -5,14 +5,6 @@ project_name: pulumi
 before:
   hooks:
     - ./scripts/prep-for-goreleaser.sh
-blobs:
-- bucket: get.pulumi.com
-  folder: releases/sdk/
-  ids:
-    - pulumi-unix
-    - pulumi-windows
-  provider: s3
-  region: us-west-2
 release:
   disable: true
 changelog:
