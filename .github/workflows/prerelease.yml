@@ -151,7 +151,7 @@ jobs:
           cd sdk/dotnet && make lint
   build:
     name: Build
-    uses: pulumi/pulumi/.github/workflows/build.yml@master
+    uses: pulumi/pulumi/.github/workflows/build.yml@5ae9ae33692e028aecf8d74c68d773c7f250eb34
     with:
       # Cross-compiling from ubuntu-latest is faster but the artifact
       # checksums will not match what publish-binaries expects.
@@ -162,7 +162,7 @@ jobs:
   test:
     name: Test
     needs: build
-    uses: pulumi/pulumi/.github/workflows/test.yml@master
+    uses: pulumi/pulumi/.github/workflows/test.yml@5ae9ae33692e028aecf8d74c68d773c7f250eb34
     with:
       enable-coverage: false
     secrets:
