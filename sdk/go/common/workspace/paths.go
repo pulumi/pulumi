@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	user "github.com/tweekmonster/luser"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -141,7 +140,7 @@ func DetectProjectAndPath() (*Project, string, error) {
 	if err != nil {
 		return nil, "", err
 	} else if path == "" {
-		return nil, "", errors.Errorf("no Pulumi project found in the current working directory. " +
+		return nil, "", fmt.Errorf("no Pulumi project found in the current working directory. " +
 			"If you're using the `--stack` flag, make sure to pass the fully qualified name (org/project/stack)")
 	}
 
@@ -223,7 +222,7 @@ func GetPulumiHomeDir() (string, error) {
 	// Otherwise, use the current user's home dir + .pulumi
 	user, err := user.Current()
 	if err != nil {
-		return "", errors.Wrapf(err, "getting current user")
+		return "", fmt.Errorf("getting current user: %w", err)
 	}
 
 	return filepath.Join(user.HomeDir, BookkeepingDir), nil

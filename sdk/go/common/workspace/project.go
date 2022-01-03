@@ -16,11 +16,12 @@ package workspace
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -287,7 +288,7 @@ func marshallerForPath(path string) (encoding.Marshaler, error) {
 	ext := filepath.Ext(path)
 	m, has := encoding.Marshalers[ext]
 	if !has {
-		return nil, errors.Errorf("no marshaler found for file format '%v'", ext)
+		return nil, fmt.Errorf("no marshaler found for file format '%v'", ext)
 	}
 
 	return m, nil

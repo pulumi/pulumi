@@ -1,0 +1,86 @@
+<!doctype html>
+<!--
+Copyright 2018 The Go Authors. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+-->
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>renderer</title>
+    <link rel="stylesheet" href="node_modules/xterm/css/xterm.css" />
+    <script src="node_modules/xterm/lib/xterm.js"></script>
+    <script src="wasm_exec.js"></script>
+</head>
+
+<body>
+    <div id="terminal"></div>
+
+	<script>
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        var term = new Terminal({
+            convertEol: true,
+            disableStdin: true,
+        });
+        term.open(document.getElementById('terminal'));
+
+        globalThis.terminal = {
+            enableAnsiTerminal() {
+            },
+            getSize() {
+                return {
+                    width: 80,
+                    height: 24,
+                };
+            },
+            write(buf) {
+                term.write(buf);
+            },
+        };
+
+		if (!WebAssembly.instantiateStreaming) { // polyfill
+			WebAssembly.instantiateStreaming = async (resp, importObject) => {
+				const source = await (await resp).arrayBuffer();
+				return await WebAssembly.instantiate(source, importObject);
+			};
+		}
+
+        const modName = "pulumi-display";
+		const go = new Go();
+		WebAssembly.instantiateStreaming(fetch(modName), go.importObject).then(async (result) => {
+			mod = result.module;
+			inst = result.instance;
+
+            go.run(result.instance);
+
+            const events = [
+                {"sequence":0,"timestamp":1629232073,"preludeEvent":{"config":{"aws:region":"us-west-2"}}},
+                {"sequence":1,"timestamp":1629232073,"resourcePreEvent":{"metadata":{"op":"delete","urn":"urn:pulumi:dev::stub::aws:s3/bucket:Bucket::my-bucket","type":"aws:s3/bucket:Bucket","old":{"type":"aws:s3/bucket:Bucket","urn":"urn:pulumi:dev::stub::aws:s3/bucket:Bucket::my-bucket","custom":true,"id":"my-bucket-79cb5ee","parent":"urn:pulumi:dev::stub::pulumi:pulumi:Stack::stub-dev","inputs":{"__defaults":["acl","bucket","forceDestroy"],"acl":"private","bucket":"my-bucket-79cb5ee","forceDestroy":false},"outputs":{"accelerationStatus":"","acl":"private","arn":"arn:aws:s3:::my-bucket-79cb5ee","bucket":"my-bucket-79cb5ee","bucketDomainName":"my-bucket-79cb5ee.s3.amazonaws.com","bucketRegionalDomainName":"my-bucket-79cb5ee.s3.amazonaws.com","corsRules":[],"forceDestroy":false,"grants":[],"hostedZoneId":"Z3AQBSTGFYJSTF","id":"my-bucket-79cb5ee","lifecycleRules":[],"loggings":[],"objectLockConfiguration":null,"region":"us-east-1","replicationConfiguration":null,"requestPayer":"BucketOwner","serverSideEncryptionConfiguration":null,"tags":{},"tagsAll":{},"versioning":{"enabled":false,"mfaDelete":false},"website":null},"provider":""},"new":null,"logical":true,"provider":"urn:pulumi:dev::stub::pulumi:providers:aws::default_4_15_0::40380f18-d322-4e57-a5e4-e1e04704ea7a"}}},
+                {"sequence":2,"timestamp":1629232073,"diagnosticEvent":{"prefix":"\u003c{%reset%}\u003edebug: \u003c{%reset%}\u003e","message":"\u003c{%reset%}\u003eAWS Auth provider used: \"StaticProvider\"\u003c{%reset%}\u003e\n","color":"raw","severity":"debug"}},
+                {"sequence":3,"timestamp":1629232073,"diagnosticEvent":{"prefix":"\u003c{%reset%}\u003edebug: \u003c{%reset%}\u003e","message":"\u003c{%reset%}\u003eAWS Auth provider used: \"EnvProvider\"\u003c{%reset%}\u003e\n","color":"raw","severity":"debug"}},
+                {"sequence":4,"timestamp":1629232073,"diagnosticEvent":{"prefix":"\u003c{%reset%}\u003edebug: \u003c{%reset%}\u003e","message":"\u003c{%reset%}\u003eTrying to get account information via iam:GetUser\u003c{%reset%}\u003e\n","color":"raw","severity":"debug"}},
+                {"sequence":5,"timestamp":1629232074,"diagnosticEvent":{"prefix":"\u003c{%reset%}\u003edebug: \u003c{%reset%}\u003e","message":"\u003c{%reset%}\u003eTrying to get account information via sts:GetCallerIdentity\u003c{%reset%}\u003e\n","color":"raw","severity":"debug"}},
+                {"sequence":6,"timestamp":1629232074,"diagnosticEvent":{"prefix":"\u003c{%reset%}\u003edebug: \u003c{%reset%}\u003e","message":"\u003c{%reset%}\u003eS3 Delete Bucket: my-bucket-79cb5ee\u003c{%reset%}\u003e\n","color":"raw","severity":"debug"}},
+                {"sequence":7,"timestamp":1629232075,"resOutputsEvent":{"metadata":{"op":"delete","urn":"urn:pulumi:dev::stub::aws:s3/bucket:Bucket::my-bucket","type":"aws:s3/bucket:Bucket","old":{"type":"aws:s3/bucket:Bucket","urn":"urn:pulumi:dev::stub::aws:s3/bucket:Bucket::my-bucket","custom":true,"id":"my-bucket-79cb5ee","parent":"urn:pulumi:dev::stub::pulumi:pulumi:Stack::stub-dev","inputs":{"__defaults":["acl","bucket","forceDestroy"],"acl":"private","bucket":"my-bucket-79cb5ee","forceDestroy":false},"outputs":{"accelerationStatus":"","acl":"private","arn":"arn:aws:s3:::my-bucket-79cb5ee","bucket":"my-bucket-79cb5ee","bucketDomainName":"my-bucket-79cb5ee.s3.amazonaws.com","bucketRegionalDomainName":"my-bucket-79cb5ee.s3.amazonaws.com","corsRules":[],"forceDestroy":false,"grants":[],"hostedZoneId":"Z3AQBSTGFYJSTF","id":"my-bucket-79cb5ee","lifecycleRules":[],"loggings":[],"objectLockConfiguration":null,"region":"us-east-1","replicationConfiguration":null,"requestPayer":"BucketOwner","serverSideEncryptionConfiguration":null,"tags":{},"tagsAll":{},"versioning":{"enabled":false,"mfaDelete":false},"website":null},"provider":""},"new":null,"logical":true,"provider":"urn:pulumi:dev::stub::pulumi:providers:aws::default_4_15_0::40380f18-d322-4e57-a5e4-e1e04704ea7a"}}},
+                {"sequence":8,"timestamp":1629232075,"resourcePreEvent":{"metadata":{"op":"delete","urn":"urn:pulumi:dev::stub::pulumi:pulumi:Stack::stub-dev","type":"pulumi:pulumi:Stack","old":{"type":"pulumi:pulumi:Stack","urn":"urn:pulumi:dev::stub::pulumi:pulumi:Stack::stub-dev","id":"","parent":"","inputs":{},"outputs":{},"provider":""},"new":null,"logical":true,"provider":""}}},
+                {"sequence":9,"timestamp":1629232075,"summaryEvent":{"maybeCorrupt":false,"durationSeconds":2,"resourceChanges":{"delete":2},"PolicyPacks":null}},
+                {"sequence":10,"timestamp":1629232075,"cancelEvent":{}},
+            ];
+
+            const r = new Renderer("update", "update", "dev", "aws-simple", false);
+            for (const e of events) {
+                await r.render(JSON.stringify(e));
+                await sleep(1000);
+            }
+            await r.close();
+		}).catch((err) => {
+			console.error(err);
+		});
+	</script>
+</body>
+
+</html>

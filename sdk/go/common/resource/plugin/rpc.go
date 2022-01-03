@@ -20,7 +20,6 @@ import (
 	"sort"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -360,7 +359,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			contract.Assert(isasset)
 			if opts.ComputeAssetHashes {
 				if err = asset.EnsureHash(); err != nil {
-					return nil, errors.Wrapf(err, "failed to compute asset hash for %q", key)
+					return nil, fmt.Errorf("failed to compute asset hash for %q: %w", key, err)
 				}
 			}
 			m := resource.NewAssetProperty(asset)
@@ -378,7 +377,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			contract.Assert(isarchive)
 			if opts.ComputeAssetHashes {
 				if err = archive.EnsureHash(); err != nil {
-					return nil, errors.Wrapf(err, "failed to compute archive hash for %q", key)
+					return nil, fmt.Errorf("failed to compute archive hash for %q: %w", key, err)
 				}
 			}
 			m := resource.NewArchiveProperty(archive)
@@ -573,7 +572,7 @@ func MarshalAsset(v *resource.Asset, opts MarshalOptions) (*structpb.Value, erro
 		// Ensure a hash is present if needed.
 		if v.Hash == "" && opts.ComputeAssetHashes {
 			if err := v.EnsureHash(); err != nil {
-				return nil, errors.Wrapf(err, "failed to compute asset hash")
+				return nil, fmt.Errorf("failed to compute asset hash: %w", err)
 			}
 		}
 	}
@@ -595,7 +594,7 @@ func MarshalArchive(v *resource.Archive, opts MarshalOptions) (*structpb.Value, 
 		// Ensure a hash is present if needed.
 		if v.Hash == "" && opts.ComputeAssetHashes {
 			if err := v.EnsureHash(); err != nil {
-				return nil, errors.Wrapf(err, "failed to compute archive hash")
+				return nil, fmt.Errorf("failed to compute archive hash: %w", err)
 			}
 		}
 	}

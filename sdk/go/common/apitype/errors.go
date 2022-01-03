@@ -14,7 +14,9 @@
 
 package apitype
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // ErrorType is an enum for various types of common errors that occur.
 type ErrorType string

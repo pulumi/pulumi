@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -34,7 +35,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
@@ -193,7 +193,7 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 	// Next, get the size from the directory (or, if there is none, just the file).
 	size, err := getPluginSize(path)
 	if err != nil {
-		return errors.Wrapf(err, "getting plugin dir %s size", path)
+		return fmt.Errorf("getting plugin dir %s size: %w", path, err)
 	}
 	info.Size = size
 
@@ -224,19 +224,19 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	case "darwin", "linux", "windows":
 		os = runtime.GOOS
 	default:
-		return nil, -1, errors.Errorf("unsupported plugin OS: %s", runtime.GOOS)
+		return nil, -1, fmt.Errorf("unsupported plugin OS: %s", runtime.GOOS)
 	}
 	var arch string
 	switch runtime.GOARCH {
 	case "amd64", "arm64":
 		arch = runtime.GOARCH
 	default:
-		return nil, -1, errors.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
+		return nil, -1, fmt.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
 	}
 
 	// The plugin version is necessary for the endpoint. If it's not present, return an error.
 	if info.Version == nil {
-		return nil, -1, errors.Errorf("unknown version for plugin %s", info.Name)
+		return nil, -1, fmt.Errorf("unknown version for plugin %s", info.Name)
 	}
 
 	// If the plugin has a server, associated with it, download from there.  Otherwise use the "default" location, which
@@ -275,7 +275,7 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, -1, errors.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, endpoint)
+		return nil, -1, fmt.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, endpoint)
 	}
 
 	return resp.Body, resp.ContentLength, nil
@@ -290,7 +290,7 @@ func (info PluginInfo) installLock() (unlock func(), err error) {
 	lockFilePath := fmt.Sprintf("%s.lock", finalDir)
 
 	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0700); err != nil {
-		return nil, errors.Wrap(err, "creating plugin root")
+		return nil, fmt.Errorf("creating plugin root: %w", err)
 	}
 
 	mutex := fsutil.NewFileMutex(lockFilePath)
@@ -387,7 +387,7 @@ func (info PluginInfo) Install(tgz io.ReadCloser) error {
 	// Install dependencies, if needed.
 	proj, err := LoadPluginProject(filepath.Join(finalDir, "PulumiPlugin.yaml"))
 	if err != nil && !os.IsNotExist(err) {
-		return errors.Wrap(err, "loading PulumiPlugin.yaml")
+		return fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 	}
 	if proj != nil {
 		runtime := strings.ToLower(proj.Runtime.Name())
@@ -400,11 +400,11 @@ func (info PluginInfo) Install(tgz io.ReadCloser) error {
 			var b bytes.Buffer
 			if _, err := npm.Install(finalDir, true /* production */, &b, &b); err != nil {
 				os.Stderr.Write(b.Bytes())
-				return errors.Wrap(err, "installing plugin dependencies")
+				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		case "python":
 			if err := python.InstallDependencies(finalDir, "venv", false /*showOutput*/); err != nil {
-				return errors.Wrap(err, "installing plugin dependencies")
+				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		}
 	}
@@ -428,7 +428,7 @@ func cleanupTempDirs(finalDir string) error {
 		if info.IsDir() && installingPluginRegexp.MatchString(info.Name()) {
 			path := filepath.Join(dir, info.Name())
 			if err := os.RemoveAll(path); err != nil {
-				return errors.Wrapf(err, "cleaning up temp dir %s", path)
+				return fmt.Errorf("cleaning up temp dir %s: %w", path, err)
 			}
 		}
 	}
@@ -660,7 +660,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	// Otherwise, check the plugin cache.
 	plugins, err := GetPlugins()
 	if err != nil {
-		return "", "", errors.Wrapf(err, "loading plugin list")
+		return "", "", fmt.Errorf("loading plugin list: %w", err)
 	}
 
 	var match *PluginInfo

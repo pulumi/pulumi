@@ -15,6 +15,7 @@
 package workspace
 
 import (
+
 	// nolint: gosec
 	"crypto/sha1"
 	"encoding/hex"
@@ -25,8 +26,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -90,7 +89,7 @@ func NewFrom(dir string) (W, error) {
 	if err != nil {
 		return nil, err
 	} else if path == "" {
-		return nil, errors.Errorf("no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
+		return nil, fmt.Errorf("no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
 			"created a project yet, use `pulumi new` to do so", dir)
 	}
 
@@ -147,15 +146,15 @@ func (pw *projectWorkspace) Save() error {
 func atomicWriteFile(path string, b []byte) error {
 	tmp, err := ioutil.TempFile(filepath.Dir(path), filepath.Base(path))
 	if err != nil {
-		return errors.Wrapf(err, "failed to create temporary file %s", path)
+		return fmt.Errorf("failed to create temporary file %s: %w", path, err)
 	}
 	defer func() { contract.Ignore(os.Remove(tmp.Name())) }()
 
 	if err = tmp.Chmod(0600); err != nil {
-		return errors.Wrap(err, "failed to set temporary file permission")
+		return fmt.Errorf("failed to set temporary file permission: %w", err)
 	}
 	if _, err = tmp.Write(b); err != nil {
-		return errors.Wrap(err, "failed to write to temporary file")
+		return fmt.Errorf("failed to write to temporary file: %w", err)
 	}
 	if err = tmp.Sync(); err != nil {
 		return err
@@ -182,7 +181,7 @@ func (pw *projectWorkspace) readSettings() error {
 
 	err = json.Unmarshal(b, &settings)
 	if err != nil {
-		return errors.Wrapf(err, "could not parse file %s", settingsPath)
+		return fmt.Errorf("could not parse file %s: %w", settingsPath, err)
 	}
 
 	pw.settings = &settings

@@ -14,7 +14,9 @@
 
 package apitype
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 // DefaultPolicyGroup is the name of the default Policy Group for organizations.
 const DefaultPolicyGroup = "default-policy-group"

@@ -20,10 +20,10 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"golang.org/x/crypto/pbkdf2"
 )
@@ -164,12 +164,12 @@ func (s symmetricCrypter) DecryptValue(value string) (string, error) {
 
 	nonce, err := base64.StdEncoding.DecodeString(vals[1])
 	if err != nil {
-		return "", errors.Wrap(err, "bad value")
+		return "", fmt.Errorf("bad value: %w", err)
 	}
 
 	enc, err := base64.StdEncoding.DecodeString(vals[2])
 	if err != nil {
-		return "", errors.Wrap(err, "bad value")
+		return "", fmt.Errorf("bad value: %w", err)
 	}
 
 	return decryptAES256GCM(enc, s.key, nonce)

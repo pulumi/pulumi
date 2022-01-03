@@ -17,8 +17,7 @@ package resource
 import (
 	cryptorand "crypto/rand"
 	"encoding/hex"
-
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -67,8 +66,7 @@ func NewUniqueHex(prefix string, randlen, maxlen int) (string, error) {
 		randlen = 8
 	}
 	if maxlen > 0 && len(prefix)+randlen > maxlen {
-		return "", errors.Errorf(
-			"name '%s' plus %d random chars is longer than maximum length %d", prefix, randlen, maxlen)
+		return "", fmt.Errorf("name '%s' plus %d random chars is longer than maximum length %d", prefix, randlen, maxlen)
 	}
 
 	bs := make([]byte, randlen+1/2)

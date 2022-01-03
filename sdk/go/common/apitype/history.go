@@ -14,7 +14,9 @@
 
 package apitype
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 // UpdateKind is an enum for the type of update performed.
 //

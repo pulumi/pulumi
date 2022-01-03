@@ -35,16 +35,16 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string, timesPerSecond time.
 		}
 	}
 
-	if Interactive() {
-		return &ttySpinner{
-			prefix: prefix,
-			frames: ttyFrames,
-		}, time.NewTicker(time.Second / timesPerSecond)
-	}
-
-	return &dotSpinner{
+	//if Interactive() {
+	return &ttySpinner{
 		prefix: prefix,
-	}, time.NewTicker(time.Second * 20)
+		frames: ttyFrames,
+	}, time.NewTicker(time.Second / timesPerSecond)
+	//	}
+	//
+	//	return &dotSpinner{
+	//		prefix: prefix,
+	//	}, time.NewTicker(time.Second * 20)
 }
 
 // Spinner represents a very simple progress reporter.

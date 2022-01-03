@@ -14,7 +14,9 @@
 
 package deepcopy
 
-import "reflect"
+import (
+	"reflect"
+)
 
 // Copy returns a deep copy of the provided value.
 //

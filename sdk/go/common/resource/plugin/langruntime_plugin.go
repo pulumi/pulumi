@@ -21,7 +21,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
+
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -139,12 +139,12 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 		if v := info.GetVersion(); v != "" {
 			sv, err := semver.ParseTolerant(v)
 			if err != nil {
-				return nil, errors.Wrapf(err, "illegal semver returned by language host: %s@%s", info.GetName(), v)
+				return nil, fmt.Errorf("illegal semver returned by language host: %s@%s: %w", info.GetName(), v, err)
 			}
 			version = &sv
 		}
 		if !workspace.IsPluginKind(info.GetKind()) {
-			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
+			return nil, fmt.Errorf("unrecognized plugin kind: %s", info.GetKind())
 		}
 		results = append(results, workspace.PluginInfo{
 			Name:              info.GetName(),

@@ -17,6 +17,8 @@ package plugin
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -29,7 +31,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -129,7 +131,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 	// Try to execute the binary.
 	plug, err := execPlugin(bin, args, pwd, env)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
+		return nil, fmt.Errorf("failed to load plugin %s: %w", bin, err)
 	}
 	contract.Assert(plug != nil)
 
@@ -197,9 +199,9 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 
 			// Fall back to a generic, opaque error.
 			if port == "" {
-				return nil, errors.Wrapf(readerr, "could not read plugin [%v] stdout", bin)
+				return nil, fmt.Errorf("could not read plugin [%v] stdout: %w", bin, readerr)
 			}
-			return nil, errors.Wrapf(readerr, "failure reading plugin [%v] stdout (read '%v')", bin, port)
+			return nil, fmt.Errorf("failure reading plugin [%v] stdout (read '%v'): %w", bin, port, readerr)
 		}
 		if n > 0 && b[0] == '\n' {
 			break
@@ -211,8 +213,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 	if _, err = strconv.Atoi(port); err != nil {
 		killerr := plug.Proc.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
-		return nil, errors.Wrapf(
-			err, "%v plugin [%v] wrote a non-numeric port to stdout ('%v')", prefix, bin, port)
+		return nil, fmt.Errorf("%v plugin [%v] wrote a non-numeric port to stdout ('%v'): %w", prefix, bin, port, err)
 	}
 
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
@@ -228,7 +229,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
+		return nil, fmt.Errorf("could not dial plugin [%v] over RPC: %w", bin, err)
 	}
 
 	// Now wait for the gRPC connection to the plugin to become ready.
@@ -262,14 +263,14 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 					}
 
 					// Unexpected error; get outta dodge.
-					return nil, errors.Wrapf(err, "%v plugin [%v] did not come alive", prefix, bin)
+					return nil, fmt.Errorf("%v plugin [%v] did not come alive: %w", prefix, bin, err)
 				}
 			}
 			break
 		}
 		// Not ready yet; ask the gRPC client APIs to block until the state transitions again so we can retry.
 		if !conn.WaitForStateChange(timeout, s) {
-			return nil, errors.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
+			return nil, fmt.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
 		}
 	}
 

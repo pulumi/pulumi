@@ -27,8 +27,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"golang.org/x/crypto/ssh/terminal"
-
 	"github.com/pulumi/pulumi/pkg/v3/engine/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -284,7 +282,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 	// let the user know what is still being worked on.
 	var spinner termutil.Spinner
 	var ticker *time.Ticker
-	if stdout == os.Stdout && stderr == os.Stderr && opts.IsInteractive {
+	if opts.IsInteractive {
 		spinner, ticker = termutil.NewSpinnerAndTicker(
 			fmt.Sprintf("%s%s...", termutil.EmojiOr("✨ ", "@ "), op),
 			nil, 1 /*timesPerSecond*/)
@@ -316,8 +314,8 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 
 	// Assume we are not displaying in a terminal by default.
 	display.isTerminal = false
-	if stdout == os.Stdout {
-		terminalWidth, terminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
+	if stdout == os.Stdout || opts.IsInteractive {
+		terminalWidth, terminalHeight, err := getTerminalSize()
 		if err == nil {
 			// If the terminal has a size, use it.
 			display.isTerminal = opts.IsInteractive
@@ -332,8 +330,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 			}
 
 			// Fetch the canonical stdout stream, configured appropriately.
-			stdout, err = EnableANSITerminal()
-			contract.IgnoreError(err)
+			if stdout == os.Stdout {
+				stdout, err = EnableANSITerminal()
+				contract.IgnoreError(err)
+			}
 		}
 	}
 
@@ -443,7 +443,7 @@ func (display *ProgressDisplay) refreshColumns(
 func (display *ProgressDisplay) updateTerminalDimensions() {
 	// don't do any refreshing if we're not in a terminal
 	if display.isTerminal {
-		currentTerminalWidth, currentTerminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
+		currentTerminalWidth, currentTerminalHeight, err := getTerminalSize()
 		contract.IgnoreError(err)
 
 		if currentTerminalWidth != display.terminalWidth ||

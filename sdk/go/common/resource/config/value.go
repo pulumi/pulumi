@@ -16,10 +16,10 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -178,7 +178,7 @@ func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(inter
 	// Otherwise, try to unmarshal as an object.
 	var obj interface{}
 	if err = unmarshal(&obj); err != nil {
-		return errors.Wrapf(err, "malformed config value")
+		return fmt.Errorf("malformed config value: %w", err)
 	}
 
 	// Fix-up the object (e.g. convert `map[interface{}]interface{}` to `map[string]interface{}`).
@@ -193,7 +193,7 @@ func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(inter
 
 	json, err := json.Marshal(obj)
 	if err != nil {
-		return errors.Wrapf(err, "marshalling obj")
+		return fmt.Errorf("marshalling obj: %w", err)
 	}
 	c.value = string(json)
 	c.secure = hasSecureValue(obj)

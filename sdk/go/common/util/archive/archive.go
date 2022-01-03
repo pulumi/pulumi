@@ -20,12 +20,12 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -71,7 +71,7 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		// Create any directories as needed.
 		if _, err := os.Stat(path); err != nil {
 			if err = os.MkdirAll(path, 0700); err != nil {
-				return errors.Wrapf(err, "extracting dir %s", path)
+				return fmt.Errorf("extracting dir %s: %w", path, err)
 			}
 		}
 	case tar.TypeReg:
@@ -81,24 +81,24 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		dir := filepath.Dir(path)
 		if _, err := os.Stat(dir); err != nil {
 			if err = os.MkdirAll(dir, 0700); err != nil {
-				return errors.Wrapf(err, "extracting dir %s", dir)
+				return fmt.Errorf("extracting dir %s: %w", dir, err)
 			}
 		}
 
 		// Expand files into the target directory.
 		dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 		if err != nil {
-			return errors.Wrapf(err, "opening file %s for extraction", path)
+			return fmt.Errorf("opening file %s for extraction: %w", path, err)
 		}
 		defer contract.IgnoreClose(dst)
 
 		// We're not concerned with potential tarbombs, so disable gosec.
 		// nolint:gosec
 		if _, err = io.Copy(dst, r); err != nil {
-			return errors.Wrapf(err, "untarring file %s", path)
+			return fmt.Errorf("untarring file %s: %w", path, err)
 		}
 	default:
-		return errors.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
+		return fmt.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
 	}
 
 	return nil
@@ -108,7 +108,7 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 func ExtractTGZ(r io.Reader, dir string) error {
 	gzr, err := gzip.NewReader(r)
 	if err != nil {
-		return errors.Wrapf(err, "uncompressing")
+		return fmt.Errorf("uncompressing: %w", err)
 	}
 	tr := tar.NewReader(gzr)
 	for {
@@ -117,7 +117,7 @@ func ExtractTGZ(r io.Reader, dir string) error {
 			if err == io.EOF {
 				return nil
 			}
-			return errors.Wrapf(err, "extracting")
+			return fmt.Errorf("extracting: %w", err)
 		}
 
 		if err = extractFile(tr, header, dir); err != nil {
@@ -141,7 +141,7 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 
 		ignore, err := newGitIgnoreIgnorer(ignoreFilePath)
 		if err != nil {
-			return errors.Wrapf(err, "could not read ignore file in %v", dir)
+			return fmt.Errorf("could not read ignore file in %v: %w", dir, err)
 		}
 
 		ignores = ignores.Append(ignore)

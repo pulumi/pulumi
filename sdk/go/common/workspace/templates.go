@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -23,7 +24,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -274,7 +274,7 @@ func RetrieveTemplates(templateNamePathOrURL string, offline bool,
 // retrieveURLTemplates retrieves the "template repository" at the specified URL.
 func retrieveURLTemplates(rawurl string, offline bool, templateKind TemplateKind) (TemplateRepository, error) {
 	if offline {
-		return TemplateRepository{}, errors.Errorf("cannot use %s offline", rawurl)
+		return TemplateRepository{}, fmt.Errorf("cannot use %s offline", rawurl)
 	}
 
 	var err error
@@ -411,7 +411,7 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 		return "", err
 	}
 	if !info.IsDir() {
-		return "", errors.Errorf("%s is not a directory", fullPath)
+		return "", fmt.Errorf("%s is not a directory", fullPath)
 	}
 
 	return fullPath, nil
@@ -424,7 +424,7 @@ func LoadTemplate(path string) (Template, error) {
 		return Template{}, err
 	}
 	if !info.IsDir() {
-		return Template{}, errors.Errorf("%s is not a directory", path)
+		return Template{}, fmt.Errorf("%s is not a directory", path)
 	}
 
 	// TODO handle other extensions like Pulumi.yml and Pulumi.json?
@@ -527,7 +527,7 @@ func LoadPolicyPackTemplate(path string) (PolicyPackTemplate, error) {
 		return PolicyPackTemplate{}, err
 	}
 	if !info.IsDir() {
-		return PolicyPackTemplate{}, errors.Errorf("%s is not a directory", path)
+		return PolicyPackTemplate{}, fmt.Errorf("%s is not a directory", path)
 	}
 
 	pack, err := LoadPolicyPack(filepath.Join(path, "PulumiPolicy.yaml"))

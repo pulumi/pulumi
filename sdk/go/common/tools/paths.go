@@ -16,10 +16,11 @@ package tools
 
 import (
 	"fmt"
-	user "github.com/tweekmonster/luser"
 	"os"
 	"path/filepath"
 	"time"
+
+	user "github.com/tweekmonster/luser"
 )
 
 // EnsureDir ensures that a target directory exists (like `mkdir -p`), returning a non-nil error if any problem occurs.

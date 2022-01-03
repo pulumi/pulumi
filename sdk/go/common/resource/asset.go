@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -36,7 +35,6 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 )
 
 const (
@@ -358,11 +356,12 @@ func (a *Asset) readURI() (*Blob, error) {
 	contract.Assertf(isurl, "Expected a URI-based asset")
 	switch s := url.Scheme; s {
 	case "http", "https":
-		resp, err := httputil.GetWithRetry(url.String(), http.DefaultClient)
-		if err != nil {
-			return nil, err
-		}
-		return NewReadCloserBlob(resp.Body)
+		return nil, fmt.Errorf("unsupported: remote assets")
+		//		resp, err := httputil.GetWithRetry(url.String(), http.DefaultClient)
+		//		if err != nil {
+		//			return nil, err
+		//		}
+		//		return NewReadCloserBlob(resp.Body)
 	case "file":
 		contract.Assert(url.User == nil)
 		contract.Assert(url.RawQuery == "")
@@ -904,11 +903,12 @@ func (a *Archive) readURI() (ArchiveReader, error) {
 func (a *Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 	switch s := url.Scheme; s {
 	case "http", "https":
-		resp, err := httputil.GetWithRetry(url.String(), http.DefaultClient)
-		if err != nil {
-			return nil, err
-		}
-		return resp.Body, nil
+		return nil, fmt.Errorf("unsupported: remote assets")
+		//		resp, err := httputil.GetWithRetry(url.String(), http.DefaultClient)
+		//		if err != nil {
+		//			return nil, err
+		//		}
+		//		return resp.Body, nil
 	case "file":
 		contract.Assert(url.Host == "")
 		contract.Assert(url.User == nil)

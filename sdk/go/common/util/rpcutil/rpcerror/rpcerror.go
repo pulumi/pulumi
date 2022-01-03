@@ -32,7 +32,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -198,23 +198,9 @@ func Convert(err error) *Error {
 }
 
 func serializeErrorCause(err error) *pulumirpc.ErrorCause {
-	// Go is a surprising language that lets you do wacky stuff like this
-	// to get at implementation details of private structs.
-	//
-	// The pkg/errors documentation actually encourages this pattern (!) so
-	// that's what we're doing here to get at the error's stack trace.
-	type stackTracer interface {
-		StackTrace() errors.StackTrace
-	}
-
 	message := err.Error()
-	var stackTrace string
-	if errWithStack, ok := err.(stackTracer); ok {
-		stackTrace = fmt.Sprintf("%+v", errWithStack.StackTrace())
-	}
 
 	return &pulumirpc.ErrorCause{
-		Message:    message,
-		StackTrace: stackTrace,
+		Message: message,
 	}
 }

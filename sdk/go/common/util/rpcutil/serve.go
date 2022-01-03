@@ -15,13 +15,14 @@
 package rpcutil
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -53,7 +54,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 	// Listen on a TCP port, but let the kernel choose a free port for us.
 	lis, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
 	if err != nil {
-		return port, nil, errors.Errorf("failed to listen on TCP port ':%v': %v", port, err)
+		return port, nil, fmt.Errorf("failed to listen on TCP port ':%v': %v", port, err)
 	}
 
 	// Now new up a gRPC server and register any RPC interfaces the caller wants.
@@ -63,7 +64,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 	)
 	for _, register := range registers {
 		if err := register(srv); err != nil {
-			return port, nil, errors.Errorf("failed to register RPC handler: %v", err)
+			return port, nil, fmt.Errorf("failed to register RPC handler: %v", err)
 		}
 	}
 	reflection.Register(srv) // enable reflection.
@@ -90,7 +91,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 	done := make(chan error)
 	go func() {
 		if err := srv.Serve(lis); err != nil && !IsBenignCloseErr(err) {
-			done <- errors.Errorf("stopped serving: %v", err)
+			done <- fmt.Errorf("stopped serving: %v", err)
 		} else {
 			done <- nil // send a signal so caller knows we're done, even though it's nil.
 		}
