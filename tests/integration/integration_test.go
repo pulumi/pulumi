@@ -1003,3 +1003,22 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 		})
 	}
 }
+
+// printfTestValidation is used by the TestPrintfXYZ test cases in the language-specific test
+// files. It validates that there are a precise count of expected stdout/stderr lines in the test output.
+//nolint:deadcode // The linter doesn't see the uses since the consumers are conditionally compiled tests.
+func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+	var foundStdout int
+	var foundStderr int
+	for _, ev := range stack.Events {
+		if de := ev.DiagnosticEvent; de != nil {
+			if strings.HasPrefix(de.Message, fmt.Sprintf("Line %d", foundStdout)) {
+				foundStdout++
+			} else if strings.HasPrefix(de.Message, fmt.Sprintf("Errln %d", foundStderr+10)) {
+				foundStderr++
+			}
+		}
+	}
+	assert.Equal(t, 11, foundStdout)
+	assert.Equal(t, 11, foundStderr)
+}

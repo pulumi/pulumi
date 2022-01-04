@@ -162,7 +162,8 @@ func (l *LocalWorkspace) SetConfig(ctx context.Context, stackName string, key st
 	}
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx,
-		"config", "set", key, val.Value, secretArg, "--stack", stackName)
+		"config", "set", key, secretArg, "--stack", stackName,
+		"--non-interactive", "--", val.Value)
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "unable to set config"), stdout, stderr, errCode)
 	}

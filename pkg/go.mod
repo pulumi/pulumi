@@ -34,7 +34,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
-	github.com/pulumi/pulumi/sdk/v3 v3.20.0
+	github.com/pulumi/pulumi/sdk/v3 v3.21.0
 	github.com/rjeczalik/notify v0.9.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.1.0
@@ -91,7 +91,6 @@ require (
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
-	github.com/gofrs/flock v0.7.1 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.3 // indirect
@@ -162,3 +161,5 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
+
+require github.com/rogpeppe/go-internal v1.8.1 // indirect

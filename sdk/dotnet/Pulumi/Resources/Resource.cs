@@ -210,13 +210,6 @@ namespace Pulumi
 
                 options.Protect ??= options.Parent._protect;
 
-                // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
-                options.Aliases = options.Aliases.ToList();
-                foreach (var parentAlias in options.Parent._aliases)
-                {
-                    options.Aliases.Add(Pulumi.Urn.InheritedChildAlias(name, options.Parent.GetResourceName(), parentAlias, type));
-                }
-
                 this._providers = options.Parent._providers;
             }
 
@@ -263,16 +256,7 @@ namespace Pulumi
             this._protect = options.Protect == true;
             this._provider = custom ? options.Provider : null;
             this._version = options.Version;
-
-            // Collapse any 'Alias'es down to URNs. We have to wait until this point to do so
-            // because we do not know the default 'name' and 'type' to apply until we are inside the
-            // resource constructor.
-            var aliases = ImmutableArray.CreateBuilder<Input<string>>();
-            foreach (var alias in options.Aliases)
-            {
-                aliases.Add(CollapseAliasToUrn(alias, name, type, options.Parent));
-            }
-            this._aliases = aliases.ToImmutable();
+            this._aliases = AllAliases(options.Aliases.ToList(), name, type, options.Parent);
 
             Deployment.InternalInstance.ReadOrRegisterResource(this, remote, urn => new DependencyResource(urn), args, options);
         }
@@ -340,6 +324,38 @@ $"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '
 
                 return Pulumi.Urn.Create(name, type, parent, parentUrn, project, stack);
             });
+        }
+
+        /// <summary>
+        /// <see cref="AllAliases"/> makes a copy of the aliases array, and add to it any 
+        /// implicit aliases inherited from its parent. If there are N child aliases, and
+        /// M parent aliases, there will be (M+1)*(N+1)-1 total aliases, or, as calculated
+        /// in the logic below, N+(M*(1+N)).
+        /// </summary>
+        internal static ImmutableArray<Input<string>> AllAliases(List<Input<Alias>> childAliases, string childName, string childType, Resource? parent)
+        {
+            var aliases = ImmutableArray.CreateBuilder<Input<string>>();
+            foreach (var childAlias in childAliases)
+            {
+                aliases.Add(CollapseAliasToUrn(childAlias, childName, childType, parent));
+            }
+            if (parent != null)
+            {
+                foreach (var parentAlias in parent._aliases)
+                {
+                    aliases.Add(Pulumi.Urn.InheritedChildAlias(childName, parent._name, parentAlias, childType));
+                    foreach (var childAlias in childAliases)
+                    {
+                        var inheritedAlias = CollapseAliasToUrn(childAlias, childName, childType, parent).Apply(childAliasURN => {
+                            var aliasedChildName = Pulumi.Urn.Name(childAliasURN);
+                            var aliasedChildType = Pulumi.Urn.Type(childAliasURN);
+                            return Pulumi.Urn.InheritedChildAlias(aliasedChildName, parent._name, parentAlias, aliasedChildType);
+                        });
+                        aliases.Add(inheritedAlias);
+                    }
+                }
+            }
+            return aliases.ToImmutable();
         }
 
         private static void CheckNull<T>(T? value, string name) where T : class

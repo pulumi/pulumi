@@ -185,7 +185,12 @@ class LocalWorkspace(Workspace):
 
     def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
         secret_arg = "--secret" if value.secret else "--plaintext"
-        self._run_pulumi_cmd_sync(["config", "set", key, value.value, secret_arg, "--stack", stack_name])
+        self._run_pulumi_cmd_sync(["config", "set", key,
+                                   secret_arg,
+                                   "--stack", stack_name,
+                                   "--non-interactive",
+                                   "--",
+                                   value.value])
 
     def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
         args = ["config", "set-all", "--stack", stack_name]

@@ -34,6 +34,16 @@ func TestEmptyNodeJS(t *testing.T) {
 	})
 }
 
+// TestPrintfNodeJS tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+func TestPrintfNodeJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("printf", "nodejs"),
+		Dependencies:           []string{"@pulumi/pulumi"},
+		Quick:                  true,
+		ExtraRuntimeValidation: printfTestValidation,
+	})
+}
+
 // Tests emitting many engine events doesn't result in a performance problem.
 func TestEngineEventPerf(t *testing.T) {
 	t.Skip() // TODO[pulumi/pulumi#7883]

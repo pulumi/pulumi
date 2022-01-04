@@ -38,7 +38,9 @@ build::
 install::
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 else
-build:: build_cover
+build:: build_cover ensure_cover
+
+ensure_cover::
 	mkdir -p $(PULUMI_TEST_COVERAGE_PATH)
 
 install:: install_cover
@@ -116,3 +118,6 @@ test_build:: $(TEST_ALL_DEPS)
 test_all:: test_build
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
+
+tidy::
+	./scripts/tidy.sh
