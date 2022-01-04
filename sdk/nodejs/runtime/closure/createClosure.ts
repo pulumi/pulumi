@@ -1358,7 +1358,8 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
     // don't pre-compute this because the require cache will get populated
     // dynamically during execution.
     for (const path of Object.keys(require.cache)) {
-        if (require.cache[path].exports === obj) {
+        const c = require.cache[path];
+        if (c !== undefined && c.exports === obj) {
             // Rewrite the path to be a local module reference relative to the current working
             // directory.
             const modPath = upath.relative(process.cwd(), path);
