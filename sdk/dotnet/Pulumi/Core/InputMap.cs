@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2021, Pulumi Corporation
+// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections;
@@ -55,7 +55,22 @@ namespace Pulumi
         {
             var inputDictionary = (Input<ImmutableDictionary<string, V>>)_outputValue;
             _outputValue = Output.Tuple(inputDictionary, value)
-                                 .Apply(x => x.Item1.Add(key, x.Item2));
+                .Apply(x => x.Item1.Add(key, x.Item2));
+        }
+
+        /// <summary>
+        /// Note: this is non-standard convenience for use with collection initializers.
+        /// </summary>
+        public void Add(InputMap<V> values)
+        {
+            AddRange(values);
+        }
+
+        public void AddRange(InputMap<V> values)
+        {
+            var inputDictionary = (Input<ImmutableDictionary<string, V>>)_outputValue;
+            _outputValue = Output.Tuple(inputDictionary, values)
+                .Apply(x => x.Item1.AddRange(x.Item2));
         }
 
         public Input<V> this[string key]

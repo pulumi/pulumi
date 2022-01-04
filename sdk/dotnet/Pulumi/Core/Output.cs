@@ -102,7 +102,7 @@ namespace Pulumi
         }
 
         internal static Output<ImmutableArray<T>> Concat<T>(Output<ImmutableArray<T>> values1, Output<ImmutableArray<T>> values2)
-            => Tuple(values1, values2).Apply(a => a.Item1.AddRange(a.Item2));
+            => Tuple(values1, values2).Apply(tuple => tuple.Item1.AddRange(tuple.Item2));
     }
 
     /// <summary>

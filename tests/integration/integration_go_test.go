@@ -53,6 +53,18 @@ func TestEmptyGoRunMain(t *testing.T) {
 	})
 }
 
+// TestPrintfGo tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+func TestPrintfGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("printf", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Quick:                  true,
+		ExtraRuntimeValidation: printfTestValidation,
+	})
+}
+
 // Tests basic configuration from the perspective of a Pulumi Go program.
 func TestConfigBasicGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

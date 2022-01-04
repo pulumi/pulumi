@@ -2,6 +2,8 @@ module github.com/pulumi/pulumi/sdk/v3
 
 go 1.17
 
+replace golang.org/x/text => golang.org/x/text v0.3.6
+
 require (
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/blang/semver v3.5.1+incompatible
@@ -9,7 +11,6 @@ require (
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/djherbis/times v1.2.0
 	github.com/fatih/color v1.9.0 // indirect
-	github.com/gofrs/flock v0.7.1
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -27,6 +28,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/uniseg v0.2.0
+	github.com/rogpeppe/go-internal v1.8.1
 	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/spf13/cast v1.3.1

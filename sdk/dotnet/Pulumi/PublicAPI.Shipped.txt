@@ -108,11 +108,15 @@ Pulumi.InputJson
 Pulumi.InputJson.InputJson() -> void
 Pulumi.InputList<T>
 Pulumi.InputList<T>.Add(params Pulumi.Input<T>[] inputs) -> void
+Pulumi.InputList<T>.Add(Pulumi.InputList<T> inputs) -> void
+Pulumi.InputList<T>.AddRange(Pulumi.InputList<T> inputs) -> void
 Pulumi.InputList<T>.Concat(Pulumi.InputList<T> other) -> Pulumi.InputList<T>
 Pulumi.InputList<T>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<T>>
 Pulumi.InputList<T>.InputList() -> void
 Pulumi.InputMap<V>
+Pulumi.InputMap<V>.Add(Pulumi.InputMap<V> values) -> void
 Pulumi.InputMap<V>.Add(string key, Pulumi.Input<V> value) -> void
+Pulumi.InputMap<V>.AddRange(Pulumi.InputMap<V> values) -> void
 Pulumi.InputMap<V>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<System.Collections.Generic.KeyValuePair<string, V>>>
 Pulumi.InputMap<V>.InputMap() -> void
 Pulumi.InputMap<V>.this[string key].set -> void
@@ -178,6 +182,8 @@ Pulumi.ResourceOptions.Protect.get -> bool?
 Pulumi.ResourceOptions.Protect.set -> void
 Pulumi.ResourceOptions.Provider.get -> Pulumi.ProviderResource
 Pulumi.ResourceOptions.Provider.set -> void
+Pulumi.ResourceOptions.ReplaceOnChanges.get -> System.Collections.Generic.List<string>
+Pulumi.ResourceOptions.ReplaceOnChanges.set -> void
 Pulumi.ResourceOptions.ResourceOptions() -> void
 Pulumi.ResourceOptions.ResourceTransformations.get -> System.Collections.Generic.List<Pulumi.ResourceTransformation>
 Pulumi.ResourceOptions.ResourceTransformations.set -> void

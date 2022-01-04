@@ -33,6 +33,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
   comment-notification:
     # We only care about adding the result to the PR if it's a repository_dispatch event
     if: github.event_name == 'repository_dispatch'
@@ -51,6 +52,7 @@ jobs:
             Please view the results of the PR Build + Acceptance Tests Run [Here][1]
 
             [1]: ${{ steps.vars.outputs.run-url }}
+
   go-lint:
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
@@ -66,6 +68,7 @@ jobs:
       - name: Lint ${{ matrix.directory }}
         run: |
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
+
   sdk-lint:
     name: Lint SDKs
     runs-on: ubuntu-latest
@@ -124,8 +127,16 @@ jobs:
       - name: Lint .NET
         run: |
           cd sdk/dotnet && make lint
-  build_and_test:
-    name: Build & Test
+
+  build:
+    name: Build
+    uses: pulumi/pulumi/.github/workflows/build.yml@master
+    with:
+      enable-coverage: true
+
+  test:
+    name: Test
+    needs: build
     strategy:
       matrix:
         platform: [ ubuntu-latest, macos-latest ]
@@ -177,9 +188,12 @@ jobs:
       - run: mkdir -p ${{ runner.temp }}/opt/pulumi/nuget
       - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
       - name: Set up Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Install yarn
+        run: |
+          npm install -g yarn
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
@@ -213,23 +227,62 @@ jobs:
         with:
           repo: t0yv0/goteststats
           tag: v0.0.7
-      - name: Ensure
+      - name: Download Pulumi Go Binaries (linux-x64)
+        if: ${{ matrix.platform == 'ubuntu-latest' }}
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-x64
+          path: artifacts/go
+      - name: Download Pulumi Go Binaries (darwin-x64)
+        if: ${{ matrix.platform == 'macos-latest' }}
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-x64
+          path: artifacts/go
+      - name: Install Pulumi Go Binaries
         run: |
+          mkdir -p bin
+          tar -xf artifacts/go/*.tar.gz -C bin
+          echo "$PWD/bin/pulumi" >> $GITHUB_PATH
+      - name: Download Pulumi .NET NuGet packages
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-nuget-packages
+          # path set to match PULUMI_LOCAL_NUGET
+          path: ${{ runner.temp }}/opt/pulumi/nuget
+      - name: Verify Pulumi Version
+        run: |
+          which pulumi
+          pulumi version
+          find ./bin
+      - name: Inspect downloaded artifacts
+        run: |
+          find artifacts
+          echo "PULUMI_LOCAL_NUGET=$PULUMI_LOCAL_NUGET"
+          ls $PULUMI_LOCAL_NUGET
+        env:
+          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
+      - name: Ensure dependencies for the Node SDK
+        run: |
+          cd sdk/nodejs
           make ensure
-      - name: Dist
+      - name: Build the Node SDK
         run: |
-          make dist
-        env:
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: Install
+          cd sdk/nodejs
+          make build_package
+          cd bin
+          yarn link
+      - name: Ensure dependencies for the Python SDK
         run: |
-          make install_all
-        env:
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+           cd sdk/python
+           make ensure
+      - name: Install Python SDK
+        run: |
+           cd sdk/python
+           make build_package
+      - name: Ensure coverage gathering dependencies
+        run: |
+           make ensure_cover
       - name: Test
         run: make TEST_ALL_DEPS= test_all
         env:
@@ -255,7 +308,6 @@ jobs:
       - name: Summarize Test Times by Indivudal Test
         run: |
           goteststats -statistic test-time test-results/*.json | head -n 100
-
 
   windows-build:
     name: Windows Build + Test
