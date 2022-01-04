@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -129,10 +130,6 @@ func (c *cachingCrypter) DecryptValue(ciphertext string) (string, error) {
 	return c.decrypter.DecryptValue(ciphertext)
 }
 
-func (c *cachingCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	return c.decrypter.BulkDecrypt(ciphertexts)
-}
-
 // encryptSecret encrypts the plaintext associated with the given secret value.
 func (c *cachingCrypter) encryptSecret(secret *resource.Secret, plaintext string) (string, error) {
 	// If the cache has an entry for this secret and the plaintext has not changed, re-use the ciphertext.
@@ -153,4 +150,75 @@ func (c *cachingCrypter) encryptSecret(secret *resource.Secret, plaintext string
 // insert associates the given secret with the given plain- and ciphertext in the cache.
 func (c *cachingCrypter) insert(secret *resource.Secret, plaintext, ciphertext string) {
 	c.cache[secret] = cacheEntry{plaintext, ciphertext}
+}
+
+type BulkDecrypter interface {
+	BulkDecrypt(ciphertexts []string) ([]string, error)
+}
+
+type cachedDecrypter struct {
+	cache     map[string]string
+	decrypter config.Decrypter
+}
+
+func newCachedDecrypter(decrypter config.Decrypter, resources []apitype.ResourceV3) (config.Decrypter, error) {
+	var ciphertexts []string
+	for _, r := range resources {
+		collectCiphertexts(&ciphertexts, r.Inputs)
+		collectCiphertexts(&ciphertexts, r.Outputs)
+	}
+
+	plaintexts, err := bulkDecrypt(decrypter, ciphertexts)
+	if err != nil {
+		return nil, err
+	}
+
+	cache := make(map[string]string, len(plaintexts))
+	for i, ciphertext := range ciphertexts {
+		cache[ciphertext] = plaintexts[i]
+	}
+
+	return &cachedDecrypter{
+		cache:     cache,
+		decrypter: decrypter,
+	}, nil
+}
+
+func collectCiphertexts(ciphertexts *[]string, rawProperties map[string]interface{}) {
+	for _, prop := range rawProperties {
+		if prop != nil {
+			if obj, ok := prop.(map[string]interface{}); ok {
+				if sig, hasSig := obj[resource.SigKey]; hasSig {
+					if sig == resource.SecretSig {
+						if ciphertext, cipherOk := obj["ciphertext"].(string); cipherOk {
+							*ciphertexts = append(*ciphertexts, ciphertext)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func (c *cachedDecrypter) DecryptValue(ciphertext string) (string, error) {
+	if plaintext, ok := c.cache[ciphertext]; ok {
+		return plaintext, nil
+	}
+	return c.decrypter.DecryptValue(ciphertext)
+}
+
+func bulkDecrypt(decrypter config.Decrypter, ciphertexts []string) ([]string, error) {
+	if bulkDecrypter, ok := decrypter.(BulkDecrypter); ok {
+		return bulkDecrypter.BulkDecrypt(ciphertexts)
+	}
+
+	plaintexts := make([]string, len(ciphertexts))
+	for i, ciphertext := range ciphertexts {
+		plaintext, err := decrypter.DecryptValue(ciphertext)
+		if err != nil {
+			return nil, err
+		}
+		plaintexts[i] = plaintext
+	}
+	return plaintexts, nil
 }

@@ -63,27 +63,26 @@ func (c *serviceCrypter) DecryptValue(cipherstring string) (string, error) {
 	return string(plaintext), nil
 }
 
-func (c *serviceCrypter) BulkDecrypt(secrets []string) (map[string]string, error) {
-	var secretsToDecrypt [][]byte
-	for _, val := range secrets {
-		ciphertext, err := base64.StdEncoding.DecodeString(val)
+func (c *serviceCrypter) BulkDecrypt(ciphertexts []string) ([]string, error) {
+	var cipherbytes [][]byte
+	for _, val := range ciphertexts {
+		bytes, err := base64.StdEncoding.DecodeString(val)
 		if err != nil {
 			return nil, err
 		}
-		secretsToDecrypt = append(secretsToDecrypt, ciphertext)
+		cipherbytes = append(cipherbytes, bytes)
 	}
 
-	decryptedList, err := c.client.BulkDecryptValue(context.Background(), c.stack, secretsToDecrypt)
+	plainbytes, err := c.client.BulkDecryptValue(context.Background(), c.stack, cipherbytes)
 	if err != nil {
 		return nil, err
 	}
 
-	decryptedSecrets := make(map[string]string)
-	for name, val := range decryptedList {
-		decryptedSecrets[name] = string(val)
+	plaintexts := make([]string, len(plainbytes))
+	for i, ciphertext := range ciphertexts {
+		plaintexts[i] = string(plainbytes[ciphertext])
 	}
-
-	return decryptedSecrets, nil
+	return plaintexts, nil
 }
 
 type serviceSecretsManagerState struct {

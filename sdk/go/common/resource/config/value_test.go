@@ -199,14 +199,6 @@ func (d passThroughDecrypter) DecryptValue(ciphertext string) (string, error) {
 	return ciphertext, nil
 }
 
-func (d passThroughDecrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, c := range ciphertexts {
-		secretMap[c] = c
-	}
-	return secretMap, nil
-}
-
 func TestSecureValues(t *testing.T) {
 	tests := []struct {
 		Value    Value

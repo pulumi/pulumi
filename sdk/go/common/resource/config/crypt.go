@@ -36,7 +36,6 @@ type Encrypter interface {
 // Decrypter decrypts encrypted ciphertext to its plaintext representation.
 type Decrypter interface {
 	DecryptValue(ciphertext string) (string, error)
-	BulkDecrypt(ciphertexts []string) (map[string]string, error)
 }
 
 // Crypter can both encrypt and decrypt values.
@@ -53,14 +52,6 @@ var NopEncrypter Encrypter = nopCrypter{}
 
 func (nopCrypter) DecryptValue(ciphertext string) (string, error) {
 	return ciphertext, nil
-}
-
-func (nopCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, c := range ciphertexts {
-		secretMap[c] = c
-	}
-	return secretMap, nil
 }
 
 func (nopCrypter) EncryptValue(plaintext string) (string, error) {
@@ -93,22 +84,6 @@ func (t *trackingDecrypter) DecryptValue(ciphertext string) (string, error) {
 	return v, nil
 }
 
-func (t *trackingDecrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, c := range ciphertexts {
-		if _, ok := secretMap[c]; ok {
-			continue
-		}
-		v, err := t.decrypter.DecryptValue(c)
-		if err != nil {
-			return secretMap, err
-		}
-		secretMap[c] = v
-		t.secureValues = append(t.secureValues, v)
-	}
-	return secretMap, nil
-}
-
 func (t *trackingDecrypter) SecureValues() []string {
 	return t.secureValues
 }
@@ -129,17 +104,6 @@ func (b blindingCrypter) DecryptValue(_ string) (string, error) {
 	return "[secret]", nil //nolint:goconst
 }
 
-func (b blindingCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, c := range ciphertexts {
-		if _, ok := secretMap[c]; ok {
-			continue
-		}
-		secretMap[c] = "[secret]"
-	}
-	return secretMap, nil
-}
-
 func (b blindingCrypter) EncryptValue(plaintext string) (string, error) {
 	return "[secret]", nil
 }
@@ -153,10 +117,6 @@ type panicCrypter struct{}
 
 func (p panicCrypter) EncryptValue(_ string) (string, error) {
 	panic("attempt to encrypt value")
-}
-
-func (p panicCrypter) BulkDecrypt(_ []string) (map[string]string, error) {
-	return nil, nil
 }
 
 func (p panicCrypter) DecryptValue(_ string) (string, error) {
@@ -215,21 +175,6 @@ func (s symmetricCrypter) DecryptValue(value string) (string, error) {
 	return decryptAES256GCM(enc, s.key, nonce)
 }
 
-func (s symmetricCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, c := range ciphertexts {
-		if _, ok := secretMap[c]; ok {
-			continue
-		}
-		v, err := s.DecryptValue(c)
-		if err != nil {
-			return nil, err
-		}
-		secretMap[c] = v
-	}
-	return secretMap, nil
-}
-
 // encryptAES256GCGM returns the ciphertext and the generated nonce
 func encryptAES256GCGM(plaintext string, key []byte) ([]byte, []byte) {
 	contract.Requiref(len(key) == SymmetricCrypterKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
@@ -280,19 +225,4 @@ func (c prefixCrypter) DecryptValue(ciphertext string) (string, error) {
 
 func (c prefixCrypter) EncryptValue(plaintext string) (string, error) {
 	return c.prefix + plaintext, nil
-}
-
-func (c prefixCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, cip := range ciphertexts {
-		if _, ok := secretMap[cip]; ok {
-			continue
-		}
-		v, err := c.DecryptValue(cip)
-		if err != nil {
-			return nil, err
-		}
-		secretMap[cip] = v
-	}
-	return secretMap, nil
 }

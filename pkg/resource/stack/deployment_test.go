@@ -210,7 +210,7 @@ func TestUnsupportedSecret(t *testing.T) {
 	rawProp := map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
 	}
-	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter(), config.NewPanicCrypter(), SecretsCache{})
+	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter(), config.NewPanicCrypter())
 	assert.Error(t, err)
 }
 
@@ -218,7 +218,7 @@ func TestUnknownSig(t *testing.T) {
 	rawProp := map[string]interface{}{
 		resource.SigKey: "foobar",
 	}
-	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter(), config.NewPanicCrypter(), SecretsCache{})
+	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter(), config.NewPanicCrypter())
 	assert.Error(t, err)
 }
 
@@ -249,8 +249,7 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 		"custom-resource-unknown-id": serialize(resource.MakeCustomResourceReference("urn3", "", "3.4.5")),
 	}
 
-	deserialized, err := DeserializePropertyValue(serialized, config.NewPanicCrypter(), config.NewPanicCrypter(),
-		SecretsCache{})
+	deserialized, err := DeserializePropertyValue(serialized, config.NewPanicCrypter(), config.NewPanicCrypter())
 	assert.NoError(t, err)
 
 	assert.Equal(t, resource.NewPropertyValue(map[string]interface{}{
@@ -471,7 +470,7 @@ func TestSerializePropertyValue(t *testing.T) {
 func TestDeserializePropertyValue(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		v := ObjectValueGenerator(6).Draw(t, "property value")
-		_, err := DeserializePropertyValue(v, config.NopDecrypter, config.NopEncrypter, SecretsCache{})
+		_, err := DeserializePropertyValue(v, config.NopDecrypter, config.NopEncrypter)
 		assert.NoError(t, err)
 	})
 }
@@ -537,8 +536,7 @@ func TestRoundTripPropertyValue(t *testing.T) {
 		wireObject, err := wireValue(original)
 		require.NoError(t, err)
 
-		deserialized, err := DeserializePropertyValue(wireObject, config.NopDecrypter, config.NopEncrypter,
-			SecretsCache{})
+		deserialized, err := DeserializePropertyValue(wireObject, config.NopDecrypter, config.NopEncrypter)
 		require.NoError(t, err)
 
 		resource_testing.AssertEqualPropertyValues(t, replaceOutputsWithComputed(original), deserialized)

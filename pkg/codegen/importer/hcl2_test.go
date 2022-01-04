@@ -238,7 +238,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 
 	for _, s := range cases.Resources {
 		t.Run(string(s.URN), func(t *testing.T) {
-			state, err := stack.DeserializeResource(s, config.NopDecrypter, config.NopEncrypter, stack.SecretsCache{})
+			state, err := stack.DeserializeResource(s, config.NopDecrypter, config.NopEncrypter)
 			if !assert.NoError(t, err) {
 				t.Fatal()
 			}
