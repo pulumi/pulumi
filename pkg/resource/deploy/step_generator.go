@@ -344,7 +344,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		if recreating || wasExternal || sg.isTargetedReplace(urn) {
 			// TODO(seqnum) Not totally sure about sequence numbers here
 			// but I think a recreate at least should increment the sequence.
-			if recreating && new.SequenceNumber != 0 {
+			if (recreating || sg.isTargetedReplace(urn)) && new.SequenceNumber != 0 {
 				new.SequenceNumber++
 			}
 			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, new.SequenceNumber)
