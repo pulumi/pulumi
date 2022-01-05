@@ -201,7 +201,7 @@ jobs:
       - name: Uninstall pre-installed Pulumi (windows)
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
-          chocolatey uninstall pulumi
+          choco uninstall pulumi
       - name: Install yarn
         run: |
           npm install -g yarn
