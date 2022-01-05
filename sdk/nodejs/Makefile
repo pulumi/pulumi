@@ -18,7 +18,7 @@ include ../../build/common.mk
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 lint::
-	eslint -c .eslintrc.js --ext .ts .
+	yarn run eslint -c .eslintrc.js --ext .ts .
 
 build_package::
 	yarn run tsc
@@ -48,17 +48,17 @@ install:: install_package install_plugin
 
 unit_tests:: $(TEST_ALL_DEPS)
 	$(TESTSUITE_SKIPPED) --skip-windows unit-nodejs || \
-		nyc -x 'bin/tests/runtime/*ClosureCases*.js' -s mocha --timeout 120000 \
+		yarn run nyc -x 'bin/tests/runtime/*ClosureCases*.js' -s mocha --timeout 120000 \
 			--exclude 'bin/tests/automation/**/*.spec.js' \
 			--exclude 'bin/tests/runtime/closureLoader.spec.js' \
 			'bin/tests/**/*.spec.js'
 	$(TESTSUITE_SKIPPED) --skip-windows unit-nodejs || \
-		mocha --timeout 120000 'bin/tests/runtime/closureLoader.spec.js'
+		yarn run mocha --timeout 120000 'bin/tests/runtime/closureLoader.spec.js'
 	$(TESTSUITE_SKIPPED) --skip-windows unit-with-mocks-nodejs || \
-		nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
+		yarn run nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 auto_tests:: $(TEST_ALL_DEPS)
-	$(TESTSUITE_SKIPPED) --skip-windows auto-nodejs || nyc -s mocha --timeout 120000 'bin/tests/automation/**/*.spec.js'
+	$(TESTSUITE_SKIPPED) --skip-windows auto-nodejs || yarn run nyc -s mocha --timeout 120000 'bin/tests/automation/**/*.spec.js'
 
 sxs_tests:: $(TEST_ALL_DEPS)
 	$(TESTSUITE_SKIPPED) --skip-windows sxs || ( \
@@ -67,7 +67,7 @@ sxs_tests:: $(TEST_ALL_DEPS)
 
 test_fast:: sxs_tests unit_tests
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .nyc_output ]; then nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
+	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
@@ -76,7 +76,7 @@ go_tests:: $(TEST_ALL_DEPS)
 
 test_all:: sxs_tests unit_tests auto_tests go_tests
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .nyc_output ]; then nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
+	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
 
 dist:: build
