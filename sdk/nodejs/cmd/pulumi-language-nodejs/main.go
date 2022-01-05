@@ -38,12 +38,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
-
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/google/shlex"
+	"github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
-
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -52,9 +54,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"google.golang.org/grpc"
-
-	"github.com/blang/semver"
 )
 
 const (
@@ -517,9 +516,9 @@ func (host *nodeLanguageHost) execNodejs(
 			env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
 		}
 
-		var nodeargs []string
-		if host.nodeargs != "" {
-			nodeargs = strings.Split(host.nodeargs, " ")
+		nodeargs, err := shlex.Split(host.nodeargs)
+		if err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}
 		}
 		nodeargs = append(nodeargs, args...)
 
