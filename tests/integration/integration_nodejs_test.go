@@ -1152,6 +1152,47 @@ func TestCompilerOptionsNode(t *testing.T) {
 	})
 }
 
+func TestESMJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-js"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+func TestESMJSMain(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-js-main"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+func TestESMTS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-ts"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+func TestESMTSSpecifierResolutionNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-ts-specifier-resolution-node"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+func TestESMTSCompiled(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-ts-compiled"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		RunBuild:     true,
+		Quick:        true,
+	})
+}
+
 // Test that the about command works as expected. Because about parses the
 // results of each runtime independently, we have an integration test in each
 // language.
