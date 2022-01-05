@@ -132,9 +132,16 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil, /* aliases */
 		nil, /* customTimeouts */
 		"",  /* importID */
-		0,   /* sequenceNumber */
+		1,   /* sequenceNumber */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
+
+	if hasOld {
+		// If we have an old state maintain the sequence number from it.
+		// This means even if we relinqish and then reimport we'll maintain the sequence number that
+		// defined the current name.
+		newState.SequenceNumber = old.SequenceNumber
+	}
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
 	// to have to delete the old resource and conceptually replace it with the resource we
@@ -344,7 +351,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		if recreating || wasExternal || sg.isTargetedReplace(urn) {
 			// TODO(seqnum) Not totally sure about sequence numbers here
 			// but I think a recreate at least should increment the sequence.
-			if (recreating || sg.isTargetedReplace(urn)) && new.SequenceNumber != 0 {
+			if new.SequenceNumber != 0 {
 				new.SequenceNumber++
 			}
 			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, new.SequenceNumber)

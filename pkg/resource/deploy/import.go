@@ -167,6 +167,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	urn := resource.NewURN(stackName, projectName, "", typ, tokens.QName(name))
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
 		nil, false, nil, nil, nil, "", 0)
+	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
 		return "", false, false
 	}
@@ -252,6 +253,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, nil, nil, "", nil, false,
 			nil, nil, nil, "", 0)
+		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, failures) {
 			return nil, nil, false
 		}
