@@ -91,10 +91,6 @@ func (p ProviderRequest) Name() tokens.QName {
 		base += "_" + tokens.IntoQName(url).String()
 	}
 
-	if p.pluginDownloadURL != "" {
-		base += "_" + tokens.IntoQName(p.pluginDownloadURL).String()
-	}
-
 	// This thing that we generated must be a QName.
 	contract.Assert(tokens.IsQName(base))
 	return tokens.QName(base)
