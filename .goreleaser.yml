@@ -24,6 +24,7 @@ builds:
     - windows
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
   main: ./cmd/pulumi
 - id: pulumi-language-nodejs-windows
   binary: pulumi-language-nodejs
@@ -34,6 +35,7 @@ builds:
     - windows
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
   main: ./nodejs/cmd/pulumi-language-nodejs
 - id: pulumi-language-python-windows
   binary: pulumi-language-python
@@ -44,6 +46,7 @@ builds:
     - windows
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
   main: ./python/cmd/pulumi-language-python
 - id: pulumi-language-dotnet-windows
   binary: pulumi-language-dotnet
@@ -54,6 +57,7 @@ builds:
     - windows
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
   main: ./dotnet/cmd/pulumi-language-dotnet
 - id: pulumi-language-go-windows
   binary: pulumi-language-go
@@ -64,6 +68,7 @@ builds:
     - windows
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
   main: ./go/pulumi-language-go
 # UNIX builds
 - id: pulumi-unix
@@ -77,6 +82,7 @@ builds:
     - darwin
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
   main: ./cmd/pulumi
 - id: pulumi-language-nodejs-unix
   binary: pulumi-language-nodejs
@@ -89,6 +95,7 @@ builds:
     - darwin
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
   main: ./nodejs/cmd/pulumi-language-nodejs
 - id: pulumi-language-python-unix
   binary: pulumi-language-python
@@ -101,6 +108,7 @@ builds:
     - darwin
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
   main: ./python/cmd/pulumi-language-python
 - id: pulumi-language-dotnet-unix
   binary: pulumi-language-dotnet
@@ -113,6 +121,7 @@ builds:
     - darwin
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
   main: ./dotnet/cmd/pulumi-language-dotnet
 - id: pulumi-language-go-unix
   binary: pulumi-language-go
@@ -125,6 +134,7 @@ builds:
     - darwin
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
   main: ./go/pulumi-language-go
 
 archives:
@@ -167,7 +177,7 @@ archives:
   name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
 snapshot:
   name_template: "{{ .Version }}-SNAPSHOT"
-checksum: 
+checksum:
   name_template: "{{ .ProjectName }}-{{ .Version }}-checksums.txt"
 brews:
   -
