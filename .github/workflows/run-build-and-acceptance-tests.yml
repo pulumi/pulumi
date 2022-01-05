@@ -15,6 +15,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PULUMI_TEST_OWNER: "moolumi"
   PR_COMMIT_SHA: ${{ github.event.client_payload.pull_request.head.sha }}
+  PYTHON: python
 
 # Cancel checks on prior commits when new commits are added to a PR.
 # This is motivated by temporary throughput issues on our GitHub
