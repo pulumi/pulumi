@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -999,6 +1000,57 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 				Dependencies: dependencies,
 				Quick:        true,
 				NoParallel:   true, // avoid contention for Dir
+			})
+		})
+	}
+}
+
+func TestProviderDownloadURL(t *testing.T) {
+	validate := func(t *testing.T, stdout []byte) {
+		deployment := &apitype.UntypedDeployment{}
+		err := json.Unmarshal(stdout, deployment)
+		assert.NoError(t, err)
+		data := &apitype.DeploymentV3{}
+		err = json.Unmarshal(deployment.Deployment, data)
+		assert.NoError(t, err)
+		urlKey := "pluginDownloadURL"
+		for _, resource := range data.Resources {
+			switch {
+			case providers.IsDefaultProvider(resource.URN):
+				assert.Equal(t, "get.com", resource.Inputs[urlKey])
+				assert.Equal(t, "get.com", resource.Outputs[urlKey])
+			case providers.IsProviderType(resource.Type):
+				assert.Equal(t, "get.pulumi/test/providers", resource.Inputs[urlKey])
+				assert.Equal(t, "get.pulumi/test/providers", resource.Outputs[urlKey])
+			default:
+				_, hasURL := resource.Inputs[urlKey]
+				assert.False(t, hasURL)
+				_, hasURL = resource.Outputs[urlKey]
+				assert.False(t, hasURL)
+			}
+		}
+	}
+	languages := []struct {
+		name       string
+		dependency string
+	}{
+		// #[pulumi/pulumi#8686]: Add python test
+		// #[pulumi/pulumi#8687]: Add NodeJS test
+		// #[pulumi/pulumi#8689]: Add .NET test
+		{"go", "github.com/pulumi/pulumi/sdk/v3"},
+	}
+	for _, lang := range languages {
+
+		t.Run(lang.name, func(t *testing.T) {
+			env := pathEnv(t, filepath.Join("..", "testprovider"))
+			dir := filepath.Join("gather_plugin", lang.name)
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:                    dir,
+				Env:                    []string{env},
+				ExportStateValidator:   validate,
+				SkipPreview:            true,
+				SkipEmptyPreviewUpdate: true,
+				Dependencies:           []string{lang.dependency},
 			})
 		})
 	}
