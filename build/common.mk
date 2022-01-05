@@ -100,9 +100,10 @@ ifeq ($(PULUMI_ROOT),)
 	PULUMI_ROOT:=$(shell realpath "$$HOME/.pulumi-dev")
 endif
 
-# Expecting that `python`, `pip` will resolve to a python 3 runtime.
-PYTHON ?= python
-PIP ?= pip
+# Use Python 3 explicitly vs expecting that `python` will resolve to a python 3
+# runtime.
+PYTHON ?= python3
+PIP ?= pip3
 
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
