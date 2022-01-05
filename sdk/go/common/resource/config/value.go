@@ -207,9 +207,16 @@ func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(inter
 func attemptStringToNumConversion(v interface{}) (interface{}, error) {
 	if s, ok := v.(string); ok {
 		if num, err := strconv.Atoi(s); err == nil {
+			// Numbers with leading 0s parse, but we want to consider them
+			// strings.
+			if strings.HasPrefix(s, "0") && s != "0" {
+				return s, nil
+			}
 			return num, nil
 		}
-		if float, err := strconv.ParseFloat(s, 64); err == nil {
+		// Floats with multiple leading 0s parse, but we want to consider them
+		// strings.
+		if float, err := strconv.ParseFloat(s, 64); err == nil && !strings.HasPrefix(s, "00") {
 			return float, nil
 		}
 	}
