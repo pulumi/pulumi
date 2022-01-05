@@ -30,6 +30,7 @@ func NewResource(ctx *pulumi.Context,
 		"bar",
 	})
 	opts = append(opts, secrets)
+	opts = append([]pulumi.ResourceOption{pulumi.PluginDownloadURL("example.com/download")}, opts...)
 	var resource Resource
 	err := ctx.RegisterResource("example::Resource", name, args, &resource, opts...)
 	if err != nil {

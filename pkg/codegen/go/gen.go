@@ -1638,6 +1638,13 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprint(w, "\topts = append(opts, replaceOnChanges)\n")
 	}
 
+	// Setup PluginDownloadURL. We pre-append our call to PluginDownloadURL to
+	// that if a user adds their own separate PluginDownloadURL, we won't
+	// override it.
+	if url := pkg.pkg.PluginDownloadURL; url != "" {
+		fmt.Fprintf(w, "\topts = append([]pulumi.ResourceOption{pulumi.PluginDownloadURL(%q)},  opts...)\n", url)
+	}
+
 	// Finally make the call to registration.
 	fmt.Fprintf(w, "\tvar resource %s\n", name)
 	if r.IsComponent {

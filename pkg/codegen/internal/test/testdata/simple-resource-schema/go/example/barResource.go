@@ -23,6 +23,7 @@ func NewBarResource(ctx *pulumi.Context,
 		args = &BarResourceArgs{}
 	}
 
+	opts = append([]pulumi.ResourceOption{pulumi.PluginDownloadURL("example.com/download")}, opts...)
 	var resource BarResource
 	err := ctx.RegisterRemoteComponentResource("bar::BarResource", name, args, &resource, opts...)
 	if err != nil {

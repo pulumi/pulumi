@@ -2,6 +2,7 @@
   "version": "0.0.1",
   "name": "example",
   "allowedPackageNames": ["foo", "bar"],
+  "pluginDownloadURL": "example.com/download",
   "types": {
     "example::Object": {
       "properties": {
