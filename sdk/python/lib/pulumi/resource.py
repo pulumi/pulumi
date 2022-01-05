@@ -374,6 +374,13 @@ class ResourceOptions:
     current package and should rarely be used.
     """
 
+    plugin_download_url: Optional[str]
+    """
+    An optional url. If provided, the engine loads a provider with downloaded from the provided url.
+    This url overrides the plugin download url inferred from the current package and should rarely
+    be used.
+    """
+
     aliases: Optional[Sequence['Input[Union[str, Alias]]']]
     """
     An optional list of aliases to treat this resource as matching.
@@ -440,7 +447,8 @@ class ResourceOptions:
                  custom_timeouts: Optional['CustomTimeouts'] = None,
                  transformations: Optional[List[ResourceTransformation]] = None,
                  urn: Optional[str] = None,
-                 replace_on_changes: Optional[List[str]] = None) -> None:
+                 replace_on_changes: Optional[List[str]] = None,
+                 plugin_download_url: Optional[str] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -476,7 +484,10 @@ class ResourceOptions:
         :param Optional[List[str]] replace_on_changes: Changes to any of these property paths will force a replacement.
                If this list includes `"*"`, changes to any properties will force a replacement.  Initialization errors
                from previous deployments will require replacement instead of update only if `"*"` is passed.
-        """
+        :param Optional[str] plugin_download_url: An optional url. If provided, the engine loads a provider with downloaded
+               from the provided url. This url overrides the plugin download url inferred from the current package and should
+               rarely be used.
+       """
 
         # Expose 'merge' again this this object, but this time as an instance method.
         # TODO[python/mypy#2427]: mypy disallows method assignment
@@ -490,6 +501,7 @@ class ResourceOptions:
         self.delete_before_replace = delete_before_replace
         self.ignore_changes = ignore_changes
         self.version = version
+        self.plugin_download_url = plugin_download_url
         self.aliases = aliases
         self.additional_secret_outputs = additional_secret_outputs
         self.custom_timeouts = custom_timeouts
@@ -581,6 +593,7 @@ class ResourceOptions:
         dest.protect = dest.protect if source.protect is None else source.protect
         dest.delete_before_replace = dest.delete_before_replace if source.delete_before_replace is None else source.delete_before_replace
         dest.version = dest.version if source.version is None else source.version
+        dest.plugin_download_url = dest.plugin_download_url if source.plugin_download_url is None else source.plugin_download_url
         dest.custom_timeouts = dest.custom_timeouts if source.custom_timeouts is None else source.custom_timeouts
         dest.id = dest.id if source.id is None else source.id
         dest.import_ = dest.import_ if source.import_ is None else source.import_
