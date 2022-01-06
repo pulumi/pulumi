@@ -356,7 +356,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 		// If we're in experimental mode create a plan, Imports have no diff, just a goal state
 		if sg.opts.ExperimentalPlans {
-			newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(nil, goal)}
+			newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(nil, nil, goal)}
 			sg.deployment.newPlans.set(urn, newResourcePlan)
 		}
 
@@ -379,7 +379,15 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) {
-			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+			// If we have a plan for this resource we need to feed the saved checked inputs to Check to remove non-determinism
+			var oldChecked resource.PropertyMap
+			if sg.deployment.plan != nil {
+				if resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]; ok {
+					oldChecked = resourcePlan.Goal.CheckedInputs
+				}
+			}
+
+			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns)
 		} else {
 			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
 		}
@@ -402,7 +410,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// Generate the output goal plan
 		// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
 		// application. However, it is necessary in the face of computed inputs.
-		newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(inputDiff, goal)}
+		newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(inputs, inputDiff, goal)}
 		sg.deployment.newPlans.set(urn, newResourcePlan)
 	}
 

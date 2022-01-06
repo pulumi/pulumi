@@ -27,6 +27,8 @@ type GoalV1 struct {
 	// true if this resource is custom, managed by a plugin.
 	Custom bool `json:"custom"`
 	// the resource properties that will be changed.
+	CheckedInputs map[string]interface{} `json:"checkedInputs,omitempty"`
+	// the resource properties that will be changed.
 	InputDiff PlanDiffV1 `json:"inputDiff,omitempty"`
 	// the resource outputs that will be changed.
 	OutputDiff *PlanDiffV1 `json:"outputDiff,omitempty"`
