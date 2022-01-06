@@ -1638,7 +1638,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprint(w, "\topts = append(opts, replaceOnChanges)\n")
 	}
 
-	pkg.MaybeInsertPkgDefaultsOptsCall(w, false)
+	pkg.insertPkgDefaultsOptsCall(w, false)
 
 	// Finally make the call to registration.
 	fmt.Fprintf(w, "\tvar resource %s\n", name)
@@ -1949,7 +1949,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 		outputsType = name + "Result"
 	}
 
-	pkg.MaybeInsertPkgDefaultsOptsCall(w, true /*invoke*/)
+	pkg.insertPkgDefaultsOptsCall(w, true /*invoke*/)
 
 	fmt.Fprintf(w, "\tvar rv %s\n", outputsType)
 	fmt.Fprintf(w, "\terr := ctx.Invoke(\"%s\", %s, &rv, opts...)\n", f.Token, inputsVar)
@@ -3636,34 +3636,36 @@ func isZero(v interface{}) bool {
 	return reflect.ValueOf(v).IsZero()
 }
 `
-
+	fmt.Printf("Body:\n%s\n", pkg.GenPkgDefaultOpts())
 	return utilitiesFile + pkg.GenPkgDefaultOpts()
 }
 
 func (pkg *pkgContext) GenPkgDefaultOpts() string {
-	if pkg.pkg.PluginDownloadURL == "" {
-		return ""
-	}
 	out := ""
+	const template string = `
+// Pkg%[1]sDefaultOpts provides package level defaults to pulumi.Option%[1]s.
+func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
+	defaults := []pulumi.%[1]sOption{%[2]s}
+	// We don't add the version if we can't discover it. We don't error here
+	// because we want to allow non-traditional go project configurations.
+	if v, err := PkgVersion(); err == nil {
+		defaults = append(defaults, pulumi.Version(v.String()))
+	}
+	return append(defaults, opts...)
+}
+`
+	var pluginDownloadURL string
+	if url := pkg.pkg.PluginDownloadURL; url != "" {
+		pluginDownloadURL = fmt.Sprintf("pulumi.PluginDownloadURL(%q)", url)
+	}
 	for _, typ := range []string{"Resource", "Invoke"} {
-		comment := fmt.Sprintf(`%s// Pkg%sDefaultOpts provides package level defaults to opts%s`, "\n", typ, "\n")
-		header := fmt.Sprintf(`func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {%[2]s`, typ, "\n")
-		// We pre-append our default options so that if a user adds their own
-		// separate overriding option we won't override it.
-
-		body := fmt.Sprintf("\topts = append([]pulumi.%sOption{pulumi.PluginDownloadURL(%q)},  opts...)\n", typ, pkg.pkg.PluginDownloadURL)
-		footer := "\treturn opts\n}\n"
-		out += comment + header + body + footer
+		out += fmt.Sprintf(template, typ, pluginDownloadURL)
 	}
 	return out
 }
 
-// MaybeInsertPkgDefaultsOptsCall generates a call to Pkg{TYPE}DefaultsOpts when
-// there the package specifies it's PluginDownloadURL.
-func (pkg *pkgContext) MaybeInsertPkgDefaultsOptsCall(w io.Writer, invoke bool) {
-	if pkg.pkg.PluginDownloadURL == "" {
-		return
-	}
+// insertPkgDefaultsOptsCall generates a call to Pkg{TYPE}DefaultsOpts.
+func (pkg *pkgContext) insertPkgDefaultsOptsCall(w io.Writer, invoke bool) {
 	pkg.needsUtils = true
 	typ := "Resource"
 	if invoke {
