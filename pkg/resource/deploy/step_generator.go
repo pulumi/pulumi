@@ -422,11 +422,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			if old == nil {
 				// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
 			} else if err := checkMissingPlan(old, inputs, goal); err != nil {
-				return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
+				return nil, result.FromError(fmt.Errorf("resource %s violates plan: %w", urn, err))
 			}
 		} else {
 			if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
-				return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
+				return nil, result.FromError(fmt.Errorf("resource %s violates plan: %w", urn, err))
 			}
 		}
 	}
