@@ -59,6 +59,7 @@ const PythonRuntime = "python"
 const NodeJSRuntime = "nodejs"
 const GoRuntime = "go"
 const DotNetRuntime = "dotnet"
+const Pulumi = "pulumi"
 
 const windowsOS = "windows"
 
@@ -706,7 +707,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 }
 
 func (pt *ProgramTester) getBin() (string, error) {
-	return getCmdBin(&pt.bin, "pulumi", pt.opts.Bin)
+	return getCmdBin(&pt.bin, Pulumi, pt.opts.Bin)
 }
 
 func (pt *ProgramTester) getYarnBin() (string, error) {
@@ -1854,7 +1855,7 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 func (pt *ProgramTester) preparePythonLocalizePulumi(cwd string) error {
 	hasPulumi := false
 	for _, s := range pt.opts.Dependencies {
-		if s == "pulumi" {
+		if s == Pulumi {
 			hasPulumi = true
 			break
 		}
@@ -1872,7 +1873,7 @@ func (pt *ProgramTester) preparePythonLocalizePulumi(cwd string) error {
 		return err
 	}
 	localPath := filepath.Join(
-		gopath, "src", "github.com", "pulumi", "pulumi", "sdk", "python", "lib",
+		gopath, "src", "github.com", Pulumi, Pulumi, "sdk", "python", "lib",
 	)
 
 	requirments, err := ioutil.ReadFile(filepath.Join(pt.opts.Dir, "requirements.txt"))
@@ -1884,7 +1885,7 @@ func (pt *ProgramTester) preparePythonLocalizePulumi(cwd string) error {
 	pulumiInRequirments := false
 	for i, line := range lines {
 		split := strings.Split(line, "=")
-		if len(split) >= 1 && split[0] == "pulumi" {
+		if len(split) >= 1 && split[0] == Pulumi {
 			pt.t.Logf("replaced %q with %q in requirements.txt", lines[i], localPath)
 			lines[i] = localPath
 			pulumiInRequirments = true
@@ -1946,7 +1947,7 @@ func (pt *ProgramTester) yarnLinkPackageDeps(cwd string) error {
 func (pt *ProgramTester) installPipPackageDeps(cwd string) error {
 	var err error
 	for _, dep := range pt.opts.Dependencies {
-		if dep == "pulumi" {
+		if dep == Pulumi {
 			continue
 		}
 		// If the given filepath isn't absolute, make it absolute. We're about to pass it to pipenv and pipenv is
