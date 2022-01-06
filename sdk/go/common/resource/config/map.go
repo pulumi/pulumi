@@ -126,8 +126,6 @@ func (m Map) Get(k Key, path bool) (Value, bool, error) {
 		return NewValue(t), true, nil
 	case bool, int, uint, int32, uint32, int64, uint64, float32, float64:
 		return NewValue(fmt.Sprintf("%v", v)), true, nil
-	default:
-		fmt.Printf("Found other value %#v of type %T\n", v, v)
 	}
 
 	// Otherwise, return it as an object value.
