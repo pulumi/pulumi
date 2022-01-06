@@ -21,7 +21,7 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
-	opts = append([]pulumi.ResourceOption{pulumi.PluginDownloadURL("example.com/download")}, opts...)
+	opts = PkgResourceDefaultOpts(opts)
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:example", name, args, &resource, opts...)
 	if err != nil {

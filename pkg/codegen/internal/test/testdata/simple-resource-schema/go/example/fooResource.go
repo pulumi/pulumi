@@ -23,7 +23,7 @@ func NewFooResource(ctx *pulumi.Context,
 		args = &FooResourceArgs{}
 	}
 
-	opts = append([]pulumi.ResourceOption{pulumi.PluginDownloadURL("example.com/download")}, opts...)
+	opts = PkgResourceDefaultOpts(opts)
 	var resource FooResource
 	err := ctx.RegisterRemoteComponentResource("foo::FooResource", name, args, &resource, opts...)
 	if err != nil {

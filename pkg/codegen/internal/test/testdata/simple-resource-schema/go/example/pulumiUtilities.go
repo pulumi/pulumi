@@ -83,3 +83,15 @@ func isZero(v interface{}) bool {
 	}
 	return reflect.ValueOf(v).IsZero()
 }
+
+// PkgResourceDefaultOpts provides package level defaults to opts
+func PkgResourceDefaultOpts(opts []pulumi.ResourceOption) []pulumi.ResourceOption {
+	opts = append([]pulumi.ResourceOption{pulumi.PluginDownloadURL("example.com/download")}, opts...)
+	return opts
+}
+
+// PkgInvokeDefaultOpts provides package level defaults to opts
+func PkgInvokeDefaultOpts(opts []pulumi.InvokeOption) []pulumi.InvokeOption {
+	opts = append([]pulumi.InvokeOption{pulumi.PluginDownloadURL("example.com/download")}, opts...)
+	return opts
+}
