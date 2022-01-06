@@ -12,6 +12,8 @@
 - [sdk/nodejs] Support a `nodeargs` option for passing `node` arguments to the Node language host
   [#8655](https://github.com/pulumi/pulumi/pull/8655)
 
+- [common] Allow names with hyphens.
+
 ### Bug Fixes
 
 - [cli/engine] - Fix [#3982](https://github.com/pulumi/pulumi/issues/3982), a bug

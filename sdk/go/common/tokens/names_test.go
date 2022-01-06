@@ -31,6 +31,7 @@ func TestIsAsName(t *testing.T) {
 		"_",       // permit underscore.
 		"s1MPl3_", // mixed-case alphanumeric/underscore.
 		"_s1MPl3", // ditto.
+		"hy-phy",  // permit hyphens.
 	}
 	for _, nm := range goodNames {
 		assert.True(t, IsName(nm), "IsName expected to be true: %v", nm)
