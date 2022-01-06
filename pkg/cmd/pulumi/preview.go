@@ -57,6 +57,7 @@ func newPreviewCmd() *cobra.Command {
 	var replaces []string
 	var targetReplaces []string
 	var targetDependents bool
+	var savedInputsFile string
 
 	var cmd = &cobra.Command{
 		Use:        "preview",
@@ -167,6 +168,13 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
+			var savedInputs map[resource.URN]resource.PropertyMap
+			if savedInputsFile != "" {
+				if savedInputs, err = readSavedInputs(savedInputsFile); err != nil {
+					return result.FromError(fmt.Errorf("reading saved inputs: %w", err))
+				}
+			}
+
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
@@ -180,6 +188,8 @@ func newPreviewCmd() *cobra.Command {
 					DisableOutputValues:       disableOutputValues(),
 					UpdateTargets:             targetURNs,
 					TargetDependents:          targetDependents,
+					SavedInputs:               savedInputs,
+					NewSavedInputs:            &savedInputs,
 				},
 				Display: displayOpts,
 			}
@@ -193,6 +203,12 @@ func newPreviewCmd() *cobra.Command {
 				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
 			})
+
+			if savedInputsFile != "" {
+				if err = writeSavedInputs(savedInputsFile, *opts.Engine.NewSavedInputs); err != nil {
+					return result.FromError(fmt.Errorf("writing saved inputs; %w", err))
+				}
+			}
 
 			switch {
 			case res != nil:
@@ -302,6 +318,8 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+
+	cmd.PersistentFlags().StringVar(&savedInputsFile, "saved-inputs", "", "")
 
 	return cmd
 }

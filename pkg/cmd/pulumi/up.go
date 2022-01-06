@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -76,6 +77,7 @@ func newUpCmd() *cobra.Command {
 	var replaces []string
 	var targetReplaces []string
 	var targetDependents bool
+	var savedInputsFile string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -124,6 +126,13 @@ func newUpCmd() *cobra.Command {
 			replaceURNs = append(replaceURNs, resource.URN(tr))
 		}
 
+		var savedInputs map[resource.URN]resource.PropertyMap
+		if savedInputsFile != "" {
+			if savedInputs, err = readSavedInputs(savedInputsFile); err != nil {
+				return result.FromError(fmt.Errorf("reading saved inputs: %w", err))
+			}
+		}
+
 		refreshOption, err := getRefreshOption(proj, refresh)
 		if err != nil {
 			return result.FromError(err)
@@ -141,6 +150,8 @@ func newUpCmd() *cobra.Command {
 			DisableOutputValues:       disableOutputValues(),
 			UpdateTargets:             targetURNs,
 			TargetDependents:          targetDependents,
+			SavedInputs:               savedInputs,
+			NewSavedInputs:            &savedInputs,
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -152,6 +163,13 @@ func newUpCmd() *cobra.Command {
 			SecretsManager:     sm,
 			Scopes:             cancellationScopes,
 		})
+
+		if savedInputsFile != "" {
+			if err = writeSavedInputs(savedInputsFile, *opts.Engine.NewSavedInputs); err != nil {
+				return result.FromError(fmt.Errorf("writing saved inputs; %w", err))
+			}
+		}
+
 		switch {
 		case res != nil && res.Error() == context.Canceled:
 			return result.FromError(errors.New("update cancelled"))
@@ -519,6 +537,8 @@ func newUpCmd() *cobra.Command {
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
+	cmd.PersistentFlags().StringVar(&savedInputsFile, "saved-inputs", "", "")
+
 	return cmd
 }
 
@@ -657,4 +677,49 @@ func isPreconfiguredEmptyStack(
 	}
 
 	return true
+}
+
+func readSavedInputs(path string) (map[resource.URN]resource.PropertyMap, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer contract.IgnoreClose(f)
+
+	var rawMap map[string]map[string]interface{}
+	if err := json.NewDecoder(f).Decode(&rawMap); err != nil {
+		return nil, err
+	}
+
+	savedInputs := make(map[resource.URN]resource.PropertyMap, len(rawMap))
+	for urn, rawInputs := range rawMap {
+		inputs, err := stack.DeserializeProperties(rawInputs, config.NopDecrypter, config.NopEncrypter)
+		if err != nil {
+			return nil, err
+		}
+		savedInputs[resource.URN(urn)] = inputs
+	}
+	return savedInputs, nil
+}
+
+func writeSavedInputs(path string, savedInputs map[resource.URN]resource.PropertyMap) error {
+	rawMap := make(map[string]map[string]interface{}, len(savedInputs))
+	for urn, inputs := range savedInputs {
+		rawInputs, err := stack.SerializeProperties(inputs, config.NopEncrypter, false)
+		if err != nil {
+			return err
+		}
+		rawMap[string(urn)] = rawInputs
+	}
+
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(f)
+
+	return json.NewEncoder(f).Encode(rawMap)
 }

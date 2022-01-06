@@ -144,6 +144,9 @@ type UpdateOptions struct {
 
 	// the plugin host to use for this update
 	Host plugin.Host
+
+	SavedInputs    map[resource.URN]resource.PropertyMap
+	NewSavedInputs *map[resource.URN]resource.PropertyMap
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.

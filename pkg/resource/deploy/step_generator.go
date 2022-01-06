@@ -66,6 +66,9 @@ type stepGenerator struct {
 
 	// a map from old names (aliased URNs) to the new URN that aliased to them.
 	aliased map[resource.URN]resource.URN
+
+	savedInputs    map[resource.URN]resource.PropertyMap
+	newSavedInputs map[resource.URN]resource.PropertyMap
 }
 
 func (sg *stepGenerator) isTargetedUpdate() bool {
@@ -335,8 +338,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
-		if recreating || wasExternal || sg.isTargetedReplace(urn) {
-			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
+			olds := goal.Properties
+			if savedInputs, ok := sg.savedInputs[urn]; ok {
+				olds = savedInputs
+			}
+			inputs, failures, err = prov.Check(urn, olds, goal.Properties, allowUnknowns)
+			sg.newSavedInputs[urn] = inputs
 		} else {
 			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
 		}
@@ -347,6 +355,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			invalid = true
 		}
 		new.Inputs = inputs
+
+		sg.newSavedInputs[urn] = inputs
 	}
 
 	// Send the resource off to any Analyzers before being operated on.
@@ -586,13 +596,21 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
 				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+
+				var olds resource.PropertyMap
+				if savedInputs, ok := sg.savedInputs[urn]; ok {
+					olds = savedInputs
+				}
+
+				inputs, failures, err = prov.Check(urn, olds, goal.Properties, allowUnknowns)
 				if err != nil {
 					return nil, result.FromError(err)
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
 					return nil, result.Bail()
 				}
 				new.Inputs = inputs
+
+				sg.newSavedInputs[urn] = inputs
 			}
 
 			if logging.V(7) {
@@ -1526,7 +1544,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 
 // newStepGenerator creates a new step generator that operates on the given deployment.
 func newStepGenerator(
-	deployment *Deployment, opts Options, updateTargetsOpt, replaceTargetsOpt map[resource.URN]bool) *stepGenerator {
+	deployment *Deployment, opts Options, updateTargetsOpt, replaceTargetsOpt map[resource.URN]bool, savedInputs map[resource.URN]resource.PropertyMap) *stepGenerator {
 
 	return &stepGenerator{
 		deployment:           deployment,
@@ -1545,5 +1563,7 @@ func newStepGenerator(
 		providers:            make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
+		savedInputs:          savedInputs,
+		newSavedInputs:       make(map[resource.URN]resource.PropertyMap),
 	}
 }

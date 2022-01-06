@@ -173,7 +173,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	}
 
 	// Set up a step generator for this deployment.
-	ex.stepGen = newStepGenerator(ex.deployment, opts, updateTargetsOpt, replaceTargetsOpt)
+	ex.stepGen = newStepGenerator(ex.deployment, opts, updateTargetsOpt, replaceTargetsOpt, opts.SavedInputs)
 
 	// Retire any pending deletes that are currently present in this deployment.
 	if res := ex.retirePendingDeletes(callerCtx, opts, preview); res != nil {
@@ -259,6 +259,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 	ex.stepExec.WaitForCompletion()
 	logging.V(4).Infof("deploymentExecutor.Execute(...): step executor has completed")
+
+	if opts.NewSavedInputs != nil {
+		*opts.NewSavedInputs = ex.stepGen.newSavedInputs
+	}
 
 	// Now that we've performed all steps in the deployment, ensure that the list of targets to update was
 	// valid.  We have to do this *after* performing the steps as the target list may have referred
