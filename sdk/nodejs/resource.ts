@@ -575,6 +575,10 @@ export interface ResourceOptions {
      * The URN of a previously-registered resource of this type to read from the engine.
      */
     urn?: URN;
+    /**
+     * An option to specify the URL from which to download the resources associated plugin.
+     */
+    pluginDownloadURL?: string;
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
