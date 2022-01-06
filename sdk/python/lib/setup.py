@@ -16,9 +16,12 @@
 
 from setuptools import setup, find_packages
 from os import getenv
+from typing import Optional
 
-def truthy(value: str) -> bool:
-    return value.strip().upper() == "TRUE" or value.strip() == "1"
+def truthy(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return value.upper() == "TRUE" or value == "1"
 
 debug = truthy(getenv("PULUMI_PYTHON_SDK_TEST_INSTALL"))
 
