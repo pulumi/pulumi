@@ -47,3 +47,7 @@ export function getVersion(): string {
     }
     return version;
 }
+
+export function resourceOptsDefaults(): any {
+    return { version: getVersion(), pluginDownloadURL: "example.com" };
+}
