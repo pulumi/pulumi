@@ -3762,7 +3762,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 						return result, nil, nil
 					}
 
-					name, err := resource.NewUniqueHex(string(urn), 8, 512)
+					name, err := resource.NewUniqueHex(urn.Name().String(), 8, 512)
 					assert.Nil(t, err)
 
 					result := news.Copy()
@@ -3782,7 +3782,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 
 		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"other": outs["name"],
+				"other": outs["name"].StringValue(),
 			}),
 		})
 		assert.NoError(t, err)
@@ -3820,11 +3820,21 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 		return
 	}
 
+	resourceName := snap.Resources[1].Outputs["name"].StringValue()
+
+	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar",
+		"zed":  "baz",
+		"name": resourceName,
+	})
+	assert.Equal(t, expected, snap.Resources[1].Outputs)
+
 	// Check we can do an update not just a create
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "bar2",
 		"zed": computed,
 	})
+	p.Options.Plan = nil
 	plan, res = TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	assert.Nil(t, res)
 
@@ -3842,17 +3852,10 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 		return
 	}
 
-	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
-		"foo": "bar",
-		"baz": map[string]interface{}{
-			"a": 42,
-			"b": "alpha",
-		},
-		"qux": []interface{}{
-			"beta",
-			24,
-		},
-		"zed": "grr",
+	expected = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo":  "bar2",
+		"zed":  "baz2",
+		"name": resourceName,
 	})
 	assert.Equal(t, expected, snap.Resources[1].Outputs)
 }

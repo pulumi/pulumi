@@ -378,7 +378,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
-		if recreating || wasExternal || sg.isTargetedReplace(urn) {
+		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
 			// If we have a plan for this resource we need to feed the saved checked inputs to Check to remove non-determinism
 			var oldChecked resource.PropertyMap
 			if sg.deployment.plan != nil {
