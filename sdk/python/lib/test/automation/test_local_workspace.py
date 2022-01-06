@@ -291,6 +291,21 @@ class TestLocalWorkspace(unittest.TestCase):
 
         ws.remove_stack(stack_name)
 
+    def test_config_flag_like(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+        stack.set_config("key", ConfigValue(value="-value"))
+        stack.set_config("secret-key", ConfigValue(value="-value", secret=True))
+        all_config = stack.get_all_config()
+        self.assertFalse(all_config["python_test:key"].secret)
+        self.assertEqual(all_config["python_test:key"].value, "-value")
+        self.assertTrue(all_config["python_test:secret-key"].secret)
+        self.assertEqual(all_config["python_test:secret-key"].value, "-value")
+        ws.remove_stack(stack_name)
+
     def test_nested_config(self):
         if get_test_org() != "pulumi-test":
             return

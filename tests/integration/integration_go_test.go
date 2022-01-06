@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
 //go:build go || all
 // +build go all
 
@@ -50,6 +50,18 @@ func TestEmptyGoRunMain(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
+	})
+}
+
+// TestPrintfGo tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+func TestPrintfGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("printf", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Quick:                  true,
+		ExtraRuntimeValidation: printfTestValidation,
 	})
 }
 

@@ -150,25 +150,29 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 
 		for {
 			msg, readerr := reader.ReadString('\n')
-			if readerr != nil {
-				break
-			}
 
-			// We may be trying to run a plugin that isn't present in the SDK installed with the Policy Pack.
-			// e.g. the stack's package.json does not contain a recent enough @pulumi/pulumi.
-			//
-			// Rather than fail with an opaque error because we didn't get the gRPC port, inspect if it
-			// is a well-known problem and return a better error as appropriate.
-			if strings.Contains(msg, "Cannot find module '@pulumi/pulumi/cmd/run-policy-pack'") {
-				sawPolicyModuleNotFoundErr = true
-			}
-
+			// Even if we've hit the end of the stream, we want to check for non-empty content.
+			// The reason is that if the last line is missing a \n, we still want to include it.
 			if strings.TrimSpace(msg) != "" {
+				// We may be trying to run a plugin that isn't present in the SDK installed with the Policy Pack.
+				// e.g. the stack's package.json does not contain a recent enough @pulumi/pulumi.
+				//
+				// Rather than fail with an opaque error because we didn't get the gRPC port, inspect if it
+				// is a well-known problem and return a better error as appropriate.
+				if strings.Contains(msg, "Cannot find module '@pulumi/pulumi/cmd/run-policy-pack'") {
+					sawPolicyModuleNotFoundErr = true
+				}
+
 				if stderr {
 					ctx.Diag.Infoerrf(diag.StreamMessage("" /*urn*/, msg, errStreamID))
 				} else {
 					ctx.Diag.Infof(diag.StreamMessage("" /*urn*/, msg, outStreamID))
 				}
+			}
+
+			// If we've hit the end of the stream, break out and close the channel.
+			if readerr != nil {
+				break
 			}
 		}
 

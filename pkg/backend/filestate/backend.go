@@ -457,12 +457,6 @@ func (b *localBackend) PackPolicies(
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 
-	err := b.Lock(ctx, stack.Ref())
-	if err != nil {
-		return nil, nil, result.FromError(err)
-	}
-	defer b.Unlock(ctx, stack.Ref())
-
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,

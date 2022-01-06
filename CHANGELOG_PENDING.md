@@ -1,29 +1,20 @@
 ### Improvements
 
-- [engine] - Interpret `pluginDownloadURL` as the provider host url when
-  downloading plugins.
-  [#8544](https://github.com/pulumi/pulumi/pull/8544)
+- [sdk/go] - Add `PluginDownloadURL` as a resource option.
+  [#8555](https://github.com/pulumi/pulumi/pull/8555)
 
-- [sdk/dotnet] - `InputMap` and `InputList` can now be initialized
-  with any value that implicitly converts to the collection type.
-  These values are then automatically appended, for example:
+- [sdk/go] - Allow users to override enviromental variables for `GetCommandResults`.
+  [#8610](https://github.com/pulumi/pulumi/pull/8610)
 
-        var list = new InputList<string>
-        {
-            "V1",
-            Output.Create("V2"),
-            new[] { "V3", "V4" },
-            new List<string> { "V5", "V6" },
-            Output.Create(ImmutableArray.Create("V7", "V8"))
-        };
+- [sdk/nodejs] Support using native ES modules as Pulumi scripts
+  [#7764](https://github.com/pulumi/pulumi/pull/7764)
 
-  This feature simplifies the syntax for constructing resources and
-  specifying resource options such as the `DependsOn` option.
-
-  [#8498](https://github.com/pulumi/pulumi/pull/8498)
+- [sdk/nodejs] Support a `nodeargs` option for passing `node` arguments to the Node language host
+  [#8655](https://github.com/pulumi/pulumi/pull/8655)
 
 ### Bug Fixes
 
-- [sdk/python] - Fixes an issue with stack outputs persisting after
-  they are removed from the Pulumi program
-  [#8583](https://github.com/pulumi/pulumi/pull/8583)
+- [cli/engine] - Fix [#3982](https://github.com/pulumi/pulumi/issues/3982), a bug
+  where the engine ignored the final line of stdout/stderr if it didn't terminate
+  with a newline. 
+  [#8671](https://github.com/pulumi/pulumi/pull/8671)

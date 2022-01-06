@@ -27,6 +27,16 @@ func TestEmptyDotNet(t *testing.T) {
 	})
 }
 
+// TestPrintfDotNet tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+func TestPrintfDotNet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("printf", "dotnet"),
+		Dependencies:           []string{"Pulumi"},
+		Quick:                  true,
+		ExtraRuntimeValidation: printfTestValidation,
+	})
+}
+
 func TestStackOutputsDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("stack_outputs", "dotnet"),
