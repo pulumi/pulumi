@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/tests/empty/go
+module github.com/pulumi/pulumi/tests/printf/go
 
 go 1.16
 
