@@ -1034,7 +1034,7 @@ func TestProviderDownloadURL(t *testing.T) {
 		name       string
 		dependency string
 	}{
-		// #[pulumi/pulumi#8686]: Add python test
+		{"python", "pulumi"},
 		// #[pulumi/pulumi#8687]: Add NodeJS test
 		// #[pulumi/pulumi#8689]: Add .NET test
 		{"go", "github.com/pulumi/pulumi/sdk/v3"},

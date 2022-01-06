@@ -15,15 +15,22 @@
 """The Pulumi Python SDK."""
 
 from setuptools import setup, find_packages
+from os import getenv
 
+def truthy(value: str) -> bool:
+    return value.strip().upper() == "TRUE" or value.strip() == "1"
 
-def readme():
+debug = truthy(getenv("PULUMI_PYTHON_SDK_TEST_INSTALL"))
+
+def readme() -> str:
+    if debug:
+        return "NO_README\n"
     with open('README.md', encoding='utf-8') as f:
         return f.read()
 
 
 setup(name='pulumi',
-      version='${VERSION}',
+      version='${VERSION}' if not debug else "3",
       description='Pulumi\'s Python SDK',
       long_description=readme(),
       long_description_content_type='text/markdown',
