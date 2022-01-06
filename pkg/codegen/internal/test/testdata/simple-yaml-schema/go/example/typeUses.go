@@ -30,6 +30,7 @@ func NewTypeUses(ctx *pulumi.Context,
 		args = &TypeUsesArgs{}
 	}
 
+	opts = PkgResourceDefaultOpts(opts)
 	var resource TypeUses
 	err := ctx.RegisterResource("example::TypeUses", name, args, &resource, opts...)
 	if err != nil {

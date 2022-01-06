@@ -32,6 +32,7 @@ func NewComponent(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
+	opts = PkgResourceDefaultOpts(opts)
 	var resource Component
 	err := ctx.RegisterRemoteComponentResource("example::Component", name, args, &resource, opts...)
 	if err != nil {

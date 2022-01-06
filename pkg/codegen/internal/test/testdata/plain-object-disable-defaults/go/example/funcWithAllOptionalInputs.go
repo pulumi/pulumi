@@ -12,6 +12,7 @@ import (
 
 // Check codegen of functions with all optional inputs.
 func FuncWithAllOptionalInputs(ctx *pulumi.Context, args *FuncWithAllOptionalInputsArgs, opts ...pulumi.InvokeOption) (*FuncWithAllOptionalInputsResult, error) {
+	opts = PkgInvokeDefaultOpts(opts)
 	var rv FuncWithAllOptionalInputsResult
 	err := ctx.Invoke("mypkg::funcWithAllOptionalInputs", args, &rv, opts...)
 	if err != nil {

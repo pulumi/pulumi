@@ -28,6 +28,7 @@ func NewModuleTest(ctx *pulumi.Context,
 	if args.Val != nil {
 		args.Val = args.Val.ToTypPtrOutput().ApplyT(func(v *Typ) *Typ { return v.Defaults() }).(TypPtrOutput)
 	}
+	opts = PkgResourceDefaultOpts(opts)
 	var resource ModuleTest
 	err := ctx.RegisterResource("example:index:moduleTest", name, args, &resource, opts...)
 	if err != nil {

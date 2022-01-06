@@ -9,6 +9,7 @@ import (
 
 // Codegen demo with const inputs
 func FuncWithConstInput(ctx *pulumi.Context, args *FuncWithConstInputArgs, opts ...pulumi.InvokeOption) error {
+	opts = PkgInvokeDefaultOpts(opts)
 	var rv struct{}
 	err := ctx.Invoke("mypkg::funcWithConstInput", args, &rv, opts...)
 	return err

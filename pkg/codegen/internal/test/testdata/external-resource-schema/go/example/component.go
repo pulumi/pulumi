@@ -39,6 +39,7 @@ func NewComponent(ctx *pulumi.Context,
 	if args.RequiredMetadataMap == nil {
 		return nil, errors.New("invalid value for required argument 'RequiredMetadataMap'")
 	}
+	opts = PkgResourceDefaultOpts(opts)
 	var resource Component
 	err := ctx.RegisterResource("example::Component", name, args, &resource, opts...)
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 
 // Check codegen of functions with default values.
 func FuncWithDefaultValue(ctx *pulumi.Context, args *FuncWithDefaultValueArgs, opts ...pulumi.InvokeOption) (*FuncWithDefaultValueResult, error) {
+	opts = PkgInvokeDefaultOpts(opts)
 	var rv FuncWithDefaultValueResult
 	err := ctx.Invoke("mypkg::funcWithDefaultValue", args.Defaults(), &rv, opts...)
 	if err != nil {

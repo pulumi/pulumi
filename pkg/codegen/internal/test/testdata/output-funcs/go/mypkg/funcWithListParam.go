@@ -12,6 +12,7 @@ import (
 
 // Check codegen of functions with a List parameter.
 func FuncWithListParam(ctx *pulumi.Context, args *FuncWithListParamArgs, opts ...pulumi.InvokeOption) (*FuncWithListParamResult, error) {
+	opts = PkgInvokeDefaultOpts(opts)
 	var rv FuncWithListParamResult
 	err := ctx.Invoke("mypkg::funcWithListParam", args, &rv, opts...)
 	if err != nil {

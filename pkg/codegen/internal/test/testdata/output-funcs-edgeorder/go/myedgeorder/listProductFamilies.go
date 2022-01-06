@@ -13,6 +13,7 @@ import (
 // The list of product families.
 // API Version: 2020-12-01-preview.
 func ListProductFamilies(ctx *pulumi.Context, args *ListProductFamiliesArgs, opts ...pulumi.InvokeOption) (*ListProductFamiliesResult, error) {
+	opts = PkgInvokeDefaultOpts(opts)
 	var rv ListProductFamiliesResult
 	err := ctx.Invoke("myedgeorder::listProductFamilies", args, &rv, opts...)
 	if err != nil {

@@ -30,6 +30,7 @@ func NewResource(ctx *pulumi.Context,
 		"baz",
 	})
 	opts = append(opts, secrets)
+	opts = PkgResourceDefaultOpts(opts)
 	var resource Resource
 	err := ctx.RegisterResource("foo-bar:deeply/nested/module:Resource", name, args, &resource, opts...)
 	if err != nil {

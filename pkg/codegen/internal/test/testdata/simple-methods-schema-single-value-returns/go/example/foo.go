@@ -21,6 +21,7 @@ func NewFoo(ctx *pulumi.Context,
 		args = &FooArgs{}
 	}
 
+	opts = PkgResourceDefaultOpts(opts)
 	var resource Foo
 	err := ctx.RegisterRemoteComponentResource("example::Foo", name, args, &resource, opts...)
 	if err != nil {

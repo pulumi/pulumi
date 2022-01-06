@@ -34,6 +34,7 @@ func NewToyStore(ctx *pulumi.Context,
 		"wanted[*]",
 	})
 	opts = append(opts, replaceOnChanges)
+	opts = PkgResourceDefaultOpts(opts)
 	var resource ToyStore
 	err := ctx.RegisterResource("example::ToyStore", name, args, &resource, opts...)
 	if err != nil {

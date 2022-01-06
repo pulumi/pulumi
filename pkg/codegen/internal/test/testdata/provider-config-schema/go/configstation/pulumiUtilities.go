@@ -83,3 +83,25 @@ func isZero(v interface{}) bool {
 	}
 	return reflect.ValueOf(v).IsZero()
 }
+
+// PkgResourceDefaultOpts provides package level defaults to pulumi.OptionResource.
+func PkgResourceDefaultOpts(opts []pulumi.ResourceOption) []pulumi.ResourceOption {
+	defaults := []pulumi.ResourceOption{}
+	// We don't add the version if we can't discover it. We don't error here
+	// because we want to allow non-traditional go project configurations.
+	if v, err := PkgVersion(); err == nil {
+		defaults = append(defaults, pulumi.Version(v.String()))
+	}
+	return append(defaults, opts...)
+}
+
+// PkgInvokeDefaultOpts provides package level defaults to pulumi.OptionInvoke.
+func PkgInvokeDefaultOpts(opts []pulumi.InvokeOption) []pulumi.InvokeOption {
+	defaults := []pulumi.InvokeOption{}
+	// We don't add the version if we can't discover it. We don't error here
+	// because we want to allow non-traditional go project configurations.
+	if v, err := PkgVersion(); err == nil {
+		defaults = append(defaults, pulumi.Version(v.String()))
+	}
+	return append(defaults, opts...)
+}

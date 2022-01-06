@@ -24,6 +24,7 @@ func NewModuleResource(ctx *pulumi.Context,
 		args = &ModuleResourceArgs{}
 	}
 
+	opts = PkgResourceDefaultOpts(opts)
 	var resource ModuleResource
 	err := ctx.RegisterResource("foo-bar:submodule1:ModuleResource", name, args, &resource, opts...)
 	if err != nil {

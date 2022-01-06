@@ -44,6 +44,7 @@ func NewRubberTree(ctx *pulumi.Context,
 	if isZero(args.Type) {
 		args.Type = RubberTreeVariety("Burgundy")
 	}
+	opts = PkgResourceDefaultOpts(opts)
 	var resource RubberTree
 	err := ctx.RegisterResource("plant:tree/v1:RubberTree", name, args, &resource, opts...)
 	if err != nil {

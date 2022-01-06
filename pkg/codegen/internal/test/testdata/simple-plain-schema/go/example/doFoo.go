@@ -8,6 +8,7 @@ import (
 )
 
 func DoFoo(ctx *pulumi.Context, args *DoFooArgs, opts ...pulumi.InvokeOption) error {
+	opts = PkgInvokeDefaultOpts(opts)
 	var rv struct{}
 	err := ctx.Invoke("example::doFoo", args, &rv, opts...)
 	return err

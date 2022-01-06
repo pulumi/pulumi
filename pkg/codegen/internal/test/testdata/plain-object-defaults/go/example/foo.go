@@ -36,6 +36,7 @@ func NewFoo(ctx *pulumi.Context,
 	if args.Settings != nil {
 		args.Settings = args.Settings.ToLayeredTypePtrOutput().ApplyT(func(v *LayeredType) *LayeredType { return v.Defaults() }).(LayeredTypePtrOutput)
 	}
+	opts = PkgResourceDefaultOpts(opts)
 	var resource Foo
 	err := ctx.RegisterResource("example:index:Foo", name, args, &resource, opts...)
 	if err != nil {

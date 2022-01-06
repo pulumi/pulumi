@@ -27,6 +27,7 @@ func NewDog(ctx *pulumi.Context,
 		"bone",
 	})
 	opts = append(opts, replaceOnChanges)
+	opts = PkgResourceDefaultOpts(opts)
 	var resource Dog
 	err := ctx.RegisterResource("example::Dog", name, args, &resource, opts...)
 	if err != nil {

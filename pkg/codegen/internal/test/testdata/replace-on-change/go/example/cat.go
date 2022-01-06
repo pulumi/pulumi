@@ -43,6 +43,7 @@ func NewCat(ctx *pulumi.Context,
 		"toy.color",
 	})
 	opts = append(opts, replaceOnChanges)
+	opts = PkgResourceDefaultOpts(opts)
 	var resource Cat
 	err := ctx.RegisterResource("example::Cat", name, args, &resource, opts...)
 	if err != nil {

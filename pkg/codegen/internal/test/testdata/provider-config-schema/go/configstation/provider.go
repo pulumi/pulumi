@@ -24,6 +24,7 @@ func NewProvider(ctx *pulumi.Context,
 	if isZero(args.FavoriteColor) {
 		args.FavoriteColor = pulumi.StringPtr(getEnvOrDefault("", nil, "FAVE_COLOR").(string))
 	}
+	opts = PkgResourceDefaultOpts(opts)
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:configstation", name, args, &resource, opts...)
 	if err != nil {

@@ -24,6 +24,7 @@ func NewPerson(ctx *pulumi.Context,
 		args = &PersonArgs{}
 	}
 
+	opts = PkgResourceDefaultOpts(opts)
 	var resource Person
 	err := ctx.RegisterResource("example::Person", name, args, &resource, opts...)
 	if err != nil {

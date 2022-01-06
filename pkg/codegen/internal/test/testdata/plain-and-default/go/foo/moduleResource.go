@@ -71,6 +71,7 @@ func NewModuleResource(ctx *pulumi.Context,
 	if isZero(args.Required_string) {
 		args.Required_string = pulumi.String("buzzer")
 	}
+	opts = PkgResourceDefaultOpts(opts)
 	var resource ModuleResource
 	err := ctx.RegisterResource("foobar::ModuleResource", name, args, &resource, opts...)
 	if err != nil {

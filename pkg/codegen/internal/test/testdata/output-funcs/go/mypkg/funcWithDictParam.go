@@ -12,6 +12,7 @@ import (
 
 // Check codegen of functions with a Dict<str,str> parameter.
 func FuncWithDictParam(ctx *pulumi.Context, args *FuncWithDictParamArgs, opts ...pulumi.InvokeOption) (*FuncWithDictParamResult, error) {
+	opts = PkgInvokeDefaultOpts(opts)
 	var rv FuncWithDictParamResult
 	err := ctx.Invoke("mypkg::funcWithDictParam", args, &rv, opts...)
 	if err != nil {
