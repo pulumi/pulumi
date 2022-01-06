@@ -1830,41 +1830,10 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			return fmt.Errorf("saving project: %w", err)
 		}
 
-		if err := os.Setenv("PULUMI_PYTHON_SDK_TEST_INSTALL", "true"); err != nil {
-			return err
+		if err = pt.preparePythonLocalizePulumi(cwd); err != nil {
+			return fmt.Errorf("pulumi dependency: %w", err)
 		}
-		hasPulumi := false
-		for _, s := range pt.opts.Dependencies {
-			if s == "pulumi" {
-				hasPulumi = true
-				break
-			}
-		}
-		if hasPulumi {
-			gopath, err := GoPath()
-			if err != nil {
-				return err
-			}
-			localPath := filepath.Join(
-				gopath, "src", "github.com", "pulumi", "pulumi", "sdk", "python", "lib",
-			)
-			requirments, err := ioutil.ReadFile(filepath.Join(pt.opts.Dir, "requirements.txt"))
-			if err != nil {
-				return err
-			}
-			lines := strings.Split(string(requirments), "\n")
-			for i, line := range lines {
-				split := strings.Split(line, "=")
-				if len(split) >= 1 && split[0] == "pulumi" {
-					pt.t.Logf("Replaced %q with %q in requirements.txt", lines[i], localPath)
-					lines[i] = localPath
-				}
-			}
-			outFile := filepath.Join(pt.tmpdir, "requirements.txt")
-			if err := ioutil.WriteFile(outFile, []byte(strings.Join(lines, "\n")), 0600); err != nil {
-				return err
-			}
-		}
+
 		if err := pt.runVirtualEnvCommand("virtualenv-pip-install",
 			[]string{"python", "-m", "pip", "install", "-r", "requirements.txt"}, cwd); err != nil {
 			return err
@@ -1877,6 +1846,54 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
+	return nil
+}
+
+// Points the program to the local copy of the python SDK if pulumi is listed as
+// a dependency.
+func (pt *ProgramTester) preparePythonLocalizePulumi(cwd string) error {
+	if err := os.Setenv("PULUMI_PYTHON_SDK_TEST_INSTALL", "true"); err != nil {
+		return err
+	}
+	hasPulumi := false
+	for _, s := range pt.opts.Dependencies {
+		if s == "pulumi" {
+			hasPulumi = true
+			break
+		}
+	}
+	pulumiInRequirments := false
+	if hasPulumi {
+		gopath, err := GoPath()
+		if err != nil {
+			return err
+		}
+		localPath := filepath.Join(
+			gopath, "src", "github.com", "pulumi", "pulumi", "sdk", "python", "lib",
+		)
+		requirments, err := ioutil.ReadFile(filepath.Join(pt.opts.Dir, "requirements.txt"))
+		if err != nil {
+			return err
+		}
+		lines := strings.Split(string(requirments), "\n")
+		for i, line := range lines {
+			split := strings.Split(line, "=")
+			if len(split) >= 1 && split[0] == "pulumi" {
+				pt.t.Logf("Replaced %q with %q in requirements.txt", lines[i], localPath)
+				lines[i] = localPath
+				pulumiInRequirments = true
+			}
+		}
+		if !pulumiInRequirments {
+			lines = append(lines, localPath)
+		}
+		outFile := filepath.Join(cwd, "requirements.txt")
+		pt.t.Logf("Wrote requirements.txt to %q", outFile)
+		if err := ioutil.WriteFile(outFile, []byte(strings.Join(lines, "\n")), 0600); err != nil {
+			return err
+		}
+
+	}
 	return nil
 }
 
