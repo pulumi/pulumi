@@ -1030,6 +1030,7 @@ func TestProviderDownloadURL(t *testing.T) {
 			}
 		}
 	}
+
 	languages := []struct {
 		name       string
 		dependency string
@@ -1039,8 +1040,8 @@ func TestProviderDownloadURL(t *testing.T) {
 		// #[pulumi/pulumi#8689]: Add .NET test
 		{"go", "github.com/pulumi/pulumi/sdk/v3"},
 	}
-	for _, lang := range languages {
 
+	for _, lang := range languages {
 		t.Run(lang.name, func(t *testing.T) {
 			env := pathEnv(t, filepath.Join("..", "testprovider"))
 			dir := filepath.Join("gather_plugin", lang.name)

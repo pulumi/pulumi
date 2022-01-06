@@ -1852,9 +1852,6 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 // Points the program to the local copy of the python SDK if pulumi is listed as
 // a dependency.
 func (pt *ProgramTester) preparePythonLocalizePulumi(cwd string) error {
-	if err := os.Setenv("PULUMI_PYTHON_SDK_TEST_INSTALL", "true"); err != nil {
-		return err
-	}
 	hasPulumi := false
 	for _, s := range pt.opts.Dependencies {
 		if s == "pulumi" {
@@ -1862,38 +1859,48 @@ func (pt *ProgramTester) preparePythonLocalizePulumi(cwd string) error {
 			break
 		}
 	}
-	pulumiInRequirments := false
-	if hasPulumi {
-		gopath, err := GoPath()
-		if err != nil {
-			return err
-		}
-		localPath := filepath.Join(
-			gopath, "src", "github.com", "pulumi", "pulumi", "sdk", "python", "lib",
-		)
-		requirments, err := ioutil.ReadFile(filepath.Join(pt.opts.Dir, "requirements.txt"))
-		if err != nil {
-			return err
-		}
-		lines := strings.Split(string(requirments), "\n")
-		for i, line := range lines {
-			split := strings.Split(line, "=")
-			if len(split) >= 1 && split[0] == "pulumi" {
-				pt.t.Logf("Replaced %q with %q in requirements.txt", lines[i], localPath)
-				lines[i] = localPath
-				pulumiInRequirments = true
-			}
-		}
-		if !pulumiInRequirments {
-			lines = append(lines, localPath)
-		}
-		outFile := filepath.Join(cwd, "requirements.txt")
-		pt.t.Logf("Wrote requirements.txt to %q", outFile)
-		if err := ioutil.WriteFile(outFile, []byte(strings.Join(lines, "\n")), 0600); err != nil {
-			return err
-		}
-
+	if !hasPulumi {
+		return nil
 	}
+
+	if err := os.Setenv("PULUMI_PYTHON_SDK_TEST_INSTALL", "true"); err != nil {
+		return err
+	}
+
+	gopath, err := GoPath()
+	if err != nil {
+		return err
+	}
+	localPath := filepath.Join(
+		gopath, "src", "github.com", "pulumi", "pulumi", "sdk", "python", "lib",
+	)
+
+	requirments, err := ioutil.ReadFile(filepath.Join(pt.opts.Dir, "requirements.txt"))
+	if err != nil {
+		return err
+	}
+
+	lines := strings.Split(string(requirments), "\n")
+	pulumiInRequirments := false
+	for i, line := range lines {
+		split := strings.Split(line, "=")
+		if len(split) >= 1 && split[0] == "pulumi" {
+			pt.t.Logf("replaced %q with %q in requirements.txt", lines[i], localPath)
+			lines[i] = localPath
+			pulumiInRequirments = true
+		}
+	}
+	if !pulumiInRequirments {
+		pt.t.Logf("appended %q to requirements.txt", localPath)
+		lines = append(lines, localPath)
+	}
+
+	outFile := filepath.Join(cwd, "requirements.txt")
+	pt.t.Logf("wrote requirements.txt to %q", outFile)
+	if err := ioutil.WriteFile(outFile, []byte(strings.Join(lines, "\n")), 0600); err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -21,11 +21,11 @@ provider_url = ResourceOptions(plugin_download_url="get.pulumi/test/providers")
 
 # Create resource with specified PluginDownloadURL
 r = Random("default", length=10, opts=example_url)
+export("default provider", r.result)
 
 # Create provider with specified PluginDownloadURL
 provider = RandomProvider(provider_url)
 # Create resource that inherits the providers PluginDownloadURL
 e = Random("provided", length=8, opts=ResourceOptions(provider=provider))
 
-export("default provider", r.result)
 export("explicit provider", e.result)
