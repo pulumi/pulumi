@@ -1218,6 +1218,10 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
 	fmt.Fprintf(w, "        if opts.version is None:\n")
 	fmt.Fprintf(w, "            opts.version = _utilities.get_version()\n")
+	if url := mod.pkg.PluginDownloadURL; url != "" {
+		fmt.Fprintf(w, "        if opts.plugin_download_url is None:\n")
+		fmt.Fprintf(w, "            opts.plugin_download_url = %q\n", url)
+	}
 	if res.IsComponent {
 		fmt.Fprintf(w, "        if opts.id is not None:\n")
 		fmt.Fprintf(w, "            raise ValueError('ComponentResource classes do not support opts.id')\n")
