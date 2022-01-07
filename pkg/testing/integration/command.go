@@ -48,6 +48,8 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		Env:  env,
 	}
 
+	orphanCleaner := newOrphanProcessCleaner(&cmd)
+
 	startTime := time.Now()
 
 	var runout []byte
@@ -56,9 +58,12 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		cmd.Stdout = opts.Stdout
 		cmd.Stderr = opts.Stderr
 		runerr = cmd.Run()
+
 	} else {
 		runout, runerr = cmd.CombinedOutput()
 	}
+
+	defer orphanCleaner.killOrphanProcesses(t)
 
 	endTime := time.Now()
 
