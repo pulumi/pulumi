@@ -43,7 +43,7 @@ func CreateTemporaryGoFolder(prefix string) (string, error) {
 		gopath = filepath.Join(usr.HomeDir, "go")
 	}
 
-	folder := fmt.Sprintf("%s-%d-%d", prefix, time.Now().UnixNano(), rand.Intn(1000000))
+	folder := fmt.Sprintf("%s-%d-%d", prefix, time.Now().UnixNano(), rand.Intn(1000000)) //nolint:gosec
 
 	testRoot := filepath.Join(gopath, "src", folder)
 	err := EnsureDir(testRoot)
