@@ -17,30 +17,24 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"time"
 )
 
 func main() {
 	depth := flag.Int("depth", 0, "depth of the process tree")
-	out := flag.String("out", "", "path to touch at the bottom of the process tree")
-
 	handle(flag.CommandLine.Parse(os.Args[1:]))
 
 	if *depth > 0 {
-		cmd := exec.Command("go",
-			"run",
-			"processtree.go",
-			"--depth", fmt.Sprintf("%d", *depth-1),
-			"--out", *out)
+		cmd := exec.Command(os.Args[0], "--depth", fmt.Sprintf("%d", *depth-1))
 		handle(cmd.Start())
 		handle(cmd.Process.Release())
 	}
 
-	if *depth == 0 {
-		handle(ioutil.WriteFile(*out, []byte("OK"), 0600))
+	for {
+		time.Sleep(1 * time.Second)
 	}
 }
 
