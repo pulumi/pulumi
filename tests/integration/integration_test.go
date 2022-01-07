@@ -1036,7 +1036,7 @@ func TestProviderDownloadURL(t *testing.T) {
 	}{
 		// #[pulumi/pulumi#8686]: Add python test
 		// #[pulumi/pulumi#8687]: Add NodeJS test
-		// #[pulumi/pulumi#8689]: Add .NET test
+		{"dotnet", "Pulumi"},
 		{"go", "github.com/pulumi/pulumi/sdk/v3"},
 	}
 	for _, lang := range languages {
