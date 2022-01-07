@@ -67,6 +67,48 @@ type PlanDiff struct {
 	Updates resource.PropertyMap   // the resource's properties we expect to update.
 }
 
+// Returns true if the Deletes array contains the given key
+func (planDiff *PlanDiff) ContainsDelete(key resource.PropertyKey) bool {
+	found := false
+	for i := range planDiff.Deletes {
+		if planDiff.Deletes[i] == key {
+			found = true
+			break
+		}
+	}
+	return found
+}
+
+func (planDiff *PlanDiff) MakeError(key resource.PropertyKey, actualOperation string, actualValue *resource.PropertyValue) string {
+	// diff wants to do 'actualOperation' (one of '+', '~', '-', '=') but plan differs. This function looks up what
+	// key wanted to do to print a more useful error message
+
+	// See if the plan was an add, remove, update, or nothing to give a better error message
+	var expectedOperation string
+	var expectedValue *resource.PropertyValue
+	if expected, has := planDiff.Adds[key]; has {
+		expectedValue = &expected
+		expectedOperation = "+"
+	} else if expected, has = planDiff.Updates[key]; has {
+		expectedValue = &expected
+		expectedOperation = "~"
+	} else if planDiff.ContainsDelete(key) {
+		expectedOperation = "-"
+	} else {
+		expectedOperation = "="
+	}
+	if actualValue == nil && expectedValue == nil {
+		return expectedOperation + actualOperation + string(key)
+	}
+	if actualValue == nil {
+		return expectedOperation + actualOperation + string(key) + "[" + expectedValue.String() + "]"
+	}
+	if expectedValue == nil {
+		return expectedOperation + actualOperation + string(key) + "[" + actualValue.String() + "]"
+	}
+	return expectedOperation + actualOperation + string(key) + "[" + expectedValue.String() + "<>" + actualValue.String() + "]"
+}
+
 // Goal is a desired state for a resource object.  Normally it represents a subset of the resource's state expressed by
 // a program, however if Output is true, it represents a more complete, post-deployment view of the state.
 type GoalPlan struct {
@@ -271,29 +313,21 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 	if diff = olds.DiffIncludeUnknowns(news); diff != nil {
 		// Check that any adds are in the goal for adds
 		for k := range diff.Adds {
+			actual := diff.Adds[k]
 			if expected, has := planDiff.Adds[k]; has {
-				actual := diff.Adds[k]
 				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to add this with value X but constraint wants to add with value Y
-					changes = append(changes, "+"+string(k))
+					changes = append(changes, planDiff.MakeError(k, "+", &actual))
 				}
 			} else {
 				// diff wants to add this, but not listed as an add in the constraints
-				changes = append(changes, "+"+string(k))
+				changes = append(changes, planDiff.MakeError(k, "+", &actual))
 			}
 		}
 
 		// Check that any removes are in the goal for removes
 		for k := range diff.Deletes {
-			found := false
-			for i := range planDiff.Deletes {
-				if planDiff.Deletes[i] == k {
-					found = true
-					break
-				}
-			}
-
-			if !found {
+			if !planDiff.ContainsDelete(k) {
 				// diff wants to delete this, but not listed as a delete in the constraints
 
 				// Check if this was recorded as an Update with <computed>
@@ -302,10 +336,12 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 						// This was planned as an Update to <computed> it probably resolved to undefined and so became
 						// a delete, this is not a plan violation
 					} else {
-						changes = append(changes, "-"+string(k))
+						// diff wants to delete this, plan wants to update it
+						changes = append(changes, planDiff.MakeError(k, "-", nil))
 					}
 				} else {
-					changes = append(changes, "-"+string(k))
+					// diff wants to delete this, but not listed as a delete in the constraints
+					changes = append(changes, planDiff.MakeError(k, "-", nil))
 				}
 			}
 		}
@@ -320,16 +356,16 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 			if expected, has := planDiff.Updates[k]; has {
 				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to change this with value X but constraint wants to change with value Y
-					changes = append(changes, "~"+string(k))
+					changes = append(changes, planDiff.MakeError(k, "~", &actual))
 				}
 			} else if expected, has := planDiff.Adds[k]; has {
 				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to change this with value X but constraint wants to add with value Y
-					changes = append(changes, "~"+string(k))
+					changes = append(changes, planDiff.MakeError(k, "~", &actual))
 				}
 			} else {
 				// diff wants to update this, but not listed as an update in the constraints
-				changes = append(changes, "~"+string(k))
+				changes = append(changes, planDiff.MakeError(k, "~", &actual))
 			}
 		}
 	} else {
@@ -353,7 +389,7 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 			if actual, has := news[k]; has {
 				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to same this with value X but constraint wants to add with value Y
-					changes = append(changes, "~"+string(k))
+					changes = append(changes, planDiff.MakeError(k, "=", &actual))
 				}
 			} else {
 				// Not a same, update or an add but constraint wants to add it
@@ -361,7 +397,7 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 				// Check if this was <computed> origionally because that could of resolved to undefined
 				// and thus it's ok to be missing, else this is a real missing property
 				if !expected.IsComputed() {
-					changes = append(changes, "-"+string(k))
+					changes = append(changes, planDiff.MakeError(k, "-", nil))
 				}
 			}
 		}
@@ -376,15 +412,14 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 
 		if !inUpdates {
 			// Check if this was in adds, it's not ok to have an update constraint but actually do an add
-			_, inAdds := diff.Adds[k]
-			if inAdds {
+			if actual, has := diff.Adds[k]; has {
 				// Constraint wants to update it, but diff wants to add it
-				changes = append(changes, "+"+string(k))
+				changes = append(changes, planDiff.MakeError(k, "+", &actual))
 			} else if actual, has := news[k]; has {
 				// It wasn't in the diff as an add so check we have a same
 				if !expected.DeepEqualsIncludeUnknowns(actual) {
 					// diff wants to same this with value X but constraint wants to update with value Y
-					changes = append(changes, "~"+string(k))
+					changes = append(changes, planDiff.MakeError(k, "=", &actual))
 				}
 			} else {
 				// Not a same or an update but constraint wants to update it
@@ -392,7 +427,7 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 				// Check if this was <computed> origionally because that could of resolved to undefined
 				// and thus it's ok to be missing, else this is a real missing property
 				if !expected.IsComputed() {
-					changes = append(changes, "-"+string(k))
+					changes = append(changes, planDiff.MakeError(k, "-", nil))
 				}
 			}
 		}
@@ -406,15 +441,15 @@ func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
 		_, inDeletes := diff.Deletes[k]
 		if !inDeletes {
 			// See if this is an add, update, or same
-			if _, has := diff.Adds[k]; has {
+			if actual, has := diff.Adds[k]; has {
 				// Constraint wants to delete this but diff wants to add it
-				changes = append(changes, "+"+string(k))
-			} else if _, has := diff.Updates[k]; has {
+				changes = append(changes, planDiff.MakeError(k, "+", &actual))
+			} else if actual, has := diff.Updates[k]; has {
 				// Constraint wants to delete this but diff wants to update it
-				changes = append(changes, "~"+string(k))
-			} else if _, has := diff.Sames[k]; has {
+				changes = append(changes, planDiff.MakeError(k, "~", &actual.New))
+			} else if actual, has := diff.Sames[k]; has {
 				// Constraint wants to delete this but diff wants to leave it same
-				changes = append(changes, "~"+string(k))
+				changes = append(changes, planDiff.MakeError(k, "=", &actual))
 			}
 		}
 	}
