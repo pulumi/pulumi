@@ -79,7 +79,11 @@ func (planDiff *PlanDiff) ContainsDelete(key resource.PropertyKey) bool {
 	return found
 }
 
-func (planDiff *PlanDiff) MakeError(key resource.PropertyKey, actualOperation string, actualValue *resource.PropertyValue) string {
+func (planDiff *PlanDiff) MakeError(
+	key resource.PropertyKey,
+	actualOperation string,
+	actualValue *resource.PropertyValue) string {
+
 	// diff wants to do 'actualOperation' (one of '+', '~', '-', '=') but plan differs. This function looks up what
 	// key wanted to do to print a more useful error message
 
@@ -97,16 +101,15 @@ func (planDiff *PlanDiff) MakeError(key resource.PropertyKey, actualOperation st
 	} else {
 		expectedOperation = "="
 	}
-	if actualValue == nil && expectedValue == nil {
-		return expectedOperation + actualOperation + string(key)
+	diff := ""
+	if actualValue != nil && expectedValue != nil {
+		diff = "[" + expectedValue.String() + "!=" + actualValue.String() + "]"
+	} else if actualValue != nil {
+		diff = "[" + actualValue.String() + "]"
+	} else if expectedValue != nil {
+		diff = "[" + expectedValue.String() + "]"
 	}
-	if actualValue == nil {
-		return expectedOperation + actualOperation + string(key) + "[" + expectedValue.String() + "]"
-	}
-	if expectedValue == nil {
-		return expectedOperation + actualOperation + string(key) + "[" + actualValue.String() + "]"
-	}
-	return expectedOperation + actualOperation + string(key) + "[" + expectedValue.String() + "<>" + actualValue.String() + "]"
+	return expectedOperation + actualOperation + string(key) + diff
 }
 
 // Goal is a desired state for a resource object.  Normally it represents a subset of the resource's state expressed by

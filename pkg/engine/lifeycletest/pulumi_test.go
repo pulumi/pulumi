@@ -3751,7 +3751,9 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 					return news, resource.StatusOK, nil
 				},
-				CheckF: func(urn resource.URN, olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				CheckF: func(urn resource.URN,
+					olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+
 					// If we have name use it, else use olds name, else make one up
 					if _, has := news["name"]; has {
 						return news, nil, nil
