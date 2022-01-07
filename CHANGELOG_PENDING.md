@@ -18,3 +18,6 @@
   where the engine ignored the final line of stdout/stderr if it didn't terminate
   with a newline. 
   [#8671](https://github.com/pulumi/pulumi/pull/8671)
+
+- [nodejs/sdk] - GetRequiredPlugins: Return plugins even when there're errors.
+  [#8699](https://github.com/pulumi/pulumi/pull/8699)
