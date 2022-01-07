@@ -59,7 +59,6 @@ const PythonRuntime = "python"
 const NodeJSRuntime = "nodejs"
 const GoRuntime = "go"
 const DotNetRuntime = "dotnet"
-const Pulumi = "pulumi"
 
 const windowsOS = "windows"
 
@@ -707,7 +706,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 }
 
 func (pt *ProgramTester) getBin() (string, error) {
-	return getCmdBin(&pt.bin, Pulumi, pt.opts.Bin)
+	return getCmdBin(&pt.bin, "pulumi", pt.opts.Bin)
 }
 
 func (pt *ProgramTester) getYarnBin() (string, error) {
@@ -1831,10 +1830,6 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			return fmt.Errorf("saving project: %w", err)
 		}
 
-		if err = pt.preparePythonLocalizePulumi(cwd); err != nil {
-			return fmt.Errorf("pulumi dependency: %w", err)
-		}
-
 		if err := pt.runVirtualEnvCommand("virtualenv-pip-install",
 			[]string{"python", "-m", "pip", "install", "-r", "requirements.txt"}, cwd); err != nil {
 			return err
@@ -1845,69 +1840,6 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		if err = pt.installPipPackageDeps(cwd); err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-// Points the program to the local copy of the python SDK if pulumi is listed as
-// a dependency.
-func (pt *ProgramTester) preparePythonLocalizePulumi(cwd string) error {
-	hasPulumi := false
-	for _, s := range pt.opts.Dependencies {
-		if s == Pulumi {
-			hasPulumi = true
-			break
-		}
-	}
-	if !hasPulumi {
-		return nil
-	}
-
-	if err := os.Setenv("PULUMI_PYTHON_SDK_TEST_INSTALL", "true"); err != nil {
-		return err
-	}
-
-	gopath, err := GoPath()
-	if err != nil {
-		return err
-	}
-	localPath := filepath.Join(
-		gopath, "src", "github.com", Pulumi, Pulumi, "sdk", "python", "lib",
-	)
-
-	// If `localPath` does not exist we abort. This means that we cannot find
-	// where the Pulumi SDK source code is stored. The CLI environment does not
-	// store the Pulumi Python SDK in the standard location. Instead, it
-	// manually installs it globally before the test step.
-	if _, err := os.Stat(localPath); os.IsNotExist(err) {
-		return nil
-	}
-
-	requirments, err := ioutil.ReadFile(filepath.Join(pt.opts.Dir, "requirements.txt"))
-	if err != nil {
-		return err
-	}
-
-	lines := strings.Split(string(requirments), "\n")
-	pulumiInRequirments := false
-	for i, line := range lines {
-		split := strings.Split(line, "=")
-		if len(split) >= 1 && split[0] == Pulumi {
-			pt.t.Logf("replaced %q with %q in requirements.txt", lines[i], localPath)
-			lines[i] = localPath
-			pulumiInRequirments = true
-		}
-	}
-	if !pulumiInRequirments {
-		pt.t.Logf("appended %q to requirements.txt", localPath)
-		lines = append(lines, localPath)
-	}
-
-	outFile := filepath.Join(cwd, "requirements.txt")
-	pt.t.Logf("wrote requirements.txt to %q", outFile)
-	if err := ioutil.WriteFile(outFile, []byte(strings.Join(lines, "\n")), 0600); err != nil {
-		return err
 	}
 
 	return nil
@@ -1955,9 +1887,6 @@ func (pt *ProgramTester) yarnLinkPackageDeps(cwd string) error {
 func (pt *ProgramTester) installPipPackageDeps(cwd string) error {
 	var err error
 	for _, dep := range pt.opts.Dependencies {
-		if dep == Pulumi {
-			continue
-		}
 		// If the given filepath isn't absolute, make it absolute. We're about to pass it to pipenv and pipenv is
 		// operating inside of a random folder in /tmp.
 		if !filepath.IsAbs(dep) {
