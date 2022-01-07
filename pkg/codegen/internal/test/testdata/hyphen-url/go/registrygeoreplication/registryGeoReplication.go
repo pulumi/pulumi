@@ -34,7 +34,6 @@ func NewRegistryGeoReplication(ctx *pulumi.Context,
 	if args.ResourceGroup == nil {
 		return nil, errors.New("invalid value for required argument 'ResourceGroup'")
 	}
-	opts = PkgResourceDefaultOpts(opts)
 	var resource RegistryGeoReplication
 	err := ctx.RegisterRemoteComponentResource("registrygeoreplication:index:RegistryGeoReplication", name, args, &resource, opts...)
 	if err != nil {

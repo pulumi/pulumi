@@ -23,7 +23,6 @@ func NewPet(ctx *pulumi.Context,
 		args = &PetArgs{}
 	}
 
-	opts = PkgResourceDefaultOpts(opts)
 	var resource Pet
 	err := ctx.RegisterResource("example::Pet", name, args, &resource, opts...)
 	if err != nil {

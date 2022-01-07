@@ -8,7 +8,6 @@ import (
 )
 
 func LookupCustomDbRoles(ctx *pulumi.Context, args *LookupCustomDbRolesArgs, opts ...pulumi.InvokeOption) (*LookupCustomDbRolesResult, error) {
-	opts = PkgInvokeDefaultOpts(opts)
 	var rv LookupCustomDbRolesResult
 	err := ctx.Invoke("mongodbatlas::getCustomDbRoles", args, &rv, opts...)
 	if err != nil {

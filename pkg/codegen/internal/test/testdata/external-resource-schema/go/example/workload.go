@@ -24,7 +24,6 @@ func NewWorkload(ctx *pulumi.Context,
 		args = &WorkloadArgs{}
 	}
 
-	opts = PkgResourceDefaultOpts(opts)
 	var resource Workload
 	err := ctx.RegisterResource("example::Workload", name, args, &resource, opts...)
 	if err != nil {

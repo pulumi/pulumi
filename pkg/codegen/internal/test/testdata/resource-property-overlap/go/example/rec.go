@@ -23,7 +23,6 @@ func NewRec(ctx *pulumi.Context,
 		args = &RecArgs{}
 	}
 
-	opts = PkgResourceDefaultOpts(opts)
 	var resource Rec
 	err := ctx.RegisterResource("example::Rec", name, args, &resource, opts...)
 	if err != nil {

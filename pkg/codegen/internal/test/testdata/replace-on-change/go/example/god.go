@@ -23,7 +23,6 @@ func NewGod(ctx *pulumi.Context,
 		args = &GodArgs{}
 	}
 
-	opts = PkgResourceDefaultOpts(opts)
 	var resource God
 	err := ctx.RegisterResource("example::God", name, args, &resource, opts...)
 	if err != nil {

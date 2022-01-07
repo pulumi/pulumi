@@ -14,7 +14,6 @@ import (
 //
 // Deprecated: aws.getAmiIds has been deprecated in favor of aws.ec2.getAmiIds
 func GetAmiIds(ctx *pulumi.Context, args *GetAmiIdsArgs, opts ...pulumi.InvokeOption) (*GetAmiIdsResult, error) {
-	opts = PkgInvokeDefaultOpts(opts)
 	var rv GetAmiIdsResult
 	err := ctx.Invoke("mypkg::getAmiIds", args, &rv, opts...)
 	if err != nil {

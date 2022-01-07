@@ -13,7 +13,6 @@ import (
 // Response for all the Bastion Shareable Link endpoints.
 // API Version: 2020-11-01.
 func GetBastionShareableLink(ctx *pulumi.Context, args *GetBastionShareableLinkArgs, opts ...pulumi.InvokeOption) (*GetBastionShareableLinkResult, error) {
-	opts = PkgInvokeDefaultOpts(opts)
 	var rv GetBastionShareableLinkResult
 	err := ctx.Invoke("mypkg::getBastionShareableLink", args, &rv, opts...)
 	if err != nil {

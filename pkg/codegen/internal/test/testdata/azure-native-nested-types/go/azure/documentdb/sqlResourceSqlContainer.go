@@ -109,7 +109,6 @@ func NewSqlResourceSqlContainer(ctx *pulumi.Context,
 		args = &SqlResourceSqlContainerArgs{}
 	}
 
-	opts = PkgResourceDefaultOpts(opts)
 	var resource SqlResourceSqlContainer
 	err := ctx.RegisterResource("azure-native:documentdb:SqlResourceSqlContainer", name, args, &resource, opts...)
 	if err != nil {

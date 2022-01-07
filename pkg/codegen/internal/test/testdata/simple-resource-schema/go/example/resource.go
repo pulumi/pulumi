@@ -30,7 +30,7 @@ func NewResource(ctx *pulumi.Context,
 		"bar",
 	})
 	opts = append(opts, secrets)
-	opts = PkgResourceDefaultOpts(opts)
+	opts = pkgResourceDefaultOpts(opts)
 	var resource Resource
 	err := ctx.RegisterResource("example::Resource", name, args, &resource, opts...)
 	if err != nil {

@@ -1,7 +1,6 @@
 {
   "emittedFiles": [
     "foo/deeply/nested/module/init.go",
-    "foo/deeply/nested/module/pulumiUtilities.go",
     "foo/deeply/nested/module/resource.go",
     "foo/doc.go",
     "foo/init.go",

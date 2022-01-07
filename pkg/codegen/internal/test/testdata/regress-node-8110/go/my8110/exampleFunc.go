@@ -8,7 +8,6 @@ import (
 )
 
 func ExampleFunc(ctx *pulumi.Context, args *ExampleFuncArgs, opts ...pulumi.InvokeOption) error {
-	opts = PkgInvokeDefaultOpts(opts)
 	var rv struct{}
 	err := ctx.Invoke("my8110::exampleFunc", args, &rv, opts...)
 	return err

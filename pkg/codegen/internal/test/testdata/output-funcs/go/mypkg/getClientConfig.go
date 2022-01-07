@@ -9,7 +9,6 @@ import (
 
 // Failing example taken from azure-native. Original doc: Use this function to access the current configuration of the native Azure provider.
 func GetClientConfig(ctx *pulumi.Context, opts ...pulumi.InvokeOption) (*GetClientConfigResult, error) {
-	opts = PkgInvokeDefaultOpts(opts)
 	var rv GetClientConfigResult
 	err := ctx.Invoke("mypkg::getClientConfig", nil, &rv, opts...)
 	if err != nil {

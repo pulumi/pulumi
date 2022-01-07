@@ -23,7 +23,6 @@ func NewResourceInputResource(ctx *pulumi.Context,
 		args = &ResourceInputResourceArgs{}
 	}
 
-	opts = PkgResourceDefaultOpts(opts)
 	var resource ResourceInputResource
 	err := ctx.RegisterResource("example::ResourceInput", name, args, &resource, opts...)
 	if err != nil {

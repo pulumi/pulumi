@@ -29,7 +29,6 @@ func NewFoo(ctx *pulumi.Context,
 	if args.BackupKubeClientSettings == nil {
 		return nil, errors.New("invalid value for required argument 'BackupKubeClientSettings'")
 	}
-	opts = PkgResourceDefaultOpts(opts)
 	var resource Foo
 	err := ctx.RegisterResource("example:index:Foo", name, args, &resource, opts...)
 	if err != nil {

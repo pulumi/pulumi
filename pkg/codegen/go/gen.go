@@ -1638,7 +1638,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprint(w, "\topts = append(opts, replaceOnChanges)\n")
 	}
 
-	pkg.insertPkgDefaultsOptsCall(w, false)
+	pkg.GenPkgDefaultsOptsCall(w, false /*invoke*/)
 
 	// Finally make the call to registration.
 	fmt.Fprintf(w, "\tvar resource %s\n", name)
@@ -1949,7 +1949,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 		outputsType = name + "Result"
 	}
 
-	pkg.insertPkgDefaultsOptsCall(w, true /*invoke*/)
+	pkg.GenPkgDefaultsOptsCall(w, true /*invoke*/)
 
 	fmt.Fprintf(w, "\tvar rv %s\n", outputsType)
 	fmt.Fprintf(w, "\terr := ctx.Invoke(\"%s\", %s, &rv, opts...)\n", f.Token, inputsVar)
@@ -3531,10 +3531,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				packageRegex = fmt.Sprintf("^%s(/v\\d+)?", pkg.importBasePath)
 			}
 
-			_, err := fmt.Fprintf(buffer, UtilitiesFile(pkg), packageRegex)
-			if err != nil {
-				return nil, err
-			}
+			pkg.GenUtilitiesFile(buffer, packageRegex)
 
 			setFile(path.Join(mod, "pulumiUtilities.go"), buffer.String())
 		}
@@ -3565,7 +3562,7 @@ func goPackage(name string) string {
 	return strings.ReplaceAll(name, "-", "")
 }
 
-func UtilitiesFile(pkg *pkgContext) string {
+func (pkg *pkgContext) GenUtilitiesFile(w io.Writer, packageRegex string) {
 	const utilitiesFile = `
 type envParser func(v string) interface{}
 
@@ -3636,40 +3633,42 @@ func isZero(v interface{}) bool {
 	return reflect.ValueOf(v).IsZero()
 }
 `
-	fmt.Printf("Body:\n%s\n", pkg.GenPkgDefaultOpts())
-	return utilitiesFile + pkg.GenPkgDefaultOpts()
+	_, err := fmt.Fprintf(w, utilitiesFile, packageRegex)
+	contract.AssertNoError(err)
+	pkg.GenPkgDefaultOpts(w)
 }
 
-func (pkg *pkgContext) GenPkgDefaultOpts() string {
-	out := ""
-	const template string = `
-// Pkg%[1]sDefaultOpts provides package level defaults to pulumi.Option%[1]s.
-func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
-	defaults := []pulumi.%[1]sOption{%[2]s}
-	// We don't add the version if we can't discover it. We don't error here
-	// because we want to allow non-traditional go project configurations.
-	if v, err := PkgVersion(); err == nil {
-		defaults = append(defaults, pulumi.Version(v.String()))
+func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer) {
+	url := pkg.pkg.PluginDownloadURL
+	if url == "" {
+		return
 	}
+	const template string = `
+// pkg%[1]sDefaultOpts provides package level defaults to pulumi.Option%[1]s.
+func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
+	defaults := []pulumi.%[1]sOption{%[2]s}
+
 	return append(defaults, opts...)
 }
 `
-	var pluginDownloadURL string
-	if url := pkg.pkg.PluginDownloadURL; url != "" {
-		pluginDownloadURL = fmt.Sprintf("pulumi.PluginDownloadURL(%q)", url)
-	}
+	pluginDownloadURL := fmt.Sprintf("pulumi.PluginDownloadURL(%q)", url)
 	for _, typ := range []string{"Resource", "Invoke"} {
-		out += fmt.Sprintf(template, typ, pluginDownloadURL)
+		_, err := fmt.Fprintf(w, template, typ, pluginDownloadURL)
+		contract.AssertNoError(err)
 	}
-	return out
 }
 
-// insertPkgDefaultsOptsCall generates a call to Pkg{TYPE}DefaultsOpts.
-func (pkg *pkgContext) insertPkgDefaultsOptsCall(w io.Writer, invoke bool) {
+// GenPkgDefaultsOptsCall generates a call to Pkg{TYPE}DefaultsOpts.
+func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) {
+	// The `pkg%sDefaultOpts` call won't do anything, so we don't insert it.
+	if pkg.pkg.PluginDownloadURL == "" {
+		return
+	}
 	pkg.needsUtils = true
 	typ := "Resource"
 	if invoke {
 		typ = "Invoke"
 	}
-	fmt.Fprintf(w, "\topts = Pkg%sDefaultOpts(opts)\n", typ)
+	_, err := fmt.Fprintf(w, "\topts = pkg%sDefaultOpts(opts)\n", typ)
+	contract.AssertNoError(err)
 }

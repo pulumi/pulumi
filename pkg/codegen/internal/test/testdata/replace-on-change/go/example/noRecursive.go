@@ -28,7 +28,6 @@ func NewNoRecursive(ctx *pulumi.Context,
 		"replace",
 	})
 	opts = append(opts, replaceOnChanges)
-	opts = PkgResourceDefaultOpts(opts)
 	var resource NoRecursive
 	err := ctx.RegisterResource("example::NoRecursive", name, args, &resource, opts...)
 	if err != nil {

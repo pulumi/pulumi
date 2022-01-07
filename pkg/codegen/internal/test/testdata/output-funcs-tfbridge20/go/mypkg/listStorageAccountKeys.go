@@ -13,7 +13,6 @@ import (
 // The response from the ListKeys operation.
 // API Version: 2021-02-01.
 func ListStorageAccountKeys(ctx *pulumi.Context, args *ListStorageAccountKeysArgs, opts ...pulumi.InvokeOption) (*ListStorageAccountKeysResult, error) {
-	opts = PkgInvokeDefaultOpts(opts)
 	var rv ListStorageAccountKeysResult
 	err := ctx.Invoke("mypkg::listStorageAccountKeys", args, &rv, opts...)
 	if err != nil {
