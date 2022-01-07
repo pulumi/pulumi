@@ -21,7 +21,7 @@ class MyStack : Stack
 class Random : ComponentResource
 {
     public Random(string name, int length, ComponentResourceOptions? opts = null)
-        : base("testprovider:index:Random", name, new RandomResourceArgs {Length = length}, MakeResourceOptions(opts, ""), remote: true)
+        : base("testprovider:index:Random", name, new RandomResourceArgs {Length = length}, MakeResourceOptions(opts, ""), remote: false)
     {
     }
 
