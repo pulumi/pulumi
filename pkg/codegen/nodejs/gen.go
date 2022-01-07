@@ -2524,5 +2524,5 @@ export function resourceOptsDefaults(): any {
 		pluginDownloadURL = fmt.Sprintf(", pluginDownloadURL: %q", url)
 	}
 	_, err := fmt.Fprintf(w, body, pluginDownloadURL)
-	contract.Assertf(err == nil, "The write should succeed")
+	contract.AssertNoError(err)
 }
