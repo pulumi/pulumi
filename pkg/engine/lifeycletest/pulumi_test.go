@@ -2662,7 +2662,8 @@ func TestPlannedUpdate(t *testing.T) {
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
-		"<{%reset%}>resource violates plan: properties changed: -baz, -foo<{%reset%}>\n")
+		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
+			"properties changed: +-baz[{map[a:{42} b:output<string>{}]}], +-foo[{bar}]<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.Nil(t, res)
 
@@ -2895,7 +2896,8 @@ func TestExpectedDelete(t *testing.T) {
 	// this should be an error
 	createAllResources = true
 	p.Options.Plan = plan.Clone()
-	validate := ExpectDiagMessage(t, "<{%reset%}>resource violates plan: resource unexpectedly not deleted<{%reset%}>\n")
+	validate := ExpectDiagMessage(t, "<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resB violates plan: "+
+		"resource unexpectedly not deleted<{%reset%}>\n")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
@@ -3015,7 +3017,8 @@ func TestPropertySetChange(t *testing.T) {
 		"foo": "bar",
 	})
 	p.Options.Plan = plan.Clone()
-	validate := ExpectDiagMessage(t, "<{%reset%}>resource violates plan: properties changed: -frob<{%reset%}>\n")
+	validate := ExpectDiagMessage(t, "<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
+		"properties changed: +-frob[{baz}]<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
@@ -3305,7 +3308,8 @@ func TestPlannedPreviews(t *testing.T) {
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
-		"<{%reset%}>resource violates plan: properties changed: -baz, -foo<{%reset%}>\n")
+		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: properties changed: "+
+			"+-baz[{map[a:{42} b:output<string>{}]}], +-foo[{bar}]<{%reset%}>\n")
 	_, res = TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate)
 	assert.Nil(t, res)
 
@@ -3391,7 +3395,8 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		"zed": 24,
 	})
 	p.Options.Plan = plan.Clone()
-	validate := ExpectDiagMessage(t, "<{%reset%}>resource violates plan: properties changed: ~zed<{%reset%}>\n")
+	validate := ExpectDiagMessage(t, "<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
+		"properties changed: =~zed[{24}]<{%reset%}>\n")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.Nil(t, res)
 
@@ -3451,7 +3456,7 @@ func TestPlannedOutputChanges(t *testing.T) {
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
-		"<{%reset%}>resource violates plan: properties changed: -frob<{%reset%}>\n")
+		"<{%reset%}>resource violates plan: properties changed: +-frob[{baz}]<{%reset%}>\n")
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
@@ -3533,7 +3538,8 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t,
-		"<{%reset%}>resource violates plan: properties changed: ~frob<{%reset%}>\n")
+		"<{%reset%}>resource urn:pulumi:test::test::pkgA:m:typA::resA violates plan: "+
+			"properties changed: ~~frob[{newBazzer}!={differentBazzer}]<{%reset%}>\n")
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
