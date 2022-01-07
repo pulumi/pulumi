@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,8 +21,19 @@ import (
 	"syscall"
 )
 
-// KillChildren calls os.Process.Kill() on every child process of `pid`'s, stoping after the first error (if any). It
-// also only kills direct child process, not any children they may have.
+// `KillChildren` kills every child or indirect descendant process of
+// the root process represented by `pid`.
+//
+// Intended to be used with `RegisterProcessGroup` to make sure
+// misbehaving commands do not leave any orphan sub-processes running:
+//
+//	cmd := exec.Command(name, args...)
+//	cmdutil.RegisterProcessGroup(cmd)
+//      cmd.Start() // or any other method that actually starts the process
+//      err := cmdutil.KillChildren(cmd.Process.Pid)
+//
+// This is the UNIX-specific implementation that sends a SIGKILL to
+// the process group associated with the `pid`.
 func KillChildren(pid int) error {
 	// A subprocess that was launched after calling `RegisterProcessGroup` below will
 	// belong to a process group whose ID is the same as the PID. Passing the negation
@@ -34,9 +45,20 @@ func KillChildren(pid int) error {
 	return syscall.Kill(-pid, syscall.SIGKILL)
 }
 
-// RegisterProcessGroup informs the OS that it needs to call `setpgid` on this
-// child process. When it comes time to kill this process, we'll kill all processes
-// in the same process group.
+// `RegisterProcessGroup` informs the OS that it needs to call
+// `setpgid` (process group ID) on the process that the command `cmd`
+// will be starting. When this process later starts, the OS will
+// allocate a new PID and will assign its PGID=PID. All children and
+// descendants of this process will then inherit the PGID value.
+//
+// Intended to be used with `KillChildren`.
+//
+// Usage:
+//
+//	cmd := exec.Command(name, args...)
+//	cmdutil.RegisterProcessGroup(cmd)
+//      cmd.Start()
+//
 func RegisterProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }
