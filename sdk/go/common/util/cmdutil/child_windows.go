@@ -37,7 +37,7 @@ import (
 // This is the Windows-specific implementation that sends scans all
 // system processes using native syscalls (via go-ps) and attempts to
 // Kill them, aggregating any errors it encounters.
-func KillChildrenW(pid int) error {
+func KillChildren(pid int) error {
 	procs, err := ps.Processes()
 	if err != nil {
 		return err
@@ -126,6 +126,6 @@ func isDescendant(p int, parents map[int]int) bool {
 }
 
 // RegisterProcessGroup does nothing on Windows.
-func RegisterProcessGroupW(cmd *exec.Cmd) {
+func RegisterProcessGroup(cmd *exec.Cmd) {
 	// nothing to do on Windows.
 }
