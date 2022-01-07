@@ -1876,6 +1876,14 @@ func (pt *ProgramTester) preparePythonLocalizePulumi(cwd string) error {
 		gopath, "src", "github.com", Pulumi, Pulumi, "sdk", "python", "lib",
 	)
 
+	// If `localPath` does not exist we abort. This means that we cannot find
+	// where the Pulumi SDK source code is stored. The CLI environment does not
+	// store the Pulumi Python SDK in the standard location. Instead, it
+	// manually installs it globally before the test step.
+	if _, err := os.Stat(localPath); os.IsNotExist(err) {
+		return nil
+	}
+
 	requirments, err := ioutil.ReadFile(filepath.Join(pt.opts.Dir, "requirements.txt"))
 	if err != nil {
 		return err
