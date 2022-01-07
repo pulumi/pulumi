@@ -107,5 +107,13 @@ namespace Pulumi
         }
 
         internal abstract ResourceOptions Clone();
+
+        /// <summary>
+        /// An optional URL, corresponding to the url from which the provider plugin that should be
+        /// used when operating on this resource is downloaded from. This URL overrides the download URL
+        /// inferred from the current package and should rarely be used.
+        /// </summary>
+        public string? PluginDownloadURL { get; set; }
+
     }
 }
