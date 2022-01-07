@@ -277,8 +277,8 @@ func getPluginsFromDir(
 				curr, pulumiPackagePathToVersionMap, inNodeModules || filepath.Base(dir) == "node_modules")
 			if err != nil {
 				allErrors = multierror.Append(allErrors, err)
-				continue
 			}
+			// Even if there was an error, still append any plugins found in the dir.
 			plugins = append(plugins, more...)
 		} else if inNodeModules && name == "package.json" {
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
