@@ -9,14 +9,16 @@ from pulumi.resource import ResourceOptions
 
 class Random(Resource):
     def __init__(self, name: str, length=int, opts: Optional[ResourceOptions]=None):
+        props = {"length": length, "result": None}
         self.length = length
-        super().__init__("testprovider:index:Random", name, {"length": length}, opts)
+        Resource.__init__(self, "testprovider:index:Random", name, True, props, opts)
+        print(props)
 
 class RandomProvider(Provider):
     def __init__(self, opts: Optional[ResourceOptions]=None):
-        super().__init__("pulumi:providers:testprovider", "provider", None, opts)
+        Provider.__init__(self, "testprovider", "provider", None, opts)
 
-example_url = ResourceOptions(plugin_download_url="example.com")
+example_url = ResourceOptions(plugin_download_url="get.com")
 provider_url = ResourceOptions(plugin_download_url="get.pulumi/test/providers")
 
 # Create resource with specified PluginDownloadURL
