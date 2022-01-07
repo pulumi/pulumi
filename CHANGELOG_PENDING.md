@@ -1,7 +1,8 @@
 ### Improvements
 
-- [sdk/go] - Add `PluginDownloadURL` as a resource option.
+- [sdk/{go,dotnet}] - Add `PluginDownloadURL` as a resource option.
   [#8555](https://github.com/pulumi/pulumi/pull/8555)
+  [#8702](https://github.com/pulumi/pulumi/pull/8702)
 
 - [sdk/go] - Allow users to override enviromental variables for `GetCommandResults`.
   [#8610](https://github.com/pulumi/pulumi/pull/8610)
