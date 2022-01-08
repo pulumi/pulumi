@@ -23,20 +23,23 @@ import (
 	ps "github.com/mitchellh/go-ps"
 )
 
-// `KillChildren` kills every child or indirect descendant process of
-// the root process represented by `pid`.
+// `KillChildren` kills the root process respresented by `pid` process
+// identifier, as well as any child or descendant processes it
+// detects. It ignores errors if it appears that the processes are no
+// longer live.
 //
-// Intended to be used with `RegisterProcessGroup` to make sure
-// misbehaving commands do not leave any orphan sub-processes running:
+// `KillChildren` is Intended to be used with `RegisterProcessGroup`
+// to make sure misbehaving commands do not leave any orphan
+// sub-processes running:
 //
 //	cmd := exec.Command(name, args...)
 //	cmdutil.RegisterProcessGroup(cmd)
 //      cmd.Start() // or any other method that actually starts the process
 //      err := cmdutil.KillChildren(cmd.Process.Pid)
 //
-// This is the Windows-specific implementation that sends scans all
-// system processes using native syscalls (via go-ps) and attempts to
-// Kill them, aggregating any errors it encounters.
+// This is the Windows-specific implementation that scans all system
+// processes using native syscalls (via go-ps) and attempts to kill
+// them, aggregating any errors it encounters.
 func KillChildren(pid int) error {
 	procs, err := ps.Processes()
 	if err != nil {

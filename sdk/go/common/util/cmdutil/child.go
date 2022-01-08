@@ -21,11 +21,14 @@ import (
 	"syscall"
 )
 
-// `KillChildren` kills every child or indirect descendant process of
-// the root process represented by `pid`.
+// `KillChildren` kills the root process respresented by `pid` process
+// identifier, as well as any child or descendant processes it
+// detects. It ignores errors if it appears that the processes are no
+// longer live.
 //
-// Intended to be used with `RegisterProcessGroup` to make sure
-// misbehaving commands do not leave any orphan sub-processes running:
+// `KillChildren` is Intended to be used with `RegisterProcessGroup`
+// to make sure misbehaving commands do not leave any orphan
+// sub-processes running:
 //
 //	cmd := exec.Command(name, args...)
 //	cmdutil.RegisterProcessGroup(cmd)
