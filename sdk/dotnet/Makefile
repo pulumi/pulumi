@@ -50,18 +50,18 @@ install:: build install_plugin
 	find . -name '*${VERSION_PREFIX}*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
 
 dotnet_test:: $(TEST_ALL_DEPS)
-	# include the version prefix/suffix to avoid generating a separate nupkg file
-	$(RUN_TESTSUITE) dotnet-test dotnet test --no-build --filter FullyQualifiedName\!~Pulumi.Automation.Tests /p:Version=${DOTNET_VERSION}  ${TEST_COVERAGE_ARGS}/dotnet.xml
+	$(TESTSUITE_SKIPPED) dotnet-test || (cd Pulumi.Tests && dotnet test)
 
 auto_test:: $(TEST_ALL_DEPS)
-	# include the version prefix/suffix to avoid generating a separate nupkg file
-	$(RUN_TESTSUITE) auto-dotnet dotnet test --no-build --filter FullyQualifiedName~Pulumi.Automation.Tests /p:Version=${DOTNET_VERSION} ${TEST_COVERAGE_ARGS}/dotnet-auto.xml
+	$(TESTSUITE_SKIPPED) auto-dotnet || (cd Pulumi.Automation.Tests && dotnet test)
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: dotnet_test auto_test
+go_test:: $(TEST_ALL_DEPS)
 	$(GO_TEST) ${PROJECT_PKGS}
+
+test_all:: dotnet_test auto_test go_test
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
