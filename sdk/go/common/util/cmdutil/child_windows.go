@@ -105,20 +105,21 @@ func filterDescendants(rootPid int, processes []ps.Process) []ps.Process {
 	}
 	filtered := []ps.Process{}
 	for _, p := range processes {
-		if isDescendant(p.Pid(), parents) {
+		if isDescendant(p.Pid(), rootPid, parents) || p.Pid() == rootPid {
 			filtered = append(filtered, p)
 		}
 	}
 	return filtered
 }
 
-func isDescendant(p int, parents map[int]int) bool {
+func isDescendant(descendant, ancestor int, parents map[int]int) bool {
+	p := descendant
 	for {
 		pp, gotParent := parents[p]
 		if !gotParent {
 			return false
 		}
-		if pp == p {
+		if pp == ancestor {
 			return true
 		}
 		p = pp
