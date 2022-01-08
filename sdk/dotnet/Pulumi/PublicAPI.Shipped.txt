@@ -132,6 +132,8 @@ Pulumi.InvokeOptions.Provider.get -> Pulumi.ProviderResource
 Pulumi.InvokeOptions.Provider.set -> void
 Pulumi.InvokeOptions.Version.get -> string
 Pulumi.InvokeOptions.Version.set -> void
+Pulumi.InvokeOptions.PluginDownloadURL.get -> string
+Pulumi.InvokeOptions.PluginDownloadURL.set -> void
 Pulumi.Log
 Pulumi.Output
 Pulumi.Output<T>

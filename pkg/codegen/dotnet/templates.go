@@ -71,6 +71,18 @@ namespace {{.Namespace}}
 
         public static double? GetEnvDouble(params string[] names) => double.TryParse(GetEnv(names), out double v) ? (double?)v : null;
 
+        public static InvokeOptions WithDefaults(this InvokeOptions? options)
+        {
+            return new InvokeOptions
+            {
+                Parent = options?.Parent,
+                Provider = options?.Provider,
+                Version = options?.Version != null ? options?.Version : Version,
+{{if ne .PluginDownloadURL "" }}                PluginDownloadURL = options?.PluginDownloadURL != null ? options?.PluginDownloadURL : "{{.PluginDownloadURL}}",
+{{end}}            };
+        }
+
+        [Obsolete(@"This method is obsolete. Use WithDefaults instead.")]
         public static InvokeOptions WithVersion(this InvokeOptions? options)
         {
             if (options?.Version != null)
@@ -115,10 +127,11 @@ namespace {{.Namespace}}
 var csharpUtilitiesTemplate = template.Must(template.New("CSharpUtilities").Parse(csharpUtilitiesTemplateText))
 
 type csharpUtilitiesTemplateContext struct {
-	Name      string
-	Namespace string
-	ClassName string
-	Tool      string
+	Name              string
+	Namespace         string
+	ClassName         string
+	Tool              string
+	PluginDownloadURL string
 }
 
 // TODO(pdg): parameterize package name
