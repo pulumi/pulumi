@@ -75,7 +75,7 @@ class FooResource(pulumi.ComponentResource):
         if opts.version is None:
             opts.version = _utilities.get_version()
         if opts.plugin_download_url is None:
-            opts.plugin_download_url = "example.com"
+            opts.plugin_download_url = _utilities.get_plugin_download_url()
         if opts.id is not None:
             raise ValueError('ComponentResource classes do not support opts.id')
         else:

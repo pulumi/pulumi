@@ -393,10 +393,17 @@ func (fs fs) add(path string, contents []byte) {
 	fs[path] = contents
 }
 
-func genUtilitiesFile(tool string) []byte {
+func (mod *modContext) genUtilitiesFile() []byte {
 	buffer := &bytes.Buffer{}
-	genStandardHeader(buffer, tool)
-	fmt.Fprintf(buffer, "%s", utilitiesFile)
+	genStandardHeader(buffer, mod.tool)
+	fmt.Fprintf(buffer, utilitiesFile)
+	if url := mod.pkg.PluginDownloadURL; url != "" {
+		_, err := fmt.Fprintf(buffer, `
+def get_plugin_download_url():
+	return %q
+`, url)
+		contract.AssertNoError(err)
+	}
 	return buffer.Bytes()
 }
 
@@ -425,7 +432,7 @@ func (mod *modContext) gen(fs fs) error {
 	// Utilities, config, readme
 	switch mod.mod {
 	case "":
-		fs.add(filepath.Join(dir, "_utilities.py"), genUtilitiesFile(mod.tool))
+		fs.add(filepath.Join(dir, "_utilities.py"), mod.genUtilitiesFile())
 		fs.add(filepath.Join(dir, "py.typed"), []byte{})
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
@@ -1218,10 +1225,11 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
 	fmt.Fprintf(w, "        if opts.version is None:\n")
 	fmt.Fprintf(w, "            opts.version = _utilities.get_version()\n")
-	if url := mod.pkg.PluginDownloadURL; url != "" {
+	if mod.pkg.PluginDownloadURL != "" {
 		fmt.Fprintf(w, "        if opts.plugin_download_url is None:\n")
-		fmt.Fprintf(w, "            opts.plugin_download_url = %q\n", url)
+		fmt.Fprintf(w, "            opts.plugin_download_url = _utilities.get_plugin_download_url()\n")
 	}
+
 	if res.IsComponent {
 		fmt.Fprintf(w, "        if opts.id is not None:\n")
 		fmt.Fprintf(w, "            raise ValueError('ComponentResource classes do not support opts.id')\n")
@@ -1700,6 +1708,10 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	fmt.Fprintf(w, "        opts = pulumi.InvokeOptions()\n")
 	fmt.Fprintf(w, "    if opts.version is None:\n")
 	fmt.Fprintf(w, "        opts.version = _utilities.get_version()\n")
+	if mod.pkg.PluginDownloadURL != "" {
+		fmt.Fprintf(w, "        if opts.plugin_download_url is None:\n")
+		fmt.Fprintf(w, "            opts.plugin_download_url = _utilities.get_plugin_download_url()\n")
+	}
 
 	// Now simply invoke the runtime function with the arguments.
 	var typ string

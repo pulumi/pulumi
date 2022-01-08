@@ -690,6 +690,11 @@ class Resource:
     The name assigned to the resource at construction.
     """
 
+    _plugin_download_url: Optional[str]
+    """
+    The specified download URL associated with the provider or None.
+    """
+
     _childResources: Set['Resource']
 
 # !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that merge_options
@@ -812,6 +817,7 @@ class Resource:
         self._protect = bool(opts.protect)
         self._provider = opts.provider if custom else None
         self._version = opts.version
+        self._plugin_download_url = opts.plugin_download_url
         self._aliases = all_aliases(opts.aliases, name, t, opts.parent)
 
         if opts.urn is not None:
