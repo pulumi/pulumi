@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2022, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,13 +53,13 @@ def check_isolation(minimal=False):
         project_name='isolation-test',
         program=program)
 
-    if not minimal:
-        with pytest.raises(automation.errors.CommandError):
-            stack.set_config('bad', automation.ConfigValue('1'))
-            stack.up(on_output=ignore)
+    with pytest.raises(automation.errors.CommandError):
+        stack.set_config('bad', automation.ConfigValue('1'))
+        stack.up(on_output=ignore)
 
-    stack.set_config('bad', automation.ConfigValue('0'))
-    stack.up(on_output=ignore)
+    if not minimal:
+        stack.set_config('bad', automation.ConfigValue('0'))
+        stack.up(on_output=ignore)
 
     destroy_res = stack.destroy()
     assert destroy_res.summary.kind == "destroy"
