@@ -68,7 +68,7 @@ def check_isolation(minimal=False):
     stack.workspace.remove_stack(stack_name)
 
 
-@pytest.mark.skip(reason="TODO fails on Windows")
+@pytest.mark.skip(reason="TODO[pulumi/pulumi#8716] fails on Windows")
 def test_isolation():
     check_isolation()
 
