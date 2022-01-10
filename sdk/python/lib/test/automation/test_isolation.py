@@ -46,8 +46,10 @@ def ignore(*args, **kw):
 
 
 def test_isolation():
+    stack_name = f'isolation-test-{uuid.uuid4()}'
+
     stack = automation.create_stack(
-        stack_name=f'isolation-test-{uuid.uuid4()}',
+        stack_name=stack_name,
         project_name='isolation-test',
         program=program)
 
@@ -57,3 +59,9 @@ def test_isolation():
 
     stack.set_config('bad', automation.ConfigValue('0'))
     stack.up(on_output=ignore)
+
+    destroy_res = stack.destroy()
+    assert destroy_res.summary.kind == "destroy"
+    assert destroy_res.summary.result == "succeeded"
+
+    stack.workspace.remove_stack(stack_name)
