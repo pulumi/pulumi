@@ -43,7 +43,7 @@ type State struct {
 	Aliases                 []URN                 // TODO
 	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
-	SequenceNumber          int                   // an auto-incrementing sequence number for each time this resource gets created/replaced (0 means sequence numbers are unknown).
+	SequenceNumber          int                   // an auto-incrementing sequence number for each time this resource gets created/replaced (0 means sequence numbers are unknown, -1 means the last replace didn't use a sequence number).
 }
 
 // NewState creates a new resource value from existing resource state information.
