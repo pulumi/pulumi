@@ -206,9 +206,16 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	if mod == "" {
 		mod = packageRoot(pkg.pkg)
 	}
-	mod = strings.ReplaceAll(mod, "/", "")
-	mod = strings.ReplaceAll(mod, "-", "") + "." + name
-	return strings.ReplaceAll(mod, "-provider", "")
+
+	var importPath string
+	if alias, hasAlias := pkg.pkgImportAliases[path.Join(pkg.importBasePath, mod)]; hasAlias {
+		importPath = alias
+	} else {
+		importPath = strings.ReplaceAll(mod, "/", "")
+		importPath = strings.ReplaceAll(importPath, "-", "")
+	}
+
+	return strings.ReplaceAll(importPath+"."+name, "-provider", "")
 }
 
 func (pkg *pkgContext) tokenToEnum(tok string) string {
@@ -275,7 +282,15 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 	if mod == "" {
 		mod = components[0]
 	}
-	return strings.Replace(mod, "/", "", -1) + "." + name
+
+	var importPath string
+	if alias, hasAlias := pkg.pkgImportAliases[path.Join(pkg.importBasePath, mod)]; hasAlias {
+		importPath = alias
+	} else {
+		importPath = strings.ReplaceAll(mod, "/", "")
+	}
+
+	return importPath + "." + name
 }
 
 func tokenToModule(tok string) string {
@@ -2493,6 +2508,20 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 				// tests don't include ImportBasePath
 				goInfo.ImportBasePath = extractImportBasePath(extPkg)
 			}
+
+			// Ensure that any package import aliases we have specified locally take precedence over those
+			// specified in the remote package.
+			if ourPkgGoInfoI, has := pkg.pkg.Language["go"]; has {
+				ourPkgGoInfo := ourPkgGoInfoI.(GoPackageInfo)
+
+				if len(ourPkgGoInfo.PackageImportAliases) > 0 && goInfo.PackageImportAliases == nil {
+					goInfo.PackageImportAliases = map[string]string{}
+				}
+				for k, v := range ourPkgGoInfo.PackageImportAliases {
+					goInfo.PackageImportAliases[k] = v
+				}
+			}
+
 			extPkgCtx := &pkgContext{
 				pkg:              extPkg,
 				importBasePath:   goInfo.ImportBasePath,
@@ -2527,6 +2556,20 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 				// tests don't include ImportBasePath
 				goInfo.ImportBasePath = extractImportBasePath(extPkg)
 			}
+
+			// Ensure that any package import aliases we have specified locally take precedence over those
+			// specified in the remote package.
+			if ourPkgGoInfoI, has := pkg.pkg.Language["go"]; has {
+				ourPkgGoInfo := ourPkgGoInfoI.(GoPackageInfo)
+
+				if len(ourPkgGoInfo.PackageImportAliases) > 0 && goInfo.PackageImportAliases == nil {
+					goInfo.PackageImportAliases = map[string]string{}
+				}
+				for k, v := range ourPkgGoInfo.PackageImportAliases {
+					goInfo.PackageImportAliases[k] = v
+				}
+			}
+
 			extPkgCtx := &pkgContext{
 				pkg:              extPkg,
 				importBasePath:   goInfo.ImportBasePath,

@@ -16,6 +16,7 @@
         "argFunction.ts",
         "cat.ts",
         "component.ts",
+        "foo.ts",
         "index.ts",
         "provider.ts",
         "types/index.ts",

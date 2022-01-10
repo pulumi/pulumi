@@ -4,6 +4,7 @@
     "example/cat.go",
     "example/component.go",
     "example/doc.go",
+    "example/foo.go",
     "example/init.go",
     "example/provider.go",
     "example/pulumi-plugin.json",

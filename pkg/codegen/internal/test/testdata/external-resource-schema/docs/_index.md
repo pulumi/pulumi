@@ -15,6 +15,7 @@ no_edit_this_page: true
 <ul class="api">
     <li><a href="cat" title="Cat"><span class="api-symbol api-symbol--resource"></span>Cat</a></li>
     <li><a href="component" title="Component"><span class="api-symbol api-symbol--resource"></span>Component</a></li>
+    <li><a href="foo" title="Foo"><span class="api-symbol api-symbol--resource"></span>Foo</a></li>
     <li><a href="provider" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
     <li><a href="workload" title="Workload"><span class="api-symbol api-symbol--resource"></span>Workload</a></li>
 </ul>

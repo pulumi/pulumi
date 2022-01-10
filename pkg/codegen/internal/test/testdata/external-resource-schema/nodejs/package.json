@@ -7,6 +7,7 @@
     },
     "dependencies": {
         "@pulumi/aws": "^4.19.0",
+        "@pulumi/google-native": "^0.11.0",
         "@pulumi/kubernetes": "^3.7.0",
         "@pulumi/random": "^4.2.0"
     },

@@ -4,6 +4,7 @@
     "argfunction/_index.md",
     "cat/_index.md",
     "component/_index.md",
+    "foo/_index.md",
     "provider/_index.md",
     "workload/_index.md"
   ]

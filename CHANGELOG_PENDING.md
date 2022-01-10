@@ -56,3 +56,6 @@
 
 - [cli] - `pulumi plugin install --reinstall` now always reinstalls plugins.
   [#8892](https://github.com/pulumi/pulumi/pull/8892)
+
+- [codegen/go] - Honor import aliases for external types/resources.
+  [#8833](https://github.com/pulumi/pulumi/pull/8833)

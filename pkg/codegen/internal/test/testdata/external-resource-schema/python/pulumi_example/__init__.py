@@ -8,6 +8,7 @@ import typing
 from .arg_function import *
 from .cat import *
 from .component import *
+from .foo import *
 from .provider import *
 from .workload import *
 from ._inputs import *
@@ -21,6 +22,7 @@ _utilities.register(
   "classes": {
    "example::Cat": "Cat",
    "example::Component": "Component",
+   "example::Foo": "Foo",
    "example::Workload": "Workload"
   }
  }

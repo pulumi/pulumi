@@ -47,6 +47,7 @@
   <ItemGroup>
     <PackageReference Include="Pulumi" Version="3.13" />
     <PackageReference Include="Pulumi.Aws" Version="4.20" ExcludeAssets="contentFiles" />
+    <PackageReference Include="Pulumi.GoogleNative" Version="0.11.0" ExcludeAssets="contentFiles" />
     <PackageReference Include="Pulumi.Kubernetes" Version="3.7.0" ExcludeAssets="contentFiles" />
     <PackageReference Include="Pulumi.Random" Version="4.2.0" ExcludeAssets="contentFiles" />
   </ItemGroup>

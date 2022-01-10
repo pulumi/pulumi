@@ -120,6 +120,40 @@
         "requiredMetadataArray",
         "requiredMetadataMap"
       ]
+    },
+    "example::Foo": {
+      "inputProperties": {
+        "key": {
+          "$ref": "/google-native/v0.11.0/schema.json#/resources/google-native:iam/v1:Key"
+        },
+        "auditConfig": {
+          "$ref": "/google-native/v0.11.0/schema.json#/types/google-native:iam/v1:AuditConfig"
+        },
+        "policy": {
+          "$ref": "/google-native/v0.11.0/schema.json#/resources/google-native:dns/v1:Policy"
+        },
+        "dnsKeySpec": {
+          "$ref": "/google-native/v0.11.0/schema.json#/types/google-native:dns/v1:DnsKeySpec"
+        }
+      },
+      "requiredInputs": [
+        "key",
+        "auditConfig",
+        "policy",
+        "dnsKeySpec"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "/google-native/v0.11.0/schema.json#/resources/google-native:iam/v1:Key"
+        },
+        "policy": {
+          "$ref": "/google-native/v0.11.0/schema.json#/resources/google-native:dns/v1:Policy"
+        }
+      },
+      "required": [
+        "key",
+        "policy"
+      ]
     }
   },
   "functions": {
@@ -148,18 +182,23 @@
       "packageReferences": {
         "Pulumi": "3.13",
         "Pulumi.Aws": "4.20",
+        "Pulumi.GoogleNative": "0.11.0",
         "Pulumi.Kubernetes": "3.7.0",
         "Pulumi.Random": "4.2.0"
       }
     },
     "go": {
       "generateResourceContainerTypes": true,
-      "generateExtraInputTypes": true
+      "generateExtraInputTypes": true,
+      "packageImportAliases": {
+        "github.com/pulumi/pulumi-google-native/sdk/go/google/iam/v1": "gcpiamv1"
+      }
     },
     "nodejs": {
       "dependencies": {
         "@pulumi/random": "^4.2.0",
         "@pulumi/aws": "^4.19.0",
+        "@pulumi/google-native": "^0.11.0",
         "@pulumi/kubernetes": "^3.7.0"
       }
     },

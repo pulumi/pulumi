@@ -4,6 +4,7 @@
     "argFunction.ts",
     "cat.ts",
     "component.ts",
+    "foo.ts",
     "index.ts",
     "package.json",
     "provider.ts",
