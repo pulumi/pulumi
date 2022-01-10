@@ -99,7 +99,10 @@ func filterDescendants(rootPid int, processes []ps.Process) []ps.Process {
 	for _, p := range processes {
 		pid := p.Pid()
 		ppid := p.PPid()
-		// Can have PID=0 with PPID=0, ignore it.
+		// Ignore cases where PID=PPID, for example it seems
+		// to happen on Windows with the root process
+		// PID=PPID=0. The code below assumes that there are
+		// no cycles in the parent relation.
 		if ppid != pid {
 			parents[pid] = ppid
 		}
