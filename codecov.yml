@@ -9,20 +9,23 @@ coverage:
           - "sdk/go/common/*"
           - "sdk/go/auto/*"
           - "sdk/proto/*"
-      sdk/dotnet:
+      sdk-dotnet:
         informational: true
-        paths: "sdk/dotnet/*"
-      sdk/go:
+        paths:
+          - "sdk/dotnet/*"
+      sdk-go:
         informational: true
         paths:
           - "sdk/go/pulumi/*"
           - "sdk/go/pulumi-language-go/*"
-      sdk/nodejs:
+      sdk-nodejs:
         informational: true
-        paths: "sdk/nodejs/*"
-      sdk/python:
+        paths:
+          - "sdk/nodejs/*"
+      sdk-python:
         informational: true
-        paths: "sdk/python/*"
+        paths:
+          - "sdk/python/*"
     patch:
       default:
         informational: true
