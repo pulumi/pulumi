@@ -27,11 +27,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const windows = "windows"
+
 func TestKillChildren(t *testing.T) {
 	d := t.TempDir()
 
 	exe := "processtree"
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windows {
 		exe = "processtree.exe"
 	}
 	exe = filepath.Join(d, exe)
