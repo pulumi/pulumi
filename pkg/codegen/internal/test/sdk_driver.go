@@ -195,6 +195,11 @@ var sdkTests = []sdkTest{
 		Directory:   "azure-native-nested-types",
 		Description: "Condensed example of nested collection types from Azure Native",
 	},
+	{
+		Directory:   "regress-go-8664",
+		Description: "Regress pulumi/pulumi#8664 affecting Go",
+		Skip:        codegen.NewStringSet("dotnet/any", "python/any", "nodejs/any", "docs/any"),
+	},
 }
 
 var genSDKOnly bool
