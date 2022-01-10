@@ -20,7 +20,7 @@ class MyStack : Stack
 
 class TestProviderResourceTypeAttribute : Pulumi.ResourceTypeAttribute
 {
-    public TestProviderResourceTypeAttribute(string type) : base(type, Utilities.Version)
+    public TestProviderResourceTypeAttribute(string type) : base(type, "1.2.3")
     {
     }
 }
