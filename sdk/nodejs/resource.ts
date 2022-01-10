@@ -230,6 +230,13 @@ export abstract class Resource {
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     readonly __version?: string;
 
+    /**
+     * The specified provider download URL.
+     * @internal
+     */
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+    readonly __pluginDownloadURL?: string;
+
     public static isInstance(obj: any): obj is Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
@@ -359,6 +366,7 @@ export abstract class Resource {
         this.__protect = !!opts.protect;
         this.__prov = custom ? opts.provider : undefined;
         this.__version = opts.version;
+        this.__pluginDownloadURL = opts.pluginDownloadURL;
 
         // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
         // default `name` and `type` to apply until we are inside the resource constructor.
@@ -575,6 +583,12 @@ export interface ResourceOptions {
      * The URN of a previously-registered resource of this type to read from the engine.
      */
     urn?: URN;
+    /**
+     * An option to specify the URL from which to download this resources
+     * associated plugin. This version overrides the URL information inferred
+     * from the current package and should rarely be used.
+     */
+    pluginDownloadURL?: string;
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.

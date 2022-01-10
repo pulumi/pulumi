@@ -87,9 +87,7 @@ export class ModuleResource extends pulumi.CustomResource {
             resourceInputs["required_string"] = (args ? args.required_string : undefined) ?? "buzzer";
         } else {
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(ModuleResource.__pulumiType, name, resourceInputs, opts);
     }
 }
