@@ -18,6 +18,7 @@
 # operations.
 
 import pytest
+import sys
 import typing
 import uuid
 
@@ -68,7 +69,9 @@ def check_isolation(minimal=False):
     stack.workspace.remove_stack(stack_name)
 
 
-@pytest.mark.skip(reason="TODO[pulumi/pulumi#8716] fails on Windows")
+@pytest.mark.skipif(
+    sys.platform == 'win32',
+    reason="TODO[pulumi/pulumi#8716] fails on Windows")
 def test_isolation():
     check_isolation()
 
