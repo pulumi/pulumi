@@ -18,22 +18,28 @@ class MyStack : Stack
     }
 }
 
+class TestProviderResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+{
+    public TestProviderResourceTypeAttribute(string type) : base(type, Utilities.Version)
+    {
+    }
+}
+
+[TestProviderResourceTypeAttribute("testprovider:index:Random")]
 class Random : ComponentResource
 {
-    public Random(string name, int length, ComponentResourceOptions? opts = null)
+        public Random(string name, int length, ComponentResourceOptions? opts = null)
         : base("testprovider:index:Random", name, new RandomResourceArgs {Length = length}, MakeResourceOptions(opts, ""), remote: false)
     {
     }
 
     private static ComponentResourceOptions MakeResourceOptions(ComponentResourceOptions? options, Input<string>? id)
     {
-        var defaultOptions = new ComponentResourceOptions
-        {
-        };
-        var merged = ComponentResourceOptions.Merge(defaultOptions, options);
-        // Override the ID if one was specified for consistency with other language SDKs.
-        merged.Id = id ?? merged.Id;
-        return merged;
+        if (options == null) {
+            options = new ComponentResourceOptions{};
+        }
+        options.Id = id ?? options.Id;
+        return options;
     }
 
     public sealed class RandomResourceArgs : ResourceArgs

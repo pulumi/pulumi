@@ -82,21 +82,6 @@ namespace {{.Namespace}}
 {{end}}            };
         }
 
-        [Obsolete(@"This method is obsolete. Use WithDefaults instead.")]
-        public static InvokeOptions WithVersion(this InvokeOptions? options)
-        {
-            if (options?.Version != null)
-            {
-                return options;
-            }
-            return new InvokeOptions
-            {
-                Parent = options?.Parent,
-                Provider = options?.Provider,
-                Version = Version,
-            };
-        }
-
         private readonly static string version;
         public static string Version => version;
 
