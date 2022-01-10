@@ -28,18 +28,9 @@ class TestProviderResourceTypeAttribute : Pulumi.ResourceTypeAttribute
 [TestProviderResourceTypeAttribute("testprovider:index:Random")]
 class Random : ComponentResource
 {
-        public Random(string name, int length, ComponentResourceOptions? opts = null)
-        : base("testprovider:index:Random", name, new RandomResourceArgs {Length = length}, MakeResourceOptions(opts, ""), remote: false)
+    public Random(string name, int length, ComponentResourceOptions? opts = null)
+        : base("testprovider:index:Random", name, new RandomResourceArgs {Length = length}, opts, remote: false)
     {
-    }
-
-    private static ComponentResourceOptions MakeResourceOptions(ComponentResourceOptions? options, Input<string>? id)
-    {
-        if (options == null) {
-            options = new ComponentResourceOptions{};
-        }
-        options.Id = id ?? options.Id;
-        return options;
     }
 
     public sealed class RandomResourceArgs : ResourceArgs

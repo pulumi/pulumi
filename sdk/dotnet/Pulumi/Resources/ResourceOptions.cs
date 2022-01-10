@@ -9,6 +9,10 @@ namespace Pulumi
     /// </summary>
     public abstract partial class ResourceOptions
     {
+
+        // NOTE: When you add a field to ResourceOptions, make sure to update
+        // ResourceOptions_Merge.cs and ResourceOptions_Copy.cs.
+
         /// <summary>
         /// An optional existing ID to load, rather than create.
         /// </summary>
