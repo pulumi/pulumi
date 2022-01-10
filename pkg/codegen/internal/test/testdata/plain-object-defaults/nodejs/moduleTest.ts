@@ -48,9 +48,7 @@ export class ModuleTest extends pulumi.CustomResource {
             resourceInputs["val"] = args ? (args.val ? pulumi.output(args.val).apply(inputs.typArgsProvideDefaults) : undefined) : undefined;
         } else {
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(ModuleTest.__pulumiType, name, resourceInputs, opts);
     }
 }

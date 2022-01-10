@@ -60,9 +60,7 @@ export class ToyStore extends pulumi.CustomResource {
             resourceInputs["stuff"] = undefined /*out*/;
             resourceInputs["wanted"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         const replaceOnChanges = { replaceOnChanges: ["chew.owner", "laser.batteries", "stuff[*].associated.color", "stuff[*].color", "wanted[*]"] };
         opts = pulumi.mergeOptions(opts, replaceOnChanges);
         super(ToyStore.__pulumiType, name, resourceInputs, opts);

@@ -3064,6 +3064,11 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		populateDetailsForPropertyTypes(seenMap, r.InputProperties, r.IsProvider, false, false)
 		populateDetailsForPropertyTypes(seenMap, r.Properties, r.IsProvider, false, true)
 
+		if r.StateInputs != nil {
+			populateDetailsForPropertyTypes(seenMap, r.StateInputs.Properties,
+				r.IsProvider, false /*input*/, false /*output*/)
+		}
+
 		for _, method := range r.Methods {
 			if method.Function.Inputs != nil {
 				pkg.names.Add(rawResourceName(r) + Title(method.Name) + "Args")

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -72,20 +72,20 @@ func TestDepRootCalc(t *testing.T) {
 	var dep string
 
 	dep = getRewritePath("github.com/pulumi/pulumi-docker/sdk/v2", "/gopath", "")
-	assert.Equal(t, "/gopath/src/github.com/pulumi/pulumi-docker/sdk", dep)
+	assert.Equal(t, "/gopath/src/github.com/pulumi/pulumi-docker/sdk", filepath.ToSlash(dep))
 
 	dep = getRewritePath("github.com/pulumi/pulumi-gcp/sdk/v3", "/gopath", "/my-go-src")
-	assert.Equal(t, "/my-go-src/pulumi-gcp/sdk", dep)
+	assert.Equal(t, "/my-go-src/pulumi-gcp/sdk", filepath.ToSlash(dep))
 
 	dep = getRewritePath("github.com/example/foo/pkg/v2", "/gopath", "/my-go-src")
-	assert.Equal(t, "/my-go-src/foo/pkg", dep)
+	assert.Equal(t, "/my-go-src/foo/pkg", filepath.ToSlash(dep))
 
 	dep = getRewritePath("github.com/example/foo/v2", "/gopath", "/my-go-src")
-	assert.Equal(t, "/my-go-src/foo", dep)
+	assert.Equal(t, "/my-go-src/foo", filepath.ToSlash(dep))
 
 	dep = getRewritePath("github.com/example/foo", "/gopath", "/my-go-src")
-	assert.Equal(t, "/my-go-src/foo", dep)
+	assert.Equal(t, "/my-go-src/foo", filepath.ToSlash(dep))
 
 	dep = getRewritePath("github.com/pulumi/pulumi-auth0/sdk", "gopath", "/my-go-src")
-	assert.Equal(t, "/my-go-src/pulumi-auth0/sdk", dep)
+	assert.Equal(t, "/my-go-src/pulumi-auth0/sdk", filepath.ToSlash(dep))
 }

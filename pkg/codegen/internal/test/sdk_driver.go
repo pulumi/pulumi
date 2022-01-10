@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -194,6 +195,11 @@ var sdkTests = []sdkTest{
 		Directory:   "azure-native-nested-types",
 		Description: "Condensed example of nested collection types from Azure Native",
 	},
+	{
+		Directory:   "regress-go-8664",
+		Description: "Regress pulumi/pulumi#8664 affecting Go",
+		Skip:        codegen.NewStringSet("dotnet/any", "python/any", "nodejs/any", "docs/any"),
+	},
 }
 
 var genSDKOnly bool
@@ -279,6 +285,11 @@ type SDKCodegenOptions struct {
 // `go/tests/go_test.go` before performing compilation and unit test
 // checks over the project generated in `go`.
 func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-line
+
+	if runtime.GOOS == "windows" {
+		t.Skip("TestSDKCodegen is skipped on Windows")
+	}
+
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 
 	// Motivation for flagging: concerns about memory utilizaion

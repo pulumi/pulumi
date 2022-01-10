@@ -48,9 +48,7 @@ export class Dog extends pulumi.CustomResource {
         } else {
             resourceInputs["bone"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         const replaceOnChanges = { replaceOnChanges: ["bone"] };
         opts = pulumi.mergeOptions(opts, replaceOnChanges);
         super(Dog.__pulumiType, name, resourceInputs, opts);

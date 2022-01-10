@@ -13,9 +13,7 @@ export function funcWithConstInput(args?: FuncWithConstInputArgs, opts?: pulumi.
         opts = {}
     }
 
-    if (!opts.version) {
-        opts.version = utilities.getVersion();
-    }
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
     return pulumi.runtime.invoke("mypkg::funcWithConstInput", {
         "plainInput": args.plainInput,
     }, opts);

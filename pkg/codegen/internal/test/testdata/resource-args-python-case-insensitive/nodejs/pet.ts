@@ -48,9 +48,7 @@ export class Pet extends pulumi.CustomResource {
         } else {
             resourceInputs["name"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Pet.__pulumiType, name, resourceInputs, opts);
     }
 }
