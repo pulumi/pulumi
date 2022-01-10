@@ -52,10 +52,9 @@ class InvokeOptions:
                supplied, the default provider for the invoked function's package will be used.
         :param Optional[str] version: An optional version. If provided, the provider plugin with exactly this version
                will be used to service the invocation.
-
         :param Optional[str] plugin_download_url: An optional URL. If provided, the provider plugin with this download
-        URL will be used to service the invocation. This will override the URL sourced from the host package, and
-        should be rarely used.
+               URL will be used to service the invocation. This will override the URL sourced from the host package, and
+               should be rarely used.
         """
         self.parent = parent
         self.provider = provider
