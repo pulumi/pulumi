@@ -56,14 +56,35 @@ func TestKillChildren(t *testing.T) {
 	require.NoError(t, err)
 
 	// Give SIGKILL time to propagate.
-	time.Sleep(1 * time.Second)
-
-	procs, err := ps.Processes()
-	require.NoError(t, err)
-
-	for _, p := range procs {
-		if strings.Contains(p.Executable(), "processtree") {
-			t.Errorf("Runaway process: %s pid=%d", p.Executable(), p.Pid())
+	attempt := 0
+	maxAttempt := 50
+	for {
+		procs, err := activeProcesses("processtree")
+		require.NoError(t, err)
+		if len(procs) == 0 {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+		attempt++
+		if attempt > maxAttempt {
+			for _, p := range procs {
+				t.Errorf("Runaway process: %s pid=%d", p.Executable(), p.Pid())
+			}
+			break
 		}
 	}
+}
+
+func activeProcesses(pattern string) ([]ps.Process, error) {
+	procs, err := ps.Processes()
+	if err != nil {
+		return nil, err
+	}
+	var result []ps.Process
+	for _, p := range procs {
+		if strings.Contains(p.Executable(), pattern) {
+			result = append(result, p)
+		}
+	}
+	return result, nil
 }
