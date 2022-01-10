@@ -94,6 +94,7 @@ test_build:: $(TEST_ALL_DEPS)
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_unknown
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_resources
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_errors
+	cd tests/examples/compat/v0.10.0/minimal/ && yarn install
 
 test_all:: test_build test_pkg test_integration
 
