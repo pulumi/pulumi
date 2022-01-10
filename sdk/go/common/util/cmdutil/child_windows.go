@@ -59,8 +59,7 @@ func KillChildren(pid int) error {
 			errors[procPid] = fmt.Errorf("FindProcess(%d) failed: %w", procPid, err)
 		}
 
-		err = toKill.Kill()
-		if err != nil {
+		if err = toKill.Kill(); err != nil {
 			errors[procPid] = fmt.Errorf("proc.Kill() failed for pid=%d: %w", procPid, err)
 		}
 	}
@@ -85,8 +84,7 @@ func KillChildren(pid int) error {
 	var result error
 
 	for _, proc := range descendants {
-		_, surviving := survivingPids[proc.Pid()]
-		if surviving {
+		if _, surviving := survivingPids[proc.Pid()]; surviving {
 			err, gotErr := errors[proc.Pid()]
 			if gotErr {
 				result = multierror.Append(result, err)
