@@ -47,10 +47,14 @@ func TestKillChildren(t *testing.T) {
 	err = cmd.Start()
 	require.NoError(t, err)
 
+	// Give subprocess time to spawn children.
 	time.Sleep(1 * time.Second)
 
 	err = KillChildren(cmd.Process.Pid)
 	require.NoError(t, err)
+
+	// Give SIGKILL time to propagate.
+	time.Sleep(1 * time.Second)
 
 	procs, err := ps.Processes()
 	require.NoError(t, err)
