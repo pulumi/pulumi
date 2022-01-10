@@ -209,7 +209,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	defer os.RemoveAll(fileStateDir)
 
 	// Now override to local filesystem backend
-	backendURL := "file://" + fileStateDir
+	backendURL := "file://" + filepath.ToSlash(fileStateDir)
 	_ = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "how now brown cow")
 	_ = os.Setenv(workspace.PulumiBackendURLEnvVar, backendURL)
 	defer func() {

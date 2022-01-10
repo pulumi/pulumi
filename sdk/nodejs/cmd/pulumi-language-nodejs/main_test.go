@@ -15,6 +15,10 @@
 package main
 
 import (
+	"context"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -102,4 +106,53 @@ func TestCompatibleVersions(t *testing.T) {
 		assert.Equal(t, c.errmsg, errmsg)
 		assert.Equal(t, c.compatible, compatible)
 	}
+}
+
+func TestGetRequiredPlugins(t *testing.T) {
+	dir, err := ioutil.TempDir("", "test-dir")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	files := []struct {
+		path    string
+		content string
+	}{
+		{
+			filepath.Join(dir, "node_modules", "@pulumi", "foo", "package.json"),
+			`{ "name": "@pulumi/foo", "version": "1.2.3", "pulumi": { "resource": true } }`,
+		},
+		{
+			filepath.Join(dir, "node_modules", "@pulumi", "bar", "package.json"),
+			`{ "name": "@pulumi/bar", "version": "4.5.6", "pulumi": { "resource": true } }`,
+		},
+		{
+			filepath.Join(dir, "node_modules", "@pulumi", "baz", "package.json"),
+			`{ "name": "@pulumi/baz", "version": "4.5.6", "pulumi": { "resource": false } }`,
+		},
+		{
+			filepath.Join(dir, "node_modules", "malformed", "tests", "malformed_test", "package.json"),
+			`{`,
+		},
+	}
+	for _, file := range files {
+		err := os.MkdirAll(filepath.Dir(file.path), 0755)
+		assert.NoError(t, err)
+		err = os.WriteFile(file.path, []byte(file.content), 0600)
+		assert.NoError(t, err)
+	}
+
+	host := &nodeLanguageHost{}
+	resp, err := host.GetRequiredPlugins(context.TODO(), &pulumirpc.GetRequiredPluginsRequest{
+		Program: dir,
+	})
+	assert.NoError(t, err)
+
+	actual := make(map[string]string)
+	for _, plugin := range resp.GetPlugins() {
+		actual[plugin.Name] = plugin.Version
+	}
+	assert.Equal(t, map[string]string{
+		"foo": "v1.2.3",
+		"bar": "v4.5.6",
+	}, actual)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -279,6 +280,11 @@ type SDKCodegenOptions struct {
 // `go/tests/go_test.go` before performing compilation and unit test
 // checks over the project generated in `go`.
 func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-line
+
+	if runtime.GOOS == "windows" {
+		t.Skip("TestSDKCodegen is skipped on Windows")
+	}
+
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 
 	// Motivation for flagging: concerns about memory utilizaion
