@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/stretchr/testify/require"
 )
@@ -65,7 +66,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		runout, runerr = cmd.CombinedOutput()
 	}
 
-	defer require.NoError(t, cmdutil.KillChildren(cmd.Process.Pid))
+	defer contract.IgnoreError(cmdutil.KillChildren(cmd.Process.Pid))
 
 	endTime := time.Now()
 
