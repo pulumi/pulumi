@@ -49,28 +49,16 @@ namespace Pulumi.Foo
         [Obsolete("Please use WithDefaults instead")]
         public static InvokeOptions WithVersion(this InvokeOptions? options)
         {
-            if (options?.Version != null)
-            {
-                return options;
-            }
-            return new InvokeOptions
-            {
-                Parent = options?.Parent,
-                Provider = options?.Provider,
-                PluginDownloadURL = options?.PluginDownloadURL,
-                Version = Version,
-            };
+            InvokeOptions dst = options ?? new InvokeOptions{};
+            dst.Version = options?.Version ?? Version;
+            return dst;
         }
 
-        public static InvokeOptions WithDefaults(this InvokeOptions? options)
+        public static InvokeOptions WithDefaults(this InvokeOptions? src)
         {
-            return new InvokeOptions
-            {
-                Parent = options?.Parent,
-                Provider = options?.Provider,
-                Version = options?.Version ?? Version,
-                PluginDownloadURL = options?.PluginDownloadURL,
-            };
+            InvokeOptions dst = src ?? new InvokeOptions{};
+            dst.Version = src?.Version ?? Version;
+            return dst;
         }
 
         private readonly static string version;
