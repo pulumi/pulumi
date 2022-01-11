@@ -324,6 +324,11 @@ jobs:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+      - name: Convert Node coverage data
+        if: ${{ matrix.platform != 'windows-latest' }}
+        run: |
+          cd sdk/nodejs
+          if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $PULUMI_TEST_COVERAGE_PATH; fi
       - name: Merge Go coverage data
         if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
         run: |
