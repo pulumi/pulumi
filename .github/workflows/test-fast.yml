@@ -43,6 +43,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PULUMI_TEST_OWNER: "moolumi"
   PULUMI_ACCESS_TOKEN: ${{ secrets.pulumi-access-token }}
+  PYTHON: python
 
 jobs:
   test:
