@@ -660,6 +660,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	pt := newProgramTester(t, opts)
 	err := pt.TestLifeCycleInitAndDestroy()
 	assert.NoError(t, err)
+	detectOrphanProcesses(t)
 }
 
 // ProgramTestManualLifeCycle returns a ProgramTester than must be manually controlled in terms of its lifecycle
