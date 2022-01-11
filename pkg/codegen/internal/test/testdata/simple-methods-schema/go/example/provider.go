@@ -21,7 +21,6 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
-	opts = pkgResourceDefaultOpts(opts)
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:example", name, args, &resource, opts...)
 	if err != nil {
