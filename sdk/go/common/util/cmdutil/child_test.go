@@ -55,6 +55,16 @@ func TestKillChildren(t *testing.T) {
 	err = KillChildren(cmd.Process.Pid)
 	require.NoError(t, err)
 
+	// Need to `cmd.Process.Wait()` on Linux, otherwise the
+	// process entry remains in the process table (`ps` shows as
+	// `<defunct>`) and it appears to be active per
+	// `activeProcesses`.
+	go func() {
+		pstate, err := cmd.Process.Wait()
+		require.NoError(t, err)
+		require.True(t, pstate.Success())
+	}()
+
 	// Give SIGKILL time to propagate.
 	attempt := 0
 	maxAttempt := 50
