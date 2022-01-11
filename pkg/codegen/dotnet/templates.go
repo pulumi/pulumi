@@ -82,6 +82,7 @@ namespace {{.Namespace}}
             {
                 Parent = options?.Parent,
                 Provider = options?.Provider,
+                PluginDownloadURL = options?.PluginDownloadURL,
                 Version = Version,
             };
         }
@@ -93,8 +94,8 @@ namespace {{.Namespace}}
                 Parent = options?.Parent,
                 Provider = options?.Provider,
                 Version = options?.Version ?? Version,
-{{if ne .PluginDownloadURL "" }}                PluginDownloadURL = options?.PluginDownloadURL ?? "{{.PluginDownloadURL}}",
-{{end}}            };
+                PluginDownloadURL = options?.PluginDownloadURL{{if ne .PluginDownloadURL "" }} ?? "{{.PluginDownloadURL}}"{{end}},
+            };
         }
 
         private readonly static string version;

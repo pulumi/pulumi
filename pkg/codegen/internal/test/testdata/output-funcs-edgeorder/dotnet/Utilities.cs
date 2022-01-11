@@ -57,6 +57,7 @@ namespace Pulumi.Myedgeorder
             {
                 Parent = options?.Parent,
                 Provider = options?.Provider,
+                PluginDownloadURL = options?.PluginDownloadURL,
                 Version = Version,
             };
         }
@@ -68,6 +69,7 @@ namespace Pulumi.Myedgeorder
                 Parent = options?.Parent,
                 Provider = options?.Provider,
                 Version = options?.Version ?? Version,
+                PluginDownloadURL = options?.PluginDownloadURL,
             };
         }
 

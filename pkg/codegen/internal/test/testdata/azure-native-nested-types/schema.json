@@ -264,9 +264,11 @@
                 "workloadmonitor": "WorkloadMonitor"
             },
             "packageReferences": {
-                "Pulumi": "3.*",
                 "System.Collections.Immutable": "5.0.0"
-            }
+            },
+            "projectReferences": [
+                "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+            ]
         },
         "go": {
             "disableFunctionOutputVersions": true,
