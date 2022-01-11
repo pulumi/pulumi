@@ -31,6 +31,8 @@ Pulumi.CallOptions.Provider.get -> Pulumi.ProviderResource
 Pulumi.CallOptions.Provider.set -> void
 Pulumi.CallOptions.Version.get -> string
 Pulumi.CallOptions.Version.set -> void
+Pulumi.CallOptions.PluginDownloadURL.get -> string
+Pulumi.CallOptions.PluginDownloadURL.set -> void
 Pulumi.ComponentResource
 Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ComponentResourceOptions options = null) -> void
 Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.ComponentResourceOptions options = null, bool remote = false) -> void
