@@ -62,7 +62,7 @@ func TestKillChildren(t *testing.T) {
 	go func() {
 		pstate, err := cmd.Process.Wait()
 		require.NoError(t, err)
-		require.True(t, pstate.Success())
+		require.False(t, pstate.Success())
 	}()
 
 	// Give SIGKILL time to propagate.
