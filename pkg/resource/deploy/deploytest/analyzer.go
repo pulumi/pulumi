@@ -60,7 +60,7 @@ func (a *Analyzer) GetAnalyzerInfo() (plugin.AnalyzerInfo, error) {
 func (a *Analyzer) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
 		Kind: workspace.AnalyzerPlugin,
-		Name: string(a.Info.Name),
+		Name: a.Info.Name,
 	}, nil
 }
 

@@ -101,10 +101,10 @@ func NewProviderLoaderWithHost(pkg tokens.Package, version semver.Version,
 	return p
 }
 
-func NewAnalyzerLoader(name tokens.QName, load LoadAnalyzerFunc, opts ...PluginOption) *PluginLoader {
+func NewAnalyzerLoader(name string, load LoadAnalyzerFunc, opts ...PluginOption) *PluginLoader {
 	p := &PluginLoader{
 		kind: workspace.AnalyzerPlugin,
-		name: string(name),
+		name: name,
 		load: func(optsI interface{}) (interface{}, error) {
 			opts, _ := optsI.(*plugin.PolicyAnalyzerOptions)
 			return load(opts)
@@ -119,7 +119,7 @@ func NewAnalyzerLoader(name tokens.QName, load LoadAnalyzerFunc, opts ...PluginO
 func NewAnalyzerLoaderWithHost(name string, load LoadAnalyzerWithHostFunc, opts ...PluginOption) *PluginLoader {
 	p := &PluginLoader{
 		kind: workspace.AnalyzerPlugin,
-		name: string(name),
+		name: name,
 		loadWithHost: func(optsI interface{}, host plugin.Host) (interface{}, error) {
 			opts, _ := optsI.(*plugin.PolicyAnalyzerOptions)
 			return load(opts, host)
