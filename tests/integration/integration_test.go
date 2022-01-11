@@ -1029,6 +1029,7 @@ func TestProviderDownloadURL(t *testing.T) {
 				assert.False(t, hasURL)
 			}
 		}
+		assert.Greater(t, len(data.Resources), 1, "We should construct more then just the stack")
 	}
 
 	languages := []struct {
@@ -1036,7 +1037,7 @@ func TestProviderDownloadURL(t *testing.T) {
 		dependency string
 	}{
 		{"python", filepath.Join("..", "..", "sdk", "python", "env", "src")},
-		// #[pulumi/pulumi#8687]: Add NodeJS test
+		{"nodejs", "@pulumi/pulumi"},
 		// #[pulumi/pulumi#8689]: Add .NET test
 		{"go", "github.com/pulumi/pulumi/sdk/v3"},
 	}

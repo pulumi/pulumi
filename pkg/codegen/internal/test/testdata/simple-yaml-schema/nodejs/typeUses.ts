@@ -72,9 +72,7 @@ export class TypeUses extends pulumi.CustomResource {
             resourceInputs["qux"] = undefined /*out*/;
             resourceInputs["zed"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(TypeUses.__pulumiType, name, resourceInputs, opts);
     }
 }

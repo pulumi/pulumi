@@ -219,6 +219,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setProperties(gstruct.Struct.fromJavaScript(resop.serializedProps));
         req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
         req.setVersion(opts.version || "");
+        req.setPlugindownloadurl(opts.pluginDownloadURL || "");
         req.setAcceptsecrets(true);
         req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
@@ -317,6 +318,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setSupportspartialvalues(true);
         req.setRemote(remote);
         req.setReplaceonchangesList(opts.replaceOnChanges || []);
+        req.setPlugindownloadurl(opts.pluginDownloadURL || "");
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {

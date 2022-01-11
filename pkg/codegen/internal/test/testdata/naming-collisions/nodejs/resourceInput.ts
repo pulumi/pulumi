@@ -48,9 +48,7 @@ export class ResourceInput extends pulumi.CustomResource {
         } else {
             resourceInputs["bar"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(ResourceInput.__pulumiType, name, resourceInputs, opts);
     }
 }

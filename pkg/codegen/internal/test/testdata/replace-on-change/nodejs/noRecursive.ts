@@ -52,9 +52,7 @@ export class NoRecursive extends pulumi.CustomResource {
             resourceInputs["rec"] = undefined /*out*/;
             resourceInputs["replace"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         const replaceOnChanges = { replaceOnChanges: ["replace"] };
         opts = pulumi.mergeOptions(opts, replaceOnChanges);
         super(NoRecursive.__pulumiType, name, resourceInputs, opts);
