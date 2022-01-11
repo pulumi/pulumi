@@ -50,5 +50,5 @@ export function getVersion(): string {
 
 /** @internal */
 export function resourceOptsDefaults(): any {
-    return { version: getVersion(), pluginDownloadURL: "example.com" };
+    return { version: getVersion(), pluginDownloadURL: "example.com/download" };
 }
