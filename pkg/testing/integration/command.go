@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+
+	"github.com/stretchr/testify/require"
 )
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
@@ -48,7 +50,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		Env:  env,
 	}
 
-	orphanCleaner := newOrphanProcessCleaner(&cmd)
+	cmdutil.RegisterProcessGroup(&cmd)
 
 	startTime := time.Now()
 
@@ -63,7 +65,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		runout, runerr = cmd.CombinedOutput()
 	}
 
-	defer orphanCleaner.killOrphanProcesses(t)
+	defer require.NoError(t, cmdutil.KillChildren(cmd.Process.Pid))
 
 	endTime := time.Now()
 
