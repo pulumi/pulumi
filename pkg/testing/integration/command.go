@@ -25,8 +25,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	"github.com/stretchr/testify/require"
 )
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
