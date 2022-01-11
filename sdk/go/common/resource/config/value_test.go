@@ -24,15 +24,36 @@ import (
 )
 
 func TestMarshallNormalValueYAML(t *testing.T) {
-	v := NewValue("value")
+	cases := []struct {
+		value    Value
+		expected string
+	}{
+		{
+			value:    NewValue("value"),
+			expected: "value\n",
+		},
+		{
+			value:    NewValue("7"),
+			expected: "7\n",
+		},
+	}
 
-	b, err := yaml.Marshal(v)
-	assert.NoError(t, err)
-	assert.Equal(t, []byte("value\n"), b)
+	for _, c := range cases {
+		t.Run(c.value.value, func(t *testing.T) {
+			v := c.value
 
-	newV, err := roundtripValueYAML(v)
-	assert.NoError(t, err)
-	assert.Equal(t, v, newV)
+			m, err := v.marshalValue()
+			assert.NoError(t, err)
+			b, err := yaml.Marshal(m)
+			assert.NoError(t, err)
+			assert.Equal(t, []byte(c.expected), b)
+
+			newV, err := roundtripValueYAML(v)
+			assert.NoError(t, err)
+			assert.Equal(t, v, newV)
+
+		})
+	}
 }
 
 func TestMarshallSecureValueYAML(t *testing.T) {

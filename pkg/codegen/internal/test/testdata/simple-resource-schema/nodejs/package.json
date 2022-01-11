@@ -12,6 +12,6 @@
     },
     "pulumi": {
         "resource": true,
-        "pluginDownloadURL": "example.com"
+        "pluginDownloadURL": "example.com/download"
     }
 }

@@ -10,9 +10,7 @@ export function doFoo(args: DoFooArgs, opts?: pulumi.InvokeOptions): Promise<voi
         opts = {}
     }
 
-    if (!opts.version) {
-        opts.version = utilities.getVersion();
-    }
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
     return pulumi.runtime.invoke("example::doFoo", {
         "foo": args.foo,
     }, opts);

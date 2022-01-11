@@ -1029,18 +1029,21 @@ func TestProviderDownloadURL(t *testing.T) {
 				assert.False(t, hasURL)
 			}
 		}
+		assert.Greater(t, len(data.Resources), 1, "We should construct more then just the stack")
 	}
+
 	languages := []struct {
 		name       string
 		dependency string
 	}{
-		// #[pulumi/pulumi#8686]: Add python test
-		// #[pulumi/pulumi#8687]: Add NodeJS test
+
+		{"python", filepath.Join("..", "..", "sdk", "python", "env", "src")},
+		{"nodejs", "@pulumi/pulumi"},
 		{"dotnet", "Pulumi"},
 		{"go", "github.com/pulumi/pulumi/sdk/v3"},
 	}
-	for _, lang := range languages {
 
+	for _, lang := range languages {
 		t.Run(lang.name, func(t *testing.T) {
 			env := pathEnv(t, filepath.Join("..", "testprovider"))
 			dir := filepath.Join("gather_plugin", lang.name)

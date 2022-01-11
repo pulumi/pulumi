@@ -38,7 +38,7 @@ namespace Pulumi.Example
             var defaultOptions = new CustomResourceOptions
             {
                 Version = Utilities.Version,
-                PluginDownloadURL = "example.com",
+                PluginDownloadURL = "example.com/download",
                 AdditionalSecretOutputs =
                 {
                     "bar",

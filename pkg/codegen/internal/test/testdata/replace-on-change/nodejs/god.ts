@@ -50,9 +50,7 @@ export class God extends pulumi.CustomResource {
         } else {
             resourceInputs["backwards"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(God.__pulumiType, name, resourceInputs, opts);
     }
 }

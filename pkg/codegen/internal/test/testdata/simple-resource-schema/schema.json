@@ -3,6 +3,7 @@
   "name": "example",
   "pluginDownloadURL": "example.com",
   "allowedPackageNames": ["foo", "bar"],
+  "pluginDownloadURL": "example.com/download",
   "types": {
     "example::Object": {
       "properties": {

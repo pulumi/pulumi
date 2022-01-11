@@ -15,15 +15,12 @@
 package deploy
 
 import (
-	"crypto/sha256"
 	"fmt"
-	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Snapshot is a view of a collection of resources in an stack at a point in time.  It describes resources; their
@@ -34,23 +31,6 @@ type Snapshot struct {
 	SecretsManager    secrets.Manager      // the manager to use use when seralizing this snapshot.
 	Resources         []*resource.State    // fetches all resources and their associated states.
 	PendingOperations []resource.Operation // all currently pending resource operations.
-}
-
-// Manifest captures versions for all binaries used to construct this snapshot.
-type Manifest struct {
-	Time    time.Time              // the time this snapshot was taken.
-	Magic   string                 // a magic cookie.
-	Version string                 // the pulumi command version.
-	Plugins []workspace.PluginInfo // the plugin versions also loaded.
-}
-
-// NewMagic creates a magic cookie out of a manifest; this can be used to check for tampering.  This ignores
-// any existing magic value already stored on the manifest.
-func (m Manifest) NewMagic() string {
-	if m.Version == "" {
-		return ""
-	}
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(m.Version)))
 }
 
 // NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
