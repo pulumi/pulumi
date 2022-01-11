@@ -92,8 +92,8 @@ namespace {{.Namespace}}
             {
                 Parent = options?.Parent,
                 Provider = options?.Provider,
-                Version = options?.Version != null ? options?.Version : Version,
-{{if ne .PluginDownloadURL "" }}                PluginDownloadURL = options?.PluginDownloadURL != null ? options?.PluginDownloadURL : "{{.PluginDownloadURL}}",
+                Version = options?.Version ?? Version,
+{{if ne .PluginDownloadURL "" }}                PluginDownloadURL = options?.PluginDownloadURL ?? "{{.PluginDownloadURL}}",
 {{end}}            };
         }
 

@@ -67,8 +67,8 @@ namespace Pulumi.Example
             {
                 Parent = options?.Parent,
                 Provider = options?.Provider,
-                Version = options?.Version != null ? options?.Version : Version,
-                PluginDownloadURL = options?.PluginDownloadURL != null ? options?.PluginDownloadURL : "example.com/download",
+                Version = options?.Version ?? Version,
+                PluginDownloadURL = options?.PluginDownloadURL ?? "example.com/download",
             };
         }
 

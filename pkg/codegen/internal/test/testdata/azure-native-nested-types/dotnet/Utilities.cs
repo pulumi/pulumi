@@ -67,7 +67,7 @@ namespace Pulumi.AzureNative
             {
                 Parent = options?.Parent,
                 Provider = options?.Provider,
-                Version = options?.Version != null ? options?.Version : Version,
+                Version = options?.Version ?? Version,
             };
         }
 
