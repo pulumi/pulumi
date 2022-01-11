@@ -29,6 +29,7 @@ namespace Pulumi.Example
             var defaultOptions = new ComponentResourceOptions
             {
                 Version = Utilities.Version,
+                PluginDownloadURL = "example.com",
             };
             var merged = ComponentResourceOptions.Merge(defaultOptions, options);
             // Override the ID if one was specified for consistency with other language SDKs.
@@ -40,16 +41,40 @@ namespace Pulumi.Example
         /// A description of bar.
         /// </summary>
         public Pulumi.Output<FooBarResult> Bar(FooBarArgs args)
-            => Pulumi.Deployment.Instance.Call<FooBarResult>("example::Foo/bar", args ?? new FooBarArgs(), this);
+        {
+            var defaultOptions = new CallOptions
+            {
+                Version = Utilities.Version,
+                PluginDownloadURL = "example.com",
+            };
+            return Pulumi.Deployment.Instance.Call<FooBarResult>(
+                "example::Foo/bar", args ?? new FooBarArgs(), this, defaultOptions);
+        }
 
         public void Baz()
-            => Pulumi.Deployment.Instance.Call("example::Foo/baz", CallArgs.Empty, this);
+        {
+            var defaultOptions = new CallOptions
+            {
+                Version = Utilities.Version,
+                PluginDownloadURL = "example.com",
+            };
+            Pulumi.Deployment.Instance.Call(
+                "example::Foo/baz", CallArgs.Empty, this, defaultOptions);
+        }
 
         /// <summary>
         /// Do something with something else
         /// </summary>
         public Pulumi.Output<FooGenerateKubeconfigResult> GenerateKubeconfig(FooGenerateKubeconfigArgs args)
-            => Pulumi.Deployment.Instance.Call<FooGenerateKubeconfigResult>("example::Foo/generateKubeconfig", args ?? new FooGenerateKubeconfigArgs(), this);
+        {
+            var defaultOptions = new CallOptions
+            {
+                Version = Utilities.Version,
+                PluginDownloadURL = "example.com",
+            };
+            return Pulumi.Deployment.Instance.Call<FooGenerateKubeconfigResult>(
+                "example::Foo/generateKubeconfig", args ?? new FooGenerateKubeconfigArgs(), this, defaultOptions);
+        }
     }
 
     public sealed class FooArgs : Pulumi.ResourceArgs

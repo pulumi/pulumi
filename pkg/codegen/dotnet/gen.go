@@ -1158,10 +1158,23 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		if fun.DeprecationMessage != "" {
 			fmt.Fprintf(w, "        [Obsolete(@\"%s\")]\n", strings.ReplaceAll(fun.DeprecationMessage, `"`, `""`))
 		}
-
 		fmt.Fprintf(w, "        public %s %s(%s)\n", returnType, methodName, argsParamDef)
-		fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.Call%s(\"%s\", %s, this)%s;\n",
-			typeParameter, fun.Token, argsParamRef, lift)
+		fmt.Fprintf(w, "        {\n")
+		fmt.Fprintf(w, "            var defaultOptions = new CallOptions\n")
+		fmt.Fprintf(w, "            {\n")
+		fmt.Fprintf(w, "                Version = Utilities.Version,\n")
+		if url := mod.pkg.PluginDownloadURL; url != "" {
+			fmt.Fprintf(w, "                PluginDownloadURL = %q,\n", url)
+		}
+		fmt.Fprintf(w, "            };\n")
+		ret := "return "
+		if returnType == "void" {
+			ret = ""
+		}
+		fmt.Fprintf(w, "            %sPulumi.Deployment.Instance.Call%s(\n", ret, typeParameter)
+		fmt.Fprintf(w, "                %q, %s, this, defaultOptions)%s;\n",
+			fun.Token, argsParamRef, lift)
+		fmt.Fprintf(w, "        }\n")
 	}
 	for _, method := range r.Methods {
 		genMethod(method)

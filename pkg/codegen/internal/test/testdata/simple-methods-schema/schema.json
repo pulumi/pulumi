@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "name": "example",
+  "pluginDownloadURL": "example.com",
   "types": {
     "example:nested:Baz": {
       "properties": {

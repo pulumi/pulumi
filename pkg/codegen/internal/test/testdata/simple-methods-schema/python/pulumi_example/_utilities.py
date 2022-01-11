@@ -234,3 +234,6 @@ def lift_output_func(func: typing.Any) -> typing.Callable[[_F], _F]:
                                             **resolved_args['kwargs']))
 
     return (lambda _: lifted_func)
+
+def get_plugin_download_url():
+	return "example.com"
