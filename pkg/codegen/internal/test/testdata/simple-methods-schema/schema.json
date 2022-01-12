@@ -127,11 +127,9 @@
   "language": {
     "csharp": {
       "packageReferences": {
+        "Pulumi": "3.12",
         "Pulumi.Random": "4.2.0"
-      },
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
+      }
     },
     "go": {
       "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-methods-schema/go/example",

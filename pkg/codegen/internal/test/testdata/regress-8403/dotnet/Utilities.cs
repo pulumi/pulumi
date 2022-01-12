@@ -46,19 +46,18 @@ namespace Pulumi.Mongodbatlas
 
         public static double? GetEnvDouble(params string[] names) => double.TryParse(GetEnv(names), out double v) ? (double?)v : null;
 
-        [Obsolete("Please use WithDefaults instead")]
         public static InvokeOptions WithVersion(this InvokeOptions? options)
         {
-            InvokeOptions dst = options ?? new InvokeOptions{};
-            dst.Version = options?.Version ?? Version;
-            return dst;
-        }
-
-        public static InvokeOptions WithDefaults(this InvokeOptions? src)
-        {
-            InvokeOptions dst = src ?? new InvokeOptions{};
-            dst.Version = src?.Version ?? Version;
-            return dst;
+            if (options?.Version != null)
+            {
+                return options;
+            }
+            return new InvokeOptions
+            {
+                Parent = options?.Parent,
+                Provider = options?.Provider,
+                Version = Version,
+            };
         }
 
         private readonly static string version;
