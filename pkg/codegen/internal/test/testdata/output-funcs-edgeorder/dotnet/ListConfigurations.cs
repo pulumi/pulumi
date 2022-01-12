@@ -17,14 +17,14 @@ namespace Pulumi.Myedgeorder
         /// API Version: 2020-12-01-preview.
         /// </summary>
         public static Task<ListConfigurationsResult> InvokeAsync(ListConfigurationsArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.InvokeAsync<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsArgs(), options.WithDefaults());
 
         /// <summary>
         /// The list of configurations.
         /// API Version: 2020-12-01-preview.
         /// </summary>
         public static Output<ListConfigurationsResult> Invoke(ListConfigurationsInvokeArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsInvokeArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.Invoke<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsInvokeArgs(), options.WithDefaults());
     }
 
 
