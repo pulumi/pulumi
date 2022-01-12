@@ -7,7 +7,6 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 using Pulumi.Example;
-using Pulumi.Utilities;
 
 namespace Pulumi.Mypkg
 {

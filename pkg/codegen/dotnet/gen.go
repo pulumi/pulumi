@@ -1305,10 +1305,6 @@ func (mod *modContext) genFunctionFileCode(f *schema.Function) (string, error) {
 	for _, i := range imports {
 		importStrings = append(importStrings, i.SortedValues()...)
 	}
-	// if f.NeedsOutputVersion() {
-	// 	utilFile := namespaceName(mod.namespaces, "Pulumi")
-	// 	importStrings = append(importStrings, utilFile+".Utilities")
-	// }
 
 	// We need to qualify input types when we are not in the same module as them.
 	if nonStandardNamespace {
