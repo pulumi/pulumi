@@ -51,11 +51,11 @@ install:: build install_plugin
 
 dotnet_test:: $(TEST_ALL_DEPS)
 	$(TESTSUITE_SKIPPED) dotnet-test || \
-		dotnet test --no-build --filter FullyQualifiedName\!~Pulumi.Automation.Tests -p:Version=${DOTNET_VERSION} ${TEST_COVERAGE_ARGS}/dotnet.xml
+		dotnet test --filter FullyQualifiedName\!~Pulumi.Automation.Tests -p:Version=${DOTNET_VERSION} ${TEST_COVERAGE_ARGS}/dotnet.xml
 
 auto_test:: $(TEST_ALL_DEPS)
 	$(TESTSUITE_SKIPPED) auto-dotnet || \
-		dotnet test --no-build --filter FullyQualifiedName~Pulumi.Automation.Tests -p:Version=${DOTNET_VERSION} ${TEST_COVERAGE_ARGS}/dotnet-auto.xml
+		dotnet test --filter FullyQualifiedName~Pulumi.Automation.Tests -p:Version=${DOTNET_VERSION} ${TEST_COVERAGE_ARGS}/dotnet-auto.xml
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
