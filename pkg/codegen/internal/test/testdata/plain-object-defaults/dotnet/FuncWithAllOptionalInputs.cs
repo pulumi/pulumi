@@ -16,13 +16,13 @@ namespace Pulumi.Example
         /// Check codegen of functions with all optional inputs.
         /// </summary>
         public static Task<FuncWithAllOptionalInputsResult> InvokeAsync(FuncWithAllOptionalInputsArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithAllOptionalInputsResult>("example::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsArgs(), options.WithDefaults());
+            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithAllOptionalInputsResult>("example::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsArgs(), options.WithVersion());
 
         /// <summary>
         /// Check codegen of functions with all optional inputs.
         /// </summary>
         public static Output<FuncWithAllOptionalInputsResult> Invoke(FuncWithAllOptionalInputsInvokeArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("example::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithDefaults());
+            => Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("example::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithVersion());
     }
 
 
