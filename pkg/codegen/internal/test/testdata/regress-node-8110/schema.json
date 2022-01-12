@@ -46,10 +46,10 @@
   },
   "language": {
     "csharp": {
-       "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
-   },
+      "packageReferences": {
+        "Pulumi": "3.12"
+      }
+    },
     "nodejs": {
       "devDependencies": {
         "@types/node": "latest",

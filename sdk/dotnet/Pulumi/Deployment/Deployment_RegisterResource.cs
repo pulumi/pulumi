@@ -77,7 +77,6 @@ namespace Pulumi
                 Custom = custom,
                 Protect = options.Protect ?? false,
                 Version = options.Version ?? "",
-                PluginDownloadURL = options.PluginDownloadURL ?? "",
                 ImportId = customOpts?.ImportId ?? "",
                 AcceptSecrets = true,
                 AcceptResources = !_disableResourceReferences,
