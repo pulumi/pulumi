@@ -13,10 +13,10 @@ namespace Other.Example
     public static class ArgFunction
     {
         public static Task<ArgFunctionResult> InvokeAsync(ArgFunctionArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.InvokeAsync<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionArgs(), options.WithDefaults());
 
         public static Output<ArgFunctionResult> Invoke(ArgFunctionInvokeArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionInvokeArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.Invoke<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionInvokeArgs(), options.WithDefaults());
     }
 
 
