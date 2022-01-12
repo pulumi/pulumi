@@ -147,6 +147,16 @@ jobs:
         with:
           repo: t0yv0/goteststats
           tag: v0.0.7
+      - name: Lock go toolchain to prevent concurrent OOM on go linker
+        if: ${{ matrix.platform == 'windows-latest' }}
+        run: |
+          LOCKED_GO=$(./scripts/locked-go-toolchain.sh)
+          echo "Adding LOCKED_GO=$LOCKED_GO to PATH"
+          echo $LOCKED_GO >> $GITHUB_PATH
+      - name: Verify go toolchain modification
+        run: |
+          command -v go
+          go version
       - name: Download Pulumi Go Binaries (linux-x64)
         if: ${{ matrix.platform == 'ubuntu-latest' }}
         uses: actions/download-artifact@v2
