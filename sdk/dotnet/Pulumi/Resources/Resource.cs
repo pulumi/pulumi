@@ -103,6 +103,11 @@ namespace Pulumi
         /// </summary>
         internal readonly string? _version;
 
+        /// <summary>
+        /// The specified provider download URL.
+        /// </summary>
+        internal readonly string? _pluginDownloadURL;
+
         internal readonly ImmutableDictionary<string,IOutputCompletionSource> CompletionSources;
 
         /// <summary>
@@ -256,6 +261,7 @@ namespace Pulumi
             this._protect = options.Protect == true;
             this._provider = custom ? options.Provider : null;
             this._version = options.Version;
+            this._pluginDownloadURL = options.PluginDownloadURL;
             this._aliases = AllAliases(options.Aliases.ToList(), name, type, options.Parent);
 
             Deployment.InternalInstance.ReadOrRegisterResource(this, remote, urn => new DependencyResource(urn), args, options);

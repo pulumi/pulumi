@@ -2058,19 +2058,24 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	for _, dep := range pt.opts.Dependencies {
 
 		// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.
-		matches, err := filepath.Glob(filepath.Join(localNuget, dep+".?.*.nupkg"))
+		globPattern := filepath.Join(localNuget, dep+".?.*.nupkg")
+		matches, err := filepath.Glob(globPattern)
 		if err != nil {
 			return fmt.Errorf("failed to find a local Pulumi NuGet package: %w", err)
 		}
 		if len(matches) != 1 {
-			return fmt.Errorf("attempting to find a local Pulumi NuGet package yielded %v results", matches)
+			return fmt.Errorf("attempting to find a local NuGet package %s by searching %s yielded %d results: %v",
+				dep,
+				globPattern,
+				len(matches),
+				matches)
 		}
 		file := filepath.Base(matches[0])
 		r := strings.NewReplacer(dep+".", "", ".nupkg", "")
 		version := r.Replace(file)
 
 		err = pt.runCommand("dotnet-add-package",
-			[]string{dotNetBin, "add", "package", dep, "-v", version}, cwd)
+			[]string{dotNetBin, "add", "package", dep, "-v", version, "-s", localNuget}, cwd)
 		if err != nil {
 			return fmt.Errorf("failed to add dependency on %s: %w", dep, err)
 		}

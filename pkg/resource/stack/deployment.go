@@ -23,8 +23,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/blang/semver"
-
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -32,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -105,23 +102,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 	contract.Require(snap != nil, "snap")
 
 	// Capture the version information into a manifest.
-	manifest := apitype.ManifestV1{
-		Time:    snap.Manifest.Time,
-		Magic:   snap.Manifest.Magic,
-		Version: snap.Manifest.Version,
-	}
-	for _, plug := range snap.Manifest.Plugins {
-		var version string
-		if plug.Version != nil {
-			version = plug.Version.String()
-		}
-		manifest.Plugins = append(manifest.Plugins, apitype.PluginInfoV1{
-			Name:    plug.Name,
-			Path:    plug.Path,
-			Type:    plug.Kind,
-			Version: version,
-		})
-	}
+	manifest := snap.Manifest.Serialize()
 
 	// If a specific secrets manager was not provided, use the one in the snapshot, if present.
 	if sm == nil {
@@ -223,25 +204,9 @@ func DeserializeUntypedDeployment(
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
 func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv SecretsProvider) (*deploy.Snapshot, error) {
 	// Unpack the versions.
-	manifest := deploy.Manifest{
-		Time:    deployment.Manifest.Time,
-		Magic:   deployment.Manifest.Magic,
-		Version: deployment.Manifest.Version,
-	}
-	for _, plug := range deployment.Manifest.Plugins {
-		var version *semver.Version
-		if v := plug.Version; v != "" {
-			sv, err := semver.ParseTolerant(v)
-			if err != nil {
-				return nil, err
-			}
-			version = &sv
-		}
-		manifest.Plugins = append(manifest.Plugins, workspace.PluginInfo{
-			Name:    plug.Name,
-			Kind:    plug.Type,
-			Version: version,
-		})
+	manifest, err := deploy.DeserializeManifest(deployment.Manifest)
+	if err != nil {
+		return nil, err
 	}
 
 	var secretsManager secrets.Manager
@@ -295,7 +260,7 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv Secret
 		ops = append(ops, desop)
 	}
 
-	return deploy.NewSnapshot(manifest, secretsManager, resources, ops), nil
+	return deploy.NewSnapshot(*manifest, secretsManager, resources, ops), nil
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.

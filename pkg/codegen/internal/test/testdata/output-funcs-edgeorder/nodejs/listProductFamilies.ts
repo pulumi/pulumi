@@ -14,9 +14,7 @@ export function listProductFamilies(args: ListProductFamiliesArgs, opts?: pulumi
         opts = {}
     }
 
-    if (!opts.version) {
-        opts.version = utilities.getVersion();
-    }
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
     return pulumi.runtime.invoke("myedgeorder::listProductFamilies", {
         "customerSubscriptionDetails": args.customerSubscriptionDetails,
         "expand": args.expand,

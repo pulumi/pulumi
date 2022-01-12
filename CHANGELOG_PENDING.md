@@ -1,26 +1,22 @@
 ### Improvements
 
-- [sdk/go] - Add `PluginDownloadURL` as a resource option.
-  [#8555](https://github.com/pulumi/pulumi/pull/8555)
-
-- [sdk/go] - Allow users to override enviromental variables for `GetCommandResults`.
-  [#8610](https://github.com/pulumi/pulumi/pull/8610)
-
-- [sdk/nodejs] Support using native ES modules as Pulumi scripts
-  [#7764](https://github.com/pulumi/pulumi/pull/7764)
-
-- [sdk/nodejs] Support a `nodeargs` option for passing `node` arguments to the Node language host.
-  [#8655](https://github.com/pulumi/pulumi/pull/8655)
+ Add `PluginDownloadURL` as a resource option. When provided by
+  the schema, `PluginDownloadURL` will be baked into `new Resource` and `Invoke`
+  requests in generated SDKs.
+  [#8698](https://github.com/pulumi/pulumi/pull/8698)
+  [#8690](https://github.com/pulumi/pulumi/pull/8690)
+  [#8692](https://github.com/pulumi/pulumi/pull/8692)
+  [#8702](https://github.com/pulumi/pulumi/pull/8702)
 
 - [sdk/dotnet] Add `Union.Bimap` function for converting both sides of a union at once.
   [#8733](https://github.com/pulumi/pulumi/pull/8733)
 
 ### Bug Fixes
 
-- [cli/engine] - Fix [#3982](https://github.com/pulumi/pulumi/issues/3982), a bug
-  where the engine ignored the final line of stdout/stderr if it didn't terminate
-  with a newline.
-  [#8671](https://github.com/pulumi/pulumi/pull/8671)
+- [auto/python] - Fixes an issue with exception isolation in a
+  sequence of inline programs that caused all inline programs to fail
+  after the first one failed.
+  [#8693](https://github.com/pulumi/pulumi/pull/8693)
 
 - [sdk/dotnet] Allow `Output<Union>` to be converted to `InputUnion`.
   [#8733](https://github.com/pulumi/pulumi/pull/8733)

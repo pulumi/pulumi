@@ -93,12 +93,12 @@ func pickURN(t *testing.T, urns []resource.URN, names []string, target string) r
 }
 
 func TestMain(m *testing.M) {
-	grpcDefault := flag.Bool("grpc-providers", false, "enable or disable gRPC providers by default")
+	grpcDefault := flag.Bool("grpc-plugins", false, "enable or disable gRPC providers by default")
 
 	flag.Parse()
 
 	if *grpcDefault {
-		deploytest.UseGrpcProvidersByDefault = true
+		deploytest.UseGrpcPluginsByDefault = true
 	}
 
 	os.Exit(m.Run())
@@ -942,6 +942,66 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 	_ = updateProgramWithProps(snap, resource.PropertyMap{
 		"c": resource.NewNumberProperty(4),
 	}, []string{"a", "b"}, []deploy.StepOp{deploy.OpUpdate})
+}
+
+func TestIgnoreChangesInvalidPaths(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := func(monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewObjectProperty(resource.PropertyMap{
+					"bar": resource.NewStringProperty("baz"),
+				}),
+				"qux": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("zed"),
+				}),
+			},
+		})
+		assert.NoError(t, err)
+		return nil
+	}
+
+	runtime := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return program(monitor)
+	})
+	host := deploytest.NewPluginHost(nil, nil, runtime, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	program = func(monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:        resource.PropertyMap{},
+			IgnoreChanges: []string{"foo.bar"},
+		})
+		assert.Error(t, err)
+		return nil
+	}
+
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+
+	program = func(monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:        resource.PropertyMap{},
+			IgnoreChanges: []string{"qux[0]"},
+		})
+		assert.Error(t, err)
+		return nil
+	}
+
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
 }
 
 type DiffFunc = func(urn resource.URN, id resource.ID,

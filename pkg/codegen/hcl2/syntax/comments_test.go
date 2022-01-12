@@ -22,7 +22,7 @@ func commentString(trivia []Trivia) string {
 			}
 		}
 	}
-	return s
+	return normString(s)
 }
 
 func validateTokenLeadingTrivia(t *testing.T, token Token) {
@@ -226,4 +226,8 @@ func TestComments(t *testing.T) {
 	f := parser.Files[0]
 	diags := hclsyntax.Walk(f.Body, &validator{t: t, tokens: f.Tokens})
 	assert.Nil(t, diags)
+}
+
+func normString(s string) string {
+	return strings.TrimSuffix(s, "\r")
 }

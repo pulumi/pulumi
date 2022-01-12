@@ -63,9 +63,7 @@ export class Cat extends pulumi.CustomResource {
             resourceInputs["other"] = undefined /*out*/;
             resourceInputs["toy"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         const secretOpts = { additionalSecretOutputs: ["name"] };
         opts = pulumi.mergeOptions(opts, secretOpts);
         const replaceOnChanges = { replaceOnChanges: ["foes.*.associated.color", "foes.*.color", "friends[*].associated.color", "friends[*].color", "name", "toy.color"] };

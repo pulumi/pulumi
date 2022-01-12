@@ -62,9 +62,7 @@ export class Foo extends pulumi.CustomResource {
         } else {
             resourceInputs["defaultKubeClientSettings"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Foo.__pulumiType, name, resourceInputs, opts);
     }
 }

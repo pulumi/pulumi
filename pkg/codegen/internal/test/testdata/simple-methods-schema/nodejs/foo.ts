@@ -36,9 +36,7 @@ export class Foo extends pulumi.ComponentResource {
         if (!opts.id) {
         } else {
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Foo.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 

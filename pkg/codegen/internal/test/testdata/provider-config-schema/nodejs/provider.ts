@@ -34,9 +34,7 @@ export class Provider extends pulumi.ProviderResource {
         {
             resourceInputs["favoriteColor"] = (args ? args.favoriteColor : undefined) ?? <any>utilities.getEnv("FAVE_COLOR");
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Provider.__pulumiType, name, resourceInputs, opts);
     }
 }

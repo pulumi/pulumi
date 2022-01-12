@@ -53,9 +53,7 @@ export class StaticPage extends pulumi.ComponentResource {
             resourceInputs["bucket"] = undefined /*out*/;
             resourceInputs["websiteUrl"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(StaticPage.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 }

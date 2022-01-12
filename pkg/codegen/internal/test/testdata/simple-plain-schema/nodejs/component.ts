@@ -71,9 +71,7 @@ export class Component extends pulumi.ComponentResource {
             resourceInputs["f"] = undefined /*out*/;
             resourceInputs["foo"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Component.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 }
