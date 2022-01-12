@@ -200,6 +200,10 @@ var sdkTests = []sdkTest{
 		Description: "Regress pulumi/pulumi#8664 affecting Go",
 		Skip:        codegen.NewStringSet("dotnet/any", "python/any", "nodejs/any", "docs/any"),
 	},
+	{
+		Directory:   "other-owned",
+		Description: "CSharp namespace Pulumi",
+	},
 }
 
 var genSDKOnly bool
