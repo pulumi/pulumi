@@ -2,6 +2,12 @@
 var childProcess = require("child_process");
 
 var args = process.argv.slice(2);
+
+// NOTE: version split is intended to prevent sed style replacement
+if (args.indexOf("${VERS" + "ION}") != -1) {
+	process.exit(0);
+}
+
 var res = childProcess.spawnSync("pulumi", ["plugin", "install"].concat(args), {
     stdio: ["ignore", "inherit", "inherit"]
 });
