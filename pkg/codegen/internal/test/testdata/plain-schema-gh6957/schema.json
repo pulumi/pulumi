@@ -41,9 +41,11 @@
   "language": {
     "csharp": {
       "packageReferences": {
-        "Pulumi": "3.*",
         "Pulumi.Aws": "4.*"
-      }
+      },
+      "projectReferences": [
+        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ]
     },
     "go": {
       "generateResourceContainerTypes": true,
