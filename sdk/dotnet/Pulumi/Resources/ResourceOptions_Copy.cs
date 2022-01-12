@@ -21,7 +21,8 @@ namespace Pulumi
                 ReplaceOnChanges = options.ReplaceOnChanges.ToList(),
                 ResourceTransformations = options.ResourceTransformations.ToList(),
                 Urn = options.Urn,
-                Version = options.Version
+                Version = options.Version,
+                PluginDownloadURL = options.PluginDownloadURL,
             };
 
         internal static CustomResourceOptions CreateCustomResourceOptionsCopy(ResourceOptions? options)

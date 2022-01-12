@@ -2075,7 +2075,7 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 		version := r.Replace(file)
 
 		err = pt.runCommand("dotnet-add-package",
-			[]string{dotNetBin, "add", "package", dep, "-v", version}, cwd)
+			[]string{dotNetBin, "add", "package", dep, "-v", version, "-s", localNuget}, cwd)
 		if err != nil {
 			return fmt.Errorf("failed to add dependency on %s: %w", dep, err)
 		}

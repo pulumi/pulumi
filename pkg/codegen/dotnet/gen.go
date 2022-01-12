@@ -1044,6 +1044,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "            var defaultOptions = new %s\n", optionsType)
 	fmt.Fprintf(w, "            {\n")
 	fmt.Fprintf(w, "                Version = Utilities.Version,\n")
+	if url := mod.pkg.PluginDownloadURL; url != "" {
+		fmt.Fprintf(w, "                PluginDownloadURL = %q,\n", url)
+	}
 
 	if len(r.Aliases) > 0 {
 		fmt.Fprintf(w, "                Aliases =\n")
@@ -1366,7 +1369,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	// Emit the datasource method.
 	fmt.Fprintf(w, "        public static Task%s InvokeAsync(%sInvokeOptions? options = null)\n",
 		typeParameter, argsParamDef)
-	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());\n",
+	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithDefaults());\n",
 		typeParameter, fun.Token, argsParamRef)
 
 	// Emit the Output method if needed.
@@ -1445,7 +1448,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	printComment(w, fun.Comment, "        ")
 	fmt.Fprintf(w, "        public static Output<%sResult> Invoke(%sInvokeOptions? options = null)\n",
 		className, outputArgsParamDef)
-	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.Invoke<%sResult>(\"%s\", %s, options.WithVersion());\n",
+	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.Invoke<%sResult>(\"%s\", %s, options.WithDefaults());\n",
 		className, fun.Token, outputArgsParamRef)
 	return nil
 }
@@ -1957,10 +1960,11 @@ func (mod *modContext) genUtilities() (string, error) {
 	// Strip any 'v' off of the version.
 	w := &bytes.Buffer{}
 	err := csharpUtilitiesTemplate.Execute(w, csharpUtilitiesTemplateContext{
-		Name:      namespaceName(mod.namespaces, mod.pkg.Name),
-		Namespace: mod.namespaceName,
-		ClassName: "Utilities",
-		Tool:      mod.tool,
+		Name:              namespaceName(mod.namespaces, mod.pkg.Name),
+		Namespace:         mod.namespaceName,
+		ClassName:         "Utilities",
+		Tool:              mod.tool,
+		PluginDownloadURL: mod.pkg.PluginDownloadURL,
 	})
 	if err != nil {
 		return "", err
