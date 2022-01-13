@@ -11,7 +11,7 @@ export namespace nested {
     }
 
     export interface BazArgs {
-        hello?: pulumi.Input<string>;
-        world?: pulumi.Input<string>;
+        hello?: pulumi.Input<string | undefined>;
+        world?: pulumi.Input<string | undefined>;
     }
 }

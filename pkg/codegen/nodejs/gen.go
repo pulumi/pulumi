@@ -277,16 +277,38 @@ func tokenToFunctionName(tok string) string {
 func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}) tstypes.TypeAst {
 	switch t := t.(type) {
 	case *schema.OptionalType:
+		// Treat optional(input(T)) as optional(input(optional(T))).
+		elementType := t.ElementType
+		if input, isInput := elementType.(*schema.InputType); isInput {
+			elementType = &schema.InputType{
+				ElementType: &schema.OptionalType{
+					ElementType: input.ElementType,
+				},
+			}
+		}
+
 		return tstypes.Union(
-			mod.typeAst(t.ElementType, input, constValue),
+			mod.typeAst(elementType, input, constValue),
 			tstypes.Identifier("undefined"),
 		)
 	case *schema.InputType:
-		typ := mod.typeString(codegen.SimplifyInputUnion(t.ElementType), input, constValue)
-		if typ == "any" {
-			return tstypes.Identifier("any")
+		elementType := t.ElementType
+		optional, isOptional := elementType.(*schema.OptionalType)
+		if isOptional {
+			elementType = optional.ElementType
 		}
-		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typ))
+
+		typ := mod.typeAst(codegen.SimplifyInputUnion(elementType), input, constValue)
+		if id, ok := tstypes.IsIdentifier(typ); ok && id == "any" {
+			return typ
+		}
+
+		if isOptional {
+			typ = tstypes.Union(typ, tstypes.Identifier("undefined"))
+		}
+
+		typeArgument := tstypes.TypeLiteral(tstypes.Normalize(typ))
+		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typeArgument))
 	case *schema.EnumType:
 		return tstypes.Identifier(mod.objectType(nil, nil, t.Token, input, false, true))
 	case *schema.ArrayType:
@@ -414,13 +436,15 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 			prefix = "readonly "
 		}
 
-		sigil, propertyType := "", p.Type
-		if !p.IsRequired() {
-			sigil, propertyType = "?", codegen.RequiredType(p)
+		sigil, typ := "", mod.typeAst(p.Type, input, p.ConstValue)
+		if types, ok := tstypes.IsUnion(typ); ok {
+			if id, ok := tstypes.IsIdentifier(types[len(types)-1]); ok && id == "undefined" {
+				sigil, typ = "?", tstypes.Union(types[:len(types)-1]...)
+			}
 		}
 
-		typ := mod.typeString(propertyType, input, p.ConstValue)
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
+		typLit := tstypes.TypeLiteral(tstypes.Normalize(typ))
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typLit)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 	return nil

@@ -7,10 +7,10 @@ import { input as inputs, output as outputs } from "../types";
 import * as pulumiRandom from "@pulumi/random";
 
 export interface PetArgs {
-    age?: pulumi.Input<number>;
-    name?: pulumi.Input<pulumiRandom.RandomPet>;
-    nameArray?: pulumi.Input<pulumi.Input<pulumiRandom.RandomPet>[]>;
-    nameMap?: pulumi.Input<{[key: string]: pulumi.Input<pulumiRandom.RandomPet>}>;
+    age?: pulumi.Input<number | undefined>;
+    name?: pulumi.Input<pulumiRandom.RandomPet | undefined>;
+    nameArray?: pulumi.Input<pulumi.Input<pulumiRandom.RandomPet>[] | undefined>;
+    nameMap?: pulumi.Input<{[key: string]: pulumi.Input<pulumiRandom.RandomPet>} | undefined>;
     requiredName: pulumi.Input<pulumiRandom.RandomPet>;
     requiredNameArray: pulumi.Input<pulumi.Input<pulumiRandom.RandomPet>[]>;
     requiredNameMap: pulumi.Input<{[key: string]: pulumi.Input<pulumiRandom.RandomPet>}>;

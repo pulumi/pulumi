@@ -39,6 +39,14 @@ func Identifier(id string) TypeAst {
 	return &idType{id}
 }
 
+// IsIdentifier returns true if the AST node is an identifier.
+func IsIdentifier(t TypeAst) (string, bool) {
+	if i, ok := t.(*idType); ok {
+		return i.id, true
+	}
+	return "", false
+}
+
 // Builds a `T[]` type from a `T` type.
 func Array(t TypeAst) TypeAst {
 	return &arrayType{t}
@@ -58,6 +66,14 @@ func Union(t ...TypeAst) TypeAst {
 		return t[0]
 	}
 	return &unionType{t[0], t[1], t[2:]}
+}
+
+// IsUnion returns true if the AST node is a union.
+func IsUnion(t TypeAst) ([]TypeAst, bool) {
+	if union, ok := t.(*unionType); ok {
+		return union.all(), true
+	}
+	return nil, false
 }
 
 // Normalizes by unnesting unions `A | (B | C) => A | B | C`.

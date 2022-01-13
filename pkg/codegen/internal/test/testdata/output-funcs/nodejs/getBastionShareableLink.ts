@@ -63,5 +63,5 @@ export interface GetBastionShareableLinkOutputArgs {
     /**
      * List of VM references.
      */
-    vms?: pulumi.Input<pulumi.Input<inputs.BastionShareableLinkArgs>[]>;
+    vms?: pulumi.Input<pulumi.Input<inputs.BastionShareableLinkArgs>[] | undefined>;
 }
