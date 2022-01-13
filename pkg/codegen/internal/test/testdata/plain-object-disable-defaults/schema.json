@@ -216,9 +216,9 @@
 
   "language": {
     "csharp": {
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
+      "packageReferences": {
+        "Pulumi": "3.*"
+      }
     },
     "go": {
       "importBasePath": "plain-object-disable-defaults/example",

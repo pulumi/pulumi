@@ -12,7 +12,7 @@ namespace Pulumi.My8110
     public static class ExampleFunc
     {
         public static Task InvokeAsync(ExampleFuncArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync("my8110::exampleFunc", args ?? new ExampleFuncArgs(), options.WithDefaults());
+            => Pulumi.Deployment.Instance.InvokeAsync("my8110::exampleFunc", args ?? new ExampleFuncArgs(), options.WithVersion());
     }
 
 

@@ -42,7 +42,7 @@ types:
         $ref: "#/types/example::AcyclicS"
     required: [ foo6 ]
 language:
-  csharp: { "projectReferences": ["..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"] }
+  csharp: { "packageReferences": { "Pulumi": "3.12" } }
   go:
     {
       "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/cyclic-types/go/example",
