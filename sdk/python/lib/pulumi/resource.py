@@ -430,6 +430,11 @@ class ResourceOptions:
     require replacement instead of update only if `"*"` is passed.
     """
 
+    retain_on_delete: Optional[bool]
+    """
+    Option to not actually delete resources from providers when the engine calls Delete.
+    """
+
     # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
@@ -448,7 +453,8 @@ class ResourceOptions:
                  transformations: Optional[List[ResourceTransformation]] = None,
                  urn: Optional[str] = None,
                  replace_on_changes: Optional[List[str]] = None,
-                 plugin_download_url: Optional[str] = None) -> None:
+                 plugin_download_url: Optional[str] = None,
+                 retain_on_delete: Optional[bool] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -487,6 +493,7 @@ class ResourceOptions:
         :param Optional[str] plugin_download_url: An optional url. If provided, the engine loads a provider with downloaded
                from the provided url. This url overrides the plugin download url inferred from the current package and should
                rarely be used.
+        :param Optional[bool] retain_on_delete: Option to not actually delete resources from providers when the engine calls Delete.
        """
 
         # Expose 'merge' again this this object, but this time as an instance method.
@@ -511,6 +518,7 @@ class ResourceOptions:
         self.urn = urn
         self.replace_on_changes = replace_on_changes
         self.depends_on = depends_on
+        self.retain_on_delete = retain_on_delete
 
         # Proactively check that `depends_on` values are of type
         # `Resource`. We cannot complete the check in the general case
@@ -598,6 +606,7 @@ class ResourceOptions:
         dest.id = dest.id if source.id is None else source.id
         dest.import_ = dest.import_ if source.import_ is None else source.import_
         dest.urn = dest.urn if source.urn is None else source.urn
+        dest.retain_on_delete = dest.retain_on_delete if source.retain_on_delete is None else source.retain_on_delete
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
         # collapse that down into .provider form.

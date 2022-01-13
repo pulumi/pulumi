@@ -99,6 +99,7 @@ type ResourceOptions struct {
 	Aliases               []resource.URN
 	ImportID              resource.ID
 	CustomTimeouts        *resource.CustomTimeouts
+	RetainOnDelete        bool
 	SupportsPartialValues *bool
 	Remote                bool
 	Providers             map[string]string
