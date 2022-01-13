@@ -16,13 +16,13 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with a List parameter.
         /// </summary>
         public static Task<FuncWithListParamResult> InvokeAsync(FuncWithListParamArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithListParamResult>("mypkg::funcWithListParam", args ?? new FuncWithListParamArgs(), options.WithDefaults());
+            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithListParamResult>("mypkg::funcWithListParam", args ?? new FuncWithListParamArgs(), options.WithVersion());
 
         /// <summary>
         /// Check codegen of functions with a List parameter.
         /// </summary>
         public static Output<FuncWithListParamResult> Invoke(FuncWithListParamInvokeArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<FuncWithListParamResult>("mypkg::funcWithListParam", args ?? new FuncWithListParamInvokeArgs(), options.WithDefaults());
+            => Pulumi.Deployment.Instance.Invoke<FuncWithListParamResult>("mypkg::funcWithListParam", args ?? new FuncWithListParamInvokeArgs(), options.WithVersion());
     }
 
 

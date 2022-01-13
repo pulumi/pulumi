@@ -17,13 +17,13 @@ namespace Pulumi.Mypkg
         /// Taken from pulumi-AWS to regress an issue
         /// </summary>
         public static Task<GetAmiIdsResult> InvokeAsync(GetAmiIdsArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<GetAmiIdsResult>("mypkg::getAmiIds", args ?? new GetAmiIdsArgs(), options.WithDefaults());
+            => Pulumi.Deployment.Instance.InvokeAsync<GetAmiIdsResult>("mypkg::getAmiIds", args ?? new GetAmiIdsArgs(), options.WithVersion());
 
         /// <summary>
         /// Taken from pulumi-AWS to regress an issue
         /// </summary>
         public static Output<GetAmiIdsResult> Invoke(GetAmiIdsInvokeArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<GetAmiIdsResult>("mypkg::getAmiIds", args ?? new GetAmiIdsInvokeArgs(), options.WithDefaults());
+            => Pulumi.Deployment.Instance.Invoke<GetAmiIdsResult>("mypkg::getAmiIds", args ?? new GetAmiIdsInvokeArgs(), options.WithVersion());
     }
 
 

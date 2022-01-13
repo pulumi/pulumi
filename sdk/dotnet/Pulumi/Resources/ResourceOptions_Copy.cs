@@ -22,7 +22,6 @@ namespace Pulumi
                 ResourceTransformations = options.ResourceTransformations.ToList(),
                 Urn = options.Urn,
                 Version = options.Version,
-                PluginDownloadURL = options.PluginDownloadURL,
                 RetainOnDelete = options.RetainOnDelete,
             };
 

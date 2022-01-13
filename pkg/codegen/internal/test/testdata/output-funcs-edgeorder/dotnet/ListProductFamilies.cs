@@ -17,14 +17,14 @@ namespace Pulumi.Myedgeorder
         /// API Version: 2020-12-01-preview.
         /// </summary>
         public static Task<ListProductFamiliesResult> InvokeAsync(ListProductFamiliesArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesArgs(), options.WithDefaults());
+            => Pulumi.Deployment.Instance.InvokeAsync<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesArgs(), options.WithVersion());
 
         /// <summary>
         /// The list of product families.
         /// API Version: 2020-12-01-preview.
         /// </summary>
         public static Output<ListProductFamiliesResult> Invoke(ListProductFamiliesInvokeArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesInvokeArgs(), options.WithDefaults());
+            => Pulumi.Deployment.Instance.Invoke<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesInvokeArgs(), options.WithVersion());
     }
 
 

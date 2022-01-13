@@ -121,9 +121,9 @@
       "namespaces": {
         "foobar": "FooBar"
       },
-     "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
+      "packageReferences": {
+        "Pulumi": "3.12"
+      }
     },
     "go": {
       "importBasePath": "plain-and-default/foo",
