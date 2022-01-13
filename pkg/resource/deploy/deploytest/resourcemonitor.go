@@ -191,6 +191,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		ReplaceOnChanges:           opts.ReplaceOnChanges,
 		Providers:                  opts.Providers,
 		PluginDownloadURL:          opts.PluginDownloadURL,
+		RetainOnDelete:             opts.RetainOnDelete,
 	}
 
 	// submit request
