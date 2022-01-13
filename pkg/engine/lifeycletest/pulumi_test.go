@@ -2664,11 +2664,12 @@ func TestRetainOnDelete(t *testing.T) {
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					resourceId := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
+					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
 					idCounter = idCounter + 1
-					return resourceId, news, resource.StatusOK, nil
+					return resourceID, news, resource.StatusOK, nil
 				},
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
+				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+					timeout float64) (resource.Status, error) {
 					assert.Fail(t, "Delete was called")
 					return resource.StatusOK, nil
 				},

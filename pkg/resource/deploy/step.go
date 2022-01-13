@@ -345,7 +345,7 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
-	// Deleting a "retain on delete" is a no-op as the user has explictly asked us to not delete the resource.
+	// Deleting a "retain on delete" is a no-op as the user has explicitly asked us to not delete the resource.
 	if !preview && !s.old.External && !s.old.RetainOnDelete {
 		if s.old.Custom {
 			// Invoke the Delete RPC function for this provider:
