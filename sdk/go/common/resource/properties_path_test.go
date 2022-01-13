@@ -144,6 +144,30 @@ func TestPropertyPath(t *testing.T) {
 		})
 	}
 
+	simpleCases := []struct {
+		path   string
+		parsed PropertyPath
+	}{
+		{
+			`root["*"].field[1]`,
+			PropertyPath{"root", "*", "field", 1},
+		},
+		{
+			`*.bar`,
+			PropertyPath{"*", "bar"},
+		},
+	}
+
+	t.Run("Simple", func(t *testing.T) {
+		for _, c := range simpleCases {
+			t.Run(c.path, func(t *testing.T) {
+				parsed, err := ParsePropertyPath(c.path)
+				assert.NoError(t, err)
+				assert.Equal(t, c.parsed, parsed)
+			})
+		}
+	})
+
 	negativeCases := []string{
 		// Syntax errors
 		"root[",
