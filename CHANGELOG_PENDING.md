@@ -8,6 +8,9 @@
   [#8692](https://github.com/pulumi/pulumi/pull/8692)
   [#8702](https://github.com/pulumi/pulumi/pull/8702)
 
+- [sdk] - Allow property paths to accept `[*]` as sugar for `["*"]`.
+  [#8743](https://github.com/pulumi/pulumi/pull/8743)
+
 ### Bug Fixes
 
 - [auto/python] - Fixes an issue with exception isolation in a
