@@ -2132,7 +2132,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		License:     pkg.License,
 		Scripts: map[string]string{
 			"build":   "tsc",
-			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s ${VERSION}", packageName),
+			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s ${VERSION}", pkg.Name),
 		},
 		DevDependencies: devDependencies,
 		Pulumi: npmPulumiManifest{
@@ -2534,8 +2534,7 @@ var childProcess = require("child_process");
 
 var args = process.argv.slice(2);
 
-// NOTE: version split is intended to prevent sed style replacement
-if (args.indexOf("${VERS" + "ION}") != -1) {
+if (args.indexOf("${VERSION}") !== -1) {
 	process.exit(0);
 }
 

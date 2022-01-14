@@ -3,7 +3,7 @@
     "version": "${VERSION}",
     "scripts": {
         "build": "tsc",
-        "install": "node scripts/install-pulumi-plugin.js resource @pulumi/registrygeoreplication ${VERSION}"
+        "install": "node scripts/install-pulumi-plugin.js resource registrygeoreplication ${VERSION}"
     },
     "dependencies": {
         "@pulumi/azure-native": "^1.28.0",

@@ -3,7 +3,7 @@
     "version": "${VERSION}",
     "scripts": {
         "build": "tsc",
-        "install": "node scripts/install-pulumi-plugin.js resource @pulumi/my8110 ${VERSION}"
+        "install": "node scripts/install-pulumi-plugin.js resource my8110 ${VERSION}"
     },
     "devDependencies": {
         "@types/node": "latest",

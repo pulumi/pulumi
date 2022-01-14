@@ -3,7 +3,7 @@
     "version": "${VERSION}",
     "scripts": {
         "build": "tsc",
-        "install": "node scripts/install-pulumi-plugin.js resource @pulumi/myedgeorder ${VERSION}"
+        "install": "node scripts/install-pulumi-plugin.js resource myedgeorder ${VERSION}"
     },
     "devDependencies": {
         "@types/node": "latest",
