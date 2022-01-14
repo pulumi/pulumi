@@ -806,10 +806,7 @@ class Resource:
             else:
                 # If a provider was specified, add it to the providers map under this type's package
                 # so that any children of this resource inherit its provider.
-                type_components = t.split(":")
-                if len(type_components) == 3:
-                    [pkg, _, _] = type_components
-                    self._providers = {**self._providers, pkg: provider}
+                self._providers = {**self._providers, provider.package: provider}
         else:
             providers = convert_providers(opts.provider, opts.providers)
             self._providers = {**self._providers, **providers}
