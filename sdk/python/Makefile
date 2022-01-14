@@ -8,7 +8,7 @@ PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
 PROJECT_PKGS    := $(shell go list ./cmd/...)
-TESTPARALLELISM := 10
+TESTPARALLELISM ?= 10
 
 include ../../build/common.mk
 
