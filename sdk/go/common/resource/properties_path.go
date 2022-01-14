@@ -43,6 +43,8 @@ type PropertyPath []interface{}
 // - root["key with a ."]
 // - ["root key with \"escaped\" quotes"].nested
 // - ["root key with a ."][100]
+// - root.array[*].field
+// - root.array["*"].field
 func ParsePropertyPath(path string) (PropertyPath, error) {
 	// We interpret the grammar above a little loosely in order to keep things simple. Specifically, we will accept
 	// something close to the following:
@@ -84,11 +86,16 @@ func ParsePropertyPath(path string) (PropertyPath, error) {
 					return nil, errors.New("missing closing bracket in array index")
 				}
 
-				index, err := strconv.ParseInt(path[1:rbracket], 10, 0)
-				if err != nil {
-					return nil, errors.Wrap(err, "invalid array index")
+				segment := path[1:rbracket]
+				if segment == "*" {
+					pathElement, path = "*", path[rbracket:]
+				} else {
+					index, err := strconv.ParseInt(segment, 10, 0)
+					if err != nil {
+						return nil, errors.Wrap(err, "invalid array index")
+					}
+					pathElement, path = int(index), path[rbracket:]
 				}
-				pathElement, path = int(index), path[rbracket:]
 			}
 			elements, path = append(elements, pathElement), path[1:]
 		default:

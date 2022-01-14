@@ -2074,8 +2074,15 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 		r := strings.NewReplacer(dep+".", "", ".nupkg", "")
 		version := r.Replace(file)
 
+		// We don't restore because the program might depend on external
+		// packages which cannot be found in our local nuget source. A restore
+		// will happen automatically as part of the `pulumi up`.
 		err = pt.runCommand("dotnet-add-package",
-			[]string{dotNetBin, "add", "package", dep, "-v", version}, cwd)
+			[]string{dotNetBin, "add", "package", dep,
+				"-v", version,
+				"-s", localNuget,
+				"--no-restore"},
+			cwd)
 		if err != nil {
 			return fmt.Errorf("failed to add dependency on %s: %w", dep, err)
 		}

@@ -14,9 +14,7 @@ export function getIntegrationRuntimeObjectMetadatum(args: GetIntegrationRuntime
         opts = {}
     }
 
-    if (!opts.version) {
-        opts.version = utilities.getVersion();
-    }
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
     return pulumi.runtime.invoke("mypkg::getIntegrationRuntimeObjectMetadatum", {
         "factoryName": args.factoryName,
         "integrationRuntimeName": args.integrationRuntimeName,

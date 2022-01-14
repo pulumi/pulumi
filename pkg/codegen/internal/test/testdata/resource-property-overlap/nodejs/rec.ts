@@ -50,9 +50,7 @@ export class Rec extends pulumi.CustomResource {
         } else {
             resourceInputs["rec"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Rec.__pulumiType, name, resourceInputs, opts);
     }
 }

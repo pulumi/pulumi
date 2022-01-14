@@ -72,9 +72,7 @@ export class Component extends pulumi.CustomResource {
             resourceInputs["securityGroup"] = undefined /*out*/;
             resourceInputs["storageClasses"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Component.__pulumiType, name, resourceInputs, opts);
     }
 }

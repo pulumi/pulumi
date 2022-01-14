@@ -57,9 +57,7 @@ export class TypeUses extends pulumi.CustomResource {
             resourceInputs["baz"] = undefined /*out*/;
             resourceInputs["foo"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(TypeUses.__pulumiType, name, resourceInputs, opts);
     }
 }

@@ -117,9 +117,7 @@ export class SqlResourceSqlContainer extends pulumi.CustomResource {
         } else {
             resourceInputs["resource"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(SqlResourceSqlContainer.__pulumiType, name, resourceInputs, opts);
     }
 }

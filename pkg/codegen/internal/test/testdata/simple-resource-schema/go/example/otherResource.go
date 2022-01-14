@@ -23,6 +23,7 @@ func NewOtherResource(ctx *pulumi.Context,
 		args = &OtherResourceArgs{}
 	}
 
+	opts = pkgResourceDefaultOpts(opts)
 	var resource OtherResource
 	err := ctx.RegisterRemoteComponentResource("example::OtherResource", name, args, &resource, opts...)
 	if err != nil {

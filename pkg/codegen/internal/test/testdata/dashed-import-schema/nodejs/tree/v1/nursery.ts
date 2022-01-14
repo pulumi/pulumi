@@ -51,9 +51,7 @@ export class Nursery extends pulumi.CustomResource {
             resourceInputs["varieties"] = args ? args.varieties : undefined;
         } else {
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Nursery.__pulumiType, name, resourceInputs, opts);
     }
 }

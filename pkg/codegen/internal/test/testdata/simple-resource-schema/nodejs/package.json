@@ -11,6 +11,7 @@
         "typescript": "^3.7.0"
     },
     "pulumi": {
-        "resource": true
+        "resource": true,
+        "pluginDownloadURL": "example.com/download"
     }
 }

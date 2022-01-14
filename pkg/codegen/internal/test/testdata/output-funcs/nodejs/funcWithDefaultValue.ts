@@ -12,9 +12,7 @@ export function funcWithDefaultValue(args: FuncWithDefaultValueArgs, opts?: pulu
         opts = {}
     }
 
-    if (!opts.version) {
-        opts.version = utilities.getVersion();
-    }
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
     return pulumi.runtime.invoke("mypkg::funcWithDefaultValue", {
         "a": args.a,
         "b": args.b,

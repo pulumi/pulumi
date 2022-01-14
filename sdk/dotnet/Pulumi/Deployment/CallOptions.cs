@@ -24,5 +24,12 @@ namespace Pulumi
         /// used when performing this call.
         /// </summary>
         public string? Version { get; set; }
+
+        /// <summary>
+        /// An optional URL. If provided, the provider plugin with exactly this download URL will
+        /// be used when performing this call. This will override the URL sourced from the host
+        /// package, and should be rarely used.
+        /// </summary>
+        public string? PluginDownloadURL { get; set; }
     }
 }

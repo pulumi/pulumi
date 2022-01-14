@@ -105,3 +105,6 @@ test_integration::
 
 tidy::
 	./scripts/tidy.sh
+
+validate_codecov_yaml::
+	curl --data-binary @codecov.yml https://codecov.io/validate

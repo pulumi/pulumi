@@ -97,6 +97,7 @@ def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ:
         monitor = get_monitor()
         inputs = await rpc.serialize_properties(props, {})
         version = opts.version or ""
+        plugin_download_url = opts.plugin_download_url or ""
         accept_resources = not (os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"})
         log.debug(f"Invoking function prepared: tok={tok}")
         req = provider_pb2.InvokeRequest(
@@ -105,6 +106,7 @@ def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ:
             provider=provider_ref,
             version=version,
             acceptResources=accept_resources,
+            pluginDownloadURL=plugin_download_url,
         )
 
         def do_invoke():
@@ -169,7 +171,7 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
     async def do_call():
         try:
             # Construct a provider reference from the given provider, if one is available on the resource.
-            provider_ref, version = None, ""
+            provider_ref, version, plugin_download_url = None, "", ""
             if res is not None:
                 if res._provider is not None:
                     provider_urn = await res._provider.urn.future()
@@ -177,6 +179,7 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
                     provider_ref = f"{provider_urn}::{provider_id}"
                     log.debug(f"Call using provider {provider_ref}")
                 version = res._version or ""
+                plugin_download_url = res._plugin_download_url or ""
 
             monitor = get_monitor()
 
@@ -200,6 +203,7 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
                 argDependencies=property_dependencies,
                 provider=provider_ref,
                 version=version,
+                pluginDownloadURL=plugin_download_url,
             )
 
             def do_rpc_call():

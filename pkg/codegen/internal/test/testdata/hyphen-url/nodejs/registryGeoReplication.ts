@@ -57,9 +57,7 @@ export class RegistryGeoReplication extends pulumi.ComponentResource {
             resourceInputs["registry"] = undefined /*out*/;
             resourceInputs["replication"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(RegistryGeoReplication.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 }
