@@ -17,7 +17,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -202,44 +201,13 @@ func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(inter
 	return nil
 }
 
-// We convert strings that should be numbers to the appropriate numeric type.
-// Non-string types are passed through as is.
-func attemptStringToNumConversion(v interface{}) (interface{}, error) {
-	if s, ok := v.(string); ok {
-		if num, err := strconv.Atoi(s); err == nil {
-			// Numbers with leading 0s parse, but we want to consider them
-			// strings.
-			if strings.HasPrefix(s, "0") && s != "0" {
-				return s, nil
-			}
-			return num, nil
-		}
-		// Floats with multiple leading 0s parse, but we want to consider them
-		// strings.
-		if float, err := strconv.ParseFloat(s, 64); err == nil && !strings.HasPrefix(s, "00") {
-			return float, nil
-		}
-	}
-
-	if n, ok := v.(json.Number); ok {
-		if i, err := n.Int64(); err == nil {
-			return i, nil
-		}
-		return n.Float64()
-	}
-
-	return v, nil
-}
-
 func (c Value) marshalValue() (interface{}, error) {
 	if c.object {
 		return c.unmarshalObjectJSON()
 	}
 
 	if !c.secure {
-		// We enforce the correct types for numeric values. For object types,
-		// this is handled during the call to `unmarshalObjectJSON`.
-		return attemptStringToNumConversion(c.value)
+		return c.value, nil
 	}
 
 	m := make(map[string]string)
@@ -424,9 +392,13 @@ func replaceNumberWithIntOrFloat(v interface{}) (interface{}, error) {
 			}
 			t[i] = f
 		}
-	default:
-		// Not a collection type. We should check if it is a number.
-		return attemptStringToNumConversion(v)
+	case json.Number:
+		// Try to return the number as an int64, otherwise fall back to float64.
+		i, err := t.Int64()
+		if err == nil {
+			return i, nil
+		}
+		return t.Float64()
 	}
 	return v, nil
 }
