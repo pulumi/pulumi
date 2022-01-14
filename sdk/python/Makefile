@@ -18,23 +18,24 @@ TEST_ALL_DEPS = build
 
 ensure::
 	$(PYTHON) -m venv venv
-	. venv/*/activate && python -m pip install -r requirements.txt
+	. venv/*/activate && pip install wheel
+	. venv/*/activate && pip install -r requirements.txt
 	mkdir -p $(PYENVSRC)
 
-build_package::
+build_package:: ensure
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak "s/\$${VERSION}/$(PYPI_VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
 	cp ../../README.md $(PYENVSRC)
 	. venv/*/activate && cd $(PYENVSRC) && \
 		python setup.py build bdist_wheel --universal
-	. venv/*/activate && python -m pip install -e $(PYENVSRC)
+	. venv/*/activate && pip install -e $(PYENVSRC)
 
 build_plugin::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 build:: build_package build_plugin
 
-lint::
+lint:: ensure
 	. venv/*/activate && \
 		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
 	. venv/*/activate && \
