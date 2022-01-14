@@ -17,10 +17,13 @@ include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
-lint::
+ensure::
+	yarn
+
+lint:: ensure
 	yarn run eslint -c .eslintrc.js --ext .ts .
 
-build_package::
+build_package:: ensure
 	yarn run tsc
 	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
