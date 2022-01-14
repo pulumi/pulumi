@@ -1017,11 +1017,11 @@ func TestProviderDownloadURL(t *testing.T) {
 		for _, resource := range data.Resources {
 			switch {
 			case providers.IsDefaultProvider(resource.URN):
-				assert.Equal(t, "get.com", resource.Inputs[urlKey])
-				assert.Equal(t, "get.com", resource.Outputs[urlKey])
+				assert.Equalf(t, "get.com", resource.Inputs[urlKey], "Inputs")
+				assert.Equalf(t, "get.com", resource.Outputs[urlKey], "Outputs")
 			case providers.IsProviderType(resource.Type):
-				assert.Equal(t, "get.pulumi/test/providers", resource.Inputs[urlKey])
-				assert.Equal(t, "get.pulumi/test/providers", resource.Outputs[urlKey])
+				assert.Equalf(t, "get.pulumi/test/providers", resource.Inputs[urlKey], "Inputs")
+				assert.Equal(t, "get.pulumi/test/providers", resource.Outputs[urlKey], "Outputs")
 			default:
 				_, hasURL := resource.Inputs[urlKey]
 				assert.False(t, hasURL)
@@ -1036,9 +1036,10 @@ func TestProviderDownloadURL(t *testing.T) {
 		name       string
 		dependency string
 	}{
+
 		{"python", filepath.Join("..", "..", "sdk", "python", "env", "src")},
 		{"nodejs", "@pulumi/pulumi"},
-		// #[pulumi/pulumi#8689]: Add .NET test
+		{"dotnet", "Pulumi"},
 		{"go", "github.com/pulumi/pulumi/sdk/v3"},
 	}
 
