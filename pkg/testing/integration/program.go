@@ -2112,7 +2112,21 @@ func killOrphanProcesses(t *testing.T) {
 	byPid := map[int]ps.Process{}
 
 	for _, proc := range procs {
-		byPid[proc.Pid()] = proc
+		pid := proc.Pid()
+		byPid[pid] = proc
+	}
+
+	parentByPid := map[int]ps.Process{}
+
+	for _, proc := range procs {
+		pid := proc.Pid()
+		ppid := proc.PPid()
+		// On some platforms root proc is its own parent
+		if ppid != pid {
+			if parent, ok := byPid[ppid]; ok {
+				parentByPid[ppid] = parent
+			}
+		}
 	}
 
 	keywords := []string{
@@ -2133,12 +2147,26 @@ func killOrphanProcesses(t *testing.T) {
 		return false
 	}
 
+	isValidParent := func(proc ps.Process) bool {
+		pid := proc.Pid()
+		exec := proc.Executable()
+		if pid <= 2 {
+			// On MacOS orphans may get reparented to ppid=1
+			return false
+		}
+		if strings.Contains(exec, "systemd") {
+			// On Linux orphans may be reparented to systemd
+			return false
+		}
+		return true
+	}
+
 	for _, proc := range procs {
 		pid := proc.Pid()
 		ppid := proc.PPid()
-		_, hasParent := byPid[ppid]
+		parent, hasParent := byPid[ppid]
 
-		if !hasParent && pid >= 2 && pid != ppid && isPulumiProc(proc) {
+		if (!hasParent || !isValidParent(parent)) && pid >= 2 && pid != ppid && isPulumiProc(proc) {
 			procHandle, err := os.FindProcess(pid)
 			if err != nil {
 				// ignore processes we cannot find by PID anymore
