@@ -15,3 +15,6 @@
 
 - [sdk/dotnet] Allow `Output<Union>` to be converted to `InputUnion`.
   [#8733](https://github.com/pulumi/pulumi/pull/8733)
+
+- [cli/config] - Revert number handling in `pulumi config`.
+  [#8754](https://github.com/pulumi/pulumi/pull/8754)
