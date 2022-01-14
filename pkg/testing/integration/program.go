@@ -35,6 +35,10 @@ import (
 	"time"
 
 	multierror "github.com/hashicorp/go-multierror"
+	ps "github.com/mitchellh/go-ps"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	user "github.com/tweekmonster/luser"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -51,8 +55,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/stretchr/testify/assert"
-	user "github.com/tweekmonster/luser"
 )
 
 const PythonRuntime = "python"
@@ -660,6 +662,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	pt := newProgramTester(t, opts)
 	err := pt.TestLifeCycleInitAndDestroy()
 	assert.NoError(t, err)
+	killOrphanProcesses(t)
 }
 
 // ProgramTestManualLifeCycle returns a ProgramTester than must be manually controlled in terms of its lifecycle
@@ -2089,4 +2092,66 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	}
 
 	return nil
+}
+
+// Temporary mitigation to try to kill off processes that become
+// orphaned during tests to avoid CI OOM issues.
+//
+// TODO[pulumi/pulumi#8696]
+func killOrphanProcesses(t *testing.T) {
+
+	// DO nothing unless we detect a GitHub actions environment.
+	runnerTemp := os.Getenv("RUNNER_TEMP")
+	if runnerTemp == "" {
+		return
+	}
+
+	procs, err := ps.Processes()
+	require.NoError(t, err)
+
+	byPid := map[int]ps.Process{}
+
+	for _, proc := range procs {
+		byPid[proc.Pid()] = proc
+	}
+
+	keywords := []string{
+		"pulumi",
+		"dotnet",
+		"node",
+		"python",
+		"conhost",
+	}
+
+	isPulumiProc := func(proc ps.Process) bool {
+		exe := proc.Executable()
+		for _, k := range keywords {
+			if strings.Contains(exe, k) {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, proc := range procs {
+		pid := proc.Pid()
+		ppid := proc.PPid()
+		_, hasParent := byPid[ppid]
+
+		if !hasParent && pid >= 2 && pid != ppid && isPulumiProc(proc) {
+			procHandle, err := os.FindProcess(pid)
+			if err != nil {
+				// ignore processes we cannot find by PID anymore
+				continue
+			}
+			err = procHandle.Kill()
+			if err != nil {
+				t.Logf("WARN: failed to kill orphan process pid=%d ppid=%d exe=%s: %v",
+					pid, ppid, proc.Executable(), err)
+			} else {
+				t.Logf("WARN: killed orphan process pid=%d ppid=%d exe=%s",
+					pid, ppid, proc.Executable())
+			}
+		}
+	}
 }
