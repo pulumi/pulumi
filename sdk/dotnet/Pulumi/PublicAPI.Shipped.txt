@@ -31,6 +31,8 @@ Pulumi.CallOptions.Provider.get -> Pulumi.ProviderResource
 Pulumi.CallOptions.Provider.set -> void
 Pulumi.CallOptions.Version.get -> string
 Pulumi.CallOptions.Version.set -> void
+Pulumi.CallOptions.PluginDownloadURL.get -> string
+Pulumi.CallOptions.PluginDownloadURL.set -> void
 Pulumi.ComponentResource
 Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ComponentResourceOptions options = null) -> void
 Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.ComponentResourceOptions options = null, bool remote = false) -> void
@@ -132,6 +134,8 @@ Pulumi.InvokeOptions.Provider.get -> Pulumi.ProviderResource
 Pulumi.InvokeOptions.Provider.set -> void
 Pulumi.InvokeOptions.Version.get -> string
 Pulumi.InvokeOptions.Version.set -> void
+Pulumi.InvokeOptions.PluginDownloadURL.get -> string
+Pulumi.InvokeOptions.PluginDownloadURL.set -> void
 Pulumi.Log
 Pulumi.Output
 Pulumi.Output<T>
@@ -191,6 +195,8 @@ Pulumi.ResourceOptions.Urn.get -> string
 Pulumi.ResourceOptions.Urn.set -> void
 Pulumi.ResourceOptions.Version.get -> string
 Pulumi.ResourceOptions.Version.set -> void
+Pulumi.ResourceOptions.PluginDownloadURL.get -> string
+Pulumi.ResourceOptions.PluginDownloadURL.set -> void
 Pulumi.ResourceTransformation
 Pulumi.ResourceTransformationArgs
 Pulumi.ResourceTransformationArgs.Args.get -> Pulumi.ResourceArgs
