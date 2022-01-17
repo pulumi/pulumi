@@ -2680,11 +2680,14 @@ func TestProviderDeterministicPreview(t *testing.T) {
 }
 
 func TestSequenceNumberResetsAfterReplace(t *testing.T) {
-	// This test is to check that after we've done a replace with an unknown sequence number the next time we do a replace we start with sequence number 1.
-	// It's not safe to go from unknown straight to sequence number 1 because we do create-before-delete and the existing resource might have a deterministic
-	// name seeded from seqNum=1 or 2 or anything else. So if we don't currently know the sequence number we have to do a create with seqNum=0 to get a truly
-	// random name. But now we can flag the sequence number in the state file (we use -1) to say that we now know that the last create was done with a random
-	// seed and the next replace will be safe to start at sequence number 1.
+	// This test is to check that after we've done a replace with an unknown sequence number the
+	// next time we do a replace we start with sequence number 1. It's not safe to go from unknown
+	// straight to sequence number 1 because we do create-before-delete and the existing resource
+	// might have a deterministic name seeded from seqNum=1 or 2 or anything else. So if we don't
+	// currently know the sequence number we have to do a create with seqNum=0 to get a truly
+	// random name. But now we can flag the sequence number in the state file (we use -1) to say
+	// that we now know that the last create was done with a random seed and the next replace will
+	// be safe to start at sequence number 1.
 
 	names := map[int]resource.PropertyValue{
 		0: resource.NewStringProperty("Random"),
