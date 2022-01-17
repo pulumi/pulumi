@@ -280,7 +280,7 @@ ${defaultMessage}`);
                 programExport = await dynamicImport(main);
                 // If there is a default export, use that instead of the named exports (and error if there are both).
                 if (Object.getOwnPropertyDescriptor(programExport, "default") !== undefined) {
-                    if (Object.keys(programExport).length != 1) {
+                    if (Object.keys(programExport).length !== 1) {
                         throw new Error("expected entrypoint module to have either a default export or named exports but not both");
                     }
                     programExport = programExport.default;
@@ -290,9 +290,9 @@ ${defaultMessage}`);
                 programExport = require(program);
             }
 
-            // If the exported value was itself a Function, then just execute it.  This allows for 
-            // exported top level async functions that pulumi programs can live in.  Finally, await 
-            // the value we get back.  That way, if it is async and throws an exception, we properly 
+            // If the exported value was itself a Function, then just execute it.  This allows for
+            // exported top level async functions that pulumi programs can live in.  Finally, await
+            // the value we get back.  That way, if it is async and throws an exception, we properly
             // capture it here and handle it.
             const invokeResult = programExport instanceof Function
                 ? programExport()
