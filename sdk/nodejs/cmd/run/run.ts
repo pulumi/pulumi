@@ -258,6 +258,8 @@ ${defaultMessage}`);
         try {
             const packageObject = packageObjectFromProjectRoot(projectRootFromProgramPath(program));
 
+            let programExport: any;
+
             // We use dynamic import instead of require for projects using native ES modules instead of commonjs
             if (packageObject["type"] === "module") {
                 // Use the same behavior for loading the main entrypoint as `node <program>`.
@@ -275,18 +277,28 @@ ${defaultMessage}`);
                 // Import the module and capture any module outputs it exported. Finally, await the value we get
                 // back.  That way, if it is async and throws an exception, we properly capture it here
                 // and handle it.
-                return await dynamicImport(main);
+                programExport = await dynamicImport(main);
+                console.log(programExport);
+                // If there is a default export, use that instead of the named exports (and error if there are both).
+                if (Object.getOwnPropertyDescriptor(programExport, "default") !== undefined) {
+                    console.log("default export")
+                    if (Object.keys(programExport).length != 1) {
+                        throw new Error("expected entrypoint module to have either a default export or named exports but not both");
+                    }
+                    programExport = programExport.default;
+                }
+            } else {
+                // It's a CommonJS module, so require the module and capture any module outputs it exported.
+                programExport = require(program);
             }
 
-            // Execute the module and capture any module outputs it exported. If the exported value
-            // was itself a Function, then just execute it.  This allows for exported top level
-            // async functions that pulumi programs can live in.  Finally, await the value we get
-            // back.  That way, if it is async and throws an exception, we properly capture it here
-            // and handle it.
-            const reqResult = require(program);
-            const invokeResult = reqResult instanceof Function
-                ? reqResult()
-                : reqResult;
+            // If the exported value was itself a Function, then just execute it.  This allows for 
+            // exported top level async functions that pulumi programs can live in.  Finally, await 
+            // the value we get back.  That way, if it is async and throws an exception, we properly 
+            // capture it here and handle it.
+            const invokeResult = programExport instanceof Function
+                ? programExport()
+                : programExport;
 
             return await invokeResult;
         } catch (e) {
