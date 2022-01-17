@@ -278,10 +278,8 @@ ${defaultMessage}`);
                 // back.  That way, if it is async and throws an exception, we properly capture it here
                 // and handle it.
                 programExport = await dynamicImport(main);
-                console.log(programExport);
                 // If there is a default export, use that instead of the named exports (and error if there are both).
                 if (Object.getOwnPropertyDescriptor(programExport, "default") !== undefined) {
-                    console.log("default export")
                     if (Object.keys(programExport).length != 1) {
                         throw new Error("expected entrypoint module to have either a default export or named exports but not both");
                     }
