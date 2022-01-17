@@ -124,6 +124,7 @@ func (prov *Provider) Configure(inputs resource.PropertyMap) error {
 
 func (prov *Provider) Check(urn resource.URN,
 	olds, news resource.PropertyMap, _ bool, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	contract.Assert(sequenceNumber >= 0)
 	if prov.CheckF == nil {
 		return news, nil, nil
 	}
