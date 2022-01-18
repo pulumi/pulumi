@@ -609,7 +609,10 @@ class ResourceOptions:
 
 
 def _collapse_providers(opts: 'ResourceOptions'):
-    # If we have only 0-1 providers, then merge that back down to the .provider field.
+    """
+    If we have 0 providers, we set .providers to None. Otherwise, we ensure that
+    .providers is returned as a map.
+    """
     providers: Optional[Union[Mapping[str, ProviderResource], Sequence[ProviderResource]]] = opts.providers
     if providers is not None:
         provider_length = len(providers)
