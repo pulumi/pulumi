@@ -118,7 +118,16 @@ async def prepare_resource(res: 'Resource',
 
     # Construct the provider reference, if we were given a provider to use.
     provider_ref = None
-    if custom and opts is not None and opts.provider is not None:
+
+    pkg = None
+    try:
+        i = ty.index(":")
+        pkg = ty[:i]
+    except ValueError:
+        # If we don't find the index, we silently move on.
+        pass
+
+    if custom and opts is not None and opts.provider is not None and (opts.provider.package == pkg or pkg is None):
         provider = opts.provider
 
         # If we were given a provider, wait for it to resolve and construct a provider reference from it.

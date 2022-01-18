@@ -982,9 +982,12 @@ class ProviderResource(CustomResource):
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         """
 
-        if opts is not None and opts.provider is not None:
-            raise TypeError(
-                "Explicit providers may not be used with provider resources")
+        if opts is not None:
+            if not isinstance(opts, ResourceOptions):
+                raise TypeError("opts must be of type ResourceOptions")
+            if opts.provider is not None:
+                raise TypeError(
+                    "Explicit providers may not be used with provider resources")
         # Provider resources are given a well-known type, prefixed with "pulumi:providers".
         CustomResource.__init__(
             self, f"pulumi:providers:{pkg}", name, props, opts, dependency)
