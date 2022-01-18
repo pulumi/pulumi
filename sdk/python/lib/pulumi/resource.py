@@ -574,10 +574,11 @@ class ResourceOptions:
 
         # Ensure provider/providers are all expanded into the `List[ResourceProvider]` form.
         # This makes merging simple.
-        _expand_providers(dest)
-        _expand_providers(source)
+        expand_providers = lambda p: list(p.values()) if isinstance(p, Mapping) else p
+        dest_providers = expand_providers(dest.providers)
+        source_providers = expand_providers(source.providers)
 
-        dest.providers = _merge_lists(dest.providers, source.providers)
+        dest.providers = _merge_lists(dest_providers, source_providers)
 
         dest.depends_on = _map2_input(dest._depends_on_list(),
                                       source._depends_on_list(),
@@ -598,6 +599,7 @@ class ResourceOptions:
         dest.id = dest.id if source.id is None else source.id
         dest.import_ = dest.import_ if source.import_ is None else source.import_
         dest.urn = dest.urn if source.urn is None else source.urn
+        dest.provider = dest.provider if source.provider is None else source.provider
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
         # collapse that down into .provider form.
@@ -606,27 +608,12 @@ class ResourceOptions:
         return dest
 
 
-def _expand_providers(options: 'ResourceOptions'):
-    # Move 'provider' up to 'providers' if we have it.
-    if options.provider is not None:
-        options.providers = [options.provider]
-
-    # Convert 'providers' map to list form.
-    if options.providers is not None and isinstance(options.providers, Mapping):
-        options.providers = list(options.providers.values())
-
-    options.provider = None
-
-
 def _collapse_providers(opts: 'ResourceOptions'):
     # If we have only 0-1 providers, then merge that back down to the .provider field.
     providers: Optional[Union[Mapping[str, ProviderResource], Sequence[ProviderResource]]] = opts.providers
     if providers is not None:
         provider_length = len(providers)
         if provider_length == 0:
-            opts.providers = None
-        elif isinstance(providers, list) and provider_length == 1:
-            opts.provider = providers[0]
             opts.providers = None
         else:
             opts.providers = {}
