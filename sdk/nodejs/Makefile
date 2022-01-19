@@ -6,7 +6,7 @@ LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-n
 PROJECT_ROOT     := $(realpath ../..)
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
-TESTPARALLELISM := 10
+TESTPARALLELISM ?= 10
 TEST_FAST_TIMEOUT := 2m
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
