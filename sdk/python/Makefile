@@ -56,10 +56,10 @@ test_go:: $(TEST_ALL_DEPS)
 	$(GO_TEST) ${PROJECT_PKGS}
 
 test_fast:: $(TEST_ALL_DEPS)
-	./scripts/test_fast.sh
+	. venv/*/activate && ./scripts/test_fast.sh
 
 test_auto:: $(TEST_ALL_DEPS)
-	./scripts/test_auto.sh
+	. venv/*/activate && ./scripts/test_auto.sh
 
 test_all:: test_fast test_auto test_go
 

@@ -4,8 +4,6 @@ PULUMI_TEST_COVERAGE_PATH=$PULUMI_TEST_COVERAGE_PATH
 
 set -euo pipefail
 
-. venv/*/activate
-
 SKIP="../../scripts/skipped.py"
 
 python "$SKIP" auto-python ||
