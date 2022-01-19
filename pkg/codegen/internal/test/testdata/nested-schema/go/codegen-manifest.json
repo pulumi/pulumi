@@ -1,0 +1,13 @@
+{
+  "emittedFiles": [
+    "foo/a/b/c/d/argFunction.go",
+    "foo/a/b/c/init.go",
+    "foo/a/b/c/resource.go",
+    "foo/a/b/pulumiTypes.go",
+    "foo/doc.go",
+    "foo/init.go",
+    "foo/provider.go",
+    "foo/pulumi-plugin.json",
+    "foo/pulumiUtilities.go"
+  ]
+}

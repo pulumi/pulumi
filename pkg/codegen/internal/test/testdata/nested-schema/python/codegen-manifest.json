@@ -1,0 +1,18 @@
+{
+  "emittedFiles": [
+    "pulumi_example/README.md",
+    "pulumi_example/__init__.py",
+    "pulumi_example/_utilities.py",
+    "pulumi_example/a/__init__.py",
+    "pulumi_example/a/b/__init__.py",
+    "pulumi_example/a/b/c/__init__.py",
+    "pulumi_example/a/b/c/d/__init__.py",
+    "pulumi_example/a/b/c/d/arg_function.py",
+    "pulumi_example/a/b/c/resource.py",
+    "pulumi_example/a/b/outputs.py",
+    "pulumi_example/provider.py",
+    "pulumi_example/pulumi-plugin.json",
+    "pulumi_example/py.typed",
+    "setup.py"
+  ]
+}

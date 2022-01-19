@@ -173,21 +173,6 @@ func TestPascalCases(t *testing.T) {
 			input:    "everything-changed",
 			expected: "EverythingChanged",
 		},
-		{
-			"Nested modules in schema",
-			"nested-schema",
-			[]string{
-				"a/index.ts",
-				"a/b/index.ts",
-				"a/b/c/index.ts",
-				"a/b/c/resource.ts",
-				"a/b/c/d/index.ts",
-				"a/b/c/d/argFunction.ts",
-				"types/index.ts",
-				"types/input.ts",
-				"types/output.ts",
-			},
-		},
 	}
 	for _, tt := range tests {
 		result := pascal(tt.input)

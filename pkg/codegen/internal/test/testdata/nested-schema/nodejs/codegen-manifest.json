@@ -1,0 +1,19 @@
+{
+  "emittedFiles": [
+    "README.md",
+    "a/b/c/d/argFunction.ts",
+    "a/b/c/d/index.ts",
+    "a/b/c/index.ts",
+    "a/b/c/resource.ts",
+    "a/b/index.ts",
+    "a/index.ts",
+    "index.ts",
+    "package.json",
+    "provider.ts",
+    "tsconfig.json",
+    "types/index.ts",
+    "types/input.ts",
+    "types/output.ts",
+    "utilities.ts"
+  ]
+}

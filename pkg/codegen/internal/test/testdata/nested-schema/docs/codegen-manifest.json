@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "_index.md",
+    "a/_index.md",
+    "a/b/_index.md",
+    "a/b/c/_index.md",
+    "a/b/c/d/_index.md",
+    "a/b/c/d/argfunction/_index.md",
+    "a/b/c/resource/_index.md",
+    "provider/_index.md"
+  ]
+}

@@ -9,5 +9,6 @@ export namespace a {
         export interface Object {
             foo?: string;
         }
+
     }
 }

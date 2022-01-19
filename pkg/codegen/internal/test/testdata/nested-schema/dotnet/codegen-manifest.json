@@ -1,0 +1,17 @@
+{
+  "emittedFiles": [
+    "A/README.md",
+    "A/b/Outputs/Object.cs",
+    "A/b/README.md",
+    "A/b/c/README.md",
+    "A/b/c/Resource.cs",
+    "A/b/c/d/ArgFunction.cs",
+    "A/b/c/d/README.md",
+    "Provider.cs",
+    "Pulumi.Example.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

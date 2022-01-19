@@ -200,6 +200,11 @@ var sdkTests = []sdkTest{
 		Description: "Regress pulumi/pulumi#8664 affecting Go",
 		Skip:        codegen.NewStringSet("dotnet/any", "python/any", "nodejs/any", "docs/any"),
 	},
+	{
+		Directory:        "nested-schema",
+		Description:      "Nested modules in schema",
+		SkipCompileCheck: codegen.NewStringSet("dotnet", "go"),
+	},
 }
 
 var genSDKOnly bool
