@@ -38,8 +38,8 @@ namespace Pulumi.Automation.Tests
             Assert.Matches(@"^(warning: A new version of Pulumi[^\n]+\n)?",
                            result.StandardError);
 
-            Assert.Equal(Lines(result.StandardOutput), stdoutLines);
-            Assert.Equal(Lines(result.StandardError), stderrLines);
+            Assert.Equal(Lines(result.StandardOutput), stdoutLines.Select(x => x.Trim()));
+            Assert.Equal(Lines(result.StandardError), stderrLines.Select(x => x.Trim()));
         }
 
         private IEnumerable<string> Lines(string s) {
