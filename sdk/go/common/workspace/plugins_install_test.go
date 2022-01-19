@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -69,6 +70,7 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 
 	// Add plugin binary to included files.
 	files["pulumi-resource-test"] = nil
+	files["pulumi-resource-test.exe"] = nil
 
 	tgz, err := createTGZ(files)
 	assert.NoError(t, err)
@@ -154,6 +156,10 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 }
 
 func TestInstallNoDeps(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
+	}
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -173,6 +179,10 @@ func TestInstallNoDeps(t *testing.T) {
 }
 
 func TestConcurrentInstalls(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
+	}
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 

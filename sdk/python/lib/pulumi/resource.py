@@ -87,6 +87,41 @@ def inherited_child_alias(
 
     return create_urn(alias_name, child_type, parent_alias)
 
+# Extract the type and name parts of a URN
+def urn_type_and_name(urn: str) -> Tuple[str, str]:
+    parts = urn.split("::")
+    type_parts = parts[2].split("$")
+    return (parts[3], type_parts[-1])
+
+def all_aliases(
+    child_aliases: Optional[Sequence['Input[Union[str, Alias]]']],
+    child_name: str,
+    child_type: str,
+    parent: Optional['Resource']) -> 'List[Input[str]]':
+    """
+    Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
+    If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
+    or, as calculated in the logic below, N+(M*(1+N)).
+    """
+    aliases: 'List[Input[str]]' = []
+
+    for child_alias in child_aliases or []:
+        aliases.append(collapse_alias_to_urn(child_alias, child_name, child_type, parent))
+
+    if parent is not None:
+        parent_name = parent._name
+        for parent_alias in parent._aliases:
+            aliases.append(inherited_child_alias(child_name, parent._name, parent_alias, child_type))
+            for child_alias in child_aliases or []:
+                child_alias_urn = collapse_alias_to_urn(child_alias, child_name, child_type, parent)
+                def inherited_alias_for_child_urn(child_alias_urn: str, parent_alias=parent_alias) -> 'Output[str]':
+                    aliased_child_name, aliased_child_type = urn_type_and_name(child_alias_urn)
+                    return inherited_child_alias(aliased_child_name, parent_name, parent_alias, aliased_child_type)
+                inherited_alias: Output[str] = child_alias_urn.apply(inherited_alias_for_child_urn)
+                aliases.append(inherited_alias)
+
+    return aliases
+
 
 ROOT_STACK_RESOURCE = None
 """
@@ -339,6 +374,13 @@ class ResourceOptions:
     current package and should rarely be used.
     """
 
+    plugin_download_url: Optional[str]
+    """
+    An optional url. If provided, the engine loads a provider with downloaded from the provided url.
+    This url overrides the plugin download url inferred from the current package and should rarely
+    be used.
+    """
+
     aliases: Optional[Sequence['Input[Union[str, Alias]]']]
     """
     An optional list of aliases to treat this resource as matching.
@@ -405,7 +447,8 @@ class ResourceOptions:
                  custom_timeouts: Optional['CustomTimeouts'] = None,
                  transformations: Optional[List[ResourceTransformation]] = None,
                  urn: Optional[str] = None,
-                 replace_on_changes: Optional[List[str]] = None) -> None:
+                 replace_on_changes: Optional[List[str]] = None,
+                 plugin_download_url: Optional[str] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -441,7 +484,10 @@ class ResourceOptions:
         :param Optional[List[str]] replace_on_changes: Changes to any of these property paths will force a replacement.
                If this list includes `"*"`, changes to any properties will force a replacement.  Initialization errors
                from previous deployments will require replacement instead of update only if `"*"` is passed.
-        """
+        :param Optional[str] plugin_download_url: An optional url. If provided, the engine loads a provider with downloaded
+               from the provided url. This url overrides the plugin download url inferred from the current package and should
+               rarely be used.
+       """
 
         # Expose 'merge' again this this object, but this time as an instance method.
         # TODO[python/mypy#2427]: mypy disallows method assignment
@@ -455,6 +501,7 @@ class ResourceOptions:
         self.delete_before_replace = delete_before_replace
         self.ignore_changes = ignore_changes
         self.version = version
+        self.plugin_download_url = plugin_download_url
         self.aliases = aliases
         self.additional_secret_outputs = additional_secret_outputs
         self.custom_timeouts = custom_timeouts
@@ -546,6 +593,7 @@ class ResourceOptions:
         dest.protect = dest.protect if source.protect is None else source.protect
         dest.delete_before_replace = dest.delete_before_replace if source.delete_before_replace is None else source.delete_before_replace
         dest.version = dest.version if source.version is None else source.version
+        dest.plugin_download_url = dest.plugin_download_url if source.plugin_download_url is None else source.plugin_download_url
         dest.custom_timeouts = dest.custom_timeouts if source.custom_timeouts is None else source.custom_timeouts
         dest.id = dest.id if source.id is None else source.id
         dest.import_ = dest.import_ if source.import_ is None else source.import_
@@ -640,6 +688,11 @@ class Resource:
     _name: str
     """
     The name assigned to the resource at construction.
+    """
+
+    _plugin_download_url: Optional[str]
+    """
+    The specified download URL associated with the provider or None.
     """
 
     _childResources: Set['Resource']
@@ -740,17 +793,6 @@ class Resource:
             if opts.protect is None:
                 opts.protect = opts.parent._protect
 
-            # Make a copy of the aliases array, and add to it any implicit aliases inherited from
-            # its parent
-            if opts.aliases is None:
-                opts.aliases = []
-
-            opts.aliases = list(opts.aliases)
-            for parent_alias in opts.parent._aliases:
-                child_alias = inherited_child_alias(
-                    name, opts.parent._name, parent_alias, t)
-                opts.aliases.append(cast('Output[Union[str, Alias]]', child_alias))
-
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
 
@@ -775,15 +817,8 @@ class Resource:
         self._protect = bool(opts.protect)
         self._provider = opts.provider if custom else None
         self._version = opts.version
-
-        # Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we
-        # do not know the default `name` and `type` to apply until we are inside the resource
-        # constructor.
-        self._aliases: 'List[Input[str]]' = []
-        if opts.aliases is not None:
-            for alias in opts.aliases:
-                self._aliases.append(collapse_alias_to_urn(
-                    alias, name, t, opts.parent))
+        self._plugin_download_url = opts.plugin_download_url
+        self._aliases = all_aliases(opts.aliases, name, t, opts.parent)
 
         if opts.urn is not None:
             # This is a resource that already exists. Read its state from the engine.

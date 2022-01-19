@@ -1,6 +1,123 @@
 CHANGELOG
 =========
 
+## 3.22.1 (2022-01-14)
+
+### Improvements
+
+- [sdk/dotnet] - Add `PluginDownloadURL` as a resource option. When provided by
+  the schema, `PluginDownloadURL` will be baked into `new Resource` and `Invoke`
+  requests in generated SDKs. 
+  [#8739](https://github.com/pulumi/pulumi/pull/8739)
+
+- [sdk] - Allow property paths to accept `[*]` as sugar for `["*"]`.
+  [#8743](https://github.com/pulumi/pulumi/pull/8743)
+
+- [sdk/dotnet] Add `Union.Bimap` function for converting both sides of a union at once.
+  [#8733](https://github.com/pulumi/pulumi/pull/8733)
+
+### Bug Fixes
+
+- [sdk/dotnet] Allow `Output<Union>` to be converted to `InputUnion`.
+  [#8733](https://github.com/pulumi/pulumi/pull/8733)
+
+- [cli/config] - Revert number handling in `pulumi config`.
+  [#8754](https://github.com/pulumi/pulumi/pull/8754)
+
+## 3.22.0 (2022-01-12)
+
+### Improvements
+
+- [sdk/{nodejs,go,python}] - Add `PluginDownloadURL` as a resource option. When provided by
+  the schema, `PluginDownloadURL` will be baked into `new Resource` and `Invoke`
+  requests in generated SDKs.
+  [#8698](https://github.com/pulumi/pulumi/pull/8698)
+  [#8690](https://github.com/pulumi/pulumi/pull/8690)
+  [#8692](https://github.com/pulumi/pulumi/pull/8692)
+
+### Bug Fixes
+
+- [auto/python] - Fixes an issue with exception isolation in a
+  sequence of inline programs that caused all inline programs to fail
+  after the first one failed
+  [#8693](https://github.com/pulumi/pulumi/pull/8693)
+
+
+## 3.21.1 (2022-01-07)
+
+### Improvements
+
+- [sdk/go] - Add `PluginDownloadURL` as a resource option.
+  [#8555](https://github.com/pulumi/pulumi/pull/8555)
+
+- [sdk/go] - Allow users to override enviromental variables for `GetCommandResults`.
+  [#8610](https://github.com/pulumi/pulumi/pull/8610)
+
+- [sdk/nodejs] Support using native ES modules as Pulumi scripts
+  [#7764](https://github.com/pulumi/pulumi/pull/7764)
+
+- [sdk/nodejs] Support a `nodeargs` option for passing `node` arguments to the Node language host
+  [#8655](https://github.com/pulumi/pulumi/pull/8655)
+
+### Bug Fixes
+
+- [cli/engine] - Fix [#3982](https://github.com/pulumi/pulumi/issues/3982), a bug
+  where the engine ignored the final line of stdout/stderr if it didn't terminate
+  with a newline.
+  [#8671](https://github.com/pulumi/pulumi/pull/8671)
+
+- [nodejs/sdk] - GetRequiredPlugins: Return plugins even when there're errors.
+  [#8699](https://github.com/pulumi/pulumi/pull/8699)
+
+
+## 3.21.0 (2021-12-29)
+
+### Improvements
+
+- [engine] - Interpret `pluginDownloadURL` as the provider host url when
+  downloading plugins.
+  [#8544](https://github.com/pulumi/pulumi/pull/8544)
+
+- [sdk/dotnet] - `InputMap` and `InputList` can now be initialized
+  with any value that implicitly converts to the collection type.
+  These values are then automatically appended, for example:
+
+        var list = new InputList<string>
+        {
+            "V1",
+            Output.Create("V2"),
+            new[] { "V3", "V4" },
+            new List<string> { "V5", "V6" },
+            Output.Create(ImmutableArray.Create("V7", "V8"))
+        };
+
+  This feature simplifies the syntax for constructing resources and
+  specifying resource options such as the `DependsOn` option.
+
+  [#8498](https://github.com/pulumi/pulumi/pull/8498)
+
+### Bug Fixes
+
+- [sdk/python] - Fixes an issue with stack outputs persisting after
+  they are removed from the Pulumi program
+  [#8583](https://github.com/pulumi/pulumi/pull/8583)
+
+- [auto/*] - Fixes `stack.setConfig()` breaking when trying to set
+  values that look like flags (such as `-value`)
+  [#8518](https://github.com/pulumi/pulumi/pull/8614)
+
+- [sdk/dotnet] - Don't throw converting value types that don't match schema
+  [#8628](https://github.com/pulumi/pulumi/pull/8628)
+
+- [sdk/{go,nodejs,dotnet,python}] - Compute full set of aliases when both parent and child are aliased.
+  [#8627](https://github.com/pulumi/pulumi/pull/8627)
+
+- [cli/import] - Fix import of resource with non-identifier map keys
+  [#8645](https://github.com/pulumi/pulumi/pull/8645)
+
+- [backend/filestate] - Allow preview on locked stack
+  [#8642](https://github.com/pulumi/pulumi/pull/8642)
+
 ## 3.20.0 (2021-12-16)
 
 ### Improvements
@@ -88,7 +205,7 @@ CHANGELOG
 
 ### Improvements
 
-- [cli] - When running `pulumi new https://github.com/name/repo`, check 
+- [cli] - When running `pulumi new https://github.com/name/repo`, check
   for branch `main` if branch `master` doesn't exist.
   [#8463](https://github.com/pulumi/pulumi/pull/8463)
 

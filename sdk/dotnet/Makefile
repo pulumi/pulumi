@@ -19,9 +19,9 @@ ensure::
 	dotnet restore dotnet.sln
 
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-TEST_COVERAGE_ARGS := /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
+TEST_COVERAGE_ARGS := -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
 else
-TEST_COVERAGE_ARGS := /p:CollectCoverage=false /p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
+TEST_COVERAGE_ARGS := -p:CollectCoverage=false -p:CoverletOutput=$(PULUMI_TEST_COVERAGE_PATH)
 endif
 
 build::
@@ -37,7 +37,7 @@ build::
 	#
 	#     -alpha: Alpha release, typically used for work-in-progress and experimentation
 	dotnet clean
-	dotnet build dotnet.sln /p:Version=${DOTNET_VERSION}
+	dotnet build dotnet.sln -p:Version=${DOTNET_VERSION}
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
 install_plugin::
@@ -47,21 +47,23 @@ install:: build install_plugin
 	echo "Copying NuGet packages to ${PULUMI_NUGET}"
 	[ ! -e "$(PULUMI_NUGET)" ] || rm -rf "$(PULUMI_NUGET)/*"
 	rm -f $(PULUMI_NUGET)/*.nupkg
-	find . -name '*${VERSION_PREFIX}*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
+	VERSION_PREFIX=${DOTNET_VERSION}; find . -name "*$${VERSION_PREFIX%%+*}*.nupkg" -exec cp -p {} ${PULUMI_NUGET} \;
 
 dotnet_test:: $(TEST_ALL_DEPS)
-	# include the version prefix/suffix to avoid generating a separate nupkg file
-	$(RUN_TESTSUITE) dotnet-test dotnet test --no-build --filter FullyQualifiedName\!~Pulumi.Automation.Tests /p:Version=${DOTNET_VERSION}  ${TEST_COVERAGE_ARGS}/dotnet.xml
+	$(TESTSUITE_SKIPPED) dotnet-test || \
+		dotnet test --filter FullyQualifiedName\!~Pulumi.Automation.Tests -p:Version=${DOTNET_VERSION} ${TEST_COVERAGE_ARGS}/dotnet.xml
 
 auto_test:: $(TEST_ALL_DEPS)
-	# include the version prefix/suffix to avoid generating a separate nupkg file
-	$(RUN_TESTSUITE) auto-dotnet dotnet test --no-build --filter FullyQualifiedName~Pulumi.Automation.Tests /p:Version=${DOTNET_VERSION} ${TEST_COVERAGE_ARGS}/dotnet-auto.xml
+	$(TESTSUITE_SKIPPED) auto-dotnet || \
+		dotnet test --filter FullyQualifiedName~Pulumi.Automation.Tests -p:Version=${DOTNET_VERSION} ${TEST_COVERAGE_ARGS}/dotnet-auto.xml
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_all:: dotnet_test auto_test
+go_test:: $(TEST_ALL_DEPS)
 	$(GO_TEST) ${PROJECT_PKGS}
+
+test_all:: dotnet_test auto_test go_test
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}

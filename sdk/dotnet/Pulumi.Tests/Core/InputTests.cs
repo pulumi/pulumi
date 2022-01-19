@@ -22,7 +22,7 @@ namespace Pulumi.Tests.Core
 
                 var map2 = new InputMap<string>
                 {
-                    { "K3", Output.Create("V3") }, 
+                    { "K3", Output.Create("V3") },
                     { "K4", "V4" }
                 };
 
@@ -70,13 +70,17 @@ namespace Pulumi.Tests.Core
                     Dict =
                     {
                         { "left", "testValue" },
-                        { "right", 123 }
+                        { "right", 123 },
+                        { "t0", Union<string, int>.FromT0("left") },
+                        { "t1", Union<string, int>.FromT1(456) },
                     }
                 };
                 var data = await sample.Dict.ToOutput().DataTask.ConfigureAwait(false);
-                Assert.Equal(2, data.Value.Count);
+                Assert.Equal(4, data.Value.Count);
                 Assert.True(data.Value.ContainsValue("testValue"));
                 Assert.True(data.Value.ContainsValue(123));
+                Assert.True(data.Value.ContainsValue("left"));
+                Assert.True(data.Value.ContainsValue(456));
             });
 
         [Fact]
@@ -105,19 +109,45 @@ namespace Pulumi.Tests.Core
                     List =
                     {
                         "testValue",
-                        123
+                        123,
+                        Union<string, int>.FromT0("left"),
+                        Union<string, int>.FromT1(456),
                     }
                 };
                 var data = await sample.List.ToOutput().DataTask.ConfigureAwait(false);
-                Assert.Equal(2, data.Value.Length);
+                Assert.Equal(4, data.Value.Length);
                 Assert.True(data.Value.IndexOf("testValue") >= 0);
                 Assert.True(data.Value.IndexOf(123) >= 0);
+                Assert.True(data.Value.IndexOf("left") >= 0);
+                Assert.True(data.Value.IndexOf(456) >= 0);
+            });
+
+        [Fact]
+        public Task InputUnionInitializer()
+            => RunInPreview(async () =>
+            {
+                var sample = new SampleArgs{ Union = "testValue" };
+                var data = await sample.Union.ToOutput().DataTask.ConfigureAwait(false);
+                Assert.Equal("testValue", data.Value);
+
+                sample = new SampleArgs{ Union = 123 };
+                data = await sample.Union.ToOutput().DataTask.ConfigureAwait(false);
+                Assert.Equal(123, data.Value);
+
+                sample = new SampleArgs{ Union = Union<string, int>.FromT0("left") };
+                data = await sample.Union.ToOutput().DataTask.ConfigureAwait(false);
+                Assert.Equal("left", data.Value);
+
+                sample = new SampleArgs{ Union = Union<string, int>.FromT1(456) };
+                data = await sample.Union.ToOutput().DataTask.ConfigureAwait(false);
+                Assert.Equal(456, data.Value);
             });
 
         private class SampleArgs
         {
             public readonly InputList<Union<string, int>> List = new InputList<Union<string, int>>();
             public readonly InputMap<Union<string, int>> Dict = new InputMap<Union<string, int>>();
+            public InputUnion<string, int> Union = new InputUnion<string, int>();
         }
     }
 }

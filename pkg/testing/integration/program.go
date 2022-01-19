@@ -287,6 +287,10 @@ type ProgramTestOptions struct {
 	// JSONOutput indicates that the `--json` flag should be passed to `up`, `preview`,
 	// `refresh` and `destroy` commands.
 	JSONOutput bool
+
+	// If set, this hook is called after `pulumi stack export` on the exported file. If `SkipExportImport` is set, this
+	// hook is ignored.
+	ExportStateValidator func(t *testing.T, stack []byte)
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -1270,6 +1274,16 @@ func (pt *ProgramTester) exportImport(dir string) error {
 		return err
 	}
 
+	if f := pt.opts.ExportStateValidator; f != nil {
+		bytes, err := ioutil.ReadFile(filepath.Join(dir, "stack.json"))
+		if err != nil {
+			pt.t.Logf("Failed to read stack.json: %s", err.Error())
+			return err
+		}
+		pt.t.Logf("Calling ExportStateValidator")
+		f(pt.t, bytes)
+	}
+
 	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
 }
 
@@ -1945,6 +1959,19 @@ func getRewritePath(pkg string, gopath string, depRoot string) string {
 
 }
 
+// Fetchs the GOPATH
+func GoPath() (string, error) {
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		usr, userErr := user.Current()
+		if userErr != nil {
+			return "", userErr
+		}
+		gopath = filepath.Join(usr.HomeDir, "go")
+	}
+	return gopath, nil
+}
+
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Go programs are compiled, so we will compile the project first.
@@ -1953,17 +1980,11 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		return fmt.Errorf("locating `go` binary: %w", err)
 	}
 
-	// Ensure GOPATH is known.
-	gopath := os.Getenv("GOPATH")
-	if gopath == "" {
-		usr, userErr := user.Current()
-		if userErr != nil {
-			return userErr
-		}
-		gopath = filepath.Join(usr.HomeDir, "go")
-	}
-
 	depRoot := os.Getenv("PULUMI_GO_DEP_ROOT")
+	gopath, userError := GoPath()
+	if userError != nil {
+		return userError
+	}
 
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
@@ -2037,19 +2058,31 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	for _, dep := range pt.opts.Dependencies {
 
 		// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.
-		matches, err := filepath.Glob(filepath.Join(localNuget, dep+".?.*.nupkg"))
+		globPattern := filepath.Join(localNuget, dep+".?.*.nupkg")
+		matches, err := filepath.Glob(globPattern)
 		if err != nil {
 			return fmt.Errorf("failed to find a local Pulumi NuGet package: %w", err)
 		}
 		if len(matches) != 1 {
-			return fmt.Errorf("attempting to find a local Pulumi NuGet package yielded %v results", matches)
+			return fmt.Errorf("attempting to find a local NuGet package %s by searching %s yielded %d results: %v",
+				dep,
+				globPattern,
+				len(matches),
+				matches)
 		}
 		file := filepath.Base(matches[0])
 		r := strings.NewReplacer(dep+".", "", ".nupkg", "")
 		version := r.Replace(file)
 
+		// We don't restore because the program might depend on external
+		// packages which cannot be found in our local nuget source. A restore
+		// will happen automatically as part of the `pulumi up`.
 		err = pt.runCommand("dotnet-add-package",
-			[]string{dotNetBin, "add", "package", dep, "-v", version}, cwd)
+			[]string{dotNetBin, "add", "package", dep,
+				"-v", version,
+				"-s", localNuget,
+				"--no-restore"},
+			cwd)
 		if err != nil {
 			return fmt.Errorf("failed to add dependency on %s: %w", dep, err)
 		}

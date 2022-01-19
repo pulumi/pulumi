@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -416,7 +416,7 @@ func TestResourceState(t *testing.T) {
 	assert.Nil(t, err)
 
 	var theResource testResource
-	state := ctx.makeResourceState("", "", &theResource, nil, nil, "", nil, nil)
+	state := ctx.makeResourceState("", "", &theResource, nil, nil, "", "", nil, nil)
 
 	resolved, _, _, _ := marshalInputs(&testResourceInputs{
 		Any:     String("foo"),
@@ -842,7 +842,7 @@ func TestDependsOnComponent(t *testing.T) {
 
 	registerResource := func(name string, res Resource, options ...ResourceOption) (Resource, []string) {
 		opts := merge(options...)
-		state := ctx.makeResourceState("", "", res, nil, nil, "", nil, nil)
+		state := ctx.makeResourceState("", "", res, nil, nil, "", "", nil, nil)
 		state.resolve(ctx, nil, nil, name, "", &structpb.Struct{}, nil)
 
 		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false)

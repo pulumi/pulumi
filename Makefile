@@ -81,40 +81,30 @@ test_fast:: build
 	cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS}
 
 test_build:: $(TEST_ALL_DEPS)
-	cd tests/testprovider && go build -o pulumi-resource-testprovider
-	cd tests/integration/construct_component/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/construct_component/testcomponent-go && go build -o pulumi-resource-testcomponent
-	cd tests/integration/construct_component/testcomponent-python && $(PYTHON) -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
-	cd tests/integration/construct_component_output_values/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/construct_component_output_values/testcomponent-go && go build -o pulumi-resource-testcomponent
-	cd tests/integration/construct_component_output_values/testcomponent-python && $(PYTHON) -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
+	cd tests/testprovider && go build -o pulumi-resource-testprovider$(shell go env GOEXE)
+	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component
+	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_output_values
 	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/construct_component_plain/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/construct_component_plain/testcomponent-go && go build -o pulumi-resource-testcomponent
-	cd tests/integration/construct_component_plain/testcomponent-python && $(PYTHON) -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
-	cd tests/integration/construct_component_unknown/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/construct_component_unknown/testcomponent-go && go build -o pulumi-resource-testcomponent
-	cd tests/integration/construct_component_unknown/testcomponent-python && $(PYTHON) -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
-	cd tests/integration/component_provider_schema/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/component_provider_schema/testcomponent-go && go build -o pulumi-resource-testcomponent
-	cd tests/integration/component_provider_schema/testcomponent-python && $(PYTHON) -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
+	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_plain
+	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_unknown
+	PYTHON=$(PYTHON) ./scripts/prepare-test.sh component_provider_schema
 	cd tests/integration/construct_component_error_apply/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/construct_component_methods/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/construct_component_methods/testcomponent-go && go build -o pulumi-resource-testcomponent
-	cd tests/integration/construct_component_methods/testcomponent-python && $(PYTHON) -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
-	cd tests/integration/construct_component_provider/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/construct_component_provider/testcomponent-go && go build -o pulumi-resource-testcomponent
-	cd tests/integration/construct_component_provider/testcomponent-python && $(PYTHON) -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
-	cd tests/integration/construct_component_methods_unknown/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/construct_component_methods_unknown/testcomponent-go && go build -o pulumi-resource-testcomponent
-	cd tests/integration/construct_component_methods_unknown/testcomponent-python && $(PYTHON) -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
-	cd tests/integration/construct_component_methods_resources/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/construct_component_methods_resources/testcomponent-go && go build -o pulumi-resource-testcomponent
-	cd tests/integration/construct_component_methods_resources/testcomponent-python && $(PYTHON) -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
-	cd tests/integration/construct_component_methods_errors/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
-	cd tests/integration/construct_component_methods_errors/testcomponent-go && go build -o pulumi-resource-testcomponent
-	cd tests/integration/construct_component_methods_errors/testcomponent-python && $(PYTHON) -m venv venv && venv/bin/python -m pip install -e ../../../../sdk/python/env/src
+	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods
+	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_provider
+	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_unknown
+	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_resources
+	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_errors
 
-test_all:: test_build
+test_all:: test_build test_pkg test_integration
+
+test_pkg::
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
+
+test_integration::
 	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
+
+tidy::
+	./scripts/tidy.sh
+
+validate_codecov_yaml::
+	curl --data-binary @codecov.yml https://codecov.io/validate

@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -1002,4 +1003,77 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 			})
 		})
 	}
+}
+
+func TestProviderDownloadURL(t *testing.T) {
+	validate := func(t *testing.T, stdout []byte) {
+		deployment := &apitype.UntypedDeployment{}
+		err := json.Unmarshal(stdout, deployment)
+		assert.NoError(t, err)
+		data := &apitype.DeploymentV3{}
+		err = json.Unmarshal(deployment.Deployment, data)
+		assert.NoError(t, err)
+		urlKey := "pluginDownloadURL"
+		for _, resource := range data.Resources {
+			switch {
+			case providers.IsDefaultProvider(resource.URN):
+				assert.Equalf(t, "get.com", resource.Inputs[urlKey], "Inputs")
+				assert.Equalf(t, "get.com", resource.Outputs[urlKey], "Outputs")
+			case providers.IsProviderType(resource.Type):
+				assert.Equalf(t, "get.pulumi/test/providers", resource.Inputs[urlKey], "Inputs")
+				assert.Equal(t, "get.pulumi/test/providers", resource.Outputs[urlKey], "Outputs")
+			default:
+				_, hasURL := resource.Inputs[urlKey]
+				assert.False(t, hasURL)
+				_, hasURL = resource.Outputs[urlKey]
+				assert.False(t, hasURL)
+			}
+		}
+		assert.Greater(t, len(data.Resources), 1, "We should construct more then just the stack")
+	}
+
+	languages := []struct {
+		name       string
+		dependency string
+	}{
+
+		{"python", filepath.Join("..", "..", "sdk", "python", "env", "src")},
+		{"nodejs", "@pulumi/pulumi"},
+		{"dotnet", "Pulumi"},
+		{"go", "github.com/pulumi/pulumi/sdk/v3"},
+	}
+
+	for _, lang := range languages {
+		t.Run(lang.name, func(t *testing.T) {
+			env := pathEnv(t, filepath.Join("..", "testprovider"))
+			dir := filepath.Join("gather_plugin", lang.name)
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:                    dir,
+				Env:                    []string{env},
+				ExportStateValidator:   validate,
+				SkipPreview:            true,
+				SkipEmptyPreviewUpdate: true,
+				Dependencies:           []string{lang.dependency},
+			})
+		})
+	}
+}
+
+// printfTestValidation is used by the TestPrintfXYZ test cases in the language-specific test
+// files. It validates that there are a precise count of expected stdout/stderr lines in the test output.
+//nolint:deadcode // The linter doesn't see the uses since the consumers are conditionally compiled tests.
+func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+	var foundStdout int
+	var foundStderr int
+	for _, ev := range stack.Events {
+		if de := ev.DiagnosticEvent; de != nil {
+			if strings.HasPrefix(de.Message, fmt.Sprintf("Line %d", foundStdout)) {
+				foundStdout++
+			} else if strings.HasPrefix(de.Message, fmt.Sprintf("Errln %d", foundStderr+10)) {
+				foundStderr++
+			}
+		}
+	}
+	assert.Equal(t, 11, foundStdout)
+	assert.Equal(t, 11, foundStderr)
 }

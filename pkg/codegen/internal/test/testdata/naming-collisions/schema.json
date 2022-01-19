@@ -67,9 +67,9 @@
   "functions": {},
   "language": {
     "csharp": {
-      "packageReferences": {
-        "Pulumi": "3.*"
-      }
+      "projectReferences": [
+        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ]
     },
     "go": {
       "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/input-collision/go/example",

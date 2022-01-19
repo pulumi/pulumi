@@ -38,12 +38,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
-
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/google/shlex"
+	"github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
-
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -52,9 +54,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"google.golang.org/grpc"
-
-	"github.com/blang/semver"
 )
 
 const (
@@ -83,6 +82,7 @@ func main() {
 	var typescript bool
 	var root string
 	var tsconfigpath string
+	var nodeargs string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.BoolVar(&typescript, "typescript", true,
@@ -90,6 +90,7 @@ func main() {
 	flag.StringVar(&root, "root", "", "Project root path to use")
 	flag.StringVar(&tsconfigpath, "tsconfig", "",
 		"Path to tsconfig.json to use")
+	flag.StringVar(&nodeargs, "nodeargs", "", "Arguments for the Node process")
 	flag.Parse()
 
 	args := flag.Args()
@@ -121,7 +122,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript, tsconfigpath)
+			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript, tsconfigpath, nodeargs)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -159,10 +160,11 @@ type nodeLanguageHost struct {
 	tracing       string
 	typescript    bool
 	tsconfigpath  string
+	nodeargs      string
 }
 
 func newLanguageHost(nodePath, runPath, engineAddress,
-	tracing string, typescript bool, tsconfigpath string) pulumirpc.LanguageRuntimeServer {
+	tracing string, typescript bool, tsconfigpath string, nodeargs string) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		nodeBin:       nodePath,
 		runPath:       runPath,
@@ -170,6 +172,7 @@ func newLanguageHost(nodePath, runPath, engineAddress,
 		tracing:       tracing,
 		typescript:    typescript,
 		tsconfigpath:  tsconfigpath,
+		nodeargs:      nodeargs,
 	}
 }
 
@@ -274,8 +277,8 @@ func getPluginsFromDir(
 				curr, pulumiPackagePathToVersionMap, inNodeModules || filepath.Base(dir) == "node_modules")
 			if err != nil {
 				allErrors = multierror.Append(allErrors, err)
-				continue
 			}
+			// Even if there was an error, still append any plugins found in the dir.
 			plugins = append(plugins, more...)
 		} else if inNodeModules && name == "package.json" {
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
@@ -513,15 +516,21 @@ func (host *nodeLanguageHost) execNodejs(
 			env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
 		}
 
+		nodeargs, err := shlex.Split(host.nodeargs)
+		if err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}
+		}
+		nodeargs = append(nodeargs, args...)
+
 		if logging.V(5) {
-			commandStr := strings.Join(args, " ")
+			commandStr := strings.Join(nodeargs, " ")
 			logging.V(5).Infoln("Language host launching process: ", host.nodeBin, commandStr)
 		}
 
 		// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 		var errResult string
 		// #nosec G204
-		cmd := exec.Command(host.nodeBin, args...)
+		cmd := exec.Command(host.nodeBin, nodeargs...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Env = env

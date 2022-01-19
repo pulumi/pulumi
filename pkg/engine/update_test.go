@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,6 +44,6 @@ func TestAbbreviateFilePath(t *testing.T) {
 
 	for _, tt := range tests {
 		actual := abbreviateFilePath(tt.path)
-		assert.Equal(t, tt.expected, actual)
+		assert.Equal(t, filepath.ToSlash(tt.expected), filepath.ToSlash(actual))
 	}
 }

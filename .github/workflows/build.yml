@@ -38,6 +38,11 @@ on:
         default: false
         required: false
         type: boolean
+      default-build-platform:
+        description: 'Default platform to cross-compile on'
+        default: 'ubuntu-latest'
+        required: false
+        type: string
     secrets: {}
 
 env:
@@ -50,9 +55,9 @@ jobs:
         include:
           - platform: macos-latest
             os: darwin
-          - platform: ubuntu-latest
+          - platform: ${{ inputs.default-build-platform }}
             os: linux
-          - platform: ubuntu-latest
+          - platform: ${{ inputs.default-build-platform }}
             os: windows
       fail-fast: false
 
@@ -100,12 +105,12 @@ jobs:
           echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
       - name: Filter goreleaser config by OS
         run: |
-          cat ${{ inputs.goreleaser-config }} | goreleaser-filter -no-blobs -goos ${{ matrix.os }} > .goreleaser.current.yml
+          cat ${{ inputs.goreleaser-config }} | goreleaser-filter -no-blobs -goos ${{ matrix.os }} > /tmp/.goreleaser.current.yml
       - name: Run GoReleaser to build Go Pulumi binaries
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -f .goreleaser.current.yml ${{ inputs.goreleaser-flags }}
+          args: -f /tmp/.goreleaser.current.yml ${{ inputs.goreleaser-flags }}
       - name: Upload pulumi-${{ matrix.os }}-arm64
         uses: actions/upload-artifact@v2
         with:
@@ -117,6 +122,12 @@ jobs:
         with:
             name: pulumi-${{ matrix.os }}-x64
             path: goreleaser/pulumi*-${{ matrix.os }}-x64*
+            retention-days: 2
+      - name: Upload pulumi-${{ matrix.os }}-checksums
+        uses: actions/upload-artifact@v2
+        with:
+            name: pulumi-${{ matrix.os }}-checksums
+            path: goreleaser/pulumi*-checksums.txt
             retention-days: 2
 
   build_python_sdk:

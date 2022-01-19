@@ -31,9 +31,11 @@
   "language": {
     "csharp": {
       "packageReferences": {
-        "Pulumi": "3.*",
         "Pulumi.AzureNative": "1.28.*"
-      }
+      },
+      "projectReferences": [
+        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ]
     },
     "go": {
       "generateResourceContainerTypes": true,

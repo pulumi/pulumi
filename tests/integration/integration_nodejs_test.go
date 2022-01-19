@@ -34,6 +34,16 @@ func TestEmptyNodeJS(t *testing.T) {
 	})
 }
 
+// TestPrintfNodeJS tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+func TestPrintfNodeJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("printf", "nodejs"),
+		Dependencies:           []string{"@pulumi/pulumi"},
+		Quick:                  true,
+		ExtraRuntimeValidation: printfTestValidation,
+	})
+}
+
 // Tests emitting many engine events doesn't result in a performance problem.
 func TestEngineEventPerf(t *testing.T) {
 	t.Skip() // TODO[pulumi/pulumi#7883]
@@ -1138,6 +1148,47 @@ func TestCompilerOptionsNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "compiler_options"),
 		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+func TestESMJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-js"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+func TestESMJSMain(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-js-main"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+func TestESMTS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-ts"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+func TestESMTSSpecifierResolutionNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-ts-specifier-resolution-node"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
+
+func TestESMTSCompiled(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-ts-compiled"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		RunBuild:     true,
 		Quick:        true,
 	})
 }

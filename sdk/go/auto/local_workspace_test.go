@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +50,8 @@ var pulumiOrg = getTestOrg()
 
 const pName = "testproj"
 const agent = "pulumi/pulumi/test"
+const pulumiTestOrg = "pulumi-test"
+const windows = "windows"
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	ctx := context.Background()
@@ -425,6 +428,10 @@ func rangeIn(low, hi int) int {
 }
 
 func TestNewStackRemoteSource(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -517,6 +524,10 @@ func TestNewStackRemoteSource(t *testing.T) {
 }
 
 func TestUpsertStackRemoteSource(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -609,6 +620,10 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 }
 
 func TestNewStackRemoteSourceWithSetup(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -713,6 +728,10 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 }
 
 func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -1208,8 +1227,41 @@ func TestImportExportStack(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+func TestConfigFlagLike(t *testing.T) {
+	if getTestOrg() != pulumiTestOrg {
+		return
+	}
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	err = s.SetConfig(ctx, "key", ConfigValue{"-value", false})
+	if err != nil {
+		t.Error(err)
+	}
+	err = s.SetConfig(ctx, "secret-key", ConfigValue{"-value", true})
+	if err != nil {
+		t.Error(err)
+	}
+	cm, err := s.GetAllConfig(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equalf(t, "-value", cm["testproj:key"].Value, "wrong key")
+	assert.Equalf(t, "-value", cm["testproj:secret-key"].Value, "wrong secret-key")
+	assert.Equalf(t, false, cm["testproj:key"].Secret, "key should not be secret")
+	assert.Equalf(t, true, cm["testproj:secret-key"].Secret, "secret-key should be secret")
+}
+
 func TestNestedConfig(t *testing.T) {
-	if getTestOrg() != "pulumi-test" {
+	if getTestOrg() != pulumiTestOrg {
 		return
 	}
 	ctx := context.Background()
@@ -2321,7 +2373,7 @@ func BenchmarkBulkSetConfigSecret(b *testing.B) {
 }
 
 func getTestOrg() string {
-	testOrg := "pulumi-test"
+	testOrg := pulumiTestOrg
 	if _, set := os.LookupEnv("PULUMI_TEST_ORG"); set {
 		testOrg = os.Getenv("PULUMI_TEST_ORG")
 	}
