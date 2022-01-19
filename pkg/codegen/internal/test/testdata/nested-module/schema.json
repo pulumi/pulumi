@@ -16,6 +16,13 @@
         }
       },
       "type": "object"
+    },
+    "foo:index:Consumer": {
+      "properties": {
+        "r": {
+          "$ref": "#/resources/foo:nested/module:Resource"
+        }
+      }
     }
   },
   "language": {

@@ -63,7 +63,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "nested-module",
 		Description:      "Nested module",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		SkipCompileCheck: codegen.NewStringSet(golang),
 	},
 	{
 		Directory:        "nested-module-thirdparty",

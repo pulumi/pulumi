@@ -128,7 +128,11 @@ func namespaceName(namespaces map[string]string, name string) string {
 	if ns, ok := namespaces[name]; ok {
 		return ns
 	}
-	return Title(name)
+	segments := strings.Split(name, "/")
+	for i, s := range segments {
+		segments[i] = Title(s)
+	}
+	return strings.Join(segments, ".")
 }
 
 type modContext struct {
@@ -2024,7 +2028,6 @@ func (mod *modContext) gen(fs fs) error {
 		}
 
 		imports := map[string]codegen.StringSet{}
-		mod.getImportsForResource(r, imports, r)
 
 		buffer := &bytes.Buffer{}
 		var additionalImports []string

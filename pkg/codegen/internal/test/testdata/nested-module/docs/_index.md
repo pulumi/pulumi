@@ -18,6 +18,7 @@ no_edit_this_page: true
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
+    <li><a href="consumer" title="Consumer"><span class="api-symbol api-symbol--resource"></span>Consumer</a></li>
     <li><a href="provider" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
 </ul>
 

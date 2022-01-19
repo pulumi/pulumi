@@ -3,6 +3,7 @@
     "pulumi_foo/README.md",
     "pulumi_foo/__init__.py",
     "pulumi_foo/_utilities.py",
+    "pulumi_foo/consumer.py",
     "pulumi_foo/nested/__init__.py",
     "pulumi_foo/nested/module/__init__.py",
     "pulumi_foo/nested/module/resource.py",

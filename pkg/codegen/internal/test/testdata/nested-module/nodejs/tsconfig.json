@@ -13,6 +13,7 @@
         "strict": true
     },
     "files": [
+        "consumer.ts",
         "index.ts",
         "nested/index.ts",
         "nested/module/index.ts",

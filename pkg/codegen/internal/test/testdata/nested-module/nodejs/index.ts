@@ -5,6 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export * from "./consumer";
 export * from "./provider";
 
 // Export sub-modules:
@@ -13,6 +14,22 @@ import * as nested from "./nested";
 export {
     nested,
 };
+
+// Import resources to register:
+import { Consumer } from "./consumer";
+
+const _module = {
+    version: utilities.getVersion(),
+    construct: (name: string, type: string, urn: string): pulumi.Resource => {
+        switch (type) {
+            case "foo:index:Consumer":
+                return new Consumer(name, <any>undefined, { urn })
+            default:
+                throw new Error(`unknown resource type ${type}`);
+        }
+    },
+};
+pulumi.runtime.registerResourceModule("foo", "index", _module)
 
 import { Provider } from "./provider";
 

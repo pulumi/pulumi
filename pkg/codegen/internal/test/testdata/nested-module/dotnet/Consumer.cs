@@ -7,29 +7,29 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Foo-bar.Deeply.Nested.Module
+namespace Pulumi.Foo
 {
-    [Foo-barResourceType("foo-bar:deeply/nested/module:Resource")]
-    public partial class Resource : Pulumi.CustomResource
+    [FooResourceType("foo:index:Consumer")]
+    public partial class Consumer : Pulumi.CustomResource
     {
-        [Output("baz")]
-        public Output<string?> Baz { get; private set; } = null!;
+        [Output("r")]
+        public Output<Pulumi.Foo.Nested.Module.Resource?> R { get; private set; } = null!;
 
 
         /// <summary>
-        /// Create a Resource resource with the given unique name, arguments, and options.
+        /// Create a Consumer resource with the given unique name, arguments, and options.
         /// </summary>
         ///
         /// <param name="name">The unique name of the resource</param>
         /// <param name="args">The arguments used to populate this resource's properties</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
-        public Resource(string name, ResourceArgs? args = null, CustomResourceOptions? options = null)
-            : base("foo-bar:deeply/nested/module:Resource", name, args ?? new ResourceArgs(), MakeResourceOptions(options, ""))
+        public Consumer(string name, ConsumerArgs? args = null, CustomResourceOptions? options = null)
+            : base("foo:index:Consumer", name, args ?? new ConsumerArgs(), MakeResourceOptions(options, ""))
         {
         }
 
-        private Resource(string name, Input<string> id, CustomResourceOptions? options = null)
-            : base("foo-bar:deeply/nested/module:Resource", name, null, MakeResourceOptions(options, id))
+        private Consumer(string name, Input<string> id, CustomResourceOptions? options = null)
+            : base("foo:index:Consumer", name, null, MakeResourceOptions(options, id))
         {
         }
 
@@ -38,10 +38,6 @@ namespace Pulumi.Foo-bar.Deeply.Nested.Module
             var defaultOptions = new CustomResourceOptions
             {
                 Version = Utilities.Version,
-                AdditionalSecretOutputs =
-                {
-                    "baz",
-                },
             };
             var merged = CustomResourceOptions.Merge(defaultOptions, options);
             // Override the ID if one was specified for consistency with other language SDKs.
@@ -49,34 +45,22 @@ namespace Pulumi.Foo-bar.Deeply.Nested.Module
             return merged;
         }
         /// <summary>
-        /// Get an existing Resource resource's state with the given name, ID, and optional extra
+        /// Get an existing Consumer resource's state with the given name, ID, and optional extra
         /// properties used to qualify the lookup.
         /// </summary>
         ///
         /// <param name="name">The unique name of the resulting resource.</param>
         /// <param name="id">The unique provider ID of the resource to lookup.</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
-        public static Resource Get(string name, Input<string> id, CustomResourceOptions? options = null)
+        public static Consumer Get(string name, Input<string> id, CustomResourceOptions? options = null)
         {
-            return new Resource(name, id, options);
+            return new Consumer(name, id, options);
         }
     }
 
-    public sealed class ResourceArgs : Pulumi.ResourceArgs
+    public sealed class ConsumerArgs : Pulumi.ResourceArgs
     {
-        [Input("baz")]
-        private Input<string>? _baz;
-        public Input<string>? Baz
-        {
-            get => _baz;
-            set
-            {
-                var emptySecret = Output.CreateSecret(0);
-                _baz = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
-            }
-        }
-
-        public ResourceArgs()
+        public ConsumerArgs()
         {
         }
     }

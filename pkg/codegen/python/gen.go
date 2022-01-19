@@ -783,7 +783,9 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 		name = "provider"
 	}
 
-	components := strings.Split(modName, "/")
+	// We have already replaced all '/' with '.' in modName.
+	components := strings.Split(modName, ".")
+
 	return fmt.Sprintf("from %s%s import %s", importPath, name, components[0])
 }
 

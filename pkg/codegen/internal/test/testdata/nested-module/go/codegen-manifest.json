@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    "foo/consumer.go",
     "foo/doc.go",
     "foo/init.go",
     "foo/nested/module/init.go",

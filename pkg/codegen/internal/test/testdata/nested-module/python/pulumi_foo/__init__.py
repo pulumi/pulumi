@@ -5,6 +5,7 @@
 from . import _utilities
 import typing
 # Export this package's modules as members:
+from .consumer import *
 from .provider import *
 
 # Make subpackages available:
@@ -17,6 +18,14 @@ else:
 _utilities.register(
     resource_modules="""
 [
+ {
+  "pkg": "foo",
+  "mod": "index",
+  "fqn": "pulumi_foo",
+  "classes": {
+   "foo:index:Consumer": "Consumer"
+  }
+ },
  {
   "pkg": "foo",
   "mod": "nested/module",
