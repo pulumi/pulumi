@@ -62,11 +62,14 @@ jobs:
           - etc
         exclude:
           - platform: macos-latest
-        # Only run catch-all `etc` test-subset on Mac for PR
+          - platform: windows-latest
+        # Only run catch-all `etc` test-subset on Mac/Win for PR
         # verification because of a throughput bottleneck on Mac
-        # runners.
+        # runners, and slowdown on Windows test runners.
         include:
           - platform: macos-latest
+            test-subset: etc
+          - platform: windows-latest
             test-subset: etc
       fail-fast: false
 
