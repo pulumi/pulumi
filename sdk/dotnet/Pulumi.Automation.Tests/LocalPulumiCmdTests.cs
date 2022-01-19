@@ -35,7 +35,7 @@ namespace Pulumi.Automation.Tests
             Assert.Equal(0, result.Code);
 
             Assert.Matches(@"^v?\d+\.\d+\.\d+", result.StandardOutput);
-            Assert.Matches(@"^(warning: A new version of Pulumi[^\n]+\n)?",
+            Assert.Matches(@"^(warning: A new version of Pulumi[^\n]+\n)?$",
                            result.StandardError);
 
             Assert.Equal(Lines(result.StandardOutput), stdoutLines);
@@ -44,7 +44,8 @@ namespace Pulumi.Automation.Tests
 
         private IEnumerable<string> Lines(string s) {
             return s.Split(Environment.NewLine,
-                           StringSplitOptions.RemoveEmptyEntries);
+                           StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim());
         }
     }
 }
