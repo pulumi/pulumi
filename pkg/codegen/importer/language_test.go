@@ -20,8 +20,8 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -31,7 +31,7 @@ import (
 )
 
 func TestGenerateLanguageDefinition(t *testing.T) {
-	loader := schema.NewPluginLoader(test.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	cases, err := readTestCases("testdata/cases.json")
 	if !assert.NoError(t, err) {
@@ -46,12 +46,12 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 			}
 
 			var actualState *resource.State
-			err = GenerateLanguageDefinitions(ioutil.Discard, loader, func(_ io.Writer, p *hcl2.Program) error {
+			err = GenerateLanguageDefinitions(ioutil.Discard, loader, func(_ io.Writer, p *pcl.Program) error {
 				if !assert.Len(t, p.Nodes, 1) {
 					t.Fatal()
 				}
 
-				res, isResource := p.Nodes[0].(*hcl2.Resource)
+				res, isResource := p.Nodes[0].(*pcl.Resource)
 				if !assert.True(t, isResource) {
 					t.Fatal()
 				}

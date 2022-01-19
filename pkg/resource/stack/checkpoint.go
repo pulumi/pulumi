@@ -16,8 +16,7 @@ package stack
 
 import (
 	"encoding/json"
-
-	"github.com/pkg/errors"
+	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -73,7 +72,7 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.Chec
 
 		return &v3checkpoint, nil
 	default:
-		return nil, errors.Errorf("unsupported checkpoint version %d", versionedCheckpoint.Version)
+		return nil, fmt.Errorf("unsupported checkpoint version %d", versionedCheckpoint.Version)
 	}
 }
 
@@ -85,7 +84,7 @@ func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 	if snap != nil {
 		dep, err := SerializeDeployment(snap, sm, showSecrets)
 		if err != nil {
-			return nil, errors.Wrap(err, "serializing deployment")
+			return nil, fmt.Errorf("serializing deployment: %w", err)
 		}
 		latest = dep
 	}
@@ -95,7 +94,7 @@ func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 		Latest: latest,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "marshalling checkpoint")
+		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
 	}
 
 	return &apitype.VersionedCheckpoint{

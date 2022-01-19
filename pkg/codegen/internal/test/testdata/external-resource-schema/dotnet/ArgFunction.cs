@@ -6,13 +6,17 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Utilities;
 
 namespace Pulumi.Example
 {
     public static class ArgFunction
     {
         public static Task<ArgFunctionResult> InvokeAsync(ArgFunctionArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.InvokeAsync<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionArgs(), options.WithDefaults());
+
+        public static Output<ArgFunctionResult> Invoke(ArgFunctionInvokeArgs? args = null, InvokeOptions? options = null)
+            => Pulumi.Deployment.Instance.Invoke<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionInvokeArgs(), options.WithDefaults());
     }
 
 
@@ -22,6 +26,16 @@ namespace Pulumi.Example
         public Pulumi.Random.RandomPet? Name { get; set; }
 
         public ArgFunctionArgs()
+        {
+        }
+    }
+
+    public sealed class ArgFunctionInvokeArgs : Pulumi.InvokeArgs
+    {
+        [Input("name")]
+        public Input<Pulumi.Random.RandomPet>? Name { get; set; }
+
+        public ArgFunctionInvokeArgs()
         {
         }
     }

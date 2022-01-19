@@ -56,13 +56,11 @@ func (js *jsonSpiller) spillExpression(x model.Expression) (model.Expression, hc
 	}, nil
 }
 
-func (g *generator) rewriteToJSON(
-	x model.Expression,
-	spiller *jsonSpiller,
-) (model.Expression, []*jsonTemp, hcl.Diagnostics) {
-	spiller.temps = nil
-	x, diags := model.VisitExpression(x, spiller.spillExpression, nil)
-
-	return x, spiller.temps, diags
-
+func (g *generator) rewriteToJSON(x model.Expression) (model.Expression, []*spillTemp, hcl.Diagnostics) {
+	return g.rewriteSpills(x, func(x model.Expression) (string, model.Expression, bool) {
+		if call, ok := x.(*model.FunctionCallExpression); ok && call.Name == "toJSON" {
+			return "json", x, true
+		}
+		return "", nil, false
+	})
 }

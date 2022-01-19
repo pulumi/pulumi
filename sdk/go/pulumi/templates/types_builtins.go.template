@@ -205,6 +205,11 @@ func getResolvedValue(input Input) (reflect.Value, bool) {
 
 func init() {
 {{- range .Builtins}}
+{{- if .RegisterInput}}
+	RegisterInputType(reflect.TypeOf((*{{.Name}}Input)(nil)).Elem(), {{.DefaultValue}})
+{{- end}}
+{{- end}}
+{{- range .Builtins}}
 	RegisterOutputType({{.Name}}Output{})
 {{- end}}
 }

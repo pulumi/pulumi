@@ -7,7 +7,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/pulumi/pulumi-random/sdk/v2/go/random"
+	"github.com/pulumi/pulumi-random/sdk/v4/go/random"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -114,10 +114,11 @@ func (o PetOutput) ToPetPtrOutput() PetPtrOutput {
 }
 
 func (o PetOutput) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput {
-	return o.ApplyT(func(v Pet) *Pet {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Pet) *Pet {
 		return &v
 	}).(PetPtrOutput)
 }
+
 func (o PetOutput) Age() pulumi.IntPtrOutput {
 	return o.ApplyT(func(v Pet) *int { return v.Age }).(pulumi.IntPtrOutput)
 }
@@ -161,7 +162,13 @@ func (o PetPtrOutput) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutpu
 }
 
 func (o PetPtrOutput) Elem() PetOutput {
-	return o.ApplyT(func(v *Pet) Pet { return *v }).(PetOutput)
+	return o.ApplyT(func(v *Pet) Pet {
+		if v != nil {
+			return *v
+		}
+		var ret Pet
+		return ret
+	}).(PetOutput)
 }
 
 func (o PetPtrOutput) Age() pulumi.IntPtrOutput {
@@ -228,6 +235,8 @@ func (o PetPtrOutput) RequiredNameMap() random.RandomPetMapOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*PetInput)(nil)).Elem(), PetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*PetPtrInput)(nil)).Elem(), PetArgs{})
 	pulumi.RegisterOutputType(PetOutput{})
 	pulumi.RegisterOutputType(PetPtrOutput{})
 }

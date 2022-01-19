@@ -13,12 +13,15 @@
 // limitations under the License.
 
 import * as fs from "fs";
+import * as url from "url";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
+import { parseConfigFileTextToJson } from "typescript";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
+import { Inputs } from "../../output";
 
 import * as mod from ".";
 
@@ -36,6 +39,25 @@ function reportModuleLoadFailure(program: string, error: Error): never {
     return process.exit(mod.nodeJSProcessExitedAfterLoggingUserActionableMessage);
 }
 
+function projectRootFromProgramPath(program: string): string {
+    const stat = fs.lstatSync(program);
+    if (stat.isDirectory()) {
+        return program;
+    } else {
+        return path.dirname(program);
+    }
+}
+
+function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> {
+    try {
+        const packageJson = path.join(projectRoot, "package.json");
+        return require(packageJson);
+    } catch {
+        // This is all best-effort so if we can't load the package.json file, that's
+        // fine.
+        return {};
+    }
+}
 
 function throwOrPrintModuleLoadError(program: string, error: Error): void {
     // error is guaranteed to be a Node module load error. Node emits a very
@@ -70,23 +92,8 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     //
     // The first step of this is trying to slurp up a package.json for this program, if
     // one exists.
-    const stat = fs.lstatSync(program);
-    let projectRoot: string;
-    if (stat.isDirectory()) {
-        projectRoot = program;
-    } else {
-        projectRoot = path.dirname(program);
-    }
-
-    let packageObject: Record<string, any>;
-    try {
-        const packageJson = path.join(projectRoot, "package.json");
-        packageObject = require(packageJson);
-    } catch {
-        // This is all best-effort so if we can't load the package.json file, that's
-        // fine.
-        return;
-    }
+    const projectRoot = projectRootFromProgramPath(program);
+    const packageObject = packageObjectFromProjectRoot(projectRoot);
 
     console.error("Here's what we think went wrong:");
 
@@ -95,7 +102,7 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     const deps = packageObject["dependencies"] || {};
     const devDeps = packageObject["devDependencies"] || {};
     const scripts = packageObject["scripts"] || {};
-    const mainProperty  = packageObject["main"] || "index.js";
+    const mainProperty = packageObject["main"] || "index.js";
 
     // Is there a build script associated with this program? It's a little confusing that the
     // Pulumi CLI doesn't run build scripts before running the program so call that out
@@ -105,7 +112,7 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
         const command = scripts["build"];
         console.error(`  * Your program looks like it has a build script associated with it ('${command}').\n`);
         console.error("Pulumi does not run build scripts before running your program. " +
-                        `Please run '${command}', 'yarn build', or 'npm run build' and try again.`);
+            `Please run '${command}', 'yarn build', or 'npm run build' and try again.`);
         return;
     }
 
@@ -131,10 +138,11 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
 }
 
 /** @internal */
-export function run(argv: minimist.ParsedArgs,
-                    programStarted: () => void,
-                    reportLoggedError: (err: Error) => void,
-                    isErrorReported: (err: Error) => boolean) {
+export function run(
+    argv: minimist.ParsedArgs,
+    programStarted: () => void,
+    reportLoggedError: (err: Error) => void,
+    isErrorReported: (err: Error) => boolean): Promise<Inputs | undefined> {
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
     if (pwd) {
@@ -149,7 +157,18 @@ export function run(argv: minimist.ParsedArgs,
     // find a tsconfig.json. For us, it's reasonable to say that the "root" of the project is the cwd,
     // if there's a tsconfig.json file here. Otherwise, just tell ts-node to not load project options at all.
     // This helps with cases like pulumi/pulumi#1772.
-    const skipProject = !fs.existsSync("tsconfig.json");
+    const defaultTsConfigPath = "tsconfig.json";
+    const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
+    const skipProject = !fs.existsSync(tsConfigPath);
+
+    let compilerOptions: object;
+    try {
+        const tsConfigString = fs.readFileSync(tsConfigPath).toString();
+        const tsConfig = parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
+        compilerOptions = tsConfig["compilerOptions"] ?? {};
+    } catch (e) {
+        compilerOptions = {};
+    }
 
     if (typeScript) {
         tsnode.register({
@@ -160,6 +179,7 @@ export function run(argv: minimist.ParsedArgs,
                 module: "commonjs",
                 moduleResolution: "node",
                 sourceMap: "true",
+                ...compilerOptions,
             },
         });
     }
@@ -172,7 +192,7 @@ export function run(argv: minimist.ParsedArgs,
 
     // Now fake out the process-wide argv, to make the program think it was run normally.
     const programArgs: string[] = argv._.slice(1);
-    process.argv = [ process.argv[0], process.argv[1], ...programArgs ];
+    process.argv = [process.argv[0], process.argv[1], ...programArgs];
 
     // Set up the process uncaught exception, unhandled rejection, and program exit handlers.
     const uncaughtHandler = (err: Error) => {
@@ -203,7 +223,7 @@ export function run(argv: minimist.ParsedArgs,
         }
         else {
             log.error(
-`Running program '${program}' failed with an unhandled exception:
+                `Running program '${program}' failed with an unhandled exception:
 ${defaultMessage}`);
         }
 
@@ -218,6 +238,15 @@ ${defaultMessage}`);
 
     programStarted();
 
+    // This needs to occur after `programStarted` to ensure execution of the parent process stops.
+    if (skipProject && tsConfigPath !== defaultTsConfigPath) {
+        return new Promise(() => {
+            const e = new Error(`tsconfig path was set to ${tsConfigPath} but the file was not found`);
+            e.stack = undefined;
+            throw e;
+        });
+    }
+
     const runProgram = async () => {
         // We run the program inside this context so that it adopts all resources.
         //
@@ -227,6 +256,28 @@ ${defaultMessage}`);
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
+            const packageObject = packageObjectFromProjectRoot(projectRootFromProgramPath(program));
+
+            // We use dynamic import instead of require for projects using native ES modules instead of commonjs
+            if (packageObject["type"] === "module") {
+                // Use the same behavior for loading the main entrypoint as `node <program>`.
+                // See https://github.com/nodejs/node/blob/master/lib/internal/modules/run_main.js#L74.
+                const mainPath: string = require("module").Module._findPath(path.resolve(program), null, true) || program;
+                const main = path.isAbsolute(mainPath) ? url.pathToFileURL(mainPath).href : mainPath;
+                // Workaround for typescript transpiling dynamic import into `Promise.resolve().then(() => require`
+                // Follow this issue for progress on when we can remove this:
+                // https://github.com/microsoft/TypeScript/issues/43329
+                //
+                // Workaround inspired by es-module-shims:
+                // https://github.com/guybedford/es-module-shims/blob/main/src/common.js#L21
+                // eslint-disable-next-line no-eval
+                const dynamicImport = (0, eval)("u=>import(u)");
+                // Import the module and capture any module outputs it exported. Finally, await the value we get
+                // back.  That way, if it is async and throws an exception, we properly capture it here
+                // and handle it.
+                return await dynamicImport(main);
+            }
+
             // Execute the module and capture any module outputs it exported. If the exported value
             // was itself a Function, then just execute it.  This allows for exported top level
             // async functions that pulumi programs can live in.  Finally, await the value we get

@@ -1,6 +1,9 @@
 {
   "version": "0.0.1",
   "name": "example",
+  "pluginDownloadURL": "example.com",
+  "allowedPackageNames": ["foo", "bar"],
+  "pluginDownloadURL": "example.com/download",
   "types": {
     "example::Object": {
       "properties": {
@@ -65,6 +68,42 @@
         }
       },
       "type": "object"
+    },
+    "example::EnumOverlay": {
+      "type": "string",
+      "enum": [
+        {
+          "name": "SomeEnumValue",
+          "value": "SOME_ENUM_VALUE"
+        }
+      ],
+      "isOverlay": true
+    },
+    "example::ConfigMapOverlay": {
+      "isOverlay": true,
+      "properties": {
+        "config": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::ObjectWithNodeOptionalInputs": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        },
+        "bar": {
+          "type": "integer"
+        }
+      },
+      "required": ["foo"],
+      "language": {
+        "nodejs": {
+          "requiredInputs": []
+        }
+      },
+      "type": "object"
     }
   },
   "resources": {
@@ -96,6 +135,80 @@
         }
       },
       "type": "object"
+    },
+    "bar::BarResource": {
+      "isComponent": true,
+      "properties": {
+        "foo": {
+          "$ref": "#/resources/example::Resource"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/resources/example::Resource"
+        }
+      },
+      "type": "object"
+    },
+    "foo::FooResource": {
+      "isComponent": true,
+      "properties": {
+        "foo": {
+          "$ref": "#/resources/example::Resource"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/resources/example::Resource"
+        }
+      },
+      "type": "object"
+    },
+
+    "example::OverlayResource": {
+      "isOverlay": true,
+      "properties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        },
+        "bar": {
+          "$ref": "#/types/example::EnumOverlay"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/types/example::ConfigMapOverlay"
+        },
+        "bar": {
+          "$ref": "#/types/example::EnumOverlay"
+        }
+      },
+      "type": "object"
+    },
+    "example::TypeUses": {
+      "properties": {
+        "foo": {
+          "$ref": "#/types/example::Object"
+        },
+        "bar": {
+          "$ref": "#/types/example::SomeOtherObject"
+        },
+        "baz": {
+          "$ref": "#/types/example::ObjectWithNodeOptionalInputs"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/types/example::Object"
+        },
+        "bar": {
+          "$ref": "#/types/example::SomeOtherObject"
+        },
+        "baz": {
+          "$ref": "#/types/example::ObjectWithNodeOptionalInputs"
+        }
+      },
+      "type": "object"
     }
   },
   "functions": {
@@ -114,14 +227,46 @@
           }
         }
       }
+    },
+    "example::overlayFunction": {
+      "isOverlay": true,
+      "inputs": {
+        "properties": {
+          "arg1": {
+            "$ref": "#/resources/example::Resource"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "$ref": "#/resources/example::Resource"
+          }
+        }
+      }
     }
   },
   "language": {
-    "csharp": {},
-    "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-resource-schema/go/example"
+    "csharp": {
+      "projectReferences": [
+        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ],
+      "packageReferences": {
+        "Pulumi": "3.13"
+      }
     },
-    "nodejs": {},
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-resource-schema/go/example",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
     "python": {}
   }
 }

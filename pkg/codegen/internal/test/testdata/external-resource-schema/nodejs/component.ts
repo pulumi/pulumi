@@ -4,8 +4,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import * as aws from "@pulumi/aws";
-import * as kubernetes from "@pulumi/kubernetes";
+import * as pulumiAws from "@pulumi/aws";
+import * as pulumiKubernetes from "@pulumi/kubernetes";
 
 export class Component extends pulumi.CustomResource {
     /**
@@ -34,9 +34,9 @@ export class Component extends pulumi.CustomResource {
         return obj['__pulumiType'] === Component.__pulumiType;
     }
 
-    public /*out*/ readonly provider!: pulumi.Output<kubernetes.Provider | undefined>;
-    public /*out*/ readonly securityGroup!: pulumi.Output<aws.ec2.SecurityGroup>;
-    public /*out*/ readonly storageClasses!: pulumi.Output<{[key: string]: kubernetes.storage.v1.StorageClass} | undefined>;
+    public /*out*/ readonly provider!: pulumi.Output<pulumiKubernetes.Provider | undefined>;
+    public /*out*/ readonly securityGroup!: pulumi.Output<pulumiAws.ec2.SecurityGroup>;
+    public /*out*/ readonly storageClasses!: pulumi.Output<{[key: string]: pulumiKubernetes.storage.v1.StorageClass} | undefined>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.
@@ -46,7 +46,7 @@ export class Component extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args: ComponentArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
             if ((!args || args.requiredMetadata === undefined) && !opts.urn) {
@@ -58,24 +58,22 @@ export class Component extends pulumi.CustomResource {
             if ((!args || args.requiredMetadataMap === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'requiredMetadataMap'");
             }
-            inputs["metadata"] = args ? args.metadata : undefined;
-            inputs["metadataArray"] = args ? args.metadataArray : undefined;
-            inputs["metadataMap"] = args ? args.metadataMap : undefined;
-            inputs["requiredMetadata"] = args ? args.requiredMetadata : undefined;
-            inputs["requiredMetadataArray"] = args ? args.requiredMetadataArray : undefined;
-            inputs["requiredMetadataMap"] = args ? args.requiredMetadataMap : undefined;
-            inputs["provider"] = undefined /*out*/;
-            inputs["securityGroup"] = undefined /*out*/;
-            inputs["storageClasses"] = undefined /*out*/;
+            resourceInputs["metadata"] = args ? args.metadata : undefined;
+            resourceInputs["metadataArray"] = args ? args.metadataArray : undefined;
+            resourceInputs["metadataMap"] = args ? args.metadataMap : undefined;
+            resourceInputs["requiredMetadata"] = args ? args.requiredMetadata : undefined;
+            resourceInputs["requiredMetadataArray"] = args ? args.requiredMetadataArray : undefined;
+            resourceInputs["requiredMetadataMap"] = args ? args.requiredMetadataMap : undefined;
+            resourceInputs["provider"] = undefined /*out*/;
+            resourceInputs["securityGroup"] = undefined /*out*/;
+            resourceInputs["storageClasses"] = undefined /*out*/;
         } else {
-            inputs["provider"] = undefined /*out*/;
-            inputs["securityGroup"] = undefined /*out*/;
-            inputs["storageClasses"] = undefined /*out*/;
+            resourceInputs["provider"] = undefined /*out*/;
+            resourceInputs["securityGroup"] = undefined /*out*/;
+            resourceInputs["storageClasses"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
-        super(Component.__pulumiType, name, inputs, opts);
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+        super(Component.__pulumiType, name, resourceInputs, opts);
     }
 }
 
@@ -83,10 +81,10 @@ export class Component extends pulumi.CustomResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    metadata?: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>;
-    metadataArray?: pulumi.Input<pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
-    metadataMap?: pulumi.Input<{[key: string]: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
-    requiredMetadata: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>;
-    requiredMetadataArray: pulumi.Input<pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
-    requiredMetadataMap: pulumi.Input<{[key: string]: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
+    metadata?: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>;
+    metadataArray?: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
+    metadataMap?: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
+    requiredMetadata: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>;
+    requiredMetadataArray: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
+    requiredMetadataMap: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
 }

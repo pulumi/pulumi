@@ -33,7 +33,7 @@ func runPulumiCommandSync(
 ) (string, string, int, error) {
 	// all commands should be run in non-interactive mode.
 	// this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
-	args = append(args, "--non-interactive")
+	args = withNonInteractiveArg(args)
 	cmd := exec.CommandContext(ctx, "pulumi", args...)
 	cmd.Dir = workdir
 	cmd.Env = append(os.Environ(), additionalEnv...)
@@ -50,4 +50,19 @@ func runPulumiCommandSync(
 		code = exitError.ExitCode()
 	}
 	return stdout.String(), stderr.String(), code, err
+}
+
+func withNonInteractiveArg(args []string) []string {
+	var out []string
+	seen := false
+	for _, a := range args {
+		out = append(out, a)
+		if a == "--non-interactive" {
+			seen = true
+		}
+	}
+	if !seen {
+		out = append(out, "--non-interactive")
+	}
+	return out
 }

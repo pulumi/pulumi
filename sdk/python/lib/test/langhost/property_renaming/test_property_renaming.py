@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,9 +25,9 @@ class PropertyRenamingTest(LanghostTest):
             program=path.join(self.base_path(), "property_renaming"),
             expected_resource_count=1)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, res, _deps,
-                          _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         # Test:
         #  1. Everything that we receive from the running program is in camel-case. The engine never sees
         # the pre-translated names of the input properties.
@@ -35,12 +35,12 @@ class PropertyRenamingTest(LanghostTest):
         # to translate them back to snake case.
         self.assertEqual("test:index:TranslatedResource", ty)
         self.assertEqual("res", name)
-        self.assertIn("engineProp", res)
-        self.assertEqual("some string", res["engineProp"])
-        self.assertIn("recursiveProp", res)
+        self.assertIn("engineProp", _resource)
+        self.assertEqual("some string", _resource["engineProp"])
+        self.assertIn("recursiveProp", _resource)
         self.assertDictEqual({
             "recursiveKey": "value"
-        }, res["recursiveProp"])
+        }, _resource["recursiveProp"])
         return {
             "urn": self.make_urn(ty, name),
             "id": name,

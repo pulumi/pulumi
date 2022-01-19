@@ -16,9 +16,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -57,7 +57,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	candidateResources := edit.LocateResource(snap, urn)
 	switch {
 	case len(candidateResources) == 0: // resource was not found
-		return nil, errors.Errorf("No such resource %q exists in the current state", urn)
+		return nil, fmt.Errorf("No such resource %q exists in the current state", urn)
 	case len(candidateResources) == 1: // resource was unambiguously found
 		return candidateResources[0], nil
 	}
@@ -170,7 +170,7 @@ func runTotalStateEdit(
 
 	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrets */)
 	if err != nil {
-		return result.FromError(errors.Wrap(err, "serializing deployment"))
+		return result.FromError(fmt.Errorf("serializing deployment: %w", err))
 	}
 
 	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.

@@ -7,7 +7,7 @@ import (
 	"context"
 	"reflect"
 
-	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v2/go/kubernetes/core/v1"
+	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/core/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -46,11 +46,9 @@ func GetWorkload(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering Workload resources.
 type workloadState struct {
-	Pod *corev1.Pod `pulumi:"pod"`
 }
 
 type WorkloadState struct {
-	Pod corev1.PodPtrInput
 }
 
 func (WorkloadState) ElementType() reflect.Type {
@@ -76,7 +74,7 @@ type WorkloadInput interface {
 }
 
 func (*Workload) ElementType() reflect.Type {
-	return reflect.TypeOf((*Workload)(nil))
+	return reflect.TypeOf((**Workload)(nil)).Elem()
 }
 
 func (i *Workload) ToWorkloadOutput() WorkloadOutput {
@@ -85,35 +83,6 @@ func (i *Workload) ToWorkloadOutput() WorkloadOutput {
 
 func (i *Workload) ToWorkloadOutputWithContext(ctx context.Context) WorkloadOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(WorkloadOutput)
-}
-
-func (i *Workload) ToWorkloadPtrOutput() WorkloadPtrOutput {
-	return i.ToWorkloadPtrOutputWithContext(context.Background())
-}
-
-func (i *Workload) ToWorkloadPtrOutputWithContext(ctx context.Context) WorkloadPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(WorkloadPtrOutput)
-}
-
-type WorkloadPtrInput interface {
-	pulumi.Input
-
-	ToWorkloadPtrOutput() WorkloadPtrOutput
-	ToWorkloadPtrOutputWithContext(ctx context.Context) WorkloadPtrOutput
-}
-
-type workloadPtrType WorkloadArgs
-
-func (*workloadPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Workload)(nil))
-}
-
-func (i *workloadPtrType) ToWorkloadPtrOutput() WorkloadPtrOutput {
-	return i.ToWorkloadPtrOutputWithContext(context.Background())
-}
-
-func (i *workloadPtrType) ToWorkloadPtrOutputWithContext(ctx context.Context) WorkloadPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(WorkloadPtrOutput)
 }
 
 // WorkloadArrayInput is an input type that accepts WorkloadArray and WorkloadArrayOutput values.
@@ -130,7 +99,7 @@ type WorkloadArrayInput interface {
 type WorkloadArray []WorkloadInput
 
 func (WorkloadArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*Workload)(nil))
+	return reflect.TypeOf((*[]*Workload)(nil)).Elem()
 }
 
 func (i WorkloadArray) ToWorkloadArrayOutput() WorkloadArrayOutput {
@@ -155,7 +124,7 @@ type WorkloadMapInput interface {
 type WorkloadMap map[string]WorkloadInput
 
 func (WorkloadMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*Workload)(nil))
+	return reflect.TypeOf((*map[string]*Workload)(nil)).Elem()
 }
 
 func (i WorkloadMap) ToWorkloadMapOutput() WorkloadMapOutput {
@@ -166,12 +135,10 @@ func (i WorkloadMap) ToWorkloadMapOutputWithContext(ctx context.Context) Workloa
 	return pulumi.ToOutputWithContext(ctx, i).(WorkloadMapOutput)
 }
 
-type WorkloadOutput struct {
-	*pulumi.OutputState
-}
+type WorkloadOutput struct{ *pulumi.OutputState }
 
 func (WorkloadOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Workload)(nil))
+	return reflect.TypeOf((**Workload)(nil)).Elem()
 }
 
 func (o WorkloadOutput) ToWorkloadOutput() WorkloadOutput {
@@ -182,36 +149,10 @@ func (o WorkloadOutput) ToWorkloadOutputWithContext(ctx context.Context) Workloa
 	return o
 }
 
-func (o WorkloadOutput) ToWorkloadPtrOutput() WorkloadPtrOutput {
-	return o.ToWorkloadPtrOutputWithContext(context.Background())
-}
-
-func (o WorkloadOutput) ToWorkloadPtrOutputWithContext(ctx context.Context) WorkloadPtrOutput {
-	return o.ApplyT(func(v Workload) *Workload {
-		return &v
-	}).(WorkloadPtrOutput)
-}
-
-type WorkloadPtrOutput struct {
-	*pulumi.OutputState
-}
-
-func (WorkloadPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Workload)(nil))
-}
-
-func (o WorkloadPtrOutput) ToWorkloadPtrOutput() WorkloadPtrOutput {
-	return o
-}
-
-func (o WorkloadPtrOutput) ToWorkloadPtrOutputWithContext(ctx context.Context) WorkloadPtrOutput {
-	return o
-}
-
 type WorkloadArrayOutput struct{ *pulumi.OutputState }
 
 func (WorkloadArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Workload)(nil))
+	return reflect.TypeOf((*[]*Workload)(nil)).Elem()
 }
 
 func (o WorkloadArrayOutput) ToWorkloadArrayOutput() WorkloadArrayOutput {
@@ -223,15 +164,15 @@ func (o WorkloadArrayOutput) ToWorkloadArrayOutputWithContext(ctx context.Contex
 }
 
 func (o WorkloadArrayOutput) Index(i pulumi.IntInput) WorkloadOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Workload {
-		return vs[0].([]Workload)[vs[1].(int)]
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Workload {
+		return vs[0].([]*Workload)[vs[1].(int)]
 	}).(WorkloadOutput)
 }
 
 type WorkloadMapOutput struct{ *pulumi.OutputState }
 
 func (WorkloadMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Workload)(nil))
+	return reflect.TypeOf((*map[string]*Workload)(nil)).Elem()
 }
 
 func (o WorkloadMapOutput) ToWorkloadMapOutput() WorkloadMapOutput {
@@ -243,14 +184,16 @@ func (o WorkloadMapOutput) ToWorkloadMapOutputWithContext(ctx context.Context) W
 }
 
 func (o WorkloadMapOutput) MapIndex(k pulumi.StringInput) WorkloadOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Workload {
-		return vs[0].(map[string]Workload)[vs[1].(string)]
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) *Workload {
+		return vs[0].(map[string]*Workload)[vs[1].(string)]
 	}).(WorkloadOutput)
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*WorkloadInput)(nil)).Elem(), &Workload{})
+	pulumi.RegisterInputType(reflect.TypeOf((*WorkloadArrayInput)(nil)).Elem(), WorkloadArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*WorkloadMapInput)(nil)).Elem(), WorkloadMap{})
 	pulumi.RegisterOutputType(WorkloadOutput{})
-	pulumi.RegisterOutputType(WorkloadPtrOutput{})
 	pulumi.RegisterOutputType(WorkloadArrayOutput{})
 	pulumi.RegisterOutputType(WorkloadMapOutput{})
 }

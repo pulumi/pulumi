@@ -41,6 +41,9 @@ func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	}
 	defer emitter.Close()
 
+	logging.V(7).Infof("*** Starting Destroy(preview=%v) ***", dryRun)
+	defer logging.V(7).Infof("*** Destroy(preview=%v) complete ***", dryRun)
+
 	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newDestroySource,
@@ -74,5 +77,5 @@ func newDestroySource(
 
 	// Create a nil source.  This simply returns "nothing" as the new state, which will cause the
 	// engine to destroy the entire existing state.
-	return deploy.NullSource, nil
+	return deploy.NewNullSource(proj.Name), nil
 }

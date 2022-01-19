@@ -5,9 +5,10 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
@@ -43,11 +44,13 @@ func (os *optionalSpiller) spillExpressionHelper(
 	case *model.FunctionCallExpression:
 		if x.Name == "invoke" {
 			// recurse into invoke args
-			isInvoke = true
+			isOutputInvoke, _, _ := pcl.RecognizeOutputVersionedInvoke(x)
+			// ignore output-versioned invokes as they do not need converting
+			isInvoke = !isOutputInvoke
 			_, diags := os.spillExpressionHelper(x.Args[1], x.Args[1].Type(), isInvoke)
 			return x, diags
 		}
-		if x.Name == hcl2.IntrinsicConvert {
+		if x.Name == pcl.IntrinsicConvert {
 			// propagate convert type
 			_, diags := os.spillExpressionHelper(x.Args[0], x.Signature.ReturnType, isInvoke)
 			return x, diags
@@ -58,31 +61,23 @@ func (os *optionalSpiller) spillExpressionHelper(
 		if !isInvoke {
 			return x, nil
 		}
-		if schemaType, ok := hcl2.GetSchemaForType(destType); ok {
+		if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 			if schemaType, ok := schemaType.(*schema.ObjectType); ok {
 				var optionalPrimitives []string
 				for _, v := range schemaType.Properties {
 					isPrimitive := false
-					primitives := []schema.Type{
-						schema.NumberType,
-						schema.BoolType,
-						schema.IntType,
-						schema.StringType,
+					switch codegen.UnwrapType(v.Type) {
+					case schema.NumberType, schema.BoolType, schema.IntType, schema.StringType:
+						isPrimitive = true
 					}
-					for _, p := range primitives {
-						if p == v.Type {
-							isPrimitive = true
-							break
-						}
-					}
-					if isPrimitive && !v.IsRequired {
+					if isPrimitive && !v.IsRequired() {
 						optionalPrimitives = append(optionalPrimitives, v.Name)
 					}
 				}
 				for i, item := range x.Items {
 					// keys for schematized objects should be simple strings
 					if key, ok := item.Key.(*model.LiteralValueExpression); ok {
-						if key.Type() == model.StringType {
+						if model.StringType.AssignableFrom(key.Type()) {
 							strKey := key.Value.AsString()
 							for _, op := range optionalPrimitives {
 								if strKey == op {

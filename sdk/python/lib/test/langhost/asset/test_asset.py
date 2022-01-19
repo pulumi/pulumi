@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,26 +16,25 @@ from pulumi.asset import FileAsset, StringAsset, RemoteAsset
 from ..util import LanghostTest
 
 
-
 class AssetTest(LanghostTest):
     def test_asset(self):
         self.run_test(
             program=path.join(self.base_path(), "asset"),
             expected_resource_count=4)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         self.assertEqual(ty, "test:index:MyResource")
         if name == "file":
-            self.assertIsInstance(resource["asset"], FileAsset)
-            self.assertEqual(path.normpath(resource["asset"].path), "testfile.txt")
+            self.assertIsInstance(_resource["asset"], FileAsset)
+            self.assertEqual(path.normpath(_resource["asset"].path), "testfile.txt")
         elif name == "string":
-            self.assertIsInstance(resource["asset"], StringAsset)
-            self.assertEqual(resource["asset"].text, "its a string")
+            self.assertIsInstance(_resource["asset"], StringAsset)
+            self.assertEqual(_resource["asset"].text, "its a string")
         elif name == "remote":
-            self.assertIsInstance(resource["asset"], RemoteAsset)
-            self.assertEqual(resource["asset"].uri, "https://pulumi.com")
+            self.assertIsInstance(_resource["asset"], RemoteAsset)
+            self.assertEqual(_resource["asset"].uri, "https://pulumi.com")
         else:
             self.fail("unexpected resource name: " + name)
         return {

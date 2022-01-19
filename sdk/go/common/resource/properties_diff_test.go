@@ -23,6 +23,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+func assertDeepEqualsIffEmptyDiff(t *testing.T, val1, val2 PropertyValue) {
+	diff := val1.Diff(val2)
+	equals := val1.DeepEquals(val2)
+	assert.Equal(t, diff == nil, equals, "DeepEquals <--> empty diff")
+}
+
 func TestNullPropertyValueDiffs(t *testing.T) {
 	t.Parallel()
 	d1 := NewNullProperty().Diff(NewNullProperty())
@@ -115,6 +121,7 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 		NewStringProperty("element one"), NewNumberProperty(2), NewNullProperty()})
 	d3a2 := NewArrayProperty([]PropertyValue{
 		NewNumberProperty(1), NewNullProperty(), NewStringProperty("element three")})
+	assertDeepEqualsIffEmptyDiff(t, NewPropertyValue(d3a1), NewPropertyValue(d3a2))
 	d3 := d3a1.Diff(d3a2)
 	assert.NotNil(t, d3)
 	assert.NotNil(t, d3.Array)
@@ -132,6 +139,7 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 		NewStringProperty("element one"), NewNumberProperty(2), NewBoolProperty(true)})
 	d4a2 := NewArrayProperty([]PropertyValue{
 		NewStringProperty("element 1"), NewNumberProperty(2)})
+	assertDeepEqualsIffEmptyDiff(t, NewPropertyValue(d4a1), NewPropertyValue(d4a2))
 	d4 := d4a1.Diff(d4a2)
 	assert.NotNil(t, d4)
 	assert.NotNil(t, d4.Array)
@@ -159,6 +167,7 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 		NewStringProperty("element one"), NewNumberProperty(2)})
 	d5a2 := NewArrayProperty([]PropertyValue{
 		NewStringProperty("element 1"), NewNumberProperty(2), NewBoolProperty(true)})
+	assertDeepEqualsIffEmptyDiff(t, NewPropertyValue(d5a1), NewPropertyValue(d5a2))
 	d5 := d5a1.Diff(d5a2)
 	assert.NotNil(t, d5)
 	assert.NotNil(t, d5.Array)
@@ -213,6 +222,7 @@ func TestObjectPropertyValueDiffs(t *testing.T) {
 				PropertyKey("inner-prop-a"): NewNumberProperty(672),
 			}),
 		}
+		assertDeepEqualsIffEmptyDiff(t, NewPropertyValue(obj1), NewPropertyValue(obj2))
 		d3 := obj1.Diff(obj2)
 		assert.NotNil(t, d3)
 		assert.Equal(t, 0, len(d3.Adds))
@@ -264,6 +274,7 @@ func TestObjectPropertyValueDiffs(t *testing.T) {
 			PropertyKey("prop-c-2"): NewNullProperty(),
 			PropertyKey("prop-d-2"): NewNullProperty(),
 		}
+		assertDeepEqualsIffEmptyDiff(t, NewPropertyValue(obj1), NewPropertyValue(obj2))
 		d4 := obj1.Diff(obj2)
 		assert.NotNil(t, d4)
 		assert.Equal(t, 2, len(d4.Adds))

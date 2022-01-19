@@ -93,10 +93,10 @@ export function error(msg: string, resource?: resourceTypes.Resource, streamId?:
 }
 
 function log(
-        engine: any, sev: any, msg: string,
-        resource: resourceTypes.Resource | undefined,
-        streamId: number | undefined,
-        ephemeral: boolean | undefined): Promise<void> {
+    engine: any, sev: any, msg: string,
+    resource: resourceTypes.Resource | undefined,
+    streamId: number | undefined,
+    ephemeral: boolean | undefined): Promise<void> {
 
     // Ensure we log everything in serial order.
     const keepAlive: () => void = rpcKeepAlive();

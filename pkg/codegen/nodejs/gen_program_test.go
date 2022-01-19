@@ -1,81 +1,83 @@
 package nodejs
 
 import (
-	"bytes"
-	"io/ioutil"
+	"fmt"
+	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/hashicorp/hcl/v2"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
-
-func TestGenProgram(t *testing.T) {
-	files, err := ioutil.ReadDir(testdataPath)
-	if err != nil {
-		t.Fatalf("could not read test data: %v", err)
-	}
-
-	for _, f := range files {
-		if filepath.Ext(f.Name()) != ".pp" {
-			continue
-		}
-
-		expectNYIDiags := false
-		if filepath.Base(f.Name()) == "aws-s3-folder.pp" {
-			expectNYIDiags = true
-		}
-
-		t.Run(f.Name(), func(t *testing.T) {
-			path := filepath.Join(testdataPath, f.Name())
-			contents, err := ioutil.ReadFile(path)
-			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
-			}
-			expected, err := ioutil.ReadFile(path + ".ts")
-			if err != nil {
-				t.Fatalf("could not read %v: %v", path+".ts", err)
-			}
-
-			parser := syntax.NewParser()
-			err = parser.ParseFile(bytes.NewReader(contents), f.Name())
-			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
-			}
-			if parser.Diagnostics.HasErrors() {
-				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
-			}
-
-			program, diags, err := hcl2.BindProgram(parser.Files, hcl2.PluginHost(test.NewHost(testdataPath)))
-			if err != nil {
-				t.Fatalf("could not bind program: %v", err)
-			}
-			if diags.HasErrors() {
-				t.Fatalf("failed to bind program: %v", diags)
-			}
-
-			files, diags, err := GenerateProgram(program)
-			assert.NoError(t, err)
-			if expectNYIDiags {
-				var tmpDiags hcl.Diagnostics
-				for _, d := range diags {
-					if !strings.HasPrefix(d.Summary, "not yet implemented") {
-						tmpDiags = append(tmpDiags, d)
-					}
-				}
-				diags = tmpDiags
-			}
-			if diags.HasErrors() {
-				t.Fatalf("failed to generate program: %v", diags)
-			}
-			assert.Equal(t, string(expected), string(files["index.ts"]))
+func TestGenerateProgram(t *testing.T) {
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "nodejs",
+			Extension:  "ts",
+			OutputFile: "index.ts",
+			Check:      nodejsCheck,
+			GenProgram: GenerateProgram,
 		})
+}
+
+func nodejsCheck(t *testing.T, path string, dependencies codegen.StringSet) {
+	ex, err := executable.FindExecutable("yarn")
+	require.NoError(t, err, "Could not find yarn executable")
+	dir := filepath.Dir(path)
+	pkgs := nodejsPackages(dependencies)
+	// We delete and regenerate package files for each run.
+	packageJSON := filepath.Join(dir, "package.json")
+	if err := os.Remove(packageJSON); !os.IsNotExist(err) {
+		require.NoError(t, err, "Failed to delete %s", packageJSON)
 	}
+	yarnLock := filepath.Join(dir, "yarn.lock")
+	if err := os.Remove(yarnLock); !os.IsNotExist(err) {
+		require.NoError(t, err, "Failed to delete %s", yarnLock)
+	}
+
+	err = integration.RunCommand(t, "link @pulumi/pulumi",
+		[]string{ex, "link", "@pulumi/pulumi"},
+		dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err, "Failed to link @pulumi/pulumi")
+	for _, pkg := range pkgs {
+		err = integration.RunCommand(t, "yarn add and install",
+			[]string{ex, "add", pkg}, dir, &integration.ProgramTestOptions{})
+		require.NoError(t, err, "Could not install package: %q", pkg)
+	}
+	err = integration.RunCommand(t, "tsc check",
+		[]string{ex, "run", "tsc", "--noEmit", filepath.Base(path)}, dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err, "Failed to build %q", path)
+}
+
+// Returns the nodejs equivalent to the hcl2 package names provided.
+func nodejsPackages(deps codegen.StringSet) []string {
+	if len(deps) == 0 {
+		return []string{"@pulumi/pulumi@3.7.0"}
+	}
+	result := make([]string, len(deps))
+	for i, d := range deps.SortedValues() {
+		r := fmt.Sprintf("@pulumi/%s", d)
+		v := func(s string) {
+			r = fmt.Sprintf("%s@%s", r, s)
+		}
+		switch d {
+		case "aws":
+			v(test.AwsSchema)
+		case "azure-native":
+			v(test.AzureNativeSchema)
+		case "azure":
+			v(test.AzureSchema)
+		case "kubernetes":
+			v(test.KubernetesSchema)
+		case "random":
+			v(test.RandomSchema)
+		}
+		result[i] = r
+	}
+	return result
 }

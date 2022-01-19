@@ -144,6 +144,38 @@ func TestPropertyPath(t *testing.T) {
 		})
 	}
 
+	simpleCases := []struct {
+		path     string
+		expected PropertyPath
+	}{
+		{
+			`root["*"].field[1]`,
+			PropertyPath{"root", "*", "field", 1},
+		},
+		{
+			`root[*].field[2]`,
+			PropertyPath{"root", "*", "field", 2},
+		},
+		{
+			`root[3].*[3]`,
+			PropertyPath{"root", 3, "*", 3},
+		},
+		{
+			`*.bar`,
+			PropertyPath{"*", "bar"},
+		},
+	}
+
+	t.Run("Simple", func(t *testing.T) {
+		for _, c := range simpleCases {
+			t.Run(c.path, func(t *testing.T) {
+				parsed, err := ParsePropertyPath(c.path)
+				assert.NoError(t, err)
+				assert.Equal(t, c.expected, parsed)
+			})
+		}
+	})
+
 	negativeCases := []string{
 		// Syntax errors
 		"root[",
@@ -168,6 +200,115 @@ func TestPropertyPath(t *testing.T) {
 				assert.True(t, v.IsNull())
 			}
 		})
+	}
+}
+
+func TestPropertyPathContains(t *testing.T) {
+	cases := []struct {
+		p1       PropertyPath
+		p2       PropertyPath
+		expected bool
+	}{
+		{
+			PropertyPath{"root", "nested"},
+			PropertyPath{"root"},
+			false,
+		},
+		{
+			PropertyPath{"root"},
+			PropertyPath{"root", "nested"},
+			true,
+		},
+		{
+			PropertyPath{"root", 1},
+			PropertyPath{"root"},
+			false,
+		},
+		{
+			PropertyPath{"root"},
+			PropertyPath{"root", 1},
+			true,
+		},
+		{
+			PropertyPath{"root", "double", "nest1"},
+			PropertyPath{"root", "double", "nest2"},
+			false,
+		},
+		{
+			PropertyPath{"root", "nest1", "double"},
+			PropertyPath{"root", "nest2", "double"},
+			false,
+		},
+		{
+			PropertyPath{"root", "nest", "double"},
+			PropertyPath{"root", "nest", "double"},
+			true,
+		},
+		{
+			PropertyPath{"root", 1, "double"},
+			PropertyPath{"root", 1, "double"},
+			true,
+		},
+		{
+			PropertyPath{},
+			PropertyPath{},
+			true,
+		},
+		{
+			PropertyPath{"root"},
+			PropertyPath{},
+			false,
+		},
+		{
+			PropertyPath{},
+			PropertyPath{"root"},
+			true,
+		},
+		{
+			PropertyPath{"foo", "bar", 1},
+			PropertyPath{"foo", "bar", 1, "baz"},
+			true,
+		},
+		{
+			PropertyPath{"foo", "*", "baz"},
+			PropertyPath{"foo", "bar", "baz", "bam"},
+			true,
+		},
+		{
+			PropertyPath{"*", "bar", "baz"},
+			PropertyPath{"foo", "bar", "baz", "bam"},
+			true,
+		},
+		{
+			PropertyPath{"foo", "*", "baz"},
+			PropertyPath{"foo", 1, "baz", "bam"},
+			true,
+		},
+		{
+			PropertyPath{"foo", 1, "*", "bam"},
+			PropertyPath{"foo", 1, "baz", "bam"},
+			true,
+		},
+		{
+			PropertyPath{"*"},
+			PropertyPath{"a", "b"},
+			true,
+		},
+		{
+			PropertyPath{"*"},
+			PropertyPath{"a", 1},
+			true,
+		},
+		{
+			PropertyPath{"*"},
+			PropertyPath{"a", 1, "b"},
+			true,
+		},
+	}
+
+	for _, tcase := range cases {
+		res := tcase.p1.Contains(tcase.p2)
+		assert.Equal(t, tcase.expected, res)
 	}
 }
 

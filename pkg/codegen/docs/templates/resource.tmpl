@@ -63,7 +63,7 @@
 
 ## {{ .Header.Title }} Resource Properties {#properties}
 
-To learn more about resource properties and how to use them, see [Inputs and Outputs]({{ htmlSafe "{{< relref \"/docs/intro/concepts/inputs-outputs\" >}}" }}) in the Programming Model docs.
+To learn more about resource properties and how to use them, see [Inputs and Outputs]({{ htmlSafe "{{< relref \"/docs/intro/concepts/inputs-outputs\" >}}" }}) in the Architecture and Concepts docs.
 
 ### Inputs
 
@@ -77,6 +77,60 @@ The {{ .Header.Title }} resource accepts the following [input]({{ htmlSafe "{{< 
 All [input](#inputs) properties are implicitly available as output properties. Additionally, the {{ .Header.Title }} resource produces the following output properties:
 
 {{ template "properties" .OutputProperties }}
+
+<!-- Methods -->
+{{- if ne (len .Methods) 0 }}
+## {{ .Header.Title }} Resource Methods {#methods}
+
+{{ range .Methods }}
+### {{ .Title }} Method {#method_{{ .Title }}}
+
+{{- if .DeprecationMessage }}
+<p class="resource-deprecated">Deprecated: {{ print "{{% md %}}" -}}{{- .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>
+{{- end }}
+
+{{ htmlSafe .Comment }}
+{{- if ne (len .ExamplesSection) 0 }}
+{{ template "examples" .ExamplesSection }}
+{{- end }}
+
+#### Using {{ .Title }}
+
+{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
+
+<!-- TS/JS -->
+{{ print "{{% choosable language nodejs %}}" }}
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript">{{ .MethodName.nodejs }}<span class="p">(</span>{{ if ne .MethodArgs.nodejs "" }}{{ htmlSafe .MethodArgs.nodejs }}{{ end }}<span class="p">): {{ if ne .MethodResult.nodejs.Name "" }}Output&lt;{{ template "linkify_param" .MethodResult.nodejs }}&gt;{{ else }}void{{ end }}</span></code></pre></div>
+{{ print "{{% /choosable %}}" }}
+
+<!-- Python -->
+{{ print "{{% choosable language python %}}" }}
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>{{ .MethodName.python }}(</span>{{ if ne .MethodArgs.python "" }}{{ htmlSafe .MethodArgs.python }}{{ end }}<span class="p">) -&gt;</span> {{ if ne .MethodResult.python.Name "" }}Output[{{ template "linkify_param" .MethodResult.python }}]{{ else }}None{{ end }}</code></pre></div>
+{{ print "{{% /choosable %}}" }}
+
+<!-- Go -->
+{{ print "{{% choosable language go %}}" }}
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func</span> <span class="p">(r *{{ .ResourceName }})</span> {{ .MethodName.go }}<span class="p">(</span>{{ if ne .MethodArgs.go "" }}{{ htmlSafe .MethodArgs.go }}{{ end }}<span class="p">) {{ if ne .MethodResult.go.Name "" }}({{ template "linkify_param" .MethodResult.go }}, error){{ else }}error{{ end }}</span></code></pre></div>
+{{ print "{{% /choosable %}}" }}
+
+<!-- C# -->
+{{ print "{{% choosable language csharp %}}" }}
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ if ne .MethodResult.csharp.Name "" }}Output&lt;{{ template "linkify_param" .MethodResult.csharp }}&gt;{{ else }}void{{ end }} <span class="nx">{{ .MethodName.csharp }}</span><span class="p">({{ if ne .MethodArgs.csharp "" }}{{ htmlSafe .MethodArgs.csharp }}{{ end }})</span></code></pre></div>
+{{ print "{{% /choosable %}}" }}
+
+{{ if ne (len .InputProperties) 0 }}
+
+The following arguments are supported:
+{{ template "properties" .InputProperties }}
+{{ end }}
+
+{{ if ne (len .OutputProperties) 0 }}
+#### {{ .Title }} Result {#method_{{ .Title }}_result}
+{{ template "properties" .OutputProperties }}
+{{ end }}
+
+{{ end }}
+{{- end -}}
 
 <!-- Read resource -->
 {{ if ne (len .StateInputs) 0 }}

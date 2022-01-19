@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "./types";
 import * as utilities from "./utilities";
 
-import * as random from "@pulumi/random";
+import * as pulumiRandom from "@pulumi/random";
 
 export class Cat extends pulumi.CustomResource {
     /**
@@ -44,19 +44,17 @@ export class Cat extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: CatArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["age"] = args ? args.age : undefined;
-            inputs["pet"] = args ? args.pet : undefined;
-            inputs["name"] = undefined /*out*/;
+            resourceInputs["age"] = args ? args.age : undefined;
+            resourceInputs["pet"] = args ? args.pet : undefined;
+            resourceInputs["name"] = undefined /*out*/;
         } else {
-            inputs["name"] = undefined /*out*/;
+            resourceInputs["name"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
-        super(Cat.__pulumiType, name, inputs, opts);
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+        super(Cat.__pulumiType, name, resourceInputs, opts);
     }
 }
 

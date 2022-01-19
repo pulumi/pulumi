@@ -1,6 +1,8 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
+using YamlDotNet.Serialization;
 
 namespace Pulumi.Automation
 {
@@ -9,8 +11,8 @@ namespace Pulumi.Automation
         /// <summary>
         /// This stack's secrets provider.
         /// </summary>
-        [YamlDotNet.Serialization.YamlMember(Alias="secretsprovider")]
-        [System.Text.Json.Serialization.JsonPropertyName("secretsprovider")]
+        [YamlMember(Alias="secretsprovider")]
+        [JsonPropertyName("secretsprovider")]
 
         public string? SecretsProvider { get; set; }
 
@@ -18,8 +20,8 @@ namespace Pulumi.Automation
         /// This is the KMS-encrypted ciphertext for the data key used for secrets
         /// encryption. Only used for cloud-based secrets providers.
         /// </summary>
-        [YamlDotNet.Serialization.YamlMember(Alias="encryptedkey")]
-        [System.Text.Json.Serialization.JsonPropertyName("encryptedkey")]
+        [YamlMember(Alias="encryptedkey")]
+        [JsonPropertyName("encryptedkey")]
 
         public string? EncryptedKey { get; set; }
 
@@ -27,8 +29,8 @@ namespace Pulumi.Automation
         /// This is this stack's base64 encoded encryption salt. Only used for
         /// passphrase-based secrets providers.
         /// </summary>
-        [YamlDotNet.Serialization.YamlMember(Alias="encryptionsalt")]
-        [System.Text.Json.Serialization.JsonPropertyName("encryptionsalt")]
+        [YamlMember(Alias="encryptionsalt")]
+        [JsonPropertyName("encryptionsalt")]
 
         public string? EncryptionSalt { get; set; }
 

@@ -115,11 +115,26 @@
     }
   },
   "language": {
-    "csharp": {},
-    "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-resource-schema/go/example"
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.13"
+      },
+      "projectReferences": [
+         "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ]
     },
-    "nodejs": {},
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-resource-schema/go/example",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
     "python": {
       "packageName": "custom_py_package"
     }

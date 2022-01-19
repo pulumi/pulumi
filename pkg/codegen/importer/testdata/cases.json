@@ -483,7 +483,8 @@
 				"enableDnsSupport": true,
 				"instanceTenancy": "foobar",
 				"tags": {
-					"Name": "foobar"
+					"Name": "foobar",
+					"pulumi:Project": "tag-check"
 				}
 			}
 		},
@@ -591,12 +592,16 @@
 				],
 				"conditions": [
 					{
-						"field": "foobar",
-						"values": "foobar"
-					},
-					{
-						"field": "foobar",
-						"values": "foobar"
+						"queryStrings": [
+							{
+								"key": "foobar",
+								"value": "foobar"
+							},
+							{
+								"key": "foobar",
+								"value": "foobar"
+							}
+						]
 					}
 				],
 				"listenerArn": "foobar",
@@ -680,9 +685,7 @@
 			"inputs": {
 				"name": "foobar",
 				"path": "foobar",
-				"roles": [
-					"foobar"
-				]
+				"role": "foobar"
 			}
 		},
 		{
@@ -1515,7 +1518,6 @@
 				"acl": "foobar",
 				"bucket": "foobar",
 				"forceDestroy": false,
-				"region": "foobar",
 				"versioning": {
 					"enabled": true,
 					"mfaDelete": false

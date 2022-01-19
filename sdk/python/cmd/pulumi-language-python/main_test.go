@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,64 +15,15 @@
 package main
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
-
-func TestParseLocation(t *testing.T) {
-	tests := []struct {
-		pipShowOutput string
-		expected      string
-		err           error
-	}{
-		{
-			pipShowOutput: "Location: /plugin/location",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Location:/plugin/location",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Location:   /plugin/location",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Foo: bar\nLocation: /plugin/location\n",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Foo: bar\nLocation: /plugin/location\nBlah: baz",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "Foo: bar\r\nLocation: /plugin/location\r\nBlah: baz",
-			expected:      "/plugin/location",
-		},
-		{
-			pipShowOutput: "",
-			err:           errors.New("determining location of package foo"),
-		},
-		{
-			pipShowOutput: "Foo: bar\nBlah: baz",
-			err:           errors.New("determining location of package foo"),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.pipShowOutput, func(t *testing.T) {
-			result, err := parseLocation("foo", tt.pipShowOutput)
-			if tt.err != nil {
-				assert.Error(t, err)
-				assert.EqualError(t, err, tt.err.Error())
-				return
-			}
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
 
 func TestDeterminePluginVersion(t *testing.T) {
 	tests := []struct {
@@ -141,4 +92,74 @@ func TestDeterminePluginVersion(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestDeterminePulumiPackages(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		cwd := t.TempDir()
+		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
+		assert.NoError(t, err)
+		packages, err := determinePulumiPackages("venv", cwd)
+		assert.NoError(t, err)
+		assert.Empty(t, packages)
+	})
+	t.Run("non-empty", func(t *testing.T) {
+		cwd := t.TempDir()
+		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
+		assert.NoError(t, err)
+		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pulumi-random")
+		assert.NoError(t, err)
+		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pip-install-test")
+		assert.NoError(t, err)
+		packages, err := determinePulumiPackages("venv", cwd)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, packages)
+		assert.Equal(t, 1, len(packages))
+		random := packages[0]
+		assert.Equal(t, "pulumi-random", random.Name)
+		assert.NotEmpty(t, random.Location)
+	})
+	t.Run("pulumiplugin", func(t *testing.T) {
+		cwd := t.TempDir()
+		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
+		require.NoError(t, err)
+		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pip-install-test")
+		require.NoError(t, err)
+		// Find sitePackages folder in Python that contains pip_install_test subfolder.
+		var sitePackages string
+		possibleSitePackages, err := runPythonCommand("venv", cwd, "-c",
+			"import site; import json; print(json.dumps(site.getsitepackages()))")
+		require.NoError(t, err)
+		var possibleSitePackagePaths []string
+		err = json.Unmarshal(possibleSitePackages, &possibleSitePackagePaths)
+		require.NoError(t, err)
+		for _, dir := range possibleSitePackagePaths {
+			_, err := os.Stat(filepath.Join(dir, "pip_install_test"))
+			if os.IsNotExist(err) {
+				continue
+			}
+			require.NoError(t, err)
+			sitePackages = dir
+		}
+		if sitePackages == "" {
+			t.Error("None of Python site.getsitepackages() folders contain a pip_install_test subfolder")
+			t.FailNow()
+		}
+		path := filepath.Join(sitePackages, "pip_install_test", "pulumi-plugin.json")
+		bytes := []byte(`{ "name": "thing1", "version": "thing2", "server": "thing3", "resource": true }` + "\n")
+		err = os.WriteFile(path, bytes, 0600)
+		require.NoError(t, err)
+		t.Logf("Wrote pulumipluing.json file: %s", path)
+		packages, err := determinePulumiPackages("venv", cwd)
+		require.NoError(t, err)
+		assert.Equal(t, 1, len(packages))
+		pipInstallTest := packages[0]
+		assert.NotNil(t, pipInstallTest.plugin)
+		assert.Equal(t, "pip-install-test", pipInstallTest.Name)
+		assert.NotEmpty(t, pipInstallTest.Location)
+		assert.Equal(t, "thing1", pipInstallTest.plugin.Name)
+		assert.Equal(t, "thing2", pipInstallTest.plugin.Version)
+		assert.Equal(t, "thing3", pipInstallTest.plugin.Server)
+		assert.True(t, pipInstallTest.plugin.Resource)
+	})
 }

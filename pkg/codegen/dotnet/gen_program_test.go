@@ -1,82 +1,118 @@
 package dotnet
 
 import (
-	"bytes"
-	"io/ioutil"
+	"fmt"
+	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
+func TestGenerateProgram(t *testing.T) {
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "dotnet",
+			Extension:  "cs",
+			OutputFile: "MyStack.cs",
+			Check:      checkDotnet,
+			GenProgram: GenerateProgram,
+		},
+	)
+}
 
-func TestGenProgram(t *testing.T) {
-	files, err := ioutil.ReadDir(testdataPath)
-	if err != nil {
-		t.Fatalf("could not read test data: %v", err)
+func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet) {
+	var err error
+	dir := filepath.Dir(path)
+
+	ex, err := executable.FindExecutable("dotnet")
+	require.NoError(t, err, "Failed to find dotnet executable")
+
+	// We create a new cs-project each time the test is run.
+	projectFile := filepath.Join(dir, filepath.Base(dir)+".csproj")
+	programFile := filepath.Join(dir, "Program.cs")
+	if err = os.Remove(projectFile); !os.IsNotExist(err) {
+		require.NoError(t, err)
+	}
+	if err = os.Remove(programFile); !os.IsNotExist(err) {
+		require.NoError(t, err)
+	}
+	err = integration.RunCommand(t, "create dotnet project",
+		[]string{ex, "new", "console"}, dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err, "Failed to create C# project")
+
+	// Add dependencies
+	pkgs := dotnetDependencies(dependencies)
+	if len(pkgs) != 0 {
+		for _, pkg := range pkgs {
+			pkg.install(t, ex, dir)
+		}
+	} else {
+		// We would like this regardless of other dependencies, but dotnet
+		// packages do not play well with package references.
+		err = integration.RunCommand(t, "add sdk ref",
+			[]string{ex, "add", "reference", "../../../../../../../sdk/dotnet/Pulumi"},
+			dir, &integration.ProgramTestOptions{})
+		require.NoError(t, err, "Failed to dotnet sdk package reference")
 	}
 
-	for _, f := range files {
-		if filepath.Ext(f.Name()) != ".pp" {
-			continue
-		}
+	// Clean up build result
+	defer func() {
+		err = os.RemoveAll(filepath.Join(dir, "bin"))
+		assert.NoError(t, err, "Failed to remove bin result")
+		err = os.RemoveAll(filepath.Join(dir, "obj"))
+		assert.NoError(t, err, "Failed to remove obj result")
+	}()
+	err = integration.RunCommand(t, "dotnet build",
+		[]string{ex, "build", "--nologo"}, dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err, "Failed to build dotnet project")
+}
 
-		expectNYIDiags := false
-		if filepath.Base(f.Name()) == "aws-s3-folder.pp" {
-			expectNYIDiags = true
-		}
+type dep struct {
+	Name    string
+	Version string
+}
 
-		t.Run(f.Name(), func(t *testing.T) {
-			path := filepath.Join(testdataPath, f.Name())
-			contents, err := ioutil.ReadFile(path)
-			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
-			}
-			expected, err := ioutil.ReadFile(path + ".cs")
-			if err != nil {
-				t.Fatalf("could not read %v: %v", path+".cs", err)
-			}
-
-			parser := syntax.NewParser()
-			err = parser.ParseFile(bytes.NewReader(contents), f.Name())
-			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
-			}
-			if parser.Diagnostics.HasErrors() {
-				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
-			}
-
-			program, diags, err := hcl2.BindProgram(parser.Files, hcl2.PluginHost(test.NewHost(testdataPath)))
-			if err != nil {
-				t.Fatalf("could not bind program: %v", err)
-			}
-			if diags.HasErrors() {
-				t.Fatalf("failed to bind program: %v", diags)
-			}
-
-			files, diags, err := GenerateProgram(program)
-			assert.NoError(t, err)
-
-			if expectNYIDiags {
-				var tmpDiags hcl.Diagnostics
-				for _, d := range diags {
-					if !strings.HasPrefix(d.Summary, "not yet implemented") {
-						tmpDiags = append(tmpDiags, d)
-					}
-				}
-				diags = tmpDiags
-			}
-			if diags.HasErrors() {
-				t.Fatalf("failed to generate program: %v", diags)
-			}
-			assert.Equal(t, string(expected), string(files["MyStack.cs"]))
-		})
+func (pkg dep) install(t *testing.T, ex, dir string) {
+	args := []string{ex, "add", "package", pkg.Name}
+	if pkg.Version != "" {
+		args = append(args, "--version", pkg.Version)
 	}
+	err := integration.RunCommand(t, "Add package",
+		args, dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err, "Failed to add dependency %q %q", pkg.Name, pkg.Version)
+
+}
+
+// Converts from the hcl2 dependency format to the dotnet format.
+//
+// Example:
+// 	"aws" => {"Pulumi.Aws", 4.21.1}
+// 	"azure" => {"Pulumi.Azure", 4.21.1}
+//
+func dotnetDependencies(deps codegen.StringSet) []dep {
+	result := make([]dep, len(deps))
+	for i, d := range deps.SortedValues() {
+		switch d {
+		case "aws":
+			result[i] = dep{"Pulumi.Aws", test.AwsSchema}
+		case "azure-native":
+			result[i] = dep{"Pulumi.AzureNative", test.AzureNativeSchema}
+		case "azure":
+			result[i] = dep{"Pulumi.Azure", test.AzureSchema}
+		case "kubernetes":
+			result[i] = dep{"Pulumi.Kubernetes", test.KubernetesSchema}
+		case "random":
+			result[i] = dep{"Pulumi.Random", test.RandomSchema}
+		default:
+			result[i] = dep{fmt.Sprintf("Pulumi.%s", Title(d)), ""}
+		}
+	}
+	return result
 }

@@ -41,6 +41,8 @@ type PropertyPath []interface{}
 // - root["key with a ."]
 // - ["root key with \"escaped\" quotes"].nested
 // - ["root key with a ."][100]
+// - root.array[*].field
+// - root.array["*"].field
 func ParsePropertyPath(path string) (PropertyPath, error) {
 	// We interpret the grammar above a little loosely in order to keep things simple. Specifically, we will accept
 	// something close to the following:
@@ -82,11 +84,16 @@ func ParsePropertyPath(path string) (PropertyPath, error) {
 					return nil, errors.New("missing closing bracket in array index")
 				}
 
-				index, err := strconv.ParseInt(path[1:rbracket], 10, 0)
-				if err != nil {
-					return nil, errors.Wrap(err, "invalid array index")
+				segment := path[1:rbracket]
+				if segment == "*" {
+					pathElement, path = "*", path[rbracket:]
+				} else {
+					index, err := strconv.ParseInt(segment, 10, 0)
+					if err != nil {
+						return nil, errors.Wrap(err, "invalid array index")
+					}
+					pathElement, path = int(index), path[rbracket:]
 				}
-				pathElement, path = int(index), path[rbracket:]
 			}
 			elements, path = append(elements, pathElement), path[1:]
 		default:
@@ -256,4 +263,38 @@ func (p PropertyPath) Delete(dest PropertyValue) bool {
 	}
 	return true
 
+}
+
+// Contains returns true if the receiver property path contains the other property path.
+// For example, the path `foo["bar"][1]` contains the path `foo.bar[1].baz`.  The key `"*"`
+// is a wildcard which matches any string or int index at that same nesting level.  So for example,
+// the path `foo.*.baz` contains `foo.bar.baz.bam`, and the path `*` contains any path.
+func (p PropertyPath) Contains(other PropertyPath) bool {
+	if len(other) < len(p) {
+		return false
+	}
+
+	for i := range p {
+		pp := p[i]
+		otherp := other[i]
+
+		switch pp := pp.(type) {
+		case int:
+			if otherpi, ok := otherp.(int); !ok || otherpi != pp {
+				return false
+			}
+		case string:
+			if pp == "*" {
+				continue
+			}
+			if otherps, ok := otherp.(string); !ok || otherps != pp {
+				return false
+			}
+		default:
+			// Invalid path, return false
+			return false
+		}
+	}
+
+	return true
 }

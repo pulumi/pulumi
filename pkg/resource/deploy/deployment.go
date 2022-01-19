@@ -16,12 +16,11 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync"
 
-	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -32,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // BackendClient is used to retrieve information about stacks from a backend.
@@ -61,6 +61,7 @@ type Options struct {
 	TrustDependencies         bool           // whether or not to trust the resource dependency graph.
 	UseLegacyDiff             bool           // whether or not to use legacy diffing behavior.
 	DisableResourceReferences bool           // true to disable resource reference support.
+	DisableOutputValues       bool           // true to disable output value support.
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -173,9 +174,9 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 	}
 
 	// Pull the versions we'll use for default providers from the snapshot's manifest.
-	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
+	defaultProviderInfo := make(map[tokens.Package]workspace.PluginInfo)
 	for _, p := range prev.Manifest.Plugins {
-		defaultProviderVersions[tokens.Package(p.Name)] = p.Version
+		defaultProviderInfo[tokens.Package(p.Name)] = p
 	}
 
 	// Determine the necessary set of default providers and inject references to default providers as appropriate.
@@ -197,10 +198,11 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 		if !ok {
 			inputs, err := target.GetPackageConfig(pkg)
 			if err != nil {
-				return errors.Errorf("could not fetch configuration for default provider '%v'", pkg)
+				return fmt.Errorf("could not fetch configuration for default provider '%v'", pkg)
 			}
-			if version, ok := defaultProviderVersions[pkg]; ok {
-				inputs["version"] = resource.NewStringProperty(version.String())
+			if pkgInfo, ok := defaultProviderInfo[pkg]; ok {
+				providers.SetProviderVersion(inputs, pkgInfo.Version)
+				providers.SetProviderURL(inputs, pkgInfo.PluginDownloadURL)
 			}
 
 			uuid, err := uuid.NewV4()
@@ -281,7 +283,7 @@ func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[reso
 
 		urn := oldres.URN
 		if olds[urn] != nil {
-			return nil, nil, errors.Errorf("unexpected duplicate resource '%s'", urn)
+			return nil, nil, fmt.Errorf("unexpected duplicate resource '%s'", urn)
 		}
 		olds[urn] = oldres
 	}
@@ -359,6 +361,10 @@ func (d *Deployment) Diag() diag.Sink                        { return d.ctx.Diag
 func (d *Deployment) Prev() *Snapshot                        { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
+
+func (d *Deployment) SameProvider(ref providers.Reference) {
+	d.providers.Same(ref)
+}
 
 func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
 	return d.providers.GetProvider(ref)

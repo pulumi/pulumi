@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import * as kubernetes from "@pulumi/kubernetes";
+import * as pulumiKubernetes from "@pulumi/kubernetes";
 
 export class Workload extends pulumi.CustomResource {
     /**
@@ -33,7 +33,7 @@ export class Workload extends pulumi.CustomResource {
         return obj['__pulumiType'] === Workload.__pulumiType;
     }
 
-    public /*out*/ readonly pod!: pulumi.Output<kubernetes.types.output.core.v1.Pod | undefined>;
+    public /*out*/ readonly pod!: pulumi.Output<pulumiKubernetes.types.output.core.v1.Pod | undefined>;
 
     /**
      * Create a Workload resource with the given unique name, arguments, and options.
@@ -43,17 +43,15 @@ export class Workload extends pulumi.CustomResource {
      * @param opts A bag of options that control this resource's behavior.
      */
     constructor(name: string, args?: WorkloadArgs, opts?: pulumi.CustomResourceOptions) {
-        let inputs: pulumi.Inputs = {};
+        let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["pod"] = undefined /*out*/;
+            resourceInputs["pod"] = undefined /*out*/;
         } else {
-            inputs["pod"] = undefined /*out*/;
+            resourceInputs["pod"] = undefined /*out*/;
         }
-        if (!opts.version) {
-            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
-        }
-        super(Workload.__pulumiType, name, inputs, opts);
+        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+        super(Workload.__pulumiType, name, resourceInputs, opts);
     }
 }
 

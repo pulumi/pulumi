@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Immutable;
@@ -22,17 +22,9 @@ namespace Pulumi
             // finished.  Otherwise, we might actually read and get the result back *prior* to the
             // object finishing initializing.  Note: this is not a speculative concern. This is
             // something that does happen and has to be accounted for.
-            //
-            // IMPORTANT! We have to make sure we run 'OutputCompletionSource.InitializeOutputs'
-            // synchronously directly when `resource`'s constructor runs since this will set all of
-            // the `[Output(...)] Output<T>` properties.  We need those properties assigned by the
-            // time the base 'Resource' constructor finishes so that both derived classes and
-            // external consumers can use the Output properties of `resource`.
-            var completionSources = OutputCompletionSource.InitializeOutputs(resource);
-
             _runner.RegisterTask(
                 $"{nameof(IDeploymentInternal.ReadOrRegisterResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
-                CompleteResourceAsync(resource, remote, newDependency, args, options, completionSources));
+                CompleteResourceAsync(resource, remote, newDependency, args, options, resource.CompletionSources));
         }
 
         private async Task<(string urn, string id, Struct data, ImmutableDictionary<string, ImmutableHashSet<Resource>> dependencies)> ReadOrRegisterResourceAsync(
@@ -42,20 +34,21 @@ namespace Pulumi
             if (options.Urn != null)
             {
                 // This is a resource that already exists. Read its state from the engine.
-                var result = await InvokeRawAsync(
+                var invokeResult = await InvokeRawAsync(
                     "pulumi:pulumi:getResource",
                     new GetResourceInvokeArgs {Urn = options.Urn},
-                    new InvokeOptions());
-                
+                    new InvokeOptions()).ConfigureAwait(false);
+
+                var result = invokeResult.Serialized;
                 var urn = result.Fields["urn"].StringValue;
                 var id = result.Fields["id"].StringValue;
                 var state = result.Fields["state"].StructValue;
                 return (urn, id, state, ImmutableDictionary<string, ImmutableHashSet<Resource>>.Empty);
             }
-            
+
             if (options.Id != null)
             {
-                var id = await options.Id.ToOutput().GetValueAsync().ConfigureAwait(false);
+                var id = await options.Id.ToOutput().GetValueAsync(whenUnknown: "").ConfigureAwait(false);
                 if (!string.IsNullOrEmpty(id))
                 {
                     if (!(resource is CustomResource))
@@ -74,7 +67,7 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// Calls <see cref="ReadOrRegisterResourceAsync"/> then completes all the 
+        /// Calls <see cref="ReadOrRegisterResourceAsync"/> then completes all the
         /// <see cref="IOutputCompletionSource"/> sources on the <paramref name="resource"/> with
         /// the results of it.
         /// </summary>
@@ -90,8 +83,9 @@ namespace Pulumi
                     resource, remote, newDependency, args, options).ConfigureAwait(false);
 
                 completionSources[Constants.UrnPropertyName].SetStringValue(response.urn, isKnown: true);
-                if (resource is CustomResource customResource)
+                if (resource is CustomResource)
                 {
+                    // ReSharper disable once ConstantNullCoalescingCondition
                     var id = response.id ?? "";
                     completionSources[Constants.IdPropertyName].SetStringValue(id, isKnown: id != "");
                 }
@@ -117,7 +111,7 @@ namespace Pulumi
                             dependencies = ImmutableHashSet<Resource>.Empty;
                         }
 
-                        var converted = Converter.ConvertValue($"{resource.GetType().FullName}.{fieldName}", value,
+                        var converted = Converter.ConvertValue(err => Log.Warn(err, resource), $"{resource.GetType().FullName}.{fieldName}", value,
                             completionSource.TargetType, dependencies);
                         completionSource.SetValue(converted);
                     }

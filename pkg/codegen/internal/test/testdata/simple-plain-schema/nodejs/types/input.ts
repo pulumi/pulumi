@@ -12,6 +12,7 @@ export interface Foo {
     e: string;
     f?: string;
 }
+
 export interface FooArgs {
     a: boolean;
     b?: boolean;

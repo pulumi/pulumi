@@ -1,0 +1,15 @@
+{
+  "emittedFiles": [
+    "example/doc.go",
+    "example/foo.go",
+    "example/funcWithAllOptionalInputs.go",
+    "example/init.go",
+    "example/mod1/pulumiTypes.go",
+    "example/mod2/pulumiTypes.go",
+    "example/moduleTest.go",
+    "example/provider.go",
+    "example/pulumi-plugin.json",
+    "example/pulumiTypes.go",
+    "example/pulumiUtilities.go"
+  ]
+}

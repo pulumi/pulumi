@@ -17,14 +17,13 @@ package engine
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 
-	"github.com/blang/semver"
-	"github.com/pkg/errors"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -137,6 +136,9 @@ type UpdateOptions struct {
 	// true if the engine should disable resource reference support.
 	DisableResourceReferences bool
 
+	// true if the engine should disable output value support.
+	DisableOutputValues bool
+
 	// true if we should report events for steps that involve default providers.
 	reportDefaultProviderSteps bool
 
@@ -179,6 +181,9 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	}
 	defer emitter.Close()
 
+	logging.V(7).Infof("*** Starting Update(preview=%v) ***", dryRun)
+	defer logging.V(7).Infof("*** Update(preview=%v) complete ***", dryRun)
+
 	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
@@ -197,7 +202,7 @@ func RunInstallPlugins(
 
 func installPlugins(
 	proj *workspace.Project, pwd, main string, target *deploy.Target,
-	plugctx *plugin.Context, returnInstallErrors bool) (pluginSet, map[tokens.Package]*semver.Version, error) {
+	plugctx *plugin.Context, returnInstallErrors bool) (pluginSet, map[tokens.Package]workspace.PluginInfo, error) {
 
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//
@@ -287,11 +292,11 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
 			analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromAPI)
 		if err != nil {
-			return errors.Wrapf(err, "reconciling config for %q", analyzerInfo.Name)
+			return fmt.Errorf("reconciling config for %q: %w", analyzerInfo.Name, err)
 		}
 		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
 		if err = analyzer.Configure(config); err != nil {
-			return errors.Wrapf(err, "configuring policy pack %q", analyzerInfo.Name)
+			return fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
 		}
 	}
 
@@ -306,7 +311,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 		if err != nil {
 			return err
 		} else if analyzer == nil {
-			return errors.Errorf("policy analyzer could not be loaded from path %q", pack.Path)
+			return fmt.Errorf("policy analyzer could not be loaded from path %q", pack.Path)
 		}
 
 		// Update the Policy Pack names now that we have loaded the plugins and can access the name.
@@ -319,7 +324,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 		// Load config, reconcile & validate it, and pass it to the policy pack.
 		if !analyzerInfo.SupportsConfig {
 			if pack.Config != "" {
-				return errors.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
+				return fmt.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
 			}
 			continue
 		}
@@ -333,11 +338,11 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 		config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
 			analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromFile)
 		if err != nil {
-			return errors.Wrapf(err, "reconciling policy config for %q at %q", analyzerInfo.Name, pack.Path)
+			return fmt.Errorf("reconciling policy config for %q at %q: %w", analyzerInfo.Name, pack.Path, err)
 		}
 		appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
 		if err = analyzer.Configure(config); err != nil {
-			return errors.Wrapf(err, "configuring policy pack %q at %q", analyzerInfo.Name, pack.Path)
+			return fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
 		}
 	}
 
@@ -402,7 +407,6 @@ func newUpdateSource(
 	}
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
-	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
 	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
 		Proj:    proj,
 		Pwd:     pwd,

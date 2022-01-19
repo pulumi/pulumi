@@ -17,6 +17,7 @@ package display
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -89,25 +90,46 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		s.ImportID)
 }
 
-// ShowJSONEvents renders engine events from a preview into a well-formed JSON document. Note that this does not
+// ShowJSONEvents renders incremental engine events to stdout.
+func ShowJSONEvents(events <-chan engine.Event, done chan<- bool, opts Options) {
+	// Ensure we close the done channel before exiting.
+	defer func() { close(done) }()
+
+	sequence := 0
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetEscapeHTML(false)
+	for e := range events {
+		if err := logJSONEvent(encoder, e, opts, sequence); err != nil {
+			logging.V(7).Infof("failed to log event: %v", err)
+		}
+		sequence++
+
+		// In the event of cancellation, break out of the loop.
+		if e.Type == engine.CancelEvent {
+			break
+		}
+	}
+}
+
+// ShowPreviewDigest renders engine events from a preview into a well-formed JSON document. Note that this does not
 // emit events incrementally so that it can guarantee anything emitted to stdout is well-formed. This means that,
 // if used interactively, the experience will lead to potentially very long pauses. If run in CI, it is up to the
 // end user to ensure that output is periodically printed to prevent tools from thinking preview has hung.
-func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 
 	// Now loop and accumulate our digest until the event stream is closed, or we hit a cancellation.
 	var digest previewDigest
 	for e := range events {
-		// In the event of cancelation, break out of the loop immediately.
+		// In the event of cancellation, break out of the loop immediately.
 		if e.Type == engine.CancelEvent {
 			break
 		}
 
 		// For all other events, use the payload to build up the JSON digest we'll emit later.
 		switch e.Type {
-		// Events ocurring early:
+		// Events occurring early:
 		case engine.PreludeEvent:
 			// Capture the config map from the prelude. Note that all secrets will remain blinded for safety.
 			digest.Config = e.Payload().(engine.PreludeEventPayload).Config
@@ -160,7 +182,7 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 					if err == nil {
 						step.OldState = &res
 					} else {
-						logging.V(7).Infof("not adding old state as there was an error serialzing: %s", err)
+						logging.V(7).Infof("not adding old state as there was an error serializing: %s", err)
 					}
 				}
 				if m.New != nil {
@@ -169,18 +191,17 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 					if err == nil {
 						step.NewState = &res
 					} else {
-						logging.V(7).Infof("not adding new state as there was an error serialzing: %s", err)
+						logging.V(7).Infof("not adding new state as there was an error serializing: %s", err)
 					}
 				}
 
 				digest.Steps = append(digest.Steps, step)
 			}
 		case engine.ResourceOutputsEvent, engine.ResourceOperationFailed:
-			// Because we are only JSON serializing previews, we don't need to worry about outputs
-			// resolving or operations failing. In the future, if we serialize actual deployments, we will
-			// need to come up with a scheme for matching the failure to the associated step.
+		// Because we are only JSON serializing previews, we don't need to worry about outputs
+		// resolving or operations failing.
 
-		// Events ocurring late:
+		// Events occurring late:
 		case engine.PolicyViolationEvent:
 			// At this point in time, we don't handle policy events in JSON serialization
 			continue
@@ -194,7 +215,6 @@ func ShowJSONEvents(op string, action apitype.UpdateKind, events <-chan engine.E
 			contract.Failf("unknown event type '%s'", e.Type)
 		}
 	}
-
 	// Finally, go ahead and render the JSON to stdout.
 	out, err := json.MarshalIndent(&digest, "", "    ")
 	contract.Assertf(err == nil, "unexpected JSON error: %v", err)

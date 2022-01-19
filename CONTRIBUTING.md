@@ -8,20 +8,20 @@ For larger features, we'd appreciate it if you open a [new issue](https://github
 
 To hack on Pulumi, you'll need to get a development environment set up. You'll want to install the following on your machine:
 
-- Go 1.16
-- NodeJS 10.X.X or later
+- Go 1.17
+- NodeJS 12.X.X or later
 - Python 3.6 or later
 - [.NET Core](https://dotnet.microsoft.com/download)
-- [pipenv](https://github.com/pypa/pipenv)
 - [Golangci-lint](https://github.com/golangci/golangci-lint)
 - [Yarn](https://yarnpkg.com/)
+- [Pulumictl](https://github.com/pulumi/pulumictl)
 
 ## Getting dependencies on macOS
 
 You can easily get all required dependencies with brew and npm
 
 ```bash
-brew install node pipenv python@3 typescript yarn go@1.13 golangci/tap/golangci-lint pulumi/tap/pulumictl
+brew install node python@3 typescript yarn go@1.17 golangci/tap/golangci-lint pulumi/tap/pulumictl coreutils
 curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/0272f0d33f/Casks/dotnet-sdk.rb > dotnet-sdk.rb  # v3.1.0
 brew install --HEAD -s dotnet-sdk.rb
 rm dotnet-sdk.rb
@@ -37,12 +37,10 @@ If you have a web browser, you can get a fully pre-configured Pulumi development
 
 We use `make` as our build system, so you'll want to install that as well, if you don't have it already. We have extremely limited support for doing development on Windows (the bare minimum for us to get Windows validation of `pulumi`) so if you're on windows, we recommend that you use the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10). We'd like to [make this better](https://github.com/pulumi/pulumi/issues/208) so feel free to pitch in if you can.
 
-For historical reasons (which we'd [like to address](https://github.com/pulumi/pulumi/issues/1515)) our build system requires that the folder `/opt/pulumi` exists and is writable by the current user. If you'd like, you can override this location by setting `PULUMI_ROOT` in your environment. The build is known to fail if this doesn't exist, so you'll need to create it first.
+We build Pulumi in `$PULUMI_ROOT`, which defaults to `$HOME/.pulumi-dev`. If you would like to build Pulumi in another location, you do so by setting `$PULUMI_ROOT`. 
 
 ```bash
-mkdir /opt/pulumi
-sudo chown <your_user_name>: /opt/pulumi
-export PATH=/opt/pulumi:/opt/pulumi/bin:$PATH
+export PATH=$HOME/.pulumi-dev/bin:$PATH
 ```
 
 You'll also need to make sure your maximum open file descriptor limit is set to 5000 at a minimum.
@@ -54,9 +52,10 @@ ulimit -n 5000
 
 Across our projects, we try to use a regular set of make targets. The ones you'll care most about are:
 
-0. `make ensure`, which restores/installs any build dependencies
+1. `make ensure`, which restores/installs any build dependencies
+1. `make dist`, which just builds and installs the Pulumi CLI
 1. `make`, which builds Pulumi and runs a quick set of tests
-2. `make all` which builds Pulumi and runs the quick tests and a larger set of tests.
+1. `make all` which builds Pulumi and runs the quick tests and a larger set of tests.
 
 We make heavy use of integration level testing where we invoke `pulumi` to create and then delete cloud resources. This requires you to have a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and login with `pulumi login`.
 

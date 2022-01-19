@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -69,6 +70,7 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 
 	// Add plugin binary to included files.
 	files["pulumi-resource-test"] = nil
+	files["pulumi-resource-test.exe"] = nil
 
 	tgz, err := createTGZ(files)
 	assert.NoError(t, err)
@@ -107,7 +109,8 @@ func assertPluginInstalled(t *testing.T, dir string, plugin PluginInfo) {
 	assert.NoError(t, err)
 	assert.True(t, has)
 
-	plugins, err := getPlugins(dir)
+	skipMetadata := true
+	plugins, err := getPlugins(dir, skipMetadata)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(plugins))
 	assert.Equal(t, plugin.Name, plugins[0].Name)
@@ -153,6 +156,10 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 }
 
 func TestInstallNoDeps(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
+	}
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -172,6 +179,10 @@ func TestInstallNoDeps(t *testing.T) {
 }
 
 func TestConcurrentInstalls(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
+	}
+
 	name := "foo.txt"
 	content := []byte("hello\n")
 
@@ -255,6 +266,7 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 	assert.Error(t, err)
 	assert.False(t, has)
 
-	plugins, err := getPlugins(dir)
+	skipMetadata := true
+	plugins, err := getPlugins(dir, skipMetadata)
 	assert.Equal(t, 0, len(plugins))
 }

@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "mypkg/doc.go",
+    "mypkg/getAmiIds.go",
+    "mypkg/init.go",
+    "mypkg/listStorageAccountKeys.go",
+    "mypkg/provider.go",
+    "mypkg/pulumi-plugin.json",
+    "mypkg/pulumiTypes.go",
+    "mypkg/pulumiUtilities.go"
+  ]
+}

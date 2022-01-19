@@ -1,0 +1,24 @@
+name: Issue management
+
+on:
+  schedule:
+  - cron: '12 13 * * *'
+
+jobs:
+  stale:
+    name: Close stale awaiting-feedback issues
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+    - uses: actions/stale@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        only-labels: awaiting-feedback
+        stale-issue-message: 'Since we haven''t heard back from you, closing this issue for now. Please feel free to comment with more information and we can get this reopened.'
+        stale-issue-label: awaiting-feedback-stale
+        days-before-stale: 14
+        close-issue-label: resolution/no-repro
+        days-before-close: 1

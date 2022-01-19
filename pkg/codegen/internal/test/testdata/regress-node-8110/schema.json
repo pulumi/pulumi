@@ -1,0 +1,66 @@
+{
+  "name": "my8110",
+  "version": "0.0.1",
+  "functions": {
+    "my8110::exampleFunc": {
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "enums": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/types/my8110::MyEnum"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "types": {
+    "my8110::MyEnum": {
+      "type": "string",
+      "enum": [
+        {
+          "value": "one"
+        },
+        {
+          "value": "two"
+        }
+      ]
+    },
+    "my8110::MyObj": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "language": {
+    "csharp": {
+       "projectReferences": [
+        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ]
+   },
+    "nodejs": {
+      "devDependencies": {
+        "@types/node": "latest",
+        "ts-node": "latest"
+      },
+      "extraTypeScriptFiles": [
+        "compileCheck.ts"
+      ]
+    },
+    "go": {
+      "generateExtraInputTypes": true
+    }
+  }
+}

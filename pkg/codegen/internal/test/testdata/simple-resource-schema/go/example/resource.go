@@ -24,12 +24,13 @@ func NewResource(ctx *pulumi.Context,
 	}
 
 	if args.Bar != nil {
-		args.Bar = pulumi.ToSecret(args.Bar).(pulumi.StringOutput)
+		args.Bar = pulumi.ToSecret(args.Bar).(pulumi.StringPtrOutput)
 	}
 	secrets := pulumi.AdditionalSecretOutputs([]string{
 		"bar",
 	})
 	opts = append(opts, secrets)
+	opts = pkgResourceDefaultOpts(opts)
 	var resource Resource
 	err := ctx.RegisterResource("example::Resource", name, args, &resource, opts...)
 	if err != nil {
@@ -52,11 +53,9 @@ func GetResource(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering Resource resources.
 type resourceState struct {
-	Bar *string `pulumi:"bar"`
 }
 
 type ResourceState struct {
-	Bar pulumi.StringPtrInput
 }
 
 func (ResourceState) ElementType() reflect.Type {
@@ -84,7 +83,7 @@ type ResourceInput interface {
 }
 
 func (*Resource) ElementType() reflect.Type {
-	return reflect.TypeOf((*Resource)(nil))
+	return reflect.TypeOf((**Resource)(nil)).Elem()
 }
 
 func (i *Resource) ToResourceOutput() ResourceOutput {
@@ -95,12 +94,10 @@ func (i *Resource) ToResourceOutputWithContext(ctx context.Context) ResourceOutp
 	return pulumi.ToOutputWithContext(ctx, i).(ResourceOutput)
 }
 
-type ResourceOutput struct {
-	*pulumi.OutputState
-}
+type ResourceOutput struct{ *pulumi.OutputState }
 
 func (ResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Resource)(nil))
+	return reflect.TypeOf((**Resource)(nil)).Elem()
 }
 
 func (o ResourceOutput) ToResourceOutput() ResourceOutput {
@@ -112,5 +109,6 @@ func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) Resourc
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ResourceInput)(nil)).Elem(), &Resource{})
 	pulumi.RegisterOutputType(ResourceOutput{})
 }

@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@ class TestFirstClassProviderInvoke(LanghostTest):
             program=path.join(self.base_path(), "first_class_provider_invoke"),
             expected_resource_count=4)
 
-
     def invoke(self, _ctx, token, args, provider, _version):
         # MyFunction explicitly receives a provider reference.
         if token == "test:index:MyFunction":
@@ -52,9 +51,9 @@ class TestFirstClassProviderInvoke(LanghostTest):
             "value": args["value"] + 1
         }
 
-    def register_resource(self, _ctx, _dry_run, ty, name, resource, _deps,
-                          _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         if name == "testprov":
             self.assertEqual("pulumi:providers:test", ty)
             self.prov_urn = self.make_urn(ty, name)
@@ -66,11 +65,11 @@ class TestFirstClassProviderInvoke(LanghostTest):
 
         if name == "resourceA":
             self.assertEqual("test:index:MyResource", ty)
-            self.assertEqual(resource["value"], 9001)
+            self.assertEqual(_resource["value"], 9001)
             return {
                 "urn": self.make_urn(ty, name),
                 "id": name,
-                "object": resource,
+                "object": _resource,
             }
 
         if name == "resourceB":
@@ -81,11 +80,11 @@ class TestFirstClassProviderInvoke(LanghostTest):
 
         if name == "resourceC":
             self.assertEqual("test:index:MyResource", ty)
-            self.assertEqual(resource["value"], 42)
+            self.assertEqual(_resource["value"], 42)
             return {
                 "urn": self.make_urn(ty, name),
                 "id": name,
-                "object": resource,
+                "object": _resource,
             }
 
         self.fail(f"unexpected resource: {name}")

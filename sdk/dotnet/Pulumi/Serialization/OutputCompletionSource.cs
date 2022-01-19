@@ -17,7 +17,7 @@ namespace Pulumi.Serialization
 
         void TrySetException(Exception exception);
         void TrySetDefaultResult(bool isKnown);
-        
+
         void SetStringValue(string value, bool isKnown);
         void SetValue(OutputData<object?> data);
     }
@@ -35,7 +35,7 @@ namespace Pulumi.Serialization
             Output = new Output<T>(_taskCompletionSource.Task);
         }
 
-        public System.Type TargetType => typeof(T);
+        public Type TargetType => typeof(T);
 
         IOutput IOutputCompletionSource.Output => Output;
 
@@ -45,7 +45,7 @@ namespace Pulumi.Serialization
 
         public void SetValue(OutputData<object?> data)
             => _taskCompletionSource.SetResult(new OutputData<T>(
-                _resources.Union(data.Resources), (T)data.Value!, data.IsKnown, data.IsSecret));
+                _resources.Union(data.Resources), (data.Value == null ? default(T) : (T)data.Value)! , data.IsKnown, data.IsSecret));
 
         public void TrySetDefaultResult(bool isKnown)
             => _taskCompletionSource.TrySetResult(new OutputData<T>(
@@ -59,9 +59,6 @@ namespace Pulumi.Serialization
     {
         public static ImmutableDictionary<string, IOutputCompletionSource> InitializeOutputs(Resource resource)
         {
-            var name = resource.GetResourceName();
-            var type = resource.GetResourceType();
-
             var query = from property in resource.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
                         let attr = property.GetCustomAttribute<OutputAttribute>()
                         where attr != null
@@ -75,7 +72,7 @@ namespace Pulumi.Serialization
                 if (!propType.IsConstructedGenericType ||
                     propType.GetGenericTypeDefinition() != typeof(Output<>))
                 {
-                    throw new InvalidOperationException($"{propFullName} was not an Output<T>");
+                    throw RunException.OutputsHaveIncorrectType(new[] { attrName });
                 }
 
                 var setMethod = prop.DeclaringType!.GetMethod("set_" + prop.Name, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
@@ -89,9 +86,9 @@ namespace Pulumi.Serialization
 
                 var ocsType = typeof(OutputCompletionSource<>).MakeGenericType(outputTypeArg);
                 var ocsContructor = ocsType.GetConstructors().Single();
-                var completionSource = (IOutputCompletionSource)ocsContructor.Invoke(new[] { resource });
+                var completionSource = (IOutputCompletionSource)ocsContructor.Invoke(new object?[] { resource });
 
-                setMethod.Invoke(resource, new[] { completionSource.Output });
+                setMethod.Invoke(resource, new object?[] { completionSource.Output });
 
                 var outputName = attrName ?? prop.Name;
                 result.Add(outputName, completionSource);

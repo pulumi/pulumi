@@ -2,10 +2,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using Xunit;
-using Pulumi.Automation.Commands;
 using System.Linq;
+using System.Threading.Tasks;
+using Pulumi.Automation.Commands;
+using Xunit;
 
 namespace Pulumi.Automation.Tests
 {
@@ -15,8 +15,8 @@ namespace Pulumi.Automation.Tests
         public async Task CheckVersionCommand()
         {
             var localCmd = new LocalPulumiCmd();
-            IDictionary<string, string?> extraEnv = new Dictionary<string, string?>();
-            IEnumerable<string> args = new string[]{ "version" };
+            var extraEnv = new Dictionary<string, string?>();
+            var args = new[] { "version" };
 
             var stdoutLines = new List<string>();
             var stderrLines = new List<string>();
@@ -35,7 +35,7 @@ namespace Pulumi.Automation.Tests
             Assert.Equal(0, result.Code);
 
             Assert.Matches(@"^v?\d+\.\d+\.\d+", result.StandardOutput);
-            Assert.Matches(@"^(warning: A new version of Pulumi[^\n]+\n)?$",
+            Assert.Matches(@"^(warning: A new version of Pulumi[^\n]+\n)?",
                            result.StandardError);
 
             Assert.Equal(Lines(result.StandardOutput), stdoutLines);
@@ -44,8 +44,7 @@ namespace Pulumi.Automation.Tests
 
         private IEnumerable<string> Lines(string s) {
             return s.Split(Environment.NewLine,
-                           StringSplitOptions.RemoveEmptyEntries)
-                .Select(x => x.Trim());
+                           StringSplitOptions.RemoveEmptyEntries);
         }
     }
 }

@@ -1,4 +1,4 @@
-//nolint:golint
+//nolint:revive
 package lifecycletest
 
 import (
@@ -96,11 +96,11 @@ func (op TestOp) RunWithContext(
 	_, res := op(info, ctx, opts, dryRun)
 	contract.IgnoreClose(journal)
 
-	if dryRun {
-		return nil, res
-	}
 	if validate != nil {
 		res = validate(project, target, journal.Entries(), firedEvents, res)
+	}
+	if dryRun {
+		return nil, res
 	}
 
 	snap := journal.Snap(target.Snapshot)
@@ -115,6 +115,18 @@ type TestStep struct {
 	ExpectFailure bool
 	SkipPreview   bool
 	Validate      ValidateFunc
+}
+
+func (t *TestStep) ValidateAnd(f ValidateFunc) {
+	o := t.Validate
+	t.Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
+		events []Event, res result.Result) result.Result {
+		r := o(project, target, entries, events, res)
+		if r != nil {
+			return r
+		}
+		return f(project, target, entries, events, res)
+	}
 }
 
 type TestPlan struct {
@@ -168,7 +180,7 @@ func (p *TestPlan) GetProject() workspace.Project {
 	}
 }
 
-func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
+func (p *TestPlan) GetTarget(t *testing.T, snapshot *deploy.Snapshot) deploy.Target {
 	stack, _, _ := p.getNames()
 
 	cfg := p.Config
@@ -180,7 +192,10 @@ func (p *TestPlan) GetTarget(snapshot *deploy.Snapshot) deploy.Target {
 		Name:      stack,
 		Config:    cfg,
 		Decrypter: p.Decrypter,
-		Snapshot:  snapshot,
+		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
+		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
+		// cause state changes from the preview to persist even when doing an update.
+		Snapshot: CloneSnapshot(t, snapshot),
 	}
 }
 
@@ -207,10 +222,11 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
 		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
 		// cause state changes from the preview to persist even when doing an update.
+		// GetTarget ALWAYS clones the snapshot, so the previewTarget.Snapshot != target.Snapshot
 		if !step.SkipPreview {
-			previewSnap := CloneSnapshot(t, snap)
-			previewTarget := p.GetTarget(previewSnap)
-			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, step.Validate)
+			previewTarget := p.GetTarget(t, snap)
+			// Don't run validate on the preview step
+			_, res := step.Op.Run(project, previewTarget, p.Options, true, p.BackendClient, nil)
 			if step.ExpectFailure {
 				assertIsErrorOrBailResult(t, res)
 				continue
@@ -220,7 +236,7 @@ func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot
 		}
 
 		var res result.Result
-		target := p.GetTarget(snap)
+		target := p.GetTarget(t, snap)
 		snap, res = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
 		if step.ExpectFailure {
 			assertIsErrorOrBailResult(t, res)
@@ -251,9 +267,10 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				_ []Event, res result.Result) result.Result {
 
-				// Should see only creates.
+				// Should see only creates or reads.
 				for _, entry := range entries {
-					assert.Equal(t, deploy.OpCreate, entry.Step.Op())
+					op := entry.Step.Op()
+					assert.True(t, op == deploy.OpCreate || op == deploy.OpRead)
 				}
 				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
 				return res
@@ -282,7 +299,8 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 
 				// Should see only sames.
 				for _, entry := range entries {
-					assert.Equal(t, deploy.OpSame, entry.Step.Op())
+					op := entry.Step.Op()
+					assert.True(t, op == deploy.OpSame || op == deploy.OpRead)
 				}
 				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
 				return res

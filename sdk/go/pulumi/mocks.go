@@ -73,8 +73,14 @@ func (m *mockMonitor) newURN(parent, typ, name string) string {
 func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.SupportsFeatureRequest,
 	opts ...grpc.CallOption) (*pulumirpc.SupportsFeatureResponse, error) {
 
+	id := in.GetId()
+
+	// Support for "outputValues" is deliberately disabled for the mock monitor so
+	// instances of `Output` don't show up in `MockResourceArgs` Inputs.
+	hasSupport := id == "secrets" || id == "resourceReferences"
+
 	return &pulumirpc.SupportsFeatureResponse{
-		HasSupport: true,
+		HasSupport: hasSupport,
 	}, nil
 }
 
@@ -131,6 +137,12 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
 
 func (m *mockMonitor) StreamInvoke(ctx context.Context, in *pulumirpc.InvokeRequest,
 	opts ...grpc.CallOption) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
+
+	panic("not implemented")
+}
+
+func (m *mockMonitor) Call(ctx context.Context, in *pulumirpc.CallRequest,
+	opts ...grpc.CallOption) (*pulumirpc.CallResponse, error) {
 
 	panic("not implemented")
 }

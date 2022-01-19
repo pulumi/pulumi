@@ -18,14 +18,16 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
+	"testing"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -39,8 +41,9 @@ func DecodeMapString(val string) (map[string]string, error) {
 		for _, overrideClause := range strings.Split(val, ":") {
 			data := strings.Split(overrideClause, "=")
 			if len(data) != 2 {
-				return nil, errors.Errorf(
-					"could not decode %s as an override, should be of the form <package>=<version>", overrideClause)
+				return nil, fmt.Errorf(
+					"could not decode %s as an override, should be of the form <package>=<version>",
+					overrideClause)
 			}
 			packageName := data[0]
 			packageVersion := data[1]
@@ -70,7 +73,7 @@ func getCmdBin(loc *string, bin, def string) (string, error) {
 			var err error
 			*loc, err = exec.LookPath(bin)
 			if err != nil {
-				return "", errors.Wrapf(err, "Expected to find `%s` binary on $PATH", bin)
+				return "", fmt.Errorf("Expected to find `%s` binary on $PATH: %w", bin, err)
 			}
 		}
 	}
@@ -92,13 +95,13 @@ const (
 func writeCommandOutput(commandName, runDir string, output []byte) (string, error) {
 	logFileDir := filepath.Join(runDir, commandOutputFolderName)
 	if err := os.MkdirAll(logFileDir, 0700); err != nil {
-		return "", errors.Wrapf(err, "Failed to create '%s'", logFileDir)
+		return "", fmt.Errorf("Failed to create '%s': %w", logFileDir, err)
 	}
 
 	logFile := filepath.Join(logFileDir, commandName+uniqueSuffix()+".log")
 
 	if err := ioutil.WriteFile(logFile, output, 0600); err != nil {
-		return "", errors.Wrapf(err, "Failed to write '%s'", logFile)
+		return "", fmt.Errorf("Failed to write '%s': %w", logFile, err)
 	}
 
 	return logFile, nil
@@ -164,4 +167,75 @@ func CopyDir(src, dst string) error {
 		}
 	}
 	return nil
+}
+
+// AssertHTTPResultWithRetry attempts to assert that an HTTP endpoint exists
+// and evaluate its response.
+func AssertHTTPResultWithRetry(
+	t *testing.T,
+	output interface{},
+	headers map[string]string,
+	maxWait time.Duration,
+	check func(string) bool,
+) bool {
+	hostname, ok := output.(string)
+	if !assert.True(t, ok, fmt.Sprintf("expected `%s` output", output)) {
+		return false
+	}
+	if !(strings.HasPrefix(hostname, "http://") || strings.HasPrefix(hostname, "https://")) {
+		hostname = fmt.Sprintf("http://%s", hostname)
+	}
+	var err error
+	var resp *http.Response
+	startTime := time.Now()
+	count, sleep := 0, 0
+	for true {
+		now := time.Now()
+		req, err := http.NewRequest("GET", hostname, nil)
+		if !assert.NoError(t, err, "error reading request: %v", err) {
+			return false
+		}
+
+		for k, v := range headers {
+			// Host header cannot be set via req.Header.Set(), and must be set
+			// directly.
+			if strings.ToLower(k) == "host" {
+				req.Host = v
+				continue
+			}
+			req.Header.Set(k, v)
+		}
+
+		client := &http.Client{Timeout: time.Second * 10}
+		resp, err = client.Do(req)
+
+		if err == nil && resp.StatusCode == 200 {
+			break
+		}
+		if now.Sub(startTime) >= maxWait {
+			t.Logf("Timeout after %v. Unable to http.get %v successfully.", maxWait, hostname)
+			break
+		}
+		count++
+		// delay 10s, 20s, then 30s and stay at 30s
+		if sleep > 30 {
+			sleep = 30
+		} else {
+			sleep += 10
+		}
+		time.Sleep(time.Duration(sleep) * time.Second)
+		t.Logf("Http Error: %v\n", err)
+		t.Logf("  Retry: %v, elapsed wait: %v, max wait %v\n", count, now.Sub(startTime), maxWait)
+	}
+	if !assert.NoError(t, err) {
+		return false
+	}
+	// Read the body
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if !assert.NoError(t, err) {
+		return false
+	}
+	// Verify it matches expectations
+	return check(string(body))
 }

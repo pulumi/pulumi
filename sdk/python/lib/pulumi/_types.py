@@ -413,7 +413,8 @@ def _py_properties(cls: type) -> Iterator[Tuple[str, str, builtins.property]]:
                 prop = cast(builtins.property, v)
                 pulumi_name = getattr(prop.fget, _PULUMI_NAME, MISSING)
                 if pulumi_name is not MISSING:
-                    yield (python_name, pulumi_name, prop)
+                    yield (python_name, cast(str, pulumi_name), prop)
+
 
 def input_type(cls: Type[T]) -> Type[T]:
     """
@@ -978,7 +979,7 @@ def _property_init(python_name: str, prop: _Property, globals, is_dict: bool, ha
         # There's no default, just do an assignment.
         value = python_name
     else:
-        globals[default_name] = python_name
+        globals[default_name] = prop.default
         value = python_name
 
     # Now, actually generate the assignment.

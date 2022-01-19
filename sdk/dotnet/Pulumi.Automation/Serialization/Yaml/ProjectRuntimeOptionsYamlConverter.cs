@@ -11,9 +11,9 @@ namespace Pulumi.Automation.Serialization.Yaml
 {
     internal class ProjectRuntimeOptionsYamlConverter : IYamlTypeConverter
     {
-        private static readonly Type Type = typeof(ProjectRuntimeOptions);
-        private static readonly List<string> PropertyNames = typeof(ProjectRuntimeOptions).GetProperties().Select(x => x.Name).ToList();
-        private static readonly Dictionary<string, Func<Scalar, string, Type, object?>> Readers =
+        private static readonly Type _type = typeof(ProjectRuntimeOptions);
+        private static readonly List<string> _propertyNames = typeof(ProjectRuntimeOptions).GetProperties().Select(x => x.Name).ToList();
+        private static readonly Dictionary<string, Func<Scalar, string, Type, object?>> _readers =
             new Dictionary<string, Func<Scalar, string, Type, object?>>(StringComparer.OrdinalIgnoreCase)
             {
                 [nameof(ProjectRuntimeOptions.Binary)] = (x, p, t) => x.Value,
@@ -21,22 +21,21 @@ namespace Pulumi.Automation.Serialization.Yaml
                 [nameof(ProjectRuntimeOptions.VirtualEnv)] = (x, p, t) => x.Value,
             };
 
-        public bool Accepts(Type type)
-            => type == Type;
+        public bool Accepts(Type type) => type == _type;
 
-        public object? ReadYaml(IParser parser, Type type)
+        public object ReadYaml(IParser parser, Type type)
         {
             if (!parser.TryConsume<MappingStart>(out _))
                 throw new YamlException($"Unable to deserialize [{type.FullName}]. Expecting object.");
 
-            var values = PropertyNames.ToDictionary(x => x, x => (object?)null, StringComparer.OrdinalIgnoreCase);
+            var values = _propertyNames.ToDictionary(x => x, x => (object?)null, StringComparer.OrdinalIgnoreCase);
 
             do
             {
                 if (!parser.TryConsume<Scalar>(out var propertyNameScalar))
                     throw new YamlException($"Unable to deserialize [{type.FullName}]. Expecting a property name.");
 
-                if (!Readers.TryGetValue(propertyNameScalar.Value, out var readerFunc))
+                if (!_readers.TryGetValue(propertyNameScalar.Value, out var readerFunc))
                     throw new YamlException($"Unable to deserialize [{type.FullName}]. Invalid property [{propertyNameScalar.Value}].");
 
                 if (!parser.TryConsume<Scalar>(out var propertyValueScalar))

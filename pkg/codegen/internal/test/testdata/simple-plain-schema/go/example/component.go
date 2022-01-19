@@ -57,9 +57,9 @@ type componentArgs struct {
 type ComponentArgs struct {
 	A      bool
 	B      *bool
-	Bar    *Foo
-	Baz    []Foo
-	BazMap map[string]Foo
+	Bar    *FooArgs
+	Baz    []FooInput
+	BazMap map[string]FooInput
 	C      int
 	D      *int
 	E      string
@@ -79,7 +79,7 @@ type ComponentInput interface {
 }
 
 func (*Component) ElementType() reflect.Type {
-	return reflect.TypeOf((*Component)(nil))
+	return reflect.TypeOf((**Component)(nil)).Elem()
 }
 
 func (i *Component) ToComponentOutput() ComponentOutput {
@@ -90,12 +90,10 @@ func (i *Component) ToComponentOutputWithContext(ctx context.Context) ComponentO
 	return pulumi.ToOutputWithContext(ctx, i).(ComponentOutput)
 }
 
-type ComponentOutput struct {
-	*pulumi.OutputState
-}
+type ComponentOutput struct{ *pulumi.OutputState }
 
 func (ComponentOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Component)(nil))
+	return reflect.TypeOf((**Component)(nil)).Elem()
 }
 
 func (o ComponentOutput) ToComponentOutput() ComponentOutput {
@@ -107,5 +105,6 @@ func (o ComponentOutput) ToComponentOutputWithContext(ctx context.Context) Compo
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ComponentInput)(nil)).Elem(), &Component{})
 	pulumi.RegisterOutputType(ComponentOutput{})
 }

@@ -8,14 +8,14 @@ using Pulumi.Automation.Serialization;
 
 namespace Pulumi.Automation.Events
 {
-    internal class EventLogWatcher : IDisposable
+    internal sealed class EventLogWatcher : IDisposable
     {
         private readonly LocalSerializer _localSerializer = new LocalSerializer();
         private readonly Action<EngineEvent> _onEvent;
         private const int _pollingIntervalMilliseconds = 100;
 
         // We keep track of the last position in the file.
-        private long _position = 0;
+        private long _position;
         public string LogFile { get; }
         private readonly Task _pollingTask;
         private readonly CancellationTokenSource _internalCancellationTokenSource = new CancellationTokenSource();
@@ -37,7 +37,7 @@ namespace Pulumi.Automation.Events
         internal async Task Stop()
         {
             this._internalCancellationTokenSource.Cancel();
-            await this.AwaitPollingTask();
+            await this.AwaitPollingTask().ConfigureAwait(false);
 
             // Race condition workaround.
             //
@@ -53,8 +53,8 @@ namespace Pulumi.Automation.Events
             // a CommandDone or some such EngineEvent, and we would
             // keep reading until we see one.
 
-            await Task.Delay(_pollingIntervalMilliseconds);
-            await ReadEventsOnce();
+            await Task.Delay(_pollingIntervalMilliseconds).ConfigureAwait(false);
+            await ReadEventsOnce().ConfigureAwait(false);
         }
 
         /// Exposed for testing; use Stop instead.
@@ -62,7 +62,7 @@ namespace Pulumi.Automation.Events
         {
             try
             {
-                await this._pollingTask;
+                await this._pollingTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException error) when (error.CancellationToken == this._cancellationToken)
             {
@@ -79,9 +79,10 @@ namespace Pulumi.Automation.Events
 
             while (true)
             {
-                await ReadEventsOnce();
-                await Task.Delay(_pollingIntervalMilliseconds, linkedSource.Token);
+                await ReadEventsOnce().ConfigureAwait(false);
+                await Task.Delay(_pollingIntervalMilliseconds, linkedSource.Token).ConfigureAwait(false);
             }
+            // ReSharper disable once FunctionNeverReturns
         }
 
         private async Task ReadEventsOnce()
@@ -91,15 +92,11 @@ namespace Pulumi.Automation.Events
                 return;
             }
 
-            using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
-            {
-                Position = this._position
-            };
+            await using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite) { Position = this._position };
             using var reader = new StreamReader(fs);
-            string? line;
             while (reader.Peek() >= 0)
             {
-                line = await reader.ReadLineAsync();
+                var line = await reader.ReadLineAsync().ConfigureAwait(false);
                 this._position = fs.Position;
                 if (!string.IsNullOrWhiteSpace(line))
                 {

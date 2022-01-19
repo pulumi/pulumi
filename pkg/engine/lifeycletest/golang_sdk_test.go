@@ -8,6 +8,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -714,6 +715,177 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			return nil
 		})
 	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   []TestStep{{Op: Update}},
+	}
+	p.Run(t, nil)
+}
+
+// This test validates the wiring of the ReplaceOnChanges prop in the go SDK.
+// It doesn't attempt to validate underlying behavior.
+func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
+	var expectedReplaceOnChanges []string
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, replaceOnChanges []string) (plugin.DiffResult, error) {
+					// just verify that the ReplaceOnChanges prop made it through
+					assert.Equal(t, expectedReplaceOnChanges, replaceOnChanges)
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	setupAndRunProgram := func(replaceOnChanges []string) *deploy.Snapshot {
+		program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+				Project:     info.Project,
+				Stack:       info.Stack,
+				Parallel:    info.Parallel,
+				DryRun:      info.DryRun,
+				MonitorAddr: info.MonitorAddress,
+			})
+			assert.NoError(t, err)
+
+			return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
+				var res pulumi.CustomResourceState
+				err := ctx.RegisterResource("pkgA:m:typA", "resA", nil, &res, pulumi.ReplaceOnChanges(replaceOnChanges))
+				assert.NoError(t, err)
+
+				return nil
+			})
+		})
+
+		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		p := &TestPlan{
+			Options: UpdateOptions{Host: host},
+			Steps: []TestStep{
+				{
+					Op: Update,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+						events []Event, res result.Result) result.Result {
+						for _, event := range events {
+							if event.Type == ResourcePreEvent {
+								payload := event.Payload().(ResourcePreEventPayload)
+								assert.Equal(t, []deploy.StepOp{deploy.OpCreate}, []deploy.StepOp{payload.Metadata.Op})
+							}
+						}
+						return res
+					},
+				},
+			},
+		}
+		return p.Run(t, nil)
+	}
+
+	// replace on changes specified
+	replaceOnChanges := []string{"b"}
+	setupAndRunProgram(replaceOnChanges)
+
+	// replace on changes empty
+	replaceOnChanges = []string{}
+	setupAndRunProgram(replaceOnChanges)
+}
+
+type remoteComponentArgs struct {
+	Foo pulumi.URN `pulumi:"foo"`
+	Bar *string    `pulumi:"bar"`
+}
+
+type remoteComponentInputs struct {
+	Foo pulumi.URNInput       `pulumi:"foo"`
+	Bar pulumi.StringPtrInput `pulumi:"bar"`
+}
+
+func (*remoteComponentInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*remoteComponentArgs)(nil)).Elem()
+}
+
+type remoteComponent struct {
+	pulumi.ResourceState
+
+	Foo pulumi.StringOutput `pulumi:"foo"`
+	Baz pulumi.StringOutput `pulumi:"baz"`
+}
+
+func TestRemoteComponentGolang(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
+					inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+					_, ok := inputs["bar"]
+					assert.False(t, ok)
+
+					urn, _, _, err := monitor.RegisterResource("pkgB:index:component", "componentA", false)
+					require.NoError(t, err)
+
+					outs := resource.PropertyMap{}
+
+					err = monitor.RegisterResourceOutputs(urn, outs)
+					require.NoError(t, err)
+
+					return plugin.ConstructResult{
+						URN:     urn,
+						Outputs: outs,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+			Project:     info.Project,
+			Stack:       info.Stack,
+			Parallel:    info.Parallel,
+			DryRun:      info.DryRun,
+			MonitorAddr: info.MonitorAddress,
+		})
+		require.NoError(t, err)
+
+		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
+			var resB pulumi.CustomResourceState
+			err := ctx.RegisterResource("pkgA:index:typA", "resA", pulumi.Map{}, &resB)
+			require.NoError(t, err)
+
+			inputs := remoteComponentInputs{
+				Foo: resB.URN(),
+			}
+
+			var res remoteComponent
+			err = ctx.RegisterRemoteComponentResource("pkgB:index:component", "componentA", &inputs, &res)
+			require.NoError(t, err)
+
+			return nil
+		})
+	})
+
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{

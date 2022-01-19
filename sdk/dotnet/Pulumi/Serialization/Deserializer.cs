@@ -26,7 +26,7 @@ namespace Pulumi.Serialization
             {
                 return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)assetOrArchive, isKnown: true, isSecret);
             }
-            else if (TryDeserializeResource(value, out var resource))
+            if (TryDeserializeResource(value, out var resource))
             {
                 return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)resource, isKnown: true, isSecret);
             }
@@ -100,7 +100,7 @@ namespace Pulumi.Serialization
                 });
 
         public static OutputData<object?> Deserialize(Value value)
-            => DeserializeCore(value, 
+            => DeserializeCore(value,
                 v => v.KindCase switch
                 {
                     Value.KindOneofCase.NumberValue => DeserializerDouble(v),
@@ -120,7 +120,7 @@ namespace Pulumi.Serialization
             while (IsSpecialStruct(value, out var sig) &&
                    sig == Constants.SpecialSecretSig)
             {
-                if (!value.StructValue.Fields.TryGetValue(Constants.SecretValueName, out var secretValue))
+                if (!value.StructValue.Fields.TryGetValue(Constants.ValueName, out var secretValue))
                     throw new InvalidOperationException("Secrets must have a field called 'value'");
 
                 isSecret = true;
@@ -155,7 +155,7 @@ namespace Pulumi.Serialization
                     assetOrArchive = DeserializeAsset(value);
                     return true;
                 }
-                else if (sig == Constants.SpecialArchiveSig)
+                if (sig == Constants.SpecialArchiveSig)
                 {
                     assetOrArchive = DeserializeArchive(value);
                     return true;
@@ -217,14 +217,13 @@ namespace Pulumi.Serialization
                 return false;
             }
 
-            string? urn;
-            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceUrnName, out urn))
+            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceUrnName, out var urn))
             {
                 throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
             }
 
-            string? version;
-            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out version)) {
+            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out var version))
+            {
                 version = "";
             }
 
@@ -233,7 +232,8 @@ namespace Pulumi.Serialization
             var qualifiedTypeParts = qualifiedType.Split('$');
             var type = qualifiedTypeParts[^1];
 
-            if (ResourcePackages.TryConstruct(type, version, urn, out resource)) {
+            if (ResourcePackages.TryConstruct(type, version, urn, out resource))
+            {
                 return true;
             }
 
