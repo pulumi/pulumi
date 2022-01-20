@@ -18,12 +18,12 @@ var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_
 goog.object.extend(proto, google_protobuf_struct_pb);
 var provider_pb = require('./provider_pb.js');
 goog.object.extend(proto, provider_pb);
+goog.exportSymbol('proto.pulumirpc.DeleteBehaviour', null, global);
 goog.exportSymbol('proto.pulumirpc.ReadResourceRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.ReadResourceResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceOutputsRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceRequest.CustomTimeouts', null, global);
-goog.exportSymbol('proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceRequest.PropertyDependencies', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceResponse.PropertyDependencies', null, global);
@@ -1458,7 +1458,7 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       msg.setPlugindownloadurl(value);
       break;
     case 25:
-      var value = /** @type {!proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour} */ (reader.readEnum());
+      var value = /** @type {!proto.pulumirpc.DeleteBehaviour} */ (reader.readEnum());
       msg.setDeletebehaviour(value);
       break;
     default:
@@ -1663,15 +1663,6 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   }
 };
 
-
-/**
- * @enum {number}
- */
-proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour = {
-  DELETE: 0,
-  DROP: 1,
-  PROTECT: 2
-};
 
 
 /**
@@ -2594,15 +2585,15 @@ proto.pulumirpc.RegisterResourceRequest.prototype.setPlugindownloadurl = functio
 
 /**
  * optional DeleteBehaviour deleteBehaviour = 25;
- * @return {!proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour}
+ * @return {!proto.pulumirpc.DeleteBehaviour}
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.getDeletebehaviour = function() {
-  return /** @type {!proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour} */ (jspb.Message.getFieldWithDefault(this, 25, 0));
+  return /** @type {!proto.pulumirpc.DeleteBehaviour} */ (jspb.Message.getFieldWithDefault(this, 25, 0));
 };
 
 
 /**
- * @param {!proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour} value
+ * @param {!proto.pulumirpc.DeleteBehaviour} value
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setDeletebehaviour = function(value) {
@@ -3276,5 +3267,14 @@ proto.pulumirpc.RegisterResourceOutputsRequest.prototype.hasOutputs = function()
   return jspb.Message.getField(this, 2) != null;
 };
 
+
+/**
+ * @enum {number}
+ */
+proto.pulumirpc.DeleteBehaviour = {
+  DELETE: 0,
+  DROP: 1,
+  PROTECT: 2
+};
 
 goog.object.extend(exports, proto.pulumirpc);

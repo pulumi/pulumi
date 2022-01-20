@@ -481,6 +481,13 @@ def register_resource(res: 'Resource',
                     raise Exception("Expected custom_timeouts to be a CustomTimeouts object")
 
             accept_resources = not (os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"})
+
+            delete_behaviour = resource_pb2.DELETE
+            if opts.delete_behaviour == "protect":
+                delete_behaviour = resource_pb2.PROTECT
+            if opts.delete_behaviour == "drop":
+                delete_behaviour = resource_pb2.DROP
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -506,7 +513,7 @@ def register_resource(res: 'Resource',
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
-                deleteBehaviour=opts.delete_behaviour,
+                deleteBehaviour=delete_behaviour,
             )
 
             from ..resource import create_urn  # pylint: disable=import-outside-toplevel

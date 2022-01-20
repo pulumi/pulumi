@@ -70,6 +70,12 @@ message ReadResourceResponse {
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
 }
 
+enum DeleteBehaviour {
+    DELETE = 0;
+    DROP = 1;
+    PROTECT = 2;
+}
+
 // RegisterResourceRequest contains information about a resource object that was newly allocated.
 message RegisterResourceRequest {
     // PropertyDependencies describes the resources that a particular property depends on.
@@ -108,12 +114,6 @@ message RegisterResourceRequest {
     repeated string replaceOnChanges = 23;                      // a list of properties that if changed should force a replacement.
     string pluginDownloadURL = 24;                              // the server URL of the provider to use when servicing this request.
     DeleteBehaviour deleteBehaviour = 25;                       // controls how the engine handles deletes of this resource.
-
-    enum DeleteBehaviour {
-        DELETE = 0;
-        DROP = 1;
-        PROTECT = 2;
-  }
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
