@@ -56,7 +56,11 @@ jobs:
           - windows-latest
           - macos-latest
         test-subset:
-          - integration
+          - integration-nodejs
+          - integration-go
+          - integration-dotnet
+          - integration-python
+          - integration-misc
           - integration-and-codegen
           - auto
           - etc
