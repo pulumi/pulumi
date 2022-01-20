@@ -15,6 +15,8 @@
 package integration
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -29,7 +31,10 @@ import (
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
 // specialized test output streams that list the location the test is running in.
 func RunCommand(t *testing.T, name string, args []string, wd string, opts *ProgramTestOptions) error {
-	path := args[0]
+	timeout := 5 * time.Minute
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	command := strings.Join(args, " ")
 	t.Logf("**** Invoke '%v' in '%v'", command, wd)
 
@@ -41,26 +46,28 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
-	cmd := exec.Cmd{
-		Path: path,
-		Dir:  wd,
-		Args: args,
-		Env:  env,
-	}
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	cmd.Dir = wd
+	cmd.Env = env
 
-	startTime := time.Now()
-
-	var runout []byte
-	var runerr error
+	var runoutBuffer bytes.Buffer
 	if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
 		cmd.Stdout = opts.Stdout
 		cmd.Stderr = opts.Stderr
-		runerr = cmd.Run()
 	} else {
-		runout, runerr = cmd.CombinedOutput()
+		opts.Stdout = &runoutBuffer
+		opts.Stderr = &runoutBuffer
 	}
 
+	startTime := time.Now()
+	runerr := cmd.Run()
 	endTime := time.Now()
+
+	if ctx.Err() == context.DeadlineExceeded {
+		t.Logf("Invoke '%v' timed out after %v\n", command, timeout)
+	}
+
+	runout := runoutBuffer.Bytes()
 
 	if opts.ReportStats != nil {
 		// Note: This data is archived and used by external analytics tools.  Take care if changing the schema or format
