@@ -49,18 +49,13 @@ jobs:
     strategy:
       matrix:
         platform:
-          - ubuntu-latest
           - windows-latest
-          - macos-latest
         test-subset:
           - integration-nodejs
           - integration-go
           - integration-dotnet
           - integration-python
           - integration-misc
-          - integration-and-codegen
-          - auto
-          - etc
       fail-fast: false
 
     runs-on: ${{ matrix.platform }}
