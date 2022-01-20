@@ -2074,12 +2074,15 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs) {
-	// The generator already emitted Pulumi.yaml, so that leaves two more files to write out:
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs) error {
+	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
+	//     3) install-pulumi-plugin.js: plugin install script
 	files.add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
 	files.add("tsconfig.json", []byte(genTypeScriptProjectFile(info, files)))
+	files.add("scripts/install-pulumi-plugin.js", []byte(genInstallScript(pkg.PluginDownloadURL)))
+	return nil
 }
 
 type npmPackage struct {
@@ -2127,12 +2130,9 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		Homepage:    pkg.Homepage,
 		Repository:  pkg.Repository,
 		License:     pkg.License,
-		// Ideally, this `scripts` section would include an install script that installs the provider, however, doing
-		// so causes problems when we try to restore package dependencies, since we must do an install for that. So
-		// we have another process that adds the install script when generating the package.json that we actually
-		// publish.
 		Scripts: map[string]string{
-			"build": "tsc",
+			"build":   "tsc",
+			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s ${VERSION}", pkg.Name),
 		},
 		DevDependencies: devDependencies,
 		Pulumi: npmPulumiManifest{
@@ -2461,7 +2461,9 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	// Finally emit the package metadata (NPM, TypeScript, and so on).
-	genPackageMetadata(pkg, info, files)
+	if err = genPackageMetadata(pkg, info, files); err != nil {
+		return nil, err
+	}
 	return files, nil
 }
 
@@ -2524,4 +2526,39 @@ export function resourceOptsDefaults(): any {
 	}
 	_, err := fmt.Fprintf(w, body, pluginDownloadURL)
 	contract.AssertNoError(err)
+}
+
+func genInstallScript(pluginDownloadURL string) string {
+	const installScript = `"use strict";
+var childProcess = require("child_process");
+
+var args = process.argv.slice(2);
+
+if (args.indexOf("${VERSION}") !== -1) {
+	process.exit(0);
+}
+
+var res = childProcess.spawnSync("pulumi", ["plugin", "install"%s].concat(args), {
+    stdio: ["ignore", "inherit", "inherit"]
+});
+
+if (res.error && res.error.code === "ENOENT") {
+    console.error("\nThere was an error installing the resource provider plugin. " +
+            "It looks like ` + "`pulumi`" + ` is not installed on your system. " +
+            "Please visit https://pulumi.com/ to install the Pulumi CLI.\n" +
+            "You may try manually installing the plugin by running " +
+            "` + "`" + `pulumi plugin install " + args.join(" ") + "` + "`" + `");
+} else if (res.error || res.status !== 0) {
+    console.error("\nThere was an error installing the resource provider plugin. " +
+            "You may try to manually installing the plugin by running " +
+            "` + "`" + `pulumi plugin install " + args.join(" ") + "` + "`" + `");
+}
+
+process.exit(0);
+`
+	server := ""
+	if pluginDownloadURL != "" {
+		server = fmt.Sprintf(`, "--server", %q`, pluginDownloadURL)
+	}
+	return fmt.Sprintf(installScript, server)
 }
