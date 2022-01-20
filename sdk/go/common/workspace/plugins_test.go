@@ -235,6 +235,49 @@ func TestPluginSelection_EmptyVersionWithAlternatives(t *testing.T) {
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
 
+func TestPluginDownloadUrl(t *testing.T) {
+	t.Run("Test Downloading From GitHub Releases", func(t *testing.T) {
+		version := semver.MustParse("4.32.0")
+		info := PluginInfo{
+			PluginDownloadURL: "",
+			Name:              "aws",
+			Version:           &version,
+			Kind:              PluginKind("resource"),
+		}
+		serverURL := buildGitHubReleasesPluginURL(info.Kind, info.Name, info.Version, "darwin", "amd64")
+		assert.Equal(t,
+			"https://github.com/pulumi/pulumi-aws/releases/download/v4.32.0/pulumi-resource-aws-v4.32.0-darwin-amd64.tar.gz",
+			serverURL)
+	})
+	t.Run("Test Downloading From get.pulumi.com", func(t *testing.T) {
+		version := semver.MustParse("4.32.0")
+		info := PluginInfo{
+			PluginDownloadURL: "",
+			Name:              "aws",
+			Version:           &version,
+			Kind:              PluginKind("resource"),
+		}
+		serverURL := buildPulumiHostedPluginURL(info.Kind, info.Name, info.Version, "darwin", "amd64")
+		assert.Equal(t,
+			"https://get.pulumi.com/releases/plugins/pulumi-resource-aws-v4.32.0-darwin-amd64.tar.gz", serverURL)
+	})
+	t.Run("Test Downloading From Custom Server URL", func(t *testing.T) {
+		version := semver.MustParse("4.32.0")
+		info := PluginInfo{
+			PluginDownloadURL: "https://customurl.jfrog.io/artifactory/pulumi-packages/package-name",
+			Name:              "aws",
+			Version:           &version,
+			Kind:              PluginKind("resource"),
+		}
+		serverURL := buildUserSpecifiedPluginURL(info.PluginDownloadURL, info.Kind, info.Name, info.Version,
+			"darwin", "amd64")
+		assert.Equal(t,
+			"https://customurl.jfrog.io/artifactory/pulumi-packages/package-name"+
+				"/pulumi-resource-aws-v4.32.0-darwin-amd64.tar.gz",
+			serverURL)
+	})
+}
+
 func TestInterpolateURL(t *testing.T) {
 	version := semver.MustParse("1.0.0")
 	const os = "linux"
