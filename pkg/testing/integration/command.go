@@ -55,8 +55,8 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		cmd.Stdout = opts.Stdout
 		cmd.Stderr = opts.Stderr
 	} else {
-		opts.Stdout = &runoutBuffer
-		opts.Stderr = &runoutBuffer
+		cmd.Stdout = &runoutBuffer
+		cmd.Stderr = &runoutBuffer
 	}
 
 	startTime := time.Now()
