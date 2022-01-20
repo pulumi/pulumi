@@ -76,7 +76,7 @@ const (
 	golang = "go"
 )
 
-var allLanguages = codegen.NewStringSet("python/any", "nodejs/any", "dotnet/any", "go/any")
+var allLanguages = codegen.NewStringSet("python/any", "nodejs/any", "dotnet/any", "go/any", "docs/any")
 
 var sdkTests = []sdkTest{
 	{
@@ -216,7 +216,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "different-package-name-conflict",
 		Description: "different packages with the same resource",
-		Skip:        codegen.NewStringSet("dotnet/any", "nodejs/any", "python/any", "go/any", "docs/any"),
+		Skip:        allLanguages,
 	},
 	{
 		Directory:   "different-enum",
@@ -230,12 +230,15 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "regress-go-8664",
 		Description: "Regress pulumi/pulumi#8664 affecting Go",
-		Skip:        codegen.NewStringSet("dotnet/any", "python/any", "nodejs/any", "docs/any"),
+		Skip:        allLanguages.Except("go/any"),
 	},
 	{
 		Directory:   "other-owned",
 		Description: "CSharp rootNamespaces",
-		Skip:        allLanguages.Except("dotnet/any"),
+		// We only test in dotnet, because we are testing a change in a dotnet
+		// language property. Other tests should pass, but do not put the
+		// relevant feature under test. To save time, we skip them.
+		Skip: allLanguages.Except("dotnet/any"),
 	},
 }
 
