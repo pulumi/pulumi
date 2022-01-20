@@ -33,10 +33,16 @@ def filter_packages(packages, test_subset=None):
     return [p for p in packages if p in s]
 
 
+def tags(test_subset=None):
+    if test_subset is None or test_subset == 'etc':
+        return 'all'
+
+    return TEST_SUBSETS[test_subset]['tags']
+
+
 root = pathlib.Path(__file__).absolute().parent.parent
 test_subset = os.environ.get('PULUMI_TEST_SUBSET', None)
-options_and_packages = sys.argv[1:]
-packages = filter_packages(packages(options_and_packages), test_subset=test_subset)
+packages = filter_packages(packages(sys.argv[1:]), test_subset=test_subset)
 
 
 if not packages:
@@ -44,13 +50,13 @@ if not packages:
     sys.exit(0)
 
 
-options = options(options_and_packages)
+options = options(sys.argv[1:])
 cov = os.environ.get('PULUMI_TEST_COVERAGE_PATH', None)
 if cov is not None:
     options = options + [f'-coverprofile={cov}/go-test-{os.urandom(4).hex()}.cov', '-coverpkg=github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/...']
 
 
-options_and_packages = options + packages
+options_and_packages = [f'-tags={tags(test_subset)}'] + options + packages
 
 
 if shutil.which('gotestsum') is not None:
