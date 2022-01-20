@@ -11,6 +11,9 @@
 
 - [common] Allow names with hyphens.
 
+- [cli] - Add support for overriding plugin download URLs.
+  [#8798](https://github.com/pulumi/pulumi/pull/8798)
+
 ### Bug Fixes
 
 - [codegen/nodejs] - Generate an install script that runs `pulumi plugin install` with 
