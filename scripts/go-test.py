@@ -26,10 +26,10 @@ def filter_packages(packages, test_subset=None):
     if test_subset == 'etc':
         s = set([])
         for k in TEST_SUBSETS:
-            s = s | set(TEST_SUBSETS[k])
+            s = s | set(TEST_SUBSETS[k]['packages'])
         return [p for p in packages if p not in s]
 
-    s = set(TEST_SUBSETS[test_subset])
+    s = set(TEST_SUBSETS[test_subset]['packages'])
     return [p for p in packages if p in s]
 
 

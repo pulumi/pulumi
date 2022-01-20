@@ -32,7 +32,7 @@ def get_skip_reason():
         matching_subset = None
 
         for k in TEST_SUBSETS:
-            if testsuite_name in TEST_SUBSETS[k]:
+            if testsuite_name in TEST_SUBSETS[k]['packages']:
                 matching_subset = k
 
         if matching_subset is not None:
@@ -40,7 +40,7 @@ def get_skip_reason():
 
         return None # do not skip
 
-    if testsuite_name not in set(TEST_SUBSETS[test_subset]):
+    if testsuite_name not in set(TEST_SUBSETS[test_subset]['packages']):
         return f'not in PULUMI_TEST_SUBSET={test_subset}'
 
     return None # do no skip
