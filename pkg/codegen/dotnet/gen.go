@@ -402,7 +402,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 	case *schema.ResourceType:
 		if strings.HasPrefix(t.Token, "pulumi:providers:") {
 			pkgName := strings.TrimPrefix(t.Token, "pulumi:providers:")
-			return mod.rootNamespace + "." + namespaceName(mod.namespaces, pkgName) + ".Provider"
+			return fmt.Sprintf("%s.%s.Provider", mod.rootNamespace, namespaceName(mod.namespaces, pkgName))
 		}
 
 		namingCtx := mod
