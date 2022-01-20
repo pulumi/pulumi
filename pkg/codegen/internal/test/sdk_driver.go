@@ -61,8 +61,26 @@ var sdkTests = []sdkTest{
 		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
 	},
 	{
-		Directory:        "nested-module",
-		Description:      "Nested module",
+		Directory:   "nested-module",
+		Description: "Nested module",
+		// We skip Go because nested-modules has the following module structure
+		//
+		//           foo
+		//            |
+		//    +-------+------+
+		//    |              |
+		//  nested        Consumer
+		//    |
+		//  module
+		//    |
+		//  Resource
+		//
+		// Because `foo` imports `module` (so `Consumer` can consume `Resource`),
+		// module cannot import `foo` (for `packageVersion`).
+		//
+		// We already have a dependency cycle direction (down) and reversing it
+		// would be a breaking change in codegen. Because of this, we don't
+		// support upward referential nested modules in Go.
 		SkipCompileCheck: codegen.NewStringSet(golang),
 	},
 	{
