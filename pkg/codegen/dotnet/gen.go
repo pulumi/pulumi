@@ -161,6 +161,9 @@ type modContext struct {
 
 	// Determine whether to lift single-value method return values
 	liftSingleValueMethodReturns bool
+
+	// The root namespace to use, if any.
+	rootNamespace string
 }
 
 func (mod *modContext) propertyName(p *schema.Property) string {
@@ -211,7 +214,7 @@ func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	pkg, nsName := namespaceName(mod.namespaces, "Pulumi", components[0]), mod.pkg.TokenToModule(tok)
+	pkg, nsName := mod.rootNamespace+"."+namespaceName(mod.namespaces, components[0]), mod.pkg.TokenToModule(tok)
 
 	if mod.isK8sCompatMode() {
 		if qualifier != "" {
@@ -390,6 +393,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			namingCtx = &modContext{
 				pkg:           extPkg,
 				namespaces:    info.Namespaces,
+				rootNamespace: info.GetRootNamespace(),
 				compatibility: info.Compatibility,
 			}
 		}
@@ -407,7 +411,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 	case *schema.ResourceType:
 		if strings.HasPrefix(t.Token, "pulumi:providers:") {
 			pkgName := strings.TrimPrefix(t.Token, "pulumi:providers:")
-			return namespaceName(mod.namespaces, "Pulumi", pkgName) + ".Provider"
+			return mod.rootNamespace + "." + namespaceName(mod.namespaces, pkgName) + ".Provider"
 		}
 
 		namingCtx := mod
@@ -423,6 +427,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			namingCtx = &modContext{
 				pkg:           extPkg,
 				namespaces:    info.Namespaces,
+				rootNamespace: info.GetRootNamespace(),
 				compatibility: info.Compatibility,
 			}
 		}
@@ -1663,7 +1668,7 @@ func (mod *modContext) pulumiImports() []string {
 		"System.Threading.Tasks",
 		"Pulumi.Serialization",
 	}
-	if _, ok := mod.namespaces["Pulumi"]; ok {
+	if mod.rootNamespace != "Pulumi" {
 		pulumiImports = append(pulumiImports, "Pulumi")
 	}
 	return pulumiImports
@@ -2284,7 +2289,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 		mod, ok := modules[modName]
 		if !ok {
 			info := getPackageInfo(p)
-			ns := namespaceName(info.Namespaces, "Pulumi", pkg.Name)
+			ns := info.GetRootNamespace() + "." + namespaceName(info.Namespaces, pkg.Name)
 			if modName != "" {
 				ns += "." + namespaceName(info.Namespaces, modName)
 			}
@@ -2294,6 +2299,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 				tool:                         tool,
 				namespaceName:                ns,
 				namespaces:                   info.Namespaces,
+				rootNamespace:                info.GetRootNamespace(),
 				typeDetails:                  details,
 				propertyNames:                propertyNames,
 				compatibility:                info.Compatibility,
@@ -2446,7 +2452,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		return nil, err
 	}
 
-	assemblyName := namespaceName(info.Namespaces, "Pulumi", pkg.Name)
+	assemblyName := info.GetRootNamespace() + "." + namespaceName(info.Namespaces, pkg.Name)
 
 	// Generate each module.
 	files := fs{}

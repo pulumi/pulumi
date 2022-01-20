@@ -254,9 +254,7 @@
       "packageReferences": {
         "Pulumi": "3.13"
       },
-      "namespaces": {
-        "Pulumi": "Other"
-      }
+      "rootNamespace": "Other"
     },
     "go": {
       "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/other-owned/go/example",
