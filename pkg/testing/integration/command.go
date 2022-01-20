@@ -46,7 +46,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...) //nolint: gosec
 	cmd.Dir = wd
 	cmd.Env = env
 
