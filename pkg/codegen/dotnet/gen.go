@@ -124,20 +124,11 @@ func isValueType(t schema.Type) bool {
 	}
 }
 
-// Resolves 1 or more names as a namespaced path.
-func namespaceName(namespaces map[string]string, primary string, rest ...string) string {
-	resolve := func(name string) string {
-		if ns, ok := namespaces[name]; ok {
-			return ns
-		}
-		return Title(name)
+func namespaceName(namespaces map[string]string, name string) string {
+	if ns, ok := namespaces[name]; ok {
+		return ns
 	}
-	path := []string{resolve(primary)}
-	for _, name := range rest {
-		path = append(path, resolve(name))
-	}
-
-	return strings.Join(path, ".")
+	return Title(name)
 }
 
 type modContext struct {
@@ -2332,7 +2323,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 {
 		cfg := getMod("config", pkg)
-		cfg.namespaceName = namespaceName(infos[pkg].Namespaces, "Pulumi", pkg.Name)
+		cfg.namespaceName = fmt.Sprintf("%s.%s", cfg.rootNamespace, namespaceName(infos[pkg].Namespaces, pkg.Name))
 	}
 
 	visitObjectTypes(pkg.Config, func(t *schema.ObjectType) {
