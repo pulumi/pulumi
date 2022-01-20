@@ -29,68 +29,44 @@ type sdkTest struct {
 	// are of the form "$language/$check" such as "go/compile".
 	Checks map[string]CodegenCheck
 
-	// KnownBroken indicates tests that are known to be failing, identified by
-	// "$language/$check". "$language/any" is special, skipping generating the
+	// Skip checks, identified by "$language/$check".
+	// "$language/any" is special, skipping generating the
 	// code as well as all tests.
-	KnownBroken codegen.StringSet
+	Skip codegen.StringSet
 
 	// Do not compile the generated code for the languages in this set.
-	// This is a helper form of KnownBroken.
-	KnownBrokenCompile codegen.StringSet
-
-	// IntendedFor specifies languages[/tests] that this test is intended to run
-	// for. Unlike KnownBroken, IntendedFor indicates that the test should only
-	// run for the specified input. It is not used to indicate that other tests
-	// are broken.
-	IntendedFor codegen.StringSet
+	// This is a helper form of `Skip`.
+	SkipCompileCheck codegen.StringSet
 }
 
-// Check if this test should perform the compile check.
-func (tt sdkTest) SkipCheck(language, check string) bool {
+// ShouldSkipTest indicates if a given test for a given language should be run.
+func (tt sdkTest) ShouldSkipTest(language, test string) bool {
 
 	// Only language-specific checks.
-	if !strings.HasPrefix(check, language+"/") {
+	if !strings.HasPrefix(test, language+"/") {
 		return true
 	}
 
 	// Obey SkipCompileCheck to skip compile and test targets.
-	if tt.KnownBrokenCompile != nil &&
-		tt.KnownBrokenCompile.Has(language) &&
-		(check == fmt.Sprintf("%s/compile", language) ||
-			check == fmt.Sprintf("%s/test", language)) {
+	if tt.SkipCompileCheck != nil &&
+		tt.SkipCompileCheck.Has(language) &&
+		(test == fmt.Sprintf("%s/compile", language) ||
+			test == fmt.Sprintf("%s/test", language)) {
 		return true
 	}
 
 	// Obey Skip.
-	if tt.KnownBroken != nil && tt.KnownBroken.Has(check) {
-		return true
-	}
-
-	// Obey IntendedFor
-	if len(tt.IntendedFor) > 0 && !tt.IntendedFor.Has(check) {
+	if tt.Skip != nil && tt.Skip.Has(test) {
 		return true
 	}
 
 	return false
 }
 
-// Skip running codegen, and all subsequent tests.
-//
-// This means that no other tests are run.
-func (tt sdkTest) SkipCodegen(language string) bool {
-	intendedFor := func(lang string) bool {
-		// Vacuously true
-		if len(tt.IntendedFor) == 0 {
-			return true
-		}
-		for _, check := range tt.IntendedFor.SortedValues() {
-			if strings.Split(check, "/")[0] == lang {
-				return true
-			}
-		}
-		return false
-	}
-	return tt.KnownBroken.Has(language+"/any") || !intendedFor(language)
+// ShouldSkipCodegen determines if codegen should be run. ShouldSkipCodegen=true
+// further implies no other tests will be run.
+func (tt sdkTest) ShouldSkipCodegen(language string) bool {
+	return tt.Skip.Has(language + "/any")
 }
 
 const (
@@ -99,6 +75,8 @@ const (
 	dotnet = "dotnet"
 	golang = "go"
 )
+
+var allLanguages = codegen.NewStringSet("python/any", "nodejs/any", "dotnet/any", "go/any")
 
 var sdkTests = []sdkTest{
 	{
@@ -110,19 +88,19 @@ var sdkTests = []sdkTest{
 		Description: "Simple schema with a two part name (foo-bar)",
 	},
 	{
-		Directory:          "external-resource-schema",
-		Description:        "External resource schema",
-		KnownBrokenCompile: codegen.NewStringSet(nodejs, golang),
+		Directory:        "external-resource-schema",
+		Description:      "External resource schema",
+		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
 	},
 	{
-		Directory:          "nested-module",
-		Description:        "Nested module",
-		KnownBrokenCompile: codegen.NewStringSet(dotnet),
+		Directory:        "nested-module",
+		Description:      "Nested module",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
-		Directory:          "nested-module-thirdparty",
-		Description:        "Third-party nested module",
-		KnownBrokenCompile: codegen.NewStringSet(dotnet),
+		Directory:        "nested-module-thirdparty",
+		Description:      "Third-party nested module",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
 		Directory:   "plain-schema-gh6957",
@@ -157,9 +135,9 @@ var sdkTests = []sdkTest{
 		Description: "Simple schema with local resource properties and custom Python package name",
 	},
 	{
-		Directory:          "simple-methods-schema",
-		Description:        "Simple schema with methods",
-		KnownBrokenCompile: codegen.NewStringSet(nodejs, golang),
+		Directory:        "simple-methods-schema",
+		Description:      "Simple schema with methods",
+		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
 	},
 	{
 		Directory:   "simple-methods-schema-single-value-returns",
@@ -170,19 +148,19 @@ var sdkTests = []sdkTest{
 		Description: "Simple schema encoded using YAML",
 	},
 	{
-		Directory:          "provider-config-schema",
-		Description:        "Simple provider config schema",
-		KnownBrokenCompile: codegen.NewStringSet(dotnet),
+		Directory:        "provider-config-schema",
+		Description:      "Simple provider config schema",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
-		Directory:          "replace-on-change",
-		Description:        "Simple use of replaceOnChange in schema",
-		KnownBrokenCompile: codegen.NewStringSet(golang),
+		Directory:        "replace-on-change",
+		Description:      "Simple use of replaceOnChange in schema",
+		SkipCompileCheck: codegen.NewStringSet(golang),
 	},
 	{
-		Directory:          "resource-property-overlap",
-		Description:        "A resource with the same name as its property",
-		KnownBrokenCompile: codegen.NewStringSet(dotnet, nodejs),
+		Directory:        "resource-property-overlap",
+		Description:      "A resource with the same name as its property",
+		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 	},
 	{
 		Directory:   "hyphen-url",
@@ -193,15 +171,15 @@ var sdkTests = []sdkTest{
 		Description: "Tests targeting the $fn_output helper code generation feature",
 	},
 	{
-		Directory:          "output-funcs-edgeorder",
-		Description:        "Regresses Node compilation issues on a subset of azure-native",
-		KnownBrokenCompile: codegen.NewStringSet(golang, python),
-		KnownBroken:        codegen.NewStringSet("nodejs/test"),
+		Directory:        "output-funcs-edgeorder",
+		Description:      "Regresses Node compilation issues on a subset of azure-native",
+		SkipCompileCheck: codegen.NewStringSet(golang, python),
+		Skip:             codegen.NewStringSet("nodejs/test"),
 	},
 	{
-		Directory:          "output-funcs-tfbridge20",
-		Description:        "Similar to output-funcs, but with compatibility: tfbridge20, to simulate pulumi-aws use case",
-		KnownBrokenCompile: codegen.NewStringSet(python),
+		Directory:        "output-funcs-tfbridge20",
+		Description:      "Similar to output-funcs, but with compatibility: tfbridge20, to simulate pulumi-aws use case",
+		SkipCompileCheck: codegen.NewStringSet(python),
 	},
 	{
 		Directory:   "cyclic-types",
@@ -210,17 +188,17 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "regress-node-8110",
 		Description: "Test the fix for pulumi/pulumi#8110 nodejs compilation error",
-		KnownBroken: codegen.NewStringSet("go/test", "dotnet/test"),
+		Skip:        codegen.NewStringSet("go/test", "dotnet/test"),
 	},
 	{
 		Directory:   "dashed-import-schema",
 		Description: "Ensure that we handle all valid go import paths",
-		KnownBroken: codegen.NewStringSet("go/test", "dotnet/test"),
+		Skip:        codegen.NewStringSet("go/test", "dotnet/test"),
 	},
 	{
-		Directory:          "plain-and-default",
-		Description:        "Ensure that a resource with a plain default property works correctly",
-		KnownBrokenCompile: codegen.NewStringSet(nodejs),
+		Directory:        "plain-and-default",
+		Description:      "Ensure that a resource with a plain default property works correctly",
+		SkipCompileCheck: codegen.NewStringSet(nodejs),
 	},
 	{
 		Directory:   "plain-object-defaults",
@@ -231,19 +209,19 @@ var sdkTests = []sdkTest{
 		Description: "Ensure that we can still compile safely when defaults are disabled",
 	},
 	{
-		Directory:          "regress-8403",
-		Description:        "Regress pulumi/pulumi#8403",
-		KnownBrokenCompile: codegen.NewStringSet(python),
+		Directory:        "regress-8403",
+		Description:      "Regress pulumi/pulumi#8403",
+		SkipCompileCheck: codegen.NewStringSet(python),
 	},
 	{
 		Directory:   "different-package-name-conflict",
 		Description: "different packages with the same resource",
-		KnownBroken: codegen.NewStringSet("dotnet/any", "nodejs/any", "python/any", "go/any", "docs/any"),
+		Skip:        codegen.NewStringSet("dotnet/any", "nodejs/any", "python/any", "go/any", "docs/any"),
 	},
 	{
 		Directory:   "different-enum",
 		Description: "An enum in a different package namespace",
-		KnownBroken: codegen.NewStringSet("dotnet/compile"),
+		Skip:        codegen.NewStringSet("dotnet/compile"),
 	},
 	{
 		Directory:   "azure-native-nested-types",
@@ -252,12 +230,12 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "regress-go-8664",
 		Description: "Regress pulumi/pulumi#8664 affecting Go",
-		KnownBroken: codegen.NewStringSet("dotnet/any", "python/any", "nodejs/any", "docs/any"),
+		Skip:        codegen.NewStringSet("dotnet/any", "python/any", "nodejs/any", "docs/any"),
 	},
 	{
 		Directory:   "other-owned",
-		Description: "CSharp namespace Pulumi",
-		IntendedFor: codegen.NewStringSet(dotnet),
+		Description: "CSharp rootNamespaces",
+		Skip:        allLanguages.Except("dotnet/any"),
 	},
 }
 
@@ -371,8 +349,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				schemaPath = filepath.Join(dirPath, "schema.yaml")
 			}
 
-			// Any takes place before codegen.
-			if tt.SkipCodegen(opts.Language) {
+			if tt.ShouldSkipCodegen(opts.Language) {
 				t.Logf("Skipping generation + tests for %s", tt.Directory)
 				return
 			}
@@ -419,7 +396,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			for _, checkVar := range checkOrder {
 				check := checkVar
 				t.Run(check, func(t *testing.T) {
-					if tt.SkipCheck(opts.Language, check) {
+					if tt.ShouldSkipTest(opts.Language, check) {
 						t.Skip()
 					}
 					checkFun := allChecks[check]
