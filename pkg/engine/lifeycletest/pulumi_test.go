@@ -2641,20 +2641,12 @@ func TestComponentDeleteDependencies(t *testing.T) {
 	p.Run(t, nil)
 }
 
-<<<<<<< HEAD
-func TestRetainOnDelete(t *testing.T) {
-
-	idCounter := 0
-=======
 func TestProviderDeterministicPreview(t *testing.T) {
 	var generatedName resource.PropertyValue
->>>>>>> origin/master
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-<<<<<<< HEAD
-=======
 				CheckF: func(
 					urn resource.URN,
 					olds, news resource.PropertyMap,
@@ -2673,18 +2665,13 @@ func TestProviderDeterministicPreview(t *testing.T) {
 
 					return news, nil, nil
 				},
->>>>>>> origin/master
 				DiffF: func(
 					urn resource.URN,
 					id resource.ID,
 					olds, news resource.PropertyMap,
 					ignoreChanges []string) (plugin.DiffResult, error) {
 					if !olds["foo"].DeepEquals(news["foo"]) {
-<<<<<<< HEAD
-						// If foo changes do a replace, we use this to check we don't delete on replace
-=======
 						// If foo changes do a replace, we use this to check we get a new name
->>>>>>> origin/master
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
 							ReplaceKeys: []resource.PropertyKey{"foo"},
@@ -2694,22 +2681,11 @@ func TestProviderDeterministicPreview(t *testing.T) {
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-<<<<<<< HEAD
-					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
-					idCounter = idCounter + 1
-					return resourceID, news, resource.StatusOK, nil
-				},
-				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
-					timeout float64) (resource.Status, error) {
-					assert.Fail(t, "Delete was called")
-					return resource.StatusOK, nil
-=======
 					return "created-id", news, resource.StatusOK, nil
 				},
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
 					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 					return news, resource.StatusOK, nil
->>>>>>> origin/master
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -2719,19 +2695,6 @@ func TestProviderDeterministicPreview(t *testing.T) {
 		"foo": "bar",
 	})
 
-<<<<<<< HEAD
-	createResource := true
-
-	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-
-		if createResource {
-			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs:         ins,
-				RetainOnDelete: true,
-			})
-			assert.NoError(t, err)
-		}
-=======
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -2837,7 +2800,6 @@ func TestSequenceNumberResetsAfterReplace(t *testing.T) {
 			Inputs: ins,
 		})
 		assert.NoError(t, err)
->>>>>>> origin/master
 
 		return nil
 	})
@@ -2854,18 +2816,12 @@ func TestSequenceNumberResetsAfterReplace(t *testing.T) {
 	assert.Nil(t, res)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
-<<<<<<< HEAD
-	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
-
-	// Run a new update which will cause a replace, we shouldn't see a provider delete but should get a new id
-=======
 	// Expect the resource to have been created with a deterministic name (it's new)
 	assert.Equal(t, names[1], snap.Resources[1].Inputs["name"])
 	assert.Equal(t, names[1], snap.Resources[1].Outputs["name"])
 
 	// Mutate the snapshot that we've lost the sequence number and run an update that will cause a replace
 	snap.Resources[1].SequenceNumber = 0
->>>>>>> origin/master
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 	})
@@ -2873,16 +2829,6 @@ func TestSequenceNumberResetsAfterReplace(t *testing.T) {
 	assert.Nil(t, res)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
-<<<<<<< HEAD
-	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
-
-	// Run a new update which will cause a delete, we still shouldn't see a provider delete
-	createResource = false
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-	assert.Nil(t, res)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 0)
-=======
 	assert.Equal(t, names[0], snap.Resources[1].Inputs["name"])
 	assert.Equal(t, names[0], snap.Resources[1].Outputs["name"])
 
@@ -2896,5 +2842,91 @@ func TestSequenceNumberResetsAfterReplace(t *testing.T) {
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, names[1], snap.Resources[1].Inputs["name"])
 	assert.Equal(t, names[1], snap.Resources[1].Outputs["name"])
->>>>>>> origin/master
+}
+
+func TestDeleteBehaviour_Drop(t *testing.T) {
+
+	idCounter := 0
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(
+					urn resource.URN,
+					id resource.ID,
+					olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					if !olds["foo"].DeepEquals(news["foo"]) {
+						// If foo changes do a replace, we use this to check we don't delete on replace
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
+					idCounter = idCounter + 1
+					return resourceID, news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+					timeout float64) (resource.Status, error) {
+					assert.Fail(t, "Delete was called")
+					return resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	createResource := true
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+
+		if createResource {
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs:          ins,
+				DeleteBehaviour: resource.DeleteBehaviourDrop,
+			})
+			assert.NoError(t, err)
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+
+	// Run a new update which will cause a replace, we shouldn't see a provider delete but should get a new id
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
+
+	// Run a new update which will cause a delete, we still shouldn't see a provider delete
+	createResource = false
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 0)
 }

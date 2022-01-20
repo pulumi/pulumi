@@ -325,7 +325,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil, nil, nil, nil, "", nil, nil, false),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil, nil, nil, nil, "", nil, nil, resource.DeleteBehaviourDelete),
 		done: done,
 	}
 	return event, done, nil
@@ -875,7 +875,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	replaceOnChanges := req.GetReplaceOnChanges()
 	id := resource.ID(req.GetImportId())
 	customTimeouts := req.GetCustomTimeouts()
-	deleteBehaviour := req.GetDeleteBehaviour()
+	deleteBehaviour := resource.DeleteBehaviour(req.GetDeleteBehaviour())
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
 	// provider responsible for managing a particular resource (based on the type's Package).

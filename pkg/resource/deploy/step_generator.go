@@ -129,11 +129,11 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil,   /* propertyDependencies */
 		false, /* deleteBeforeCreate */
 		event.AdditionalSecretOutputs(),
-		nil,                   /* aliases */
-		nil,                   /* customTimeouts */
-		"",                    /* importID */
-		1,                     /* sequenceNumber */
-		DeleteBehaviourDelete, /* deleteBehaviour */
+		nil,                            /* aliases */
+		nil,                            /* customTimeouts */
+		"",                             /* importID */
+		1,                              /* sequenceNumber */
+		resource.DeleteBehaviourDelete, /* deleteBehaviour */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
