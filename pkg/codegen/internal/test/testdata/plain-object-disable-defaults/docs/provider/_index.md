@@ -163,7 +163,7 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 <a href="#helmreleasesettings_csharp" style="color: inherit; text-decoration: inherit;">Helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#helmreleasesettings">.<wbr>Example.<wbr>Inputs.<wbr>Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}BETA FEATURE - Options to configure the Helm Release resource.{{% /md %}}</dd></dl>
 {{% /choosable %}}

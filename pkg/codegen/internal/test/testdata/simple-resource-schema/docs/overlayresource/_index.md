@@ -162,7 +162,7 @@ The OverlayResource resource accepts the following [input]({{< relref "/docs/int
 <a href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">Pulumi.<wbr>Example.<wbr>Enum<wbr>Overlay</a></span>
+        <span class="property-type"><a href="#enumoverlay">.<wbr>Example.<wbr>Enum<wbr>Overlay</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -170,7 +170,7 @@ The OverlayResource resource accepts the following [input]({{< relref "/docs/int
 <a href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type"><a href="#configmapoverlay">.<wbr>Example.<wbr>Inputs.<wbr>Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

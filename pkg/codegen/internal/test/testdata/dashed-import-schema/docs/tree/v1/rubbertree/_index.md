@@ -165,7 +165,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#diameter_csharp" style="color: inherit; text-decoration: inherit;">Diameter</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#diameter">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Diameter</a></span>
+        <span class="property-type"><a href="#diameter">.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Diameter</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -173,7 +173,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Rubber<wbr>Tree<wbr>Variety</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Rubber<wbr>Tree<wbr>Variety</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -181,7 +181,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#container_csharp" style="color: inherit; text-decoration: inherit;">Container</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#container">Pulumi.<wbr>Plant.<wbr>Inputs.<wbr>Container<wbr>Args</a></span>
+        <span class="property-type"><a href="#container">.<wbr>Plant.<wbr>Inputs.<wbr>Container<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -189,7 +189,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#farm_csharp" style="color: inherit; text-decoration: inherit;">Farm</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#farm">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Farm</a> | string</span>
+        <span class="property-type"><a href="#farm">.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Farm</a> | string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -197,7 +197,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#size_csharp" style="color: inherit; text-decoration: inherit;">Size</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#treesize">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size</a></span>
+        <span class="property-type"><a href="#treesize">.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -522,7 +522,7 @@ The following state arguments are supported:
 <a href="#state_farm_csharp" style="color: inherit; text-decoration: inherit;">Farm</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#farm">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Farm</a> | string</span>
+        <span class="property-type"><a href="#farm">.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Farm</a> | string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -581,7 +581,7 @@ The following state arguments are supported:
 <a href="#size_csharp" style="color: inherit; text-decoration: inherit;">Size</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containersize">Pulumi.<wbr>Plant.<wbr>Container<wbr>Size</a></span>
+        <span class="property-type"><a href="#containersize">.<wbr>Plant.<wbr>Container<wbr>Size</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -589,7 +589,7 @@ The following state arguments are supported:
 <a href="#brightness_csharp" style="color: inherit; text-decoration: inherit;">Brightness</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containerbrightness">Pulumi.<wbr>Plant.<wbr>Container<wbr>Brightness</a></span>
+        <span class="property-type"><a href="#containerbrightness">.<wbr>Plant.<wbr>Container<wbr>Brightness</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -597,7 +597,7 @@ The following state arguments are supported:
 <a href="#color_csharp" style="color: inherit; text-decoration: inherit;">Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containercolor">Pulumi.<wbr>Plant.<wbr>Container<wbr>Color</a> | string</span>
+        <span class="property-type"><a href="#containercolor">.<wbr>Plant.<wbr>Container<wbr>Color</a> | string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">

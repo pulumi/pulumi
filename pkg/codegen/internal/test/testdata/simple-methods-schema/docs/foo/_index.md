@@ -282,7 +282,7 @@ The following arguments are supported:
 <a href="#bar_arg_bazrequired_csharp" style="color: inherit; text-decoration: inherit;">Baz<wbr>Required</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#baz">Pulumi.<wbr>Example.<wbr>Nested.<wbr>Inputs.<wbr>Baz</a></span>
+        <span class="property-type"><a href="#baz">.<wbr>Example.<wbr>Nested.<wbr>Inputs.<wbr>Baz</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -314,7 +314,7 @@ The following arguments are supported:
 <a href="#bar_arg_baz_csharp" style="color: inherit; text-decoration: inherit;">Baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#baz">Pulumi.<wbr>Example.<wbr>Nested.<wbr>Inputs.<wbr>Baz</a></span>
+        <span class="property-type"><a href="#baz">.<wbr>Example.<wbr>Nested.<wbr>Inputs.<wbr>Baz</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -322,7 +322,7 @@ The following arguments are supported:
 <a href="#bar_arg_bazplain_csharp" style="color: inherit; text-decoration: inherit;">Baz<wbr>Plain</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#baz">Pulumi.<wbr>Example.<wbr>Nested.<wbr>Inputs.<wbr>Baz</a></span>
+        <span class="property-type"><a href="#baz">.<wbr>Example.<wbr>Nested.<wbr>Inputs.<wbr>Baz</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">

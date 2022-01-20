@@ -65,7 +65,7 @@ The following arguments are supported:
 <a href="#enums_csharp" style="color: inherit; text-decoration: inherit;">Enums</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">List&lt;Union&lt;string, Pulumi.<wbr>My8110.<wbr>My<wbr>Enum&gt;&gt;</span>
+        <span class="property-type">List&lt;Union&lt;string, .<wbr>My8110.<wbr>My<wbr>Enum&gt;&gt;</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

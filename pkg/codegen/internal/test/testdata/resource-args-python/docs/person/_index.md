@@ -170,7 +170,7 @@ The Person resource accepts the following [input]({{< relref "/docs/intro/concep
 <a href="#pets_csharp" style="color: inherit; text-decoration: inherit;">Pets</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">List&lt;Pet<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#pet">List&lt;.<wbr>Example.<wbr>Inputs.<wbr>Pet<wbr>Args&gt;</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

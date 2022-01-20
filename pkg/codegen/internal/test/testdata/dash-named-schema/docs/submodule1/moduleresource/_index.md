@@ -161,7 +161,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
 <a href="#thing_csharp" style="color: inherit; text-decoration: inherit;">Thing</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toplevel">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Inputs.<wbr>Top<wbr>Level<wbr>Args</a></span>
+        <span class="property-type"><a href="#toplevel">.<wbr>Foo<wbr>Bar.<wbr>Inputs.<wbr>Top<wbr>Level<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

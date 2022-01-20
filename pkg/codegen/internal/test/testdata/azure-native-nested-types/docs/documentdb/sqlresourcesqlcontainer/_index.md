@@ -497,7 +497,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#resource_csharp" style="color: inherit; text-decoration: inherit;">Resource</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#sqlcontainergetpropertiesresponseresource">Pulumi.<wbr>Azure<wbr>Native.<wbr>Document<wbr>DB.<wbr>Outputs.<wbr>Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</a></span>
+        <span class="property-type"><a href="#sqlcontainergetpropertiesresponseresource">.<wbr>Azure<wbr>Native.<wbr>Document<wbr>DB.<wbr>Outputs.<wbr>Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -663,7 +663,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#compositeindexes_csharp" style="color: inherit; text-decoration: inherit;">Composite<wbr>Indexes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#compositepathresponse">List&lt;Immutable<wbr>Array&lt;Pulumi.<wbr>Azure<wbr>Native.<wbr>Document<wbr>DB.<wbr>Inputs.<wbr>Composite<wbr>Path<wbr>Response&gt;&gt;</a></span>
+        <span class="property-type"><a href="#compositepathresponse">List&lt;Immutable<wbr>Array&lt;.<wbr>Azure<wbr>Native.<wbr>Document<wbr>DB.<wbr>Inputs.<wbr>Composite<wbr>Path<wbr>Response&gt;&gt;</a></span>
     </dt>
     <dd>{{% md %}}List of composite path list{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -713,7 +713,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#indexingpolicy_csharp" style="color: inherit; text-decoration: inherit;">Indexing<wbr>Policy</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#indexingpolicyresponse">Pulumi.<wbr>Azure<wbr>Native.<wbr>Document<wbr>DB.<wbr>Inputs.<wbr>Indexing<wbr>Policy<wbr>Response</a></span>
+        <span class="property-type"><a href="#indexingpolicyresponse">.<wbr>Azure<wbr>Native.<wbr>Document<wbr>DB.<wbr>Inputs.<wbr>Indexing<wbr>Policy<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container{{% /md %}}</dd></dl>
 {{% /choosable %}}

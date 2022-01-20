@@ -201,7 +201,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">.<wbr>Example.<wbr>Inputs.<wbr>Foo<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -209,7 +209,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#baz_csharp" style="color: inherit; text-decoration: inherit;">Baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">List&lt;Foo<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#foo">List&lt;.<wbr>Example.<wbr>Inputs.<wbr>Foo<wbr>Args&gt;</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -233,7 +233,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">.<wbr>Example.<wbr>Inputs.<wbr>Foo<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

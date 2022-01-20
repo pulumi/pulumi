@@ -191,7 +191,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#backwards_csharp" style="color: inherit; text-decoration: inherit;">Backwards</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Pulumi.<wbr>Example.<wbr>Dog</span>
+        <span class="property-type">.<wbr>Example.<wbr>Dog</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

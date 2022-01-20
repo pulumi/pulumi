@@ -82,7 +82,7 @@ The following arguments are supported:
 <a href="#a_csharp" style="color: inherit; text-decoration: inherit;">A</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
+        <span class="property-type"><a href="#helmreleasesettings">.<wbr>Example.<wbr>Inputs.<wbr>Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
     <dd>{{% md %}}Property A{{% /md %}}</dd><dt class="property-optional"
             title="Optional">

@@ -191,7 +191,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#foes_csharp" style="color: inherit; text-decoration: inherit;">Foes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Dictionary&lt;string, Toy&gt;</span>
+        <span class="property-type">Dictionary&lt;string, .<wbr>Example.<wbr>Outputs.<wbr>Toy&gt;</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -199,7 +199,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#friends_csharp" style="color: inherit; text-decoration: inherit;">Friends</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">List&lt;Toy&gt;</a></span>
+        <span class="property-type"><a href="#toy">List&lt;.<wbr>Example.<wbr>Outputs.<wbr>Toy&gt;</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -215,7 +215,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#other_csharp" style="color: inherit; text-decoration: inherit;">Other</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Pulumi.<wbr>Example.<wbr>God</span>
+        <span class="property-type">.<wbr>Example.<wbr>God</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -223,7 +223,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#toy_csharp" style="color: inherit; text-decoration: inherit;">Toy</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy">.<wbr>Example.<wbr>Outputs.<wbr>Toy</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -403,7 +403,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#associated_csharp" style="color: inherit; text-decoration: inherit;">Associated</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toy">Toy</a></span>
+        <span class="property-type"><a href="#toy">.<wbr>Example.<wbr>Inputs.<wbr>Toy</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">

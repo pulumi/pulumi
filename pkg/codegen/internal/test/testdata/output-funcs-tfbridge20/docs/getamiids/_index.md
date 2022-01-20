@@ -108,7 +108,7 @@ permission on  the image. Valid items are the numeric account ID or `self`.
 <a href="#filters_csharp" style="color: inherit; text-decoration: inherit;">Filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;.<wbr>Mypkg.<wbr>Inputs.<wbr>Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
     </dt>
     <dd>{{% md %}}One or more name/value pairs to filter off of. There
 are several valid keys, for a full reference, check out
@@ -355,7 +355,7 @@ The following output properties are available:
 <a href="#filters_csharp" style="color: inherit; text-decoration: inherit;">Filters</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getamiidsfilter">List&lt;Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
+        <span class="property-type"><a href="#getamiidsfilter">List&lt;.<wbr>Mypkg.<wbr>Outputs.<wbr>Get<wbr>Ami<wbr>Ids<wbr>Filter&gt;</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">

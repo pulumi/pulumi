@@ -191,7 +191,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#rec_csharp" style="color: inherit; text-decoration: inherit;">Rec</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rec">Rec</a></span>
+        <span class="property-type"><a href="#rec">.<wbr>Example.<wbr>Outputs.<wbr>Rec</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -307,7 +307,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#rec1_csharp" style="color: inherit; text-decoration: inherit;">Rec1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rec">Rec</a></span>
+        <span class="property-type"><a href="#rec">.<wbr>Example.<wbr>Inputs.<wbr>Rec</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

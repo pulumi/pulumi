@@ -170,7 +170,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#pet_csharp" style="color: inherit; text-decoration: inherit;">Pet</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
+        <span class="property-type"><a href="#pet">.<wbr>Example.<wbr>Inputs.<wbr>Pet<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

@@ -78,7 +78,7 @@ The following arguments are supported:
 <a href="#arg1_csharp" style="color: inherit; text-decoration: inherit;">Arg1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Pulumi.<wbr>Example.<wbr>Resource</span>
+        <span class="property-type">.<wbr>Example.<wbr>Resource</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -135,7 +135,7 @@ The following output properties are available:
 <a href="#result_csharp" style="color: inherit; text-decoration: inherit;">Result</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Pulumi.<wbr>Example.<wbr>Resource</span>
+        <span class="property-type">.<wbr>Example.<wbr>Resource</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

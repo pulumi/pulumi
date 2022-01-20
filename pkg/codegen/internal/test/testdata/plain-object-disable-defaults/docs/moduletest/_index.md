@@ -162,7 +162,7 @@ The ModuleTest resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#mod1_csharp" style="color: inherit; text-decoration: inherit;">Mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Pulumi.<wbr>Example.<wbr>Mod1.<wbr>Inputs.<wbr>Typ<wbr>Args</a></span>
+        <span class="property-type"><a href="#typ">.<wbr>Example.<wbr>Mod1.<wbr>Inputs.<wbr>Typ<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -170,7 +170,7 @@ The ModuleTest resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#val_csharp" style="color: inherit; text-decoration: inherit;">Val</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type"><a href="#typ">.<wbr>Example.<wbr>Inputs.<wbr>Typ<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -309,7 +309,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#mod1_csharp" style="color: inherit; text-decoration: inherit;">Mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Pulumi.<wbr>Example.<wbr>Mod1.<wbr>Inputs.<wbr>Typ</a></span>
+        <span class="property-type"><a href="#typ">.<wbr>Example.<wbr>Mod1.<wbr>Inputs.<wbr>Typ</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -317,7 +317,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#mod2_csharp" style="color: inherit; text-decoration: inherit;">Mod2</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Pulumi.<wbr>Example.<wbr>Mod2.<wbr>Inputs.<wbr>Typ</a></span>
+        <span class="property-type"><a href="#typ">.<wbr>Example.<wbr>Mod2.<wbr>Inputs.<wbr>Typ</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -473,7 +473,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#mod1_csharp" style="color: inherit; text-decoration: inherit;">Mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Pulumi.<wbr>Example.<wbr>Mod1.<wbr>Inputs.<wbr>Typ</a></span>
+        <span class="property-type"><a href="#typ">.<wbr>Example.<wbr>Mod1.<wbr>Inputs.<wbr>Typ</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">

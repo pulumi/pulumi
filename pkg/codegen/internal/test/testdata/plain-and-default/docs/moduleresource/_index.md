@@ -206,7 +206,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
 <a href="#required_enum_csharp" style="color: inherit; text-decoration: inherit;">Required_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumthing">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing</a></span>
+        <span class="property-type"><a href="#enumthing">.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -238,7 +238,7 @@ The ModuleResource resource accepts the following [input]({{< relref "/docs/intr
 <a href="#optional_enum_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumthing">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing</a></span>
+        <span class="property-type"><a href="#enumthing">.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
