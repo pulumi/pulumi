@@ -129,8 +129,8 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Authors>Pulumi Corp.</Authors>
-    <Company>Pulumi Corp.</Company>
+    <Authors>{{or .Package.Publisher "Pulumi Corp."}}</Authors>
+    <Company>{{or .Package.Publisher "Pulumi Corp."}}</Company>
     <Description>{{.Package.Description}}</Description>
     <PackageLicenseExpression>{{.Package.License}}</PackageLicenseExpression>
     <PackageProjectUrl>{{.Package.Homepage}}</PackageProjectUrl>
