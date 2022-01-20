@@ -205,8 +205,8 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	}
 
 	// We need to persist the changes if CustomTimes have changed
-	if old.RetainOnDelete != new.RetainOnDelete {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of RetainOnDelete")
+	if old.DeleteBehaviour != new.DeleteBehaviour {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of DeleteBehaviour")
 		return true
 	}
 

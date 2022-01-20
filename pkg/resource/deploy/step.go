@@ -336,7 +336,7 @@ func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
 func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Refuse to delete protected resources.
-	if s.old.Protect {
+	if s.old.Protect || s.old.DeleteBehaviour == resource.DeleteBehaviourProtect {
 		return resource.StatusOK, nil, fmt.Errorf("unable to delete resource %q\n"+
 			"as it is currently marked for protection. To unprotect the resource, "+
 			"either remove the `protect` flag from the resource in your Pulumi"+
@@ -345,8 +345,8 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
-	// Deleting a "retain on delete" is a no-op as the user has explicitly asked us to not delete the resource.
-	if !preview && !s.old.External && !s.old.RetainOnDelete {
+	// Deleting a "drop on delete" is a no-op as the user has explicitly asked us to not delete the resource.
+	if !preview && !s.old.External && (s.old.DeleteBehaviour != resource.DeleteBehaviourDrop) {
 		if s.old.Custom {
 			// Invoke the Delete RPC function for this provider:
 			prov, err := getProvider(s)
@@ -774,7 +774,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, resourceID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
-			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete)
+			&s.old.CustomTimeouts, s.old.ImportID, s.old.SequenceNumber, s.old.DeleteBehaviour)
 	} else {
 		s.new = nil
 	}
@@ -916,7 +916,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// differences between the old and new states are between the inputs and outputs.
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
-		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete)
+		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.SequenceNumber, s.new.DeleteBehaviour)
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {
@@ -947,7 +947,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	// Check the inputs using the provider inputs for defaults.
-	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview)
+	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber)
 	if err != nil {
 		return rst, nil, err
 	}

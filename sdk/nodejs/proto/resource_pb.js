@@ -23,6 +23,7 @@ goog.exportSymbol('proto.pulumirpc.ReadResourceResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceOutputsRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceRequest.CustomTimeouts', null, global);
+goog.exportSymbol('proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceRequest.PropertyDependencies', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceResponse.PropertyDependencies', null, global);
@@ -1317,7 +1318,7 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
     replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
     plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 24, ""),
-    retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 25, false)
+    deletebehaviour: jspb.Message.getFieldWithDefault(msg, 25, 0)
   };
 
   if (includeInstance) {
@@ -1457,8 +1458,8 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       msg.setPlugindownloadurl(value);
       break;
     case 25:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setRetainondelete(value);
+      var value = /** @type {!proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour} */ (reader.readEnum());
+      msg.setDeletebehaviour(value);
       break;
     default:
       reader.skipField();
@@ -1653,15 +1654,24 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       f
     );
   }
-  f = message.getRetainondelete();
-  if (f) {
-    writer.writeBool(
+  f = message.getDeletebehaviour();
+  if (f !== 0.0) {
+    writer.writeEnum(
       25,
       f
     );
   }
 };
 
+
+/**
+ * @enum {number}
+ */
+proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour = {
+  DELETE: 0,
+  DROP: 1,
+  PROTECT: 2
+};
 
 
 /**
@@ -2583,20 +2593,20 @@ proto.pulumirpc.RegisterResourceRequest.prototype.setPlugindownloadurl = functio
 
 
 /**
- * optional bool retainOnDelete = 25;
- * @return {boolean}
+ * optional DeleteBehaviour deleteBehaviour = 25;
+ * @return {!proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour}
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.getRetainondelete = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 25, false));
+proto.pulumirpc.RegisterResourceRequest.prototype.getDeletebehaviour = function() {
+  return /** @type {!proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour} */ (jspb.Message.getFieldWithDefault(this, 25, 0));
 };
 
 
 /**
- * @param {boolean} value
+ * @param {!proto.pulumirpc.RegisterResourceRequest.DeleteBehaviour} value
  * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
  */
-proto.pulumirpc.RegisterResourceRequest.prototype.setRetainondelete = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 25, value);
+proto.pulumirpc.RegisterResourceRequest.prototype.setDeletebehaviour = function(value) {
+  return jspb.Message.setProto3EnumField(this, 25, value);
 };
 
 

@@ -17,14 +17,14 @@ namespace Pulumi.Mypkg
         /// API Version: 2020-11-01.
         /// </summary>
         public static Task<GetBastionShareableLinkResult> InvokeAsync(GetBastionShareableLinkArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<GetBastionShareableLinkResult>("mypkg::getBastionShareableLink", args ?? new GetBastionShareableLinkArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.InvokeAsync<GetBastionShareableLinkResult>("mypkg::getBastionShareableLink", args ?? new GetBastionShareableLinkArgs(), options.WithDefaults());
 
         /// <summary>
         /// Response for all the Bastion Shareable Link endpoints.
         /// API Version: 2020-11-01.
         /// </summary>
         public static Output<GetBastionShareableLinkResult> Invoke(GetBastionShareableLinkInvokeArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<GetBastionShareableLinkResult>("mypkg::getBastionShareableLink", args ?? new GetBastionShareableLinkInvokeArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.Invoke<GetBastionShareableLinkResult>("mypkg::getBastionShareableLink", args ?? new GetBastionShareableLinkInvokeArgs(), options.WithDefaults());
     }
 
 

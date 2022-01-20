@@ -94,7 +94,8 @@ func TestDeploymentSerialization(t *testing.T) {
 		nil,
 		nil,
 		"",
-		false,
+		0,
+		resource.DeleteBehaviourDelete,
 	)
 
 	dep, err := SerializeResource(res, config.NopEncrypter, false /* showSecrets */)

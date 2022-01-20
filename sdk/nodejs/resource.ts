@@ -590,9 +590,9 @@ export interface ResourceOptions {
      */
     pluginDownloadURL?: string;
     /**
-     * RetainOnDelete is an option to not actually delete resources from providers when the engine calls Delete.
+     * deleteBehaviour is an option to not actually delete resources from providers when the engine calls Delete.
      */
-    retainOnDelete?: boolean;
+     deleteBehaviour?: "delete" | "drop" | "protect";
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.

@@ -319,7 +319,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setRemote(remote);
         req.setReplaceonchangesList(opts.replaceOnChanges || []);
         req.setPlugindownloadurl(opts.pluginDownloadURL || "");
-        req.setRetainondelete(opts.retainOnDelete || false);
+        req.setDeleteBehaviour(opts.deleteBehaviour || false);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {
