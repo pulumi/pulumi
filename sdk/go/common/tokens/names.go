@@ -124,20 +124,10 @@ func (nm QName) Namespace() QName {
 	return QName(qn)
 }
 
-// PackageName is a qualified name referring to an imported package.  It is similar to a QName, except that it permits
-// dashes "-" as is commonplace with packages of various kinds.
-type PackageName string
+// PackageName is a qualified name referring to an imported package.
+type PackageName QName
 
 func (nm PackageName) String() string { return string(nm) }
-
-var PackageNameRegexp = regexp.MustCompile(PackageNameRegexpPattern)
-var PackagePartRegexpPattern = "[A-Za-z_.][A-Za-z0-9_.-]*"
-var PackageNameRegexpPattern = "(" + PackagePartRegexpPattern + "\\" + QNameDelimiter + ")*" + PackagePartRegexpPattern
-
-// IsPackageName checks whether a string is a legal Name.
-func IsPackageName(s string) bool {
-	return s != "" && PackageNameRegexp.FindString(s) == s
-}
 
 // ModuleName is a qualified name referring to an imported module from a package.
 type ModuleName QName

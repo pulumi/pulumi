@@ -131,7 +131,7 @@ func (tok Token) ModuleMember() ModuleMember {
 type Package Token
 
 func NewPackageToken(nm PackageName) Package {
-	contract.Assertf(IsPackageName(string(nm)), "Package name '%v' is not a legal qualified name", nm)
+	contract.Assertf(IsQName(string(nm)), "Package name '%v' is not a legal qualified name", nm)
 	return Package(nm)
 }
 
