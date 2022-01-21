@@ -123,8 +123,8 @@ func URNGenerator() *rapid.Generator {
 func urnGenerator(ctx *StackContext) *rapid.Generator {
 	var stackNameGenerator, projectNameGenerator *rapid.Generator
 	if ctx == nil {
-		stackNameGenerator = rapid.StringMatching(`^((:[^:])[^:]*)*:?$`)
-		projectNameGenerator = rapid.StringMatching(`^((:[^:])[^:]*)*:?$`)
+		stackNameGenerator = rapid.StringMatching("^" + tokens.NameRegexpPattern + "$")
+		projectNameGenerator = rapid.StringMatching("^" + tokens.NameRegexpPattern + "$")
 	} else {
 		stackNameGenerator = rapid.Just(ctx.StackName())
 		projectNameGenerator = rapid.Just(ctx.ProjectName())
