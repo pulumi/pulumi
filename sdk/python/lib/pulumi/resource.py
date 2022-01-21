@@ -805,11 +805,9 @@ class Resource:
         self._protect = bool(opts.protect)
         self._provider = opts.provider if custom else None
         if self._provider and self._provider.package != pkg:
-            action = (
-                (opts.urn is not None and "get") or
-                (opts.id is not None and "read") or
-                "register"
-            )
+            action = "get" if opts.urn is not None else \
+                    "read" if opts.id is not None else \
+                    "register"
             raise ValueError(f"Attempted to {action} resource {t} with a provider for '{self._provider.package}'")
         self._providers = providers
         self._version = opts.version
