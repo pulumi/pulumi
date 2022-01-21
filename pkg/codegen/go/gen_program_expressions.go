@@ -182,13 +182,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// }
 		// g.Fgenf(w, " => new { Key = k, Value = v })")
 	case "fileArchive":
-		g.genNYI(w, "call %v", expr.Name)
-		// g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
+		g.Fgenf(w, "pulumi.NewFileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.NewFileAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "filebase64OrPanic(%v)", expr.Args[0])
+	case "filebase64sha256":
+		// Assuming the existence of the following helper method
+		g.Fgenf(w, "filebase64sha256OrPanic(%v)", expr.Args[0])
 	case pcl.Invoke:
 		pkg, module, fn, diags := g.functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
@@ -1004,14 +1006,15 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 }
 
 var functionPackages = map[string][]string{
-	"join":       {"strings"},
-	"mimeType":   {"mime", "path"},
-	"readDir":    {"io/ioutil"},
-	"readFile":   {"io/ioutil"},
-	"filebase64": {"io/ioutil", "encoding/base64"},
-	"toBase64":   {"encoding/base64"},
-	"toJSON":     {"encoding/json"},
-	"sha1":       {"fmt", "crypto/sha1"},
+	"join":             {"strings"},
+	"mimeType":         {"mime", "path"},
+	"readDir":          {"io/ioutil"},
+	"readFile":         {"io/ioutil"},
+	"filebase64":       {"io/ioutil", "encoding/base64"},
+	"toBase64":         {"encoding/base64"},
+	"toJSON":           {"encoding/json"},
+	"sha1":             {"fmt", "crypto/sha1"},
+	"filebase64sha256": {"fmt", "io/ioutil", "crypto/sha256"},
 }
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {
