@@ -26,13 +26,13 @@ func TestTokens(t *testing.T) {
 	// Package tokens/names.
 	p := "test/package"
 	assert.False(t, IsName(p))
-	assert.True(t, IsPackageName(p))
+	assert.True(t, IsQName(p))
 	pkg := NewPackageToken(PackageName(p))
 	assert.Equal(t, p, pkg.Name().String())
 	assert.Equal(t, p, pkg.String())
 	p2 := "test/my-package"
 	assert.False(t, IsName(p2))
-	assert.True(t, IsPackageName(p2))
+	assert.True(t, IsQName(p2))
 	pkg2 := NewPackageToken(PackageName(p2))
 	assert.Equal(t, p2, pkg2.Name().String())
 	assert.Equal(t, p2, pkg2.String())
