@@ -49,7 +49,7 @@ jobs:
     strategy:
       matrix:
         platform:
-          - windows-latest
+          - windows-2022
         test-subset:
           - integration-nodejs
           - integration-go
@@ -62,18 +62,18 @@ jobs:
 
     steps:
       - name: Reduce TESTPARALLELISM on Windows to work around OOM
-        if: ${{ matrix.platform == 'windows-latest' }}
+        if: ${{ matrix.platform == 'windows-2022' }}
         run: |
           echo "TESTPARALLELISM=1" >> $GITHUB_ENV
       - name: Set PULUMI_TEST_SUBSET env var
         run: |
           echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV
       - name: Enable code coverage
-        if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
+        if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-2022') }}
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> $GITHUB_ENV
       - name: Set up Make (windows)
-        if: ${{ matrix.platform == 'windows-latest' }}
+        if: ${{ matrix.platform == 'windows-2022' }}
         run: |
           choco install make
       - name: Set up Go ${{ inputs.go-version }}
@@ -93,7 +93,7 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
       - name: Uninstall pre-installed Pulumi (windows)
-        if: ${{ matrix.platform == 'windows-latest' }}
+        if: ${{ matrix.platform == 'windows-2022' }}
         run: |
           chocolatey uninstall pulumi
       - name: Install yarn
@@ -140,7 +140,7 @@ jobs:
           repo: t0yv0/goteststats
           tag: v0.0.7
       - name: Lock go toolchain to prevent concurrent OOM on go linker
-        if: ${{ matrix.platform == 'windows-latest' }}
+        if: ${{ matrix.platform == 'windows-2022' }}
         run: |
           LOCKED_GO=$(./scripts/locked-go-toolchain.sh)
           echo "Adding LOCKED_GO=$LOCKED_GO to PATH"
@@ -162,13 +162,13 @@ jobs:
           name: pulumi-darwin-x64
           path: artifacts/go
       - name: Download Pulumi Go Binaries (windows-x64)
-        if: ${{ matrix.platform == 'windows-latest' }}
+        if: ${{ matrix.platform == 'windows-2022' }}
         uses: actions/download-artifact@v2
         with:
           name: pulumi-windows-x64
           path: artifacts/go
       - name: Install Pulumi Go Binaries (non-windows)
-        if: ${{ matrix.platform != 'windows-latest' }}
+        if: ${{ matrix.platform != 'windows-2022' }}
         run: |
           mkdir -p pulumi-bin
           tar -xf artifacts/go/*.tar.gz -C pulumi-bin
@@ -176,7 +176,7 @@ jobs:
           mv pulumi-bin/pulumi/* bin/
           rm -rf pulumi-bin
       - name: Install Pulumi Go Binaries (windows)
-        if: ${{ matrix.platform == 'windows-latest' }}
+        if: ${{ matrix.platform == 'windows-2022' }}
         run: |
           mkdir -p $PWD/bin
           unzip -d $PWD/bin artifacts/go/*.zip
@@ -338,17 +338,17 @@ jobs:
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Convert Node coverage data
-        if: ${{ matrix.platform != 'windows-latest' }}
+        if: ${{ matrix.platform != 'windows-2022' }}
         run: |
           cd sdk/nodejs
           if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $PULUMI_TEST_COVERAGE_PATH; fi
       - name: Merge Go coverage data
-        if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
+        if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-2022') }}
         run: |
           pulumictl cover merge --in ./coverage --out ./coverage/go-all.txt
           rm ./coverage/*.cov
       - name: Upload code coverage
-        if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
+        if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-2022') }}
         uses: codecov/codecov-action@v2
         with:
           directory: coverage

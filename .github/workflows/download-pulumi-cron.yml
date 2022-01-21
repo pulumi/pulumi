@@ -75,7 +75,7 @@ jobs:
       - run: ls -la
   windows-choco-install:
     name: Install Pulumi with Chocolatey on Windows
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - name: choco install
         run: choco upgrade pulumi
@@ -92,7 +92,7 @@ jobs:
           exit 1
   windows-direct-install:
     name: Install Pulumi via script on Windows
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - run: '[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString("https://get.pulumi.com/install.ps1")) && SET \"PATH=%PATH%;%USERPROFILE%\.pulumi\bin\"'
         shell: pwsh
@@ -111,7 +111,7 @@ jobs:
           exit 1
   windows-verify-download-link:
     name: Verify Direct Download link on Windows
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - name: Direct Download
         shell: pwsh
@@ -128,7 +128,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+        os: ["ubuntu-latest", "windows-2022", "macos-latest"]
     steps:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
