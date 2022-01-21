@@ -92,7 +92,7 @@ jobs:
           path: |
               ${{ steps.go-cache-paths.outputs.go-build }}
               ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ matrix.platform }}-go-cache-${{ hashFiles('**/go.sum') }}
+          key: ${{ matrix.platform }}-${{ matrix.test-subset }}-go-test-cache-${{ hashFiles('**/go.sum') }}
       - name: Set up Python ${{ inputs.python-version }}
         uses: actions/setup-python@v1
         with:
