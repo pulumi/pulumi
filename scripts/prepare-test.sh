@@ -7,7 +7,7 @@ NAME="$1"
 cd "tests/integration/$NAME/testcomponent"
 yarn install
 yarn link @pulumi/pulumi
-yarn run tsc
+tsc
 
 cd ../testcomponent-go
 go build -o "pulumi-resource-testcomponent$(go env GOEXE)"

@@ -84,11 +84,11 @@ test_build:: $(TEST_ALL_DEPS)
 	cd tests/testprovider && go build -o pulumi-resource-testprovider$(shell go env GOEXE)
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_output_values
-	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && tsc
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_plain
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_unknown
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh component_provider_schema
-	cd tests/integration/construct_component_error_apply/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+	cd tests/integration/construct_component_error_apply/testcomponent && yarn install && yarn link @pulumi/pulumi && tsc
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_provider
 	PYTHON=$(PYTHON) ./scripts/prepare-test.sh construct_component_methods_unknown
