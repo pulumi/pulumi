@@ -9,6 +9,8 @@
 - [cli] Add the concept of sequence numbers to the engine and resource provider interface.
   [#8631](https://github.com/pulumi/pulumi/pull/8631)
 
+- [common] Allow names with hyphens.
+
 ### Bug Fixes
 
 - [codegen/nodejs] - Generate an install script that runs `pulumi plugin install` with 
