@@ -23,7 +23,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -203,11 +202,6 @@ func sha1HexString(value string) string {
 	_, err := h.Write([]byte(value))
 	contract.AssertNoError(err)
 	return hex.EncodeToString(h.Sum(nil))
-}
-
-// qnameFileName takes a qname and cleans it for use as a filename (by replacing tokens.QNameDelimter with a dash)
-func qnameFileName(nm tokens.QName) string {
-	return strings.Replace(string(nm), tokens.QNameDelimiter, "-", -1)
 }
 
 // nameFileName takes a name and cleans it for use as a filename (we assume this is a no-op right now)
