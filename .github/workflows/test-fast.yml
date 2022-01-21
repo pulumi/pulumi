@@ -62,17 +62,24 @@ jobs:
           - etc
         exclude:
           - platform: macos-latest
-        # Only run catch-all `etc` test-subset on Mac for PR
+          - platform: windows-latest
+        # Only run catch-all `etc` test-subset on Mac/Win for PR
         # verification because of a throughput bottleneck on Mac
-        # runners.
+        # runners, and slowdown on Windows test runners.
         include:
           - platform: macos-latest
+            test-subset: etc
+          - platform: windows-latest
             test-subset: etc
       fail-fast: false
 
     runs-on: ${{ matrix.platform }}
 
     steps:
+      - name: Reduce TESTPARALLELISM on Windows to work around OOM
+        if: ${{ matrix.platform == 'windows-latest' }}
+        run: |
+          echo "TESTPARALLELISM=1" >> $GITHUB_ENV
       - name: Set PULUMI_TEST_SUBSET env var
         run: |
           echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV

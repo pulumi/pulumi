@@ -8,7 +8,7 @@ PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
 PROJECT_PKGS    := $(shell go list ./cmd/...)
-TESTPARALLELISM := 10
+TESTPARALLELISM ?= 10
 
 include ../../build/common.mk
 
@@ -18,10 +18,11 @@ TEST_ALL_DEPS = build
 
 ensure::
 	$(PYTHON) -m venv venv
+	. venv/*/activate && python -m pip install wheel
 	. venv/*/activate && python -m pip install -r requirements.txt
 	mkdir -p $(PYENVSRC)
 
-build_package::
+build_package:: ensure
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak "s/\$${VERSION}/$(PYPI_VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
 	cp ../../README.md $(PYENVSRC)
@@ -34,7 +35,7 @@ build_plugin::
 
 build:: build_package build_plugin
 
-lint::
+lint:: ensure
 	. venv/*/activate && \
 		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
 	. venv/*/activate && \
@@ -55,10 +56,10 @@ test_go:: $(TEST_ALL_DEPS)
 	$(GO_TEST) ${PROJECT_PKGS}
 
 test_fast:: $(TEST_ALL_DEPS)
-	./scripts/test_fast.sh
+	. venv/*/activate && ./scripts/test_fast.sh
 
 test_auto:: $(TEST_ALL_DEPS)
-	./scripts/test_auto.sh
+	. venv/*/activate && ./scripts/test_auto.sh
 
 test_all:: test_fast test_auto test_go
 

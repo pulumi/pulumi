@@ -62,6 +62,10 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     steps:
+      - name: Reduce TESTPARALLELISM on Windows to work around OOM
+        if: ${{ matrix.platform == 'windows-latest' }}
+        run: |
+          echo "TESTPARALLELISM=1" >> $GITHUB_ENV
       - name: Set PULUMI_TEST_SUBSET env var
         run: |
           echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV

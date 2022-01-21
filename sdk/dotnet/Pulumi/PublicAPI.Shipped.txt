@@ -143,6 +143,7 @@ Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Input<U>> func) -> Pulumi.Output
 Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, U> func) -> Pulumi.Output<U>
+override Pulumi.Output<T>.ToString() -> string
 Pulumi.OutputAttribute
 Pulumi.OutputAttribute.Name.get -> string
 Pulumi.OutputAttribute.OutputAttribute(string name = null) -> void

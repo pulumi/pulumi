@@ -6,7 +6,7 @@ LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-n
 PROJECT_ROOT     := $(realpath ../..)
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
-TESTPARALLELISM := 10
+TESTPARALLELISM ?= 10
 TEST_FAST_TIMEOUT := 2m
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
@@ -17,10 +17,13 @@ include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
-lint::
+ensure::
+	yarn
+
+lint:: ensure
 	yarn run eslint -c .eslintrc.js --ext .ts .
 
-build_package::
+build_package:: ensure
 	yarn run tsc
 	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
