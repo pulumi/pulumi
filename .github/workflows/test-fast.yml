@@ -126,6 +126,9 @@ jobs:
       - name: Install yarn
         run: |
           npm install -g yarn
+      - name: Install TypeScript
+        run: |
+          npm install -g tsc
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
