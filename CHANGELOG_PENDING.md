@@ -45,3 +45,6 @@
 
 - [cli] The engine will no longer try to replace resources that are protected as that entails a delete.
   [#8810](https://github.com/pulumi/pulumi/pull/8810)
+
+- [codegen/pcl] - Fix handling of function invokes without args
+  [#8805](https://github.com/pulumi/pulumi/pull/8805)
