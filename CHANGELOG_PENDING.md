@@ -22,6 +22,20 @@
 
 ### Bug Fixes
 
+- [sdk/python] - Prevent `ResourceOptions.merge` from promoting between the
+  `.provider` and `.providers` fields. This changes the general behavior of merging
+  for `.provider` and `.providers`, as described in [#8796](https://github.com/pulumi/pulumi/issues/8796).
+  Note that this is a breaking change in two ways:
+    1. Passing a provider to a custom resource of the wrong package now
+       produces a `ValueError`. In the past it would send to the provider, and
+       generally crash the provider.
+    2. Merging two `ResourceOptions` with `provider` set no longer hoists to `providers`.
+       One `provider` will now take priority over the other. The new behavior reflects the
+       common case for `ResourceOptions.merge`. To restore the old behavior, replace
+       `ResourceOptions(provider=FooProvider).merge(ResourceOptions(provider=BarProvider))`
+       with `ResourceOptions(providers=[FooProvider]).merge(ResourceOptions(providers=[BarProvider]))`.
+  [#8770](https://github.com/pulumi/pulumi/pull/8770)
+
 - [codegen/nodejs] - Generate an install script that runs `pulumi plugin install` with
   the `--server` flag when necessary.
   [#8730](https://github.com/pulumi/pulumi/pull/8730)
