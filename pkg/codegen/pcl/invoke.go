@@ -80,7 +80,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
 	}
 
-	var fnArgs model.Expression = nil
+	var fnArgs model.Expression
 	if len(args) > 1 {
 		fnArgs = args[1]
 	}
