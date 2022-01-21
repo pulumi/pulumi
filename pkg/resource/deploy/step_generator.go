@@ -605,10 +605,13 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			// Note that we do allow unprotecting and replacing to happen in a single update
 			// cycle, we don't look at old.Protect here.
 			if goal.Protect {
-				return nil, result.Errorf("unable to replace resource %q\n"+
+				message := fmt.Sprintf("unable to replace resource %q\n"+
 					"as it is currently marked for protection. To unprotect the resource, "+
 					"remove the `protect` flag from the resource in your Pulumi "+
 					"program and run `pulumi up`", urn)
+				sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
+				sg.sawError = true
+				return nil, result.Bail()
 			}
 
 			// If the goal state specified an ID, issue an error: the replacement will change the ID, and is

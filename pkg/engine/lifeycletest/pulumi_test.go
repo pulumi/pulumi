@@ -2915,11 +2915,32 @@ func TestProtect(t *testing.T) {
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 	assert.Equal(t, 0, deleteCounter)
 
+	expectedUrn := snap.Resources[1].URN
+	expectedMessage := ""
+
+	// Both updates below should give a diagnostic event
+	validate := func(project workspace.Project,
+		target deploy.Target, entries JournalEntries,
+		events []Event, res result.Result) result.Result {
+		for _, event := range events {
+			if event.Type == DiagEvent {
+				payload := event.Payload().(DiagEventPayload)
+				assert.Equal(t, expectedUrn, payload.URN)
+				assert.Equal(t, expectedMessage, payload.Message)
+				break
+			}
+		}
+		return res
+	}
+
 	// Run a new update which will cause a replace, we should get an error
+	expectedMessage = "<{%reset%}>unable to replace resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
+		"as it is currently marked for protection. To unprotect the resource, remove the `protect` flag from " +
+		"the resource in your Pulumi program and run `pulumi up`<{%reset%}>\n"
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 	})
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, res)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -2927,8 +2948,11 @@ func TestProtect(t *testing.T) {
 	assert.Equal(t, 0, deleteCounter)
 
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete
+	expectedMessage = "<{%reset%}>unable to delete resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
+		"as it is currently marked for protection. To unprotect the resource, either remove the `protect` flag " +
+		"from the resource in your Pulumiprogram and run `pulumi up` or use the command:\n`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>\n"
 	createResource = false
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, res)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
