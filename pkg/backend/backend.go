@@ -73,7 +73,7 @@ type StackReference interface {
 	// Name is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
 	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
 	// but that information is not part of the StackName() we pass to the engine.
-	Name() tokens.QName
+	Name() tokens.Name
 }
 
 // PolicyPackReference is an opaque type that refers to a PolicyPack managed by a backend. The CLI
@@ -158,7 +158,7 @@ type Backend interface {
 
 	// RenameStack renames the given stack to a new name, and then returns an updated stack reference that
 	// can be used to refer to the newly renamed stack.
-	RenameStack(ctx context.Context, stack Stack, newName tokens.QName) (StackReference, error)
+	RenameStack(ctx context.Context, stack Stack, newName tokens.Name) (StackReference, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
 	Preview(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)

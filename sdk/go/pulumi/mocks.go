@@ -66,7 +66,7 @@ func (m *mockMonitor) newURN(parent, typ, name string) string {
 		parentType = parentURN.QualifiedType()
 	}
 
-	return string(resource.NewURN(tokens.QName(m.stack), tokens.PackageName(m.project), parentType, tokens.Type(typ),
+	return string(resource.NewURN(tokens.AsName(m.stack), tokens.PackageName(m.project), parentType, tokens.Type(typ),
 		tokens.QName(name)))
 }
 

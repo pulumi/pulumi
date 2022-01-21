@@ -27,7 +27,7 @@ import (
 
 // Resource is a tree representation of a resource/component hierarchy
 type Resource struct {
-	Stack    tokens.QName
+	Stack    tokens.Name
 	Project  tokens.PackageName
 	State    *resource.State
 	Parent   *Resource
@@ -50,7 +50,7 @@ func NewResourceTree(source []*resource.State) *Resource {
 func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]*Resource) {
 	resources := make(map[resource.URN]*Resource)
 
-	var stack tokens.QName
+	var stack tokens.Name
 	var proj tokens.PackageName
 
 	// First create a list of resource nodes, without parent/child relations hooked up.

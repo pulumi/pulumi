@@ -142,7 +142,7 @@ type TestPlan struct {
 }
 
 //nolint: goconst
-func (p *TestPlan) getNames() (stack tokens.QName, project tokens.PackageName, runtime string) {
+func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, runtime string) {
 	project = tokens.PackageName(p.Project)
 	if project == "" {
 		project = "test"
@@ -151,7 +151,7 @@ func (p *TestPlan) getNames() (stack tokens.QName, project tokens.PackageName, r
 	if runtime == "" {
 		runtime = "test"
 	}
-	stack = tokens.QName(p.Stack)
+	stack = tokens.AsName(p.Stack)
 	if stack == "" {
 		stack = "test"
 	}

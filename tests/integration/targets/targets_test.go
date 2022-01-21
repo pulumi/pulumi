@@ -80,7 +80,7 @@ func TestDeleteManyTargets(t *testing.T) {
 	resourceType := tokens.Type("pulumi-nodejs:dynamic:Resource")
 	mkURNStr := func(resourceName tokens.QName, parentType tokens.Type) string {
 		return string(resource.NewURN(
-			tokens.QName(stackName), tokens.PackageName(projName), parentType, resourceType, resourceName))
+			tokens.AsName(stackName), tokens.PackageName(projName), parentType, resourceType, resourceName))
 	}
 
 	// Attempt to destroy the root-most node. It should fail and the error text should

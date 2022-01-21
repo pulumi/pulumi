@@ -62,7 +62,7 @@ func newStackRenameCmd() *cobra.Command {
 
 			// Now perform the rename and get ready to rename the existing configuration to the new project file.
 			newStackName := args[0]
-			newStackRef, err := s.Rename(commandContext(), tokens.QName(newStackName))
+			newStackRef, err := s.Rename(commandContext(), tokens.AsName(newStackName))
 			if err != nil {
 				return err
 			}

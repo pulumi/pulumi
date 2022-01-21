@@ -63,7 +63,7 @@ func readPassphrase(prompt string) (phrase string, interactive bool, err error) 
 	return readPassphraseImpl(prompt, true)
 }
 
-func newPassphraseSecretsManager(stackName tokens.QName, configFile string,
+func newPassphraseSecretsManager(stackName tokens.Name, configFile string,
 	rotatePassphraseSecretsProvider bool) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 

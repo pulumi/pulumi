@@ -546,7 +546,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	return cloudBackendReference{
 		owner:   qualifiedName.Owner,
 		project: qualifiedName.Project,
-		name:    tokens.QName(qualifiedName.Name),
+		name:    tokens.AsName(qualifiedName.Name),
 		b:       b,
 	}, nil
 }
@@ -775,7 +775,7 @@ func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 }
 
 func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
-	newName tokens.QName) (backend.StackReference, error) {
+	newName tokens.Name) (backend.StackReference, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return nil, err

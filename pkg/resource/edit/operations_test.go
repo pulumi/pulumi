@@ -288,7 +288,7 @@ func TestRenameStack(t *testing.T) {
 
 	// Rename just the stack.
 	t.Run("JustTheStack", func(t *testing.T) {
-		err := RenameStack(snap, tokens.QName("new-stack"), tokens.PackageName(""))
+		err := RenameStack(snap, tokens.AsName("new-stack"), tokens.PackageName(""))
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
@@ -298,7 +298,7 @@ func TestRenameStack(t *testing.T) {
 
 		// Confirm the resource has been renamed.
 		updatedResourceURN := resource.NewURN(
-			tokens.QName("new-stack"),
+			tokens.AsName("new-stack"),
 			"test", // project name stayed the same
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
@@ -307,14 +307,14 @@ func TestRenameStack(t *testing.T) {
 
 	// Rename the stack and project.
 	t.Run("StackAndProject", func(t *testing.T) {
-		err := RenameStack(snap, tokens.QName("new-stack2"), tokens.PackageName("new-project"))
+		err := RenameStack(snap, tokens.AsName("new-stack2"), tokens.PackageName("new-project"))
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
 
 		// Lookup the resource by URN, with both stack and project updated.
 		updatedResourceURN := resource.NewURN(
-			tokens.QName("new-stack2"),
+			tokens.AsName("new-stack2"),
 			"new-project",
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())

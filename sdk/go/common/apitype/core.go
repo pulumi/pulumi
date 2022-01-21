@@ -89,7 +89,7 @@ type VersionedCheckpoint struct {
 // CheckpointV1 is a serialized deployment target plus a record of the latest deployment.
 type CheckpointV1 struct {
 	// Stack is the stack to update.
-	Stack tokens.QName `json:"stack" yaml:"stack"`
+	Stack tokens.Name `json:"stack" yaml:"stack"`
 	// Config contains a bag of optional configuration keys/values.
 	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
 	// Latest is the latest/current deployment (if an update has occurred).
@@ -100,7 +100,7 @@ type CheckpointV1 struct {
 // the latest deployment.
 type CheckpointV2 struct {
 	// Stack is the stack to update.
-	Stack tokens.QName `json:"stack" yaml:"stack"`
+	Stack tokens.Name `json:"stack" yaml:"stack"`
 	// Config contains a bag of optional configuration keys/values.
 	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
 	// Latest is the latest/current deployment (if an update has occurred).
@@ -111,7 +111,7 @@ type CheckpointV2 struct {
 // the latest deployment.
 type CheckpointV3 struct {
 	// Stack is the stack to update.
-	Stack tokens.QName `json:"stack" yaml:"stack"`
+	Stack tokens.Name `json:"stack" yaml:"stack"`
 	// Config contains a bag of optional configuration keys/values.
 	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
 	// Latest is the latest/current deployment (if an update has occurred).
@@ -401,9 +401,9 @@ const (
 
 // Stack describes a Stack running on a Pulumi Cloud.
 type Stack struct {
-	OrgName     string       `json:"orgName"`
-	ProjectName string       `json:"projectName"`
-	StackName   tokens.QName `json:"stackName"`
+	OrgName     string      `json:"orgName"`
+	ProjectName string      `json:"projectName"`
+	StackName   tokens.Name `json:"stackName"`
 	// CurrentOperation provides information about a stack operation in-progress, as applicable.
 	CurrentOperation *OperationStatus        `json:"currentOperation,omitempty"`
 	ActiveUpdate     string                  `json:"activeUpdate"`

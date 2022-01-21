@@ -107,8 +107,7 @@ func (nm QName) Name() Name {
 	} else {
 		nmn = string(nm[ix+1:])
 	}
-	contract.Assert(IsName(nmn))
-	return Name(nmn)
+	return AsName(nmn)
 }
 
 // Namespace extracts the namespace portion of a QName (dropping the name); this may be empty.
@@ -128,15 +127,18 @@ func (nm QName) Namespace() QName {
 type PackageName QName
 
 func (nm PackageName) String() string { return string(nm) }
+func (nm PackageName) Q() QName       { return QName(nm) }
 
 // ModuleName is a qualified name referring to an imported module from a package.
 type ModuleName QName
 
 func (nm ModuleName) String() string { return string(nm) }
+func (nm ModuleName) Q() QName       { return QName(nm) }
 
 // ModuleMemberName is a simple name representing the module member's identifier.
 type ModuleMemberName Name
 
+func (nm ModuleMemberName) Name() Name     { return Name(nm) }
 func (nm ModuleMemberName) String() string { return string(nm) }
 
 // ClassMemberName is a simple name representing the class member's identifier.
@@ -148,4 +150,5 @@ func (nm ClassMemberName) String() string { return string(nm) }
 // TypeName is a simple name representing the type's name, without any package/module qualifiers.
 type TypeName Name
 
+func (nm TypeName) Name() Name     { return Name(nm) }
 func (nm TypeName) String() string { return string(nm) }

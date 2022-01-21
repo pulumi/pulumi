@@ -93,7 +93,7 @@ type ProgressDisplay struct {
 	// action is the kind of action (preview, update, refresh, etc) being performed.
 	action apitype.UpdateKind
 	// stack is the stack this progress pertains to.
-	stack tokens.QName
+	stack tokens.Name
 	// proj is the project this progress pertains to.
 	proj tokens.PackageName
 
@@ -270,7 +270,7 @@ func (display *ProgressDisplay) writeBlankLine() {
 }
 
 // ShowProgressEvents displays the engine events with docker's progress view.
-func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
+func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
 	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
 
 	stdout := opts.Stdout

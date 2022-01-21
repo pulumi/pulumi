@@ -209,3 +209,8 @@ func sha1HexString(value string) string {
 func qnameFileName(nm tokens.QName) string {
 	return strings.Replace(string(nm), tokens.QNameDelimiter, "-", -1)
 }
+
+// nameFileName takes a name and cleans it for use as a filename (we assume this is a no-op right now)
+func nameFileName(nm tokens.Name) string {
+	return string(nm)
+}

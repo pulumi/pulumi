@@ -42,7 +42,7 @@ type Stack interface {
 }
 
 type cloudBackendReference struct {
-	name    tokens.QName
+	name    tokens.Name
 	project string
 	owner   string
 	b       *cloudBackend
@@ -65,7 +65,7 @@ func (c cloudBackendReference) String() string {
 	return fmt.Sprintf("%s/%s/%s", c.owner, c.project, c.name)
 }
 
-func (c cloudBackendReference) Name() tokens.QName {
+func (c cloudBackendReference) Name() tokens.Name {
 	return c.name
 }
 
@@ -136,7 +136,7 @@ func (s *cloudStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
 }
 
-func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) (backend.StackReference, error) {
+func (s *cloudStack) Rename(ctx context.Context, newName tokens.Name) (backend.StackReference, error) {
 	return backend.RenameStack(ctx, s, newName)
 }
 
@@ -195,7 +195,7 @@ func (css cloudStackSummary) Name() backend.StackReference {
 	return cloudBackendReference{
 		owner:   css.summary.OrgName,
 		project: css.summary.ProjectName,
-		name:    tokens.QName(css.summary.StackName),
+		name:    tokens.AsName(css.summary.StackName),
 		b:       css.b,
 	}
 }

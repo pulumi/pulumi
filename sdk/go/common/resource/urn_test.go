@@ -23,7 +23,7 @@ import (
 )
 
 func TestURNRoundTripping(t *testing.T) {
-	stack := tokens.QName("stck")
+	stack := tokens.AsName("stck")
 	proj := tokens.PackageName("foo/bar/baz")
 	parentType := tokens.Type("")
 	typ := tokens.Type("bang:boom/fizzle:MajorResource")
@@ -37,7 +37,7 @@ func TestURNRoundTripping(t *testing.T) {
 }
 
 func TestURNRoundTripping2(t *testing.T) {
-	stack := tokens.QName("stck")
+	stack := tokens.AsName("stck")
 	proj := tokens.PackageName("foo/bar/baz")
 	parentType := tokens.Type("parent$type")
 	typ := tokens.Type("bang:boom/fizzle:MajorResource")
