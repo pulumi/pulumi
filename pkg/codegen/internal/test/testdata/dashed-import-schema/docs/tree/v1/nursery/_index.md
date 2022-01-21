@@ -162,7 +162,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 <a href="#varieties_csharp" style="color: inherit; text-decoration: inherit;">Varieties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety">List&lt;.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Rubber<wbr>Tree<wbr>Variety&gt;</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">List&lt;Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Rubber<wbr>Tree<wbr>Variety&gt;</a></span>
     </dt>
     <dd>{{% md %}}The varieties available{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -170,7 +170,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 <a href="#sizes_csharp" style="color: inherit; text-decoration: inherit;">Sizes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Dictionary&lt;string, .<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size&gt;</span>
+        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size&gt;</span>
     </dt>
     <dd>{{% md %}}The sizes of trees available{{% /md %}}</dd></dl>
 {{% /choosable %}}

@@ -397,7 +397,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#provider_csharp" style="color: inherit; text-decoration: inherit;">Provider</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">.<wbr>Kubernetes.<wbr>Provider</span>
+        <span class="property-type">Pulumi.<wbr>Kubernetes.<wbr>Provider</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">

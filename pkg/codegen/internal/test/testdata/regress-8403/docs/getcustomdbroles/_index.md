@@ -89,7 +89,7 @@ The following output properties are available:
 <a href="#result_csharp" style="color: inherit; text-decoration: inherit;">Result</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#getcustomdbrolesresult">.<wbr>Mongodbatlas.<wbr>Outputs.<wbr>Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
+        <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

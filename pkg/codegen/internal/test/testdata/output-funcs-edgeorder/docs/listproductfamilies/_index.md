@@ -87,7 +87,7 @@ The following arguments are supported:
 <a href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Dictionary&lt;string, Immutable<wbr>Array&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Filterable<wbr>Property&gt;&gt;</span>
+        <span class="property-type">Dictionary&lt;string, Immutable<wbr>Array&lt;Filterable<wbr>Property&gt;&gt;</span>
     </dt>
     <dd>{{% md %}}Dictionary of filterable properties on product family.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -95,7 +95,7 @@ The following arguments are supported:
 <a href="#customersubscriptiondetails_csharp" style="color: inherit; text-decoration: inherit;">Customer<wbr>Subscription<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptiondetails">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Customer<wbr>Subscription<wbr>Details</a></span>
+        <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
     <dd>{{% md %}}Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -240,7 +240,7 @@ The following output properties are available:
 <a href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#productfamilyresponse">List&lt;.<wbr>Myedgeorder.<wbr>Outputs.<wbr>Product<wbr>Family<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#productfamilyresponse">List&lt;Product<wbr>Family<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}List of product families.{{% /md %}}</dd><dt class="property-"
             title="">
@@ -454,7 +454,7 @@ The following output properties are available:
 <a href="#meterdetails_csharp" style="color: inherit; text-decoration: inherit;">Meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pav2meterdetailsresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
+        <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Represents MeterDetails{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -594,7 +594,7 @@ The following output properties are available:
 <a href="#availabilityinformation_csharp" style="color: inherit; text-decoration: inherit;">Availability<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#availabilityinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Availability<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -602,7 +602,7 @@ The following output properties are available:
 <a href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#costinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Cost<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -610,7 +610,7 @@ The following output properties are available:
 <a href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#descriptionresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Description<wbr>Response</a></span>
+        <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -618,7 +618,7 @@ The following output properties are available:
 <a href="#dimensions_csharp" style="color: inherit; text-decoration: inherit;">Dimensions</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#dimensionsresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Dimensions<wbr>Response</a></span>
+        <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Dimensions of the configuration{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -634,7 +634,7 @@ The following output properties are available:
 <a href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Filterable<wbr>Property<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -642,7 +642,7 @@ The following output properties are available:
 <a href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Hierarchy<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -650,7 +650,7 @@ The following output properties are available:
 <a href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Image<wbr>Information<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -658,7 +658,7 @@ The following output properties are available:
 <a href="#specifications_csharp" style="color: inherit; text-decoration: inherit;">Specifications</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#specificationresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Specification<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#specificationresponse">List&lt;Specification<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}Specifications of the configuration{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -910,7 +910,7 @@ The following output properties are available:
 <a href="#billingmeterdetails_csharp" style="color: inherit; text-decoration: inherit;">Billing<wbr>Meter<wbr>Details</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#billingmeterdetailsresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Billing<wbr>Meter<wbr>Details<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#billingmeterdetailsresponse">List&lt;Billing<wbr>Meter<wbr>Details<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}Details on the various billing aspects for the product system.{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -1002,7 +1002,7 @@ The following output properties are available:
 <a href="#registeredfeatures_csharp" style="color: inherit; text-decoration: inherit;">Registered<wbr>Features</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Customer<wbr>Subscription<wbr>Registered<wbr>Features&gt;</a></span>
+        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List&lt;Customer<wbr>Subscription<wbr>Registered<wbr>Features&gt;</a></span>
     </dt>
     <dd>{{% md %}}List of registered feature flags for subscription{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -1210,7 +1210,7 @@ The following output properties are available:
 <a href="#links_csharp" style="color: inherit; text-decoration: inherit;">Links</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#linkresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Link<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#linkresponse">List&lt;Link<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}Links for the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -1650,7 +1650,7 @@ The following output properties are available:
 <a href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#supportedfiltertypes">.<wbr>Myedgeorder.<wbr>Supported<wbr>Filter<wbr>Types</a></span>
+        <span class="property-type">string | <a href="#supportedfiltertypes">Pulumi.<wbr>Myedgeorder.<wbr>Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
     <dd>{{% md %}}Type of product filter.{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -2242,7 +2242,7 @@ The following output properties are available:
 <a href="#availabilityinformation_csharp" style="color: inherit; text-decoration: inherit;">Availability<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#availabilityinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Availability<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2250,7 +2250,7 @@ The following output properties are available:
 <a href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#costinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Cost<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2258,7 +2258,7 @@ The following output properties are available:
 <a href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#descriptionresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Description<wbr>Response</a></span>
+        <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2274,7 +2274,7 @@ The following output properties are available:
 <a href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Filterable<wbr>Property<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2282,7 +2282,7 @@ The following output properties are available:
 <a href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Hierarchy<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2290,7 +2290,7 @@ The following output properties are available:
 <a href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Image<wbr>Information<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2298,7 +2298,7 @@ The following output properties are available:
 <a href="#productlines_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Lines</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#productlineresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Product<wbr>Line<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#productlineresponse">List&lt;Product<wbr>Line<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}List of product lines supported in the product family{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -2518,7 +2518,7 @@ The following output properties are available:
 <a href="#availabilityinformation_csharp" style="color: inherit; text-decoration: inherit;">Availability<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#availabilityinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Availability<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2526,7 +2526,7 @@ The following output properties are available:
 <a href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#costinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Cost<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2534,7 +2534,7 @@ The following output properties are available:
 <a href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#descriptionresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Description<wbr>Response</a></span>
+        <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2550,7 +2550,7 @@ The following output properties are available:
 <a href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Filterable<wbr>Property<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2558,7 +2558,7 @@ The following output properties are available:
 <a href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Hierarchy<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2566,7 +2566,7 @@ The following output properties are available:
 <a href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Image<wbr>Information<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2574,7 +2574,7 @@ The following output properties are available:
 <a href="#products_csharp" style="color: inherit; text-decoration: inherit;">Products</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#productresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Product<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#productresponse">List&lt;Product<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}List of products in the product line{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -2794,7 +2794,7 @@ The following output properties are available:
 <a href="#availabilityinformation_csharp" style="color: inherit; text-decoration: inherit;">Availability<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#availabilityinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Availability<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2802,7 +2802,7 @@ The following output properties are available:
 <a href="#configurations_csharp" style="color: inherit; text-decoration: inherit;">Configurations</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configurationresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Configuration<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#configurationresponse">List&lt;Configuration<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}List of configurations for the product{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2810,7 +2810,7 @@ The following output properties are available:
 <a href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#costinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Cost<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2818,7 +2818,7 @@ The following output properties are available:
 <a href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#descriptionresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Description<wbr>Response</a></span>
+        <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2834,7 +2834,7 @@ The following output properties are available:
 <a href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Filterable<wbr>Property<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2842,7 +2842,7 @@ The following output properties are available:
 <a href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#hierarchyinformationresponse">.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Hierarchy<wbr>Information<wbr>Response</a></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
     <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -2850,7 +2850,7 @@ The following output properties are available:
 <a href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#imageinformationresponse">List&lt;.<wbr>Myedgeorder.<wbr>Inputs.<wbr>Image<wbr>Information<wbr>Response&gt;</a></span>
+        <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
     <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd></dl>
 {{% /choosable %}}

@@ -101,7 +101,7 @@ The following arguments are supported:
 <a href="#vms_csharp" style="color: inherit; text-decoration: inherit;">Vms</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#bastionshareablelink">List&lt;.<wbr>Mypkg.<wbr>Inputs.<wbr>Bastion<wbr>Shareable<wbr>Link&gt;</a></span>
+        <span class="property-type"><a href="#bastionshareablelink">List&lt;Bastion<wbr>Shareable<wbr>Link&gt;</a></span>
     </dt>
     <dd>{{% md %}}List of VM references.{{% /md %}}</dd></dl>
 {{% /choosable %}}

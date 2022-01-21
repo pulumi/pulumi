@@ -170,7 +170,7 @@ The OtherResource resource accepts the following [input]({{< relref "/docs/intro
 <a href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">.<wbr>Example.<wbr>Resource</span>
+        <span class="property-type">Pulumi.<wbr>Example.<wbr>Resource</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

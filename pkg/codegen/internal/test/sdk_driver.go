@@ -238,7 +238,9 @@ var sdkTests = []sdkTest{
 		// We only test in dotnet, because we are testing a change in a dotnet
 		// language property. Other tests should pass, but do not put the
 		// relevant feature under test. To save time, we skip them.
-		Skip: allLanguages.Except("dotnet/any"),
+		//
+		// We need to see dotnet changes (paths) in the docs too.
+		Skip: allLanguages.Except("dotnet/any").Except("docs/any"),
 	},
 }
 

@@ -157,6 +157,13 @@ type modContext struct {
 	rootNamespace string
 }
 
+func (mod *modContext) RootNamespace() string {
+	if mod.rootNamespace != "" {
+		return mod.rootNamespace
+	}
+	return "Pulumi"
+}
+
 func (mod *modContext) propertyName(p *schema.Property) string {
 	if n, ok := mod.propertyNames[p]; ok {
 		return n
@@ -205,7 +212,7 @@ func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	pkg, nsName := mod.rootNamespace+"."+namespaceName(mod.namespaces, components[0]), mod.pkg.TokenToModule(tok)
+	pkg, nsName := mod.RootNamespace()+"."+namespaceName(mod.namespaces, components[0]), mod.pkg.TokenToModule(tok)
 
 	if mod.isK8sCompatMode() {
 		if qualifier != "" {
@@ -402,7 +409,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 	case *schema.ResourceType:
 		if strings.HasPrefix(t.Token, "pulumi:providers:") {
 			pkgName := strings.TrimPrefix(t.Token, "pulumi:providers:")
-			return fmt.Sprintf("%s.%s.Provider", mod.rootNamespace, namespaceName(mod.namespaces, pkgName))
+			return fmt.Sprintf("%s.%s.Provider", mod.RootNamespace(), namespaceName(mod.namespaces, pkgName))
 		}
 
 		namingCtx := mod
@@ -1659,7 +1666,7 @@ func (mod *modContext) pulumiImports() []string {
 		"System.Threading.Tasks",
 		"Pulumi.Serialization",
 	}
-	if mod.rootNamespace != "Pulumi" {
+	if mod.RootNamespace() != "Pulumi" {
 		pulumiImports = append(pulumiImports, "Pulumi")
 	}
 	return pulumiImports
@@ -2323,7 +2330,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 {
 		cfg := getMod("config", pkg)
-		cfg.namespaceName = fmt.Sprintf("%s.%s", cfg.rootNamespace, namespaceName(infos[pkg].Namespaces, pkg.Name))
+		cfg.namespaceName = fmt.Sprintf("%s.%s", cfg.RootNamespace(), namespaceName(infos[pkg].Namespaces, pkg.Name))
 	}
 
 	visitObjectTypes(pkg.Config, func(t *schema.ObjectType) {

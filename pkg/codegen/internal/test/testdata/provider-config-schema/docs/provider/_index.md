@@ -161,7 +161,7 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 <a href="#favoritecolor_csharp" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#color">.<wbr>Configstation.<wbr>Color</a></span>
+        <span class="property-type">string | <a href="#color">Pulumi.<wbr>Configstation.<wbr>Color</a></span>
     </dt>
     <dd>{{% md %}}this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: `FAVE_COLOR`{{% /md %}}</dd></dl>
 {{% /choosable %}}

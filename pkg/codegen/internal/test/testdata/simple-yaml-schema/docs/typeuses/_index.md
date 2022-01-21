@@ -164,7 +164,7 @@ The TypeUses resource accepts the following [input]({{< relref "/docs/intro/conc
 <a href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">.<wbr>Example.<wbr>Inputs.<wbr>Some<wbr>Other<wbr>Object<wbr>Args</a></span>
+        <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -172,7 +172,7 @@ The TypeUses resource accepts the following [input]({{< relref "/docs/intro/conc
 <a href="#baz_csharp" style="color: inherit; text-decoration: inherit;">Baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectwithnodeoptionalinputs">.<wbr>Example.<wbr>Inputs.<wbr>Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</a></span>
+        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -180,7 +180,7 @@ The TypeUses resource accepts the following [input]({{< relref "/docs/intro/conc
 <a href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#object">.<wbr>Example.<wbr>Inputs.<wbr>Object<wbr>Args</a></span>
+        <span class="property-type"><a href="#object">Object<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -188,7 +188,7 @@ The TypeUses resource accepts the following [input]({{< relref "/docs/intro/conc
 <a href="#qux_csharp" style="color: inherit; text-decoration: inherit;">Qux</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety">.<wbr>Example.<wbr>Rubber<wbr>Tree<wbr>Variety</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">Pulumi.<wbr>Example.<wbr>Rubber<wbr>Tree<wbr>Variety</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -323,7 +323,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#alpha_csharp" style="color: inherit; text-decoration: inherit;">Alpha</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#outputonlyenumtype">.<wbr>Example.<wbr>Output<wbr>Only<wbr>Enum<wbr>Type</a></span>
+        <span class="property-type"><a href="#outputonlyenumtype">Pulumi.<wbr>Example.<wbr>Output<wbr>Only<wbr>Enum<wbr>Type</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -331,7 +331,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#beta_csharp" style="color: inherit; text-decoration: inherit;">Beta</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#outputonlyobjecttype">List&lt;.<wbr>Example.<wbr>Outputs.<wbr>Output<wbr>Only<wbr>Object<wbr>Type&gt;</a></span>
+        <span class="property-type"><a href="#outputonlyobjecttype">List&lt;Output<wbr>Only<wbr>Object<wbr>Type&gt;</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -339,7 +339,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#gamma_csharp" style="color: inherit; text-decoration: inherit;">Gamma</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Dictionary&lt;string, .<wbr>Example.<wbr>Output<wbr>Only<wbr>Enum<wbr>Type&gt;</span>
+        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Example.<wbr>Output<wbr>Only<wbr>Enum<wbr>Type&gt;</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -347,7 +347,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#zed_csharp" style="color: inherit; text-decoration: inherit;">Zed</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#outputonlyobjecttype">.<wbr>Example.<wbr>Outputs.<wbr>Output<wbr>Only<wbr>Object<wbr>Type</a></span>
+        <span class="property-type"><a href="#outputonlyobjecttype">Output<wbr>Only<wbr>Object<wbr>Type</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -561,7 +561,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#configs_csharp" style="color: inherit; text-decoration: inherit;">Configs</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmap">List&lt;.<wbr>Example.<wbr>Inputs.<wbr>Config<wbr>Map&gt;</a></span>
+        <span class="property-type"><a href="#configmap">List&lt;Config<wbr>Map&gt;</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -569,7 +569,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">.<wbr>Example.<wbr>Resource</span>
+        <span class="property-type">Pulumi.<wbr>Example.<wbr>Resource</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -577,7 +577,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#others_csharp" style="color: inherit; text-decoration: inherit;">Others</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">List&lt;Immutable<wbr>Array&lt;.<wbr>Example.<wbr>Inputs.<wbr>Some<wbr>Other<wbr>Object&gt;&gt;</a></span>
+        <span class="property-type"><a href="#someotherobject">List&lt;Immutable<wbr>Array&lt;Some<wbr>Other<wbr>Object&gt;&gt;</a></span>
     </dt>
     <dd>{{% md %}}List of lists of other objects{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -585,7 +585,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#stillothers_csharp" style="color: inherit; text-decoration: inherit;">Still<wbr>Others</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Dictionary&lt;string, Immutable<wbr>Array&lt;.<wbr>Example.<wbr>Inputs.<wbr>Some<wbr>Other<wbr>Object&gt;&gt;</span>
+        <span class="property-type">Dictionary&lt;string, Immutable<wbr>Array&lt;Some<wbr>Other<wbr>Object&gt;&gt;</span>
     </dt>
     <dd>{{% md %}}Mapping from string to list of some other object{{% /md %}}</dd></dl>
 {{% /choosable %}}

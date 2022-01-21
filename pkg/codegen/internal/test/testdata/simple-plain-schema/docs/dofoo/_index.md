@@ -65,7 +65,7 @@ The following arguments are supported:
 <a href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">.<wbr>Example.<wbr>Inputs.<wbr>Foo</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

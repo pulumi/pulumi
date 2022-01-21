@@ -166,7 +166,7 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#backupkubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Backup<wbr>Kube<wbr>Client<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">.<wbr>Example.<wbr>Inputs.<wbr>Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -182,7 +182,7 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#kubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Kube<wbr>Client<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">.<wbr>Example.<wbr>Inputs.<wbr>Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}Options for tuning the Kubernetes client used by a Provider.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -190,7 +190,7 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#settings_csharp" style="color: inherit; text-decoration: inherit;">Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#layeredtype">.<wbr>Example.<wbr>Inputs.<wbr>Layered<wbr>Type<wbr>Args</a></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}describing things{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -325,7 +325,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#defaultkubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Default<wbr>Kube<wbr>Client<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">.<wbr>Example.<wbr>Outputs.<wbr>Kube<wbr>Client<wbr>Settings</a></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
     <dd>{{% md %}}A test for plain types{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -539,7 +539,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#rectest_csharp" style="color: inherit; text-decoration: inherit;">Rec<wbr>Test</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">.<wbr>Example.<wbr>Inputs.<wbr>Kube<wbr>Client<wbr>Settings</a></span>
+        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -637,7 +637,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#other_csharp" style="color: inherit; text-decoration: inherit;">Other</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">.<wbr>Example.<wbr>Inputs.<wbr>Helm<wbr>Release<wbr>Settings</a></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -661,7 +661,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#plainother_csharp" style="color: inherit; text-decoration: inherit;">Plain<wbr>Other</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">.<wbr>Example.<wbr>Inputs.<wbr>Helm<wbr>Release<wbr>Settings</a></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
     <dd>{{% md %}}Test how plain types interact{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -677,7 +677,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#recursive_csharp" style="color: inherit; text-decoration: inherit;">Recursive</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#layeredtype">.<wbr>Example.<wbr>Inputs.<wbr>Layered<wbr>Type</a></span>
+        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
