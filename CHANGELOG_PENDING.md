@@ -39,3 +39,6 @@
 - [codegen/nodejs] - Generate an install script that runs `pulumi plugin install` with
   the `--server` flag when necessary.
   [#8730](https://github.com/pulumi/pulumi/pull/8730)
+
+- [cli] The engine will no longer try to replace resources that are protected as that entails a delete.
+  [#8810](https://github.com/pulumi/pulumi/pull/8810)
