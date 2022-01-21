@@ -844,9 +844,12 @@ class Resource:
 
         Does not mutate self.
         """
-        opts_providers = {
-            p.package : p for p in opts.providers
-        } if isinstance(opts.providers, Sequence) else (opts.providers or {})
+        if isinstance(opts.providers, Sequence):
+            opts_providers = {p.package : p for p in opts.providers}
+        elif opts.providers:
+            opts_providers = {**opts.providers}
+        else:
+            opts_providers = {}
 
         # The provider provided by opts.providers
         ambient_provider: Optional[ProviderResource] = None
@@ -861,10 +864,17 @@ class Resource:
         parent_provider = cast(Optional[ProviderResource], opts.parent and opts.parent.get_provider(t))
         provider = opts.provider or ambient_provider or parent_provider
 
+        if pkg and opts.provider:
+            if pkg in opts_providers:
+                message = f"There is a conflict between the `provider` field ({pkg}) and a member of the `providers` map"
+                depreciation = "This will become an error by the end of July 2022. See https://github.com/pulumi/pulumi/issues/8799 for more details"
+                warnings.warn(f"{message} for resource {t}. "+depreciation)
+                log.warn(f"{message}. {depreciation}", resource=self)
+            else:
+                opts_providers[pkg] = opts.provider
+
         # providers takes priority over self._providers
         providers = {**self._providers, **opts_providers}
-        if pkg and opts.provider:
-            providers[pkg] = opts.provider
 
 
         return provider, providers
