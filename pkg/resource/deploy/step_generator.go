@@ -607,7 +607,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			if goal.Protect {
 				return nil, result.Errorf("unable to replace resource %q\n"+
 					"as it is currently marked for protection. To unprotect the resource, "+
-					"remove the `protect` flag from the resource in your Pulumi"+
+					"remove the `protect` flag from the resource in your Pulumi "+
 					"program and run `pulumi up`", urn)
 			}
 
