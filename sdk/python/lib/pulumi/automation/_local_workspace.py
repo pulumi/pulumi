@@ -133,7 +133,7 @@ class LocalWorkspace(Workspace):
             if found_ext == ".json":
                 json.dump(writable_settings, file, indent=4)
             else:
-                yaml.dump(writable_settings, stream=file)
+                yaml.dump(writable_settings, stream=file, canonical=True)
 
     def stack_settings(self, stack_name: str) -> StackSettings:
         stack_settings_name = get_stack_settings_name(stack_name)
@@ -159,7 +159,7 @@ class LocalWorkspace(Workspace):
             if found_ext == ".json":
                 json.dump(settings._serialize(), file, indent=4)
             else:
-                yaml.dump(settings._serialize(), stream=file)
+                yaml.dump(settings._serialize(), stream=file, canonical=True)
 
     def serialize_args_for_op(self, stack_name: str) -> List[str]:
         # Not used by LocalWorkspace
