@@ -17,7 +17,7 @@ from ..util import LanghostTest
 
 
 class ComponentDependenciesTest(LanghostTest):
-    def test_component_dependencies(self):
+    def test_component_provider_resolution(self):
         self.run_test(
             program=path.join(self.base_path(), "component_provider_resolution"),
             expected_resource_count=4)
