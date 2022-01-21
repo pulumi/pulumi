@@ -14,8 +14,11 @@
 - [cli] - Add support for overriding plugin download URLs.
   [#8798](https://github.com/pulumi/pulumi/pull/8798)
 
+- [automation] - Add `color` option to stack up, preview, refresh, and destroy commands.
+  [#8811](https://github.com/pulumi/pulumi/pull/8811)
+
 ### Bug Fixes
 
-- [codegen/nodejs] - Generate an install script that runs `pulumi plugin install` with 
+- [codegen/nodejs] - Generate an install script that runs `pulumi plugin install` with
   the `--server` flag when necessary.
   [#8730](https://github.com/pulumi/pulumi/pull/8730)
