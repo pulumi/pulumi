@@ -1,5 +1,11 @@
 ### Improvements
 
+- [codegen/dotnet] - Add C# extension `rootNamespace`, allowing the user to
+  replace `Pulumi` as the default C# global namespace in generated programs.
+  The `Company` and `Author` fields of the .csproj file are now driven by
+  `schema.publisher`.
+  [#8735](https://github.com/pulumi/pulumi/pull/8735)
+
 - [cli] Download provider plugins from GitHub Releases
   [#8785](https://github.com/pulumi/pulumi/pull/8785)
 
@@ -16,6 +22,6 @@
 
 ### Bug Fixes
 
-- [codegen/nodejs] - Generate an install script that runs `pulumi plugin install` with 
+- [codegen/nodejs] - Generate an install script that runs `pulumi plugin install` with
   the `--server` flag when necessary.
   [#8730](https://github.com/pulumi/pulumi/pull/8730)
