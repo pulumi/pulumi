@@ -254,6 +254,9 @@ func (b *localBackend) SupportsOrganizations() bool {
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
+	if err := b.ValidateStackName(stackRefName); err != nil {
+		return nil, err
+	}
 	return localBackendReference{name: tokens.AsName(stackRefName)}, nil
 }
 

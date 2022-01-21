@@ -518,6 +518,10 @@ func (b *cloudBackend) parseStackName(s string) (qualifiedStackReference, error)
 }
 
 func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, error) {
+	if err := b.ValidateStackName(s); err != nil {
+		return nil, err
+	}
+
 	// Parse the input as a qualified stack name.
 	qualifiedName, err := b.parseStackName(s)
 	if err != nil {
