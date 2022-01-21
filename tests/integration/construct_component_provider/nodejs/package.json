@@ -1,10 +1,8 @@
 {
-    "name": "construct_component_provider",
-    "license": "Apache-2.0",
-    "devDependencies": {
-        "typescript": "^3.0.0"
-    },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
-    }
+ "name": "construct_component_provider",
+ "license": "Apache-2.0",
+ "devDependencies": {},
+ "peerDependencies": {
+  "@pulumi/pulumi": "latest"
+ }
 }

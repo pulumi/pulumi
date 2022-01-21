@@ -1,11 +1,10 @@
 {
-    "name": "construct_component_methods_unknown",
-    "license": "Apache-2.0",
-    "devDependencies": {
-        "typescript": "^3.0.0",
-        "@types/node": "latest"
-    },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
-    }
+ "name": "construct_component_methods_unknown",
+ "license": "Apache-2.0",
+ "devDependencies": {
+  "@types/node": "latest"
+ },
+ "peerDependencies": {
+  "@pulumi/pulumi": "latest"
+ }
 }
