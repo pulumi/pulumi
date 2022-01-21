@@ -56,6 +56,67 @@ var (
 	enableLegacyPluginBehavior = os.Getenv("PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH") != ""
 )
 
+// pluginDownloadURLOverrides is a variable instead of a constant so it can be set using the `-X` `ldflag` at build
+// time, if necessary. When non-empty, it's parsed into `pluginDownloadURLOverridesParsed` in `init()`. The expected
+// format is `regexp=URL`, and multiple pairs can be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`.
+//
+// For example, when set to "^foo.*=https://foo&^bar.*=https://bar", plugin names that start with "foo" will use
+// https://foo as the download URL and names that start with "bar" will use https://bar.
+var pluginDownloadURLOverrides string
+
+// pluginDownloadURLOverridesParsed is the parsed array from `pluginDownloadURLOverrides`.
+var pluginDownloadURLOverridesParsed pluginDownloadOverrideArray
+
+// pluginDownloadURLOverride represents a plugin download URL override, parsed from `pluginDownloadURLOverrides`.
+type pluginDownloadURLOverride struct {
+	reg *regexp.Regexp // The regex used to match against the plugin's name.
+	url string         // The URL to use for the matched plugin.
+}
+
+// pluginDownloadOverrideArray represents an array of overrides.
+type pluginDownloadOverrideArray []pluginDownloadURLOverride
+
+// get returns the URL and true if name matches an override's regular expression,
+// otherwise an empty string and false.
+func (overrides pluginDownloadOverrideArray) get(name string) (string, bool) {
+	for _, override := range overrides {
+		if override.reg.MatchString(name) {
+			return override.url, true
+		}
+	}
+	return "", false
+}
+
+func init() {
+	var err error
+	if pluginDownloadURLOverridesParsed, err = parsePluginDownloadURLOverrides(pluginDownloadURLOverrides); err != nil {
+		panic(fmt.Errorf("error parsing `pluginDownloadURLOverrides`: %w", err))
+	}
+}
+
+// parsePluginDownloadURLOverrides parses an overrides string with the expected format `regexp1=URL1,regexp2=URL2`.
+func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideArray, error) {
+	var result pluginDownloadOverrideArray
+	if overrides == "" {
+		return result, nil
+	}
+	for _, pair := range strings.Split(overrides, ",") {
+		split := strings.Split(pair, "=")
+		if len(split) != 2 || split[0] == "" || split[1] == "" {
+			return nil, fmt.Errorf("expected format to be \"regexp1=URL1,regexp2=URL2\"; got %q", overrides)
+		}
+		reg, err := regexp.Compile(split[0])
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, pluginDownloadURLOverride{
+			reg: reg,
+			url: split[1],
+		})
+	}
+	return result, nil
+}
+
 // MissingError is returned by functions that attempt to load plugins if a plugin can't be located.
 type MissingError struct {
 	// Info contains information about the plugin that was not found.
@@ -242,6 +303,11 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	if info.PluginDownloadURL != "" {
 		return getPluginResponse(
 			buildUserSpecifiedPluginURL(info.PluginDownloadURL, info.Kind, info.Name, info.Version, opSy, arch))
+	}
+
+	// If the plugin name matches an override, download the plugin from the override URL.
+	if url, ok := pluginDownloadURLOverridesParsed.get(info.Name); ok {
+		return getPluginResponse(buildUserSpecifiedPluginURL(url, info.Kind, info.Name, info.Version, opSy, arch))
 	}
 
 	if _, ok := os.LookupEnv("PULUMI_EXPERIMENTAL"); ok {
