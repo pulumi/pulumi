@@ -16,6 +16,7 @@
 
 import asyncio
 import copy
+import warnings
 from typing import Optional, List, Any, Mapping, Sequence, Union, Set, Callable, Tuple, TYPE_CHECKING, cast
 from . import _types
 from .metadata import get_project, get_stack
@@ -25,7 +26,7 @@ from .runtime.resource import get_resource, register_resource, register_resource
 from .runtime.settings import get_root_resource
 from .output import _is_prompt, _map_input, _map2_input, T, Output
 from . import urn as urn_util
-
+from . import log
 if TYPE_CHECKING:
     from .output import Input, Inputs
     from .runtime.stack import Stack
@@ -457,11 +458,11 @@ class ResourceOptions:
         :param Optional[bool] protect: If provided and True, this resource is not allowed to be deleted.
         :param Optional[ProviderResource] provider: An optional provider to use for this resource's CRUD operations.
                If no provider is supplied, the default provider for the resource's package will be used. The default
-               provider is pulled from the parent's provider bag.
+               provider is pulled from the providers field, then the parent's provider bag.
         :param Optional[Union[Mapping[str, ProviderResource], List[ProviderResource]]] providers: An optional set of
-               providers to use for child resources. Keyed by package name (e.g. "aws"), or just provided as a list.
-               In the latter case, the package name will be retrieved from the provider itself. Note: do not provide
-               both provider and providers.
+               providers to use for this resource and child resources. Keyed by package name (e.g. "aws"), or just
+               provided as a list. In the latter case, the package name will be retrieved from the provider itself.
+               Note: Only a list should be used. Mapping keys are not respected.
         :param Optional[bool] delete_before_replace: If provided and True, this resource must be deleted before it is replaced.
         :param Optional[List[str]] ignore_changes: If provided, a list of property names to ignore for purposes of updates
                or replacements.
@@ -550,7 +551,7 @@ class ResourceOptions:
         2. Simple scalar values from `opts2` (i.e. strings, numbers, bools) will replace the values
            from `opts1`.
 
-        3. For the purposes of merging `depends_on`, `provider` and `providers` are always treated
+        3. For the purposes of merging `depends_on` is always treated
            as collections, even if only a single value was provided.
 
         4. Attributes with value 'None' will not be copied over.
@@ -572,12 +573,21 @@ class ResourceOptions:
         dest = copy.copy(opts1)
         source = copy.copy(opts2)
 
-        # Ensure provider/providers are all expanded into the `List[ResourceProvider]` form.
         # This makes merging simple.
-        _expand_providers(dest)
-        _expand_providers(source)
+        def expand_providers(providers) -> Optional[Sequence['ProviderResource']]:
+            if isinstance(providers, Mapping):
+                for k, p in providers.items():
+                    if k != p.package:
+                        message = f"Provider map key {k} disagrees with associated provider {p.package}. Key will be ignored."
+                        warnings.warn(message, UserWarning)
+                        log.warn(message)
+                return list(providers.values())
+            return providers
 
-        dest.providers = _merge_lists(dest.providers, source.providers)
+        dest_providers = expand_providers(dest.providers)
+        source_providers = expand_providers(source.providers)
+
+        dest.providers = _merge_lists(dest_providers, source_providers)
 
         dest.depends_on = _map2_input(dest._depends_on_list(),
                                       source._depends_on_list(),
@@ -598,6 +608,7 @@ class ResourceOptions:
         dest.id = dest.id if source.id is None else source.id
         dest.import_ = dest.import_ if source.import_ is None else source.import_
         dest.urn = dest.urn if source.urn is None else source.urn
+        dest.provider = dest.provider if source.provider is None else source.provider
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
         # collapse that down into .provider form.
@@ -606,27 +617,15 @@ class ResourceOptions:
         return dest
 
 
-def _expand_providers(options: 'ResourceOptions'):
-    # Move 'provider' up to 'providers' if we have it.
-    if options.provider is not None:
-        options.providers = [options.provider]
-
-    # Convert 'providers' map to list form.
-    if options.providers is not None and isinstance(options.providers, Mapping):
-        options.providers = list(options.providers.values())
-
-    options.provider = None
-
-
 def _collapse_providers(opts: 'ResourceOptions'):
-    # If we have only 0-1 providers, then merge that back down to the .provider field.
+    """
+    If we have 0 providers, we set .providers to None. Otherwise, we ensure that
+    .providers is returned as a map.
+    """
     providers: Optional[Union[Mapping[str, ProviderResource], Sequence[ProviderResource]]] = opts.providers
     if providers is not None:
         provider_length = len(providers)
         if provider_length == 0:
-            opts.providers = None
-        elif isinstance(providers, list) and provider_length == 1:
-            opts.provider = providers[0]
             opts.providers = None
         else:
             opts.providers = {}
@@ -648,7 +647,7 @@ def _merge_lists(dest, source):
     return dest + source
 
 
-# !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that merge_options
+# !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that ResourceOptions.merge
 # works properly for it.
 class Resource:
     """
@@ -697,7 +696,7 @@ class Resource:
 
     _childResources: Set['Resource']
 
-# !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that merge_options
+# !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that ResourceOptions.merge
 # works properly for it.
 
     def __init__(self,
@@ -796,26 +795,21 @@ class Resource:
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
 
-        if custom:
-            provider = opts.provider
-            if provider is None:
-                if not opts.parent is None:
-                    # If no provider was given, but we have a parent, then inherit the
-                    # provider from our parent.
-                    opts.provider = opts.parent.get_provider(t)
-            else:
-                # If a provider was specified, add it to the providers map under this type's package
-                # so that any children of this resource inherit its provider.
-                type_components = t.split(":")
-                if len(type_components) == 3:
-                    [pkg, _, _] = type_components
-                    self._providers = {**self._providers, pkg: provider}
-        else:
-            providers = convert_providers(opts.provider, opts.providers)
-            self._providers = {**self._providers, **providers}
+        type_components = t.split(":")
+        pkg = None
+        if len(type_components) == 3:
+            [pkg, _, _] = type_components
+
+        opts.provider, providers = self._get_providers(t, pkg, opts)
 
         self._protect = bool(opts.protect)
         self._provider = opts.provider if custom else None
+        if self._provider and self._provider.package != pkg:
+            action = "get" if opts.urn is not None else \
+                    "read" if opts.id is not None else \
+                    "register"
+            raise ValueError(f"Attempted to {action} resource {t} with a provider for '{self._provider.package}'")
+        self._providers = providers
         self._version = opts.version
         self._plugin_download_url = opts.plugin_download_url
         self._aliases = all_aliases(opts.aliases, name, t, opts.parent)
@@ -831,6 +825,57 @@ class Resource:
             read_resource(cast('CustomResource', self), t, name, props, opts, typ)
         else:
             register_resource(self, t, name, custom, remote, DependencyResource, props, opts, typ)
+
+    def _get_providers(self, t: str, pkg: Optional[str], opts: ResourceOptions) -> Tuple[Optional['ProviderResource'], Mapping[str, 'ProviderResource']]:
+        """
+        Fetches the correct provider and providers for this resource.
+
+        provider is the first option that does not return none
+            1. opts.provider
+            2. a matching provider in opts.providers
+            3. a matching provider inherited from opts.parent
+
+        providers is found by combining (in descending order of priority)
+            1. opts_providers
+            2. self_providers
+            3. provider
+
+        Does not mutate self.
+        """
+        if isinstance(opts.providers, Sequence):
+            opts_providers = {p.package : p for p in opts.providers}
+        elif opts.providers:
+            opts_providers = {**opts.providers}
+        else:
+            opts_providers = {}
+
+        # The provider provided by opts.providers
+        ambient_provider: Optional[ProviderResource] = None
+        if pkg and pkg in opts_providers:
+            ambient_provider = opts_providers[pkg]
+
+        # The provider supplied by the parent
+
+        # Cast is safe because the `and` will resolve to only None or the result
+        # of get_provider (which is Optional[ProviderResource]).
+        # See https://github.com/python/mypy/issues/12030
+        parent_provider = cast(Optional[ProviderResource], opts.parent and opts.parent.get_provider(t))
+        provider = opts.provider or ambient_provider or parent_provider
+
+        if pkg and opts.provider:
+            if pkg in opts_providers:
+                message = f"There is a conflict between the `provider` field ({pkg}) and a member of the `providers` map"
+                depreciation = "This will become an error by the end of July 2022. See https://github.com/pulumi/pulumi/issues/8799 for more details"
+                warnings.warn(f"{message} for resource {t}. "+depreciation)
+                log.warn(f"{message}. {depreciation}", resource=self)
+            else:
+                opts_providers[pkg] = opts.provider
+
+        # providers takes priority over self._providers
+        providers = {**self._providers, **opts_providers}
+
+
+        return provider, providers
 
     @property
     def urn(self) -> 'Output[str]':
