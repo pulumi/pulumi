@@ -1176,6 +1176,20 @@ func TestESMTS(t *testing.T) {
 	})
 }
 
+func TestESMTSDefaultExport(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "esm-ts-default-export"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.Len(t, stack.Outputs, 1)
+			helloWorld, ok := stack.Outputs["helloWorld"]
+			assert.True(t, ok)
+			assert.Equal(t, helloWorld, 123.0)
+		},
+	})
+}
+
 func TestESMTSSpecifierResolutionNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts-specifier-resolution-node"),

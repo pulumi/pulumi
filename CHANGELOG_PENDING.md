@@ -20,6 +20,9 @@
 - [cli] - Add support for overriding plugin download URLs.
   [#8798](https://github.com/pulumi/pulumi/pull/8798)
 
+- [sdk/nodejs] - Support top-level default exports in ESM.
+  [#8766](https://github.com/pulumi/pulumi/pull/8766)
+
 ### Bug Fixes
 
 - [sdk/python] - Prevent `ResourceOptions.merge` from promoting between the
