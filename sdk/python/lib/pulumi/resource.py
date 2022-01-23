@@ -945,7 +945,7 @@ class CustomResource(Resource):
     def __init__(self,
                  t: str,
                  name: str,
-                 props: Optional[dict] = None,
+                 props: Optional['Inputs'] = None,
                  opts: Optional[ResourceOptions] = None,
                  dependency: bool = False) -> None:
         """
@@ -979,7 +979,7 @@ class ComponentResource(Resource):
     def __init__(self,
                  t: str,
                  name: str,
-                 props: Optional[dict] = None,
+                 props: Optional['Inputs'] = None,
                  opts: Optional[ResourceOptions] = None,
                  remote: bool = False) -> None:
         """
@@ -994,7 +994,7 @@ class ComponentResource(Resource):
         self.__dict__["id"] = None
         self._remote = remote
 
-    def register_outputs(self, outputs):
+    def register_outputs(self, outputs: 'Inputs'):
         """
         Register synthetic outputs that a component has initialized, usually by allocating other child
         sub-resources and propagating their resulting property values.
@@ -1018,7 +1018,7 @@ class ProviderResource(CustomResource):
     def __init__(self,
                  pkg: str,
                  name: str,
-                 props: Optional[dict] = None,
+                 props: Optional['Inputs'] = None,
                  opts: Optional[ResourceOptions] = None,
                  dependency: bool = False) -> None:
         """
