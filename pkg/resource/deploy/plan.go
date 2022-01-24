@@ -121,12 +121,12 @@ type GoalPlan struct {
 	Name tokens.QName
 	// true if this resource is custom, managed by a plugin.
 	Custom bool
-	// the resource's checked input properties that we saw during preview.
+	// the resource's checked input properties that we saw during preview. (Temporary for preview release, should be removed for GA)
 	CheckedInputs resource.PropertyMap
 	// the resource's checked input properties we expect to change.
 	InputDiff PlanDiff
 	// the resource's output properties we expect to change (only set for RegisterResourceOutputs)
-	OutputDiff *PlanDiff
+	OutputDiff PlanDiff
 	// an optional parent URN for this resource.
 	Parent resource.URN
 	// true to protect this resource from deletion.
@@ -189,7 +189,7 @@ func NewGoalPlan(checkedInputs resource.PropertyMap, inputDiff *resource.ObjectD
 		Custom:                  goal.Custom,
 		CheckedInputs:           checkedInputs,
 		InputDiff:               diff,
-		OutputDiff:              nil,
+		OutputDiff:              PlanDiff{},
 		Parent:                  goal.Parent,
 		Protect:                 goal.Protect,
 		Dependencies:            goal.Dependencies,
@@ -292,7 +292,7 @@ func checkMissingPlan(
 		Custom:                  oldState.Custom,
 		CheckedInputs:           nil,
 		InputDiff:               PlanDiff{},
-		OutputDiff:              nil,
+		OutputDiff:              PlanDiff{},
 		Parent:                  oldState.Parent,
 		Protect:                 oldState.Protect,
 		Dependencies:            oldState.Dependencies,
@@ -473,16 +473,8 @@ func (rp *ResourcePlan) checkOutputs(
 	contract.Assert(rp.Goal != nil)
 
 	// Check that the property diffs meet the constraints set in the plan.
-	if rp.Goal.OutputDiff != nil {
-		if err := checkDiff(oldOutputs, newOutputs, *rp.Goal.OutputDiff); err != nil {
-			return err
-		}
-	} else {
-		// This plan saved no diff for outputs so new up an empty output diff and diff against that
-		outputDiff := PlanDiff{}
-		if err := checkDiff(oldOutputs, newOutputs, outputDiff); err != nil {
-			return err
-		}
+	if err := checkDiff(oldOutputs, newOutputs, rp.Goal.OutputDiff); err != nil {
+		return err
 	}
 
 	return nil

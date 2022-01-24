@@ -31,7 +31,7 @@ type GoalV1 struct {
 	// the resource properties that will be changed.
 	InputDiff PlanDiffV1 `json:"inputDiff,omitempty"`
 	// the resource outputs that will be changed.
-	OutputDiff *PlanDiffV1 `json:"outputDiff,omitempty"`
+	OutputDiff PlanDiffV1 `json:"outputDiff,omitempty"`
 	// an optional parent URN for this resource.
 	Parent resource.URN `json:"parent,omitempty"`
 	// true to protect this resource from deletion.

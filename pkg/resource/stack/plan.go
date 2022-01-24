@@ -88,13 +88,9 @@ func SerializeResourcePlan(
 			return apitype.ResourcePlanV1{}, err
 		}
 
-		var outputDiff *apitype.PlanDiffV1
-		if plan.Goal.OutputDiff != nil {
-			diff, err := SerializePlanDiff(*plan.Goal.OutputDiff, enc, showSecrets)
-			if err != nil {
-				return apitype.ResourcePlanV1{}, err
-			}
-			outputDiff = &diff
+		outputDiff, err := SerializePlanDiff(plan.Goal.OutputDiff, enc, showSecrets)
+		if err != nil {
+			return apitype.ResourcePlanV1{}, err
 		}
 
 		goal = &apitype.GoalV1{
@@ -167,13 +163,9 @@ func DeserializeResourcePlan(
 		return nil, err
 	}
 
-	var outputDiff *deploy.PlanDiff
-	if plan.Goal.OutputDiff != nil {
-		diff, err := DeserializePlanDiff(*plan.Goal.OutputDiff, dec, enc)
-		if err != nil {
-			return nil, err
-		}
-		outputDiff = &diff
+	outputDiff, err := DeserializePlanDiff(plan.Goal.OutputDiff, dec, enc)
+	if err != nil {
+		return nil, err
 	}
 
 	var outputs resource.PropertyMap
