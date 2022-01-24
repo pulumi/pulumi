@@ -39,12 +39,44 @@ type sdkTest struct {
 	SkipCompileCheck codegen.StringSet
 }
 
+// ShouldSkipTest indicates if a given test for a given language should be run.
+func (tt sdkTest) ShouldSkipTest(language, test string) bool {
+
+	// Only language-specific checks.
+	if !strings.HasPrefix(test, language+"/") {
+		return true
+	}
+
+	// Obey SkipCompileCheck to skip compile and test targets.
+	if tt.SkipCompileCheck != nil &&
+		tt.SkipCompileCheck.Has(language) &&
+		(test == fmt.Sprintf("%s/compile", language) ||
+			test == fmt.Sprintf("%s/test", language)) {
+		return true
+	}
+
+	// Obey Skip.
+	if tt.Skip != nil && tt.Skip.Has(test) {
+		return true
+	}
+
+	return false
+}
+
+// ShouldSkipCodegen determines if codegen should be run. ShouldSkipCodegen=true
+// further implies no other tests will be run.
+func (tt sdkTest) ShouldSkipCodegen(language string) bool {
+	return tt.Skip.Has(language + "/any")
+}
+
 const (
 	python = "python"
 	nodejs = "nodejs"
 	dotnet = "dotnet"
 	golang = "go"
 )
+
+var allLanguages = codegen.NewStringSet("python/any", "nodejs/any", "dotnet/any", "go/any", "docs/any")
 
 var sdkTests = []sdkTest{
 	{
@@ -184,7 +216,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "different-package-name-conflict",
 		Description: "different packages with the same resource",
-		Skip:        codegen.NewStringSet("dotnet/any", "nodejs/any", "python/any", "go/any", "docs/any"),
+		Skip:        allLanguages,
 	},
 	{
 		Directory:   "different-enum",
@@ -198,7 +230,17 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "regress-go-8664",
 		Description: "Regress pulumi/pulumi#8664 affecting Go",
-		Skip:        codegen.NewStringSet("dotnet/any", "python/any", "nodejs/any", "docs/any"),
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
+		Directory:   "other-owned",
+		Description: "CSharp rootNamespaces",
+		// We only test in dotnet, because we are testing a change in a dotnet
+		// language property. Other tests should pass, but do not put the
+		// relevant feature under test. To save time, we skip them.
+		//
+		// We need to see dotnet changes (paths) in the docs too.
+		Skip: allLanguages.Except("dotnet/any").Except("docs/any"),
 	},
 }
 
@@ -312,8 +354,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				schemaPath = filepath.Join(dirPath, "schema.yaml")
 			}
 
-			// Any takes place before codegen.
-			if tt.Skip.Has(opts.Language + "/any") {
+			if tt.ShouldSkipCodegen(opts.Language) {
 				t.Logf("Skipping generation + tests for %s", tt.Directory)
 				return
 			}
@@ -347,30 +388,6 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				allChecks[k] = v
 			}
 
-			// Define check filter.
-			shouldSkipCheck := func(check string) bool {
-
-				// Only language-specific checks.
-				if !strings.HasPrefix(check, opts.Language+"/") {
-					return true
-				}
-
-				// Obey SkipCompileCheck to skip compile and test targets.
-				if tt.SkipCompileCheck != nil &&
-					tt.SkipCompileCheck.Has(opts.Language) &&
-					(check == fmt.Sprintf("%s/compile", opts.Language) ||
-						check == fmt.Sprintf("%s/test", opts.Language)) {
-					return true
-				}
-
-				// Obey Skip.
-				if tt.Skip != nil && tt.Skip.Has(check) {
-					return true
-				}
-
-				return false
-			}
-
 			// Sort the checks in alphabetical order.
 			var checkOrder []string
 			for check := range allChecks {
@@ -384,7 +401,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			for _, checkVar := range checkOrder {
 				check := checkVar
 				t.Run(check, func(t *testing.T) {
-					if shouldSkipCheck(check) {
+					if tt.ShouldSkipTest(opts.Language, check) {
 						t.Skip()
 					}
 					checkFun := allChecks[check]
