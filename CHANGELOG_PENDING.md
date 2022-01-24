@@ -25,7 +25,7 @@
 
 ### Bug Fixes
 
-- [sdk/python] - Prevent `ResourceOptions.merge` from promoting between the
+- [sdk/{python,nodejs}] - Prevent `ResourceOptions.merge` from promoting between the
   `.provider` and `.providers` fields. This changes the general behavior of merging
   for `.provider` and `.providers`, as described in [#8796](https://github.com/pulumi/pulumi/issues/8796).
   Note that this is a breaking change in two ways:
