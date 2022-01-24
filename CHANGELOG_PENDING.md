@@ -25,6 +25,9 @@
 - [cli] - Add support for overriding plugin download URLs.
   [#8798](https://github.com/pulumi/pulumi/pull/8798)
 
+- [automation] - Add `color` option to stack up, preview, refresh, and destroy commands.
+  [#8811](https://github.com/pulumi/pulumi/pull/8811)
+
 - [sdk/nodejs] - Support top-level default exports in ESM.
   [#8766](https://github.com/pulumi/pulumi/pull/8766)
 
