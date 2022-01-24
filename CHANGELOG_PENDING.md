@@ -9,6 +9,11 @@
 - [cli] Download provider plugins from GitHub Releases
   [#8785](https://github.com/pulumi/pulumi/pull/8785)
 
+- [cli] Using a decryptAll functionality when deserializing a deployment. This will allow
+  decryption of secrets stored in the Pulumi Service backend to happen in bulk for
+  performance increase
+  [#8676](https://github.com/pulumi/pulumi/pull/8676)
+
 - [sdk/dotnet] - Changed `Output<T>.ToString()` to return an informative message rather than just "Output`1[X]"
   [#8767](https://github.com/pulumi/pulumi/pull/8767)
 
@@ -22,6 +27,9 @@
 
 - [automation] - Add `color` option to stack up, preview, refresh, and destroy commands.
   [#8811](https://github.com/pulumi/pulumi/pull/8811)
+
+- [sdk/nodejs] - Support top-level default exports in ESM.
+  [#8766](https://github.com/pulumi/pulumi/pull/8766)
 
 ### Bug Fixes
 
@@ -45,3 +53,6 @@
 
 - [cli] The engine will no longer try to replace resources that are protected as that entails a delete.
   [#8810](https://github.com/pulumi/pulumi/pull/8810)
+
+- [codegen/pcl] - Fix handling of function invokes without args
+  [#8805](https://github.com/pulumi/pulumi/pull/8805)
