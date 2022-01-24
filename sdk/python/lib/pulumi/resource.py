@@ -861,6 +861,7 @@ class Resource:
         # of get_provider (which is Optional[ProviderResource]). This holds as
         # long as Resource does not impliment __bool__.
         parent_provider = cast(Optional[ProviderResource], opts.parent and opts.parent.get_provider(t))
+
         provider = opts.provider or ambient_provider or parent_provider
 
         if pkg and opts.provider:
@@ -872,7 +873,7 @@ class Resource:
             else:
                 opts_providers[pkg] = opts.provider
 
-        # providers takes priority over self._providers
+        # opts_providers takes priority over self._providers
         providers = {**self._providers, **opts_providers}
 
 

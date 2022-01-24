@@ -313,10 +313,6 @@ export abstract class Resource {
         // Make a shallow clone of opts to ensure we don't modify the value passed in.
         opts = Object.assign({}, opts);
 
-        if (opts.provider && (<ComponentResourceOptions>opts).providers) {
-            throw new ResourceError("Do not supply both 'provider' and 'providers' options to a ComponentResource.", opts.parent);
-        }
-
         // Check the parent type if one exists and fill in any default options.
         this.__providers = {};
         if (opts.parent) {
@@ -334,34 +330,29 @@ export abstract class Resource {
             this.__providers = opts.parent.__providers;
         }
 
-        if (custom) {
-            const provider = opts.provider;
-            if (provider === undefined) {
-                if (opts.parent) {
-                    // If no provider was given, but we have a parent, then inherit the
-                    // provider from our parent.
-                    opts.provider = opts.parent.getProvider(t);
-                }
-            } else {
-                // If a provider was specified, add it to the providers map under this type's package so that
-                // any children of this resource inherit its provider.
-                const typeComponents = t.split(":");
-                if (typeComponents.length === 3) {
-                    const pkg = typeComponents[0];
-                    this.__providers = { ...this.__providers, [pkg]: provider };
-                }
-            }
-        }
-        else {
-            // Note: we checked above that at most one of opts.provider or opts.providers is set.
+        // If a provider was specified, add it to the providers map under this type's package so that
+        // any children of this resource inherit its provider.
+        this.__providers = {
+            ...convertToProvidersMap((<ComponentResourceOptions>opts).providers),
+            ...this.__providers,
+            ...convertToProvidersMap(opts.provider ? [opts.provider] : {}),
+        };
 
-            // If opts.provider is set, treat that as if we were given a array of provider with that
-            // single value in it.  Otherwise, take the array or map of providers, convert it to a
-            // map and combine with any providers we've already set from our parent.
-            const providers = opts.provider
-                ? convertToProvidersMap([opts.provider])
-                : convertToProvidersMap((<ComponentResourceOptions>opts).providers);
-            this.__providers = { ...this.__providers, ...providers };
+        // Because this is a custom resource, we should attempt to set provider.
+        if (custom && opts.provider === undefined) {
+            let pkg = undefined;
+            const memComponents = t.split(":");
+            if (memComponents.length === 3) {
+                pkg = memComponents[0];
+            }
+
+            const parentProvider = opts.parent?.getProvider(t);
+            if (pkg && pkg in this.__providers) {
+                opts.provider = this.__providers[pkg];
+            }
+            else if (parentProvider) {
+                opts.provider = parentProvider;
+            }
         }
 
         this.__protect = !!opts.protect;
