@@ -18,6 +18,7 @@ import { getStackResource, unknownValue } from "./runtime";
 import { getResource, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
+import * as log from "./log";
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -705,9 +706,7 @@ export interface ComponentResourceOptions extends ResourceOptions {
      * "aws"), or just provided as an array.  In the latter case, the package name will be retrieved
      * from the provider itself.
      *
-     * In the case of a single provider, the options can be simplified to just pass along `provider: theProvider`
-     *
-     * Note: do not provide both [provider] and [providers];
+     * Note: only a list should be used. Mapping keys are not respected.
      */
     providers?: Record<string, ProviderResource> | ProviderResource[];
 
@@ -993,28 +992,26 @@ function isPromiseOrOutput(val: any): boolean {
 
 /** @internal */
 export function expandProviders(options: ComponentResourceOptions) {
-    // Move 'provider' up to 'providers' if we have it.
-    if (options.provider) {
-        options.providers = [options.provider];
-    }
-
     // Convert 'providers' map to array form.
     if (options.providers && !Array.isArray(options.providers)) {
+        for (const k in options.providers) {
+            if (Object.prototype.hasOwnProperty.call(options.providers, k)) {
+                const v = options.providers[k];
+                if (k !== v.getPackage()) {
+                    const message = `provider resource map where key ${k} doesn't match provider ${v.getPackage()}`;
+                    log.warn(message);
+                }
+            }
+        }
         options.providers = utils.values(options.providers);
     }
-
-    delete options.provider;
 }
 
 function normalizeProviders(opts: ComponentResourceOptions) {
-    // If we have only 0-1 providers, then merge that back down to the .provider field.
+    // If we have 0 providers, delete providers. Otherwise, convert providers into a map.
     const providers = <ProviderResource[]>opts.providers;
     if (providers) {
         if (providers.length === 0) {
-            delete opts.providers;
-        }
-        else if (providers.length === 1) {
-            opts.provider = providers[0];
             delete opts.providers;
         }
         else {

@@ -358,9 +358,10 @@ class ResourceOptions:
 
     providers: Optional[Union[Mapping[str, 'ProviderResource'], Sequence['ProviderResource']]]
     """
-    An optional set of providers to use for child resources. Keyed by package name (e.g. "aws"), or just
-    provided as a list. In the latter case, the package name will be retrieved from the provider itself.
-    Note: do not provide both provider and providers.
+    An optional set of providers to use for this resource and child resources. Keyed by package name
+    (e.g. "aws"), or just provided as a list. In the latter case, the package name will be retrieved
+    from the provider itself.
+    Note: Only a list should be used. Mapping keys are not respected.
     """
 
     ignore_changes: Optional[List[str]]
@@ -857,8 +858,8 @@ class Resource:
         # The provider supplied by the parent
 
         # Cast is safe because the `and` will resolve to only None or the result
-        # of get_provider (which is Optional[ProviderResource]).
-        # See https://github.com/python/mypy/issues/12030
+        # of get_provider (which is Optional[ProviderResource]). This holds as
+        # long as Resource does not impliment __bool__.
         parent_provider = cast(Optional[ProviderResource], opts.parent and opts.parent.get_provider(t))
         provider = opts.provider or ambient_provider or parent_provider
 
