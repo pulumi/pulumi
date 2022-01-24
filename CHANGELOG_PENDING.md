@@ -23,6 +23,9 @@
 - [sdk/nodejs] - Support top-level default exports in ESM.
   [#8766](https://github.com/pulumi/pulumi/pull/8766)
 
+- [cli] Add better error message for pulumi service rate limit responses
+  [#7963](https://github.com/pulumi/pulumi/issues/7963)
+
 ### Bug Fixes
 
 - [sdk/python] - Prevent `ResourceOptions.merge` from promoting between the
