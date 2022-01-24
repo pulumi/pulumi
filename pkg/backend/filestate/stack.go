@@ -18,8 +18,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -60,7 +58,7 @@ func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
 }
 
-func (s *localStack) Rename(ctx context.Context, newName tokens.Name) (backend.StackReference, error) {
+func (s *localStack) Rename(ctx context.Context, newName string) (backend.StackReference, error) {
 	return backend.RenameStack(ctx, s, newName)
 }
 

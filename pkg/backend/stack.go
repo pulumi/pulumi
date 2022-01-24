@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -53,7 +52,7 @@ type Stack interface {
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
 	// rename this stack.
-	Rename(ctx context.Context, newName tokens.Name) (StackReference, error)
+	Rename(ctx context.Context, newName string) (StackReference, error)
 	// list log entries for this stack.
 	GetLogs(ctx context.Context, cfg StackConfiguration, query operations.LogQuery) ([]operations.LogEntry, error)
 	// export this stack's deployment.
@@ -68,7 +67,7 @@ func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
 }
 
 // RenameStack renames the stack, or returns an error if it cannot.
-func RenameStack(ctx context.Context, s Stack, newName tokens.Name) (StackReference, error) {
+func RenameStack(ctx context.Context, s Stack, newName string) (StackReference, error) {
 	return s.Backend().RenameStack(ctx, s, newName)
 }
 

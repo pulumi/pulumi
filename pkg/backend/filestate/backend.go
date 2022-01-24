@@ -382,7 +382,7 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 }
 
 func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
-	newName tokens.Name) (backend.StackReference, error) {
+	newName string) (backend.StackReference, error) {
 
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
@@ -398,13 +398,13 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	}
 
 	// Ensure the new stack name is valid.
-	newRef, err := b.ParseStackReference(string(newName))
+	newRef, err := b.ParseStackReference(newName)
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure the destination stack does not already exist.
-	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newName))
+	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newRef.Name()))
 	if err != nil {
 		return nil, err
 	}
@@ -414,13 +414,13 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
 	if snap != nil {
-		if err = edit.RenameStack(snap, newName, ""); err != nil {
+		if err = edit.RenameStack(snap, newRef.Name(), ""); err != nil {
 			return nil, err
 		}
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
-	if _, err = b.saveStack(newName, snap, nil); err != nil {
+	if _, err = b.saveStack(newRef.Name(), snap, nil); err != nil {
 		return nil, err
 	}
 
@@ -429,7 +429,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	backupTarget(b.bucket, file)
 
 	// And rename the histoy folder as well.
-	if err = b.renameHistory(stackName, newName); err != nil {
+	if err = b.renameHistory(stackName, newRef.Name()); err != nil {
 		return nil, err
 	}
 	return newRef, err

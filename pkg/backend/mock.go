@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -44,7 +43,7 @@ type MockBackend struct {
 	RemoveStackF           func(context.Context, Stack, bool) (bool, error)
 	ListStacksF            func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
-	RenameStackF            func(context.Context, Stack, tokens.Name) (StackReference, error)
+	RenameStackF            func(context.Context, Stack, string) (StackReference, error)
 	GetStackCrypterF        func(StackReference) (config.Crypter, error)
 	QueryF                  func(context.Context, QueryOperation) result.Result
 	GetLatestConfigurationF func(context.Context, Stack) (config.Map, error)
@@ -165,7 +164,7 @@ func (be *MockBackend) ListStacks(ctx context.Context, filter ListStacksFilter, 
 }
 
 func (be *MockBackend) RenameStack(ctx context.Context, stack Stack,
-	newName tokens.Name) (StackReference, error) {
+	newName string) (StackReference, error) {
 	if be.RenameStackF != nil {
 		return be.RenameStackF(ctx, stack, newName)
 	}
@@ -344,7 +343,7 @@ type MockStack struct {
 	WatchF   func(ctx context.Context, op UpdateOperation, paths []string) result.Result
 	QueryF   func(ctx context.Context, op UpdateOperation) result.Result
 	RemoveF  func(ctx context.Context, force bool) (bool, error)
-	RenameF  func(ctx context.Context, newName tokens.Name) (StackReference, error)
+	RenameF  func(ctx context.Context, newName string) (StackReference, error)
 	GetLogsF func(ctx context.Context, cfg StackConfiguration,
 		query operations.LogQuery) ([]operations.LogEntry, error)
 	ExportDeploymentF func(ctx context.Context) (*apitype.UntypedDeployment, error)
@@ -438,7 +437,7 @@ func (ms *MockStack) Remove(ctx context.Context, force bool) (bool, error) {
 	panic("not implemented")
 }
 
-func (ms *MockStack) Rename(ctx context.Context, newName tokens.Name) (StackReference, error) {
+func (ms *MockStack) Rename(ctx context.Context, newName string) (StackReference, error) {
 	if ms.RenameF != nil {
 		return ms.RenameF(ctx, newName)
 	}

@@ -779,7 +779,7 @@ func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 }
 
 func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
-	newName tokens.Name) (backend.StackReference, error) {
+	newName string) (backend.StackReference, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return nil, err
@@ -788,7 +788,7 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	// Support a qualified stack name, which would also rename the stack's project too.
 	// e.g. if you want to change the project name on the Pulumi Console to reflect a
 	// new value in Pulumi.yaml.
-	newRef, err := b.ParseStackReference(string(newName))
+	newRef, err := b.ParseStackReference(newName)
 	if err != nil {
 		return nil, err
 	}
@@ -805,7 +805,7 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 		// Re-parse the name using the parseStackName function to avoid the logic in ParseStackReference
 		// that auto-populates the owner property with the currently logged in account. We actually want to
 		// give a different error message if the raw stack name itself didn't include an owner part.
-		parsedName, err := b.parseStackName(string(newName))
+		parsedName, err := b.parseStackName(newName)
 		contract.IgnoreError(err)
 		if parsedName.Owner == "" {
 			errMsg += fmt.Sprintf(

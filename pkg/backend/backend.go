@@ -158,7 +158,7 @@ type Backend interface {
 
 	// RenameStack renames the given stack to a new name, and then returns an updated stack reference that
 	// can be used to refer to the newly renamed stack.
-	RenameStack(ctx context.Context, stack Stack, newName tokens.Name) (StackReference, error)
+	RenameStack(ctx context.Context, stack Stack, newName string) (StackReference, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
 	Preview(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)

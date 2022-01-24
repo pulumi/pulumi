@@ -19,8 +19,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -62,7 +60,7 @@ func newStackRenameCmd() *cobra.Command {
 
 			// Now perform the rename and get ready to rename the existing configuration to the new project file.
 			newStackName := args[0]
-			newStackRef, err := s.Rename(commandContext(), tokens.AsName(newStackName))
+			newStackRef, err := s.Rename(commandContext(), newStackName)
 			if err != nil {
 				return err
 			}
