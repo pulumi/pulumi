@@ -151,9 +151,10 @@ func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, ru
 	if runtime == "" {
 		runtime = "test"
 	}
-	stack = tokens.AsName(p.Stack)
-	if stack == "" {
+	if p.Stack == "" {
 		stack = "test"
+	} else {
+		stack = tokens.AsName(p.Stack)
 	}
 	return stack, project, runtime
 }
