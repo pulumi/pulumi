@@ -80,11 +80,10 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
 	}
 
-	var fnArgs model.Expression
-	if len(args) > 1 {
-		fnArgs = args[1]
+	if len(args) < 2 {
+		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}
 	}
-	sig, err := b.signatureForArgs(fn, fnArgs)
+	sig, err := b.signatureForArgs(fn, args[1])
 	if err != nil {
 		diag := hcl.Diagnostics{errorf(tokenRange, "Invoke binding error: %v", err)}
 		return b.zeroSignature(), diag
