@@ -121,7 +121,8 @@ type GoalPlan struct {
 	Name tokens.QName
 	// true if this resource is custom, managed by a plugin.
 	Custom bool
-	// the resource's checked input properties that we saw during preview. (Temporary for preview release, should be removed for GA)
+	// the resource's checked input properties that we saw during preview.
+	// TODO(pdg-plan): Temporary for preview release, should be removed for GA
 	CheckedInputs resource.PropertyMap
 	// the resource's checked input properties we expect to change.
 	InputDiff PlanDiff
