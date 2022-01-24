@@ -548,11 +548,6 @@ func (props PropertyMap) DeepEqualsIncludeUnknowns(other PropertyMap) bool {
 }
 
 func (v PropertyValue) DeepEqualsIncludeUnknowns(other PropertyValue) bool {
-	// Computed values are always equal.
-	if v.IsComputed() && other.IsComputed() {
-		return true
-	}
-
 	// Anything is equal to a computed
 	if v.IsComputed() || other.IsComputed() {
 		return true
@@ -623,7 +618,7 @@ func (v PropertyValue) DeepEqualsIncludeUnknowns(other PropertyValue) bool {
 		}
 
 		vid, oid := vr.ID, or.ID
-		if vid.IsComputed() && oid.IsComputed() {
+		if vid.IsComputed() || oid.IsComputed() {
 			return true
 		}
 		return vid.DeepEqualsIncludeUnknowns(oid)
