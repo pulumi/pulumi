@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/blang/semver"
@@ -235,6 +236,49 @@ func TestPluginSelection_EmptyVersionWithAlternatives(t *testing.T) {
 	assert.Equal(t, "0.2.0", result.Version.String())
 }
 
+func TestPluginDownloadUrl(t *testing.T) {
+	t.Run("Test Downloading From GitHub Releases", func(t *testing.T) {
+		version := semver.MustParse("4.32.0")
+		info := PluginInfo{
+			PluginDownloadURL: "",
+			Name:              "aws",
+			Version:           &version,
+			Kind:              PluginKind("resource"),
+		}
+		serverURL := buildGitHubReleasesPluginURL(info.Kind, info.Name, info.Version, "darwin", "amd64")
+		assert.Equal(t,
+			"https://github.com/pulumi/pulumi-aws/releases/download/v4.32.0/pulumi-resource-aws-v4.32.0-darwin-amd64.tar.gz",
+			serverURL)
+	})
+	t.Run("Test Downloading From get.pulumi.com", func(t *testing.T) {
+		version := semver.MustParse("4.32.0")
+		info := PluginInfo{
+			PluginDownloadURL: "",
+			Name:              "aws",
+			Version:           &version,
+			Kind:              PluginKind("resource"),
+		}
+		serverURL := buildPulumiHostedPluginURL(info.Kind, info.Name, info.Version, "darwin", "amd64")
+		assert.Equal(t,
+			"https://get.pulumi.com/releases/plugins/pulumi-resource-aws-v4.32.0-darwin-amd64.tar.gz", serverURL)
+	})
+	t.Run("Test Downloading From Custom Server URL", func(t *testing.T) {
+		version := semver.MustParse("4.32.0")
+		info := PluginInfo{
+			PluginDownloadURL: "https://customurl.jfrog.io/artifactory/pulumi-packages/package-name",
+			Name:              "aws",
+			Version:           &version,
+			Kind:              PluginKind("resource"),
+		}
+		serverURL := buildUserSpecifiedPluginURL(info.PluginDownloadURL, info.Kind, info.Name, info.Version,
+			"darwin", "amd64")
+		assert.Equal(t,
+			"https://customurl.jfrog.io/artifactory/pulumi-packages/package-name"+
+				"/pulumi-resource-aws-v4.32.0-darwin-amd64.tar.gz",
+			serverURL)
+	})
+}
+
 func TestInterpolateURL(t *testing.T) {
 	version := semver.MustParse("1.0.0")
 	const os = "linux"
@@ -249,4 +293,154 @@ func TestInterpolateURL(t *testing.T) {
 	assert.Equal(t,
 		"https://github.com/org/repo/releases/download/1.0.0/linux/amd64",
 		interpolateURL("https://github.com/org/repo/releases/download/${VERSION}/${OS}/${ARCH}", version, os, arch))
+}
+
+func TestParsePluginDownloadURLOverride(t *testing.T) {
+	type match struct {
+		name string
+		url  string
+		ok   bool
+	}
+
+	tests := []struct {
+		input       string
+		expected    pluginDownloadOverrideArray
+		matches     []match
+		expectError bool
+	}{
+		{
+			input:    "",
+			expected: nil,
+		},
+		{
+			input: "^foo.*=https://foo",
+			expected: pluginDownloadOverrideArray{
+				{
+					reg: regexp.MustCompile("^foo.*"),
+					url: "https://foo",
+				},
+			},
+			matches: []match{
+				{
+					name: "foo",
+					url:  "https://foo",
+					ok:   true,
+				},
+				{
+					name: "foo-bar",
+					url:  "https://foo",
+					ok:   true,
+				},
+				{
+					name: "fo",
+					url:  "",
+					ok:   false,
+				},
+				{
+					name: "",
+					url:  "",
+					ok:   false,
+				},
+				{
+					name: "nope",
+					url:  "",
+					ok:   false,
+				},
+			},
+		},
+		{
+			input: "^foo.*=https://foo,^bar.*=https://bar",
+			expected: pluginDownloadOverrideArray{
+				{
+					reg: regexp.MustCompile("^foo.*"),
+					url: "https://foo",
+				},
+				{
+					reg: regexp.MustCompile("^bar.*"),
+					url: "https://bar",
+				},
+			},
+			matches: []match{
+				{
+					name: "foo",
+					url:  "https://foo",
+					ok:   true,
+				},
+				{
+					name: "foo-bar",
+					url:  "https://foo",
+					ok:   true,
+				},
+				{
+					name: "fo",
+					url:  "",
+					ok:   false,
+				},
+				{
+					name: "",
+					url:  "",
+					ok:   false,
+				},
+				{
+					name: "bar",
+					url:  "https://bar",
+					ok:   true,
+				},
+				{
+					name: "barbaz",
+					url:  "https://bar",
+					ok:   true,
+				},
+				{
+					name: "ba",
+					url:  "",
+					ok:   false,
+				},
+				{
+					name: "nope",
+					url:  "",
+					ok:   false,
+				},
+			},
+		},
+		{
+			input:       "=", // missing regex and url
+			expectError: true,
+		},
+		{
+			input:       "^foo.*=", // missing url
+			expectError: true,
+		},
+		{
+			input:       "=https://foo", // missing regex
+			expectError: true,
+		},
+		{
+			input:       "^foo.*=https://foo,", // trailing comma
+			expectError: true,
+		},
+		{
+			input:       "[=https://foo", // invalid regex
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			actual, err := parsePluginDownloadURLOverrides(tt.input)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tt.expected, actual)
+
+			if len(tt.matches) > 0 {
+				for _, match := range tt.matches {
+					actualURL, actualOK := actual.get(match.name)
+					assert.Equal(t, match.url, actualURL)
+					assert.Equal(t, match.ok, actualOK)
+				}
+			}
+		})
+	}
 }

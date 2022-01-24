@@ -179,7 +179,7 @@ func TestCheckFailureRecord(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, nil, errors.New("oh no, check had an error")
 				},
 			}, nil
@@ -226,7 +226,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, []plugin.CheckFailure{{
 						Property: "someprop",
 						Reason:   "field is not valid",
@@ -2642,6 +2642,325 @@ func TestComponentDeleteDependencies(t *testing.T) {
 	p.Run(t, nil)
 }
 
+func TestProviderDeterministicPreview(t *testing.T) {
+	var generatedName resource.PropertyValue
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(
+					urn resource.URN,
+					olds, news resource.PropertyMap,
+					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					// make a deterministic autoname
+					if _, has := news["name"]; !has {
+						if name, has := olds["name"]; has {
+							news["name"] = name
+						} else {
+							name, err := resource.NewUniqueHexV2(urn, sequenceNumber, urn.Name().String(), -1, -1)
+							assert.Nil(t, err)
+							generatedName = resource.NewStringProperty(name)
+							news["name"] = generatedName
+						}
+					}
+
+					return news, nil, nil
+				},
+				DiffF: func(
+					urn resource.URN,
+					id resource.ID,
+					olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					if !olds["foo"].DeepEquals(news["foo"]) {
+						// If foo changes do a replace, we use this to check we get a new name
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run a preview, this should want to create resA with a given name
+	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.True(t, generatedName.IsString())
+	assert.NotEqual(t, "", generatedName.StringValue())
+	expectedName := generatedName
+
+	// Run an update, we should get the same name as we saw in preview
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, expectedName, snap.Resources[1].Inputs["name"])
+	assert.Equal(t, expectedName, snap.Resources[1].Outputs["name"])
+
+	// Run a new update which will cause a replace and check we get a new name
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.NotEqual(t, expectedName, snap.Resources[1].Inputs["name"])
+	assert.NotEqual(t, expectedName, snap.Resources[1].Outputs["name"])
+}
+
+func TestSequenceNumberResetsAfterReplace(t *testing.T) {
+	// This test is to check that after we've done a replace with an unknown sequence number the
+	// next time we do a replace we start with sequence number 1. It's not safe to go from unknown
+	// straight to sequence number 1 because we do create-before-delete and the existing resource
+	// might have a deterministic name seeded from seqNum=1 or 2 or anything else. So if we don't
+	// currently know the sequence number we have to do a create with seqNum=0 to get a truly
+	// random name. But now we can flag the sequence number in the state file (we use -1) to say
+	// that we now know that the last create was done with a random seed and the next replace will
+	// be safe to start at sequence number 1.
+
+	names := map[int]resource.PropertyValue{
+		0: resource.NewStringProperty("Random"),
+		1: resource.NewStringProperty("Sequence"),
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(
+					urn resource.URN,
+					olds, news resource.PropertyMap,
+					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					news["name"] = names[sequenceNumber]
+					return news, nil, nil
+				},
+				DiffF: func(
+					urn resource.URN,
+					id resource.ID,
+					olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					if !olds["foo"].DeepEquals(news["foo"]) {
+						// If foo changes do a replace, we use this to check we get a new name
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	// Expect the resource to have been created with a deterministic name (it's new)
+	assert.Equal(t, names[1], snap.Resources[1].Inputs["name"])
+	assert.Equal(t, names[1], snap.Resources[1].Outputs["name"])
+
+	// Mutate the snapshot that we've lost the sequence number and run an update that will cause a replace
+	snap.Resources[1].SequenceNumber = 0
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, names[0], snap.Resources[1].Inputs["name"])
+	assert.Equal(t, names[0], snap.Resources[1].Outputs["name"])
+
+	// Now run another update that causes another replace and check we go back to deterministic names
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "daz",
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, names[1], snap.Resources[1].Inputs["name"])
+	assert.Equal(t, names[1], snap.Resources[1].Outputs["name"])
+}
+
+func TestProtect(t *testing.T) {
+
+	idCounter := 0
+	deleteCounter := 0
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(
+					urn resource.URN,
+					id resource.ID,
+					olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					if !olds["foo"].DeepEquals(news["foo"]) {
+						// If foo changes do a replace, we use this to check we don't delete on replace
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
+					idCounter = idCounter + 1
+					return resourceID, news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+					timeout float64) (resource.Status, error) {
+					deleteCounter = deleteCounter + 1
+					return resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+
+	createResource := true
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+
+		if createResource {
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs:  ins,
+				Protect: true,
+			})
+			assert.NoError(t, err)
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+	assert.Equal(t, 0, deleteCounter)
+
+	expectedUrn := snap.Resources[1].URN
+	expectedMessage := ""
+
+	// Both updates below should give a diagnostic event
+	validate := func(project workspace.Project,
+		target deploy.Target, entries JournalEntries,
+		events []Event, res result.Result) result.Result {
+		for _, event := range events {
+			if event.Type == DiagEvent {
+				payload := event.Payload().(DiagEventPayload)
+				assert.Equal(t, expectedUrn, payload.URN)
+				assert.Equal(t, expectedMessage, payload.Message)
+				break
+			}
+		}
+		return res
+	}
+
+	// Run a new update which will cause a replace, we should get an error
+	expectedMessage = "<{%reset%}>unable to replace resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
+		"as it is currently marked for protection. To unprotect the resource, remove the `protect` flag from " +
+		"the resource in your Pulumi program and run `pulumi up`<{%reset%}>\n"
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	assert.NotNil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+	assert.Equal(t, 0, deleteCounter)
+
+	// Run a new update which will cause a delete, we still shouldn't see a provider delete
+	expectedMessage = "<{%reset%}>unable to delete resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
+		"as it is currently marked for protection. To unprotect the resource, either remove the `protect` flag " +
+		"from the resource in your Pulumiprogram and run `pulumi up` or use the command:\n" +
+		"`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>\n"
+	createResource = false
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	assert.NotNil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+	assert.Equal(t, 0, deleteCounter)
+}
+
 func ExpectDiagMessage(t *testing.T, message string) ValidateFunc {
 	validate := func(
 		project workspace.Project, target deploy.Target,
@@ -3818,7 +4137,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 					return news, resource.StatusOK, nil
 				},
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap, _ int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 					// If we have name use it, else use olds name, else make one up
 					if _, has := news["name"]; has {

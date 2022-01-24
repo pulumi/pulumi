@@ -4,8 +4,6 @@ PULUMI_TEST_COVERAGE_PATH=$PULUMI_TEST_COVERAGE_PATH
 
 set -euo pipefail
 
-. venv/*/activate
-
 SKIP="../../scripts/skipped.py"
 
 # TODO the ignored test seems to fail in pytest but not unittest. Need

@@ -56,6 +56,67 @@ var (
 	enableLegacyPluginBehavior = os.Getenv("PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH") != ""
 )
 
+// pluginDownloadURLOverrides is a variable instead of a constant so it can be set using the `-X` `ldflag` at build
+// time, if necessary. When non-empty, it's parsed into `pluginDownloadURLOverridesParsed` in `init()`. The expected
+// format is `regexp=URL`, and multiple pairs can be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`.
+//
+// For example, when set to "^foo.*=https://foo&^bar.*=https://bar", plugin names that start with "foo" will use
+// https://foo as the download URL and names that start with "bar" will use https://bar.
+var pluginDownloadURLOverrides string
+
+// pluginDownloadURLOverridesParsed is the parsed array from `pluginDownloadURLOverrides`.
+var pluginDownloadURLOverridesParsed pluginDownloadOverrideArray
+
+// pluginDownloadURLOverride represents a plugin download URL override, parsed from `pluginDownloadURLOverrides`.
+type pluginDownloadURLOverride struct {
+	reg *regexp.Regexp // The regex used to match against the plugin's name.
+	url string         // The URL to use for the matched plugin.
+}
+
+// pluginDownloadOverrideArray represents an array of overrides.
+type pluginDownloadOverrideArray []pluginDownloadURLOverride
+
+// get returns the URL and true if name matches an override's regular expression,
+// otherwise an empty string and false.
+func (overrides pluginDownloadOverrideArray) get(name string) (string, bool) {
+	for _, override := range overrides {
+		if override.reg.MatchString(name) {
+			return override.url, true
+		}
+	}
+	return "", false
+}
+
+func init() {
+	var err error
+	if pluginDownloadURLOverridesParsed, err = parsePluginDownloadURLOverrides(pluginDownloadURLOverrides); err != nil {
+		panic(fmt.Errorf("error parsing `pluginDownloadURLOverrides`: %w", err))
+	}
+}
+
+// parsePluginDownloadURLOverrides parses an overrides string with the expected format `regexp1=URL1,regexp2=URL2`.
+func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideArray, error) {
+	var result pluginDownloadOverrideArray
+	if overrides == "" {
+		return result, nil
+	}
+	for _, pair := range strings.Split(overrides, ",") {
+		split := strings.Split(pair, "=")
+		if len(split) != 2 || split[0] == "" || split[1] == "" {
+			return nil, fmt.Errorf("expected format to be \"regexp1=URL1,regexp2=URL2\"; got %q", overrides)
+		}
+		reg, err := regexp.Compile(split[0])
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, pluginDownloadURLOverride{
+			reg: reg,
+			url: split[1],
+		})
+	}
+	return result, nil
+}
+
 // MissingError is returned by functions that attempt to load plugins if a plugin can't be located.
 type MissingError struct {
 	// Info contains information about the plugin that was not found.
@@ -219,10 +280,10 @@ func interpolateURL(serverURL string, version semver.Version, os, arch string) s
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
 func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	// Figure out the OS/ARCH pair for the download URL.
-	var os string
+	var opSy string
 	switch runtime.GOOS {
 	case "darwin", "linux", "windows":
-		os = runtime.GOOS
+		opSy = runtime.GOOS
 	default:
 		return nil, -1, errors.Errorf("unsupported plugin OS: %s", runtime.GOOS)
 	}
@@ -239,25 +300,74 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 		return nil, -1, errors.Errorf("unknown version for plugin %s", info.Name)
 	}
 
-	// If the plugin has a server, associated with it, download from there.  Otherwise use the "default" location, which
-	// is hosted by Pulumi.
-	serverURL := info.PluginDownloadURL
-	if serverURL == "" {
-		serverURL = "https://get.pulumi.com/releases/plugins"
+	if info.PluginDownloadURL != "" {
+		return getPluginResponse(
+			buildUserSpecifiedPluginURL(info.PluginDownloadURL, info.Kind, info.Name, info.Version, opSy, arch))
 	}
-	serverURL = interpolateURL(serverURL, *info.Version, os, arch)
+
+	// If the plugin name matches an override, download the plugin from the override URL.
+	if url, ok := pluginDownloadURLOverridesParsed.get(info.Name); ok {
+		return getPluginResponse(buildUserSpecifiedPluginURL(url, info.Kind, info.Name, info.Version, opSy, arch))
+	}
+
+	if _, ok := os.LookupEnv("PULUMI_EXPERIMENTAL"); ok {
+		pluginURL := buildGitHubReleasesPluginURL(info.Kind, info.Name, info.Version, opSy, arch)
+
+		resp, length, err := getPluginResponse(pluginURL)
+		if err == nil {
+			return resp, length, nil
+		}
+
+		// we threw an error talking to GitHub so lets fallback to get.pulumi.com for the provider
+		logging.V(1).Infof("cannot find plugin on github.com/pulumi/pulumi-%s/releases", info.Name)
+	}
+
+	return getPluginResponse(buildPulumiHostedPluginURL(info.Kind, info.Name, info.Version, opSy, arch))
+}
+
+func buildGitHubReleasesPluginURL(kind PluginKind, name string, version *semver.Version, opSy, arch string) string {
+	logging.V(1).Infof("%s downloading from github.com/pulumi/pulumi-%s/releases", name, name)
+
+	return fmt.Sprintf("https://github.com/pulumi/pulumi-%s/releases/download/v%s/%s",
+		name, version.String(), url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz",
+			kind, name, version.String(), opSy, arch)))
+}
+
+func buildPulumiHostedPluginURL(kind PluginKind, name string, version *semver.Version, opSy, arch string) string {
+	serverURL := "https://get.pulumi.com/releases/plugins"
+
+	logging.V(1).Infof("%s downloading from %s", name, serverURL)
+
+	serverURL = interpolateURL(serverURL, *version, opSy, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
 
-	logging.V(1).Infof("%s downloading from %s", info.Name, serverURL)
-
-	// URL escape the path value to ensure we have the correct path for S3/CloudFront.
+	logging.V(1).Infof("%s downloading from %s", name, serverURL)
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
-		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", info.Kind, info.Name, info.Version, os, arch)))
+		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", kind, name, version.String(), opSy, arch)))
 
-	logging.V(9).Infof("full plugin download url: %s", endpoint)
+	return endpoint
+}
 
-	req, err := http.NewRequest("GET", endpoint, nil)
+func buildUserSpecifiedPluginURL(serverURL string, kind PluginKind, name string, version *semver.Version,
+	opSy, arch string) string {
+	logging.V(1).Infof("%s downloading from %s", name, serverURL)
+
+	serverURL = interpolateURL(serverURL, *version, opSy, arch)
+	serverURL = strings.TrimSuffix(serverURL, "/")
+
+	logging.V(1).Infof("%s downloading from %s", name, serverURL)
+	endpoint := fmt.Sprintf("%s/%s",
+		serverURL,
+		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", kind, name, version.String(), opSy, arch)))
+
+	return endpoint
+}
+
+func getPluginResponse(pluginEndpoint string) (io.ReadCloser, int64, error) {
+	logging.V(9).Infof("full plugin download url: %s", pluginEndpoint)
+
+	req, err := http.NewRequest("GET", pluginEndpoint, nil)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -275,7 +385,7 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, -1, errors.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, endpoint)
+		return nil, -1, errors.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, pluginEndpoint)
 	}
 
 	return resp.Body, resp.ContentLength, nil

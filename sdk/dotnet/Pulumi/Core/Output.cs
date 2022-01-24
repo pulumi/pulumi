@@ -341,5 +341,21 @@ namespace Pulumi
 
         private static Task<OutputData<T>> UnknownHelperAsync(T value)
             => Task.FromResult(new OutputData<T>(ImmutableHashSet<Resource>.Empty, value, isKnown: false, isSecret: false));
+
+        public override string ToString()
+        {
+            var message = string.Join(Environment.NewLine, new string[] {
+                "Calling [ToString] on an [Output<T>] is not supported.",
+                "",
+                "To get the value of an Output<T> as an Output<string> consider:",
+                "1. o.Apply(v => $\"prefix{v}suffix\")",
+                "2. Output.Format($\"prefix{hostname}suffix\");",
+                "",
+                "See https://pulumi.io/help/outputs for more details.",
+                "This function may throw in a future version of Pulumi.",
+            });
+
+            return message;
+        }
     }
 }

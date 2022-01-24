@@ -132,8 +132,16 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil, /* aliases */
 		nil, /* customTimeouts */
 		"",  /* importID */
+		1,   /* sequenceNumber */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
+
+	if hasOld {
+		// If we have an old state maintain the sequence number from it.
+		// This means even if we relinqish and then reimport we'll maintain the sequence number that
+		// defined the current name.
+		newState.SequenceNumber = old.SequenceNumber
+	}
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
 	// to have to delete the old resource and conceptually replace it with the resource we
@@ -312,7 +320,10 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "")
+		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "", 1)
+	if hasOld {
+		new.SequenceNumber = old.SequenceNumber
+	}
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -349,6 +360,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 	isImport := goal.Custom && goal.ID != "" && (!hasOld || old.External || oldImportID != goal.ID)
 	if isImport {
+		// TODO(seqnum) Not sure how sequence numbers should interact with imports
+
 		// Write the ID of the resource to import into the new state and return an ImportStep or an
 		// ImportReplacementStep
 		new.ID = goal.ID
@@ -379,6 +392,29 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
+			if hasOld {
+				// Only increment/change sequence number if this is a replace. If hasOld is false this is a new resource and sequence number will
+				// already be correctly set to 1.
+				if new.SequenceNumber == -1 {
+					// This is known to have been created with a non-deterministic sequnce number in the last update,
+					// it should now be safe to create with sequence number == 1 as that shouldn't clash with the current random name.
+					new.SequenceNumber = 1
+				} else if new.SequenceNumber == 0 {
+					// We don't have any info on the current resources sequnce number, but we know we're going to do a replace with
+					// sequnce number == 0 to create a random name so the next time we do a replace it should be safe to go back to
+					// sequnce number == 1 (see above)
+					new.SequenceNumber = -1
+				} else {
+					new.SequenceNumber++
+				}
+			}
+
+			checkNumber := new.SequenceNumber
+			// We don't want to call check with -1, that's just an internal state file marker
+			if checkNumber == -1 {
+				checkNumber = 0
+			}
+
 			// If we have a plan for this resource we need to feed the saved checked inputs to Check to remove non-determinism
 			var oldChecked resource.PropertyMap
 			if sg.deployment.plan != nil {
@@ -387,9 +423,14 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				}
 			}
 
-			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns)
+			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns, checkNumber)
 		} else {
-			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns)
+			checkNumber := new.SequenceNumber
+			// We don't want to call check with -1, that's just an internal state file marker
+			if checkNumber == -1 {
+				checkNumber = 0
+			}
+			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, checkNumber)
 		}
 
 		if err != nil {
@@ -648,6 +689,19 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// If there were changes check for a replacement vs. an in-place update.
 	if diff.Changes == plugin.DiffSome {
 		if diff.Replace() {
+			// If this resource is protected we can't replace it because that entails a delete
+			// Note that we do allow unprotecting and replacing to happen in a single update
+			// cycle, we don't look at old.Protect here.
+			if goal.Protect {
+				message := fmt.Sprintf("unable to replace resource %q\n"+
+					"as it is currently marked for protection. To unprotect the resource, "+
+					"remove the `protect` flag from the resource in your Pulumi "+
+					"program and run `pulumi up`", urn)
+				sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
+				sg.sawError = true
+				return nil, result.Bail()
+			}
+
 			// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
 			// therefore incompatible with the goal state.
 			if goal.ID != "" {
@@ -667,8 +721,21 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			//
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
+				// Increment the sequence number (if it's known) before calling check so we get a new autoname
+				var checkNumber int
+				if new.SequenceNumber == -1 {
+					new.SequenceNumber = 1
+					checkNumber = 1
+				} else if new.SequenceNumber == 0 {
+					new.SequenceNumber = -1
+					checkNumber = 0
+				} else {
+					new.SequenceNumber++
+					checkNumber = new.SequenceNumber
+				}
+
 				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns)
+				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, checkNumber)
 				if err != nil {
 					return nil, result.FromError(err)
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {

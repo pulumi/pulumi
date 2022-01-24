@@ -39,7 +39,7 @@ func TestProviderRequestNameNoPreURL(t *testing.T) {
 func TestProviderRequestNameDevURL(t *testing.T) {
 	ver := semver.MustParse("0.17.7-dev.1555435978+gb7030aa4.dirty")
 	req := NewProviderRequest(&ver, "pkg", "company.com/artifact-storage/pkg")
-	assert.Equal(t, "default_0_17_7_dev_1555435978_gb7030aa4_dirty_company.com/artifact_storage/pkg", req.Name().String())
+	assert.Equal(t, "default_0_17_7_dev_1555435978_gb7030aa4_dirty_company.com/artifact-storage/pkg", req.Name().String())
 	assert.Equal(t, "pkg-0.17.7-dev.1555435978+gb7030aa4.dirty-company.com/artifact-storage/pkg", req.String())
 }
 
