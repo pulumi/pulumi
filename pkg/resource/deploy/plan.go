@@ -221,7 +221,7 @@ func (rp *ResourcePlan) diffURNs(a, b []resource.URN) (message string, changed b
 	for i, urn := range b {
 		stringsB[i] = string(urn)
 	}
-	return rp.diffStrings(stringsA, stringsB)
+	return rp.diffStringSets(stringsA, stringsB)
 }
 
 func (rp *ResourcePlan) diffPropertyKeys(a, b []resource.PropertyKey) (message string, changed bool) {
@@ -233,10 +233,10 @@ func (rp *ResourcePlan) diffPropertyKeys(a, b []resource.PropertyKey) (message s
 	for i, key := range b {
 		stringsB[i] = string(key)
 	}
-	return rp.diffStrings(stringsA, stringsB)
+	return rp.diffStringSets(stringsA, stringsB)
 }
 
-func (rp *ResourcePlan) diffStrings(a, b []string) (message string, changed bool) {
+func (rp *ResourcePlan) diffStringSets(a, b []string) (message string, changed bool) {
 	setA := map[string]struct{}{}
 	for _, s := range a {
 		setA[s] = struct{}{}
@@ -565,7 +565,7 @@ func (rp *ResourcePlan) checkGoal(
 	}
 
 	// Check that the ignoreChanges sets are identical.
-	if message, changed := rp.diffStrings(rp.Goal.IgnoreChanges, programGoal.IgnoreChanges); changed {
+	if message, changed := rp.diffStringSets(rp.Goal.IgnoreChanges, programGoal.IgnoreChanges); changed {
 		return fmt.Errorf("ignoreChanges changed: %v", message)
 	}
 
