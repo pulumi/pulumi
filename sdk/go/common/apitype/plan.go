@@ -26,7 +26,7 @@ type GoalV1 struct {
 	Name tokens.QName `json:"name"`
 	// true if this resource is custom, managed by a plugin.
 	Custom bool `json:"custom"`
-	// the resource properties that will be changed.
+	// the resource's checked input properties that we saw during preview. (Temporary for preview release, should be removed for GA)
 	CheckedInputs map[string]interface{} `json:"checkedInputs,omitempty"`
 	// the resource properties that will be changed.
 	InputDiff PlanDiffV1 `json:"inputDiff,omitempty"`
