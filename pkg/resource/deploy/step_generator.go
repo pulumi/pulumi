@@ -393,16 +393,17 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
 			if hasOld {
-				// Only increment/change sequence number if this is a replace. If hasOld is false this is a new resource and sequence number will
-				// already be correctly set to 1.
+				// Only increment/change sequence number if this is a replace. If hasOld is false this is a
+				// new resource and sequence number will already be correctly set to 1.
 				if new.SequenceNumber == -1 {
-					// This is known to have been created with a non-deterministic sequnce number in the last update,
-					// it should now be safe to create with sequence number == 1 as that shouldn't clash with the current random name.
+					// This is known to have been created with a non-deterministic sequnce number in the last
+					// update, it should now be safe to create with sequence number == 1 as that shouldn't
+					// clash with the current random name.
 					new.SequenceNumber = 1
 				} else if new.SequenceNumber == 0 {
-					// We don't have any info on the current resources sequnce number, but we know we're going to do a replace with
-					// sequnce number == 0 to create a random name so the next time we do a replace it should be safe to go back to
-					// sequnce number == 1 (see above)
+					// We don't have any info on the current resources sequnce number, but we know we're
+					// going to do a replace with sequnce number == 0 to create a random name so the next
+					// time we do a replace it should be safe to go back to sequnce number == 1 (see above)
 					new.SequenceNumber = -1
 				} else {
 					new.SequenceNumber++

@@ -516,7 +516,7 @@ func (b *localBackend) apply(
 	if kind != apitype.PreviewUpdate {
 		err := b.Lock(ctx, stack.Ref())
 		if err != nil {
-			return nil, result.FromError(err)
+			return nil, nil, result.FromError(err)
 		}
 		defer b.Unlock(ctx, stack.Ref())
 	}

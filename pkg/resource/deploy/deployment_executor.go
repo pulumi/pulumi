@@ -276,10 +276,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	}
 
 	// Check that we did operations for everything expected in the plan. We mutate ResourcePlan.Ops as we run
-	// so by the time we get here everything in the map should have an empty ops list (except for unneeded deletes).
-	// We skip this check if we already have an error, chances are if the deployment failed lots of operations wouldn't have
-	// got a chance to run so we'll spam errors about all of those failed operations making it less clear to the user what the
-	// root cause error was.
+	// so by the time we get here everything in the map should have an empty ops list (except for unneeded
+	// deletes). We skip this check if we already have an error, chances are if the deployment failed lots of
+	// operations wouldn't have got a chance to run so we'll spam errors about all of those failed operations
+	// making it less clear to the user what the root cause error was.
 	if res == nil && ex.deployment.plan != nil {
 		for urn, resourcePlan := range ex.deployment.plan.ResourcePlans {
 			if len(resourcePlan.Ops) != 0 {
