@@ -109,7 +109,7 @@ func NewDenyDefaultProvider(name tokens.QName) Reference {
 //
 // Panics if called on a provider that is not a DenyDefaultProvider.
 func DeniedDefaultProvider(ref Reference) string {
-	contract.Assert(IsDefaultProvider(ref))
+	contract.Assert(IsDenyDefaultsProvider(ref))
 	return ref.URN().Name().String()
 }
 
