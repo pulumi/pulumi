@@ -423,13 +423,13 @@ func (l *LocalWorkspace) ExportStack(ctx context.Context, stackName string) (api
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "export", "--show-secrets", "--stack", stackName)
 	if err != nil {
-		return state, newAutoError(errors.Wrap(err, "could not export stack."), stdout, stderr, errCode)
+		return state, newAutoError(errors.Wrap(err, "could not export stack"), stdout, stderr, errCode)
 	}
 
 	err = json.Unmarshal([]byte(stdout), &state)
 	if err != nil {
 		return state, newAutoError(
-			errors.Wrap(err, "failed to export stack, unable to unmarshall stack state."), stdout, stderr, errCode,
+			errors.Wrap(err, "failed to export stack, unable to unmarshall stack state"), stdout, stderr, errCode,
 		)
 	}
 
