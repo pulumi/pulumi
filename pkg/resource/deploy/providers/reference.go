@@ -96,6 +96,27 @@ func (r Reference) String() string {
 	return string(r.urn) + resource.URNNameDelimiter + string(r.id)
 }
 
+const denyDefaultProviderID resource.ID = "denydefaultprovider"
+
+// DenyDefaultProvider represent a default provider that cannot be created.
+func NewDenyDefaultProvider(name tokens.QName) Reference {
+	return mustNewReference(
+		resource.NewURN("denied", "denied", "denied", "pulumi:providers:denied", name),
+		denyDefaultProviderID)
+}
+
+// Retrieves the name of the denied provider.
+//
+// Panics if called on a provider that is not a DenyDefaultProvider.
+func DeniedDefaultProvider(ref Reference) string {
+	contract.Assert(IsDefaultProvider(ref))
+	return ref.URN().Name().String()
+}
+
+func IsDenyDefaultsProvider(ref Reference) bool {
+	return ref.id == denyDefaultProviderID
+}
+
 // NewReference creates a new reference for the given URN and ID.
 func NewReference(urn resource.URN, id resource.ID) (Reference, error) {
 	if err := validateURN(urn); err != nil {

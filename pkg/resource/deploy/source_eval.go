@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -341,6 +342,15 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (providers.Reference, error) {
 	logging.V(5).Infof("handling default provider request for package %s", req)
 
+	denyCreation, err := d.shouldDenyRequest(req)
+	if err != nil {
+		return providers.Reference{}, err
+	}
+	if denyCreation {
+		logging.V(5).Infof("denied default provider request for package %s", req)
+		return providers.NewDenyDefaultProvider(tokens.AsQName(string(req.Package().Name()))), nil
+	}
+
 	// Have we loaded this provider before? Use the existing reference, if so.
 	//
 	// Note that we are using the request's String as the key for the provider map. Go auto-derives hash and equality
@@ -384,6 +394,42 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	d.providers[req.String()] = ref
 
 	return ref, nil
+}
+
+// If req should be allowed, or if we should prevent the request.
+func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (bool, error) {
+	logging.V(9).Infof("checking if %s should be denied", req)
+	pConfig, err := d.config.GetPackageConfig("pulumi")
+	if err != nil {
+		return true, err
+	}
+
+	denyCreation := false
+	if value, ok := pConfig["disable-default-providers"]; ok {
+		array := []interface{}{}
+		if !value.IsString() {
+			return true, fmt.Errorf("Unexpected endecoding of pulumi:disable-default-providers")
+		}
+		if err := json.Unmarshal([]byte(value.StringValue()), &array); err != nil {
+			return true, fmt.Errorf("Failed to parse %s: %w", value.StringValue(), err)
+		}
+		for i, v := range array {
+			s, ok := v.(string)
+			if !ok {
+				return true, fmt.Errorf("pulumi:disable-default-providers[%d] must be a string", i)
+			}
+			barred := strings.TrimSpace(s)
+			if barred == "*" || barred == req.Package().Name().String() {
+				logging.V(7).Infof("denying %s (star=%t)", req, barred == "*")
+				denyCreation = true
+				break
+			}
+		}
+	} else {
+		logging.V(9).Infof("Did not find a config for 'pulumi'")
+	}
+
+	return denyCreation, nil
 }
 
 // serve is the primary loop responsible for handling default provider requests.
