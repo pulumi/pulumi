@@ -32,13 +32,6 @@ on:
         default: false
         required: false
         type: boolean
-      # [WINDOWS-CI] - Find other instances of this string to find related snippets when this issue is
-      # resolved: https://github.com/pulumi/pulumi/issues/8820
-      windows-ci:
-        description: 'If set, tests only run on Windows CI. If not set, Windows tests are not run.'
-        default: false
-        required: false
-        type: boolean
     secrets:
       pulumi-access-token:
         required: true
@@ -67,12 +60,6 @@ jobs:
       fail-fast: false
 
     runs-on: ${{ matrix.platform }}
-
-    # [WINDOWS-CI] - Find other instances of this string to find related snippets when this issue is
-    # resolved: https://github.com/pulumi/pulumi/issues/8820
-    # If windows-ci == false, then the platform must not contain "windows"
-    # If windows-ci == true, then the platform must contain "windows"
-    if: ${{ inputs.windows-ci }} == ( contains( ${{ matrix.platform }}, "windows" ) )
 
     steps:
       - name: Checkout Repo
