@@ -196,6 +196,7 @@ class Stack:
            diff: Optional[bool] = None,
            target_dependents: Optional[bool] = None,
            replace: Optional[List[str]] = None,
+           color: Optional[str] = None,
            on_output: Optional[OnOutput] = None,
            on_event: Optional[OnEvent] = None,
            program: Optional[PulumiFn] = None) -> UpResult:
@@ -214,6 +215,7 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
+        :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -271,6 +273,7 @@ class Stack:
                 diff: Optional[bool] = None,
                 target_dependents: Optional[bool] = None,
                 replace: Optional[List[str]] = None,
+                color: Optional[str] = None,
                 on_output: Optional[OnOutput] = None,
                 on_event: Optional[OnEvent] = None,
                 program: Optional[PulumiFn] = None) -> PreviewResult:
@@ -289,6 +292,7 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
+        :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :returns: PreviewResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -350,6 +354,7 @@ class Stack:
                 message: Optional[str] = None,
                 target: Optional[List[str]] = None,
                 expect_no_changes: Optional[bool] = None,
+                color: Optional[str] = None,
                 on_output: Optional[OnOutput] = None,
                 on_event: Optional[OnEvent] = None) -> RefreshResult:
         """
@@ -363,6 +368,7 @@ class Stack:
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
+        :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :returns: RefreshResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -396,6 +402,7 @@ class Stack:
                 message: Optional[str] = None,
                 target: Optional[List[str]] = None,
                 target_dependents: Optional[bool] = None,
+                color: Optional[str] = None,
                 on_output: Optional[OnOutput] = None,
                 on_event: Optional[OnEvent] = None) -> DestroyResult:
         """
@@ -408,6 +415,7 @@ class Stack:
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
+        :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args

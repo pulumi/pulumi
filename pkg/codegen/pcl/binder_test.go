@@ -13,37 +13,48 @@ import (
 )
 
 func TestBindProgram(t *testing.T) {
-	files, err := ioutil.ReadDir(testdataPath)
+	testdata, err := ioutil.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
 
-	for _, f := range files {
-		if filepath.Ext(f.Name()) != ".pp" {
+	for _, v := range testdata {
+		if !v.IsDir() {
 			continue
 		}
-
-		t.Run(f.Name(), func(t *testing.T) {
-			path := filepath.Join(testdataPath, f.Name())
-			contents, err := ioutil.ReadFile(path)
-			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
+		folderPath := filepath.Join(testdataPath, v.Name())
+		files, err := ioutil.ReadDir(folderPath)
+		if err != nil {
+			t.Fatalf("could not read test data: %v", err)
+		}
+		for _, f := range files {
+			fileName := f.Name()
+			if filepath.Ext(fileName) != ".pp" {
+				continue
 			}
 
-			parser := syntax.NewParser()
-			err = parser.ParseFile(bytes.NewReader(contents), f.Name())
-			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
-			}
-			if parser.Diagnostics.HasErrors() {
-				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
-			}
+			t.Run(fileName, func(t *testing.T) {
+				path := filepath.Join(folderPath, fileName)
+				contents, err := ioutil.ReadFile(path)
+				if err != nil {
+					t.Fatalf("could not read %v: %v", path, err)
+				}
 
-			_, diags, err := BindProgram(parser.Files, PluginHost(utils.NewHost(testdataPath)))
-			assert.NoError(t, err)
-			if diags.HasErrors() {
-				t.Fatalf("failed to bind program: %v", diags)
-			}
-		})
+				parser := syntax.NewParser()
+				err = parser.ParseFile(bytes.NewReader(contents), fileName)
+				if err != nil {
+					t.Fatalf("could not read %v: %v", path, err)
+				}
+				if parser.Diagnostics.HasErrors() {
+					t.Fatalf("failed to parse files: %v", parser.Diagnostics)
+				}
+
+				_, diags, err := BindProgram(parser.Files, PluginHost(utils.NewHost(testdataPath)))
+				assert.NoError(t, err)
+				if diags.HasErrors() {
+					t.Fatalf("failed to bind program: %v", diags)
+				}
+			})
+		}
 	}
 }

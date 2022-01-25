@@ -184,6 +184,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.color) {
+                args.push("--color", opts.color);
+            }
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -295,6 +298,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.color) {
+                args.push("--color", opts.color);
+            }
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -390,6 +396,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.color) {
+                args.push("--color", opts.color);
+            }
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
@@ -444,6 +453,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
+            }
+            if (opts.color) {
+                args.push("--color", opts.color);
             }
         }
 
@@ -738,6 +750,7 @@ export interface UpOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 /**
@@ -755,6 +768,7 @@ export interface PreviewOptions {
     program?: PulumiFn;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 /**
@@ -768,6 +782,7 @@ export interface RefreshOptions {
     userAgent?: string;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 /**
@@ -781,6 +796,7 @@ export interface DestroyOptions {
     userAgent?: string;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 const execKind = {
