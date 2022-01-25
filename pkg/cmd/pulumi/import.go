@@ -26,6 +26,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	pkgerrors "github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -63,13 +64,18 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 	return name, resource.URN(urn), nil
 }
 
-func makeImportFile(typ, name, id, parentSpec, providerSpec, version string) (importFile, error) {
+func makeImportFile(
+	typ, name, id string,
+	properties []string,
+	parentSpec, providerSpec, version string) (importFile, error) {
+
 	nameTable := map[string]resource.URN{}
 	resource := importSpec{
-		Type:    tokens.Type(typ),
-		Name:    tokens.QName(name),
-		ID:      resource.ID(id),
-		Version: version,
+		Type:       tokens.Type(typ),
+		Name:       tokens.QName(name),
+		ID:         resource.ID(id),
+		Version:    version,
+		Properties: properties,
 	}
 
 	if parentSpec != "" {
@@ -97,12 +103,13 @@ func makeImportFile(typ, name, id, parentSpec, providerSpec, version string) (im
 }
 
 type importSpec struct {
-	Type     tokens.Type  `json:"type"`
-	Name     tokens.QName `json:"name"`
-	ID       resource.ID  `json:"id"`
-	Parent   string       `json:"parent"`
-	Provider string       `json:"provider"`
-	Version  string       `json:"version"`
+	Type       tokens.Type  `json:"type"`
+	Name       tokens.QName `json:"name"`
+	ID         resource.ID  `json:"id"`
+	Parent     string       `json:"parent"`
+	Provider   string       `json:"provider"`
+	Version    string       `json:"version"`
+	Properties []string     `json:"properties"`
 }
 
 type importFile struct {
@@ -134,10 +141,11 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 	imports := make([]deploy.Import, len(f.Resources))
 	for i, spec := range f.Resources {
 		imp := deploy.Import{
-			Type:    spec.Type,
-			Name:    spec.Name,
-			ID:      spec.ID,
-			Protect: protectResources,
+			Type:       spec.Type,
+			Name:       spec.Name,
+			ID:         spec.ID,
+			Protect:    protectResources,
+			Properties: spec.Properties,
 		}
 
 		if spec.Parent != "" {
@@ -291,8 +299,13 @@ func newImportCmd() *cobra.Command {
 	var protectResources bool
 
 	cmd := &cobra.Command{
-		Use:   "import [type] [name] [id]",
-		Args:  cmdutil.MaximumNArgs(3),
+		Use: "import [type] [name] [id] [properties...]",
+		Args: cmdutil.ArgsFunc(func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 && len(args) < 3 {
+				return pkgerrors.Errorf("wrong number of arguments: got %d, expected 0 or at least 3", len(args))
+			}
+			return nil
+		}),
 		Short: "Import resources into an existing stack",
 		Long: "Import resources into an existing stack.\n" +
 			"\n" +
@@ -324,6 +337,7 @@ func newImportCmd() *cobra.Command {
 			"                \"parent\": \"optional-parent-name\",\n" +
 			"                \"provider\": \"optional-provider-name\",\n" +
 			"                \"version\": \"optional-provider-version\",\n" +
+			"                \"properties\": [\"optional-property-names\"],\n" +
 			"            },\n" +
 			"            ...\n" +
 			"            {\n" +
@@ -343,7 +357,10 @@ func newImportCmd() *cobra.Command {
 			"these names must correspond to entries in the name table. If a resource does not\n" +
 			"specify a provider, it will be imported using the default provider for its type. A\n" +
 			"resource that does specify a provider may specify the version of the provider\n" +
-			"that will be used for its import.\n",
+			"that will be used for its import.\n" +
+			"Each resource may specify which input properties to import with;\n" +
+			"If a resource does not specify any properties the default behaviour is to\n" +
+			"import using all required properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			var importFile importFile
 			if importFilePath != "" {
@@ -356,10 +373,10 @@ func newImportCmd() *cobra.Command {
 				}
 				importFile = f
 			} else {
-				if len(args) != 3 {
+				if len(args) < 3 {
 					return result.Errorf("an inline resource must be specified if no import file is used")
 				}
-				f, err := makeImportFile(args[0], args[1], args[2], parentSpec, providerSpec, "")
+				f, err := makeImportFile(args[0], args[1], args[2], args[3:], parentSpec, providerSpec, "")
 				if err != nil {
 					return result.FromError(err)
 				}
@@ -505,30 +522,29 @@ func newImportCmd() *cobra.Command {
 				// in a codegen call
 				// It's a little bit more memory but is a better experience that writing to stdout and then an error
 				// occurring
-				var helperOutputResult bytes.Buffer
-				helperWriter := io.Writer(&helperOutputResult)
 				if outputFilePath == "" {
-					_, err := helperWriter.Write([]byte("Please copy the following code into your Pulumi application. Not doing so\n" +
-						"will cause Pulumi to report that an update will happen on the next update command.\n\n"))
-					if err != nil {
-						return result.FromError(err)
-					}
+					fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
+						"will cause Pulumi to report that an update will happen on the next update command.\n\n")
 					if protectResources {
-						_, err := helperWriter.Write([]byte("Please note that the imported resources are marked as protected. " +
+						fmt.Print(("Please note that the imported resources are marked as protected. " +
 							"To destroy them\n" +
 							"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
 							"the destroy will take effect.\n\n"))
-						if err != nil {
-							return result.FromError(err)
-						}
 					}
-					fmt.Printf(helperOutputResult.String())
+					fmt.Printf(outputResult.String())
 				}
 			}
 
-			fmt.Printf(outputResult.String())
-
 			if res != nil {
+				fmt.Print("Import failed, try specifying the set of properties to import with.\n")
+				if importFilePath == "" {
+					fmt.Print("This can be done by passing the property names as extra argumeents " +
+						"after the resource ID.\n")
+				} else {
+					fmt.Print("This can be done by adding a \"properties\" key with an array of " +
+						"strings to the resource object in the input file.\n")
+				}
+
 				if res.Error() == context.Canceled {
 					return result.FromError(errors.New("import cancelled"))
 				}
