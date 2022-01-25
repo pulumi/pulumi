@@ -31,6 +31,9 @@
 - [sdk/nodejs] - Support top-level default exports in ESM.
   [#8766](https://github.com/pulumi/pulumi/pull/8766)
 
+- [cli] - Allow disabling default providers via the Pulumi config.
+  [#8829](https://github.com/pulumi/pulumi/pull/8829)
+
 ### Bug Fixes
 
 - [sdk/python] - Prevent `ResourceOptions.merge` from promoting between the
