@@ -248,8 +248,8 @@ export abstract class Resource {
         if (memComponents.length !== 3) {
             return undefined;
         }
-
         const pkg = memComponents[0];
+
         return this.__providers[pkg];
     }
 
@@ -330,23 +330,28 @@ export abstract class Resource {
             this.__providers = opts.parent.__providers;
         }
 
-        // If a provider was specified, add it to the providers map under this type's package so that
-        // any children of this resource inherit its provider.
+        // providers is found by combining (in ascending order of priority)
+        //      1. provider
+        //      2. self_providers
+        //      3. opts.providers
         this.__providers = {
-            ...convertToProvidersMap((<ComponentResourceOptions>opts).providers),
             ...this.__providers,
+            ...convertToProvidersMap((<ComponentResourceOptions>opts).providers),
             ...convertToProvidersMap(opts.provider ? [opts.provider] : {}),
         };
 
-        // Because this is a custom resource, we should attempt to set provider.
+        // provider is the first option that does not return none
+        // 1. opts.provider
+        // 2. a matching provider in opts.providers
+        // 3. a matching provider inherited from opts.parent
         if (custom && opts.provider === undefined) {
             let pkg = undefined;
             const memComponents = t.split(":");
             if (memComponents.length === 3) {
                 pkg = memComponents[0];
             }
-
             const parentProvider = opts.parent?.getProvider(t);
+
             if (pkg && pkg in this.__providers) {
                 opts.provider = this.__providers[pkg];
             }
