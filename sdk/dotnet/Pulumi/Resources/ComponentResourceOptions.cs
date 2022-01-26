@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Pulumi
 {
@@ -55,13 +56,10 @@ namespace Pulumi
             options1 = options1 != null ? CreateComponentResourceOptionsCopy(options1) : new ComponentResourceOptions();
             options2 = options2 != null ? CreateComponentResourceOptionsCopy(options2) : new ComponentResourceOptions();
 
-            ExpandProviders(options1);
-            ExpandProviders(options2);
-
             // first, merge all the normal option values over
             MergeNormalOptions(options1, options2);
 
-            options1.Providers.AddRange(options2.Providers);
+            options1.Providers = MergeProviders(options1.Providers, options2.Providers);
 
             if (options1.Providers.Count == 1)
             {
@@ -70,14 +68,15 @@ namespace Pulumi
             }
 
             return options1;
-            
-            static void ExpandProviders(ComponentResourceOptions options)
+
+            static List<ProviderResource> MergeProviders(List<ProviderResource> prov1, List<ProviderResource> prov2 )
             {
-                if (options.Provider != null)
+                var dict = prov1.ToDictionary(p => p.Package, p => p);
+                foreach(var p in prov2)
                 {
-                    options.Providers = new List<ProviderResource> { options.Provider };
-                    options.Provider = null;
+                    dict[p.Package] = p;
                 }
+                return dict.Values.ToList();
             }
         }
     }
