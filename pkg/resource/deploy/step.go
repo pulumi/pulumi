@@ -1176,8 +1176,9 @@ func getProvider(s Step) (plugin.Provider, error) {
 		return nil, fmt.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
 	}
 	if providers.IsDenyDefaultsProvider(ref) {
-		name := providers.DeniedDefaultProvider(ref)
-		return nil, fmt.Errorf("Default provider '%v' not allowed for resource '%s'", name, s.URN())
+		name := providers.GetDeniedDefaultProviderName(ref)
+		msg := diag.GetDefaultProviderDenied(s.URN()).Message
+		return nil, fmt.Errorf(msg, name, s.URN())
 	}
 	provider, ok := s.Deployment().GetProvider(ref)
 	if !ok {

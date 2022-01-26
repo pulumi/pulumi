@@ -108,7 +108,7 @@ func NewDenyDefaultProvider(name tokens.QName) Reference {
 // Retrieves the name of the denied provider.
 //
 // Panics if called on a provider that is not a DenyDefaultProvider.
-func DeniedDefaultProvider(ref Reference) string {
+func GetDeniedDefaultProviderName(ref Reference) string {
 	contract.Assert(IsDenyDefaultsProvider(ref))
 	return ref.URN().Name().String()
 }

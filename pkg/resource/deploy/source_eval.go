@@ -408,7 +408,7 @@ func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (boo
 	if value, ok := pConfig["disable-default-providers"]; ok {
 		array := []interface{}{}
 		if !value.IsString() {
-			return true, fmt.Errorf("Unexpected endecoding of pulumi:disable-default-providers")
+			return true, fmt.Errorf("Unexpected encoding of pulumi:disable-default-providers")
 		}
 		if err := json.Unmarshal([]byte(value.StringValue()), &array); err != nil {
 			return true, fmt.Errorf("Failed to parse %s: %w", value.StringValue(), err)
