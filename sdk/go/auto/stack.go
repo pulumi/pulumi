@@ -950,7 +950,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 		defer func() {
 			if r := recover(); r != nil {
 				if pErr, ok := r.(error); ok {
-					err = errors.Wrap(pErr, "go inline source runtime error, an unhandled error occurred:")
+					err = errors.Wrap(pErr, "go inline source runtime error, an unhandled error occurred")
 				} else {
 					err = errors.New("go inline source runtime error, an unhandled error occurred: unknown error")
 				}

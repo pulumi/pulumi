@@ -190,7 +190,7 @@ func genZshCompletion(out io.Writer, root *cobra.Command) error {
 		return err
 	}
 
-	if _, err := fmt.Fprint(out, zshHead); err != nil {
+	if _, err := fmt.Fprint(out, zshHead); err != nil { //nolint
 		return err
 	}
 
