@@ -105,10 +105,14 @@ func NewDenyDefaultProvider(name tokens.QName) Reference {
 		denyDefaultProviderID)
 }
 
-// Retrieves the name of the denied provider.
+// Retrieves the package of the denied provider.
+//
+// For example, if a reference to:
+// "urn:pulumi:stack::project::pulumi:providers:aws::default_4_35_0"
+// was denied, then GetDeniedDefaultProviderPkg would return "aws".
 //
 // Panics if called on a provider that is not a DenyDefaultProvider.
-func GetDeniedDefaultProviderName(ref Reference) string {
+func GetDeniedDefaultProviderPkg(ref Reference) string {
 	contract.Assert(IsDenyDefaultsProvider(ref))
 	return ref.URN().Name().String()
 }

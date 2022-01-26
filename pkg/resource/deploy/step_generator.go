@@ -1289,8 +1289,8 @@ func (sg *stepGenerator) loadResourceProvider(
 		return nil, result.Bail()
 	}
 	if providers.IsDenyDefaultsProvider(ref) {
-		name := providers.GetDeniedDefaultProviderName(ref)
-		sg.deployment.Diag().Errorf(diag.GetDefaultProviderDenied(urn), name, urn)
+		pkg := providers.GetDeniedDefaultProviderPkg(ref)
+		sg.deployment.Diag().Errorf(diag.GetDefaultProviderDenied(urn), pkg, urn)
 		return nil, result.Bail()
 	}
 	p, ok := sg.deployment.GetProvider(ref)
