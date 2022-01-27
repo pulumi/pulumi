@@ -17,6 +17,9 @@
     },
     "csharp": {
       "rootNamespace": "ThirdParty"
+    },
+    "python": {
+      "packageName": "third_party"
     }
   }
 }
