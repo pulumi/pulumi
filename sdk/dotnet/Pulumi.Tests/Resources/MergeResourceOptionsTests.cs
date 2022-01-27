@@ -59,5 +59,22 @@ namespace Pulumi.Tests.Resources
             };
             Assert.Equal(o1.Providers, ComponentResourceOptions.Merge(o1, null).Providers);
         }
+
+        [Fact]
+        public void MergeComponentSingleton()
+        {
+            var aws = new DependencyProviderResource("urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0");
+            var o1 = new ComponentResourceOptions{
+                Providers = new List<ProviderResource>{aws},
+            };
+            var o2 = new ComponentResourceOptions{
+                Protect = true,
+            };
+
+            var result = ComponentResourceOptions.Merge(o1,o2);
+            Assert.True(result.Protect);
+            Assert.Null(result.Provider);
+            Assert.Equal(aws, result.Providers[0]);
+        }
     }
 }

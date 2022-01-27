@@ -67,12 +67,6 @@ namespace Pulumi
 
             options1.Providers = MergeProviders(options1.Providers, options2.Providers);
 
-            if (options1.Providers.Count == 1)
-            {
-                options1.Provider = options1.Providers[0];
-                options1.Providers.Clear();
-            }
-
             return options1;
         }
 
