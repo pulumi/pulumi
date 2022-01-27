@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System.Collections.Generic;
+using System;
 using System.Linq;
 
 namespace Pulumi
@@ -49,6 +50,11 @@ namespace Pulumi
         /// <item><description>
         /// <see langword="null"/> values in <paramref name="options2"/> will be ignored.
         /// </description></item>
+        /// <item><description>
+        /// Providers is a special case. Only one value per package will be in the resulting list.
+        /// Priority is given to values in <paramref name="options2"/>. If multiple providers for
+        /// the same package are present, later providers take priority.
+        /// </description></item>
         /// </list>
         /// </summary>
         public static ComponentResourceOptions Merge(ComponentResourceOptions? options1, ComponentResourceOptions? options2)
@@ -68,16 +74,30 @@ namespace Pulumi
             }
 
             return options1;
+        }
 
-            static List<ProviderResource> MergeProviders(List<ProviderResource> prov1, List<ProviderResource> prov2 )
-            {
-                var dict = prov1.ToDictionary(p => p.Package, p => p);
-                foreach(var p in prov2)
+        private static List<ProviderResource> MergeProviders(List<ProviderResource> prov1, List<ProviderResource> prov2 )
+        {
+            var l = new List<ProviderResource>();
+            var taken = new HashSet<string>();
+            Action<List<ProviderResource>> add = (list) => {
+                for(var i = list.Count-1; i >= 0; i--)
                 {
-                    dict[p.Package] = p;
+                    var p = list[i];
+                    if (!taken.Contains(p.Package))
+                    {
+                        l.Add(p);
+                        taken.Add(p.Package);
+                    }
                 }
-                return dict.Values.ToList();
-            }
+            };
+            add(prov2);
+            add(prov1);
+
+            // This lets us keep the order as much as possible. Importantly, it
+            // keeps Merge(opts, null) closer to a no-op.
+            l.Reverse();
+            return l;
         }
     }
 }
