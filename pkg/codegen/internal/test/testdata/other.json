@@ -9,6 +9,13 @@
           "type": "string"
         }
       }
+    },
+    "other:module:Object": {
+      "inputProperties": {
+        "answer": {
+          "type": "number"
+        }
+      }
     }
   },
   "language": {
@@ -20,6 +27,9 @@
     },
     "python": {
       "packageName": "third_party"
+    },
+    "go": {
+      "importBasePath": "gitplace.org/thirdparty"
     }
   }
 }

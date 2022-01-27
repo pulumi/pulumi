@@ -9,6 +9,10 @@ class MyStack : Stack
         {
             Idea = "Support Third Party",
         });
+        var Question = new Other.Module.Object("Question", new Other.Module.ObjectArgs
+        {
+            Answer = 42,
+        });
     }
 
 }
