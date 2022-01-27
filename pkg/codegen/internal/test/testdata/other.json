@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/pulumi/pulumi/master/pkg/codegen/schema/pulumi.json",
   "name": "other",
   "version": "0.1.0",
   "resources": {
@@ -10,10 +11,12 @@
       }
     }
   },
-  "$schema": "https://raw.githubusercontent.com/pulumi/pulumi/master/pkg/codegen/schema/pulumi.json",
   "language": {
     "nodejs": {
       "packageName": "@third-party/other"
+    },
+    "csharp": {
+      "rootNamespace": "ThirdParty"
     }
   }
 }

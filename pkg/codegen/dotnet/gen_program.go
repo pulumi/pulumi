@@ -67,7 +67,10 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 			return make(map[string][]byte), nil, err
 		}
 
-		csharpInfo := p.Language["csharp"].(CSharpPackageInfo)
+		csharpInfo, hasInfo := p.Language["csharp"].(CSharpPackageInfo)
+		if !hasInfo {
+			csharpInfo = CSharpPackageInfo{}
+		}
 		packageNamespaces := csharpInfo.Namespaces
 		namespaces[p.Name] = packageNamespaces
 		compatibilities[p.Name] = csharpInfo.Compatibility
@@ -152,7 +155,13 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 			pkg, _, _, _ := r.DecomposeToken()
 			if pkg != pulumiPackage {
 				namespace := namespaceName(g.namespaces[pkg], pkg)
-				pulumiUsings.Add(fmt.Sprintf("%s = Pulumi.%[1]s", namespace))
+				var info CSharpPackageInfo
+				if r.Schema != nil && r.Schema.Package != nil {
+					if csharpinfo, ok := r.Schema.Package.Language["csharp"].(CSharpPackageInfo); ok {
+						info = csharpinfo
+					}
+				}
+				pulumiUsings.Add(fmt.Sprintf("%s = %[2]s.%[1]s", namespace, info.GetRootNamespace()))
 			}
 			if r.Options != nil && r.Options.Range != nil {
 				systemUsings.Add("System.Collections.Generic")

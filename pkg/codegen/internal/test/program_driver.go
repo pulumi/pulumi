@@ -136,8 +136,11 @@ var programTests = []programTest{
 	{
 		Directory:   "third-party-package",
 		Description: "Ensuring correct imports for third party packages",
-		Skip:        allProgLanguages.Except("nodejs"),
-		SkipCompile: codegen.NewStringSet("nodejs"),
+		Skip:        allProgLanguages.Except("nodejs").Except("dotnet"),
+		// compiling and typechecking involves downloading the real package to
+		// check against. Because we are checking against the "other" package
+		// (which doesn't exist), this does not work.
+		SkipCompile: codegen.NewStringSet("nodejs", "dotnet"),
 	},
 }
 
