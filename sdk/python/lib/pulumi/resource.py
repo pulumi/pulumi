@@ -358,9 +358,10 @@ class ResourceOptions:
 
     providers: Optional[Union[Mapping[str, 'ProviderResource'], Sequence['ProviderResource']]]
     """
-    An optional set of providers to use for child resources. Keyed by package name (e.g. "aws"), or just
-    provided as a list. In the latter case, the package name will be retrieved from the provider itself.
-    Note: do not provide both provider and providers.
+    An optional set of providers to use for this resource and child resources. Keyed by package name
+    (e.g. "aws"), or just provided as a list. In the latter case, the package name will be retrieved
+    from the provider itself.
+    Note: Only a list should be used. Mapping keys are not respected.
     """
 
     ignore_changes: Optional[List[str]]
@@ -857,9 +858,10 @@ class Resource:
         # The provider supplied by the parent
 
         # Cast is safe because the `and` will resolve to only None or the result
-        # of get_provider (which is Optional[ProviderResource]).
-        # See https://github.com/python/mypy/issues/12030
+        # of get_provider (which is Optional[ProviderResource]). This holds as
+        # long as Resource does not impliment __bool__.
         parent_provider = cast(Optional[ProviderResource], opts.parent and opts.parent.get_provider(t))
+
         provider = opts.provider or ambient_provider or parent_provider
 
         if pkg and opts.provider:
@@ -871,7 +873,7 @@ class Resource:
             else:
                 opts_providers[pkg] = opts.provider
 
-        # providers takes priority over self._providers
+        # opts_providers takes priority over self._providers
         providers = {**self._providers, **opts_providers}
 
 
@@ -945,7 +947,7 @@ class CustomResource(Resource):
     def __init__(self,
                  t: str,
                  name: str,
-                 props: Optional[dict] = None,
+                 props: Optional['Inputs'] = None,
                  opts: Optional[ResourceOptions] = None,
                  dependency: bool = False) -> None:
         """
@@ -979,7 +981,7 @@ class ComponentResource(Resource):
     def __init__(self,
                  t: str,
                  name: str,
-                 props: Optional[dict] = None,
+                 props: Optional['Inputs'] = None,
                  opts: Optional[ResourceOptions] = None,
                  remote: bool = False) -> None:
         """
@@ -994,7 +996,7 @@ class ComponentResource(Resource):
         self.__dict__["id"] = None
         self._remote = remote
 
-    def register_outputs(self, outputs):
+    def register_outputs(self, outputs: 'Inputs'):
         """
         Register synthetic outputs that a component has initialized, usually by allocating other child
         sub-resources and propagating their resulting property values.
@@ -1018,7 +1020,7 @@ class ProviderResource(CustomResource):
     def __init__(self,
                  pkg: str,
                  name: str,
-                 props: Optional[dict] = None,
+                 props: Optional['Inputs'] = None,
                  opts: Optional[ResourceOptions] = None,
                  dependency: bool = False) -> None:
         """
