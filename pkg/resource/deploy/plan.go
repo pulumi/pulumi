@@ -2,7 +2,6 @@ package deploy
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -26,8 +25,6 @@ import (
 type Plan struct {
 	ResourcePlans map[resource.URN]*ResourcePlan
 	Manifest      Manifest
-	// Any environment variables that were set when the plan was created. Values are encrypted.
-	EnvironmentVariables map[string]string
 	// The configuration in use during the plan.
 	Config config.Map
 }
@@ -40,18 +37,10 @@ func NewPlan(config config.Map) Plan {
 	}
 	manifest.Magic = manifest.NewMagic()
 
-	environmentVariables := make(map[string]string)
-	for _, e := range os.Environ() {
-		// golang has so many questionable design decisions, lets just hope no one puts '=' in there env var names.
-		pair := strings.SplitN(e, "=", 2)
-		environmentVariables[pair[0]] = pair[1]
-	}
-
 	return Plan{
-		ResourcePlans:        make(map[resource.URN]*ResourcePlan),
-		EnvironmentVariables: environmentVariables,
-		Manifest:             manifest,
-		Config:               config,
+		ResourcePlans: make(map[resource.URN]*ResourcePlan),
+		Manifest:      manifest,
+		Config:        config,
 	}
 }
 

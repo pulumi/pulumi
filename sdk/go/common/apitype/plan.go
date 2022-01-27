@@ -80,8 +80,6 @@ type DeploymentPlanV1 struct {
 
 	// Manifest contains metadata about this plan.
 	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
-	// Any environment variables that were set when the plan was created. Values are encrypted.
-	EnvironmentVariables map[string]string `json:"environmentVariables,omitempty"`
 	// The configuration in use during the plan.
 	Config config.Map `json:"config,omitempty"`
 

@@ -131,20 +131,10 @@ func SerializePlan(plan *deploy.Plan, enc config.Encrypter, showSecrets bool) (a
 		resourcePlans[urn] = serializedPlan
 	}
 
-	encryptedEnvironmentVariables := make(map[string]string)
-	for key, plainValue := range plan.EnvironmentVariables {
-		cipherValue, err := enc.EncryptValue(plainValue)
-		if err != nil {
-			return apitype.DeploymentPlanV1{}, err
-		}
-		encryptedEnvironmentVariables[key] = cipherValue
-	}
-
 	return apitype.DeploymentPlanV1{
-		Manifest:             plan.Manifest.Serialize(),
-		ResourcePlans:        resourcePlans,
-		Config:               plan.Config,
-		EnvironmentVariables: encryptedEnvironmentVariables,
+		Manifest:      plan.Manifest.Serialize(),
+		ResourcePlans: resourcePlans,
+		Config:        plan.Config,
 	}, nil
 }
 
@@ -215,20 +205,10 @@ func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter, enc co
 		return nil, err
 	}
 
-	environmentVariables := make(map[string]string)
-	for key, cipherValue := range plan.EnvironmentVariables {
-		plainValue, err := enc.EncryptValue(cipherValue)
-		if err != nil {
-			return nil, err
-		}
-		environmentVariables[key] = plainValue
-	}
-
 	deserializedPlan := &deploy.Plan{
-		EnvironmentVariables: environmentVariables,
-		Config:               plan.Config,
-		Manifest:             *manifest,
-		ResourcePlans:        make(map[resource.URN]*deploy.ResourcePlan),
+		Config:        plan.Config,
+		Manifest:      *manifest,
+		ResourcePlans: make(map[resource.URN]*deploy.ResourcePlan),
 	}
 	for urn, resourcePlan := range plan.ResourcePlans {
 		deserializedResourcePlan, err := DeserializeResourcePlan(resourcePlan, dec, enc)
