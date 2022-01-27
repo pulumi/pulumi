@@ -26,7 +26,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	pkgerrors "github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 
@@ -297,15 +296,11 @@ func newImportCmd() *cobra.Command {
 	var suppressPermalink string
 	var yes bool
 	var protectResources bool
+	var properties []string
 
 	cmd := &cobra.Command{
-		Use: "import [type] [name] [id] [properties...]",
-		Args: cmdutil.ArgsFunc(func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 && len(args) < 3 {
-				return pkgerrors.Errorf("wrong number of arguments: got %d, expected 0 or at least 3", len(args))
-			}
-			return nil
-		}),
+		Use:   "import [type] [name] [id]",
+		Args:  cmdutil.MaximumNArgs(3),
 		Short: "Import resources into an existing stack",
 		Long: "Import resources into an existing stack.\n" +
 			"\n" +
@@ -364,7 +359,7 @@ func newImportCmd() *cobra.Command {
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			var importFile importFile
 			if importFilePath != "" {
-				if len(args) != 0 || parentSpec != "" || providerSpec != "" {
+				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
 					return result.Errorf("an inline resource may not be specified in conjunction with an import file")
 				}
 				f, err := readImportFile(importFilePath)
@@ -376,7 +371,7 @@ func newImportCmd() *cobra.Command {
 				if len(args) < 3 {
 					return result.Errorf("an inline resource must be specified if no import file is used")
 				}
-				f, err := makeImportFile(args[0], args[1], args[2], args[3:], parentSpec, providerSpec, "")
+				f, err := makeImportFile(args[0], args[1], args[2], properties, parentSpec, providerSpec, "")
 				if err != nil {
 					return result.FromError(err)
 				}
@@ -531,15 +526,14 @@ func newImportCmd() *cobra.Command {
 							"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
 							"the destroy will take effect.\n\n"))
 					}
-					fmt.Printf(outputResult.String())
+					fmt.Print(outputResult.String())
 				}
 			}
 
 			if res != nil {
 				fmt.Print("Import failed, try specifying the set of properties to import with.\n")
 				if importFilePath == "" {
-					fmt.Print("This can be done by passing the property names as extra argumeents " +
-						"after the resource ID.\n")
+					fmt.Print("This can be done by passing the property names with the --properties flag.\n")
 				} else {
 					fmt.Print("This can be done by adding a \"properties\" key with an array of " +
 						"strings to the resource object in the input file.\n")
@@ -560,6 +554,9 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
 		&providerSpec, "provider", "", "The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource")
+	cmd.PersistentFlags().StringSliceVar(
+		//nolint:lll
+		&properties, "properties", nil, "The property names to use for the import in the format name1,name2")
 	cmd.PersistentFlags().StringVarP(
 		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")
 	cmd.PersistentFlags().StringVarP(
