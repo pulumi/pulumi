@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -250,7 +251,7 @@ func newPreviewCmd() *cobra.Command {
 		&planFilePath, "save-plan", "",
 		"Save the operations proposed by the preview to a plan file at the given path")
 	if !hasExperimentalCommands() {
-		cmd.PersistentFlags().MarkHidden("save-plan")
+		contract.AssertNoError(cmd.PersistentFlags().MarkHidden("save-plan"))
 	}
 	cmd.Flags().BoolVarP(
 		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in the plan file. Defaults to `false`")
