@@ -831,7 +831,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 	assert.NotNil(t, res)
 	assert.Len(t, snap.Resources, 2)
 
-	// Try and import again specifiying foo and frob
+	// Try and import again specifying foo and frob
 	snap, res = ImportOp([]deploy.Import{{
 		Type:       "pkgA:m:typA",
 		Name:       "resB",
