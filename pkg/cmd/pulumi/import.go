@@ -531,6 +531,9 @@ func newImportCmd() *cobra.Command {
 			}
 
 			if res != nil {
+				// TODO: This helpful message prints even in the case of the user doing a successful preview and then
+				// choosing "no" to not actually do the import. We need a way to distinguish Import _failing_ vs
+				// being canceled by user request.
 				fmt.Print("Import failed, try specifying the set of properties to import with.\n")
 				if importFilePath == "" {
 					fmt.Print("This can be done by passing the property names with the --properties flag.\n")

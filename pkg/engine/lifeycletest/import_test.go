@@ -787,7 +787,9 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 						},
 					}, resource.StatusOK, nil
 				},
-				CheckF: func(urn resource.URN, olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				CheckF: func(
+					urn resource.URN, olds, news resource.PropertyMap,
+					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					// Error unless "foo" and "frob" are in news
 
 					if _, has := news["foo"]; !has {
@@ -827,7 +829,8 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 		Provider: p.NewProviderURN("pkgA", "provA", ""),
 	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 
-	// This should fail to import because the default behaviour only imports with requried fields (frob) but our check function needs foo and frob.
+	// This should fail to import because the default behaviour only imports with required fields
+	// (frob) but our check function needs foo and frob.
 	assert.NotNil(t, res)
 	assert.Len(t, snap.Resources, 2)
 
