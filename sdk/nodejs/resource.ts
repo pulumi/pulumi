@@ -18,6 +18,7 @@ import { getStackResource, unknownValue } from "./runtime";
 import { getResource, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
+import * as log from "./log";
 
 export type ID = string;  // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -247,8 +248,8 @@ export abstract class Resource {
         if (memComponents.length !== 3) {
             return undefined;
         }
-
         const pkg = memComponents[0];
+
         return this.__providers[pkg];
     }
 
@@ -312,10 +313,6 @@ export abstract class Resource {
         // Make a shallow clone of opts to ensure we don't modify the value passed in.
         opts = Object.assign({}, opts);
 
-        if (opts.provider && (<ComponentResourceOptions>opts).providers) {
-            throw new ResourceError("Do not supply both 'provider' and 'providers' options to a ComponentResource.", opts.parent);
-        }
-
         // Check the parent type if one exists and fill in any default options.
         this.__providers = {};
         if (opts.parent) {
@@ -333,34 +330,34 @@ export abstract class Resource {
             this.__providers = opts.parent.__providers;
         }
 
-        if (custom) {
-            const provider = opts.provider;
-            if (provider === undefined) {
-                if (opts.parent) {
-                    // If no provider was given, but we have a parent, then inherit the
-                    // provider from our parent.
-                    opts.provider = opts.parent.getProvider(t);
-                }
-            } else {
-                // If a provider was specified, add it to the providers map under this type's package so that
-                // any children of this resource inherit its provider.
-                const typeComponents = t.split(":");
-                if (typeComponents.length === 3) {
-                    const pkg = typeComponents[0];
-                    this.__providers = { ...this.__providers, [pkg]: provider };
-                }
-            }
-        }
-        else {
-            // Note: we checked above that at most one of opts.provider or opts.providers is set.
+        // providers is found by combining (in ascending order of priority)
+        //      1. provider
+        //      2. self_providers
+        //      3. opts.providers
+        this.__providers = {
+            ...this.__providers,
+            ...convertToProvidersMap((<ComponentResourceOptions>opts).providers),
+            ...convertToProvidersMap(opts.provider ? [opts.provider] : {}),
+        };
 
-            // If opts.provider is set, treat that as if we were given a array of provider with that
-            // single value in it.  Otherwise, take the array or map of providers, convert it to a
-            // map and combine with any providers we've already set from our parent.
-            const providers = opts.provider
-                ? convertToProvidersMap([opts.provider])
-                : convertToProvidersMap((<ComponentResourceOptions>opts).providers);
-            this.__providers = { ...this.__providers, ...providers };
+        // provider is the first option that does not return none
+        // 1. opts.provider
+        // 2. a matching provider in opts.providers
+        // 3. a matching provider inherited from opts.parent
+        if (custom && opts.provider === undefined) {
+            let pkg = undefined;
+            const memComponents = t.split(":");
+            if (memComponents.length === 3) {
+                pkg = memComponents[0];
+            }
+            const parentProvider = opts.parent?.getProvider(t);
+
+            if (pkg && pkg in this.__providers) {
+                opts.provider = this.__providers[pkg];
+            }
+            else if (parentProvider) {
+                opts.provider = parentProvider;
+            }
         }
 
         this.__protect = !!opts.protect;
@@ -705,9 +702,7 @@ export interface ComponentResourceOptions extends ResourceOptions {
      * "aws"), or just provided as an array.  In the latter case, the package name will be retrieved
      * from the provider itself.
      *
-     * In the case of a single provider, the options can be simplified to just pass along `provider: theProvider`
-     *
-     * Note: do not provide both [provider] and [providers];
+     * Note: only a list should be used. Mapping keys are not respected.
      */
     providers?: Record<string, ProviderResource> | ProviderResource[];
 
@@ -993,28 +988,26 @@ function isPromiseOrOutput(val: any): boolean {
 
 /** @internal */
 export function expandProviders(options: ComponentResourceOptions) {
-    // Move 'provider' up to 'providers' if we have it.
-    if (options.provider) {
-        options.providers = [options.provider];
-    }
-
     // Convert 'providers' map to array form.
     if (options.providers && !Array.isArray(options.providers)) {
+        for (const k in options.providers) {
+            if (Object.prototype.hasOwnProperty.call(options.providers, k)) {
+                const v = options.providers[k];
+                if (k !== v.getPackage()) {
+                    const message = `provider resource map where key ${k} doesn't match provider ${v.getPackage()}`;
+                    log.warn(message);
+                }
+            }
+        }
         options.providers = utils.values(options.providers);
     }
-
-    delete options.provider;
 }
 
 function normalizeProviders(opts: ComponentResourceOptions) {
-    // If we have only 0-1 providers, then merge that back down to the .provider field.
+    // If we have 0 providers, delete providers. Otherwise, convert providers into a map.
     const providers = <ProviderResource[]>opts.providers;
     if (providers) {
         if (providers.length === 0) {
-            delete opts.providers;
-        }
-        else if (providers.length === 1) {
-            opts.provider = providers[0];
             delete opts.providers;
         }
         else {

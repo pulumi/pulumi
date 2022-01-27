@@ -261,7 +261,7 @@ func (host *dotnetLanguageHost) DeterminePossiblePulumiPackages(
 
 	if !sawPulumi && len(packages) == 0 {
 		return nil, errors.Errorf(
-			"Unexpected output from 'dotnet %v'. Program does not appear to reference any 'Pulumi.*' packages.",
+			"unexpected output from 'dotnet %v'. Program does not appear to reference any 'Pulumi.*' packages",
 			commandStr)
 	}
 
