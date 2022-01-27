@@ -17,10 +17,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
+var allProgLanguages = codegen.NewStringSet("dotnet", "python", "go", "nodejs")
+
 type programTest struct {
-	Name           string
+	Directory      string
 	Description    string
 	Skip           codegen.StringSet
 	ExpectNYIDiags codegen.StringSet
@@ -31,10 +34,10 @@ var testdataPath = filepath.Join("..", "internal", "test", "testdata")
 
 var programTests = []programTest{
 	{
-		Name:           "aws-s3-folder",
+		Directory:      "aws-s3-folder",
 		Description:    "AWS S3 Folder",
-		ExpectNYIDiags: codegen.NewStringSet("python", "nodejs", "dotnet"),
-		SkipCompile:    codegen.NewStringSet("go", "python", "nodejs"),
+		ExpectNYIDiags: allProgLanguages.Except("go"),
+		SkipCompile:    allProgLanguages.Except("dotnet"),
 		// Blocked on python: TODO[pulumi/pulumi#8062]: Re-enable this test.
 		// Blocked on go:
 		//   TODO[pulumi/pulumi#8064]
@@ -42,34 +45,34 @@ var programTests = []programTest{
 		// Blocked on nodejs: TODO[pulumi/pulumi#8063]
 	},
 	{
-		Name:        "aws-eks",
+		Directory:   "aws-eks",
 		Description: "AWS EKS",
 		SkipCompile: codegen.NewStringSet("nodejs"),
 		// Blocked on nodejs: TODO[pulumi/pulumi#8067]
 	},
 	{
-		Name:        "aws-fargate",
+		Directory:   "aws-fargate",
 		Description: "AWS Fargate",
 
 		// TODO[pulumi/pulumi#8440]
 		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
-		Name:        "aws-s3-logging",
+		Directory:   "aws-s3-logging",
 		Description: "AWS S3 with logging",
-		SkipCompile: codegen.NewStringSet("dotnet", "nodejs", "go"),
+		SkipCompile: allProgLanguages.Except("python"),
 		// Blocked on dotnet: TODO[pulumi/pulumi#8069]
 		// Blocked on nodejs: TODO[pulumi/pulumi#8068]
 		// Flaky in go: TODO[pulumi/pulumi#8123]
 	},
 	{
-		Name:        "aws-webserver",
+		Directory:   "aws-webserver",
 		Description: "AWS Webserver",
 		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on go: TODO[pulumi/pulumi#8070]
 	},
 	{
-		Name:        "azure-native",
+		Directory:   "azure-native",
 		Description: "Azure Native",
 		Skip:        codegen.NewStringSet("go"),
 		// Blocked on TODO[pulumi/pulumi#8123]
@@ -82,15 +85,15 @@ var programTests = []programTest{
 		//   TODO[pulumi/pulumi#8075]
 	},
 	{
-		Name:        "azure-sa",
+		Directory:   "azure-sa",
 		Description: "Azure SA",
 	},
 	{
-		Name:        "kubernetes-operator",
+		Directory:   "kubernetes-operator",
 		Description: "K8s Operator",
 	},
 	{
-		Name:        "kubernetes-pod",
+		Directory:   "kubernetes-pod",
 		Description: "K8s Pod",
 		SkipCompile: codegen.NewStringSet("go", "nodejs"),
 		// Blocked on go:
@@ -100,25 +103,25 @@ var programTests = []programTest{
 		//   TODO[pulumi/pulumi#8075]
 	},
 	{
-		Name:        "kubernetes-template",
+		Directory:   "kubernetes-template",
 		Description: "K8s Template",
 	},
 	{
-		Name:        "random-pet",
+		Directory:   "random-pet",
 		Description: "Random Pet",
 	},
 	{
-		Name:        "aws-resource-options",
+		Directory:   "aws-resource-options",
 		Description: "Resource Options",
 		SkipCompile: codegen.NewStringSet("go"),
 		// Blocked on go: TODO[pulumi/pulumi#8076]
 	},
 	{
-		Name:        "aws-secret",
+		Directory:   "aws-secret",
 		Description: "Secret",
 	},
 	{
-		Name:        "functions",
+		Directory:   "functions",
 		Description: "Functions",
 		SkipCompile: codegen.NewStringSet("go", "dotnet"),
 		// Blocked on go: TODO[pulumi/pulumi#8077]
@@ -127,8 +130,14 @@ var programTests = []programTest{
 		//   TODO[pulumi/pulumi#8079]
 	},
 	{
-		Name:        "output-funcs-aws",
+		Directory:   "output-funcs-aws",
 		Description: "Output Versioned Functions",
+	},
+	{
+		Directory:   "third-party-package",
+		Description: "Ensuring correct imports for third party packages",
+		Skip:        allProgLanguages.Except("nodejs"),
+		SkipCompile: codegen.NewStringSet("nodejs"),
 	},
 }
 
@@ -171,6 +180,7 @@ func TestProgramCodegen(
 	}
 
 	ensureValidSchemaVersions(t)
+	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 	for _, tt := range programTests {
 		t.Run(tt.Description, func(t *testing.T) {
 			var err error
@@ -181,8 +191,8 @@ func TestProgramCodegen(
 
 			expectNYIDiags := tt.ExpectNYIDiags.Has(testcase.Language)
 
-			testDir := filepath.Join(testdataPath, tt.Name+"-pp")
-			pclFile := filepath.Join(testDir, tt.Name+".pp")
+			testDir := filepath.Join(testdataPath, tt.Directory+"-pp")
+			pclFile := filepath.Join(testDir, tt.Directory+".pp")
 			testDir = filepath.Join(testDir, testcase.Language)
 			err = os.MkdirAll(testDir, 0700)
 			if err != nil && !os.IsExist(err) {
@@ -194,14 +204,14 @@ func TestProgramCodegen(
 				t.Fatalf("could not read %v: %v", pclFile, err)
 			}
 
-			expectedFile := filepath.Join(testDir, tt.Name+"."+testcase.Extension)
+			expectedFile := filepath.Join(testDir, tt.Directory+"."+testcase.Extension)
 			expected, err := ioutil.ReadFile(expectedFile)
-			if err != nil && os.Getenv("PULUMI_ACCEPT") == "" {
+			if err != nil && !pulumiAccept {
 				t.Fatalf("could not read %v: %v", expectedFile, err)
 			}
 
 			parser := syntax.NewParser()
-			err = parser.ParseFile(bytes.NewReader(contents), tt.Name+".pp")
+			err = parser.ParseFile(bytes.NewReader(contents), tt.Directory+".pp")
 			if err != nil {
 				t.Fatalf("could not read %v: %v", pclFile, err)
 			}
@@ -231,7 +241,7 @@ func TestProgramCodegen(
 				t.Fatalf("failed to generate program: %v", diags)
 			}
 
-			if os.Getenv("PULUMI_ACCEPT") != "" {
+			if pulumiAccept {
 				err := ioutil.WriteFile(expectedFile, files[testcase.OutputFile], 0600)
 				require.NoError(t, err)
 			} else {
