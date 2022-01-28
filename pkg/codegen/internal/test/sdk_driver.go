@@ -90,7 +90,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:        "external-resource-schema",
 		Description:      "External resource schema",
-		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
+		SkipCompileCheck: codegen.NewStringSet(golang),
 	},
 	{
 		Directory:        "nested-module",
@@ -241,6 +241,14 @@ var sdkTests = []sdkTest{
 		//
 		// We need to see dotnet changes (paths) in the docs too.
 		Skip: allLanguages.Except("dotnet/any").Except("docs/any"),
+	},
+	{
+		Directory: "external-node-compatibility",
+		// In this case, this test's schema has kubernetes20 set, but is referencing a type from Google Native
+		// which doesn't have any compatibility modes set, so the referenced type should be `AuditConfigArgs`
+		// (with the `Args` suffix) and not `AuditConfig`.
+		Description: "Ensure external package compatibility modes are used when referencing external types",
+		Skip:        allLanguages.Except("nodejs/any"),
 	},
 }
 

@@ -218,7 +218,7 @@ func (mod *modContext) objectType(pkg *schema.Package, details *typeDetails, tok
 
 	if args && input && details != nil && details.usedInFunctionOutputVersionInputs {
 		name += "Args"
-	} else if args && mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
+	} else if args && namingCtx.compatibility != tfbridge20 && namingCtx.compatibility != kubernetes20 {
 		name += "Args"
 	}
 

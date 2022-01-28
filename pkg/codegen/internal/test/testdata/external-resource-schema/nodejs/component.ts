@@ -81,10 +81,10 @@ export class Component extends pulumi.CustomResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    metadata?: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>;
-    metadataArray?: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
-    metadataMap?: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
-    requiredMetadata: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>;
-    requiredMetadataArray: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
-    requiredMetadataMap: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
+    metadata?: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>;
+    metadataArray?: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>[]>;
+    metadataMap?: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>}>;
+    requiredMetadata: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>;
+    requiredMetadataArray: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>[]>;
+    requiredMetadataMap: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>}>;
 }
