@@ -1,9 +1,9 @@
 package main
 
 import (
+	"git.example.org/thirdparty"
+	"git.example.org/thirdparty/module"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"gitplace.org/thirdparty"
-	"gitplace.org/thirdparty/module"
 )
 
 func main() {

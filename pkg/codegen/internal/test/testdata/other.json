@@ -29,7 +29,7 @@
       "packageName": "third_party"
     },
     "go": {
-      "importBasePath": "gitplace.org/thirdparty"
+      "importBasePath": "git.example.org/thirdparty"
     }
   }
 }
