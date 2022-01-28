@@ -604,7 +604,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			// If this resource is protected we can't replace it because that entails a delete
 			// Note that we do allow unprotecting and replacing to happen in a single update
 			// cycle, we don't look at old.Protect here.
-			if goal.Protect {
+			if new.Protect && old.Protect {
 				message := fmt.Sprintf("unable to replace resource %q\n"+
 					"as it is currently marked for protection. To unprotect the resource, "+
 					"remove the `protect` flag from the resource in your Pulumi "+

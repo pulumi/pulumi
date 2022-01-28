@@ -2889,6 +2889,7 @@ func TestProtect(t *testing.T) {
 		"foo": "bar",
 	})
 
+	shouldProtect := true
 	createResource := true
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -2896,7 +2897,7 @@ func TestProtect(t *testing.T) {
 		if createResource {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:  ins,
-				Protect: true,
+				Protect: shouldProtect,
 			})
 			assert.NoError(t, err)
 		}
@@ -2954,7 +2955,7 @@ func TestProtect(t *testing.T) {
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete
 	expectedMessage = "<{%reset%}>unable to delete resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
 		"as it is currently marked for protection. To unprotect the resource, either remove the `protect` flag " +
-		"from the resource in your Pulumiprogram and run `pulumi up` or use the command:\n" +
+		"from the resource in your Pulumi program and run `pulumi up` or use the command:\n" +
 		"`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>\n"
 	createResource = false
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
@@ -2962,5 +2963,40 @@ func TestProtect(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+	assert.Equal(t, true, snap.Resources[1].Protect)
 	assert.Equal(t, 0, deleteCounter)
+
+	// Run a new update to remove the protect and replace in the same update, this should delete the old one
+	// and create the new one
+	createResource = true
+	shouldProtect = false
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
+	assert.Equal(t, false, snap.Resources[1].Protect)
+	assert.Equal(t, 1, deleteCounter)
+
+	// Run a new update to add the protect flag, nothing else should change
+	shouldProtect = true
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
+	assert.Equal(t, true, snap.Resources[1].Protect)
+	assert.Equal(t, 1, deleteCounter)
+
+	// Edit the snapshot to remove the protect flag and try and replace
+	snap.Resources[1].Protect = false
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "daz",
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "created-id-2", snap.Resources[1].ID.String())
+	assert.Equal(t, 2, deleteCounter)
 }
