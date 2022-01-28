@@ -126,7 +126,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         else:
             provider = get_provider(news)
 
-        result = provider.check(olds, news, request.sequenceNumber)  # pylint: disable=no-member
+        result = provider.check(olds, news)  # pylint: disable=no-member
         inputs = result.inputs
         failures = result.failures
 

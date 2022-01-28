@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+## 3.23.1 (2022-01-27)
+
+## Bug Fixes
+
+- [sdk/{nodejs,python}] - Remove sequence numbers from the dynamic provider interfaces.
+  [#8849](https://github.com/pulumi/pulumi/pull/8849)
+
 ## 3.23.0 (2022-01-26)
 
 ### Improvements
