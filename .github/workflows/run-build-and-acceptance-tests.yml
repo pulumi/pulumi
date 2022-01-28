@@ -103,3 +103,9 @@ jobs:
           sort goreleaser/*-checksums.txt
           echo "Checking that tested and released checksums are identical:"
           diff <(sort goreleaser/*-checksums.txt) $C || echo "WARN ignoring checksum mismatch"
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v2
+        with:
+            name: release-artifacts
+            path: goreleaser
+            retention-days: 2
