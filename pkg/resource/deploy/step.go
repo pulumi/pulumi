@@ -335,11 +335,12 @@ func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
 func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	// Refuse to delete protected resources.
-	if s.old.Protect {
+	// Refuse to delete protected resources (unless we're replacing them in
+	// which case we will of checked protect elsewhere)
+	if !s.replacing && s.old.Protect {
 		return resource.StatusOK, nil, fmt.Errorf("unable to delete resource %q\n"+
 			"as it is currently marked for protection. To unprotect the resource, "+
-			"either remove the `protect` flag from the resource in your Pulumi"+
+			"either remove the `protect` flag from the resource in your Pulumi "+
 			"program and run `pulumi up` or use the command:\n"+
 			"`pulumi state unprotect '%s'`", s.old.URN, s.old.URN)
 	}
