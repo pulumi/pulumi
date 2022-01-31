@@ -96,6 +96,40 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
+      - name: Download pulumi-linux-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-x64
+          path: goreleaser-downloads
+      - name: Download pulumi-linux-arm64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-arm64
+          path: goreleaser-downloads
+      - name: Download pulumi-darwin-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-x64
+          path: goreleaser-downloads
+      - name: Download pulumi-darwin-arm64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-arm64
+          path: goreleaser-downloads
+      - name: Download pulumi-windows-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-x64
+          path: goreleaser-downloads
+      - name: Inspect goreleaser-downloads
+        run: |
+          find goreleaser-downloads
+      - name: Unpack goreleaser-downloads
+        run: |
+          ./scripts/unpack.sh
+      - name: Inspect goreleaser-prebuilt
+        run: |
+          find goreleaser-prebuilt
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
