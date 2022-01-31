@@ -187,6 +187,42 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		contract.Assert(len(steps) == 0)
 		return nil, res
 	}
+
+	// Check each proposed step against the relevant resource plan, if any
+	for _, s := range steps {
+		if sg.deployment.plan != nil {
+			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
+				if len(resourcePlan.Ops) == 0 {
+					return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
+				}
+
+				constraint := resourcePlan.Ops[0]
+				if !s.Op().ConstrainedTo(constraint) {
+					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+				}
+				resourcePlan.Ops = resourcePlan.Ops[1:]
+			} else {
+				if !s.Op().ConstrainedTo(OpSame) {
+					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+				}
+			}
+		}
+
+		// If we're in experimental mode add the operation to the plan being generated
+		if sg.opts.ExperimentalPlans {
+			// Resource plan might be aliased
+			urn, isAliased := sg.aliased[s.URN()]
+			if !isAliased {
+				urn = s.URN()
+			}
+			resourcePlan, ok := sg.deployment.newPlans.get(urn)
+			if !ok {
+				return nil, result.Errorf("Expected a new resource plan for %v", urn)
+			}
+			resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
+		}
+	}
+
 	if !sg.isTargetedUpdate() {
 		return steps, nil
 	}
@@ -330,6 +366,13 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// ImportReplacementStep
 		new.ID = goal.ID
 		new.ImportID = goal.ID
+
+		// If we're in experimental mode create a plan, Imports have no diff, just a goal state
+		if sg.opts.ExperimentalPlans {
+			newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(nil, nil, goal)}
+			sg.deployment.newPlans.set(urn, newResourcePlan)
+		}
+
 		if isReplace := hasOld && !recreating; isReplace {
 			return []Step{
 				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges),
@@ -348,25 +391,40 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
-		if recreating || wasExternal || sg.isTargetedReplace(urn) {
-			if new.SequenceNumber == -1 {
-				// This is known to have been created with a non-deterministic sequnce number in the last update,
-				// it should now be safe to create with sequence number == 1 as that shouldn't clash with the current random name.
-				new.SequenceNumber = 1
-			} else if new.SequenceNumber == 0 {
-				// We don't have any info on the current resources sequnce number, but we know we're going to do a replace with
-				// sequnce number == 0 to create a random name so the next time we do a replace it should be safe to go back to
-				// sequnce number == 1 (see above)
-				new.SequenceNumber = -1
-			} else {
-				new.SequenceNumber++
+		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
+			if hasOld {
+				// Only increment/change sequence number if this is a replace. If hasOld is false this is a
+				// new resource and sequence number will already be correctly set to 1.
+				if new.SequenceNumber == -1 {
+					// This is known to have been created with a non-deterministic sequnce number in the last
+					// update, it should now be safe to create with sequence number == 1 as that shouldn't
+					// clash with the current random name.
+					new.SequenceNumber = 1
+				} else if new.SequenceNumber == 0 {
+					// We don't have any info on the current resources sequnce number, but we know we're
+					// going to do a replace with sequnce number == 0 to create a random name so the next
+					// time we do a replace it should be safe to go back to sequnce number == 1 (see above)
+					new.SequenceNumber = -1
+				} else {
+					new.SequenceNumber++
+				}
 			}
+
 			checkNumber := new.SequenceNumber
 			// We don't want to call check with -1, that's just an internal state file marker
 			if checkNumber == -1 {
 				checkNumber = 0
 			}
-			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, checkNumber)
+
+			// If we have a plan for this resource we need to feed the saved checked inputs to Check to remove non-determinism
+			var oldChecked resource.PropertyMap
+			if sg.deployment.plan != nil {
+				if resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]; ok {
+					oldChecked = resourcePlan.Goal.CheckedInputs
+				}
+			}
+
+			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns, checkNumber)
 		} else {
 			checkNumber := new.SequenceNumber
 			// We don't want to call check with -1, that's just an internal state file marker
@@ -382,6 +440,37 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			invalid = true
 		}
 		new.Inputs = inputs
+	}
+
+	// If we're in experimental mode generate a plan
+	if sg.opts.ExperimentalPlans {
+		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
+			oldInputs = nil
+		}
+		inputDiff := oldInputs.Diff(inputs)
+
+		// Generate the output goal plan
+		// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
+		// application. However, it is necessary in the face of computed inputs.
+		newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(inputs, inputDiff, goal)}
+		sg.deployment.newPlans.set(urn, newResourcePlan)
+	}
+
+	// If there is a plan for this resource, validate that the program goal conforms to the plan.
+	// If theres no plan for this resource check that nothing has been changed.
+	if sg.deployment.plan != nil {
+		resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
+		if !ok {
+			if old == nil {
+				// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
+			} else if err := checkMissingPlan(old, inputs, goal); err != nil {
+				return nil, result.FromError(fmt.Errorf("resource %s violates plan: %w", urn, err))
+			}
+		} else {
+			if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
+				return nil, result.FromError(fmt.Errorf("resource %s violates plan: %w", urn, err))
+			}
+		}
 	}
 
 	// Send the resource off to any Analyzers before being operated on.
@@ -707,6 +796,16 @@ func (sg *stepGenerator) generateStepsFromDiff(
 							continue
 						}
 
+						// If we're in experimental mode create a plan for this delete
+						if sg.opts.ExperimentalPlans {
+							if _, ok := sg.deployment.newPlans.get(dependentResource.URN); !ok {
+								// We haven't see this resource before, create a new
+								// resource plan for it with no goal (because it's going to be a delete)
+								resourcePlan := &ResourcePlan{}
+								sg.deployment.newPlans.set(dependentResource.URN, resourcePlan)
+							}
+						}
+
 						sg.dependentReplaceKeys[dependentResource.URN] = toReplace[i].keys
 
 						logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
@@ -809,6 +908,43 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 					dels = append(dels, NewRemovePendingReplaceStep(sg.deployment, res))
 				}
 			}
+		}
+	}
+
+	// Check each proposed delete against the relevant resource plan
+	for _, s := range dels {
+		if sg.deployment.plan != nil {
+			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
+				if len(resourcePlan.Ops) == 0 {
+					return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
+				}
+
+				constraint := resourcePlan.Ops[0]
+				// We remove the Op from the list before doing the constraint check.
+				// This is because we look at Ops at the end to see if any expected operations didn't attempt to happen.
+				// This op has been attempted, it just might fail its constraint.
+				resourcePlan.Ops = resourcePlan.Ops[1:]
+
+				if !s.Op().ConstrainedTo(constraint) {
+					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
+				}
+			} else {
+				if !s.Op().ConstrainedTo(OpSame) {
+					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
+				}
+			}
+		}
+
+		// If we're in experimental mode add a delete op to the plan for this resource
+		if sg.opts.ExperimentalPlans {
+			resourcePlan, ok := sg.deployment.newPlans.get(s.URN())
+			if !ok {
+				// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
+				// application. However, it is necessary in the face of computed inputs.
+				resourcePlan = &ResourcePlan{}
+				sg.deployment.newPlans.set(s.URN(), resourcePlan)
+			}
+			resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 		}
 	}
 
