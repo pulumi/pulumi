@@ -249,7 +249,7 @@ func newPreviewCmd() *cobra.Command {
 		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "save-plan", "",
-		"Save the operations proposed by the preview to a plan file at the given path")
+		"[EXPERIMENTAL] Save the operations proposed by the preview to a plan file at the given path")
 	if !hasExperimentalCommands() {
 		contract.AssertNoError(cmd.PersistentFlags().MarkHidden("save-plan"))
 	}

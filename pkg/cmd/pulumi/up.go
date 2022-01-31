@@ -526,7 +526,7 @@ func newUpCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
-		"Path to a plan file to use for the update. The update will not "+
+		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
 			"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
 			"of sames).")
 	if !hasExperimentalCommands() {
