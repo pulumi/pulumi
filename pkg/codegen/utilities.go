@@ -165,6 +165,6 @@ func ExpandShortEnumName(name string) string {
 }
 
 func RespectVersion() bool {
-	flagName := "PULUMI_RESPECT_VERSION"
+	flagName := "PULUMI_RESPECT_SCHEMA_VERSION"
 	return cmdutil.IsTruthy(os.Getenv(flagName))
 }
