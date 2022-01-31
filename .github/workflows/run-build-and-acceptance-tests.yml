@@ -45,14 +45,14 @@ jobs:
     with:
       # Cross-compiling from ubuntu-latest is faster but the artifact
       # checksums will not match what publish-binaries expects.
-      # default-build-platform: macos-latest
+      default-build-platform: macos-latest
       enable-coverage: false
       goreleaser-config: '.goreleaser.yml'
       goreleaser-flags: '-p 3 --release-notes=CHANGELOG_PENDING.md --skip-publish --skip-announce --skip-validate'
 
   publish-binaries:
     name: Publish Binaries
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [build]
     strategy:
       matrix:
@@ -71,6 +71,10 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
+      - name: Install goreleaser-filter
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: t0yv0/goreleaser-filter
       - name: Download pulumi-linux-x64
         uses: actions/download-artifact@v2
         with:
@@ -108,11 +112,6 @@ jobs:
       - name: Set Release Version
         run: |
           echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
-        with:
-          version: latest
-          args: -p 3 -f .goreleaser.yml --skip-publish --skip-announce --skip-validate --rm-dist --release-notes=CHANGELOG_PENDING.md
       - name: Download pulumi-windows-checksums
         uses: actions/download-artifact@v2
         with:
@@ -128,6 +127,14 @@ jobs:
         with:
           name: pulumi-darwin-checksums
           path: artifacts/checksums/darwin
+      - name: Filter goreleaser config
+        run: |
+          cat .goreleaser.yml | goreleaser-filter -no-blobs > /tmp/.goreleaser.current.yml
+      - name: Run GoReleaser to verify tarball checksums
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: -p 3 -f /tmp/.goreleaser.current.yml --skip-publish --skip-announce --skip-validate --rm-dist --release-notes=CHANGELOG_PENDING.md
       - name: Verify checksums
         run: |
           C=artifacts/checksums/pulumi-tested-checksums.txt
