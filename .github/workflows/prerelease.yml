@@ -58,10 +58,6 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
-      - name: Install goreleaser-filter
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
-        with:
-          repo: t0yv0/goreleaser-filter
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
@@ -100,6 +96,10 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
+      - name: Install goreleaser-filter
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: t0yv0/goreleaser-filter
       - name: Download pulumi-linux-x64
         uses: actions/download-artifact@v2
         with:
