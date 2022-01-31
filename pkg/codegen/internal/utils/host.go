@@ -25,5 +25,8 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		}),
 		deploytest.NewProviderLoader("aws-native", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return AwsNative(schemaDirectoryPath)
+		}),
+		deploytest.NewProviderLoader("other", semver.MustParse("0.1.0"), func() (plugin.Provider, error) {
+			return Other(schemaDirectoryPath)
 		}))
 }

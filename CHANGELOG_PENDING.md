@@ -8,11 +8,14 @@
 
 ## Bug Fixes
 
+- [codegen] - Correctly handle third party resource imports.
+  [#8861](https://github.com/pulumi/pulumi/pull/8861)
+
 - [sdk/dotnet] - Normalize merge behavior for ComponentResourceOptions, inline
   with other SDKs. See https://github.com/pulumi/pulumi/issues/8796 for more
   details.
-
   [#8838](https://github.com/pulumi/pulumi/pull/8838)
+
 - [codegen/nodejs] - Respect compat modes when referencing external types.
   [#8850](https://github.com/pulumi/pulumi/pull/8850)
 
