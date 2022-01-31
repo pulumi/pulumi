@@ -230,7 +230,8 @@ func newDestroyCmd() *cobra.Command {
 	targets = cmd.PersistentFlags().StringArrayP(
 		"target", "t", []string{},
 		"Specify a single resource URN to destroy. All resources necessary to destroy this target will also be destroyed."+
-			" Multiple resources can be specified using: --target urn1 --target urn2")
+			" Multiple resources can be specified using: --target urn1 --target urn2."+
+			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().BoolVar(
 		&targetDependents, "target-dependents", false,
 		"Allows destroying of dependent targets discovered but not specified in --target list")
