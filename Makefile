@@ -68,12 +68,10 @@ brew:: BREW_VERSION := $(shell scripts/get-version HEAD)
 brew::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${BREW_VERSION}" ${PROJECT}
 
-.PHONY: lint_pkg lint_sdk lint_tests
-lint:: lint_pkg lint_sdk lint_tests
+.PHONY: lint_pkg lint_tests
+lint:: lint_pkg lint_tests
 lint_pkg:
 	cd pkg && golangci-lint run -c ../.golangci.yml --timeout 5m
-lint_sdk:
-	cd sdk && golangci-lint run -c ../.golangci.yml --timeout 5m
 lint_tests:
 	cd tests && golangci-lint run -c ../.golangci.yml --timeout 5m
 

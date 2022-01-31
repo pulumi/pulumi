@@ -243,7 +243,11 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	defer ctx.endRPC(err)
 
 	var providerRef string
-	if provider := mergeProviders(tok, options.Parent, options.Provider, nil)[getPackage(tok)]; provider != nil {
+	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
+	if err != nil {
+		return err
+	}
+	if provider := providers[getPackage(tok)]; provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
 			return err
@@ -358,7 +362,11 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			version = self.getVersion()
 			pluginURL = self.getPluginDownloadURL()
 		} else {
-			provider = mergeProviders(tok, options.Parent, options.Provider, nil)[getPackage(tok)]
+			providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
+			if err != nil {
+				return nil, err
+			}
+			provider = providers[getPackage(tok)]
 			version = options.Version
 			pluginURL = options.PluginDownloadURL
 		}
@@ -580,7 +588,10 @@ func (ctx *Context) ReadResource(
 	}
 
 	// Merge providers.
-	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
+	providers, err := ctx.mergeProviders(t, options.Parent, options.Provider, options.Providers)
+	if err != nil {
+		return err
+	}
 
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
@@ -767,7 +778,10 @@ func (ctx *Context) registerResource(
 	}
 
 	// Merge providers.
-	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
+	providers, err := ctx.mergeProviders(t, options.Parent, options.Provider, options.Providers)
+	if err != nil {
+		return err
+	}
 
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
@@ -911,8 +925,8 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 }
 
 // checks all possible sources of providers and merges them with preference given to the most specific
-func mergeProviders(t string, parent Resource, provider ProviderResource,
-	providers map[string]ProviderResource) map[string]ProviderResource {
+func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderResource,
+	providers map[string]ProviderResource) (map[string]ProviderResource, error) {
 
 	// copy parent providers
 	result := make(map[string]ProviderResource)
@@ -930,10 +944,20 @@ func mergeProviders(t string, parent Resource, provider ProviderResource,
 	// copy specific provider, if any
 	if provider != nil {
 		pkg := getPackage(t)
-		result[pkg] = provider
+		if _, alreadyExists := providers[pkg]; alreadyExists {
+			err := ctx.Log.Warn(fmt.Sprintf("Provider for %s conflicts with providers map. %s %s", pkg,
+				"This will become an error in july 2022.",
+				"See https://github.com/pulumi/pulumi/issues/8799 for more details.",
+			), nil)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			result[pkg] = provider
+		}
 	}
 
-	return result
+	return result, nil
 }
 
 // getProvider gets the provider for the resource.
