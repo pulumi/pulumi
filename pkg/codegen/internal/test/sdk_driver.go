@@ -37,9 +37,6 @@ type sdkTest struct {
 	// Do not compile the generated code for the languages in this set.
 	// This is a helper form of `Skip`.
 	SkipCompileCheck codegen.StringSet
-
-	// Environmental variables that should be set for the test.
-	Env map[string]string
 }
 
 // ShouldSkipTest indicates if a given test for a given language should be run.
@@ -70,12 +67,6 @@ func (tt sdkTest) ShouldSkipTest(language, test string) bool {
 // further implies no other tests will be run.
 func (tt sdkTest) ShouldSkipCodegen(language string) bool {
 	return tt.Skip.Has(language + "/any")
-}
-
-func (tt sdkTest) SetEnv(t *testing.T) {
-	for k, v := range tt.Env {
-		t.Setenv(k, v)
-	}
 }
 
 const (
@@ -138,7 +129,6 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "simple-resource-schema",
 		Description: "Simple schema with local resource properties",
-		Env:         map[string]string{"PULUMI_RESPECT_SCHEMA_VERSION": "true"},
 	},
 	{
 		Directory:   "simple-resource-schema-custom-pypackage-name",
@@ -359,10 +349,9 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 	for _, sdkTest := range sdkTests {
 		tt := sdkTest // avoid capturing loop variable `sdkTest` in the closure
 		t.Run(tt.Directory, func(t *testing.T) {
-			if parallel && len(tt.Env) == 0 {
+			if parallel {
 				t.Parallel()
 			}
-			tt.SetEnv(t)
 
 			t.Log(tt.Description)
 

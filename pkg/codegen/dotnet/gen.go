@@ -2165,7 +2165,8 @@ func genPackageMetadata(pkg *schema.Package,
 		Server:   pkg.PluginDownloadURL,
 	}
 
-	if pkg.Version != nil && codegen.RespectVersion() {
+	lang, ok := pkg.Language["csharp"].(CSharpPackageInfo)
+	if pkg.Version != nil && ok && lang.RespectSchemaVersion {
 		files.add("version.txt", []byte(pkg.Version.String()))
 		pulumiPlugin.Version = pkg.Version.String()
 	}

@@ -1979,7 +1979,8 @@ func genPackageMetadata(
 	// Create a constant for the version number to replace during build
 	version := "0.0.0"
 	pluginVersion := version
-	if pkg.Version != nil && codegen.RespectVersion() {
+	info, ok := pkg.Language["python"].(PackageInfo)
+	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = pypiVersion(*pkg.Version)
 		pluginVersion = pkg.Version.String()
 	}

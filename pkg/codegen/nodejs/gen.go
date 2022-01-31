@@ -2143,7 +2143,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		},
 	}
 
-	if pkg.Version != nil && codegen.RespectVersion() {
+	if pkg.Version != nil && info.RespectSchemaVersion {
 		npminfo.Version = pkg.Version.String()
 	}
 
