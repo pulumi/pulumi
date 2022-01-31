@@ -21,8 +21,7 @@ import (
 	"os"
 	"strings"
 
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
+	survey "github.com/AlecAivazis/survey/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -134,12 +133,6 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 	events []engine.Event, opts UpdateOptions) result.Result {
 	for {
-		var response string
-
-		surveycore.DisableColor = true
-		surveycore.QuestionIcon = ""
-		surveycore.SelectFocusIcon = opts.Display.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
-
 		choices := []string{string(yes), string(no)}
 
 		// For non-previews, we can also offer a detailed summary.
@@ -166,11 +159,12 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		cmdutil.EndKeypadTransmitMode()
 
 		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
-		if err := survey.AskOne(&survey.Select{
+		response, err := display.AskSelect(survey.Select{
 			Message: prompt,
 			Options: choices,
 			Default: string(no),
-		}, &response, nil); err != nil {
+		}, opts.Display)
+		if err != nil {
 			return result.FromError(fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err))
 		}
 
