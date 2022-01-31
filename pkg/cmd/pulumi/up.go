@@ -111,18 +111,22 @@ func newUpCmd() *cobra.Command {
 		}
 
 		targetURNs := []resource.URN{}
+		snap, err := s.Snapshot(commandContext())
+		if err != nil {
+			return result.FromError(err)
+		}
 		for _, t := range targets {
-			targetURNs = append(targetURNs, resource.URN(t))
+			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(t))...)
 		}
 
 		replaceURNs := []resource.URN{}
 		for _, r := range replaces {
-			replaceURNs = append(replaceURNs, resource.URN(r))
+			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(r))...)
 		}
 
 		for _, tr := range targetReplaces {
-			targetURNs = append(targetURNs, resource.URN(tr))
-			replaceURNs = append(replaceURNs, resource.URN(tr))
+			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(tr))...)
+			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(tr))...)
 		}
 
 		refreshOption, err := getRefreshOption(proj, refresh)
