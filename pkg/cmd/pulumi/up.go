@@ -76,6 +76,7 @@ func newUpCmd() *cobra.Command {
 	var replaces []string
 	var targetReplaces []string
 	var targetDependents bool
+	var planFilePath string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -141,6 +142,23 @@ func newUpCmd() *cobra.Command {
 			DisableOutputValues:       disableOutputValues(),
 			UpdateTargets:             targetURNs,
 			TargetDependents:          targetDependents,
+			ExperimentalPlans:         hasExperimentalCommands(),
+		}
+
+		if planFilePath != "" {
+			dec, err := sm.Decrypter()
+			if err != nil {
+				return result.FromError(err)
+			}
+			enc, err := sm.Encrypter()
+			if err != nil {
+				return result.FromError(err)
+			}
+			plan, err := readPlan(planFilePath, dec, enc)
+			if err != nil {
+				return result.FromError(err)
+			}
+			opts.Engine.Plan = plan
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -299,10 +317,11 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:         parallel,
-			Debug:            debug,
-			Refresh:          refreshOption,
+			LocalPolicyPacks:  engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:          parallel,
+			Debug:             debug,
+			Refresh:           refreshOption,
+			ExperimentalPlans: hasExperimentalCommands(),
 		}
 
 		// TODO for the URL case:
@@ -504,6 +523,15 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
+
+	cmd.PersistentFlags().StringVar(
+		&planFilePath, "plan", "",
+		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
+			"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
+			"of sames).")
+	if !hasExperimentalCommands() {
+		contract.AssertNoError(cmd.PersistentFlags().MarkHidden("plan"))
+	}
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(

@@ -21,6 +21,8 @@ import (
 	"os"
 	"time"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -181,4 +183,34 @@ func fprintfIgnoreError(w io.Writer, format string, a ...interface{}) {
 func fprintIgnoreError(w io.Writer, a ...interface{}) {
 	_, err := fmt.Fprint(w, a...)
 	contract.IgnoreError(err)
+}
+
+func wrapSurvey(opts Options) survey.AskOpt {
+	surveycore.DisableColor = true
+	return survey.WithIcons(func(icons *survey.IconSet) {
+		icons.Question.Text = ""
+		icons.SelectFocus.Text = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
+	})
+}
+
+func AskSelect(prompt survey.Select, opts Options) (string, error) {
+	var response string
+
+	err := survey.AskOne(&prompt, &response, wrapSurvey(opts))
+	if err != nil {
+		return "", err
+	}
+	return response, nil
+
+}
+
+func AskConfirm(prompt survey.Confirm, opts Options) (bool, error) {
+	var confirm bool
+
+	err := survey.AskOne(&prompt, &confirm, wrapSurvey(opts))
+	if err != nil {
+		return false, err
+	}
+	return confirm, nil
+
 }

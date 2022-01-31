@@ -21,11 +21,11 @@ import (
 	"os"
 	"strings"
 
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
+	survey "github.com/AlecAivazis/survey/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -44,7 +44,7 @@ type ApplierOptions struct {
 
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, result.Result)
+	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, engine.ResourceChanges, result.Result)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -79,7 +79,7 @@ const (
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
+	op UpdateOperation, apply Applier) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -111,34 +111,28 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		ShowLink: true,
 	}
 
-	changes, res := apply(ctx, kind, stack, op, opts, eventsChannel)
+	plan, changes, res := apply(ctx, kind, stack, op, opts, eventsChannel)
 	if res != nil {
 		close(eventsChannel)
-		return changes, res
+		return plan, changes, res
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
 		close(eventsChannel)
-		return changes, nil
+		return plan, changes, nil
 	}
 
 	// Otherwise, ensure the user wants to proceed.
 	res = confirmBeforeUpdating(kind, stack, events, op.Opts)
 	close(eventsChannel)
-	return changes, res
+	return plan, changes, res
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 	events []engine.Event, opts UpdateOptions) result.Result {
 	for {
-		var response string
-
-		surveycore.DisableColor = true
-		surveycore.QuestionIcon = ""
-		surveycore.SelectFocusIcon = opts.Display.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
-
 		choices := []string{string(yes), string(no)}
 
 		// For non-previews, we can also offer a detailed summary.
@@ -165,11 +159,12 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		cmdutil.EndKeypadTransmitMode()
 
 		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
-		if err := survey.AskOne(&survey.Select{
+		response, err := display.AskSelect(survey.Select{
 			Message: prompt,
 			Options: choices,
 			Default: string(no),
-		}, &response, nil); err != nil {
+		}, opts.Display)
+		if err != nil {
 			return result.FromError(fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err))
 		}
 
@@ -196,9 +191,25 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	// Preview the operation to the user and ask them if they want to proceed.
 
 	if !op.Opts.SkipPreview {
-		changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		// We want to run the preview with the given plan and then run the full update with the initial plan as well,
+		// but because plans are mutated as they're checked we need to clone it here.
+		// We want to use the original plan because a program could be non-deterministic and have a plan of
+		// operations P0, the update preview could return P1, and then the actual update could run P2, were P1 < P2 < P0.
+		var originalPlan *deploy.Plan
+		if op.Opts.Engine.Plan != nil {
+			originalPlan = op.Opts.Engine.Plan.Clone()
+		}
+
+		plan, changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
 		if res != nil || kind == apitype.PreviewUpdate {
 			return changes, res
+		}
+
+		// If we had an original plan use it, else if we're in experimental mode use the newly generated plan
+		if originalPlan != nil {
+			op.Opts.Engine.Plan = originalPlan
+		} else if op.Opts.ExperimentalPlans {
+			op.Opts.Engine.Plan = plan
 		}
 	}
 
@@ -208,7 +219,8 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		DryRun:   false,
 		ShowLink: true,
 	}
-	return apply(ctx, kind, stack, op, opts, nil /*events*/)
+	_, changes, res := apply(ctx, kind, stack, op, opts, nil /*events*/)
+	return changes, res
 }
 
 func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {

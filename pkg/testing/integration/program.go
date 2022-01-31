@@ -291,6 +291,12 @@ type ProgramTestOptions struct {
 	// If set, this hook is called after `pulumi stack export` on the exported file. If `SkipExportImport` is set, this
 	// hook is ignored.
 	ExportStateValidator func(t *testing.T, stack []byte)
+
+	// If not nil, specifies the logic of preparing a project by
+	// ensuring dependencies. If left as nil, runs default
+	// preparation logic by dispatching on whether the project
+	// uses Node, Python, .NET or Go.
+	PrepareProject func(*engine.Projinfo) error
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -501,6 +507,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.UsePipenv {
 		opts.UsePipenv = overrides.UsePipenv
+	}
+	if overrides.PrepareProject != nil {
+		opts.PrepareProject = overrides.PrepareProject
 	}
 	return opts
 }
@@ -1685,19 +1694,10 @@ func (pt *ProgramTester) getProjinfo(projectDir string) (*engine.Projinfo, error
 
 // prepareProject runs setup necessary to get the project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareProject(projinfo *engine.Projinfo) error {
-	// Based on the language, invoke the right routine to prepare the target directory.
-	switch rt := projinfo.Proj.Runtime.Name(); rt {
-	case NodeJSRuntime:
-		return pt.prepareNodeJSProject(projinfo)
-	case PythonRuntime:
-		return pt.preparePythonProject(projinfo)
-	case GoRuntime:
-		return pt.prepareGoProject(projinfo)
-	case DotNetRuntime:
-		return pt.prepareDotNetProject(projinfo)
-	default:
-		return fmt.Errorf("unrecognized project runtime: %s", rt)
+	if pt.opts.PrepareProject != nil {
+		return pt.opts.PrepareProject(projinfo)
 	}
+	return pt.defaultPrepareProject(projinfo)
 }
 
 // prepareProjectDir runs setup necessary to get the project ready for `pulumi` commands.
@@ -2089,4 +2089,20 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	}
 
 	return nil
+}
+
+func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error {
+	// Based on the language, invoke the right routine to prepare the target directory.
+	switch rt := projinfo.Proj.Runtime.Name(); rt {
+	case NodeJSRuntime:
+		return pt.prepareNodeJSProject(projinfo)
+	case PythonRuntime:
+		return pt.preparePythonProject(projinfo)
+	case GoRuntime:
+		return pt.prepareGoProject(projinfo)
+	case DotNetRuntime:
+		return pt.prepareDotNetProject(projinfo)
+	default:
+		return fmt.Errorf("unrecognized project runtime: %s", rt)
+	}
 }
