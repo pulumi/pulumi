@@ -2143,6 +2143,10 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		},
 	}
 
+	if pkg.Version != nil && codegen.RespectVersion() {
+		npminfo.Version = pkg.Version.String()
+	}
+
 	// Copy the overlay dependencies, if any.
 	for depk, depv := range info.Dependencies {
 		if npminfo.Dependencies == nil {

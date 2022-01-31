@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -161,4 +162,9 @@ func ExpandShortEnumName(name string) string {
 		return replacement
 	}
 	return name
+}
+
+func RespectVersion() bool {
+	flagName := "PULUMI_RESPECT_VERSION"
+	return cmdutil.IsTruthy(os.Getenv(flagName))
 }

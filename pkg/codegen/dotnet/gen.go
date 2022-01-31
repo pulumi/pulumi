@@ -2158,11 +2158,19 @@ func genPackageMetadata(pkg *schema.Package,
 	if err != nil {
 		return err
 	}
-	plugin, err := (&plugin.PulumiPluginJSON{
+
+	pulumiPlugin := &plugin.PulumiPluginJSON{
 		Resource: true,
 		Name:     pkg.Name,
 		Server:   pkg.PluginDownloadURL,
-	}).JSON()
+	}
+
+	if pkg.Version != nil && codegen.RespectVersion() {
+		files.add("version.txt", []byte(pkg.Version.String()))
+		pulumiPlugin.Version = pkg.Version.String()
+	}
+
+	plugin, err := (pulumiPlugin).JSON()
 	if err != nil {
 		return err
 	}

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 )
 
@@ -87,4 +88,8 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 	safeName = regex.ReplaceAllString(safeName, "_")
 
 	return safeName, nil
+}
+
+func pypiVersion(version semver.Version) string {
+	return version.String()
 }
