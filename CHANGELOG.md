@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+## 3.23.2 (2022-01-28)
+
+## Bug Fixes
+
+- [sdk/{nodejs,python}] - Remove sequence numbers from the dynamic provider interfaces.
+  [#8849](https://github.com/pulumi/pulumi/pull/8849)
+
 ## 3.23.0 (2022-01-26)
 
 ### Improvements
@@ -74,7 +81,7 @@ CHANGELOG
 
 - [sdk/dotnet] - Add `PluginDownloadURL` as a resource option. When provided by
   the schema, `PluginDownloadURL` will be baked into `new Resource` and `Invoke`
-  requests in generated SDKs. 
+  requests in generated SDKs.
   [#8739](https://github.com/pulumi/pulumi/pull/8739)
 
 - [sdk] - Allow property paths to accept `[*]` as sugar for `["*"]`.

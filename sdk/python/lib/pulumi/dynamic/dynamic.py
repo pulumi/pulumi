@@ -159,7 +159,7 @@ class ResourceProvider:
     whose CRUD operations are implemented inside your Python program.
     """
 
-    def check(self, _olds: Any, news: Any, _sequence_number: int) -> CheckResult:
+    def check(self, _olds: Any, news: Any) -> CheckResult:
         """
         Check validates that the given property bag is valid for a resource of the given type.
         """
