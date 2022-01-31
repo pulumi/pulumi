@@ -1,6 +1,8 @@
 package resource
 
 import (
+	"bytes"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -297,4 +299,40 @@ func (p PropertyPath) Contains(other PropertyPath) bool {
 	}
 
 	return true
+}
+
+func requiresQuote(c rune) bool {
+	return !(c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_')
+}
+
+func (p PropertyPath) String() string {
+	var buf bytes.Buffer
+	for i, k := range p {
+		switch k := k.(type) {
+		case string:
+			var keyBuf bytes.Buffer
+			quoted := false
+			for _, c := range k {
+				if requiresQuote(c) {
+					quoted = true
+					if c == '"' {
+						keyBuf.WriteByte('\\')
+					}
+				}
+				keyBuf.WriteRune(c)
+			}
+			if !quoted {
+				if i == 0 {
+					fmt.Fprintf(&buf, "%s", keyBuf.String())
+				} else {
+					fmt.Fprintf(&buf, ".%s", keyBuf.String())
+				}
+			} else {
+				fmt.Fprintf(&buf, `["%s"]`, keyBuf.String())
+			}
+		case int:
+			fmt.Fprintf(&buf, "[%d]", k)
+		}
+	}
+	return buf.String()
 }
