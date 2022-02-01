@@ -180,7 +180,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 }
 
 // Performs glob style expansion on urns that contain '*'. Each urn can be
-// expanded into 1-n actual urns, depending on what underlying resources exist
+// expanded into 0-n actual urns, depending on what underlying resources exist
 // in the snapshot. URNs are returned in sorted order. All returned urns are unique.
 func (snap *Snapshot) GlobUrn(urn resource.URN) []resource.URN {
 	if !strings.Contains(string(urn), "*") {
