@@ -423,7 +423,7 @@ func (info PluginInfo) installLock() (unlock func(), err error) {
 // If a failure occurs during installation, the `.partial` file will remain, indicating the plugin wasn't fully
 // installed. The next time the plugin is installed, the old installation directory will be removed and replaced with
 // a fresh install.
-func (info PluginInfo) Install(tgz io.ReadCloser) error {
+func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 	defer contract.IgnoreClose(tgz)
 
 	// Fetch the directory into which we will expand this tarball.
@@ -457,11 +457,14 @@ func (info PluginInfo) Install(tgz io.ReadCloser) error {
 	if finalDirStatErr == nil {
 		_, partialFileStatErr := os.Stat(partialFilePath)
 		if partialFileStatErr != nil {
-			if os.IsNotExist(partialFileStatErr) {
-				// finalDir exists and there's no partial file, so the plugin is already installed.
+			if !os.IsNotExist(partialFileStatErr) {
+				return partialFileStatErr
+			}
+			if !reinstall {
+				// finalDir exists, there's no partial file, and we're not reinstalling, so the plugin is already
+				// installed.
 				return nil
 			}
-			return partialFileStatErr
 		}
 
 		// The partial file exists, meaning a previous attempt at installing the plugin failed.

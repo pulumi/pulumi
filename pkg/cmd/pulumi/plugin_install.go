@@ -136,7 +136,7 @@ func newPluginInstallCmd() *cobra.Command {
 					}
 				}
 				logging.V(1).Infof("%s installing tarball ...", label)
-				if err = install.Install(tarball); err != nil {
+				if err = install.Install(tarball, reinstall); err != nil {
 					return fmt.Errorf("installing %s from %s: %w", label, source, err)
 				}
 			}

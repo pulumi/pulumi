@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build nodejs || python || all
 // +build nodejs python all
 
 package workspace
@@ -143,7 +144,7 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 	dir, tarball, plugin := prepareTestDir(t, files)
 	defer os.RemoveAll(dir)
 
-	err := plugin.Install(tarball)
+	err := plugin.Install(tarball, false)
 	assert.NoError(t, err)
 
 	assertPluginInstalled(t, dir, plugin)
@@ -166,7 +167,7 @@ func TestInstallNoDeps(t *testing.T) {
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
 	defer os.RemoveAll(dir)
 
-	err := plugin.Install(tarball)
+	err := plugin.Install(tarball, false)
 	assert.NoError(t, err)
 
 	assertPluginInstalled(t, dir, plugin)
@@ -205,7 +206,7 @@ func TestConcurrentInstalls(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			err := plugin.Install(tarball)
+			err := plugin.Install(tarball, false)
 			assert.NoError(t, err)
 
 			assertSuccess()
@@ -235,7 +236,7 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	err = ioutil.WriteFile(partialPath, nil, 0600)
 	assert.NoError(t, err)
 
-	err = plugin.Install(tarball)
+	err = plugin.Install(tarball, false)
 	assert.NoError(t, err)
 
 	assertPluginInstalled(t, dir, plugin)
@@ -254,7 +255,7 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 	dir, tarball, plugin := prepareTestDir(t, nil)
 	defer os.RemoveAll(dir)
 
-	err := plugin.Install(tarball)
+	err := plugin.Install(tarball, false)
 	assert.NoError(t, err)
 
 	err = ioutil.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0600)
