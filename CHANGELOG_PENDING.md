@@ -5,6 +5,9 @@
   with --save-plan. That plan can then be read in by up with --plan and is used to ensure
   only the expected operations happen.
   [#8448](https://github.com/pulumi/pulumi/pull/8448)
+  
+- [cli] - Support wildcards for `pulumi up --target <urn>` and similar commands.
+  [#8883](https://github.com/pulumi/pulumi/pull/8883)
 
 ## Bug Fixes
 
