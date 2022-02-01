@@ -13,13 +13,13 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import * as module from "../../runtime/closure/module";
+import * as pkg from "../../runtime/closure/package";
 
 describe("module", () => {
-    it("remap exports for mockpackage", () => {
-        assert.equal(module.getModuleFromPath("mockpackage/lib/index.js"), "mockpackage")
+    it("remaps exports correctly for mockpackage", () => {
+        assert.equal(pkg.getModuleFromPath("mockpackage/lib/index.js"), "mockpackage")
     });
-    it("unexported ", () => {
-        assert.equal(module.getModuleFromPath("mockpackage/lib/external.js"), undefined)
+    it("should return undefined on unexported members", () => {
+        assert.equal(pkg.getModuleFromPath("mockpackage/lib/external.js"), undefined)
     });
 });
