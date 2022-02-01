@@ -1,5 +1,17 @@
 ### Improvements
 
+- [codegen/go] - Implement go type conversions for optional string, boolean, int, and float32
+  arguments, and changes our behavior for optional spilling from variable declaration hoisting to
+  instead rewrite as calls to these functions. Fixes #8821.
+  [#8839](https://github.com/pulumi/pulumi/pull/8839)
+
+- [sdk/go] Added new conversion functions for Read methods on resources exported at the top level
+  of the Pulumi sdk. They are `StringRef`, `BoolRef`, `IntRef`, and `Float64Ref`. They are used for
+  creating a pointer to the type they name, e.g.: StringRef takes `string` and returns `*string`.
+  Data source methods which take optional strings, bools, ints, and float64 values can be set to
+  the return value of these functions. These functions will appear in generated programs as well as
+  future docs updates.
+
 - [cli] Experimental support for update plans. Only enabled when PULUMI_EXPERIMENTAL is
   set. This enables preview to save a plan of what the engine expects to happen in a file
   with --save-plan. That plan can then be read in by up with --plan and is used to ensure
