@@ -372,10 +372,15 @@ func chooseStack(
 
 	cmdutil.EndKeypadTransmitMode()
 
+	var defaultOption interface{}
+	if current != "" {
+		defaultOption = current
+	}
+
 	option, err := display.AskSelect(survey.Select{
 		Message: message,
 		Options: options,
-		Default: current,
+		Default: defaultOption,
 	}, opts)
 	if err != nil {
 		return nil, errors.New(chooseStackErr)
