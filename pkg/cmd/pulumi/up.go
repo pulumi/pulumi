@@ -129,6 +129,17 @@ func newUpCmd() *cobra.Command {
 			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(tr))...)
 		}
 
+		if len(targetURNs) == 0 && len(targets)+len(targetReplaces) > 0 {
+			// Wildcards were used, but they all evaluated to empty. We don't
+			// want a targeted update to turn into a general update, so we
+			// should abort.
+			if !jsonDisplay {
+				fmt.Printf("There were no resources matching the wildcards provided.\n")
+				fmt.Printf("Wildcards can only be used to target resources that already exist.\n")
+			}
+			return nil
+		}
+
 		refreshOption, err := getRefreshOption(proj, refresh)
 		if err != nil {
 			return result.FromError(err)
