@@ -27,38 +27,10 @@ func (ot *optionalTemp) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
-type optionalSpiller struct {
-	invocation         *model.FunctionCallExpression
-	intrinsicConvertTo *model.Type
-}
+type optionalSpiller struct{}
 
-func (os *optionalSpiller) preVisitor(x model.Expression) (model.Expression, hcl.Diagnostics) {
-	switch x := x.(type) {
-	case *model.FunctionCallExpression:
-		if x.Name == "invoke" {
-			// recurse into invoke args
-			isOutputInvoke, _, _ := pcl.RecognizeOutputVersionedInvoke(x)
-			// ignore output-versioned invokes as they do not need converting
-			if !isOutputInvoke {
-				os.invocation = x
-			}
-			os.intrinsicConvertTo = nil
-			return x, nil
-		}
-		if x.Name == pcl.IntrinsicConvert {
-			if os.invocation != nil {
-				os.intrinsicConvertTo = &x.Signature.ReturnType
-			}
-			return x, nil
-		}
-	case *model.ObjectConsExpression:
-		if os.invocation == nil {
-			return x, nil
-		}
-		destType := x.Type()
-		if os.intrinsicConvertTo != nil {
-			destType = *os.intrinsicConvertTo
-		}
+func (os *optionalSpiller) postVisitor(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+	if ok, x, destType := os.recognizeInvokeArgThatNeedsOptionalConversion(expr); ok {
 		if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 			if schemaType, ok := schemaType.(*schema.ObjectType); ok {
 				// map of item name to optional type wrapper fn
@@ -98,28 +70,8 @@ func (os *optionalSpiller) preVisitor(x model.Expression) (model.Expression, hcl
 				}
 			}
 		}
-		// Clear before visiting children, require another __convert call to set again
-		os.intrinsicConvertTo = nil
-		return x, nil
-	default:
-		// Ditto
-		os.intrinsicConvertTo = nil
-		return x, nil
 	}
-	return x, nil
-}
-
-func (os *optionalSpiller) postVisitor(x model.Expression) (model.Expression, hcl.Diagnostics) {
-	switch x := x.(type) {
-	case *model.FunctionCallExpression:
-		if x.Name == "invoke" {
-			if x == os.invocation {
-				// Clear invocation flag once we're done traversing children.
-				os.invocation = nil
-			}
-		}
-	}
-	return x, nil
+	return expr, nil
 }
 
 func (*optionalSpiller) getOptionalConversion(ty schema.Type) string {
@@ -156,9 +108,63 @@ func (g *generator) rewriteOptionals(
 	x model.Expression,
 	spiller *optionalSpiller,
 ) (model.Expression, []*optionalTemp, hcl.Diagnostics) {
-	// We want to recurse but we only want to use the previsitor, if post visitor is nil we don't
-	// recurse.
-	x, diags := model.VisitExpression(x, spiller.preVisitor, spiller.postVisitor)
-
+	x, diags := model.VisitExpression(x, nil, spiller.postVisitor)
 	return x, nil, diags
+}
+
+func (os *optionalSpiller) recognizeInvokeArgThatNeedsOptionalConversion(
+	x model.Expression,
+) (bool, *model.ObjectConsExpression, model.Type) {
+
+	switch x := x.(type) {
+	case *model.FunctionCallExpression:
+		if x.Name != "invoke" {
+			return false, nil, nil
+		}
+
+		// ignore output-versioned invokes as they do not need converting
+		if isOutputInvoke, _, _ := pcl.RecognizeOutputVersionedInvoke(x); !isOutputInvoke {
+			return false, nil, nil
+		}
+
+		destType := x.Args[1].Type()
+		expr := x.Args[1]
+
+		if c := os.recognizeNestedConvert(expr); c != nil {
+			expr = c.Args[0]
+			destType = c.Signature.ReturnType
+		}
+
+		switch expr := expr.(type) {
+		case *model.ObjectConsExpression:
+			return true, expr, destType
+		}
+
+		return false, nil, nil
+	default:
+		return false, nil, nil
+	}
+}
+
+// Recognize `__convert(_convert(... x@_convert(v, ty)))` returning `x`.
+func (os *optionalSpiller) recognizeNestedConvert(x model.Expression) *model.FunctionCallExpression {
+	var r *model.FunctionCallExpression
+	for {
+		c := os.recognizeIntrinsicConvert(x)
+		if c == nil {
+			return r
+		}
+		r = c
+		x = c.Args[0]
+	}
+}
+
+func (*optionalSpiller) recognizeIntrinsicConvert(x model.Expression) *model.FunctionCallExpression {
+	switch x := x.(type) {
+	case *model.FunctionCallExpression:
+		if x.Name == pcl.IntrinsicConvert {
+			return x
+		}
+	}
+	return nil
 }
