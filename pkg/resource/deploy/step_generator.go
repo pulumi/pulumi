@@ -1349,17 +1349,22 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.URN,
 	failures []plugin.CheckFailure) bool {
 
+	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures)
+}
+
+func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.State, urn resource.URN,
+	failures []plugin.CheckFailure) bool {
+
 	if len(failures) == 0 {
 		return false
 	}
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
-			deployment.Diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn),
+			printf(diag.GetResourcePropertyInvalidValueError(urn),
 				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
-			deployment.Diag().Errorf(
-				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
+			printf(diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
 		}
 	}
 	return true
