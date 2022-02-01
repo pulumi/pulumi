@@ -1,5 +1,17 @@
 ### Improvements
 
+- [codegen/go] - Implement go type conversions for optional string, boolean, int, and float32
+  arguments, and changes our behavior for optional spilling from variable declaration hoisting to
+  instead rewrite as calls to these functions. Fixes #8821.
+  [#8839](https://github.com/pulumi/pulumi/pull/8839)
+
+- [sdk/go] Added new conversion functions for Read methods on resources exported at the top level
+  of the Pulumi sdk. They are `StringRef`, `BoolRef`, `IntRef`, and `Float64Ref`. They are used for
+  creating a pointer to the type they name, e.g.: StringRef takes `string` and returns `*string`.
+  Data source methods which take optional strings, bools, ints, and float64 values can be set to
+  the return value of these functions. These functions will appear in generated programs as well as
+  future docs updates.
+
 - [sdk/nodejs] - Fix resource plugins advertising a `pluginDownloadURL` not being downloaded. This
   should allow resource plugins published via boilerplates to find and consume plugins published
   outside the registry. See: https://github.com/pulumi/pulumi/issues/8890 for the tracking issue to

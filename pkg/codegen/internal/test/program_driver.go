@@ -66,6 +66,12 @@ var programTests = []programTest{
 		// Flaky in go: TODO[pulumi/pulumi#8123]
 	},
 	{
+		Directory:   "aws-optionals",
+		Description: "AWS get invoke with nested object constructor that takes an optional string",
+		// Testing Go behavior exclusively:
+		Skip: allProgLanguages.Except("go"),
+	},
+	{
 		Directory:   "aws-webserver",
 		Description: "AWS Webserver",
 		SkipCompile: codegen.NewStringSet("go"),

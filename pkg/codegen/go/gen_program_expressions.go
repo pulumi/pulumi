@@ -251,6 +251,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "mime.TypeByExtension(path.Ext(%.v))", expr.Args[0])
 	case "sha1":
 		g.Fgenf(w, "sha1Hash(%v)", expr.Args[0])
+	case "goOptionalFloat64":
+		g.Fgenf(w, "pulumi.Float64Ref(%.v)", expr.Args[0])
+	case "goOptionalBool":
+		g.Fgenf(w, "pulumi.BoolRef(%.v)", expr.Args[0])
+	case "goOptionalInt":
+		g.Fgenf(w, "pulumi.IntRef(%.v)", expr.Args[0])
+	case "goOptionalString":
+		g.Fgenf(w, "pulumi.StringRef(%.v)", expr.Args[0])
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
