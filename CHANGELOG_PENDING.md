@@ -22,6 +22,3 @@
 - [cli] The engine will allow a resource to be replaced if either it's old or new state
   (or both) is not protected.
   [#8873](https://github.com/pulumi/pulumi/pull/8873)
-
-- [cli] - Fixed CLI duplicating prompt question.
-  [#8858](https://github.com/pulumi/pulumi/pull/8858)
