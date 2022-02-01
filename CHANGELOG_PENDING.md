@@ -1,5 +1,10 @@
 ### Improvements
 
+- [sdk/nodejs] - Fix resource plugins advertising a `pluginDownloadURL` not being downloaded. This
+  should allow resource plugins published via boilerplates to find and consume plugins published
+  outside the registry. See: https://github.com/pulumi/pulumi/issues/8890 for the tracking issue to
+  document this feature.
+
 - [cli] Experimental support for update plans. Only enabled when PULUMI_EXPERIMENTAL is
   set. This enables preview to save a plan of what the engine expects to happen in a file
   with --save-plan. That plan can then be read in by up with --plan and is used to ensure
