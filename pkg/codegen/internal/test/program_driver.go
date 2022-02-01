@@ -69,7 +69,7 @@ var programTests = []programTest{
 		Directory:   "aws-optionals",
 		Description: "AWS get invoke with nested object constructor that takes an optional string",
 		// Testing Go behavior exclusively:
-		SkipCompile: allProgLanguages.Except("go"),
+		Skip: allProgLanguages.Except("go"),
 	},
 	{
 		Directory:   "aws-webserver",
