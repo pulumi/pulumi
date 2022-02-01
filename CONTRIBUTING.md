@@ -1,12 +1,32 @@
 # Contributing to Pulumi
 
-First, thanks for contributing to Pulumi and helping make it better. We appreciate the help! If you're looking for an issue to start with, we've tagged some issues with the [help-wanted](https://github.com/pulumi/pulumi/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) tag but feel free to pick up any issue that looks interesting to you or fix a bug you stumble across in the course of using Pulumi. No matter the size, we welcome all improvements.
+First, thanks for contributing to Pulumi and helping make it better. We appreciate the help!
+This repository is one of many across the Pulumi ecosystem and we welcome contributions to them all.
 
-For larger features, we'd appreciate it if you open a [new issue](https://github.com/pulumi/pulumi/issues/new) before doing a ton of work to discuss the feature before you start writing a lot of code.
+## Code of Conduct
 
-## Hacking on Pulumi
+Please make sure to read and observe our [Contributor Code of Conduct](./CODE-OF-CONDUCT.md).
 
-To hack on Pulumi, you'll need to get a development environment set up. You'll want to install the following on your machine:
+## Communications
+
+You are welcome to join the [Pulumi Community Slack](https://slack.pulumi.com/) for questions and a community of like-minded folks.
+We discuss features and file bugs on GitHub via [Issues](https://github.com/pulumi/pulumi/issues) as well as [Discussions](https://github.com/pulumi/pulumi/discussions).
+You can read about our [public roadmap](https://github.com/orgs/pulumi/projects/44) on the [Pulumi blog](https://www.pulumi.com/blog/relaunching-pulumis-public-roadmap/).
+
+### Issues
+
+Feel free to pick up any existing issue that looks interesting to you or fix a bug you stumble across while using Pulumi. No matter the size, we welcome all improvements.
+
+### Feature Work
+
+For larger features, we'd appreciate it if you open a [new issue](https://github.com/pulumi/pulumi/issues/new) before doing a ton of work so we can discuss the feature together.
+Please also ensure to browse [current issues](https://github.com/pulumi/pulumi/issues) to make sure your issue is unique, to lighten the triage burden on our maintainers.
+
+## Developing
+
+### Setting up your Pulumi development environment
+
+You'll want to install the following on your machine:
 
 - Go 1.17
 - NodeJS 12.X.X or later
@@ -16,9 +36,9 @@ To hack on Pulumi, you'll need to get a development environment set up. You'll w
 - [Yarn](https://yarnpkg.com/)
 - [Pulumictl](https://github.com/pulumi/pulumictl)
 
-## Getting dependencies on macOS
+### Getting Pulumi dependencies on macOS
 
-You can easily get all required dependencies with brew and npm
+You can get all required dependencies with brew and npm
 
 ```bash
 brew install node python@3 typescript yarn go@1.17 golangci/tap/golangci-lint pulumi/tap/pulumictl coreutils
@@ -27,13 +47,13 @@ brew install --HEAD -s dotnet-sdk.rb
 rm dotnet-sdk.rb
 ```
 
-## Hacking on Pulumi in Gitpod
+### Working on Pulumi in Gitpod
 
 If you have a web browser, you can get a fully pre-configured Pulumi development environment in one click:
 
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/pulumi/pulumi)
 
-## Make build system
+### Make build system
 
 We use `make` as our build system, so you'll want to install that as well, if you don't have it already. We have extremely limited support for doing development on Windows (the bare minimum for us to get Windows validation of `pulumi`) so if you're on windows, we recommend that you use the [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10). We'd like to [make this better](https://github.com/pulumi/pulumi/issues/208) so feel free to pitch in if you can.
 
@@ -57,11 +77,11 @@ Across our projects, we try to use a regular set of make targets. The ones you'l
 1. `make`, which builds Pulumi and runs a quick set of tests
 1. `make all` which builds Pulumi and runs the quick tests and a larger set of tests.
 
-We make heavy use of integration level testing where we invoke `pulumi` to create and then delete cloud resources. This requires you to have a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and login with `pulumi login`.
+We make heavy use of integration level testing where we invoke `pulumi` to create and then delete cloud resources. This requires you to have a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and log in with `pulumi login`.
 
 This repository does not actually create any real cloud resources as part of testing, but still uses Pulumi.com to store information abot some synthetic resources it creates during testing. Other repositories may require additional setup before running tests (most often this is just setting a few environment variables that tell the tests some information about how to use the cloud provider we are testing). Please see the `CONTRIBUTING.md` file in the repository, which will explain what additional configuration needs to be done before running tests.
 
-## Debugging
+### Debugging
 
 The Pulumi tools have extensive logging built in.  In fact, we encourage liberal logging in new code, and adding new logging when debugging problems.  This helps to ensure future debugging endeavors benefit from your sleuthing.
 
@@ -79,12 +99,13 @@ is a pretty standard starting point during debugging that will show a fairly com
 
 ## Submitting a Pull Request
 
-For contributors we use the standard fork based workflow. Fork this repository, create a topic branch, and start hacking away.  When you're ready, make sure you've run the tests (`make travis_pull_request` will run the exact flow we run in CI) and open your PR.
-When adding a changelog entry, please be sure to use `CHANGELOG_PENDING.md` for the entry - we will then be able to ensure your PR gets into the next release.
+For contributors we use the [standard fork based workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962). Fork this repository, create a topic branch, and when ready, open a pull request from your fork.
+
+When adding a changelog entry, please be sure to use `CHANGELOG_PENDING.md` for the entry - we will then be able to ensure your pull request gets into the next release.
 
 ## Getting Help
 
 We're sure there are rough edges and we appreciate you helping out. If you want
-to talk with other folks hacking on Pulumi (or members of the Pulumi team!)
-come hang out `#contribute` channel in the
+to talk with other folks in the Pulumi community (or members of the Pulumi team!),
+come hang out in the `#contribute` channel on the
 [Pulumi Community Slack](https://slack.pulumi.com/).
