@@ -151,6 +151,12 @@ func newDestroyCmd() *cobra.Command {
 			for _, t := range *targets {
 				targetUrns = append(targetUrns, snap.GlobUrn(resource.URN(t))...)
 			}
+			if len(targetUrns) == 0 && len(*targets) > 0 {
+				if !jsonDisplay {
+					fmt.Printf("There were no resources matching the wildcards provided.\n")
+				}
+				return nil
+			}
 
 			refreshOption, err := getRefreshOption(proj, refresh)
 			if err != nil {
