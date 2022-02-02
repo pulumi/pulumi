@@ -31,6 +31,9 @@
   infer the correct property set for.
   [#8846](https://github.com/pulumi/pulumi/pull/8846)
 
+- [cli] Ensure defaultOrg is used as part of any stack name
+  [#8903](https://github.com/pulumi/pulumi/pull/8903)
+
 ## Bug Fixes
 
 - [codegen] - Correctly handle third party resource imports.
