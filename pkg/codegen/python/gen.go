@@ -165,9 +165,6 @@ func (mod *modContext) modNameAndName(pkg *schema.Package, t schema.Type, input 
 	}
 
 	modName = tokenToModule(token, pkg, info.ModuleNameOverrides)
-	if modName == mod.mod {
-		modName = ""
-	}
 	if modName != "" {
 		modName = strings.ReplaceAll(modName, "/", ".") + "."
 	}

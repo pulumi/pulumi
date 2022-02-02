@@ -257,6 +257,11 @@ var sdkTests = []sdkTest{
 		Description: "Ensure external import aliases are honored, and any local import aliases override them",
 		Skip:        allLanguages.Except("go/any"),
 	},
+	{
+		Directory:   "external-python-same-module-name",
+		Description: "Ensure referencing external types/resources with the same module name are referenced correctly",
+		Skip:        allLanguages.Except("python/any"),
+	},
 }
 
 var genSDKOnly bool

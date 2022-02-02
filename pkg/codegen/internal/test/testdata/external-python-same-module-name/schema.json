@@ -1,0 +1,27 @@
+{
+    "name": "example",
+    "resources": {
+        "example:cloudtrail:Trail": {
+            "inputProperties": {
+                "advancedEventSelectors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "/aws/v4.37.1/schema.json#/types/aws:cloudtrail%2FTrailAdvancedEventSelector:TrailAdvancedEventSelector"
+                    }
+                },
+                "trail": {
+                    "$ref": "/aws/v4.37.1/schema.json#/resources/aws:cloudtrail%2Ftrail:Trail"
+                }
+            },
+            "isComponent": true
+        }
+    },
+    "language": {
+        "python": {
+            "requires": {
+                "pulumi": "\u003e=3.0.0,\u003c4.0.0",
+                "pulumi-aws": "\u003e=4.37.1,\u003c5.0.0"
+            }
+        }
+    }
+}
