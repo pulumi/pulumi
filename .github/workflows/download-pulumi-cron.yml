@@ -28,7 +28,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - run: curl -fsSL https://get.pulumi.com | sh
-      - run: echo "/Users/runner/.pulumi/bin" >> $GITHUB_PATH
+      - run: echo "/Users/refresher/.pulumi/bin" >> $GITHUB_PATH
       - name: Pulumi Version Details
         id: vars
         run: |
@@ -54,7 +54,7 @@ jobs:
       - name: Remove existing version
         run: sudo rm /usr/local/bin/pulumi
       - run: curl -fsSL https://get.pulumi.com | sh
-      - run: echo "/home/runner/.pulumi/bin" >> $GITHUB_PATH
+      - run: echo "/home/refresher/.pulumi/bin" >> $GITHUB_PATH
       - name: Pulumi Version Details
         id: vars
         run: |
