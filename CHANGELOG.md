@@ -1,5 +1,12 @@
 CHANGELOG
 =========
+## 3.23.3 (2022-02-02)
+
+## Improvements
+
+- [pkg/*] - Change from internal code to Public.
+  [#8849](https://github.com/pulumi/pulumi/pull/8902)
+
 
 ## 3.23.2 (2022-01-28)
 
