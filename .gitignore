@@ -63,3 +63,23 @@ pulumi-analyzer-policy-python.cmd
 
 
 __pycache__
+.github/workflows/*
+developer-docs/**/*
+pkg/backend/**/*.icloud
+Makefile 2
+LICENSE 2
+CONTRIBUTING 2.md
+codecov 2.yml
+CODE-OF-CONDUCT 2.md
+CHANGELOG_PENDING 2.md
+CHANGELOG 2.md
+.yarnrc 2
+.readthedocs 2.yaml
+.goreleaser.prerelease 2.yml
+.goreleaser 2.yml
+.golangci 2.yml
+.gitpod 2.yml
+.gitignore 2
+.dockerignore 2
+.devcontainer/devcontainer 2.json
+README 2.md

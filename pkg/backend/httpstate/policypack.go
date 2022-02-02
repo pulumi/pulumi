@@ -130,7 +130,7 @@ type cloudPolicyPack struct {
 	// ref uniquely identifies the PolicyPack in the Pulumi service.
 	ref *cloudBackendPolicyPackReference
 	// b is a pointer to the backend that this PolicyPack belongs to.
-	b *cloudBackend
+	b *CloudBackend
 	// cl is the client used to interact with the backend.
 	cl *client.Client
 }

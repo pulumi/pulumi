@@ -45,7 +45,7 @@ type cloudBackendReference struct {
 	name    tokens.QName
 	project string
 	owner   string
-	b       *cloudBackend
+	b       *CloudBackend
 }
 
 func (c cloudBackendReference) String() string {
@@ -82,12 +82,12 @@ type cloudStack struct {
 	// snapshot contains the latest deployment state, allocated on first use.
 	snapshot **deploy.Snapshot
 	// b is a pointer to the backend that this stack belongs to.
-	b *cloudBackend
+	b *CloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
 	tags map[apitype.StackTagName]string
 }
 
-func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
+func newStack(apistack apitype.Stack, b *CloudBackend) Stack {
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
 		ref: cloudBackendReference{
@@ -189,7 +189,7 @@ func (s *cloudStack) ConsoleURL() (string, error) {
 // an apitype.StackSummary struct.
 type cloudStackSummary struct {
 	summary apitype.StackSummary
-	b       *cloudBackend
+	b       *CloudBackend
 }
 
 func (css cloudStackSummary) Name() backend.StackReference {

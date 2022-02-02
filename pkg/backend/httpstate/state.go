@@ -48,7 +48,7 @@ type tokenSource struct {
 	done     chan bool
 }
 
-func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
+func newTokenSource(ctx context.Context, token string, backend *CloudBackend, update client.UpdateIdentifier,
 	duration time.Duration) (*tokenSource, error) {
 
 	// Perform an initial lease renewal.
@@ -125,7 +125,7 @@ func (q *cloudQuery) GetProject() *workspace.Project {
 // cloudUpdate is an implementation of engine.Update backed by remote state and a local program.
 type cloudUpdate struct {
 	context context.Context
-	backend *cloudBackend
+	backend *CloudBackend
 
 	update      client.UpdateIdentifier
 	tokenSource *tokenSource
@@ -229,13 +229,13 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	// the display and persistence go-routines are finished processing events.
 }
 
-func (b *cloudBackend) newQuery(ctx context.Context,
+func (b *CloudBackend) newQuery(ctx context.Context,
 	op backend.QueryOperation) (engine.QueryInfo, error) {
 
 	return &cloudQuery{root: op.Root, proj: op.Proj}, nil
 }
 
-func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, op backend.UpdateOperation,
+func (b *CloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, op backend.UpdateOperation,
 	update client.UpdateIdentifier, token string) (*cloudUpdate, error) {
 
 	// Create a token source for this update if necessary.
@@ -266,7 +266,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	}, nil
 }
 
-func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackReference) (*deploy.Snapshot, error) {
+func (b *CloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackReference) (*deploy.Snapshot, error) {
 	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
 	if err != nil {
 		return nil, err
@@ -280,7 +280,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 	return snapshot, nil
 }
 
-func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference,
+func (b *CloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference,
 	cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
 
 	snapshot, err := b.getSnapshot(ctx, stackRef)
