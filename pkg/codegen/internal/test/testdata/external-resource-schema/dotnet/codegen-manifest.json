@@ -3,7 +3,6 @@
     "ArgFunction.cs",
     "Cat.cs",
     "Component.cs",
-    "Foo.cs",
     "Inputs/PetArgs.cs",
     "Provider.cs",
     "Pulumi.Example.csproj",

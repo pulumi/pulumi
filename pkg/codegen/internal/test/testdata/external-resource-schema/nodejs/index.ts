@@ -8,7 +8,6 @@ import * as utilities from "./utilities";
 export * from "./argFunction";
 export * from "./cat";
 export * from "./component";
-export * from "./foo";
 export * from "./provider";
 export * from "./workload";
 
@@ -22,7 +21,6 @@ export {
 // Import resources to register:
 import { Cat } from "./cat";
 import { Component } from "./component";
-import { Foo } from "./foo";
 import { Workload } from "./workload";
 
 const _module = {
@@ -33,8 +31,6 @@ const _module = {
                 return new Cat(name, <any>undefined, { urn })
             case "example::Component":
                 return new Component(name, <any>undefined, { urn })
-            case "example::Foo":
-                return new Foo(name, <any>undefined, { urn })
             case "example::Workload":
                 return new Workload(name, <any>undefined, { urn })
             default:

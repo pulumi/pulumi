@@ -24,8 +24,6 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 		r = &Cat{}
 	case "example::Component":
 		r = &Component{}
-	case "example::Foo":
-		r = &Foo{}
 	case "example::Workload":
 		r = &Workload{}
 	default:
