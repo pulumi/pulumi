@@ -212,3 +212,125 @@ func TestPackageNaming(t *testing.T) {
 		})
 	}
 }
+
+func TestTokenToType(t *testing.T) {
+	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
+	awsSpec := schema.PackageSpec{
+		Name: "aws",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
+		},
+	}
+
+	const googleNativeImportBasePath = "github.com/pulumi/pulumi-google-native/sdk/go/google"
+	googleNativeSpec := schema.PackageSpec{
+		Name: "google-native",
+	}
+
+	tests := []struct {
+		pkg      *pkgContext
+		token    string
+		expected string
+	}{
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+			},
+			token:    "aws:s3/BucketWebsite:BucketWebsite",
+			expected: "s3.BucketWebsite",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3": "awss3",
+				},
+			},
+			token:    "aws:s3/BucketWebsite:BucketWebsite",
+			expected: "awss3.BucketWebsite",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, googleNativeSpec),
+				importBasePath: googleNativeImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1": "dns",
+				},
+			},
+			token:    "google-native:dns/v1:DnsKeySpec",
+			expected: "dns.DnsKeySpec",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
+			actual := tt.pkg.tokenToType(tt.token)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestTokenToResource(t *testing.T) {
+	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
+	awsSpec := schema.PackageSpec{
+		Name: "aws",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
+		},
+	}
+
+	const googleNativeImportBasePath = "github.com/pulumi/pulumi-google-native/sdk/go/google"
+	googleNativeSpec := schema.PackageSpec{
+		Name: "google-native",
+	}
+
+	tests := []struct {
+		pkg      *pkgContext
+		token    string
+		expected string
+	}{
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+			},
+			token:    "aws:s3/Bucket:Bucket",
+			expected: "s3.Bucket",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3": "awss3",
+				},
+			},
+			token:    "aws:s3/Bucket:Bucket",
+			expected: "awss3.Bucket",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, googleNativeSpec),
+				importBasePath: googleNativeImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1": "dns",
+				},
+			},
+			token:    "google-native:dns/v1:Policy",
+			expected: "dns.Policy",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
+			actual := tt.pkg.tokenToResource(tt.token)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
+	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{})
+	assert.NoError(t, err)
+	return importedPkg
+}
