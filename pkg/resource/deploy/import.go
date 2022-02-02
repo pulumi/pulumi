@@ -39,7 +39,6 @@ type Import struct {
 	Version           *semver.Version // The provider version to use for the resource, if any.
 	PluginDownloadURL string          // The provider PluginDownloadURL to use for the resource, if any.
 	Protect           bool            // Whether to mark the resource as protected after import
-	Properties        []string        // Which properties to include (Defaults to required properties)
 }
 
 // ImportOptions controls the import process.
