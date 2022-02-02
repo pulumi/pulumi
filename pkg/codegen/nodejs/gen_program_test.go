@@ -46,8 +46,8 @@ func nodejsCheck(t *testing.T, path string, dependencies codegen.StringSet) {
 			"@pulumi/pulumi": "latest",
 		},
 		DevDependencies: map[string]string{
-			"@types/node": "latest",
-			"typescript":  "latest",
+			"@types/node": "^17.0.14",
+			"typescript":  "^4.5.5",
 		},
 	}
 	for pkg, v := range pkgs {
