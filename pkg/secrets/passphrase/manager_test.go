@@ -32,7 +32,7 @@ func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 	setupEnv := setIncorrectPassphraseTestEnvVars()
 	defer setupEnv()
 
-	manager, err := NewPassphaseSecretsManagerFromState([]byte(state))
+	manager, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
 	assert.NoError(t, err) // even if we pass the wrong provider, we should get a lockedPassphraseProvider
 
 	assert.Equal(t, manager, &localSecretsManager{
@@ -56,7 +56,7 @@ func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 	setupEnv := setCorrectPassphraseTestEnvVars()
 	defer setupEnv()
 
-	_, err := NewPassphaseSecretsManagerFromState([]byte(brokenState))
+	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(brokenState))
 	assert.Error(t, err)
 }
 
@@ -64,7 +64,7 @@ func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 	setupEnv := setCorrectPassphraseTestEnvVars()
 	defer setupEnv()
 
-	sm, _ := NewPassphaseSecretsManagerFromState([]byte(state))
+	sm, _ := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
 	assert.NotNil(t, sm)
 }
 
@@ -83,7 +83,7 @@ func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
 	setupEnv := unsetAllPassphraseEnvVars()
 	defer setupEnv()
 
-	_, err := NewPassphaseSecretsManagerFromState([]byte(state))
+	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
 	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
 		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
 }

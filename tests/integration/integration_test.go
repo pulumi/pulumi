@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2022, Pulumi Corporation.  All rights reserved.
 
 package ints
 
@@ -1076,4 +1076,41 @@ func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStack
 	}
 	assert.Equal(t, 11, foundStdout)
 	assert.Equal(t, 11, foundStderr)
+}
+
+func TestPassphrasePrompting(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.NoPassphrase = true
+	// Setting PULUMI_TEST_PASSPHRASE allows prompting (reading from stdin)
+	// even though the test won't be interactive.
+	e.SetEnvVars([]string{"PULUMI_TEST_PASSPHRASE=true"})
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.Stdin = strings.NewReader("qwerty\nqwerty\n")
+	e.RunCommand("pulumi", "new", "go",
+		"--name", "pphraseprompt",
+		"--description", "A project that tests passphrase prompts",
+		"--stack", "dev",
+		"--secrets-provider", "passphrase",
+		"--yes",
+		"--force")
+
+	e.Stdin = strings.NewReader("qwerty\n")
+	e.RunCommand("pulumi", "up", "--stack", "dev", "--skip-preview", "--yes")
+
+	e.Stdin = strings.NewReader("qwerty\n")
+	e.RunCommand("pulumi", "stack", "export", "--stack", "dev", "--file", "stack.json")
+
+	e.Stdin = strings.NewReader("qwerty\n")
+	e.RunCommand("pulumi", "stack", "import", "--stack", "dev", "--file", "stack.json")
+
+	e.Stdin = strings.NewReader("qwerty\n")
+	e.RunCommand("pulumi", "destroy", "--stack", "dev", "--skip-preview", "--yes")
 }

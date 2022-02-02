@@ -34,3 +34,6 @@
 
 - [cli/backend] - Revert a change to file state locking that was causing stacks to stay locked.
   [#8995](https://github.com/pulumi/pulumi/pull/8995)
+
+- [cli] - Fix passphrase secrets provider prompting.
+  [#8986](https://github.com/pulumi/pulumi/pull/8986)
