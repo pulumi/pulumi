@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 
 	"github.com/blang/semver"
@@ -54,53 +55,57 @@ https://www.pulumi.com/docs/guides/pulumi-packages/schema/
 			if err != nil {
 				return err
 			}
-			cwd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			sink := cmdutil.Diag()
-
-			ctx, err := plugin.NewContext(
-				sink,
-				sink,
-				nil, /*Host*/
-				nil, /*ConfigSource*/
-				cwd,
-				nil,  /*runtimeOptions*/
-				true, /*disableProviderPreview*/
-				nil,  /*opentracing.Span*/
-			)
-			if err != nil {
-				return err
-			}
-			defer contract.IgnoreClose(ctx)
-
-			pluginLoader := schema.NewPluginLoader(ctx.Host)
-
-			pkg, err := pluginLoader.LoadPackage(packageName, &packageVersion)
-			if err != nil {
-				return err
-			}
-
-			jsonBytes, err := pkg.MarshalJSON()
-			if err != nil {
-				return err
-			}
-
-			var jsonTree interface{}
-			if err := json.Unmarshal(jsonBytes, &jsonTree); err != nil {
-				return err
-			}
-
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "    ")
-			if err := enc.Encode(jsonTree); err != nil {
-				return err
-			}
-
-			return nil
+			return schemaExtract(os.Stdout, packageName, &packageVersion)
 		}),
 	}
 
 	return cmd
+}
+
+func schemaExtract(writer io.Writer, packageName string, packageVersion *semver.Version) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	sink := cmdutil.Diag()
+
+	ctx, err := plugin.NewContext(
+		sink,
+		sink,
+		nil, /*Host*/
+		nil, /*ConfigSource*/
+		cwd,
+		nil,  /*runtimeOptions*/
+		true, /*disableProviderPreview*/
+		nil,  /*opentracing.Span*/
+	)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(ctx)
+
+	pluginLoader := schema.NewPluginLoader(ctx.Host)
+
+	pkg, err := pluginLoader.LoadPackage(packageName, packageVersion)
+	if err != nil {
+		return err
+	}
+
+	jsonBytes, err := pkg.MarshalJSON()
+	if err != nil {
+		return err
+	}
+
+	var jsonTree interface{}
+	if err := json.Unmarshal(jsonBytes, &jsonTree); err != nil {
+		return err
+	}
+
+	enc := json.NewEncoder(writer)
+	enc.SetIndent("", "    ")
+	if err := enc.Encode(jsonTree); err != nil {
+		return err
+	}
+
+	return nil
 }
