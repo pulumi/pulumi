@@ -250,6 +250,13 @@ var sdkTests = []sdkTest{
 		Description: "Ensure external package compatibility modes are used when referencing external types",
 		Skip:        allLanguages.Except("nodejs/any"),
 	},
+	{
+		Directory: "external-go-import-aliases",
+		// Google Native has its own import aliases, so those should be respected, unless there are local aliases.
+		// AWS Classic doesn't have any import aliases, so none should be used, unless there are local aliases.
+		Description: "Ensure external import aliases are honored, and any local import aliases override them",
+		Skip:        allLanguages.Except("go/any"),
+	},
 }
 
 var genSDKOnly bool
