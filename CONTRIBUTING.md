@@ -105,7 +105,4 @@ When adding a changelog entry, please be sure to use `CHANGELOG_PENDING.md` for 
 
 ## Getting Help
 
-We're sure there are rough edges and we appreciate you helping out. If you want
-to talk with other folks in the Pulumi community (or members of the Pulumi team!),
-come hang out in the `#contribute` channel on the
-[Pulumi Community Slack](https://slack.pulumi.com/).
+We're sure there are rough edges and we appreciate you helping out. If you want to talk with other folks in the Pulumi community (including members of the Pulumi team) come hang out in the `#contribute` channel on the [Pulumi Community Slack](https://slack.pulumi.com/).
