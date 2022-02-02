@@ -21,7 +21,6 @@ import (
 	"sort"
 	"strings"
 
-	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -29,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/spf13/cobra"
+	survey "gopkg.in/AlecAivazis/survey.v1"
+	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
 
 type newPolicyArgs struct {
@@ -272,6 +273,9 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
+	surveycore.DisableColor = true
+	surveycore.QuestionIcon = ""
+	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a template:"
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
@@ -279,12 +283,12 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 
 	cmdutil.EndKeypadTransmitMode()
 
-	option, err := display.AskSelect(survey.Select{
+	var option string
+	if err := survey.AskOne(&survey.Select{
 		Message:  message,
 		Options:  options,
 		PageSize: len(options),
-	}, opts)
-	if err != nil {
+	}, &option, nil); err != nil {
 		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
 	}
 	return optionToTemplateMap[option], nil

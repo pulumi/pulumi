@@ -27,8 +27,9 @@ import (
 	"strings"
 	"unicode"
 
-	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
+	survey "gopkg.in/AlecAivazis/survey.v1"
+	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -802,6 +803,9 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
+	surveycore.DisableColor = true
+	surveycore.QuestionIcon = ""
+	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a template:"
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
@@ -821,12 +825,12 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 
 		cmdutil.EndKeypadTransmitMode()
 
-		option, err := display.AskSelect(survey.Select{
+		var option string
+		if err := survey.AskOne(&survey.Select{
 			Message:  message,
 			Options:  options,
 			PageSize: len(options),
-		}, opts)
-		if err != nil {
+		}, &option, nil); err != nil {
 			return workspace.Template{}, errors.New(chooseTemplateErr)
 		}
 
