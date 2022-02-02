@@ -204,7 +204,7 @@ func TestReinstall(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, content, b)
 
-	content := []byte("world\n")
+	content = []byte("world\n")
 	tarball = prepareTestPluginTGZ(t, map[string][]byte{name: content})
 
 	err = plugin.Install(tarball, true)
