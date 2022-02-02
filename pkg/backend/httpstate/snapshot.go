@@ -30,7 +30,7 @@ type cloudSnapshotPersister struct {
 	context     context.Context         // The context to use for client requests.
 	update      client.UpdateIdentifier // The UpdateIdentifier for this update sequence.
 	tokenSource *tokenSource            // A token source for interacting with the service.
-	backend     *cloudBackend           // A backend for communicating with the service
+	backend     *CloudBackend           // A backend for communicating with the service
 	sm          secrets.Manager
 }
 
@@ -52,7 +52,7 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 
 var _ backend.SnapshotPersister = (*cloudSnapshotPersister)(nil)
 
-func (cb *cloudBackend) newSnapshotPersister(ctx context.Context, update client.UpdateIdentifier,
+func (cb *CloudBackend) newSnapshotPersister(ctx context.Context, update client.UpdateIdentifier,
 	tokenSource *tokenSource, sm secrets.Manager) *cloudSnapshotPersister {
 	return &cloudSnapshotPersister{
 		context:     ctx,
