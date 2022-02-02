@@ -32,6 +32,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // createTGZ creates an in-memory tarball.
@@ -64,7 +65,7 @@ func createTGZ(files map[string][]byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, PluginInfo) {
+func prepareTestPluginTGZ(t *testing.T, files map[string][]byte) io.ReadCloser {
 	if files == nil {
 		files = map[string][]byte{}
 	}
@@ -74,11 +75,15 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 	files["pulumi-resource-test.exe"] = nil
 
 	tgz, err := createTGZ(files)
-	assert.NoError(t, err)
-	tarball := ioutil.NopCloser(bytes.NewReader(tgz))
+	require.NoError(t, err)
+	return ioutil.NopCloser(bytes.NewReader(tgz))
+}
+
+func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, PluginInfo) {
+	tarball := prepareTestPluginTGZ(t, files)
 
 	dir, err := ioutil.TempDir("", "plugins-test-dir")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	v1 := semver.MustParse("0.1.0")
 	plugin := PluginInfo{
@@ -168,12 +173,46 @@ func TestInstallNoDeps(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	err := plugin.Install(tarball, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assertPluginInstalled(t, dir, plugin)
 
 	b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	assert.Equal(t, content, b)
+
+	testDeletePlugin(t, dir, plugin)
+}
+
+func TestReinstall(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
+	}
+
+	name := "foo.txt"
+	content := []byte("hello\n")
+
+	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
+	defer os.RemoveAll(dir)
+
+	err := plugin.Install(tarball, false)
+	require.NoError(t, err)
+
+	assertPluginInstalled(t, dir, plugin)
+
+	b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
+	require.NoError(t, err)
+	assert.Equal(t, content, b)
+
+	content := []byte("world\n")
+	tarball = prepareTestPluginTGZ(t, map[string][]byte{name: content})
+
+	err = plugin.Install(tarball, true)
+
+	assertPluginInstalled(t, dir, plugin)
+
+	b, err = ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
+	require.NoError(t, err)
 	assert.Equal(t, content, b)
 
 	testDeletePlugin(t, dir, plugin)
