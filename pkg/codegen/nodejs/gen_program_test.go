@@ -58,6 +58,11 @@ func nodejsCheck(t *testing.T, path string, dependencies codegen.StringSet) {
 	err = os.WriteFile(packageJSONPath, pkgJSON, 0600)
 	require.NoError(t, err)
 
+	err = integration.RunCommand(t, "Link local pulumi",
+		[]string{ex, "link", "@pulumi/pulumi"},
+		dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err, "Failed local link")
+
 	err = integration.RunCommand(t, "Install dependencies",
 		[]string{ex, "install"},
 		dir, &integration.ProgramTestOptions{})
@@ -72,21 +77,21 @@ func nodejsCheck(t *testing.T, path string, dependencies codegen.StringSet) {
 func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 	result := make(map[string]string, len(deps))
 	for _, d := range deps.SortedValues() {
-		r := fmt.Sprintf("@pulumi/%s", d)
-		v := func(s string) {
-			result[r] = "^" + s
+		pkgName := fmt.Sprintf("@pulumi/%s", d)
+		set := func(pkgVersion string) {
+			result[pkgName] = "^" + pkgVersion
 		}
 		switch d {
 		case "aws":
-			v(test.AwsSchema)
+			set(test.AwsSchema)
 		case "azure-native":
-			v(test.AzureNativeSchema)
+			set(test.AzureNativeSchema)
 		case "azure":
-			v(test.AzureSchema)
+			set(test.AzureSchema)
 		case "kubernetes":
-			v(test.KubernetesSchema)
+			set(test.KubernetesSchema)
 		case "random":
-			v(test.RandomSchema)
+			set(test.RandomSchema)
 		default:
 			t.Logf("Unknown package requested: %s", d)
 		}
