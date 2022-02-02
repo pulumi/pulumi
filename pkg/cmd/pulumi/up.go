@@ -157,7 +157,7 @@ func newUpCmd() *cobra.Command {
 			DisableOutputValues:       disableOutputValues(),
 			UpdateTargets:             targetURNs,
 			TargetDependents:          targetDependents,
-			ExperimentalPlans:         hasExperimentalCommands(),
+			ExperimentalPlans:         hasExperimentalCommands() || planFilePath != "",
 		}
 
 		if planFilePath != "" {
@@ -336,7 +336,7 @@ func newUpCmd() *cobra.Command {
 			Parallel:          parallel,
 			Debug:             debug,
 			Refresh:           refreshOption,
-			ExperimentalPlans: hasExperimentalCommands(),
+			ExperimentalPlans: hasExperimentalCommands() || planFilePath != "",
 		}
 
 		// TODO for the URL case:
