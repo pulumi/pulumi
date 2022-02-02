@@ -467,9 +467,9 @@ func (info PluginInfo) Install(tgz io.ReadCloser, reinstall bool) error {
 			}
 		}
 
-		// The partial file exists, meaning a previous attempt at installing the plugin failed.
-		// Delete finalDir so we can try installing again. There's no need to delete the partial
-		// file since we'd just be recreating it again below anyway.
+		// Either the partial file exists--meaning a previous attempt at installing the plugin failed--or we're
+		// deliberately reinstalling the plugin. Delete finalDir so we can try installing again. There's no need to
+		// delete the partial file since we'd just be recreating it again below anyway.
 		if err := os.RemoveAll(finalDir); err != nil {
 			return err
 		}
