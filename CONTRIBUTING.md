@@ -19,8 +19,8 @@ Feel free to pick up any existing issue that looks interesting to you or fix a b
 
 ### Feature Work
 
-For larger features, we'd appreciate it if you open a [new issue](https://github.com/pulumi/pulumi/issues/new) before doing a ton of work so we can discuss the feature together.
-Please also ensure to browse [current issues](https://github.com/pulumi/pulumi/issues) to make sure your issue is unique, to lighten the triage burden on our maintainers.
+For larger features, we'd appreciate it if you open a [new issue](https://github.com/pulumi/pulumi/issues/new) before investing a lot of time so we can discuss the feature together.
+Please also be sure to browse [current issues](https://github.com/pulumi/pulumi/issues) to make sure your issue is unique, to lighten the triage burden on our maintainers.
 
 ## Developing
 
@@ -36,7 +36,7 @@ You'll want to install the following on your machine:
 - [Yarn](https://yarnpkg.com/)
 - [Pulumictl](https://github.com/pulumi/pulumictl)
 
-### Getting Pulumi dependencies on macOS
+### Installing Pulumi dependencies on macOS
 
 You can get all required dependencies with brew and npm
 
@@ -77,9 +77,9 @@ Across our projects, we try to use a regular set of make targets. The ones you'l
 1. `make`, which builds Pulumi and runs a quick set of tests
 1. `make all` which builds Pulumi and runs the quick tests and a larger set of tests.
 
-We make heavy use of integration level testing where we invoke `pulumi` to create and then delete cloud resources. This requires you to have a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and log in with `pulumi login`.
+We make heavy use of integration level tests that invoke `pulumi` to create and then delete cloud resources. In order to run our integration tests, you will need a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and log in with `pulumi login`.
 
-This repository does not actually create any real cloud resources as part of testing, but still uses Pulumi.com to store information abot some synthetic resources it creates during testing. Other repositories may require additional setup before running tests (most often this is just setting a few environment variables that tell the tests some information about how to use the cloud provider we are testing). Please see the `CONTRIBUTING.md` file in the repository, which will explain what additional configuration needs to be done before running tests.
+The tests in this repository do not create any real cloud resources as part of testing but still uses Pulumi.com to store information about some synthetic resources the tests create. Other repositories may require additional setup before running tests. In most cases, this additional setup consists of setting a few environment variables to configure the provider for the the cloud service we are testing. Please see the `CONTRIBUTING.md` file in the relevant repository, which will explain what additional configuration is needed before running tests.
 
 ### Debugging
 
@@ -99,7 +99,7 @@ is a pretty standard starting point during debugging that will show a fairly com
 
 ## Submitting a Pull Request
 
-For contributors we use the [standard fork based workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962). Fork this repository, create a topic branch, and when ready, open a pull request from your fork.
+For contributors we use the [standard fork based workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962): Fork this repository, create a topic branch, and when ready, open a pull request from your fork.
 
 When adding a changelog entry, please be sure to use `CHANGELOG_PENDING.md` for the entry - we will then be able to ensure your pull request gets into the next release.
 
