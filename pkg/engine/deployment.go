@@ -167,7 +167,7 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 	var depl *deploy.Deployment
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
-			plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
+			plugctx, target, target.Snapshot, opts.Plan, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
 		_, defaultProviderInfo, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
 			false /*returnInstallErrors*/)
@@ -223,12 +223,12 @@ type runActions interface {
 
 // run executes the deployment. It is primarily responsible for handling cancellation.
 func (deployment *deployment) run(cancelCtx *Context, actions runActions, policyPacks map[string]string,
-	preview bool) (ResourceChanges, result.Result) {
+	preview bool) (*deploy.Plan, ResourceChanges, result.Result) {
 
 	// Change into the plugin context's working directory.
 	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer chdir()
 
@@ -247,6 +247,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	start := time.Now()
 
 	done := make(chan bool)
+	var newPlan *deploy.Plan
 	var walkResult result.Result
 	go func() {
 		opts := deploy.Options{
@@ -263,8 +264,9 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 			UseLegacyDiff:             deployment.Options.UseLegacyDiff,
 			DisableResourceReferences: deployment.Options.DisableResourceReferences,
 			DisableOutputValues:       deployment.Options.DisableOutputValues,
+			ExperimentalPlans:         deployment.Options.UpdateOptions.ExperimentalPlans,
 		}
-		walkResult = deployment.Deployment.Execute(ctx, opts, preview)
+		newPlan, walkResult = deployment.Deployment.Execute(ctx, opts, preview)
 		close(done)
 	}()
 
@@ -295,7 +297,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	// Emit a summary event.
 	deployment.Options.Events.summaryEvent(preview, actions.MaybeCorrupt(), duration, changes, policyPacks)
 
-	return changes, res
+	return newPlan, changes, res
 }
 
 func (deployment *deployment) Close() error {

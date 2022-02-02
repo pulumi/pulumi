@@ -188,6 +188,44 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
+      - name: Install goreleaser-filter
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: t0yv0/goreleaser-filter
+      - name: Download pulumi-linux-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-x64
+          path: goreleaser-downloads
+      - name: Download pulumi-linux-arm64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-arm64
+          path: goreleaser-downloads
+      - name: Download pulumi-darwin-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-x64
+          path: goreleaser-downloads
+      - name: Download pulumi-darwin-arm64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-arm64
+          path: goreleaser-downloads
+      - name: Download pulumi-windows-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-x64
+          path: goreleaser-downloads
+      - name: Inspect goreleaser-downloads
+        run: |
+          find goreleaser-downloads
+      - name: Unpack goreleaser-downloads
+        run: |
+          ./scripts/unpack.sh
+      - name: Inspect goreleaser-prebuilt
+        run: |
+          find goreleaser-prebuilt
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -201,11 +239,6 @@ jobs:
       - name: Set Release Version
         run: |
           echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
-        with:
-          version: latest
-          args: -p 3 -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md
       - name: Download pulumi-windows-checksums
         uses: actions/download-artifact@v2
         with:
@@ -221,9 +254,31 @@ jobs:
         with:
           name: pulumi-darwin-checksums
           path: artifacts/checksums/darwin
+      - name: Filter goreleaser config for pre-release check
+        run: |
+          cat .goreleaser.yml | goreleaser-filter -no-blobs > /tmp/.goreleaser.current.yml
+      - name: Run GoReleaser to verify tarball checksums
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: -p 3 -f /tmp/.goreleaser.current.yml --skip-publish --skip-announce --skip-validate --rm-dist --release-notes=CHANGELOG_PENDING.md
       - name: Verify checksums
         run: |
           C=artifacts/checksums/pulumi-tested-checksums.txt
+          echo "Tested tarballs with the following checksums:"
+          cat artifacts/checksums/*/* | sort | tee $C
+          echo "Planning to release tarballs with the following checksums:"
+          sort goreleaser/*-checksums.txt
+          echo "Checking that tested and release checksums are identical:"
+          diff <(sort goreleaser/*-checksums.txt) $C
+      - name: Run GoReleaser to actually release
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: -p 3 -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md
+      - name: Verify checksums again
+        run: |
+          C=artifacts/checksums/pulumi-tested-checksums-2.txt
           echo "Tested tarballs with the following checksums:"
           cat artifacts/checksums/*/* | sort | tee $C
           echo "Released tarballs with the following checksums:"

@@ -335,11 +335,12 @@ func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
 func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	// Refuse to delete protected resources.
-	if s.old.Protect {
+	// Refuse to delete protected resources (unless we're replacing them in
+	// which case we will of checked protect elsewhere)
+	if !s.replacing && s.old.Protect {
 		return resource.StatusOK, nil, fmt.Errorf("unable to delete resource %q\n"+
 			"as it is currently marked for protection. To unprotect the resource, "+
-			"either remove the `protect` flag from the resource in your Pulumi"+
+			"either remove the `protect` flag from the resource in your Pulumi "+
 			"program and run `pulumi up` or use the command:\n"+
 			"`pulumi state unprotect '%s'`", s.old.URN, s.old.URN)
 	}
@@ -1187,6 +1188,28 @@ func (op StepOp) Suffix() string {
 		return colors.Reset // updates and replacements colorize individual lines; get has none
 	}
 	return ""
+}
+
+// ConstrainedTo returns true if this operation is no more impactful than the constraint.
+func (op StepOp) ConstrainedTo(constraint StepOp) bool {
+	var allowed []StepOp
+	switch constraint {
+	case OpSame, OpDelete, OpRead, OpReadReplacement, OpRefresh, OpReadDiscard, OpDiscardReplaced,
+		OpRemovePendingReplace, OpImport, OpImportReplacement:
+		allowed = []StepOp{constraint}
+	case OpCreate:
+		allowed = []StepOp{OpSame, OpCreate}
+	case OpUpdate:
+		allowed = []StepOp{OpSame, OpUpdate}
+	case OpReplace, OpCreateReplacement, OpDeleteReplaced:
+		allowed = []StepOp{OpSame, OpUpdate, constraint}
+	}
+	for _, candidate := range allowed {
+		if candidate == op {
+			return true
+		}
+	}
+	return false
 }
 
 // getProvider fetches the provider for the given step.

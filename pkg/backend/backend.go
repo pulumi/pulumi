@@ -161,7 +161,7 @@ type Backend interface {
 	RenameStack(ctx context.Context, stack Stack, newName tokens.QName) (StackReference, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Preview(ctx context.Context, stack Stack, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Import imports resources into a stack.
@@ -253,6 +253,8 @@ type UpdateOptions struct {
 	AutoApprove bool
 	// SkipPreview, when true, causes the preview step to be skipped.
 	SkipPreview bool
+	// Experimental plan support, when true cause plans to be generated.
+	ExperimentalPlans bool
 }
 
 // QueryOptions configures a query to operate against a backend and the engine.

@@ -13,6 +13,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -143,6 +144,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 	if err != nil {
 		return nil, err
 	}
+	contract.Assert(provider != nil)
 
 	schemaFormatVersion := 0
 	schemaBytes, err := provider.GetSchema(schemaFormatVersion)
