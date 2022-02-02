@@ -29,7 +29,7 @@ Please also be sure to browse [current issues](https://github.com/pulumi/pulumi/
 You'll want to install the following on your machine:
 
 - Go 1.17
-- NodeJS 12.X.X or later
+- NodeJS 14.X.X or later
 - Python 3.6 or later
 - [.NET Core](https://dotnet.microsoft.com/download)
 - [Golangci-lint](https://github.com/golangci/golangci-lint)
