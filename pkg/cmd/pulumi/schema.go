@@ -31,5 +31,6 @@ package schemas for errors.`,
 	}
 
 	cmd.AddCommand(newSchemaCheckCommand())
+	cmd.AddCommand(newSchemaExtractCommand())
 	return cmd
 }
