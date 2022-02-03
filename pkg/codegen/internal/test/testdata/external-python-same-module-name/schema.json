@@ -19,8 +19,8 @@
     "language": {
         "python": {
             "requires": {
-                "pulumi": "\u003e=3.0.0,\u003c4.0.0",
-                "pulumi-aws": "\u003e=4.37.1,\u003c5.0.0"
+                "pulumi": ">=3.0.0,<4.0.0",
+                "pulumi-aws": ">=4.37.1,<5.0.0"
             }
         }
     }
