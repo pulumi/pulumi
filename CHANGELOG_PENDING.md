@@ -24,7 +24,7 @@
   [#8448](https://github.com/pulumi/pulumi/pull/8448)
 
 - [codegen] - Add language option to make codegen respect the `Version` field in
-  the Pulumi package schema. 
+  the Pulumi package schema.
   [#8881](https://github.com/pulumi/pulumi/pull/8881)
 
 - [cli] - Support wildcards for `pulumi up --target <urn>` and similar commands.
@@ -37,6 +37,12 @@
 
 - [cli] Ensure defaultOrg is used as part of any stack name
   [#8903](https://github.com/pulumi/pulumi/pull/8903)
+
+- [cli/import] - The import command no longer errors if resource properties do not validate. Instead the
+  engine warns about property issues returned by the provider but then continues with the import and codegen
+  as best it can. This should result in more resources being imported to the pulumi state and being able to
+  generate some code, at the cost that the generated code may not work as is in an update. Users will have to
+  edit the code to succesfully run.
 
 ## Bug Fixes
 

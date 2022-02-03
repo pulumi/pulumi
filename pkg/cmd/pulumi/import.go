@@ -542,14 +542,6 @@ func newImportCmd() *cobra.Command {
 				// being canceled by user request.
 				if usedProperties {
 					fmt.Print("Import failed, try specifying a different set of properties to import with.\n")
-				} else {
-					fmt.Print("Import failed, try specifying the set of properties to import with.\n")
-					if importFilePath == "" {
-						fmt.Print("This can be done by passing the property names with the --properties flag.\n")
-					} else {
-						fmt.Print("This can be done by adding a \"properties\" key with an array of " +
-							"strings to the resource object in the input file.\n")
-					}
 				}
 
 				if res.Error() == context.Canceled {
