@@ -3,6 +3,7 @@ module github.com/infralight/pulumi/refresher
 go 1.17
 
 replace github.com/pulumi/pulumi/pkg/v3 => ../pkg
+
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
 require (
@@ -14,7 +15,6 @@ require (
 	cloud.google.com/go v0.81.0 // indirect
 	cloud.google.com/go/logging v1.0.0 // indirect
 	cloud.google.com/go/storage v1.15.0 // indirect
-	github.com/AlecAivazis/survey/v2 v2.3.2 // indirect
 	github.com/Azure/azure-pipeline-go v0.2.3 // indirect
 	github.com/Azure/azure-sdk-for-go v54.0.0+incompatible // indirect
 	github.com/Azure/azure-storage-blob-go v0.13.0 // indirect
@@ -132,6 +132,7 @@ require (
 	google.golang.org/genproto v0.0.0-20210506142907-4a47615972c2 // indirect
 	google.golang.org/grpc v1.37.0 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
+	gopkg.in/AlecAivazis/survey.v1 v1.8.9-0.20200217094205-6773bdf39b7f // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect

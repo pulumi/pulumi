@@ -48,11 +48,11 @@ type tokenSource struct {
 	done     chan bool
 }
 
-func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
+func newTokenSource(ctx context.Context, token string, backend *CloudBackend, update client.UpdateIdentifier,
 	duration time.Duration) (*tokenSource, error) {
 
 	// Perform an initial lease renewal.
-	newToken, err := backend.client.RenewUpdateLease(ctx, update, token, duration)
+	newToken, err := backend.BackendClient.RenewUpdateLease(ctx, update, token, duration)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 		for {
 			select {
 			case <-ticker.C:
-				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
+				newToken, err = backend.BackendClient.RenewUpdateLease(ctx, update, token, duration)
 				// If we get an error from the backend, leave `err` set and surface it during
 				// the next request for a lease token.
 				if err != nil {
@@ -125,7 +125,7 @@ func (q *cloudQuery) GetProject() *workspace.Project {
 // cloudUpdate is an implementation of engine.Update backed by remote state and a local program.
 type cloudUpdate struct {
 	context context.Context
-	backend *cloudBackend
+	backend *CloudBackend
 
 	update      client.UpdateIdentifier
 	tokenSource *tokenSource
@@ -154,7 +154,7 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	if err != nil {
 		return err
 	}
-	return u.backend.client.CompleteUpdate(u.context, u.update, status, token)
+	return u.backend.BackendClient.CompleteUpdate(u.context, u.update, status, token)
 }
 
 // recordEngineEvents will record the events with the Pulumi Service, enabling things like viewing
@@ -182,7 +182,7 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 		apiEvents.Events = append(apiEvents.Events, apiEvent)
 	}
 
-	return u.backend.client.RecordEngineEvents(u.context, u.update, apiEvents, token)
+	return u.backend.BackendClient.RecordEngineEvents(u.context, u.update, apiEvents, token)
 }
 
 // RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as
@@ -229,13 +229,13 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 	// the display and persistence go-routines are finished processing events.
 }
 
-func (b *cloudBackend) newQuery(ctx context.Context,
+func (b *CloudBackend) newQuery(ctx context.Context,
 	op backend.QueryOperation) (engine.QueryInfo, error) {
 
 	return &cloudQuery{root: op.Root, proj: op.Proj}, nil
 }
 
-func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, op backend.UpdateOperation,
+func (b *CloudBackend) newUpdate(ctx context.Context, stackRef backend.StackReference, op backend.UpdateOperation,
 	update client.UpdateIdentifier, token string) (*cloudUpdate, error) {
 
 	// Create a token source for this update if necessary.
@@ -266,7 +266,7 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	}, nil
 }
 
-func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackReference) (*deploy.Snapshot, error) {
+func (b *CloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackReference) (*deploy.Snapshot, error) {
 	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
 	if err != nil {
 		return nil, err
@@ -280,7 +280,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 	return snapshot, nil
 }
 
-func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference,
+func (b *CloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference,
 	cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
 
 	snapshot, err := b.getSnapshot(ctx, stackRef)

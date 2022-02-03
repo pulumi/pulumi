@@ -45,7 +45,7 @@ type cloudBackendReference struct {
 	name    tokens.QName
 	project string
 	owner   string
-	b       *cloudBackend
+	b       *CloudBackend
 }
 
 func (c cloudBackendReference) String() string {
@@ -55,7 +55,7 @@ func (c cloudBackendReference) String() string {
 	}
 
 	// If the project names match, we can elide them.
-	if c.b.currentProject != nil && c.project == string(c.b.currentProject.Name) {
+	if c.b.CurrentProject != nil && c.project == string(c.b.CurrentProject.Name) {
 		if c.owner == curUser {
 			return string(c.name) // Elide owner too, if it is the current user.
 		}
@@ -82,12 +82,12 @@ type cloudStack struct {
 	// snapshot contains the latest deployment state, allocated on first use.
 	snapshot **deploy.Snapshot
 	// b is a pointer to the backend that this stack belongs to.
-	b *cloudBackend
+	b *CloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
 	tags map[apitype.StackTagName]string
 }
 
-func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
+func newStack(apistack apitype.Stack, b *CloudBackend) Stack {
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
 		ref: cloudBackendReference{
@@ -187,30 +187,30 @@ func (s *cloudStack) ConsoleURL() (string, error) {
 
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping
 // an apitype.StackSummary struct.
-type cloudStackSummary struct {
-	summary apitype.StackSummary
-	b       *cloudBackend
+type CloudStackSummary struct {
+	Summary apitype.StackSummary
+	B       *CloudBackend
 }
 
-func (css cloudStackSummary) Name() backend.StackReference {
-	contract.Assert(css.summary.ProjectName != "")
+func (css CloudStackSummary) Name() backend.StackReference {
+	contract.Assert(css.Summary.ProjectName != "")
 
 	return cloudBackendReference{
-		owner:   css.summary.OrgName,
-		project: css.summary.ProjectName,
-		name:    tokens.QName(css.summary.StackName),
-		b:       css.b,
+		owner:   css.Summary.OrgName,
+		project: css.Summary.ProjectName,
+		name:    tokens.QName(css.Summary.StackName),
+		b:       css.B,
 	}
 }
 
-func (css cloudStackSummary) LastUpdate() *time.Time {
-	if css.summary.LastUpdate == nil {
+func (css CloudStackSummary) LastUpdate() *time.Time {
+	if css.Summary.LastUpdate == nil {
 		return nil
 	}
-	t := time.Unix(*css.summary.LastUpdate, 0)
+	t := time.Unix(*css.Summary.LastUpdate, 0)
 	return &t
 }
 
-func (css cloudStackSummary) ResourceCount() *int {
-	return css.summary.ResourceCount
+func (css CloudStackSummary) ResourceCount() *int {
+	return css.Summary.ResourceCount
 }
