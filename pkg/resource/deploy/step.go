@@ -957,7 +957,11 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			contract.Assert(err == nil)
 
 			pkgName := ref.URN().Type().Name()
-			s.deployment.Diag().Warningf(diag.Message(s.new.URN, "One or more imported inputs failed to validate. This is almost certainly a bug in the `%s` provider. The import will still proceed, but you will need to edit the generated code after copying it into your program"), pkgName)
+			s.deployment.Diag().Warningf(diag.Message(s.new.URN,
+				"One or more imported inputs failed to validate. "+
+					"This is almost certainly a bug in the `%s` provider. "+
+					"The import will still proceed, but you will need to edit the generated code after copying it into your program"),
+				pkgName)
 		}
 
 		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
