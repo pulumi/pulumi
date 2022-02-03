@@ -25,10 +25,11 @@ func calcDrift(event engine.Event, step engine.StepEventMetadata){
 	if step.Old != nil && step.Old.Outputs != nil {
 		outputDiff = step.Old.Outputs.Diff(outs, resource.IsInternalPropertyKey)
 
-	if outputDiff.Updates != nil {
+	if outputDiff != nil {
 		for key, val := range  outputDiff.Updates {
 			fmt.Println(key)
-			fmt.Println(val)
+			fmt.Println(val.Old.V)
+			fmt.Println(val.New.V)
 		}
 
 	}
