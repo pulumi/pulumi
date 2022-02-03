@@ -111,18 +111,33 @@ func newUpCmd() *cobra.Command {
 		}
 
 		targetURNs := []resource.URN{}
+		snap, err := s.Snapshot(commandContext())
+		if err != nil {
+			return result.FromError(err)
+		}
 		for _, t := range targets {
-			targetURNs = append(targetURNs, resource.URN(t))
+			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(t))...)
 		}
 
 		replaceURNs := []resource.URN{}
 		for _, r := range replaces {
-			replaceURNs = append(replaceURNs, resource.URN(r))
+			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(r))...)
 		}
 
 		for _, tr := range targetReplaces {
-			targetURNs = append(targetURNs, resource.URN(tr))
-			replaceURNs = append(replaceURNs, resource.URN(tr))
+			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(tr))...)
+			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(tr))...)
+		}
+
+		if len(targetURNs) == 0 && len(targets)+len(targetReplaces) > 0 {
+			// Wildcards were used, but they all evaluated to empty. We don't
+			// want a targeted update to turn into a general update, so we
+			// should abort.
+			if !jsonDisplay {
+				fmt.Printf("There were no resources matching the wildcards provided.\n")
+				fmt.Printf("Wildcards can only be used to target resources that already exist.\n")
+			}
+			return nil
 		}
 
 		refreshOption, err := getRefreshOption(proj, refresh)
@@ -142,7 +157,7 @@ func newUpCmd() *cobra.Command {
 			DisableOutputValues:       disableOutputValues(),
 			UpdateTargets:             targetURNs,
 			TargetDependents:          targetDependents,
-			ExperimentalPlans:         hasExperimentalCommands(),
+			ExperimentalPlans:         hasExperimentalCommands() || planFilePath != "",
 		}
 
 		if planFilePath != "" {
@@ -321,7 +336,7 @@ func newUpCmd() *cobra.Command {
 			Parallel:          parallel,
 			Debug:             debug,
 			Refresh:           refreshOption,
-			ExperimentalPlans: hasExperimentalCommands(),
+			ExperimentalPlans: hasExperimentalCommands() || planFilePath != "",
 		}
 
 		// TODO for the URL case:
@@ -464,10 +479,12 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&targets, "target", "t", []string{},
 		"Specify a single resource URN to update. Other resources will not be updated."+
-			" Multiple resources can be specified using --target urn1 --target urn2")
+			" Multiple resources can be specified using --target urn1 --target urn2."+
+			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().StringArrayVar(
 		&replaces, "replace", []string{},
-		"Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2")
+		"Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2."+
+			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().StringArrayVar(
 		&targetReplaces, "target-replace", []string{},
 		"Specify a single resource URN to replace. Other resources will not be updated."+

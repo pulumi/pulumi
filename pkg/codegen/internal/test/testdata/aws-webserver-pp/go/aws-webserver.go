@@ -25,7 +25,6 @@ func main() {
 		if err != nil {
 			return err
 		}
-		opt0 := true
 		ami, err := aws.GetAmi(ctx, &GetAmiArgs{
 			Filters: []GetAmiFilter{
 				GetAmiFilter{
@@ -38,7 +37,7 @@ func main() {
 			Owners: []string{
 				"137112412989",
 			},
-			MostRecent: &opt0,
+			MostRecent: pulumi.BoolRef(true),
 		}, nil)
 		if err != nil {
 			return err

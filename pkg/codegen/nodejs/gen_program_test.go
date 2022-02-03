@@ -1,6 +1,7 @@
 package nodejs
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,55 +30,72 @@ func nodejsCheck(t *testing.T, path string, dependencies codegen.StringSet) {
 	ex, err := executable.FindExecutable("yarn")
 	require.NoError(t, err, "Could not find yarn executable")
 	dir := filepath.Dir(path)
-	pkgs := nodejsPackages(dependencies)
+	pkgs := nodejsPackages(t, dependencies)
 	// We delete and regenerate package files for each run.
-	packageJSON := filepath.Join(dir, "package.json")
-	if err := os.Remove(packageJSON); !os.IsNotExist(err) {
-		require.NoError(t, err, "Failed to delete %s", packageJSON)
+	packageJSONPath := filepath.Join(dir, "package.json")
+	if err := os.Remove(packageJSONPath); !os.IsNotExist(err) {
+		require.NoError(t, err, "Failed to delete %s", packageJSONPath)
 	}
 	yarnLock := filepath.Join(dir, "yarn.lock")
 	if err := os.Remove(yarnLock); !os.IsNotExist(err) {
 		require.NoError(t, err, "Failed to delete %s", yarnLock)
 	}
 
-	err = integration.RunCommand(t, "link @pulumi/pulumi",
+	pkgInfo := npmPackage{
+		Dependencies: map[string]string{
+			"@pulumi/pulumi": "latest",
+		},
+		DevDependencies: map[string]string{
+			"@types/node": "^17.0.14",
+			"typescript":  "^4.5.5",
+		},
+	}
+	for pkg, v := range pkgs {
+		pkgInfo.Dependencies[pkg] = v
+	}
+	pkgJSON, err := json.MarshalIndent(pkgInfo, "", "    ")
+	require.NoError(t, err)
+	err = os.WriteFile(packageJSONPath, pkgJSON, 0600)
+	require.NoError(t, err)
+
+	err = integration.RunCommand(t, "Link local pulumi",
 		[]string{ex, "link", "@pulumi/pulumi"},
 		dir, &integration.ProgramTestOptions{})
-	require.NoError(t, err, "Failed to link @pulumi/pulumi")
-	for _, pkg := range pkgs {
-		err = integration.RunCommand(t, "yarn add and install",
-			[]string{ex, "add", pkg}, dir, &integration.ProgramTestOptions{})
-		require.NoError(t, err, "Could not install package: %q", pkg)
-	}
+	require.NoError(t, err, "Failed local link")
+
+	err = integration.RunCommand(t, "Install dependencies",
+		[]string{ex, "install"},
+		dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err, "Failed install")
+
 	err = integration.RunCommand(t, "tsc check",
 		[]string{ex, "run", "tsc", "--noEmit", filepath.Base(path)}, dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err, "Failed to build %q", path)
 }
 
 // Returns the nodejs equivalent to the hcl2 package names provided.
-func nodejsPackages(deps codegen.StringSet) []string {
-	if len(deps) == 0 {
-		return []string{"@pulumi/pulumi@3.7.0"}
-	}
-	result := make([]string, len(deps))
-	for i, d := range deps.SortedValues() {
-		r := fmt.Sprintf("@pulumi/%s", d)
-		v := func(s string) {
-			r = fmt.Sprintf("%s@%s", r, s)
+func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
+	result := make(map[string]string, len(deps))
+	for _, d := range deps.SortedValues() {
+		pkgName := fmt.Sprintf("@pulumi/%s", d)
+		set := func(pkgVersion string) {
+			result[pkgName] = "^" + pkgVersion
 		}
 		switch d {
 		case "aws":
-			v(test.AwsSchema)
+			set(test.AwsSchema)
 		case "azure-native":
-			v(test.AzureNativeSchema)
+			set(test.AzureNativeSchema)
 		case "azure":
-			v(test.AzureSchema)
+			set(test.AzureSchema)
 		case "kubernetes":
-			v(test.KubernetesSchema)
+			set(test.KubernetesSchema)
 		case "random":
-			v(test.RandomSchema)
+			set(test.RandomSchema)
+		default:
+			t.Logf("Unknown package requested: %s", d)
 		}
-		result[i] = r
+
 	}
 	return result
 }

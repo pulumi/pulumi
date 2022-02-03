@@ -248,13 +248,13 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
             // Construct a provider reference from the given provider, if one is available on the resource.
             let provider: string | undefined = undefined;
             let version: string | undefined = undefined;
-            let pluginDownloadUrl: string | undefined = undefined;
+            let pluginDownloadURL: string | undefined = undefined;
             if (res) {
                 if (res.__prov) {
                     provider = await ProviderResource.register(res.__prov);
                 }
                 version = res.__version;
-                pluginDownloadUrl = res.__pluginDownloadURL;
+                pluginDownloadURL = res.__pluginDownloadURL;
             }
 
             // We keep output values when serializing inputs for call.
@@ -263,7 +263,7 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
             });
             log.debug(`Call RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
 
-            const req = await createCallRequest(tok, serialized, propertyDepsResources, provider, version);
+            const req = await createCallRequest(tok, serialized, propertyDepsResources, provider, version, pluginDownloadURL);
 
             const monitor: any = getMonitor();
             const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>

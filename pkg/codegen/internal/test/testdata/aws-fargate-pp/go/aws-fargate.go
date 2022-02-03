@@ -12,9 +12,8 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		opt0 := true
 		vpc, err := ec2.LookupVpc(ctx, &ec2.LookupVpcArgs{
-			Default: &opt0,
+			Default: pulumi.BoolRef(true),
 		}, nil)
 		if err != nil {
 			return err

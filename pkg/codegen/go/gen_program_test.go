@@ -104,8 +104,8 @@ func goCheck(t *testing.T, path string, _ codegen.StringSet) {
 	err = integration.RunCommand(t, "point towards local Go SDK",
 		[]string{ex, "mod", "edit",
 			fmt.Sprintf("--replace=%s=%s",
-				"github.com/pulumi/pulumi/sdk/v3/go/pulumi",
-				"../../../../../../sdk")},
+				"github.com/pulumi/pulumi/sdk/v3",
+				"../../../../../../../sdk")},
 		dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err)
 	err = integration.RunCommand(t, "test build", []string{ex, "build", "-v", "all"},
