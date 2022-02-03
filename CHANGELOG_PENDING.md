@@ -43,6 +43,7 @@
   as best it can. This should result in more resources being imported to the pulumi state and being able to
   generate some code, at the cost that the generated code may not work as is in an update. Users will have to
   edit the code to succesfully run.
+  [#8922](https://github.com/pulumi/pulumi/pull/8922)
 
 ## Bug Fixes
 
