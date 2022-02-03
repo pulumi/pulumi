@@ -931,10 +931,33 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		if !ok {
 			return resource.StatusOK, nil, fmt.Errorf("unknown resource type '%v'", s.new.Type)
 		}
-		for _, p := range r.InputProperties {
-			if p.IsRequired() {
-				k := resource.PropertyKey(p.Name)
-				s.new.Inputs[k] = s.old.Inputs[k]
+
+		// Get the import object and see if it had properties set
+		var inputProperties []string
+		for _, imp := range s.deployment.imports {
+			if imp.ID == s.old.ID {
+				inputProperties = imp.Properties
+				break
+			}
+		}
+
+		if len(inputProperties) == 0 {
+			logging.V(9).Infof("Importing %v with required properties", s.URN())
+
+			for _, p := range r.InputProperties {
+				if p.IsRequired() {
+					k := resource.PropertyKey(p.Name)
+					s.new.Inputs[k] = s.old.Inputs[k]
+				}
+			}
+		} else {
+			logging.V(9).Infof("Importing %v with supplied properties: %v", s.URN(), inputProperties)
+
+			for _, p := range inputProperties {
+				k := resource.PropertyKey(p)
+				if value, has := s.old.Inputs[k]; has {
+					s.new.Inputs[k] = value
+				}
 			}
 		}
 	} else {

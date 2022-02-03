@@ -345,8 +345,12 @@ func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
 
 	// All providers don't follow the sdk/go/<package> scheme. Allow ImportBasePath as
 	// a means to override this assumption.
-	if info.ImportBasePath != "" && mod != "" {
-		imp = fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
+	if info.ImportBasePath != "" {
+		if mod != "" {
+			imp = fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
+		} else {
+			imp = info.ImportBasePath
+		}
 	}
 
 	if alias, ok := info.PackageImportAliases[imp]; ok {
@@ -359,7 +363,7 @@ func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
 		if modSplit[0] == "" || modSplit[0] == "index" {
 			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
 		} else {
-			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, strings.Split(mod, "/")[0])
+			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, modSplit[0])
 		}
 	}
 	return fmt.Sprintf("%q", imp)
