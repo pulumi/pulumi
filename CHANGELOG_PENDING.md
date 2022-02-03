@@ -63,3 +63,6 @@
 
 - [codegen/go] - Honor import aliases for external types/resources.
   [#8833](https://github.com/pulumi/pulumi/pull/8833)
+
+- [codegen/python] - Correctly reference external types/resources with same module name.
+  [#8910](https://github.com/pulumi/pulumi/pull/8910)
