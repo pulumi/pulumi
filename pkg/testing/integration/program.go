@@ -1055,7 +1055,11 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 	}
 
 	pt.TestFinished = false
-	defer pt.TestCleanUp()
+	if pt.opts.DestroyOnCleanup {
+		pt.t.Cleanup(pt.TestCleanUp)
+	} else {
+		defer pt.TestCleanUp()
+	}
 
 	err = pt.TestLifeCycleInitialize()
 	if err != nil {
