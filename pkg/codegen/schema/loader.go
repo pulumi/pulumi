@@ -118,7 +118,7 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 		if err != nil {
 			return fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
 		}
-		if err := pkgPlugin.Install(reader); err != nil {
+		if err := pkgPlugin.Install(reader, false); err != nil {
 			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
 		}
 	}
