@@ -128,7 +128,7 @@ describe("conditional import/require package exports", () => {
         "type": "module"
     }
     it("remaps to main pkg", () => {
-        assert.strictEqual(pkg.getModuleFromPath("this-mod/main-require.js", packagedef), "this-mod")
+        assert.strictEqual(pkg.getModuleFromPath("this-mod/main-module.js", packagedef), "this-mod")
         assert.strictEqual(pkg.getModuleFromPath("this-mod/main-require.cjs", packagedef), "this-mod")
     })
 });

@@ -33,7 +33,7 @@ function getAllLeafStrings(objectOrPath: SubExports): string[] {
         return [objectOrPath];
     }
     const strings: string[] = [];
-    for (const [key, value] of Object.entries(objectOrPath)) {
+    for (const [_, value] of Object.entries(objectOrPath)) {
         strings.push(...getAllLeafStrings(value));
     }
     return strings
@@ -82,9 +82,11 @@ class WildcardMap {
 }
 
 class ModuleMap {
+    readonly name: string;
     private map: {[key: string]: string} = {};
     private wildcardMap: WildcardMap;
     constructor(packageDefinition: PackageDefinition) {
+        this.name = packageDefinition.name;
         this.map = {};
         this.wildcardMap = new WildcardMap();
         const exports = packageDefinition.exports;
@@ -93,28 +95,29 @@ class ModuleMap {
             return;
         }
 
-        for (let [modName, objectOrPath] of Object.entries(exports)) {
+        for (const [modName, objectOrPath] of Object.entries(exports)) {
             const leaves = getAllLeafStrings(objectOrPath);
             if (leaves === []) {
                 // module not whitelisted
             }
-            for (let leaf of leaves) {
-                if (!modName.startsWith('.')) {
-                    modName = '.'
-                }
-                modName = packageDefinition.name + modName.substr(1)
-                leaf = packageDefinition.name + leaf.substr(1)
+            for (const leaf of leaves) {
+                let newModName: string = packageDefinition.name + modName.substr(1);
 
-                if (leaf.includes('*')) {
+                if (modName === '.' || !modName.startsWith('.')) {
+                    newModName = packageDefinition.name
+                }
+
+                const newLeaf = packageDefinition.name + leaf.substr(1);
+
+                if (newLeaf.includes('*')) {
                     // wildcard match
-                    this.wildcardMap.set(leaf, modName);
-                    continue
+                    this.wildcardMap.set(newLeaf, newModName);
+                    continue;
                 }
 
-                this.map[leaf] = modName;
+                this.map[newLeaf] = newModName;
             }
         }
-
     }
     get(srcName: string) {
         return this.map[srcName] ?  this.map[srcName] : this.wildcardMap.get(srcName)
