@@ -40,7 +40,7 @@ describe("To exclude private subfolders from patterns, null targets can be used"
                 "./features/private-internal/*": null
             }
         }
-        it(`hides blacklisted wildcard paths`, () => {
+        it(`hides null(blacklisted) wildcard paths`, () => {
             //import featureInternal from 'es-module-package/features/private-internal/m';
             // Throws: ERR_PACKAGE_PATH_NOT_EXPORTED
             assert.strictEqual(pkg.getModuleFromPath('es-module-package/features/private-internal/m', packagedef), undefined);
@@ -66,18 +66,14 @@ describe("basic package exports", () => {
         }
     }
     it("handles multiple aliases 1", () => {
-        assertElementIn(pkg.getModuleFromPath("my-mod/lib/index.js", packagedef), [
+        assert.strictEqual(pkg.getModuleFromPath("my-mod/lib/index.js", packagedef), "my-mod/lib/index.js"); // highest specificity
             // not "my-mod",
             // not "my-mod/lib",
             // not "my-mod/lib/index",
-            "my-mod/lib/index.js", // highest specificity
-        ]);
     })
     it("handles multiple aliases 2", () => {
-        assertElementIn(pkg.getModuleFromPath("my-mod/feature/index.js", packagedef), [
+        assert.strictEqual(pkg.getModuleFromPath("my-mod/feature/index.js", packagedef), "my-mod/feature/index.js"); // highest specificity
             // not "my-mod/feature",
-            "my-mod/feature/index.js", // highest specificity
-        ]);
     })
     it("returns with no modification", () => {
         assert.strictEqual(pkg.getModuleFromPath("my-mod/package.json", packagedef), "my-mod/package.json")
@@ -96,9 +92,9 @@ describe("wildcard package exports", () => {
         }
     }
     it("wildcard module", () => {
-        assert.strictEqual(pkg.getModuleFromPath("my-mod/lib/foobar.js", packagedef), "my-mod/lib/foobar.js")
+        assert.strictEqual(pkg.getModuleFromPath("my-mod/lib/foobar.js", packagedef), "my-mod/lib/foobar")
         assert.strictEqual(pkg.getModuleFromPath("my-mod/lib/foo", packagedef), "my-mod/lib/foo")
-        assert.strictEqual(pkg.getModuleFromPath("my-mod/feature/foobar.js", packagedef), "my-mod/feature/foobar.js")
+        assert.strictEqual(pkg.getModuleFromPath("my-mod/feature/foobar.js", packagedef), "my-mod/feature/foobar")
     })
 });
 describe("conditional import/require package exports", () => {
@@ -116,8 +112,8 @@ describe("conditional import/require package exports", () => {
     }
     it("remaps conditional node/default nested packages", () => {
         assert.strictEqual(pkg.getModuleFromPath("that-mod/main.js", packagedef), "that-mod")
-        assert.strictEqual(pkg.getModuleFromPath("that-mod/feature/feature-node.js", packagedef), "that-mod/feature")
-        assert.strictEqual(pkg.getModuleFromPath("that-mod/feature/feature.js", packagedef), "that-mod/feature")
+        assert.strictEqual(pkg.getModuleFromPath("that-mod/feature-node.js", packagedef), "that-mod/feature")
+        assert.strictEqual(pkg.getModuleFromPath("that-mod/feature.js", packagedef), "that-mod/feature")
     })
 });
 describe("conditional import/require package exports", () => {
