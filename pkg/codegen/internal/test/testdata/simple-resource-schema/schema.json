@@ -1,5 +1,5 @@
 {
-  "version": "0.0.1",
+  "version": "1.2.3",
   "name": "example",
   "pluginDownloadURL": "example.com",
   "allowedPackageNames": ["foo", "bar"],
@@ -253,11 +253,13 @@
       ],
       "packageReferences": {
         "Pulumi": "3.13"
-      }
+      },
+      "respectSchemaVersion": true
     },
     "go": {
       "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-resource-schema/go/example",
-      "generateExtraInputTypes": true
+      "generateExtraInputTypes": true,
+      "respectSchemaVersion": true
     },
     "nodejs": {
       "dependencies": {
@@ -265,8 +267,12 @@
       },
       "devDependencies": {
         "typescript": "^3.7.0"
-      }
+      },
+      "respectSchemaVersion": true,
+      "pluginVersion": "3.2.1"
     },
-    "python": {}
+    "python": {
+      "respectSchemaVersion": true
+    }
   }
 }

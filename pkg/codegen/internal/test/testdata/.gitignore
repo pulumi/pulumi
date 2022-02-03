@@ -7,5 +7,4 @@ go.mod
 */python/*.egg-info
 */python/requirements.txt
 */dotnet/Tests
-*/dotnet/version.txt
 */nodejs/tests
