@@ -536,6 +536,16 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
         if (remote) {
             const componentOpts = <ComponentResourceOptions>opts;
             expandProviders(componentOpts);
+            if (componentOpts.provider !== undefined) {
+                if ((<ProviderResource[]> componentOpts.providers).indexOf(componentOpts.provider) !== -1) {
+                    const pkg = componentOpts.provider.getPackage();
+                    const message = `There is a conflit between the 'provider' field (${pkg}) and a member of the 'providers' map'. `;
+                    const depreciation =  "This will become an error by the end of July 2022. See https://github.com/pulumi/pulumi/issues/8799 for more details";
+                    log.warn(message+depreciation);
+                } else {
+                    (<ProviderResource[]> componentOpts.providers).push(componentOpts.provider);
+                }
+            }
             if (componentOpts.providers) {
                 for (const provider of componentOpts.providers as ProviderResource[]) {
                     const pref = await ProviderResource.register(provider);
