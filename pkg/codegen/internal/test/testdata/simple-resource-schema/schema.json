@@ -268,7 +268,8 @@
       "devDependencies": {
         "typescript": "^3.7.0"
       },
-      "respectSchemaVersion": true
+      "respectSchemaVersion": true,
+      "pluginVersion": "3.2.1"
     },
     "python": {
       "respectSchemaVersion": true

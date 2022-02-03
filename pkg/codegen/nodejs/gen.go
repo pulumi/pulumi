@@ -2122,9 +2122,21 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	}
 
 	version := "${VERSION}"
-	if pkg.Version != nil && info.RespectSchemaVersion {
+	versionSet := pkg.Version != nil && info.RespectSchemaVersion
+	if versionSet {
 		version = pkg.Version.String()
 	}
+
+	pluginVersion := info.PluginVersion
+	if versionSet && pluginVersion == "" {
+		pluginVersion = version
+	}
+
+	scriptVersion := "${VERSION}"
+	if pluginVersion != "" {
+		scriptVersion = pluginVersion
+	}
+
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        packageName,
@@ -2136,14 +2148,14 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		License:     pkg.License,
 		Scripts: map[string]string{
 			"build":   "tsc",
-			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s %s", pkg.Name, version),
+			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s %s", pkg.Name, scriptVersion),
 		},
 		DevDependencies: devDependencies,
 		Pulumi: npmPulumiManifest{
 			Resource:          true,
 			PluginDownloadURL: pkg.PluginDownloadURL,
 			Name:              info.PluginName,
-			Version:           info.PluginVersion,
+			Version:           pluginVersion,
 		},
 	}
 
