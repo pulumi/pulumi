@@ -20,12 +20,15 @@ import typing
 
 # Empty function definitions.
 
+
 def _empty():
     ...
+
 
 def _empty_doc():
     """Empty function docstring."""
     ...
+
 
 _empty_lambda = lambda: None
 
@@ -53,10 +56,19 @@ def is_empty_function(fn: typing.Callable) -> bool:
     """
     consts = _consts(fn)
     return (
-        (fn.__code__.co_code == _empty.__code__.co_code and consts == _consts_empty) or
-        (fn.__code__.co_code == _empty_doc.__code__.co_code and consts == _consts_empty_doc) or
-        (fn.__code__.co_code == _empty_lambda.__code__.co_code and consts == _consts_empty_lambda) or
-        (fn.__code__.co_code == _empty_lambda_doc.__code__.co_code and consts == _consts_empty_lambda_doc)
+        (fn.__code__.co_code == _empty.__code__.co_code and consts == _consts_empty)
+        or (
+            fn.__code__.co_code == _empty_doc.__code__.co_code
+            and consts == _consts_empty_doc
+        )
+        or (
+            fn.__code__.co_code == _empty_lambda.__code__.co_code
+            and consts == _consts_empty_lambda
+        )
+        or (
+            fn.__code__.co_code == _empty_lambda_doc.__code__.co_code
+            and consts == _consts_empty_lambda_doc
+        )
     )
 
 

@@ -42,7 +42,11 @@ def test(fn):
         from .. import Output  # pylint: disable=import-outside-toplevel
 
         try:
-            _sync_await(run_pulumi_func(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
+            _sync_await(
+                run_pulumi_func(
+                    lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())
+                )
+            )
         finally:
             rpc_manager.RPC_MANAGER.clear()
 
@@ -53,6 +57,7 @@ class MockResourceArgs:
     """
     MockResourceArgs is used to construct a newResource Mock
     """
+
     typ: str
     name: str
     inputs: dict
@@ -60,13 +65,15 @@ class MockResourceArgs:
     resource_id: Optional[str] = None
     custom: Optional[bool] = None
 
-    def __init__(self,
-                 typ: str,
-                 name: str,
-                 inputs: dict,
-                 provider: Optional[str] = None,
-                 resource_id: Optional[str] = None,
-                 custom: Optional[bool] = None) -> None:
+    def __init__(
+        self,
+        typ: str,
+        name: str,
+        inputs: dict,
+        provider: Optional[str] = None,
+        resource_id: Optional[str] = None,
+        custom: Optional[bool] = None,
+    ) -> None:
         """
         :param str typ: The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
         :param str name: The logical name of the resource instance.
@@ -87,6 +94,7 @@ class MockCallArgs:
     """
     MockCallArgs is used to construct a call Mock
     """
+
     token: str
     args: dict
     provider: str
@@ -108,8 +116,9 @@ class Mocks(ABC):
     their own implementations. This can be used during testing to ensure that calls to provider functions and resource constructors
     return predictable values.
     """
+
     @abstractmethod
-    def call(self, args: MockCallArgs) -> Tuple[dict, Optional[List[Tuple[str,str]]]]:
+    def call(self, args: MockCallArgs) -> Tuple[dict, Optional[List[Tuple[str, str]]]]:
         """
         call mocks provider-implemented function calls (e.g. aws.get_availability_zones).
 
@@ -159,16 +168,23 @@ class MockMonitor:
             registered_resource = self.resources.get(args["urn"])
             if registered_resource is None:
                 raise Exception(f"unknown resource {args['urn']}")
-            ret_proto = _sync_await(rpc.serialize_properties(registered_resource._asdict(), {}))
+            ret_proto = _sync_await(
+                rpc.serialize_properties(registered_resource._asdict(), {})
+            )
             fields = {"failures": None, "return": ret_proto}
             return provider_pb2.InvokeResponse(**fields)
 
-        call_args = MockCallArgs(token=request.tok, args=args, provider=request.provider)
+        call_args = MockCallArgs(
+            token=request.tok, args=args, provider=request.provider
+        )
         tup = self.mocks.call(call_args)
         if isinstance(tup, dict):
             (ret, failures) = (tup, None)
         else:
-            (ret, failures) = tup[0], [provider_pb2.CheckFailure(property=failure[0], reason=failure[1]) for failure in tup[1]]
+            (ret, failures) = tup[0], [
+                provider_pb2.CheckFailure(property=failure[0], reason=failure[1])
+                for failure in tup[1]
+            ]
 
         ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
 
@@ -181,11 +197,13 @@ class MockMonitor:
 
         state = rpc.deserialize_properties(request.properties)
 
-        resource_args = MockResourceArgs(typ=request.type,
-                                         name=request.name,
-                                         inputs=state,
-                                         provider=request.provider,
-                                         resource_id=request.id)
+        resource_args = MockResourceArgs(
+            typ=request.type,
+            name=request.name,
+            inputs=state,
+            provider=request.provider,
+            resource_id=request.id,
+        )
         id_, state = self.mocks.new_resource(resource_args)
 
         props_proto = _sync_await(rpc.serialize_properties(state, {}))
@@ -207,12 +225,14 @@ class MockMonitor:
 
         inputs = rpc.deserialize_properties(request.object)
 
-        resource_args = MockResourceArgs(typ=request.type,
-                                         name=request.name,
-                                         inputs=inputs,
-                                         provider=request.provider,
-                                         resource_id=request.importId,
-                                         custom=request.custom or False)
+        resource_args = MockResourceArgs(
+            typ=request.type,
+            name=request.name,
+            inputs=inputs,
+            provider=request.provider,
+            resource_id=request.importId,
+            custom=request.custom or False,
+        )
         id_, state = self.mocks.new_resource(resource_args)
 
         obj_proto = _sync_await(rpc.serialize_properties(state, {}))
@@ -229,7 +249,7 @@ class MockMonitor:
         # Support for "outputValues" is deliberately disabled for the mock monitor so
         # instances of `Output` don't show up in `MockResourceArgs` inputs.
         has_support = request.id in {"secrets", "resourceReferences"}
-        return type('SupportsFeatureResponse', (object,), {'hasSupport' : has_support})
+        return type("SupportsFeatureResponse", (object,), {"hasSupport": has_support})
 
 
 class MockEngine:
@@ -249,20 +269,24 @@ class MockEngine:
             self.logger.error(request.message)
 
 
-def set_mocks(mocks: Mocks,
-              project: Optional[str] = None,
-              stack: Optional[str] = None,
-              preview: Optional[bool] = None,
-              logger: Optional[logging.Logger] = None):
+def set_mocks(
+    mocks: Mocks,
+    project: Optional[str] = None,
+    stack: Optional[str] = None,
+    preview: Optional[bool] = None,
+    logger: Optional[logging.Logger] = None,
+):
     """
     set_mocks configures the Pulumi runtime to use the given mocks for testing.
     """
-    settings = Settings(monitor=MockMonitor(mocks),
-                        engine=MockEngine(logger),
-                        project=project if project is not None else 'project',
-                        stack=stack if stack is not None else 'stack',
-                        dry_run=preview,
-                        test_mode_enabled=True)
+    settings = Settings(
+        monitor=MockMonitor(mocks),
+        engine=MockEngine(logger),
+        project=project if project is not None else "project",
+        stack=stack if stack is not None else "stack",
+        dry_run=preview,
+        test_mode_enabled=True,
+    )
     configure(settings)
 
     # Ensure a new root stack resource has been initialized.

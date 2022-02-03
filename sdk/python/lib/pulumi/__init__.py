@@ -108,22 +108,17 @@ __all__ = [
     "RemoteArchive",
     "RemoteAsset",
     "StringAsset",
-
     # config
     "Config",
     "ConfigMissingError",
     "ConfigTypeError",
-
     # errors
     "RunError",
-
     # invoke
     "InvokeOptions",
-
     # metadata
     "get_project",
     "get_stack",
-
     # resource
     "Alias",
     "Resource",
@@ -138,7 +133,6 @@ __all__ = [
     "ResourceTransformation",
     "ResourceTransformationArgs",
     "ResourceTransformationResult",
-
     # output
     "Output",
     "Input",
@@ -146,16 +140,13 @@ __all__ = [
     "InputType",
     "UNKNOWN",
     "contains_unknowns",
-
     # log
     "debug",
     "info",
     "warn",
     "error",
-
     # stack_reference
     "StackReference",
-
     # _types
     "MISSING",
     "input_type",
@@ -164,10 +155,9 @@ __all__ = [
     "getter",
     "get",
     "set",
-
     # sub-modules
     "runtime",
     "dynamic",
     "policy",
-    "automation"
+    "automation",
 ]
