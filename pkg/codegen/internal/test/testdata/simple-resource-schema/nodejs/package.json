@@ -3,7 +3,7 @@
     "version": "1.2.3",
     "scripts": {
         "build": "tsc",
-        "install": "node scripts/install-pulumi-plugin.js resource example ${VERSION}"
+        "install": "node scripts/install-pulumi-plugin.js resource example 1.2.3"
     },
     "dependencies": {
         "@pulumi/pulumi": "^3.12"

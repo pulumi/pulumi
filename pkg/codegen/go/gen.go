@@ -3354,15 +3354,19 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	files := map[string][]byte{}
 
 	// Generate pulumi-plugin.json
-	pulumiPlugin, err := (&plugin.PulumiPluginJSON{
+	pulumiPlugin := &plugin.PulumiPluginJSON{
 		Resource: true,
 		Name:     pkg.Name,
 		Server:   pkg.PluginDownloadURL,
-	}).JSON()
+	}
+	if goPkgInfo.RespectSchemaVersion && pkg.Version != nil {
+		pulumiPlugin.Version = pkg.Version.String()
+	}
+	pulumiPluginJSON, err := pulumiPlugin.JSON()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to format pulumi-plugin.json: %w", err)
 	}
-	files[path.Join(pathPrefix, "pulumi-plugin.json")] = pulumiPlugin
+	files[path.Join(pathPrefix, "pulumi-plugin.json")] = pulumiPluginJSON
 
 	setFile := func(relPath, contents string) {
 		relPath = path.Join(pathPrefix, relPath)

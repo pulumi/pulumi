@@ -2121,10 +2121,14 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		devDependencies["typescript"] = "^4.3.5"
 	}
 
+	version := "${VERSION}"
+	if pkg.Version != nil && info.RespectSchemaVersion {
+		version = pkg.Version.String()
+	}
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        packageName,
-		Version:     "${VERSION}",
+		Version:     version,
 		Description: info.PackageDescription,
 		Keywords:    pkg.Keywords,
 		Homepage:    pkg.Homepage,
@@ -2132,7 +2136,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		License:     pkg.License,
 		Scripts: map[string]string{
 			"build":   "tsc",
-			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s ${VERSION}", pkg.Name),
+			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s %s", pkg.Name, version),
 		},
 		DevDependencies: devDependencies,
 		Pulumi: npmPulumiManifest{
@@ -2141,10 +2145,6 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 			Name:              info.PluginName,
 			Version:           info.PluginVersion,
 		},
-	}
-
-	if pkg.Version != nil && info.RespectSchemaVersion {
-		npminfo.Version = pkg.Version.String()
 	}
 
 	// Copy the overlay dependencies, if any.

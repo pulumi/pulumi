@@ -1959,6 +1959,11 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 		Name:     pkg.Name,
 		Server:   pkg.PluginDownloadURL,
 	}
+
+	if info, ok := pkg.Language["python"].(PackageInfo); pkg.Version != nil && ok && info.RespectSchemaVersion {
+		plugin.Version = pkg.Version.String()
+	}
+
 	return plugin.JSON()
 }
 
