@@ -54,7 +54,7 @@ class LanguageServer(LanguageRuntimeServicer):
             engine_address=engine_address,
             stack=request.stack,
             parallel=request.parallel,
-            preview=request.dryRun
+            preview=request.dryRun,
         )
 
         if request.config:
@@ -84,7 +84,9 @@ class LanguageServer(LanguageRuntimeServicer):
                 result.error = msg
                 return result
         except Exception as exn:
-            msg = str(f"python inline source runtime error: {exn}\n{traceback.format_exc()}")
+            msg = str(
+                f"python inline source runtime error: {exn}\n{traceback.format_exc()}"
+            )
             log.error(msg)
             result.error = msg
             return result
@@ -93,7 +95,11 @@ class LanguageServer(LanguageRuntimeServicer):
             # at the time the loop is closed, which results in a `Task was destroyed but it is pending!` error being
             # logged to stdout. To avoid this, we collect all the unresolved tasks in the loop and cancel them before
             # closing the loop.
-            pending = asyncio.Task.all_tasks(loop) if _py_version_less_than_3_7 else asyncio.all_tasks(loop)  # pylint: disable=no-member
+            pending = (
+                asyncio.Task.all_tasks(loop)
+                if _py_version_less_than_3_7
+                else asyncio.all_tasks(loop)
+            )  # pylint: disable=no-member
             log.debug(f"Cancelling {len(pending)} tasks.")
             for task in pending:
                 task.cancel()
@@ -116,4 +122,4 @@ def _suppress_unobserved_task_logging():
     `sdk/python/cmd/pulumi-language-python-exec`.
 
     """
-    logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+    logging.getLogger("asyncio").setLevel(logging.CRITICAL)
