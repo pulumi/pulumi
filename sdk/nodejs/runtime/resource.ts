@@ -536,6 +536,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
         if (remote) {
             const componentOpts = <ComponentResourceOptions>opts;
             expandProviders(componentOpts);
+            // the <ProviderResource[]> casts are safe because expandProviders
+            // /always/ leaves providers as an array.
             if (componentOpts.provider !== undefined) {
                 if (componentOpts.providers === undefined) {
                     // We still want to do the promotion, so we define providers

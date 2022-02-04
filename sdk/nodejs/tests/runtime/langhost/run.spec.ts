@@ -1199,7 +1199,7 @@ describe("rpc", () => {
                                custom?: boolean, protect?: boolean, parent?: string, provider?: string,
                                propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
                                replaceOnChanges?: string[], providers?: any) => {
-                if (name === "singular" || name === "map" || name == "array") {
+                if (name === "singular" || name === "map" || name === "array") {
                     assert.deepStrictEqual(Object.keys(providers), ["test"]);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
