@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+## 3.24.1 (2022-02-4)
+
+### Bug Fixes
+
+- [release] - Update .gitignore to allow for a clean git repository for release.
+  [#8932](https://github.com/pulumi/pulumi/pull/8932)
+
 ## 3.24.0 (2022-02-4)
 
 ### Improvements
