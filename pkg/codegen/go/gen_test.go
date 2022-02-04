@@ -78,7 +78,7 @@ func TestGeneratePackage(t *testing.T) {
 func inferModuleName(codeDir string) string {
 	// For example for this path:
 	//
-	// codeDir = "../internal/test/testdata/external-resource-schema/go/"
+	// codeDir = "../testing/test/testdata/external-resource-schema/go/"
 	//
 	// We will generate "$codeDir/go.mod" using
 	// `external-resource-schema` as the module name so that it
@@ -138,7 +138,7 @@ func TestGenerateTypeNames(t *testing.T) {
 
 func readSchemaFile(file string) *schema.Package {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", file))
+	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
 	if err != nil {
 		panic(err)
 	}

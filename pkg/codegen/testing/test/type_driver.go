@@ -51,7 +51,7 @@ type TypeNameGeneratorFunc func(t schema.Type) string
 
 func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator NewTypeNameGeneratorFunc) { //nolint:revive
 	// Read in, decode, and import the schema.
-	schemaBytes, err := os.ReadFile(filepath.FromSlash("../internal/test/testdata/types.json"))
+	schemaBytes, err := os.ReadFile(filepath.FromSlash("../testing/test/testdata/types.json"))
 	require.NoError(t, err)
 
 	var pkgSpec schema.PackageSpec
@@ -184,7 +184,7 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 		}
 	}
 
-	f, err := os.Create(filepath.FromSlash("../internal/test/testdata/types.json"))
+	f, err := os.Create(filepath.FromSlash("../testing/test/testdata/types.json"))
 	require.NoError(t, err)
 	defer f.Close()
 
