@@ -229,6 +229,7 @@ func NewPulumiCmd() *cobra.Command {
 
 	cmd.AddCommand(newViewTraceCmd())
 	cmd.AddCommand(newConvertTraceCmd())
+	cmd.AddCommand(newResourceCmd())
 
 	if !hasDebugCommands() {
 		err := cmd.PersistentFlags().MarkHidden("tracing-header")
