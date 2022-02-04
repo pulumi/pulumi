@@ -18,4 +18,5 @@ class RemoteComponent extends pulumi.ComponentResource {
 const myprovider = new Provider("myprovider");
 
 new RemoteComponent("singular", { provider: myprovider });
-new RemoteComponent("plural", { providers: { test: myprovider } });
+new RemoteComponent("map", { providers: { test: myprovider } });
+new RemoteComponent("array", { providers: [myprovider] });

@@ -1194,12 +1194,12 @@ describe("rpc", () => {
         },
         "remote_component_providers": {
             program: path.join(base, "068.remote_component_providers"),
-            expectResourceCount: 3,
+            expectResourceCount: 4,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                                custom?: boolean, protect?: boolean, parent?: string, provider?: string,
                                propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
                                replaceOnChanges?: string[], providers?: any) => {
-                if (name === "singular" || name === "plural") {
+                if (name === "singular" || name === "map" || name == "array") {
                     assert.deepStrictEqual(Object.keys(providers), ["test"]);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
