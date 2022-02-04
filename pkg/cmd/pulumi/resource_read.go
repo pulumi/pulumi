@@ -24,6 +24,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -52,6 +53,12 @@ func newResourceReadCmd() *cobra.Command {
 		&config, "config", "c", []string{}, "Config values of the form key=value to set")
 
 	return cmd
+}
+
+type serialisedReadResult struct {
+	ID      string                 `json:"id"`
+	Inputs  map[string]interface{} `json:"inputs"`
+	Outputs map[string]interface{} `json:"outputs"`
 }
 
 func resourceRead(writer io.Writer, config []string, packageName string, packageVersion *semver.Version, resourceType string, resourceId string) error {
@@ -122,12 +129,28 @@ func resourceRead(writer io.Writer, config []string, packageName string, package
 		return err
 	}
 
-	inputJson, err := json.MarshalIndent(&readResult.Inputs, "", "    ")
+	serialisedInputs, err := stack.SerializeProperties(readResult.Inputs, nil, true)
 	if err != nil {
 		return err
 	}
 
-	fprintf(writer, "%s\n", inputJson)
+	serialisedOutputs, err := stack.SerializeProperties(readResult.Outputs, nil, true)
+	if err != nil {
+		return err
+	}
+
+	serialisedResult := serialisedReadResult{
+		ID:      readResult.ID.String(),
+		Inputs:  serialisedInputs,
+		Outputs: serialisedOutputs,
+	}
+
+	jsonInput, err := json.MarshalIndent(&serialisedResult, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	fprintf(writer, "%s\n", jsonInput)
 
 	return nil
 }
