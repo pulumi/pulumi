@@ -66,3 +66,6 @@
 
 - [codegen/python] - Correctly reference external types/resources with same module name.
   [#8910](https://github.com/pulumi/pulumi/pull/8910)
+
+- [sdk/nodejs] - Correctly pickup provider as a member of providers.
+  [#8923](https://github.com/pulumi/pulumi/pull/8923)
