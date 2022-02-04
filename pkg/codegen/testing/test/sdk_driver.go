@@ -302,7 +302,7 @@ type SDKCodegenOptions struct {
 // against a particular language's code generator. It also verifies
 // that the generated code is structurally sound.
 //
-// The test files live in `pkg/codegen/internal/test/testdata` and
+// The test files live in `pkg/codegen/testing/test/testdata` and
 // are registered in `var sdkTests` in `sdk_driver.go`.
 //
 // An SDK code generation test files consists of a schema and a set of

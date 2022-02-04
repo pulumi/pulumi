@@ -45,7 +45,7 @@ language:
   csharp: { "projectReferences": ["..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"] }
   go:
     {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/cyclic-types/go/example",
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/cyclic-types/go/example",
       "generateExtraInputTypes": true,
     }
   nodejs:
