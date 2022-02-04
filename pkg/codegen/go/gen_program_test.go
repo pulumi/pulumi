@@ -31,6 +31,7 @@ func TestGenerateProgram(t *testing.T) {
 			OutputFile: "main.go",
 			Check:      goCheck,
 			GenProgram: GenerateProgram,
+			TestCases:  test.PulumiPulumiProgramTests,
 		})
 }
 

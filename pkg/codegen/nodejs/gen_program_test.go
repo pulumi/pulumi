@@ -23,6 +23,7 @@ func TestGenerateProgram(t *testing.T) {
 			OutputFile: "index.ts",
 			Check:      nodejsCheck,
 			GenProgram: GenerateProgram,
+			TestCases:  test.PulumiPulumiProgramTests,
 		})
 }
 

@@ -23,6 +23,7 @@ func TestGenerateProgram(t *testing.T) {
 			OutputFile: "MyStack.cs",
 			Check:      checkDotnet,
 			GenProgram: GenerateProgram,
+			TestCases:  test.PulumiPulumiProgramTests,
 		},
 	)
 }

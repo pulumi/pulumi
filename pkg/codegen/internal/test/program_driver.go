@@ -22,7 +22,7 @@ import (
 
 var allProgLanguages = codegen.NewStringSet("dotnet", "python", "go", "nodejs")
 
-type programTest struct {
+type ProgramTest struct {
 	Directory      string
 	Description    string
 	Skip           codegen.StringSet
@@ -32,7 +32,7 @@ type programTest struct {
 
 var testdataPath = filepath.Join("..", "internal", "test", "testdata")
 
-var programTests = []programTest{
+var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:      "aws-s3-folder",
 		Description:    "AWS S3 Folder",
@@ -164,6 +164,7 @@ type ProgramCodegenOptions struct {
 	OutputFile string
 	Check      CheckProgramOutput
 	GenProgram GenProgram
+	TestCases  []ProgramTest
 }
 
 // TestProgramCodegen runs the complete set of program code generation tests against a particular
@@ -180,16 +181,16 @@ func TestProgramCodegen(
 	// language string,
 	// genProgram func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error
 	testcase ProgramCodegenOptions,
-
 ) {
 
 	if runtime.GOOS == "windows" {
 		t.Skip("TestProgramCodegen is skipped on Windows")
 	}
 
+	assert.NotNil(t, testcase.TestCases, "Caller must provide test cases")
 	ensureValidSchemaVersions(t)
 	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
-	for _, tt := range programTests {
+	for _, tt := range testcase.TestCases {
 		t.Run(tt.Description, func(t *testing.T) {
 			var err error
 			if tt.Skip.Has(testcase.Language) {

@@ -22,6 +22,7 @@ func TestGenerateProgram(t *testing.T) {
 			OutputFile: "__main__.py",
 			Check:      pythonCheck,
 			GenProgram: GenerateProgram,
+			TestCases:  test.PulumiPulumiProgramTests,
 		})
 }
 
