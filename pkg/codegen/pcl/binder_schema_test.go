@@ -9,7 +9,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func BenchmarkLoadPackage(b *testing.B) {
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))

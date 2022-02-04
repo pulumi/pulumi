@@ -30,7 +30,7 @@ type ProgramTest struct {
 	SkipCompile    codegen.StringSet
 }
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 var PulumiPulumiProgramTests = []ProgramTest{
 	{

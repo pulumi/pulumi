@@ -403,7 +403,7 @@ func ensureValidSchemaVersions(t *testing.T) {
 	c := make(chan error)
 	updates := 0
 	for k, v := range schemaVersions {
-		path := filepath.Join("..", "internal", "test", "testdata", k)
+		path := filepath.Join("..", "testing", "test", "testdata", k)
 		current, err := currentVersion(path)
 		var isJSONSyntaxError bool
 		if err != nil {

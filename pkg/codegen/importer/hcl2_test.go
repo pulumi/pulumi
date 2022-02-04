@@ -40,7 +40,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 const parentName = "parent"
 const providerName = "provider"

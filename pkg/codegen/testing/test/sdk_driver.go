@@ -294,7 +294,7 @@ type SDKCodegenOptions struct {
 	Checks map[string]CodegenCheck
 
 	// The tests to run. A testcase `tt` are assumed to be located at
-	// ../internal/test/testdata/${tt.Directory}
+	// ../testing/test/testdata/${tt.Directory}
 	TestCases []SDKTest
 }
 
@@ -357,7 +357,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 		t.Skip("TestSDKCodegen is skipped on Windows")
 	}
 
-	testDir := filepath.Join("..", "internal", "test", "testdata")
+	testDir := filepath.Join("..", "testing", "test", "testdata")
 
 	// Motivation for flagging: concerns about memory utilizaion
 	// in CI. It can be a nice feature for developing though.

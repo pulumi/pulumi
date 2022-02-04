@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func TestGenerateProgram(t *testing.T) {
 	test.TestProgramCodegen(t,
