@@ -68,3 +68,6 @@
   [#8910](https://github.com/pulumi/pulumi/pull/8910)
 
 - [sdk/go] - Correctly parse GoLang version [#8920](https://github.com/pulumi/pulumi/pull/8920)
+
+- [sdk/nodejs] - Correctly pickup provider as a member of providers.
+  [#8923](https://github.com/pulumi/pulumi/pull/8923)

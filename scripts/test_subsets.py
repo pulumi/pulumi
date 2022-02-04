@@ -72,5 +72,11 @@ TEST_SUBSETS = {
 
         # Auto API tests driven by pytest
         'auto-python',
+
+        # The integration tests and examples do not properly belong
+        # here, but including to lighten up the `etc` test subset and
+        # because `auto` subset is a bit light on work.
+        'github.com/pulumi/pulumi/tests',
+        'github.com/pulumi/pulumi/tests/examples',
     ]
 }
