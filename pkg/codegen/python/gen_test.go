@@ -75,6 +75,7 @@ func TestGeneratePackage(t *testing.T) {
 			"python/py_compile": pyCompileCheck,
 			"python/test":       pyTestCheck,
 		},
+		TestCases: test.PulumiPulumiSDKTests,
 	})
 }
 

@@ -20,6 +20,7 @@ func TestGeneratePackage(t *testing.T) {
 			"dotnet/compile": typeCheckGeneratedPackage,
 			"dotnet/test":    testGeneratedPackage,
 		},
+		TestCases: test.PulumiPulumiSDKTests,
 	})
 }
 

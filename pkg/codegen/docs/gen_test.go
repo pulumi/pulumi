@@ -509,5 +509,6 @@ func TestGeneratePackage(t *testing.T) {
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "docs",
 		GenPackage: generatePackage,
+		TestCases:  test.PulumiPulumiSDKTests,
 	})
 }

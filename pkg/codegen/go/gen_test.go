@@ -71,6 +71,7 @@ func TestGeneratePackage(t *testing.T) {
 			"go/compile": typeCheckGeneratedPackage,
 			"go/test":    testGeneratedPackage,
 		},
+		TestCases: test.PulumiPulumiSDKTests,
 	})
 }
 

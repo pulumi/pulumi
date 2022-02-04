@@ -26,6 +26,7 @@ func TestGeneratePackage(t *testing.T) {
 			"nodejs/compile": typeCheckGeneratedPackage,
 			"nodejs/test":    testGeneratedPackage,
 		},
+		TestCases: test.PulumiPulumiSDKTests,
 	})
 }
 

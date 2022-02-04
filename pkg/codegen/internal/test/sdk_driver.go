@@ -21,7 +21,7 @@ import (
 // generated code, typically `$TestDir/$test.Directory/$language`.
 type CodegenCheck func(t *testing.T, codedir string)
 
-type sdkTest struct {
+type SDKTest struct {
 	Directory   string
 	Description string
 
@@ -40,7 +40,7 @@ type sdkTest struct {
 }
 
 // ShouldSkipTest indicates if a given test for a given language should be run.
-func (tt sdkTest) ShouldSkipTest(language, test string) bool {
+func (tt SDKTest) ShouldSkipTest(language, test string) bool {
 
 	// Only language-specific checks.
 	if !strings.HasPrefix(test, language+"/") {
@@ -65,7 +65,7 @@ func (tt sdkTest) ShouldSkipTest(language, test string) bool {
 
 // ShouldSkipCodegen determines if codegen should be run. ShouldSkipCodegen=true
 // further implies no other tests will be run.
-func (tt sdkTest) ShouldSkipCodegen(language string) bool {
+func (tt SDKTest) ShouldSkipCodegen(language string) bool {
 	return tt.Skip.Has(language + "/any")
 }
 
@@ -78,7 +78,7 @@ const (
 
 var allLanguages = codegen.NewStringSet("python/any", "nodejs/any", "dotnet/any", "go/any", "docs/any")
 
-var sdkTests = []sdkTest{
+var PulumiPulumiSDKTests = []SDKTest{
 	{
 		Directory:   "naming-collisions",
 		Description: "Schema with types that could potentially produce collisions (go).",
@@ -280,6 +280,7 @@ func init() {
 	// NOTE: the testing package will call flag.Parse.
 }
 
+// SDKCodegenOptions describes the set of codegen tests for a language.
 type SDKCodegenOptions struct {
 	// Name of the programming language.
 	Language string
@@ -291,6 +292,10 @@ type SDKCodegenOptions struct {
 	// Extra checks for all the tests. They keys of this map are
 	// of the form "$language/$check" such as "go/compile".
 	Checks map[string]CodegenCheck
+
+	// The tests to run. A testcase `tt` are assumed to be located at
+	// ../internal/test/testdata/${tt.Directory}
+	TestCases []SDKTest
 }
 
 // TestSDKCodegen runs the complete set of SDK code generation tests
@@ -358,7 +363,8 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 	// in CI. It can be a nice feature for developing though.
 	parallel := cmdutil.IsTruthy(os.Getenv("PULUMI_PARALLEL_SDK_CODEGEN_TESTS"))
 
-	for _, sdkTest := range sdkTests {
+	require.NotNil(t, opts.TestCases, "No test cases were provided. This was probably a mistake")
+	for _, sdkTest := range opts.TestCases {
 		tt := sdkTest // avoid capturing loop variable `sdkTest` in the closure
 		t.Run(tt.Directory, func(t *testing.T) {
 			if parallel {
