@@ -1,26 +1,41 @@
+// Copyright 2016-2022, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 import * as fs from "fs";
 import * as upath from "upath";
 
-type Exports = string | {[key: string]: SubExports}
-type SubExports = string | {[key: string]: SubExports} | null
+type Exports = string | {[key: string]: SubExports};
+type SubExports = string | {[key: string]: SubExports} | null;
 
 type PackageDefinition = {
-    name: string,
-    exports?: Exports,
-}
+    name: string;
+    exports?: Exports;
+};
 
 function getPackageDefinition(path: string): PackageDefinition {
     const directories =  path.split(upath.sep);
     while(directories.length > 0) {
-        let curPath = directories.join(upath.sep);
-        let packageDefinitionPath = `${curPath}/package.json`;
+        const curPath = directories.join(upath.sep);
+        const packageDefinitionPath = `${curPath}/package.json`;
         try {
             require.resolve(packageDefinitionPath);
-            return require(packageDefinitionPath)
+            return require(packageDefinitionPath);
         } catch (e) {
-            
+            // no package.json found. check next
+            directories.pop();
+            continue;
         }
-        directories.pop()
     }
     throw new Error(`no package.json found for ${path}`);
 }
@@ -36,7 +51,7 @@ function getAllLeafStrings(objectOrPath: SubExports): string[] {
     for (const [_, value] of Object.entries(objectOrPath)) {
         strings.push(...getAllLeafStrings(value));
     }
-    return strings
+    return strings;
 }
 
 class WildcardMap {
@@ -44,20 +59,19 @@ class WildcardMap {
         srcSuffix: string;
         modPrefix: string;
         modSuffix: string;
-    }}
+    };};
     constructor() {
         this.datamap = {};
     }
     set(srcPattern: string, modPattern: string) {
         // Assumption: to use a wildcard pattern, each side must be wildcarded
-        const [srcPrefix, srcSuffix] = srcPattern.split('*');
-        const [modPrefix, modSuffix] = modPattern.split('*'); // modules don't have tail matches
+        const [srcPrefix, srcSuffix] = srcPattern.split("*");
+        const [modPrefix, modSuffix] = modPattern.split("*"); // modules don't have tail matches
         this.datamap[srcPrefix] = {
             srcSuffix,
             modPrefix,
             modSuffix,
-        }
-        return
+        };
     }
     get(srcName: string) {
         // this is a bit slow.
@@ -72,7 +86,7 @@ class WildcardMap {
                 //return undefined;
             }
             if (srcSuffix.endsWith(srcRule.srcSuffix)) {
-                const modSuffix = srcSuffix.substring(0, srcSuffix.lastIndexOf(srcRule.srcSuffix))
+                const modSuffix = srcSuffix.substring(0, srcSuffix.lastIndexOf(srcRule.srcSuffix));
                 return srcRule.modPrefix + modSuffix;
             }
             return srcRule.modPrefix + srcSuffix;
@@ -103,13 +117,13 @@ class ModuleMap {
             for (const leaf of leaves) {
                 let newModName: string = packageDefinition.name + modName.substr(1);
 
-                if (modName === '.' || !modName.startsWith('.')) {
-                    newModName = packageDefinition.name
+                if (modName === "." || !modName.startsWith(".")) {
+                    newModName = packageDefinition.name;
                 }
 
                 const newLeaf = packageDefinition.name + leaf.substr(1);
 
-                if (newLeaf.includes('*')) {
+                if (newLeaf.includes("*")) {
                     // wildcard match
                     this.wildcardMap.set(newLeaf, newModName);
                     continue;
@@ -120,7 +134,7 @@ class ModuleMap {
         }
     }
     get(srcName: string) {
-        return this.map[srcName] ?  this.map[srcName] : this.wildcardMap.get(srcName)
+        return this.map[srcName] ?  this.map[srcName] : this.wildcardMap.get(srcName);
     }
 }
 
@@ -135,11 +149,10 @@ export function getModuleFromPath(path: string, packageDefinition?: PackageDefin
     if (typeof packageDefinition.exports === "string") {
         return packageName;
     }
-    console.log(typeof packageDefinition.exports)
     if (typeof packageDefinition.exports === "object") {
-        const modMap = new ModuleMap(packageDefinition)
+        const modMap = new ModuleMap(packageDefinition);
         const modulePath = modMap.get(path);
-        return modulePath
+        return modulePath;
     }
 
     return path;
