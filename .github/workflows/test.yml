@@ -61,10 +61,6 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
 
-    # [WINDOWS-CI] - Find other instances of this string to find related snippets when this issue is
-    # resolved: https://github.com/pulumi/pulumi/issues/8820
-    continue-on-error: ${{ matrix.platform == 'windows-latest' }}
-
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
