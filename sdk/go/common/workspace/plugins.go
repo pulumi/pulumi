@@ -60,7 +60,7 @@ var (
 // time, if necessary. When non-empty, it's parsed into `pluginDownloadURLOverridesParsed` in `init()`. The expected
 // format is `regexp=URL`, and multiple pairs can be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`.
 //
-// For example, when set to "^foo.*=https://foo&^bar.*=https://bar", plugin names that start with "foo" will use
+// For example, when set to "^foo.*=https://foo,^bar.*=https://bar", plugin names that start with "foo" will use
 // https://foo as the download URL and names that start with "bar" will use https://bar.
 var pluginDownloadURLOverrides string
 
