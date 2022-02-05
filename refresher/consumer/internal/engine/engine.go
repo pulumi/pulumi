@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/infralight/pulumi/refresher"
 	"github.com/infralight/pulumi/refresher/common"
 	engine "github.com/infralight/pulumi/refresher/consumer/internal"
 	"github.com/rs/zerolog"

@@ -4,19 +4,26 @@ import (
 	"context"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/infralight/pulumi/refresher"
 	"github.com/infralight/pulumi/refresher/common"
 	"github.com/infralight/pulumi/refresher/config"
+	"github.com/infralight/pulumi/refresher/consumer/dispatcher"
 	"github.com/infralight/pulumi/refresher/consumer/internal/engine"
+	"github.com/infralight/pulumi/refresher/consumer/queue"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"io"
 	"os"
+	"time"
 )
 
 var (
 	cfg       *config.Config
 	consumer  *common.Consumer
 	logger    zerolog.Logger
+	sess      *session.Session
 	component = "pulumi-mapper-consumer"
 )
 
@@ -29,6 +36,9 @@ func init() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to load configuration from environment variables")
 	}
+
+	// Load aws credentials
+	sess = config.LoadAwsSession()
 
 	consumer, err = common.NewConsumer(cfg)
 	if err != nil {
@@ -69,11 +79,56 @@ func handler(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
 		return "failure", fmt.Errorf("all %d messages failed processing", len(sqsEvent.Records))
 	}
 
-	return "success" ,nil
+	return "success", nil
 
 }
 
 func main() {
+	logger = log.With().
+		Str("component", component).Logger()
+
+	if cfg.RunImmediately {
+		//load message body from standard input
+		b, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			logger.Fatal().
+				Err(err).
+				Msg("Message must be provided via standard input")
+		}
+		_, err = handler(context.Background(), events.SQSEvent{
+			Records: []events.SQSMessage{{
+				MessageId: "local-test",
+				Body:      string(b),
+			}},
+		})
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Consumer failed")
+			os.Exit(1)
+		}
+
+		logger.Info().Msg("Consumer succeeded")
+		os.Exit(0)
+	}
+
+	if cfg.Lambda {
+		lambda.Start(handler)
+	} else {
+		pubsub := queue.NewSQS(sess, time.Second*10, time.Second*1500)
+		logger = log.With().Str("component", component).Int("MaxWorkers", cfg.MaxWorkers).Logger()
+
+		if cfg.PulumiMapperSqsUrl == "" {
+			logger.Fatal().Msg("failed missing drift detector sqs url environment variable")
+			os.Exit(1)
+		}
+
+		dispatcher.NewConsumer(pubsub, dispatcher.ConsumerConfig{
+			Type:      dispatcher.AsyncConsumer,
+			QueueURL:  cfg.PulumiMapperSqsUrl,
+			MaxWorker: cfg.MaxWorkers,
+			MaxMsg:    cfg.MaxMsg,
+		}, &logger, consumer, engine.ProcessMessage).Start(context.Background())
+	}
+
 	var ProjectName string
 	ProjectName = "firefly"
 	os.Setenv("ProjectName", ProjectName)
