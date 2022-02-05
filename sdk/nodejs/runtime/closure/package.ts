@@ -60,8 +60,14 @@ class WildcardMap {
         modPrefix: string;
         modSuffix: string;
     };};
+    private blacklist: [string, string][];
     constructor() {
         this.datamap = {};
+        this.blacklist = [];
+    }
+    setBlacklist(modPattern: string) {
+        const [prefix, suffix] = modPattern.split('*', 2)
+        this.blacklist.push([prefix, suffix]);
     }
     set(srcPattern: string, modPattern: string) {
         // Assumption: to use a wildcard pattern, each side must be wildcarded
@@ -74,17 +80,17 @@ class WildcardMap {
         };
     }
     get(srcName: string) {
+        for (const [blacklistPrefix, blacklistSuffix] of this.blacklist) {
+            if ((upath.extname(srcName) ? srcName : srcName + '/').startsWith(blacklistPrefix) && srcName.endsWith(blacklistSuffix)){
+                return undefined;
+            }
+        }
         // this is a bit slow.
         for (const [srcPrefix, srcRule] of Object.entries(this.datamap)) { // TODO sort in a short-circuitable manner
             if (!srcName.startsWith(srcPrefix)) {
                 continue;
             }
             const [_, srcSuffix] = srcName.split(srcPrefix);
-            if (!srcSuffix.endsWith(srcRule.srcSuffix)) {
-                // TODO re-check spec
-                // improper filetype?
-                //return undefined;
-            }
             if (srcSuffix.endsWith(srcRule.srcSuffix)) {
                 const modSuffix = srcSuffix.substring(0, srcSuffix.lastIndexOf(srcRule.srcSuffix));
                 return srcRule.modPrefix + modSuffix;
@@ -110,26 +116,28 @@ class ModuleMap {
         }
 
         for (const [modName, objectOrPath] of Object.entries(exports)) {
-            const leaves = getAllLeafStrings(objectOrPath);
-            if (leaves === []) {
-                // module not whitelisted
-            }
-            for (const leaf of leaves) {
-                let newModName: string = packageDefinition.name + modName.substr(1);
+            let newModName: string = packageDefinition.name + modName.substr(1);
 
-                if (modName === "." || !modName.startsWith(".")) {
-                    newModName = packageDefinition.name;
-                }
+            if (modName === "." || !modName.startsWith(".")) {
+                newModName = packageDefinition.name;
+            }
+            const leaves = getAllLeafStrings(objectOrPath);
+            for (const leaf of leaves) {
 
                 const newLeaf = packageDefinition.name + leaf.substr(1);
 
                 if (newLeaf.includes("*")) {
                     // wildcard match
+                    this.wildcardMap.set(newModName, newModName);
                     this.wildcardMap.set(newLeaf, newModName);
                     continue;
                 }
 
                 this.map[newLeaf] = newModName;
+            }
+            if (leaves.length === 0 && newModName.includes('*')) {
+                // module not whitelisted
+                this.wildcardMap.setBlacklist(newModName);
             }
         }
     }
