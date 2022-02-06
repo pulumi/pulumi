@@ -19,6 +19,7 @@ type Config struct {
 	Env                    string
 	MongoURI               string
 	PulumiToken            string
+	PulumiUrl              string
 	FetchedResourcesBucket string
 	PulumiMapperSqsUrl     string
 	MaxWorkers             int
@@ -68,6 +69,10 @@ func LoadConfig() (*Config, error) {
 
 	if cfg.MaxMsg, err = strconv.Atoi(os.Getenv("MAX_MESSAGES")); err != nil {
 		cfg.MaxMsg = 10
+	}
+
+	if cfg.PulumiUrl = os.Getenv("PULUMI_URL"); cfg.PulumiUrl == "" {
+		cfg.PulumiUrl = "https://api.pulumi.com"
 	}
 
 	if cfg.AwsRegion = os.Getenv("AWS_REGION"); cfg.AwsRegion == "" {

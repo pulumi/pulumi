@@ -27,7 +27,6 @@ func ProcessMessage(ctx context.Context, logger *zerolog.Logger, consumer *commo
 			TimeDiff("duration", time.Now(), start).
 			Str("accountId", event.AccountId).
 			Str("pulumiIntegrationId", event.IntegrationId).
-			Str("pulumiIntegrationId", event.IntegrationId).
 			Str("projectName", event.ProjectName).
 			Str("organizationName", event.OrganizationName).
 			Msg("Finished processing job")
@@ -42,11 +41,11 @@ func ProcessMessage(ctx context.Context, logger *zerolog.Logger, consumer *commo
 		Str("organizationName", event.OrganizationName).
 		Msg("Handling message")
 
-	if event.AccountId == "" || event.IntegrationId == "" || event.StackName == "" || event.ProjectName == "" || event.OrganizationName == "" {
+	if event.AccountId == "" || event.IntegrationId == "" || event.StackName == "" || event.ProjectName == "" || event.OrganizationName == "" || event.StackId == ""{
 		return errors.New("failed, invalid message attributes missing [account id / integration id / stackName / projectName / organizationName]")
 	}
 
-	err = pulumiMapper(ctx, logger, consumer, event.AccountId, event.IntegrationId, event.StackName, event.ProjectName, event.OrganizationName)
+	err = pulumiMapper(ctx, logger, consumer, event.AccountId, event.IntegrationId, event.StackName, event.ProjectName, event.OrganizationName, event.StackId, &event.LastUpdated, &event.ResourceCount)
 	if err != nil {
 		return fmt.Errorf("failed processing job: %w", err)
 	}
