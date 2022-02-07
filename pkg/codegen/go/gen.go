@@ -206,9 +206,16 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	if mod == "" {
 		mod = packageRoot(pkg.pkg)
 	}
-	mod = strings.ReplaceAll(mod, "/", "")
-	mod = strings.ReplaceAll(mod, "-", "") + "." + name
-	return strings.ReplaceAll(mod, "-provider", "")
+
+	var importPath string
+	if alias, hasAlias := pkg.pkgImportAliases[path.Join(pkg.importBasePath, mod)]; hasAlias {
+		importPath = alias
+	} else {
+		importPath = strings.ReplaceAll(mod, "/", "")
+		importPath = strings.ReplaceAll(importPath, "-", "")
+	}
+
+	return strings.ReplaceAll(importPath+"."+name, "-provider", "")
 }
 
 func (pkg *pkgContext) tokenToEnum(tok string) string {
@@ -275,7 +282,15 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 	if mod == "" {
 		mod = components[0]
 	}
-	return strings.Replace(mod, "/", "", -1) + "." + name
+
+	var importPath string
+	if alias, hasAlias := pkg.pkgImportAliases[path.Join(pkg.importBasePath, mod)]; hasAlias {
+		importPath = alias
+	} else {
+		importPath = strings.ReplaceAll(mod, "/", "")
+	}
+
+	return importPath + "." + name
 }
 
 func tokenToModule(tok string) string {
@@ -547,18 +562,26 @@ func (pkg *pkgContext) typeString(t schema.Type) string {
 }
 
 func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
-	switch typ := t.(type) {
-	case *schema.ObjectType:
-		return typ.Package != nil && pkg.pkg != nil && typ.Package != pkg.pkg
-	case *schema.ResourceType:
-		return typ.Resource != nil && pkg.pkg != nil && typ.Resource.Package != pkg.pkg
-	}
-	return false
+	isExternal, _ := pkg.isExternalReferenceWithPackage(t)
+	return isExternal
 }
 
-func (pkg *pkgContext) isExternalObjectType(t schema.Type) bool {
-	obj, ok := t.(*schema.ObjectType)
-	return ok && obj.Package != nil && pkg.pkg != nil && obj.Package != pkg.pkg
+func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (isExternal bool, extPkg *schema.Package) {
+	switch typ := t.(type) {
+	case *schema.ObjectType:
+		isExternal = typ.Package != nil && pkg.pkg != nil && typ.Package != pkg.pkg
+		if isExternal {
+			extPkg = typ.Package
+		}
+		return
+	case *schema.ResourceType:
+		isExternal = typ.Resource != nil && pkg.pkg != nil && typ.Resource.Package != pkg.pkg
+		if isExternal {
+			extPkg = typ.Resource.Package
+		}
+		return
+	}
+	return
 }
 
 // resolveResourceType resolves resource references in properties while
@@ -569,22 +592,10 @@ func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
 	if !pkg.isExternalReference(t) {
 		return pkg.tokenToResource(t.Token)
 	}
-	extPkg := t.Resource.Package
-	var goInfo GoPackageInfo
-
-	contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
-	if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
-		goInfo = info
-	}
-	extPkgCtx := &pkgContext{
-		pkg:              extPkg,
-		importBasePath:   goInfo.ImportBasePath,
-		pkgImportAliases: goInfo.PackageImportAliases,
-		modToPkg:         goInfo.ModuleToPackage,
-	}
+	extPkgCtx := pkg.contextForExternalReference(t)
 	resType := extPkgCtx.tokenToResource(t.Token)
 	if !strings.Contains(resType, ".") {
-		resType = fmt.Sprintf("%s.%s", extPkg.Name, resType)
+		resType = fmt.Sprintf("%s.%s", extPkgCtx.pkg.Name, resType)
 	}
 	return resType
 }
@@ -601,21 +612,44 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 		}
 		return name
 	}
-	return pkg.contextForExternalReferenceType(t).typeString(t)
+	return pkg.contextForExternalReference(t).typeString(t)
 }
 
-func (pkg *pkgContext) contextForExternalReferenceType(t *schema.ObjectType) *pkgContext {
-	extPkg := t.Package
-	var goInfo GoPackageInfo
+func (pkg *pkgContext) contextForExternalReference(t schema.Type) *pkgContext {
+	isExternal, extPkg := pkg.isExternalReferenceWithPackage(t)
+	contract.Assert(isExternal)
 
+	var goInfo GoPackageInfo
 	contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
 	if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
 		goInfo = info
+	} else {
+		goInfo.ImportBasePath = extractImportBasePath(extPkg)
 	}
+
+	pkgImportAliases := goInfo.PackageImportAliases
+
+	// Ensure that any package import aliases we have specified locally take precedence over those
+	// specified in the remote package.
+	if ourPkgGoInfoI, has := pkg.pkg.Language["go"]; has {
+		ourPkgGoInfo := ourPkgGoInfoI.(GoPackageInfo)
+		if len(ourPkgGoInfo.PackageImportAliases) > 0 {
+			pkgImportAliases = make(map[string]string)
+			// Copy the external import aliases.
+			for k, v := range goInfo.PackageImportAliases {
+				pkgImportAliases[k] = v
+			}
+			// Copy the local import aliases, overwriting any external aliases.
+			for k, v := range ourPkgGoInfo.PackageImportAliases {
+				pkgImportAliases[k] = v
+			}
+		}
+	}
+
 	extPkgCtx := &pkgContext{
 		pkg:              extPkg,
 		importBasePath:   goInfo.ImportBasePath,
-		pkgImportAliases: goInfo.PackageImportAliases,
+		pkgImportAliases: pkgImportAliases,
 		modToPkg:         goInfo.ModuleToPackage,
 	}
 	return extPkgCtx
@@ -2482,26 +2516,11 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	case *schema.MapType:
 		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.ObjectType:
-		if t.Package != nil && pkg.pkg != nil && t.Package != pkg.pkg {
-			extPkg := t.Package
-			var goInfo GoPackageInfo
-
-			contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
-			if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
-				goInfo = info
-			} else {
-				// tests don't include ImportBasePath
-				goInfo.ImportBasePath = extractImportBasePath(extPkg)
-			}
-			extPkgCtx := &pkgContext{
-				pkg:              extPkg,
-				importBasePath:   goInfo.ImportBasePath,
-				pkgImportAliases: goInfo.PackageImportAliases,
-				modToPkg:         goInfo.ModuleToPackage,
-			}
+		if pkg.isExternalReference(t) {
+			extPkgCtx := pkg.contextForExternalReference(t)
 			mod := extPkgCtx.tokenToPackage(t.Token)
-			imp := path.Join(goInfo.ImportBasePath, mod)
-			importsAndAliases[imp] = goInfo.PackageImportAliases[imp]
+			imp := path.Join(extPkgCtx.importBasePath, mod)
+			importsAndAliases[imp] = extPkgCtx.pkgImportAliases[imp]
 			break
 		}
 		mod := pkg.tokenToPackage(t.Token)
@@ -2516,26 +2535,11 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 			}
 		}
 	case *schema.ResourceType:
-		if t.Resource != nil && pkg.pkg != nil && t.Resource.Package != pkg.pkg {
-			extPkg := t.Resource.Package
-			var goInfo GoPackageInfo
-
-			contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
-			if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
-				goInfo = info
-			} else {
-				// tests don't include ImportBasePath
-				goInfo.ImportBasePath = extractImportBasePath(extPkg)
-			}
-			extPkgCtx := &pkgContext{
-				pkg:              extPkg,
-				importBasePath:   goInfo.ImportBasePath,
-				pkgImportAliases: goInfo.PackageImportAliases,
-				modToPkg:         goInfo.ModuleToPackage,
-			}
+		if pkg.isExternalReference(t) {
+			extPkgCtx := pkg.contextForExternalReference(t)
 			mod := extPkgCtx.tokenToPackage(t.Token)
-			imp := path.Join(goInfo.ImportBasePath, mod)
-			importsAndAliases[imp] = goInfo.PackageImportAliases[imp]
+			imp := path.Join(extPkgCtx.importBasePath, mod)
+			importsAndAliases[imp] = extPkgCtx.pkgImportAliases[imp]
 			break
 		}
 		mod := pkg.tokenToPackage(t.Token)
@@ -3354,15 +3358,19 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	files := map[string][]byte{}
 
 	// Generate pulumi-plugin.json
-	pulumiPlugin, err := (&plugin.PulumiPluginJSON{
+	pulumiPlugin := &plugin.PulumiPluginJSON{
 		Resource: true,
 		Name:     pkg.Name,
 		Server:   pkg.PluginDownloadURL,
-	}).JSON()
+	}
+	if goPkgInfo.RespectSchemaVersion && pkg.Version != nil {
+		pulumiPlugin.Version = pkg.Version.String()
+	}
+	pulumiPluginJSON, err := pulumiPlugin.JSON()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to format pulumi-plugin.json: %w", err)
 	}
-	files[path.Join(pathPrefix, "pulumi-plugin.json")] = pulumiPlugin
+	files[path.Join(pathPrefix, "pulumi-plugin.json")] = pulumiPluginJSON
 
 	setFile := func(relPath, contents string) {
 		relPath = path.Join(pathPrefix, relPath)

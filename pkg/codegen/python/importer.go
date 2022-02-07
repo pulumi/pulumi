@@ -51,6 +51,9 @@ type PackageInfo struct {
 	UsesIOClasses bool `json:"usesIOClasses,omitempty"`
 	// Determines whether to make single-return-value methods return an output object or the single value.
 	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
+
+	// Respect the Pkg.Version field for emitted code.
+	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
 }
 
 // Importer implements schema.Language for Python.
