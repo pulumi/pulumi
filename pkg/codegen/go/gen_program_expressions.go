@@ -282,7 +282,7 @@ func outputVersionFunctionArgTypeName(t model.Type) (string, error) {
 
 	var ty string
 	if pkg.isExternalReference(objType) {
-		ty = pkg.contextForExternalReferenceType(objType).tokenToType(objType.Token)
+		ty = pkg.contextForExternalReference(objType).tokenToType(objType.Token)
 	} else {
 		ty = pkg.tokenToType(objType.Token)
 	}

@@ -68,6 +68,9 @@ type GoPackageInfo struct {
 	// GenerateExtraInputTypes determines whether or not the code generator generates input (and output) types for
 	// all plain types, instead of for only types that are used as input/output types.
 	GenerateExtraInputTypes bool `json:"generateExtraInputTypes,omitempty"`
+
+	// Respect the Pkg.Version field for emitted code.
+	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
 }
 
 // Importer implements schema.Language for Go.

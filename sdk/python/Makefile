@@ -37,9 +37,15 @@ build:: build_package build_plugin
 
 lint:: ensure
 	. venv/*/activate && \
+		python -m black ./lib/pulumi --check
+	. venv/*/activate && \
 		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
 	. venv/*/activate && \
 		python -m pylint ./lib/pulumi --rcfile=.pylintrc
+
+format:: ensure
+	. venv/*/activate && \
+		python -m black ./lib/pulumi
 
 install_package:: build_package
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
