@@ -132,9 +132,6 @@ jobs:
       - name: Lint .NET
         run: |
           cd sdk/dotnet && make lint
-      - name: Lint Go
-        run: |
-          cd sdk/go && make lint
   build:
     name: Build
     uses: pulumi/pulumi/.github/workflows/build.yml@master
