@@ -15,11 +15,6 @@
 import * as assert from "assert";
 import * as pkg from "../../runtime/closure/package";
 
-type Exported = string | {
-    import?: string;
-    require?: string;
-};
-
 function assertElementIn<T>(element: T, collection: T[]) {
     return assert.strictEqual(true, collection.includes(element));
 }
@@ -45,15 +40,22 @@ describe("To exclude private subfolders from patterns, null targets can be used"
     it(`hides null(blacklisted) wildcard paths`, () => {
         //import featureInternal from 'es-module-package/features/private-internal/m';
         // Throws: ERR_PACKAGE_PATH_NOT_EXPORTED
-        assert.strictEqual(pkg.getModuleFromPath("es-module-package/features/private-internal/m", packagedef), undefined);
-        assert.strictEqual(pkg.getModuleFromPath("es-module-package/features/private-internal-b/m", packagedef), undefined);
-        assert.strictEqual(pkg.getModuleFromPath("es-module-package/features/private-internal-b", packagedef), undefined);
-        assert.strictEqual(pkg.getModuleFromPath("es-module-package/features/private-inter", packagedef), "es-module-package/features/private-inter");
+        assert.strictEqual(pkg.getModuleFromPath("es-module-package/src/features/private-inter.js", packagedef), "es-module-package/features/private-inter");
     });
     it(`handles wildcard paths`, () => {
         //import featureX from 'es-module-package/features/x';
         // Loads ./node_modules/es-module-package/src/features/x.js
         assert.strictEqual(pkg.getModuleFromPath("es-module-package/src/features/x.js", packagedef), "es-module-package/features/x");
+        assert.strictEqual(pkg.getModuleFromPath("es-module-package/src/features/y/z/foo/bar/baz.js", packagedef), "es-module-package/features/y/z/foo/bar/baz");
+    });
+    it(`handles whitelisting blacklisted directories`, () => {
+        assert.strictEqual(pkg.getModuleFromPath("es-module-package/features/internal/public/index.js", {
+            "name": "es-module-package",
+            "exports": {
+                "./features/internal/*": null,
+                ".": "./features/internal/public/index.js",
+            },
+        }), "es-module-package");
     });
 });
 describe("basic package exports", () => {
@@ -71,14 +73,10 @@ describe("basic package exports", () => {
         },
     };
     it("handles multiple aliases 1", () => {
-        assert.strictEqual(pkg.getModuleFromPath("my-mod/lib/index.js", packagedef), "my-mod/lib/index.js"); // highest specificity
-        // not "my-mod",
-        // not "my-mod/lib",
-        // not "my-mod/lib/index",
+        assert.strictEqual(pkg.getModuleFromPath("my-mod/lib/index.js", packagedef), "my-mod/lib/index.js");
     });
     it("handles multiple aliases 2", () => {
-        assert.strictEqual(pkg.getModuleFromPath("my-mod/feature/index.js", packagedef), "my-mod/feature/index.js"); // highest specificity
-        // not "my-mod/feature",
+        assert.strictEqual(pkg.getModuleFromPath("my-mod/feature/index.js", packagedef), "my-mod/feature/index.js");
     });
     it("returns with no modification", () => {
         assert.strictEqual(pkg.getModuleFromPath("my-mod/package.json", packagedef), "my-mod/package.json");
@@ -98,8 +96,24 @@ describe("wildcard package exports", () => {
     };
     it("wildcard module", () => {
         assert.strictEqual(pkg.getModuleFromPath("my-mod/lib/foobar.js", packagedef), "my-mod/lib/foobar");
-        assert.strictEqual(pkg.getModuleFromPath("my-mod/lib/foo", packagedef), "my-mod/lib/foo");
+        assert.strictEqual(pkg.getModuleFromPath("my-mod/lib/foo.js.js", packagedef), "my-mod/lib/foo.js"); // check
         assert.strictEqual(pkg.getModuleFromPath("my-mod/feature/foobar.js", packagedef), "my-mod/feature/foobar");
+    });
+    it("manual regression tests", () => {
+        assert.strictEqual(pkg.getModuleFromPath("my-mod/internal/public/index.js.js", {
+            "name": "my-mod",
+            "exports": {
+                ".": "./internal/public/index.js",
+                "./public/*": "./internal/public/*.js",
+            },
+        }), "my-mod/public/index.js");
+        assert.strictEqual(pkg.getModuleFromPath("my-mod/internal/public/index.js", {
+            "name": "my-mod",
+            "exports": {
+                ".": "./internal/public/index.js",
+                "./public/*": "./internal/public/*",
+            },
+        }), "my-mod");
     });
 });
 describe("conditional import/require package exports", () => {
@@ -133,7 +147,7 @@ describe("conditional import/require package exports", () => {
         "type": "module",
     };
     it("remaps to main pkg", () => {
-        assert.strictEqual(pkg.getModuleFromPath("this-mod/main-module.js", packagedef), "this-mod");
+        assert.strictEqual(pkg.getModuleFromPath("this-mod/main-module.js", packagedef), undefined);
         assert.strictEqual(pkg.getModuleFromPath("this-mod/main-require.cjs", packagedef), "this-mod");
     });
 });

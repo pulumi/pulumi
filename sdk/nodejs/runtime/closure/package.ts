@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as fs from "fs";
 import * as upath from "upath";
 
 type Exports = string | {[key: string]: SubExports};
@@ -23,36 +22,40 @@ type PackageDefinition = {
     exports?: Exports;
 };
 
+// TODO[issue] handle https://nodejs.org/api/packages.html#package-entry-points
+//
+// Warning: Introducing the "exports" field prevents consumers of a package from using
+// any entry points that are not defined, including the package.json
+// (e.g. require("your-package/package.json"). This will likely be a breaking change.
+
 function getPackageDefinition(path: string): PackageDefinition {
     const directories =  path.split(upath.sep);
-    while(directories.length > 0) {
-        const curPath = directories.join(upath.sep);
-        const packageDefinitionPath = `${curPath}/package.json`;
-        try {
-            require.resolve(packageDefinitionPath);
-            return require(packageDefinitionPath);
-        } catch (e) {
-            // no package.json found. check next
-            directories.pop();
-            continue;
-        }
-    }
-    throw new Error(`no package.json found for ${path}`);
+    const packageDefinitionPath = `${directories[0]}/package.json`;
+    return require(packageDefinitionPath);
 }
 
-function getAllLeafStrings(objectOrPath: SubExports): string[] {
+// a module's implementations are leaves of the document tree.
+function getAllLeafStrings(objectOrPath: SubExports, opts?: RequireOpts): string[] {
     if (objectOrPath === null) {
+        // module blacklisted return no implementations
         return [];
     }
     if (typeof objectOrPath === "string") {
         return [objectOrPath];
     }
     const strings: string[] = [];
-    for (const [_, value] of Object.entries(objectOrPath)) {
-        const leaves = getAllLeafStrings(value)
+    for (const [key, value] of Object.entries(objectOrPath)) {
+        if (opts && !opts.isRequire && key === "require") {
+            continue;
+        }
+        if (opts && !opts.isImport && key === "import") {
+            continue;
+        }
+        const leaves = getAllLeafStrings(value);
         if (leaves === []) {
-            // if there's an environment where this export does not work
-            // don't allow requires from this match
+            // if there's an environment where this export does not work,
+            // don't suggest requires from this match as a more preferable path may
+            // match this file.
             return [];
         }
         strings.push(...leaves);
@@ -60,76 +63,80 @@ function getAllLeafStrings(objectOrPath: SubExports): string[] {
     return strings;
 }
 
+// from https://github.com/nodejs/node/blob/b191e66ddf/lib/internal/modules/esm/resolve.js#L686
 function patternKeyCompare(a: string, b: string) {
-  const aPatternIndex = a.indexOf('*');
-  const bPatternIndex = b.indexOf('*');
-  const baseLenA = aPatternIndex === -1 ? a.length : aPatternIndex + 1;
-  const baseLenB = bPatternIndex === -1 ? b.length : bPatternIndex + 1;
-  if (baseLenA > baseLenB) return -1;
-  if (baseLenB > baseLenA) return 1;
-  if (aPatternIndex === -1) return 1;
-  if (bPatternIndex === -1) return -1;
-  if (a.length > b.length) return -1;
-  if (b.length > a.length) return 1;
-  return 0;
+    const aPatternIndex = a.indexOf("*");
+    const bPatternIndex = b.indexOf("*");
+    const baseLenA = aPatternIndex === -1 ? a.length : aPatternIndex + 1;
+    const baseLenB = bPatternIndex === -1 ? b.length : bPatternIndex + 1;
+    if (baseLenA > baseLenB) {
+        return -1;
+    }
+    if (baseLenB > baseLenA) {
+        return 1;
+    }
+    if (aPatternIndex === -1) {
+        return 1;
+    }
+    if (bPatternIndex === -1) {
+        return -1;
+    }
+    if (a.length > b.length) {
+        return -1;
+    }
+    if (b.length > a.length) {
+        return 1;
+    }
+    return 0;
 }
-class WildcardMap {
-    private map: {[srcPrefix: string]: string}
-    private datamap: {[srcPrefix: string]: {
-        srcSuffix: string;
-        modPrefix: string;
-        modSuffix: string;
-    };};
-    private blacklist: [string, string][];
-    constructor() {
-        this.datamap = {};
-        this.map = {};
-        this.blacklist = [];
-    }
-    setBlacklist(modPattern: string) {
-        // we skip blacklisting packages
-        // all of the paths are from the require cache
-        // we just have to determine a valid path to import from
-        const [prefix, suffix] = modPattern.split('*', 2) // there is undefined behavior on more than 1 '*' https://github.com/nodejs/node/blob/b191e66/lib/internal/modules/esm/resolve.js#L664
-        this.blacklist.push([prefix, suffix || '']);
-    }
-    set(newLeaf: string, newModName: string) {
-        if (newLeaf.includes("*")) {
-            // wildcard match
-            this.setWildcard(newLeaf, newModName);
-            return;
-        }
 
-        this.map[newLeaf] = newModName;
+type SrcPrefix = string;
+type Rule = [SrcPrefix, {
+    modPrefix: string;
+    modSuffix: string;
+    srcSuffix: string;
+}];
+
+function makeRule(srcPattern: string, modPattern: string): Rule {
+    const srcSplit = srcPattern.split("*"); // NodeJS doesn't error out when provided multiple '*'.
+    const modSplit = modPattern.split("*");
+    if (srcSplit.length > 2 || modSplit.length > 2) {
+        // there is undefined behavior on more than 1 "*"
+        // see https://github.com/nodejs/node/blob/b191e66ddf/lib/internal/modules/esm/resolve.js#L664
+        throw new Error("multiple wildcards in single export target specification");
     }
-    setWildcard(srcPattern: string, modPattern: string) {
-        // Assumption: to use a wildcard pattern, each side must be wildcarded
-        const srcSplit = srcPattern.split("*"); // NodeJS doesn't error out when provided multiple '*'.
-        const modSplit = modPattern.split("*");
-        if (srcPattern.length > 2 || modSplit.length > 2) {
-            throw new Error("multiple wildcards in single export target specification")
+    const [srcPrefix, srcSuffix] = srcSplit;
+    const [modPrefix, modSuffix] = modSplit;
+    return [srcPrefix, {
+        modPrefix,
+        modSuffix: (modSuffix || ""),
+        srcSuffix: (srcSuffix || ""),
+    }];
+}
+
+class WildcardMap {
+    private map: {[srcPrefix: string]: string};
+    private rules: Rule[];
+    constructor(matches: [string, string[]][]) {
+        this.map = {};
+        const rules: Rule[] = [];
+        for (const [match, srcPaths] of matches) {
+            for (const srcPath of srcPaths) {
+                if (srcPath.includes("*")) {
+                    // wildcard match
+                    rules.push(makeRule(srcPath, match));
+                    continue;
+                }
+                this.map[srcPath] = match;
+            }
         }
-        const [srcPrefix, srcSuffix] = srcSplit;
-        const [modPrefix, modSuffix] = modSplit; // there is undefined behavior on more than 1 '*' https://github.com/nodejs/node/blob/b191e66/lib/internal/modules/esm/resolve.js#L664
-        this.datamap[srcPrefix] = {
-            modPrefix,
-            modSuffix: (modSuffix || ''),
-            srcSuffix: (srcSuffix || ''),
-        };
+        this.rules = rules.sort((a, b) => patternKeyCompare(a[0], b[0]));
     }
     get(srcName: string): string | undefined {
         if (this.map[srcName]) {
             return this.map[srcName];
         }
-        for (const [blacklistPrefix, blacklistSuffix] of this.blacklist) {
-            if ((upath.extname(srcName) ? srcName : srcName + upath.sep).startsWith(blacklistPrefix) && srcName.endsWith(blacklistSuffix)){
-                return undefined;
-            }
-        }
-        // this is a bit slow.
-        const sortedKeys = Object.keys(this.datamap).sort(patternKeyCompare)
-        for (const srcPrefix of sortedKeys) { // TODO sort in a short-circuitable manner
-            const srcRule = this.datamap[srcPrefix]
+        for (const [srcPrefix, srcRule] of this.rules) {
             if (!srcName.startsWith(srcPrefix) || !srcName.endsWith(srcRule.srcSuffix)) {
                 continue;
             }
@@ -142,55 +149,93 @@ class WildcardMap {
     }
 }
 
+function isConditionalSugar(exports: Exports, name: string) {
+    // exports sugar does not handle mixing ["./path/to/module"] path keys
+    // and ["default"|"require"|"import"] conditional keys
+    // details https://github.com/nodejs/node/blob/b191e66ddf/lib/internal/modules/esm/resolve.js#L593
+    let isSugar = false;
+    for (const key of Object.keys(exports)) {
+        if (isSugar && key.startsWith(".")) {
+            throw new Error(
+                `${name}:package.json "exports" cannot contain some keys starting with "." and some not.` +
+                " The exports object must either be an object of package subpath keys" +
+                " or an object of main entry condition name keys only."
+            );
+        }
+        if (!key.startsWith(".")) {
+            isSugar = true;
+            continue;
+        }
+    }
+    return isSugar;
+}
+
 class ModuleMap {
     readonly name: string;
     private wildcardMap: WildcardMap;
-    constructor(packageDefinition: PackageDefinition) {
-        this.name = packageDefinition.name;
-        this.wildcardMap = new WildcardMap();
-        const exports = packageDefinition.exports;
+    constructor(name: string, exports: Exports, opts?: RequireOpts){
+        this.name = name;
 
-        if (exports === undefined) {
-            return;
+        if (isConditionalSugar(exports, name)) {
+            // the exports keys are not paths meaning it is an exports sugar we need to simplify
+            exports = { ".": exports };
         }
 
-        for (const [modName, objectOrPath] of Object.entries(exports)) {
-            let newModName: string = packageDefinition.name + modName.substr(1);
-
-            if (modName === "." || !modName.startsWith(".")) {
-                newModName = packageDefinition.name;
-            }
-            const leaves = getAllLeafStrings(objectOrPath);
-            for (const leaf of leaves) {
-
-                const newLeaf = packageDefinition.name + leaf.substr(1);
-
-                this.wildcardMap.set(newLeaf, newModName);
-            }
-            if (leaves.length === 0 && newModName.includes('*')) {
-                // module not whitelisted
-                this.wildcardMap.setBlacklist(newModName);
-            }
+        const rules: [string, string[]][] = [];
+        for (const [modPath, objectOrPath] of Object.entries(exports)) {
+            const modName: string = name + modPath.substr(1);
+            const leaves = getAllLeafStrings(objectOrPath, opts);
+            rules.push([modName, leaves.map(leaf => name + leaf.substr(1))]);
         }
+        this.wildcardMap = new WildcardMap(rules);
     }
     get(srcName: string) {
         return this.wildcardMap.get(srcName);
     }
 }
 
-export function getModuleFromPath(path: string, packageDefinition?: PackageDefinition) {
+type RequireOpts = {
+    isRequire?: boolean;
+    isImport?: boolean;
+};
+
+/*
+    We need to resolve from a source file path to a valid module export.
+
+    Exports to source file is a many-to-one relationship. Reversing this is a one-to-many relationship.
+    Any of the initial exports are aliases to the same module and
+    we assume to be semantically equivalent. This makes it a one-to-any relationship.
+    for example,
+    <./package.json>
+        "exports": {
+            "./foo.js": "./lib/index.js",
+            "./bar.js": "./lib/index.js",
+        }
+    we will resolve ./lib/index.js into either ./foo.js or ./bar.js
+    a module can resolve into many files conditionally, but aliases are treated as equivalent.
+
+    Due to null specifiers for modules and this one-to-many relationship, we assume that anything with a
+    null specifier may be unreachable on a different platform and opt for a different alias to cover it if
+    it exists.
+
+    Exports ending in "/" will be deprecated by node.
+
+
+    For more details https://nodejs.org/api/esm.html#resolution-algorithm
+*/
+
+export function getModuleFromPath(path: string, packageDefinition?: PackageDefinition, opts: RequireOpts={isRequire: true}) {
     if (packageDefinition === undefined) {
         packageDefinition = getPackageDefinition(path);
     }
     if (packageDefinition.exports === undefined) {
         return path;
     }
-    const packageName = packageDefinition.name;
     if (typeof packageDefinition.exports === "string") {
-        return packageName;
+        return packageDefinition.name;
     }
     if (typeof packageDefinition.exports === "object") {
-        const modMap = new ModuleMap(packageDefinition);
+        const modMap = new ModuleMap(packageDefinition.name, packageDefinition.exports, opts);
         const modulePath = modMap.get(path);
         return modulePath;
     }
