@@ -24,7 +24,7 @@ describe("module", () => {
         assert.strictEqual(pkg.getModuleFromPath("mockpackage/lib/index.js"), "mockpackage");
     });
     it("should return undefined on unexported members", () => {
-        assert.strictEqual(pkg.getModuleFromPath("mockpackage/lib/external.js"), undefined);
+        assert.throws(() => pkg.getModuleFromPath("mockpackage/lib/external.js"));
     });
 });
 describe("To exclude private subfolders from patterns, null targets can be used", () => {
@@ -147,7 +147,7 @@ describe("conditional import/require package exports", () => {
         "type": "module",
     };
     it("remaps to main pkg", () => {
-        assert.strictEqual(pkg.getModuleFromPath("this-mod/main-module.js", packagedef), undefined);
+        assert.throws(() => pkg.getModuleFromPath("this-mod/main-module.js", packagedef));
         assert.strictEqual(pkg.getModuleFromPath("this-mod/main-require.cjs", packagedef), "this-mod");
     });
 });
