@@ -146,4 +146,4 @@ describe("error cases", () => {
     it("returns the original module if package.json not found", () => {
         assert.strictEqual(pkg.getModuleFromPath("this-mod/main-require.cjs"), "this-mod/main-require.cjs");
     });
-})
+});
