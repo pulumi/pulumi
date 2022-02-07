@@ -28,25 +28,29 @@ type PackageDefinition = {
 // any entry points that are not defined, including the package.json
 // (e.g. require("your-package/package.json"). This will likely be a breaking change.
 
-function getPackageDefinition(path: string): PackageDefinition {
-    const directories =  path.split(upath.sep);
-    let last: string | undefined = undefined;
-    let lastFullPath: string | undefined = undefined;
-    while(directories.length > 0) {
-        const curPath = directories.join(upath.sep);
-        try {
-            lastFullPath = require.resolve(curPath);
-            last = curPath;
-        } catch (e) {
-            // current path is not a module
+function getPackageDefinition(path: string): PackageDefinition | undefined {
+    try {
+        const directories =  path.split(upath.sep);
+        let last: string | undefined = undefined;
+        let lastFullPath: string | undefined = undefined;
+        while(directories.length > 0) {
+            const curPath = directories.join(upath.sep);
+            try {
+                lastFullPath = require.resolve(curPath);
+                last = curPath;
+            } catch (e) {
+                // current path is not a module
+            }
+            directories.pop();
         }
-        directories.pop();
+        if (last === undefined || lastFullPath === undefined) {
+            throw new Error(`no package.json found for ${path}`);
+        }
+        const packageDefinitionAbsPath = lastFullPath.slice(0, lastFullPath.indexOf(last)) + last + "/package.json";
+        return require(packageDefinitionAbsPath);
+    } catch (err) {
+        return undefined;
     }
-    if (last === undefined || lastFullPath === undefined) {
-        throw new Error(`no package.json found for ${path}`);
-    }
-    const packageDefinitionAbsPath = lastFullPath.slice(0, lastFullPath.indexOf(last)) + last + "/package.json";
-    return require(packageDefinitionAbsPath);
 }
 
 // a module's implementations are leaves of the document tree.
@@ -244,8 +248,9 @@ type RequireOpts = {
 */
 
 export function getModuleFromPath(path: string, packageDefinition?: PackageDefinition, opts: RequireOpts={isRequire: true}) {
+    packageDefinition = packageDefinition || getPackageDefinition(path);
     if (packageDefinition === undefined) {
-        packageDefinition = getPackageDefinition(path);
+        return path;
     }
     if (packageDefinition.exports === undefined) {
         return path;
@@ -258,6 +263,5 @@ export function getModuleFromPath(path: string, packageDefinition?: PackageDefin
         const modulePath = modMap.get(path);
         return modulePath;
     }
-
     return path;
 }

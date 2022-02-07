@@ -23,7 +23,7 @@ describe("module", () => {
         assert.throws(() => pkg.getModuleFromPath("mockpackage/lib/external.js"));
     });
 });
-describe("To exclude private subfolders from patterns, null targets can be used", () => {
+describe("disregard null targets", () => {
     // ./node_modules/es-module-package/package.json
     const packagedef = {
         "name": "es-module-package",
@@ -141,3 +141,9 @@ describe("conditional import/require package exports", () => {
         assert.strictEqual(pkg.getModuleFromPath("this-mod/main-require.cjs", packagedef), "this-mod");
     });
 });
+
+describe("error cases", () => {
+    it("returns the original module if package.json not found", () => {
+        assert.strictEqual(pkg.getModuleFromPath("this-mod/main-require.cjs"), "this-mod/main-require.cjs");
+    });
+})
