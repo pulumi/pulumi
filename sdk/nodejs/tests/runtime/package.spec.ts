@@ -15,10 +15,6 @@
 import * as assert from "assert";
 import * as pkg from "../../runtime/closure/package";
 
-function assertElementIn<T>(element: T, collection: T[]) {
-    return assert.strictEqual(true, collection.includes(element));
-}
-
 describe("module", () => {
     it("remaps exports correctly for mockpackage", () => {
         assert.strictEqual(pkg.getModuleFromPath("mockpackage/lib/index.js"), "mockpackage");
@@ -37,14 +33,8 @@ describe("To exclude private subfolders from patterns, null targets can be used"
             "./features/private-internal/*": null,
         },
     };
-    it(`hides null(blacklisted) wildcard paths`, () => {
-        //import featureInternal from 'es-module-package/features/private-internal/m';
-        // Throws: ERR_PACKAGE_PATH_NOT_EXPORTED
-        assert.strictEqual(pkg.getModuleFromPath("es-module-package/src/features/private-inter.js", packagedef), "es-module-package/features/private-inter");
-    });
     it(`handles wildcard paths`, () => {
-        //import featureX from 'es-module-package/features/x';
-        // Loads ./node_modules/es-module-package/src/features/x.js
+        assert.strictEqual(pkg.getModuleFromPath("es-module-package/src/features/private-inter.js", packagedef), "es-module-package/features/private-inter");
         assert.strictEqual(pkg.getModuleFromPath("es-module-package/src/features/x.js", packagedef), "es-module-package/features/x");
         assert.strictEqual(pkg.getModuleFromPath("es-module-package/src/features/y/z/foo/bar/baz.js", packagedef), "es-module-package/features/y/z/foo/bar/baz");
     });

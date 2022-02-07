@@ -30,8 +30,23 @@ type PackageDefinition = {
 
 function getPackageDefinition(path: string): PackageDefinition {
     const directories =  path.split(upath.sep);
-    const packageDefinitionPath = `${directories[0]}/package.json`;
-    return require(packageDefinitionPath);
+    let last: string | undefined = undefined;
+    let lastFullPath: string | undefined = undefined;
+    while(directories.length > 0) {
+        const curPath = directories.join(upath.sep);
+        try {
+            lastFullPath = require.resolve(curPath);
+            last = curPath
+        } catch (e) {
+            // current path is not a module
+        }
+        directories.pop();
+    }
+    if (last === undefined || lastFullPath === undefined) {
+        throw new Error(`no package.json found for ${path}`);
+    }
+    const packageDefinitionAbsPath = lastFullPath.slice(0, lastFullPath.indexOf(last)) + last + '/package.json'
+    return require(packageDefinitionAbsPath);
 }
 
 // a module's implementations are leaves of the document tree.
