@@ -163,7 +163,13 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
-			importSet.Add("@pulumi/" + pkg)
+			pkgName := "@pulumi/" + pkg
+			if r.Schema != nil && r.Schema.Package != nil {
+				if info, ok := r.Schema.Package.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
+					pkgName = info.PackageName
+				}
+			}
+			importSet.Add(pkgName)
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {

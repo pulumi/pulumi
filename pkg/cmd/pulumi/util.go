@@ -29,10 +29,11 @@ import (
 	"strconv"
 	"strings"
 
-	survey "github.com/AlecAivazis/survey/v2"
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
 
+	survey "gopkg.in/AlecAivazis/survey.v1"
+	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	git "gopkg.in/src-d/go-git.v4"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -362,6 +363,10 @@ func chooseStack(
 		current = currStack.Ref().String()
 	}
 
+	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
+	surveycore.DisableColor = true
+	surveycore.QuestionIcon = ""
+	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a stack"
 	if offerNew {
 		message += ", or create a new one:"
@@ -372,12 +377,12 @@ func chooseStack(
 
 	cmdutil.EndKeypadTransmitMode()
 
-	option, err := display.AskSelect(survey.Select{
+	var option string
+	if err = survey.AskOne(&survey.Select{
 		Message: message,
 		Options: options,
 		Default: current,
-	}, opts)
-	if err != nil {
+	}, &option, nil); err != nil {
 		return nil, errors.New(chooseStackErr)
 	}
 

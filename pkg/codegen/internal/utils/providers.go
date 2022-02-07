@@ -12,74 +12,28 @@ func GetSchema(schemaDirectoryPath, providerName string) ([]byte, error) {
 	return ioutil.ReadFile(filepath.Join(schemaDirectoryPath, providerName+".json"))
 }
 
-func AWS(schemaDirectoryPath string) (plugin.Provider, error) {
-	schema, err := GetSchema(schemaDirectoryPath, "aws")
-	if err != nil {
-		return nil, err
+type ProviderLoader func(string) (plugin.Provider, error)
+
+func NewProviderLoader(pkg string) ProviderLoader {
+	return func(schemaDirectoryPath string) (plugin.Provider, error) {
+		schema, err := GetSchema(schemaDirectoryPath, pkg)
+		if err != nil {
+			return nil, err
+		}
+		return &deploytest.Provider{
+			GetSchemaF: func(version int) ([]byte, error) {
+				return schema, nil
+			},
+		}, nil
 	}
-	return &deploytest.Provider{
-		GetSchemaF: func(version int) ([]byte, error) {
-			return schema, nil
-		},
-	}, nil
 }
 
-func AwsNative(schemaDirectoryPath string) (plugin.Provider, error) {
-	schema, err := GetSchema(schemaDirectoryPath, "aws-native")
-	if err != nil {
-		return nil, err
-	}
-	return &deploytest.Provider{
-		GetSchemaF: func(version int) ([]byte, error) {
-			return schema, nil
-		},
-	}, nil
-}
-
-func Azure(schemaDirectoryPath string) (plugin.Provider, error) {
-	schema, err := GetSchema(schemaDirectoryPath, "azure")
-	if err != nil {
-		return nil, err
-	}
-	return &deploytest.Provider{
-		GetSchemaF: func(version int) ([]byte, error) {
-			return schema, nil
-		},
-	}, nil
-}
-
-func AzureNative(schemaDirectoryPath string) (plugin.Provider, error) {
-	schema, err := GetSchema(schemaDirectoryPath, "azure-native")
-	if err != nil {
-		return nil, err
-	}
-	return &deploytest.Provider{
-		GetSchemaF: func(version int) ([]byte, error) {
-			return schema, nil
-		},
-	}, nil
-}
-
-func Random(schemaDirectoryPath string) (plugin.Provider, error) {
-	schema, err := GetSchema(schemaDirectoryPath, "random")
-	if err != nil {
-		return nil, err
-	}
-	return &deploytest.Provider{
-		GetSchemaF: func(version int) ([]byte, error) {
-			return schema, nil
-		},
-	}, nil
-}
-
-func Kubernetes(schemaDirectoryPath string) (plugin.Provider, error) {
-	schema, err := GetSchema(schemaDirectoryPath, "kubernetes")
-	if err != nil {
-		return nil, err
-	}
-	return &deploytest.Provider{
-		GetSchemaF: func(version int) ([]byte, error) {
-			return schema, nil
-		},
-	}, nil
-}
+var (
+	AWS         = NewProviderLoader("aws")
+	AwsNative   = NewProviderLoader("aws")
+	Azure       = NewProviderLoader("azure")
+	AzureNative = NewProviderLoader("azure-native")
+	Random      = NewProviderLoader("random")
+	Kubernetes  = NewProviderLoader("kubernetes")
+	Other       = NewProviderLoader("other")
+)

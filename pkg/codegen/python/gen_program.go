@@ -120,17 +120,36 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	g.Fprintln(w, "import pulumi")
 
 	// Accumulate other imports for the various providers. Don't emit them yet, as we need to sort them later on.
-	importSet := codegen.NewStringSet("pulumi")
+	type Import struct {
+		// Use an "import ${KEY} as ${.Pkg}"
+		ImportAs bool
+		// Only relevant for when ImportAs=true
+		Pkg string
+	}
+	importSet := map[string]Import{}
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
-			importSet.Add("pulumi_" + makeValidIdentifier(pkg))
+			packageName := "pulumi_" + makeValidIdentifier(pkg)
+			if r.Schema != nil && r.Schema.Package != nil {
+				if info, ok := r.Schema.Package.Language["python"].(PackageInfo); ok && info.PackageName != "" {
+					packageName = info.PackageName
+				}
+			}
+			importSet[packageName] = Import{ImportAs: true, Pkg: makeValidIdentifier(pkg)}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
 				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {
 					for _, importPackage := range i {
-						importSet.Add(importPackage)
+						importAs := strings.HasPrefix(importPackage, "pulumi_")
+						var maybePkg string
+						if importAs {
+							maybePkg = importPackage[len("pulumi_"):]
+						}
+						importSet[importPackage] = Import{
+							ImportAs: importAs,
+							Pkg:      maybePkg}
 					}
 				}
 				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name); ok {
@@ -143,12 +162,17 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 
 	var imports []string
-	for _, pkg := range importSet.SortedValues() {
+	importSetNames := codegen.NewStringSet()
+	for k := range importSet {
+		importSetNames.Add(k)
+	}
+	for _, pkg := range importSetNames.SortedValues() {
 		if pkg == "pulumi" {
 			continue
 		}
-		if strings.HasPrefix(pkg, "pulumi_") {
-			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, pkg[len("pulumi_"):]))
+		control := importSet[pkg]
+		if control.ImportAs {
+			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, control.Pkg))
 		} else {
 			imports = append(imports, fmt.Sprintf("import %s", pkg))
 		}
