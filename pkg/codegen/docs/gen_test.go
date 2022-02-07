@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -509,5 +509,6 @@ func TestGeneratePackage(t *testing.T) {
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "docs",
 		GenPackage: generatePackage,
+		TestCases:  test.PulumiPulumiSDKTests,
 	})
 }

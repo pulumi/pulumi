@@ -31,7 +31,7 @@ import (
 
 func readSchemaFile(file string) (pkgSpec PackageSpec) {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", file))
+	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
 	if err != nil {
 		panic(err)
 	}
@@ -191,7 +191,7 @@ func TestImportResourceRef(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Read in, decode, and import the schema.
 			schemaBytes, err := ioutil.ReadFile(
-				filepath.Join("..", "internal", "test", "testdata", tt.schemaFile))
+				filepath.Join("..", "testing", "test", "testdata", tt.schemaFile))
 			assert.NoError(t, err)
 
 			var pkgSpec PackageSpec

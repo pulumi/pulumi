@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
@@ -71,13 +71,14 @@ func TestGeneratePackage(t *testing.T) {
 			"go/compile": typeCheckGeneratedPackage,
 			"go/test":    testGeneratedPackage,
 		},
+		TestCases: test.PulumiPulumiSDKTests,
 	})
 }
 
 func inferModuleName(codeDir string) string {
 	// For example for this path:
 	//
-	// codeDir = "../internal/test/testdata/external-resource-schema/go/"
+	// codeDir = "../testing/test/testdata/external-resource-schema/go/"
 	//
 	// We will generate "$codeDir/go.mod" using
 	// `external-resource-schema` as the module name so that it
@@ -137,7 +138,7 @@ func TestGenerateTypeNames(t *testing.T) {
 
 func readSchemaFile(file string) *schema.Package {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", file))
+	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
 	if err != nil {
 		panic(err)
 	}
