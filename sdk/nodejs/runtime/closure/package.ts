@@ -36,7 +36,7 @@ function getPackageDefinition(path: string): PackageDefinition {
         const curPath = directories.join(upath.sep);
         try {
             lastFullPath = require.resolve(curPath);
-            last = curPath
+            last = curPath;
         } catch (e) {
             // current path is not a module
         }
@@ -45,7 +45,7 @@ function getPackageDefinition(path: string): PackageDefinition {
     if (last === undefined || lastFullPath === undefined) {
         throw new Error(`no package.json found for ${path}`);
     }
-    const packageDefinitionAbsPath = lastFullPath.slice(0, lastFullPath.indexOf(last)) + last + '/package.json'
+    const packageDefinitionAbsPath = lastFullPath.slice(0, lastFullPath.indexOf(last)) + last + "/package.json";
     return require(packageDefinitionAbsPath);
 }
 
