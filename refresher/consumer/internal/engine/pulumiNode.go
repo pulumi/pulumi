@@ -3,9 +3,11 @@ package engine
 import (
 	"github.com/infralight/go-kit/flywheel/arn"
 	"github.com/infralight/pulumi/refresher"
+	"github.com/infralight/pulumi/refresher/utils"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/rs/zerolog"
+	"time"
 )
 
 
@@ -25,6 +27,12 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 		s3Node["projectName"] = projectName
 		s3Node["organizationName"] = organizationName
 		s3Node["isOrchestrator"] = false
+		s3Node["pulumiType"] = metadata.Type.String()
+		s3Node["updatedAt"] = time.Now().Unix()
+		if terraformType, ok := utils.TypesMapping[metadata.Type.String()]; ok {
+			s3Node["objectType"] = terraformType
+		}
+
 
 		switch metadata.Op {
 		case deploy.OpSame:
@@ -58,19 +66,21 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 			}
 			case deploy.OpUpdate:
 				newState := *metadata.New
-				s3Node["pulumiState"] = "modified"
-				s3Node["arn"] = newState.Outputs["arn"].V
-				region, err := getRegionFromArn(s3Node["arn"].(string))
-				if err != nil {
-					logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
-						Str("stackName", stackName).Str("OrganizationName", organizationName).Str("arn",s3Node["arn"].(string) ).Msg("failed to parse arn")
-					continue
-				}
-				s3Node["region"] = region
-				s3Nodes = append(s3Nodes, s3Node)
+				if len(newState.Outputs) > 0 {
+					s3Node["pulumiState"] = "modified"
+					s3Node["arn"] = newState.Outputs["arn"].V
+					region, err := getRegionFromArn(s3Node["arn"].(string))
+					if err != nil {
+						logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
+							Str("stackName", stackName).Str("OrganizationName", organizationName).Str("arn",s3Node["arn"].(string) ).Msg("failed to parse arn")
+						continue
+					}
+					s3Node["region"] = region
+					s3Nodes = append(s3Nodes, s3Node)
 
-				drifts := refresher.CalcDrift(metadata)
-				s3Node["pulumiDrifts"] = drifts
+					drifts := refresher.CalcDrift(metadata)
+					s3Node["pulumiDrifts"] = drifts
+				}
 		}
 
 	}
