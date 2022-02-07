@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/infralight/pulumi/refresher"
 	"github.com/infralight/pulumi/refresher/common"
 	"github.com/infralight/pulumi/refresher/config"
 	"github.com/infralight/pulumi/refresher/consumer/dispatcher"
@@ -128,26 +127,4 @@ func main() {
 			MaxMsg:    cfg.MaxMsg,
 		}, &logger, consumer, engine.ProcessMessage).Start(context.Background())
 	}
-
-	var ProjectName string
-	ProjectName = "firefly"
-	os.Setenv("ProjectName", ProjectName)
-	var c = refresher.NewClient(context.Background(), "https://api.pulumi.com")
-
-	//Login
-	var b, err = c.Login()
-	if err != nil {
-		fmt.Errorf("could not connect to pulumi. error=%w", err)
-	}
-
-	stacks, token, err := c.ListStacks(b)
-	if err != nil {
-		fmt.Errorf("could not get list stacks. error=%w", err)
-	}
-
-	fmt.Println(fmt.Sprintf("--DEBUG-- Token %s", token))
-
-	//Something
-	c.TempRunner(b, stacks)
-
 }
