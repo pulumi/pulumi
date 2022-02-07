@@ -28,8 +28,10 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -926,7 +928,7 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 
 // checks all possible sources of providers and merges them with preference given to the most specific
 func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderResource,
-	providers map[string]ProviderResource) (map[string]ProviderResource, error) {
+	providerMap map[string]ProviderResource) (map[string]ProviderResource, error) {
 
 	// copy parent providers
 	result := make(map[string]ProviderResource)
@@ -937,14 +939,18 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 	}
 
 	// copy provider map
-	for k, v := range providers {
+	for k, v := range providerMap {
 		result[k] = v
 	}
 
 	// copy specific provider, if any
 	if provider != nil {
-		pkg := getPackage(t)
-		if _, alreadyExists := providers[pkg]; alreadyExists {
+		tk, err := tokens.ParseTypeToken(t)
+		if err != nil {
+			return nil, fmt.Errorf("Context.mergeProviders t: %w", err)
+		}
+		pkg := providers.GetProviderPackage(tk).String()
+		if _, alreadyExists := providerMap[pkg]; alreadyExists {
 			err := ctx.Log.Warn(fmt.Sprintf("Provider for %s conflicts with providers map. %s %s", pkg,
 				"This will become an error in july 2022.",
 				"See https://github.com/pulumi/pulumi/issues/8799 for more details.",
