@@ -280,6 +280,9 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv Secret
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
+//
+// NOTE: apitype.ResourceV3 cannot be deserialized by DeserializeResource until
+// it roundtrips through a serializer.
 func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bool) (apitype.ResourceV3, error) {
 	contract.Assert(res != nil)
 	contract.Assertf(string(res.URN) != "", "Unexpected empty resource resource.URN")

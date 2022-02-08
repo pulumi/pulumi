@@ -34,6 +34,64 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+func TestRoundTripResourceWithSecretID(t *testing.T) {
+	id := resource.ID("super-secret-id")
+	plain := resource.NewStringProperty(id.String())
+	secret := resource.NewSecretProperty(
+		&resource.Secret{Element: plain},
+	)
+	for name, v := range map[string]resource.PropertyValue{
+		"plain":  plain,
+		"secret": secret,
+	} {
+		t.Run(name, func(t *testing.T) {
+			crypt := config.NewSymmetricCrypter([]byte(strings.Repeat("just test crypt.", 2)))
+			res := resource.NewState(
+				tokens.Type("Test"),
+				resource.NewURN(
+					tokens.QName("test"),
+					tokens.PackageName("resource/test"),
+					tokens.Type(""),
+					tokens.Type("Test"),
+					tokens.QName("resource-x"),
+				), true, false,
+				id,
+				resource.NewPropertyMapFromMap(map[string]interface{}{}),
+				resource.PropertyMap{
+					resource.PropertyKey("id"): v,
+				},
+				"", false, false,
+				[]resource.URN{
+					resource.URN("foo:bar:baz"),
+					resource.URN("foo:bar:boo"),
+				}, []string{}, "", nil, false, nil, nil, nil, "", 0,
+			)
+
+			assert.Equal(t, res.Outputs["id"].IsSecret(), name == "secret")
+
+			dep, err := SerializeResource(res, crypt, false /* showSecrets */)
+			assert.NoError(t, err)
+			// To round trip successfully, we need to pass through json
+			bytes, err := json.Marshal(dep)
+			assert.NoError(t, err)
+			dep = apitype.ResourceV3{}
+			err = json.Unmarshal(bytes, &dep)
+			assert.NoError(t, err)
+
+			if name == "secret" {
+				assert.Equal(t, resource.SecretSig, string(dep.ID), "Should not find id as SecretSig")
+			} else {
+				assert.Equal(t, id, dep.ID)
+			}
+
+			res, err = DeserializeResource(dep, crypt, crypt)
+			assert.NoError(t, err)
+
+			assert.Equal(t, id, res.ID, "Should find ID back again")
+		})
+	}
+}
+
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
 func TestDeploymentSerialization(t *testing.T) {
 	res := resource.NewState(
