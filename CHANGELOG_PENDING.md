@@ -1,6 +1,6 @@
 ### Improvements
 
-### Bug Fixes
+Add support for downloading plugin from private GitHub releases
 
 - [sdk/go] - Normalize merge behavior for `ResourceOptions`, inline
   with other SDKs. See https://github.com/pulumi/pulumi/issues/8796 for more
