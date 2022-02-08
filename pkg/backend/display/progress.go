@@ -291,6 +291,9 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 		spinner, ticker = cmdutil.NewSpinnerAndTicker(
 			fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
 			nil, 1 /*timesPerSecond*/)
+	} else if true {
+		spinner = &nonInteractiveSpinner{}
+		ticker = time.NewTicker(8 * time.Second)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)

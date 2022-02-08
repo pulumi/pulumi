@@ -143,6 +143,16 @@ func (s *nopSpinner) Tick() {
 func (s *nopSpinner) Reset() {
 }
 
+type nonInteractiveSpinner struct {
+}
+
+func (s *nonInteractiveSpinner) Tick() {
+	fmt.Println("tick...")
+}
+
+func (s *nonInteractiveSpinner) Reset() {
+}
+
 // isRootStack returns true if the step pertains to the rootmost stack component.
 func isRootStack(step engine.StepEventMetadata) bool {
 	return isRootURN(step.URN)
