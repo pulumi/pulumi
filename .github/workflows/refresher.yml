@@ -1,0 +1,69 @@
+name: Build drifts docker images to ECR
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Environment to deploy drifts on [stag|prod|*]'
+        required: true
+        default: ''
+jobs:
+  build-staging:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.deploy_environment == 'stag' || github.event.inputs.deploy_environment == '*' }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure git for private modules
+        run: git config --global url."https://${{ secrets.PAT }}:x-oauth-basic@github.com".insteadOf "https://github.com"
+      - name: Configure AWS credentials for staging
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.CI_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.CI_AWS_SECRET_ACCESS_KEY }}
+          aws-region: "us-west-2"
+      - name: Amazon ECR "Login" Action for GitHub Actions
+        uses: aws-actions/amazon-ecr-login@v1
+        id: login-ecr
+      - name: Build and push image to staging
+        env:
+          GOPRIVATE: "github.com/infralight/*"
+        run: make docker-build tag-version publish-version GIT_HASH=${GITHUB_SHA::6}  IMG=094724549126.dkr.ecr.us-west-2.amazonaws.com/pulumi_mapper ACCESS_TOKEN_USR=${{ secrets.ACCESS_TOKEN_USER }}-infralight ACCESS_TOKEN_PWD=${{ secrets.PAT }}
+      - name: Slack Notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_COLOR: ${{ job.status }}
+          SLACK_ICON: https://cncf-branding.netlify.app/img/projects/argo/icon/color/argo-icon-color.png
+          SLACK_MESSAGE: "Drifts ArgoCD successfully deployed from ${{ github.ref }} to staging, status: ${{ job.status }}"
+          SLACK_TITLE: "Staging: Drifts ArgoCD applications deployment notification, status: ${{ job.status }}"
+          SLACK_USERNAME: cicdBot
+          SLACK_WEBHOOK: ${{ secrets.STAG_DEPLOYMENT_SLACK_CHANNEL }}
+  build-production:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.deploy_environment == 'prod' || github.event.inputs.deploy_environment == '*' }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure git for private modules
+        run: git config --global url."https://${{ secrets.PAT }}:x-oauth-basic@github.com".insteadOf "https://github.com"
+      - name: Configure AWS credentials for staging
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.CI_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.CI_AWS_SECRET_ACCESS_KEY }}
+          aws-region: "us-east-1"
+      - name: Amazon ECR "Login" Action for GitHub Actions
+        uses: aws-actions/amazon-ecr-login@v1
+        id: login-ecr
+      - name: Build and push image to Prod
+        env:
+          GOPRIVATE: "github.com/infralight/*"
+        run: make docker-build tag-version publish GIT_HASH=${GITHUB_SHA::6}  IMG=094724549126.dkr.ecr.us-east-1.amazonaws.com/pulumi_mapper ACCESS_TOKEN_USR=${{ secrets.ACCESS_TOKEN_USER }}-infralight ACCESS_TOKEN_PWD=${{ secrets.PAT }}
+      - name: Slack Notification
+        uses: rtCamp/action-slack-notify@v2
+        if: always()
+        env:
+          SLACK_COLOR: ${{ job.status }}
+          SLACK_ICON: https://cncf-branding.netlify.app/img/projects/argo/icon/color/argo-icon-color.png
+          SLACK_MESSAGE: "Drifts ArgoCD deployed from ${{ github.ref }} to production, status: ${{ job.status }}"
+          SLACK_TITLE: "Production: Drifts ArgoCD applications deployment notification, status: ${{ job.status }}"
+          SLACK_USERNAME: cicdBot
+          SLACK_WEBHOOK: ${{ secrets.PROD_DEPLOYMENT_SLACK_CHANNEL }}

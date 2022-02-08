@@ -22,9 +22,14 @@
   with --save-plan. That plan can then be read in by up with --plan and is used to ensure
   only the expected operations happen.
   [#8448](https://github.com/pulumi/pulumi/pull/8448)
-  
+
 - [cli] - Support wildcards for `pulumi up --target <urn>` and similar commands.
-  [#8883](https://github.com/pulumi/pulumi/pull/8883)
+  [#8883](https://github.com/pulumi/pulumi/pull/8883).
+
+- [cli/import] - The import command now takes an extra argument --properties to instruct the engine which
+  properties to use for the import. This can be used to import resources which the engine couldn't automaticly
+  infer the correct property set for.
+  [#8846](https://github.com/pulumi/pulumi/pull/8846)
 
 ## Bug Fixes
 
@@ -42,6 +47,3 @@
 - [cli] The engine will allow a resource to be replaced if either it's old or new state
   (or both) is not protected.
   [#8873](https://github.com/pulumi/pulumi/pull/8873)
-
-- [cli] - Fixed CLI duplicating prompt question.
-  [#8858](https://github.com/pulumi/pulumi/pull/8858)

@@ -47,7 +47,7 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}
-	return persister.backend.client.PatchUpdateCheckpoint(persister.context, persister.update, deployment, token)
+	return persister.backend.BackendClient.PatchUpdateCheckpoint(persister.context, persister.update, deployment, token)
 }
 
 var _ backend.SnapshotPersister = (*cloudSnapshotPersister)(nil)

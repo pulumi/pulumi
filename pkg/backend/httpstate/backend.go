@@ -113,10 +113,10 @@ type Backend interface {
 }
 
 type CloudBackend struct {
-	d              diag.Sink
-	url            string
-	client         *client.Client
-	currentProject *workspace.Project
+	D              diag.Sink
+	Url            string
+	BackendClient         *client.Client
+	CurrentProject *workspace.Project
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -138,10 +138,10 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 	}
 
 	return &CloudBackend{
-		d:              d,
-		url:            cloudURL,
-		client:         client.NewClient(cloudURL, apiToken, d),
-		currentProject: currentProject,
+		D:              d,
+		Url:            cloudURL,
+		BackendClient:         client.NewClient(cloudURL, apiToken, d),
+		CurrentProject: currentProject,
 	}, nil
 }
 
@@ -386,19 +386,19 @@ func (b *CloudBackend) StackConsoleURL(stackRef backend.StackReference) (string,
 }
 
 func (b *CloudBackend) Name() string {
-	if b.url == PulumiCloudURL {
+	if b.Url == PulumiCloudURL {
 		return "pulumi.com"
 	}
 
-	return b.url
+	return b.Url
 }
 
 func (b *CloudBackend) URL() string {
 	user, err := b.CurrentUser()
 	if err != nil {
-		return cloudConsoleURL(b.url)
+		return cloudConsoleURL(b.Url)
 	}
-	return cloudConsoleURL(b.url, user)
+	return cloudConsoleURL(b.Url, user)
 }
 
 func (b *CloudBackend) CurrentUser() (string, error) {
@@ -415,10 +415,12 @@ func (b *CloudBackend) currentUser(ctx context.Context) (string, error) {
 		return account.Username, nil
 	}
 	logging.V(1).Infof("no username for access token")
-	return b.client.GetPulumiAccountName(ctx)
+	return b.BackendClient.GetPulumiAccountName(ctx)
 }
 
-func (b *CloudBackend) CloudURL() string { return b.url }
+func (b *CloudBackend) CloudURL() string { return b.Url }
+
+
 
 func (b *CloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackReference, error) {
 	split := strings.Split(s, "/")
@@ -468,12 +470,12 @@ func (b *CloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 
 func (b *CloudBackend) ListPolicyGroups(ctx context.Context, orgName string, inContToken backend.ContinuationToken) (
 	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error) {
-	return b.client.ListPolicyGroups(ctx, orgName, inContToken)
+	return b.BackendClient.ListPolicyGroups(ctx, orgName, inContToken)
 }
 
 func (b *CloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inContToken backend.ContinuationToken) (
 	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error) {
-	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
+	return b.BackendClient.ListPolicyPacks(ctx, orgName, inContToken)
 }
 
 // SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
@@ -665,7 +667,7 @@ func (b *CloudBackend) DoesProjectExist(ctx context.Context, projectName string)
 		return false, err
 	}
 
-	return b.client.DoesProjectExist(ctx, owner, projectName)
+	return b.BackendClient.DoesProjectExist(ctx, owner, projectName)
 }
 
 func (b *CloudBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
@@ -674,7 +676,7 @@ func (b *CloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 		return nil, err
 	}
 
-	stack, err := b.client.GetStack(ctx, stackID)
+	stack, err := b.BackendClient.GetStack(ctx, stackID)
 	if err != nil {
 		// If this was a 404, return nil, nil as per this method's contract.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusNotFound {
@@ -706,7 +708,7 @@ func (b *CloudBackend) CreateStack(
 		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 
-	apistack, err := b.client.CreateStack(ctx, stackID, tags)
+	apistack, err := b.BackendClient.CreateStack(ctx, stackID, tags)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
@@ -747,7 +749,7 @@ func (b *CloudBackend) ListStacks(
 		TagValue:     filter.TagValue,
 	}
 
-	apiSummaries, outContToken, err := b.client.ListStacks(ctx, clientFilter, inContToken)
+	apiSummaries, outContToken, err := b.BackendClient.ListStacks(ctx, clientFilter, inContToken)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -755,9 +757,9 @@ func (b *CloudBackend) ListStacks(
 	// Convert []apitype.StackSummary into []backend.StackSummary.
 	var backendSummaries []backend.StackSummary
 	for _, apiSummary := range apiSummaries {
-		backendSummary := cloudStackSummary{
-			summary: apiSummary,
-			b:       b,
+		backendSummary := CloudStackSummary{
+			Summary: apiSummary,
+			B:       b,
 		}
 		backendSummaries = append(backendSummaries, backendSummary)
 	}
@@ -771,7 +773,7 @@ func (b *CloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 		return false, err
 	}
 
-	return b.client.DeleteStack(ctx, stackID, force)
+	return b.BackendClient.DeleteStack(ctx, stackID, force)
 }
 
 func (b *CloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
@@ -821,7 +823,7 @@ func (b *CloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 		return nil, errors.New(errMsg + errMsgSuffix)
 	}
 
-	if err = b.client.RenameStack(ctx, stackID, newIdentity); err != nil {
+	if err = b.BackendClient.RenameStack(ctx, stackID, newIdentity); err != nil {
 		return nil, err
 	}
 	return newRef, nil
@@ -882,7 +884,7 @@ func (b *CloudBackend) createAndStartUpdate(
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
-	update, reqdPolicies, err := b.client.CreateUpdate(
+	update, reqdPolicies, err := b.BackendClient.CreateUpdate(
 		ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
@@ -902,7 +904,7 @@ func (b *CloudBackend) createAndStartUpdate(
 	//
 	for _, policy := range reqdPolicies {
 		op.Opts.Engine.RequiredPolicies = append(
-			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, policy, update.Owner))
+			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.BackendClient, policy, update.Owner))
 	}
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
@@ -911,7 +913,7 @@ func (b *CloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", fmt.Errorf("getting stack tags: %w", err)
 	}
-	version, token, err := b.client.StartUpdate(ctx, update, tags)
+	version, token, err := b.BackendClient.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 			conflict := backend.ConflictingUpdateError{Err: err}
@@ -1086,7 +1088,7 @@ func (b *CloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend
 	if err != nil {
 		return err
 	}
-	stack, err := b.client.GetStack(ctx, stackID)
+	stack, err := b.BackendClient.GetStack(ctx, stackID)
 	if err != nil {
 		return err
 	}
@@ -1103,7 +1105,7 @@ func (b *CloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend
 		UpdateKind:      apitype.UpdateUpdate,
 		UpdateID:        stack.ActiveUpdate,
 	}
-	return b.client.CancelUpdate(ctx, updateID)
+	return b.BackendClient.CancelUpdate(ctx, updateID)
 }
 
 func (b *CloudBackend) GetHistory(
@@ -1116,7 +1118,7 @@ func (b *CloudBackend) GetHistory(
 		return nil, err
 	}
 
-	updates, err := b.client.GetStackUpdates(ctx, stack, pageSize, page)
+	updates, err := b.BackendClient.GetStackUpdates(ctx, stack, pageSize, page)
 	if err != nil {
 		return nil, err
 	}
@@ -1154,7 +1156,7 @@ func (b *CloudBackend) GetLatestConfiguration(ctx context.Context,
 		return nil, err
 	}
 
-	cfg, err := b.client.GetLatestConfiguration(ctx, stackID)
+	cfg, err := b.BackendClient.GetLatestConfiguration(ctx, stackID)
 	switch {
 	case err == client.ErrNoPreviousDeployment:
 		return nil, backend.ErrNoPreviousDeployment
@@ -1238,7 +1240,7 @@ func (b *CloudBackend) exportDeployment(
 		return nil, err
 	}
 
-	deployment, err := b.client.ExportStackDeployment(ctx, stack, version)
+	deployment, err := b.BackendClient.ExportStackDeployment(ctx, stack, version)
 	if err != nil {
 		return nil, err
 	}
@@ -1254,7 +1256,7 @@ func (b *CloudBackend) ImportDeployment(ctx context.Context, stack backend.Stack
 		return err
 	}
 
-	update, err := b.client.ImportStackDeployment(ctx, stackID, deployment)
+	update, err := b.BackendClient.ImportStackDeployment(ctx, stackID, deployment)
 	if err != nil {
 		return err
 	}
@@ -1298,7 +1300,7 @@ func (b *CloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 
 // Client returns a client object that may be used to interact with this backend.
 func (b *CloudBackend) Client() *client.Client {
-	return b.client
+	return b.BackendClient
 }
 
 type DisplayEventType string
@@ -1403,7 +1405,7 @@ func (b *CloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 	try int, nextRetryTime time.Duration) (bool, interface{}, error) {
 
 	// If there is no error, we're done.
-	results, err := b.client.GetUpdateEvents(ctx, update, continuationToken)
+	results, err := b.BackendClient.GetUpdateEvents(ctx, update, continuationToken)
 	if err == nil {
 		return true, results, nil
 	}
@@ -1436,8 +1438,8 @@ func (b *CloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 
 	// Issue a warning if appropriate.
 	if warn {
-		b.d.Warningf(diag.Message("" /*urn*/, "error querying update status: %v"), err)
-		b.d.Warningf(diag.Message("" /*urn*/, "retrying in %vs... ^C to stop (this will not cancel the update)"),
+		b.D.Warningf(diag.Message("" /*urn*/, "error querying update status: %v"), err)
+		b.D.Warningf(diag.Message("" /*urn*/, "retrying in %vs... ^C to stop (this will not cancel the update)"),
 			nextRetryTime.Seconds())
 	}
 
@@ -1476,7 +1478,7 @@ func (b *CloudBackend) UpdateStackTags(ctx context.Context,
 		return err
 	}
 
-	return b.client.UpdateStackTags(ctx, stackID, tags)
+	return b.BackendClient.UpdateStackTags(ctx, stackID, tags)
 }
 
 type httpstateBackendClient struct {

@@ -52,7 +52,7 @@ func newTokenSource(ctx context.Context, token string, backend *CloudBackend, up
 	duration time.Duration) (*tokenSource, error) {
 
 	// Perform an initial lease renewal.
-	newToken, err := backend.client.RenewUpdateLease(ctx, update, token, duration)
+	newToken, err := backend.BackendClient.RenewUpdateLease(ctx, update, token, duration)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func newTokenSource(ctx context.Context, token string, backend *CloudBackend, up
 		for {
 			select {
 			case <-ticker.C:
-				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
+				newToken, err = backend.BackendClient.RenewUpdateLease(ctx, update, token, duration)
 				// If we get an error from the backend, leave `err` set and surface it during
 				// the next request for a lease token.
 				if err != nil {
@@ -154,7 +154,7 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	if err != nil {
 		return err
 	}
-	return u.backend.client.CompleteUpdate(u.context, u.update, status, token)
+	return u.backend.BackendClient.CompleteUpdate(u.context, u.update, status, token)
 }
 
 // recordEngineEvents will record the events with the Pulumi Service, enabling things like viewing
@@ -182,7 +182,7 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 		apiEvents.Events = append(apiEvents.Events, apiEvent)
 	}
 
-	return u.backend.client.RecordEngineEvents(u.context, u.update, apiEvents, token)
+	return u.backend.BackendClient.RecordEngineEvents(u.context, u.update, apiEvents, token)
 }
 
 // RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as

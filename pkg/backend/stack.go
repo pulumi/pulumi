@@ -181,7 +181,7 @@ func GetEnvironmentTagsForCurrentStack() (map[apitype.StackTagName]string, error
 		return nil, err
 	}
 	if projPath != "" {
-		proj, err := workspace.LoadProject(projPath)
+		proj ,err := workspace.DetectProject()
 		if err != nil {
 			return nil, fmt.Errorf("error loading project %q: %w", projPath, err)
 		}

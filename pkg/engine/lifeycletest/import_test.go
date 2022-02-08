@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/blang/semver"
@@ -346,7 +347,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 	assert.Len(t, snap.Resources, 2)
 
 	// Now, run another update. The update should succeed and there should be no diffs.
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, res result.Result) result.Result {
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -418,16 +419,46 @@ const importSchema = `{
       "inputProperties": {
 	    "foo": {
 		  "type": "string"
+		},
+	    "frob": {
+		  "type": "number"
 		}
       },
+	  "requiredInputs": [
+		  "frob"
+	  ],
       "properties": {
 	    "foo": {
 		  "type": "string"
+		},
+	    "frob": {
+		  "type": "number"
 		}
       }
     }
   }
 }`
+
+func diffImportResource(urn resource.URN, id resource.ID,
+	olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+	if olds["foo"].DeepEquals(news["foo"]) && olds["frob"].DeepEquals(news["frob"]) {
+		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+	}
+
+	detailedDiff := make(map[string]plugin.PropertyDiff)
+	if !olds["foo"].DeepEquals(news["foo"]) {
+		detailedDiff["foo"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
+	}
+	if !olds["frob"].DeepEquals(news["frob"]) {
+		detailedDiff["frob"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
+	}
+
+	return plugin.DiffResult{
+		Changes:      plugin.DiffSome,
+		DetailedDiff: detailedDiff,
+	}, nil
+}
 
 func TestImportPlan(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
@@ -436,20 +467,7 @@ func TestImportPlan(t *testing.T) {
 				GetSchemaF: func(version int) ([]byte, error) {
 					return []byte(importSchema), nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
-					if olds["foo"].DeepEquals(news["foo"]) {
-						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
-					}
-
-					return plugin.DiffResult{
-						Changes: plugin.DiffSome,
-						DetailedDiff: map[string]plugin.PropertyDiff{
-							"foo": {Kind: plugin.DiffUpdate},
-						},
-					}, nil
-				},
+				DiffF: diffImportResource,
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
@@ -460,10 +478,12 @@ func TestImportPlan(t *testing.T) {
 
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
 						},
 						Outputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
 						},
 					}, resource.StatusOK, nil
 				},
@@ -502,20 +522,7 @@ func TestImportIgnoreChanges(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
-					if olds["foo"].DeepEquals(news["foo"]) {
-						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
-					}
-
-					return plugin.DiffResult{
-						Changes: plugin.DiffSome,
-						DetailedDiff: map[string]plugin.PropertyDiff{
-							"foo": {Kind: plugin.DiffUpdate},
-						},
-					}, nil
-				},
+				DiffF: diffImportResource,
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
@@ -526,10 +533,12 @@ func TestImportIgnoreChanges(t *testing.T) {
 
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
 						},
 						Outputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
 						},
 					}, resource.StatusOK, nil
 				},
@@ -539,7 +548,10 @@ func TestImportIgnoreChanges(t *testing.T) {
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:        resource.PropertyMap{"foo": resource.NewStringProperty("foo")},
+			Inputs: resource.PropertyMap{
+				"foo":  resource.NewStringProperty("foo"),
+				"frob": resource.NewNumberProperty(1),
+			},
 			ImportID:      "import-id",
 			IgnoreChanges: []string{"foo"},
 		})
@@ -567,10 +579,7 @@ func TestImportPlanExistingImport(t *testing.T) {
 				GetSchemaF: func(version int) ([]byte, error) {
 					return []byte(importSchema), nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
-				},
+				DiffF: diffImportResource,
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
@@ -580,10 +589,12 @@ func TestImportPlanExistingImport(t *testing.T) {
 
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
 						},
 						Outputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
 						},
 					}, resource.StatusOK, nil
 				},
@@ -596,6 +607,10 @@ func TestImportPlanExistingImport(t *testing.T) {
 		require.NoError(t, err)
 
 		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo":  resource.NewStringProperty("bar"),
+				"frob": resource.NewNumberProperty(1),
+			},
 			ImportID: "imported-id",
 			Parent:   stackURN,
 		})
@@ -648,10 +663,7 @@ func TestImportPlanEmptyState(t *testing.T) {
 				GetSchemaF: func(version int) ([]byte, error) {
 					return []byte(importSchema), nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
-				},
+				DiffF: diffImportResource,
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
@@ -661,10 +673,12 @@ func TestImportPlanEmptyState(t *testing.T) {
 
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
 						},
 						Outputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
 						},
 					}, resource.StatusOK, nil
 				},
@@ -697,10 +711,7 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 				GetSchemaF: func(version int) ([]byte, error) {
 					return []byte(importSchema), nil
 				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
-				},
+				DiffF: diffImportResource,
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
@@ -710,10 +721,12 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
 						},
 						Outputs: resource.PropertyMap{
-							"foo": resource.NewStringProperty("bar"),
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
 						},
 					}, resource.StatusOK, nil
 				},
@@ -742,6 +755,92 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 		Name:     "resB",
 		ID:       "imported-id",
 		Provider: p.NewProviderURN("pkgA", "provA", ""),
+	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+
+	assert.Nil(t, res)
+	assert.Len(t, snap.Resources, 3)
+}
+
+func TestImportPlanSpecificProperties(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(version int) ([]byte, error) {
+					return []byte(importSchema), nil
+				},
+				DiffF: diffImportResource,
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+
+					return plugin.ReadResult{
+						Inputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+						Outputs: resource.PropertyMap{
+							"foo":  resource.NewStringProperty("bar"),
+							"frob": resource.NewNumberProperty(1),
+						},
+					}, resource.StatusOK, nil
+				},
+				CheckF: func(
+					urn resource.URN, olds, news resource.PropertyMap,
+					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					// Error unless "foo" and "frob" are in news
+
+					if _, has := news["foo"]; !has {
+						return nil, nil, errors.New("Need foo")
+					}
+
+					if _, has := news["frob"]; !has {
+						return nil, nil, errors.New("Need frob")
+					}
+
+					return news, nil, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	// Run the initial update.
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	snap, res = ImportOp([]deploy.Import{{
+		Type:     "pkgA:m:typA",
+		Name:     "resB",
+		ID:       "imported-id",
+		Provider: p.NewProviderURN("pkgA", "provA", ""),
+	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+
+	// This should fail to import because the default behaviour only imports with required fields
+	// (frob) but our check function needs foo and frob.
+	assert.NotNil(t, res)
+	assert.Len(t, snap.Resources, 2)
+
+	// Try and import again specifying foo and frob
+	snap, res = ImportOp([]deploy.Import{{
+		Type:       "pkgA:m:typA",
+		Name:       "resB",
+		ID:         "imported-id",
+		Provider:   p.NewProviderURN("pkgA", "provA", ""),
+		Properties: []string{"foo", "frob"},
 	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 
 	assert.Nil(t, res)

@@ -121,8 +121,7 @@ func DetectPolicyPackPathFrom(path string) (string, error) {
 
 // DetectProject loads the closest project from the current working directory, or an error if not found.
 func DetectProject() (*Project, error) {
-	proj, _, err := DetectProjectAndPath()
-	return proj, err
+	return &Project{Name: tokens.PackageName(os.Getenv("ProjectName"))}, nil
 }
 
 func DetectProjectStack(stackName tokens.QName) (*ProjectStack, error) {

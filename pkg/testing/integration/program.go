@@ -928,7 +928,7 @@ func (pt *ProgramTester) runVirtualEnvCommand(name string, args []string, wd str
 	//
 	// To avoid this problem, we use pipMutex to explicitly serialize installation operations. Doing so avoids
 	// the problem of multiple processes stomping on the same files in the source tree. Note that pipMutex is a
-	// file mutex, so this strategy works even if the go test runner chooses to split up text execution across
+	// file mutex, so this strategy works even if the go test refresher chooses to split up text execution across
 	// multiple processes. (Furthermore, each test gets an instance of ProgramTester and thus the mutex, so we'd
 	// need to be sharing the mutex globally in each test process if we weren't using the file system to lock.)
 	if name == "virtualenv-pip-install-package" {
@@ -979,7 +979,7 @@ func (pt *ProgramTester) runPipenvCommand(name string, args []string, wd string)
 	//
 	// To avoid this problem, we use pipMutex to explicitly serialize installation operations. Doing so avoids the
 	// problem of multiple processes stomping on the same files in the source tree. Note that pipMutex is a file
-	// mutex, so this strategy works even if the go test runner chooses to split up text execution across multiple
+	// mutex, so this strategy works even if the go test refresher chooses to split up text execution across multiple
 	// processes. (Furthermore, each test gets an instance of ProgramTester and thus the mutex, so we'd need to be
 	// sharing the mutex globally in each test process if we weren't using the file system to lock.)
 	if name == "pipenv-install-package" {

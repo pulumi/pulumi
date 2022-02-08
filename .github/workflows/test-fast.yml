@@ -253,107 +253,107 @@ jobs:
         run: cd sdk/python && make TEST_ALL_DEPS= test_fast
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: python sdk auto tests
         run: cd sdk/python && make TEST_ALL_DEPS= test_auto
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: python sdk go tests
         run: cd sdk/python && make TEST_ALL_DEPS= test_go
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: dotnet sdk tests
         run: cd sdk/dotnet && make TEST_ALL_DEPS= dotnet_test
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: dotnet sdk auto tests
         run: cd sdk/dotnet && make TEST_ALL_DEPS= auto_test
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: dotnet sdk go tests
         run: cd sdk/dotnet && make TEST_ALL_DEPS= go_test
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: node sdk sxs tests
         run: cd sdk/nodejs && make TEST_ALL_DEPS= sxs_tests
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: node sdk unit tests
         run: cd sdk/nodejs && make TEST_ALL_DEPS= unit_tests
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: node sdk auto tests
         run: cd sdk/nodejs && make TEST_ALL_DEPS= auto_tests
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: node sdk go tests
         run: cd sdk/nodejs && make TEST_ALL_DEPS= go_tests
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: go sdk fast tests
         run: cd sdk/go && make TEST_ALL_DEPS= test_fast
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: go sdk auto tests
         run: cd sdk/go && make TEST_ALL_DEPS= test_auto
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: build tests
         run: make TEST_ALL_DEPS= test_build
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: pkg tests
         run: make TEST_ALL_DEPS= test_pkg
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: integration tests
         run: make TEST_ALL_DEPS= test_integration
         env:
           PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_NODE_MODULES: ${{ refresher.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          PULUMI_ROOT: ${{ refresher.temp }}/opt/pulumi
       - name: Convert Node coverage data
         if: ${{ matrix.platform != 'windows-latest' }}
         run: |
