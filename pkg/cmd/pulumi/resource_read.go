@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -61,7 +62,7 @@ type serialisedReadResult struct {
 	Outputs map[string]interface{} `json:"outputs"`
 }
 
-func resourceRead(writer io.Writer, config []string, packageName string, packageVersion *semver.Version, resourceType string, resourceId string) error {
+func resourceRead(writer io.Writer, configValues []string, packageName string, packageVersion *semver.Version, resourceType string, resourceId string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -92,7 +93,7 @@ func resourceRead(writer io.Writer, config []string, packageName string, package
 	defer ctx.Host.CloseProvider(prov)
 
 	configProperties := make(map[string]interface{})
-	for _, kv := range config {
+	for _, kv := range configValues {
 		parts := strings.SplitN(kv, "=", 2)
 		if len(parts) != 2 {
 			return fmt.Errorf("could not parse config entry: %s", kv)
@@ -129,12 +130,12 @@ func resourceRead(writer io.Writer, config []string, packageName string, package
 		return err
 	}
 
-	serialisedInputs, err := stack.SerializeProperties(readResult.Inputs, nil, true)
+	serialisedInputs, err := stack.SerializeProperties(readResult.Inputs, config.NopEncrypter, true)
 	if err != nil {
 		return err
 	}
 
-	serialisedOutputs, err := stack.SerializeProperties(readResult.Outputs, nil, true)
+	serialisedOutputs, err := stack.SerializeProperties(readResult.Outputs, config.NopEncrypter, true)
 	if err != nil {
 		return err
 	}
