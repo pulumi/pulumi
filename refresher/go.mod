@@ -8,11 +8,13 @@ replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
 require (
 	github.com/aws/aws-lambda-go v1.28.0
+	github.com/aws/aws-sdk-go v1.42.33
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/infralight/go-kit v1.10.0
+	github.com/infralight/go-kit v1.16.0
 	github.com/pulumi/pulumi/pkg/v3 v3.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi/sdk/v3 v3.23.2
 	github.com/rs/zerolog v1.26.1
+	github.com/thoas/go-funk v0.9.1
 )
 
 require (
@@ -37,7 +39,6 @@ require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
-	github.com/aws/aws-sdk-go v1.42.33 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
 	github.com/cheggaaa/pb v1.0.27 // indirect
@@ -124,7 +125,6 @@ require (
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/texttheater/golang-levenshtein v0.0.0-20191208221605-eb6844b05fc6 // indirect
-	github.com/thoas/go-funk v0.9.1 // indirect
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7 // indirect
 	github.com/uber/jaeger-client-go v2.22.1+incompatible // indirect
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
