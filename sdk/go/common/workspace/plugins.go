@@ -367,10 +367,10 @@ func getPluginFromPrivateGitHubResponse(info PluginInfo, opSy, arch string) (io.
 		return nil, -1, errors.Errorf("plugin asset '%s' not found", assetName)
 	}
 	if ghToken, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
-		return authenticatedGetPluginResponse(assetURL, ghToken, "token", "", "")
+		return authenticatedGetPluginResponse(assetURL, "token", ghToken, "", "")
 	} else if paToken, ok := os.LookupEnv("GITHUB_PERSONAL_ACCESS_TOKEN"); ok {
 		if actor, ok := os.LookupEnv("GITHUB_ACTOR"); ok {
-			return authenticatedGetPluginResponse(assetURL, "token", "", paToken, actor)
+			return authenticatedGetPluginResponse(assetURL, "", "", paToken, actor)
 		}
 	}
 	return nil, -1, errors.New("no authentication information provided")
