@@ -147,6 +147,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		// (which doesn't exist), this does not work.
 		SkipCompile: codegen.NewStringSet("nodejs", "dotnet", "go"),
 	},
+	{
+		Directory:   "invalid-go-sprintf",
+		Description: "Regress invalid Go",
+		Skip:        codegen.NewStringSet("python", "nodejs", "dotnet"),
+	},
 }
 
 // Checks that a generated program is correct
