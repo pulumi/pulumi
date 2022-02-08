@@ -30,7 +30,6 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -928,10 +927,7 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 // checks all possible sources of providers and merges them with preference given to the most specific
 func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderResource,
 	providerMap map[string]ProviderResource) (map[string]ProviderResource, error) {
-	tk, err := tokens.ParseTypeToken(t)
-	if err != nil {
-		return nil, fmt.Errorf("Context.mergeProviders t: %w", err)
-	}
+
 	// copy parent providers
 	result := make(map[string]ProviderResource)
 	if parent != nil {
@@ -947,7 +943,7 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 
 	// copy specific provider, if any
 	if provider != nil {
-		pkg := tk.Package().String()
+		pkg := provider.getPackage()
 		if _, alreadyExists := providerMap[pkg]; alreadyExists {
 			err := ctx.Log.Warn(fmt.Sprintf("Provider for %s conflicts with providers map. %s %s", pkg,
 				"This will become an error in july 2022.",
