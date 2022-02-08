@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -316,10 +317,146 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	if err == nil {
 		return resp, length, nil
 	}
+	logging.V(1).Infof("cannot find plugin on github.com/pulumi/pulumi-%s/releases", info.Name)
+
+	if _, ok := os.LookupEnv("PULUMI_EXPERIMENTAL_GH_PRIVATE_REL"); ok {
+		resp, length, err = getPluginFromPrivateGitHubResponse(info, opSy, arch)
+		if err == nil {
+			return resp, length, nil
+		}
+		logging.V(1).Infof("cannot find plugin %s on private GitHub releases: %s", info.Name, err.Error())
+	}
 
 	// we threw an error talking to GitHub so lets fallback to get.pulumi.com for the provider
-	logging.V(1).Infof("cannot find plugin on github.com/pulumi/pulumi-%s/releases", info.Name)
 	return getPluginResponse(buildPulumiHostedPluginURL(info.Kind, info.Name, info.Version, opSy, arch))
+}
+
+func getPluginFromPrivateGitHubResponse(info PluginInfo, opSy, arch string) (io.ReadCloser, int64, error) {
+	assetName := fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz",
+		info.Kind, info.Name, info.Version.String(), opSy, arch)
+	resp, length, err := getPluginPrivateGitHubReleaseAPIResponse(info)
+	if err != nil {
+		return nil, -1, err
+	}
+	jsonBody, err := ioutil.ReadAll(resp)
+	if err != nil {
+		logging.V(9).Infof("cannot unmarshal github response len(%d): %s", length, err.Error())
+		return nil, -1, err
+	}
+	release := struct {
+		Assets []struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"assets"`
+	}{}
+	err = json.Unmarshal(jsonBody, &release)
+	if err != nil {
+		logging.V(9).Infof("github json response: %s", jsonBody)
+		logging.V(9).Infof("cannot unmarshal github response: %s", err.Error())
+		return nil, -1, err
+	}
+	assetURL := ""
+	for _, asset := range release.Assets {
+		if asset.Name == assetName {
+			assetURL = asset.URL
+		}
+	}
+	if assetURL == "" {
+		logging.V(9).Infof("github json response: %s", jsonBody)
+		logging.V(9).Infof("plugin asset '%s' not found", assetName)
+		return nil, -1, errors.Errorf("plugin asset '%s' not found", assetName)
+	}
+	if ghToken, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
+		return authenticatedGetPluginResponse(assetURL, ghToken, "token", "", "")
+	} else if paToken, ok := os.LookupEnv("GITHUB_PERSONAL_ACCESS_TOKEN"); ok {
+		if actor, ok := os.LookupEnv("GITHUB_ACTOR"); ok {
+			return authenticatedGetPluginResponse(assetURL, "token", "", paToken, actor)
+		}
+	}
+	return nil, -1, errors.New("no authentication information provided")
+}
+
+func getPluginPrivateGitHubReleaseAPIResponse(info PluginInfo) (io.ReadCloser, int64, error) {
+	repoOwner := os.Getenv("GITHUB_REPOSITORY_OWNER")
+	if repoOwner == "" {
+		return nil, -1, errors.New("ENV[GITHUB_REPOSITORY_OWNER] not set")
+	}
+	ghToken := os.Getenv("GITHUB_TOKEN")
+	paToken := ""
+	actor := ""
+	if ghToken == "" {
+		paToken = os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+		actor = os.Getenv("GITHUB_ACTOR")
+	}
+	if ghToken == "" && (paToken == "" || actor == "") {
+		return nil, -1, errors.New("no GitHub authentication information provided")
+	}
+	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/pulumi-%s/releases/tags/v%s",
+		repoOwner, info.Name, info.Version.String())
+	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
+
+	req, err := http.NewRequest("GET", releaseURL, nil)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
+	req.Header.Set("User-Agent", userAgent)
+	// the OAuth token takes precedence
+	if ghToken != "" {
+		req.Header.Set("Authentication", fmt.Sprintf("token %s", ghToken))
+	} else if paToken != "" && actor != "" {
+		req.SetBasicAuth(actor, paToken)
+	}
+
+	logging.V(9).Infof("plugin install request headers: %v", req.Header)
+
+	resp, err := httputil.DoWithRetry(req, http.DefaultClient)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		logging.V(9).Infof("%d HTTP error fetching plugin from %s", resp.StatusCode, releaseURL)
+		return nil, -1, errors.Errorf("%d HTTP error fetching plugin GitHub releases from %s", resp.StatusCode, releaseURL)
+	}
+
+	return resp.Body, resp.ContentLength, nil
+}
+
+func authenticatedGetPluginResponse(assetURL, tokenType, token, secret, username string) (io.ReadCloser, int64, error) {
+	logging.V(9).Infof("full plugin download url: %s", assetURL)
+
+	req, err := http.NewRequest("GET", assetURL, nil)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "application/octet-stream")
+	if token != "" {
+		req.Header.Set("Authentication", fmt.Sprintf("%s %s", tokenType, token))
+	} else if secret != "" && username != "" {
+		req.SetBasicAuth(username, secret)
+	}
+	logging.V(9).Infof("plugin install request headers: %v", req.Header)
+
+	resp, err := httputil.DoWithRetry(req, http.DefaultClient)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		logging.V(9).Infof("%d HTTP error fetching plugin from %s", resp.StatusCode, assetURL)
+		return nil, -1, errors.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, assetURL)
+	}
+
+	return resp.Body, resp.ContentLength, nil
 }
 
 func buildGitHubReleasesPluginURL(kind PluginKind, name string, version *semver.Version, opSy, arch string) string {
