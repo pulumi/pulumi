@@ -302,11 +302,16 @@ func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bo
 		outputs = soutp
 	}
 
+	idValue := res.ID
+	if _, ok := outputs["id"].(apitype.SecretV1); ok {
+		idValue = resource.SecretSig
+	}
+
 	v3Resource := apitype.ResourceV3{
 		URN:                     res.URN,
 		Custom:                  res.Custom,
 		Delete:                  res.Delete,
-		ID:                      res.ID,
+		ID:                      idValue,
 		Type:                    res.Type,
 		Parent:                  res.Parent,
 		Inputs:                  inputs,
@@ -509,8 +514,17 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 		return nil, fmt.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
 	}
 
+	idValue := res.ID
+	if idValue == resource.SecretSig {
+		if idProperty, hasID := outputs["id"]; hasID {
+			idValue = resource.ID(idProperty.SecretValue().Element.StringValue())
+		} else {
+			return nil, fmt.Errorf("resource '%s' has 'id' marked as secret but missing 'id' in outputs", res.URN)
+		}
+	}
+
 	return resource.NewState(
-		res.Type, res.URN, res.Custom, res.Delete, res.ID,
+		res.Type, res.URN, res.Custom, res.Delete, idValue,
 		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
 		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases, res.CustomTimeouts,
 		res.ImportID, res.SequenceNumber), nil
