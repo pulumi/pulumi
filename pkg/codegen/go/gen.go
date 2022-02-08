@@ -3539,9 +3539,9 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			}
 			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
 
-			packageRegex := fmt.Sprintf("^.*/pulumi-%s/sdk(/v\\d+)?", pkg.pkg.Name)
+			packageRegex := fmt.Sprintf("^.*/pulumi-%s/sdk(/v[^/]+)?", pkg.pkg.Name)
 			if pkg.rootPackageName != "" {
-				packageRegex = fmt.Sprintf("^%s(/v\\d+)?", pkg.importBasePath)
+				packageRegex = fmt.Sprintf("^%s(/v[^/]+)?", pkg.importBasePath)
 			}
 
 			pkg.GenUtilitiesFile(buffer, packageRegex)
@@ -3630,10 +3630,10 @@ func PkgVersion() (semver.Version, error) {
 	re := regexp.MustCompile(%q)
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
-		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
-			return semver.Version{Major: 1}, nil
+		if len(vStr) == 0 {
+			return semver.Version{}, fmt.Errorf("No version number found, omitting version.")
 		}
-		return semver.MustParse(fmt.Sprintf("%%s.0.0", vStr[2:])), nil
+		return semver.ParseTolerant(vStr)
 	}
 	return semver.Version{}, fmt.Errorf("failed to determine the package version from %%s", pkgPath)
 }
@@ -3660,6 +3660,10 @@ func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer) {
 // pkg%[1]sDefaultOpts provides package level defaults to pulumi.Option%[1]s.
 func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 	defaults := []pulumi.%[1]sOption{%[2]s}
+	version, err := PkgVersion()
+	if err == nil {
+		defaults = append(defaults, pulumi.Version(version.String()))
+	}
 
 	return append(defaults, opts...)
 }

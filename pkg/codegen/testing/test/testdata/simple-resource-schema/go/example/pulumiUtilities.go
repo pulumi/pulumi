@@ -65,13 +65,13 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 func PkgVersion() (semver.Version, error) {
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile("^.*/pulumi-example/sdk(/v\\d+)?")
+	re := regexp.MustCompile("^.*/pulumi-example/sdk(/v[^/]+)?")
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
-		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
-			return semver.Version{Major: 1}, nil
+		if len(vStr) == 0 {
+			return semver.Version{}, fmt.Errorf("No version number found, omitting version.")
 		}
-		return semver.MustParse(fmt.Sprintf("%s.0.0", vStr[2:])), nil
+		return semver.ParseTolerant(vStr)
 	}
 	return semver.Version{}, fmt.Errorf("failed to determine the package version from %s", pkgPath)
 }
@@ -87,6 +87,10 @@ func isZero(v interface{}) bool {
 // pkgResourceDefaultOpts provides package level defaults to pulumi.OptionResource.
 func pkgResourceDefaultOpts(opts []pulumi.ResourceOption) []pulumi.ResourceOption {
 	defaults := []pulumi.ResourceOption{pulumi.PluginDownloadURL("example.com/download")}
+	version, err := PkgVersion()
+	if err == nil {
+		defaults = append(defaults, pulumi.Version(version.String()))
+	}
 
 	return append(defaults, opts...)
 }
@@ -94,6 +98,10 @@ func pkgResourceDefaultOpts(opts []pulumi.ResourceOption) []pulumi.ResourceOptio
 // pkgInvokeDefaultOpts provides package level defaults to pulumi.OptionInvoke.
 func pkgInvokeDefaultOpts(opts []pulumi.InvokeOption) []pulumi.InvokeOption {
 	defaults := []pulumi.InvokeOption{pulumi.PluginDownloadURL("example.com/download")}
+	version, err := PkgVersion()
+	if err == nil {
+		defaults = append(defaults, pulumi.Version(version.String()))
+	}
 
 	return append(defaults, opts...)
 }
