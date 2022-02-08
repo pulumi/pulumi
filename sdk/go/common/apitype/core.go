@@ -291,6 +291,8 @@ type ResourceV3 struct {
 	// Delete is true when the resource should be deleted during the next update.
 	Delete bool `json:"delete,omitempty" yaml:"delete,omitempty"`
 	// ID is the provider-assigned resource, if any, for custom resources.
+	// If ID = resource.SecretSig, then the ID property can be found in
+	// Outputs as a SecretV1 under the key "id".
 	ID resource.ID `json:"id,omitempty" yaml:"id,omitempty"`
 	// Type is the resource's full type token.
 	Type tokens.Type `json:"type" yaml:"type"`
