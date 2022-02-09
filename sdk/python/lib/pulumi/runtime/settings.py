@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
+_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 # excessive_debug_output enables, well, pretty excessive debug output pertaining to resources and properties.
@@ -49,15 +49,18 @@ class Settings:
     """
     A bag of properties for configuring the Pulumi Python language runtime.
     """
-    def __init__(self,
-                 monitor: Optional[Union[str, Any]] = None,
-                 engine: Optional[Union[str, Any]] = None,
-                 project: Optional[str] = None,
-                 stack: Optional[str] = None,
-                 parallel: Optional[int] = None,
-                 dry_run: Optional[bool] = None,
-                 test_mode_enabled: Optional[bool] = None,
-                 legacy_apply_enabled: Optional[bool] = None):
+
+    def __init__(
+        self,
+        monitor: Optional[Union[str, Any]] = None,
+        engine: Optional[Union[str, Any]] = None,
+        project: Optional[str] = None,
+        stack: Optional[str] = None,
+        parallel: Optional[int] = None,
+        dry_run: Optional[bool] = None,
+        test_mode_enabled: Optional[bool] = None,
+        legacy_apply_enabled: Optional[bool] = None,
+    ):
         # Save the metadata information.
         self.project = project
         self.stack = stack
@@ -71,7 +74,9 @@ class Settings:
             self.test_mode_enabled = os.getenv("PULUMI_TEST_MODE", "false") == "true"
 
         if self.legacy_apply_enabled is None:
-            self.legacy_apply_enabled = os.getenv("PULUMI_ENABLE_LEGACY_APPLY", "false") == "true"
+            self.legacy_apply_enabled = (
+                os.getenv("PULUMI_ENABLE_LEGACY_APPLY", "false") == "true"
+            )
 
         # Actually connect to the monitor/engine over gRPC.
         if monitor is not None:
@@ -103,7 +108,7 @@ def configure(settings: Settings):
     Configure sets the current ambient settings bag to the one given.
     """
     if not settings or not isinstance(settings, Settings):
-        raise TypeError('Settings is expected to be non-None and of type Settings')
+        raise TypeError("Settings is expected to be non-None and of type Settings")
     global SETTINGS  # pylint: disable=global-statement
     SETTINGS = settings
 
@@ -131,7 +136,9 @@ def _set_test_mode_enabled(v: Optional[bool]):
 
 def require_test_mode_enabled():
     if not is_test_mode_enabled():
-        raise RunError('Program run without the Pulumi engine available; re-run using the `pulumi` CLI')
+        raise RunError(
+            "Program run without the Pulumi engine available; re-run using the `pulumi` CLI"
+        )
 
 
 def is_legacy_apply_enabled():
@@ -145,7 +152,9 @@ def get_project() -> str:
     project = SETTINGS.project
     if not project:
         require_test_mode_enabled()
-        raise RunError('Missing project name; for test mode, please call `pulumi.runtime.set_mocks`')
+        raise RunError(
+            "Missing project name; for test mode, please call `pulumi.runtime.set_mocks`"
+        )
     return project
 
 
@@ -163,7 +172,9 @@ def get_stack() -> str:
     stack = SETTINGS.stack
     if not stack:
         require_test_mode_enabled()
-        raise RunError('Missing stack name; for test mode, please set PULUMI_NODEJS_STACK')
+        raise RunError(
+            "Missing stack name; for test mode, please set PULUMI_NODEJS_STACK"
+        )
     return stack
 
 
@@ -191,10 +202,10 @@ def get_engine() -> Optional[Union[engine_pb2_grpc.EngineStub, Any]]:
     return SETTINGS.engine
 
 
-ROOT: Optional['Resource'] = None
+ROOT: Optional["Resource"] = None
 
 
-def get_root_resource() -> Optional['Resource']:
+def get_root_resource() -> Optional["Resource"]:
     """
     Returns the implicit root stack resource for all resources created in this program.
     """
@@ -202,7 +213,7 @@ def get_root_resource() -> Optional['Resource']:
     return ROOT
 
 
-def set_root_resource(root: 'Resource'):
+def set_root_resource(root: "Resource"):
     """
     Sets the current root stack resource for all resources subsequently to be created in this program.
     """
@@ -223,7 +234,10 @@ async def monitor_supports_feature(feature: str) -> bool:
                 resp = monitor.SupportsFeature(req)
                 return resp.hasSupport
             except grpc.RpcError as exn:
-                if exn.code() != grpc.StatusCode.UNIMPLEMENTED:  # pylint: disable=no-member
+                if (
+                    exn.code()  # pylint: disable=no-member
+                    != grpc.StatusCode.UNIMPLEMENTED
+                ):
                     handle_grpc_error(exn)
                 return False
 
@@ -244,7 +258,7 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
     if exn.code() == grpc.StatusCode.UNAVAILABLE:
         # If the monitor is unavailable, it is in the process of
         # shutting down or has already shut down.
-        return RunError('Resource monitor has terminated, shutting down')
+        return RunError("Resource monitor has terminated, shutting down")
 
     details = exn.details()
     return Exception(details)
@@ -266,22 +280,26 @@ async def monitor_supports_output_values() -> bool:
     return await monitor_supports_feature("outputValues")
 
 
-def reset_options(project: Optional[str] = None,
-                  stack: Optional[str] = None,
-                  parallel: Optional[int] = None,
-                  engine_address: Optional[str] = None,
-                  monitor_address: Optional[str] = None,
-                  preview: Optional[bool] = None):
+def reset_options(
+    project: Optional[str] = None,
+    stack: Optional[str] = None,
+    parallel: Optional[int] = None,
+    engine_address: Optional[str] = None,
+    monitor_address: Optional[str] = None,
+    preview: Optional[bool] = None,
+):
     """Resets globals to the values provided."""
 
     global ROOT
     ROOT = None
 
-    configure(Settings(
-        project=project,
-        monitor=monitor_address,
-        engine=engine_address,
-        stack=stack,
-        parallel=parallel,
-        dry_run=preview
-    ))
+    configure(
+        Settings(
+            project=project,
+            monitor=monitor_address,
+            engine=engine_address,
+            stack=stack,
+            parallel=parallel,
+            dry_run=preview,
+        )
+    )

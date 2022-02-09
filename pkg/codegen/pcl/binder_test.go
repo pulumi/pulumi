@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
 func TestBindProgram(t *testing.T) {

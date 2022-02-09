@@ -14,14 +14,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func TestGenerateProgram(t *testing.T) {
 	test.TestProgramCodegen(t,
@@ -31,6 +31,7 @@ func TestGenerateProgram(t *testing.T) {
 			OutputFile: "main.go",
 			Check:      goCheck,
 			GenProgram: GenerateProgram,
+			TestCases:  test.PulumiPulumiProgramTests,
 		})
 }
 
@@ -108,6 +109,11 @@ func goCheck(t *testing.T, path string, _ codegen.StringSet) {
 				"../../../../../../../sdk")},
 		dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err)
+	err = integration.RunCommand(t, "go tidy after replace",
+		[]string{ex, "mod", "tidy"},
+		dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err)
+
 	err = integration.RunCommand(t, "test build", []string{ex, "build", "-v", "all"},
 		dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err)

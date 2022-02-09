@@ -274,7 +274,7 @@ jobs:
   test:
     name: Test
     needs: build
-    uses: pulumi/pulumi/.github/workflows/test.yml@master
+    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
     with:
       enable-coverage: false
     secrets:

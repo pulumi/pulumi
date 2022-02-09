@@ -60,7 +60,7 @@ var (
 // time, if necessary. When non-empty, it's parsed into `pluginDownloadURLOverridesParsed` in `init()`. The expected
 // format is `regexp=URL`, and multiple pairs can be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`.
 //
-// For example, when set to "^foo.*=https://foo&^bar.*=https://bar", plugin names that start with "foo" will use
+// For example, when set to "^foo.*=https://foo,^bar.*=https://bar", plugin names that start with "foo" will use
 // https://foo as the download URL and names that start with "bar" will use https://bar.
 var pluginDownloadURLOverrides string
 
@@ -310,18 +310,15 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 		return getPluginResponse(buildUserSpecifiedPluginURL(url, info.Kind, info.Name, info.Version, opSy, arch))
 	}
 
-	if _, ok := os.LookupEnv("PULUMI_EXPERIMENTAL"); ok {
-		pluginURL := buildGitHubReleasesPluginURL(info.Kind, info.Name, info.Version, opSy, arch)
+	pluginURL := buildGitHubReleasesPluginURL(info.Kind, info.Name, info.Version, opSy, arch)
 
-		resp, length, err := getPluginResponse(pluginURL)
-		if err == nil {
-			return resp, length, nil
-		}
-
-		// we threw an error talking to GitHub so lets fallback to get.pulumi.com for the provider
-		logging.V(1).Infof("cannot find plugin on github.com/pulumi/pulumi-%s/releases", info.Name)
+	resp, length, err := getPluginResponse(pluginURL)
+	if err == nil {
+		return resp, length, nil
 	}
 
+	// we threw an error talking to GitHub so lets fallback to get.pulumi.com for the provider
+	logging.V(1).Infof("cannot find plugin on github.com/pulumi/pulumi-%s/releases", info.Name)
 	return getPluginResponse(buildPulumiHostedPluginURL(info.Kind, info.Name, info.Version, opSy, arch))
 }
 

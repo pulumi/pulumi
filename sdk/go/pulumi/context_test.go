@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 package pulumi
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -215,4 +217,124 @@ func TestCollapseAliases(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+}
+
+// Context with which to create a ProviderResource.
+type Prov struct {
+	name string
+	t    string
+}
+
+// Invoke the creation
+func (pr *Prov) i(ctx *Context, t *testing.T) ProviderResource {
+	if pr == nil {
+		return nil
+	}
+	p := &testProv{foo: pr.name}
+	err := ctx.RegisterResource("pulumi:providers:"+pr.t, pr.name, nil, p)
+	assert.NoError(t, err)
+	return p
+}
+
+// Context with which to create a Resource.
+type Res struct {
+	name string
+	t    string
+	// Providers to register with
+	parent *Prov
+}
+
+// Invoke the creation
+func (rs *Res) i(ctx *Context, t *testing.T) Resource {
+	if rs == nil {
+		return nil
+	}
+	r := &testRes{foo: rs.name}
+	var err error
+	if rs.parent == nil {
+		err = ctx.RegisterResource(rs.t, rs.name, nil, r)
+
+	} else {
+		err = ctx.RegisterResource(rs.t, rs.name, nil, r, Provider(rs.parent.i(ctx, t)))
+	}
+	assert.NoError(t, err)
+	return r
+}
+func TestMergeProviders(t *testing.T) {
+	provType := func(t string) string {
+		return "pulumi:providers:" + t
+	}
+
+	tests := []struct {
+		t         string
+		parent    *Res
+		provider  *Prov
+		providers []Prov
+
+		// We expect that the names in expected match up with the providers in
+		// the resulting map.
+		expected []string
+	}{
+		{
+			t:         provType("t"),
+			providers: []Prov{{"t1", "t"}, {"r0", "r"}},
+			expected:  []string{"t1", "r0"},
+		},
+		{
+			t:         provType("t"),
+			provider:  &Prov{"t0", "t"},
+			providers: []Prov{{"t1", "t"}, {"r0", "r"}},
+			// We expect that providers overrides provider
+			expected: []string{"t1", "r0"},
+		},
+		{
+			t:         provType("t"),
+			provider:  &Prov{"t0", "t"},
+			providers: []Prov{{"r0", "r"}},
+			expected:  []string{"t0", "r0"},
+		},
+		{
+			t:        provType("t"),
+			parent:   &Res{"t0", "t", &Prov{"t1", "t"}},
+			expected: []string{"t1"},
+		},
+		{
+			t:        provType("t"),
+			parent:   &Res{"t0", "t", nil},
+			expected: []string{},
+		},
+		{
+			t:         provType("t"),
+			parent:    &Res{"t0", "t", &Prov{"t1", "t"}},
+			provider:  &Prov{"t3", "t"},
+			providers: []Prov{{"t2", "t"}},
+			expected:  []string{"t2"},
+		},
+	}
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			err := RunErr(func(ctx *Context) error {
+				providers := map[string]ProviderResource{}
+				for _, p := range tt.providers {
+					p := p // Move out of loop, for gosec
+					providers[p.t] = p.i(ctx, t)
+				}
+
+				provMap, err := ctx.mergeProviders(tt.t, tt.parent.i(ctx, t), tt.provider.i(ctx, t), providers)
+				if err != nil {
+					return err
+				}
+
+				result := make([]string, 0, len(provMap))
+				for k, p := range provMap {
+					assert.Equal(t, k, p.getPackage(), "pkg should match map key")
+					result = append(result, strings.TrimPrefix(p.getName(), "pulumi:providers:"))
+				}
+
+				assert.ElementsMatch(t, tt.expected, result)
+				return nil
+			}, WithMocks("project", "stack", &testMonitor{}))
+			assert.NoError(t, err)
+		})
+	}
 }

@@ -18,6 +18,7 @@ class _Representable:
 
     def __repr__(self):
         inputs = self.__dict__
-        fields = [f"{key}={inputs[key]!r}" for key in inputs]  # pylint: disable=consider-using-dict-items
+        # pylint: disable=consider-using-dict-items
+        fields = [f"{key}={inputs[key]!r}" for key in inputs]
         fields = ", ".join(fields)
         return f"{self.__class__.__name__}({fields})"
