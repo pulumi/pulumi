@@ -16,11 +16,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,11 +33,11 @@ func TestDeterminePluginVersion(t *testing.T) {
 	}{
 		{
 			input:    "0.1",
-			expected: "0.1",
+			expected: "0.1.0",
 		},
 		{
 			input:    "1.0",
-			expected: "1.0",
+			expected: "1.0.0",
 		},
 		{
 			input:    "1.0.0",
@@ -45,39 +45,59 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: "",
-			err:   errors.New(`unexpected number of components in version ""`),
+			err:   fmt.Errorf("Cannot parse empty string"),
 		},
 		{
-			input: "2",
-			err:   errors.New(`unexpected number of components in version "2"`),
-		},
-		{
-			input: "4.3.2.1",
-			err:   errors.New(`unexpected number of components in version "4.3.2.1"`),
+			input:    "4.3.2.1",
+			expected: "4.3.2.1",
 		},
 		{
 			input: " 1 . 2 . 3 ",
-			err:   errors.New(`parsing major: " 1 "`),
+			err:   fmt.Errorf(`' 1 . 2 . 3 ' still unparsed`),
 		},
 		{
-			input: "2.1a123456789",
-			err:   errors.New(`parsing minor: "1a123456789"`),
+			input:    "2.1a123456789",
+			expected: "2.1.0-alpha.123456789",
 		},
 		{
-			input: "2.14.0a1605583329",
-			err:   errors.New(`parsing patch: "0a1605583329"`),
+			input:    "2.14.0a1605583329",
+			expected: "2.14.0-alpha.1605583329",
 		},
 		{
-			input: "1.2.3b123456",
-			err:   errors.New(`parsing patch: "3b123456"`),
+			input:    "1.2.3b123456",
+			expected: "1.2.3-beta.123456",
 		},
 		{
-			input: "3.2.1rc654321",
-			err:   errors.New(`parsing patch: "1rc654321"`),
+			input:    "3.2.1rc654321",
+			expected: "3.2.1-rc.654321",
 		},
 		{
 			input: "1.2.3dev7890",
-			err:   errors.New(`parsing patch: "3dev7890"`),
+			err:   fmt.Errorf("'dev7890' still unparsed"),
+		},
+		{
+			input:    "1.2.3.dev456",
+			expected: "1.2.3+dev456",
+		},
+		{
+			input: "1.",
+			err:   fmt.Errorf("'.' still unparsed"),
+		},
+		{
+			input:    "3.2.post32",
+			expected: "3.2.0+post32",
+		},
+		{
+			input:    "0.3.0b8",
+			expected: "0.3.0-beta.8",
+		},
+		{
+			input: "10!3.2.1",
+			err:   fmt.Errorf("Epochs are not supported"),
+		},
+		{
+			input:    "3.2.post1.dev0",
+			expected: "3.2.0+post1dev0",
 		},
 	}
 	for _, tt := range tests {
