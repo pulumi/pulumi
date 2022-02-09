@@ -37,3 +37,6 @@ dist::
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
+
+lint::
+	cd .. && golangci-lint run -c ../.golangci.yml --timeout 5m

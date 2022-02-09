@@ -21,6 +21,7 @@ import * as resource from "../../resource";
 import { hasTrueBooleanMember } from "../../utils";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
+import { getModuleFromPath } from "./package";
 import * as utils from "./utils";
 import * as v8 from "./v8";
 
@@ -1225,7 +1226,7 @@ async function getOrCreateEntryAsync(
             // will ensure that the module-name we load is a simple path that can be found off the
             // node_modules that we actually upload with our serialized functions.
             entry.module = isInNodeModules
-                ? upath.join(...moduleParts.slice(nodeModulesSegmentIndex + 1))
+                ? getModuleFromPath(upath.join(...moduleParts.slice(nodeModulesSegmentIndex + 1)))
                 : normalizedModuleName;
         }
     }

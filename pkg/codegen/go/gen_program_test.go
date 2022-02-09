@@ -109,6 +109,11 @@ func goCheck(t *testing.T, path string, _ codegen.StringSet) {
 				"../../../../../../../sdk")},
 		dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err)
+	err = integration.RunCommand(t, "go tidy after replace",
+		[]string{ex, "mod", "tidy"},
+		dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err)
+
 	err = integration.RunCommand(t, "test build", []string{ex, "build", "-v", "all"},
 		dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err)

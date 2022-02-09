@@ -310,18 +310,15 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 		return getPluginResponse(buildUserSpecifiedPluginURL(url, info.Kind, info.Name, info.Version, opSy, arch))
 	}
 
-	if _, ok := os.LookupEnv("PULUMI_EXPERIMENTAL"); ok {
-		pluginURL := buildGitHubReleasesPluginURL(info.Kind, info.Name, info.Version, opSy, arch)
+	pluginURL := buildGitHubReleasesPluginURL(info.Kind, info.Name, info.Version, opSy, arch)
 
-		resp, length, err := getPluginResponse(pluginURL)
-		if err == nil {
-			return resp, length, nil
-		}
-
-		// we threw an error talking to GitHub so lets fallback to get.pulumi.com for the provider
-		logging.V(1).Infof("cannot find plugin on github.com/pulumi/pulumi-%s/releases", info.Name)
+	resp, length, err := getPluginResponse(pluginURL)
+	if err == nil {
+		return resp, length, nil
 	}
 
+	// we threw an error talking to GitHub so lets fallback to get.pulumi.com for the provider
+	logging.V(1).Infof("cannot find plugin on github.com/pulumi/pulumi-%s/releases", info.Name)
 	return getPluginResponse(buildPulumiHostedPluginURL(info.Kind, info.Name, info.Version, opSy, arch))
 }
 
