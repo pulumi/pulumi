@@ -1,4 +1,4 @@
-name: Build drifts docker images to ECR
+name: Pulumi Mapper Build
 
 on:
   workflow_dispatch:

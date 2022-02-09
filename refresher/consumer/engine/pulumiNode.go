@@ -46,7 +46,7 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 			newState := *metadata.New
 			if len(newState.Outputs) > 0 {
 				iacMetadata["pulumiState"] = "managed"
-				s3Node["metadata"] = getStringMetadata(iacMetadata)
+				s3Node["metadata"] = iacMetadata
 				s3Node["arn"] = newState.Outputs["arn"].V
 				region, err := getRegionFromArn(s3Node["arn"].(string))
 				if err != nil {
@@ -62,7 +62,7 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 			oldState := *metadata.Old
 			if len(oldState.Outputs) > 0 {
 				iacMetadata["pulumiState"] = "ghost"
-				s3Node["metadata"] = getStringMetadata(iacMetadata)
+				s3Node["metadata"] = iacMetadata
 				s3Node["arn"] = oldState.Outputs["arn"].V
 				region, err := getRegionFromArn(s3Node["arn"].(string))
 				if err != nil {
@@ -78,8 +78,11 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 			case deploy.OpUpdate:
 				newState := *metadata.New
 				if len(newState.Outputs) > 0 {
+					drifts := refresher.CalcDrift(metadata)
 					iacMetadata["pulumiState"] = "modified"
-					s3Node["metadata"] = getStringMetadata(iacMetadata)
+					iacMetadata["pulumiDrifts"] = drifts
+
+					s3Node["metadata"] = iacMetadata
 					s3Node["arn"] = newState.Outputs["arn"].V
 					region, err := getRegionFromArn(s3Node["arn"].(string))
 					if err != nil {
@@ -90,8 +93,7 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 					s3Node["region"] = region
 					s3Nodes = append(s3Nodes, s3Node)
 
-					drifts := refresher.CalcDrift(metadata)
-					s3Node["pulumiDrifts"] = drifts
+
 					s3Node["attributes"] = getIacAttributes(newState.Outputs)
 				}
 		}

@@ -9,7 +9,7 @@ import (
 	"github.com/infralight/pulumi/refresher/common"
 	"github.com/infralight/pulumi/refresher/config"
 	"github.com/infralight/pulumi/refresher/consumer/dispatcher"
-	"github.com/infralight/pulumi/refresher/consumer/internal/engine"
+	"github.com/infralight/pulumi/refresher/consumer/engine"
 	"github.com/infralight/pulumi/refresher/consumer/queue"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -28,7 +28,6 @@ var (
 
 func init() {
 	var err error
-
 	logger.With().Str("component", component).Logger()
 
 	cfg, err = config.LoadConfig()

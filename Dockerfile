@@ -15,26 +15,28 @@ RUN printf "machine github.com\n\
 
 RUN chmod 600 /root/.netrc
 
-WORKDIR /workspace
+RUN mkdir /workspace
+WORKDIR workspace
 
-# Copy the Go Modules manifests
-COPY refresher/go.mod go.mod
-COPY refresher/go.sum go.sum
-
+COPY refresher/ /workspace/refresher/
+COPY pkg/ /workspace/pkg/
+COPY sdk/ /workspace/sdk/
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
+WORKDIR /workspace/refresher
+
 RUN go mod download
 
 # Copy the go source
 COPY .. .
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o pulumiMapper refresher/consumer/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o pulumiMapperConsumer refresher/consumer/main.go
 
 FROM alpine:3.13.1
 
 WORKDIR /
 
-COPY --from=builder /workspace/refresher .
+COPY --from=builder /workspace/refresher/pulumiMapperConsumer .
 
-ENTRYPOINT ["/refresher"]
+ENTRYPOINT ["/pulumiMapperConsumer"]
