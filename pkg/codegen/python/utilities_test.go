@@ -8,8 +8,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
 func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {

@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func TestGenerateProgram(t *testing.T) {
 	test.TestProgramCodegen(t,
@@ -22,6 +22,7 @@ func TestGenerateProgram(t *testing.T) {
 			OutputFile: "__main__.py",
 			Check:      pythonCheck,
 			GenProgram: GenerateProgram,
+			TestCases:  test.PulumiPulumiProgramTests,
 		})
 }
 

@@ -22,6 +22,8 @@ import { output } from "../../output";
 import { assertAsyncThrows, asyncTest } from "../util";
 import * as typescript from "typescript";
 import * as semver from "semver";
+import { z } from "mockpackage";
+
 
 import * as deploymentOnlyModule from "./deploymentOnlyModule";
 
@@ -6612,17 +6614,87 @@ return function () { console.log(regex); foo(); };
     }
 
     {
-      const s = pulumi.secret("can't capture me");
+        const s = pulumi.secret("can't capture me");
 
-      cases.push({
-          title: "Can capture secrets with allowSecrets",
-          func: function() {
-              console.log(s.get());
-          },
-          allowSecrets: true,
-          expectText: `(...)`,
-      });
-  }
+        cases.push({
+            title: "Can capture secrets with allowSecrets",
+            func: function() {
+                console.log(s.get());
+            },
+            allowSecrets: true,
+            expectText: `(...)`,
+        });
+    }
+    {
+        type LambdaInput = {
+            message: string,
+        }
+
+        // @ts-ignore
+        const getSchemaValidator = (): z.ZodSchema<LambdaInput> => z.object({
+            message: z.string(),
+        });
+
+        async function reproHandler(input: any) {
+            const payload = getSchemaValidator().parse(input);
+            console.log(payload.message);
+            return {
+            }
+        }
+
+        cases.push({
+          title: "Respects package.json exports",
+          func: reproHandler,
+          expectText: `exports.handler = __reproHandler;
+
+function __f0(__0, __1, __2, __3) {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ mockpackage_1: require("mockpackage") }) {
+
+return () => mockpackage_1.z.object({
+            message: mockpackage_1.z.string(),
+        });
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __reproHandler(__0) {
+  return (function() {
+    with({ __awaiter: __f0, getSchemaValidator: __f1, reproHandler: __reproHandler }) {
+
+return function /*reproHandler*/(input) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const payload = getSchemaValidator().parse(input);
+                console.log(payload.message);
+                return {};
+            });
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        })
+    }
 
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we

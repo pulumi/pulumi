@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
 func TestGeneratePackage(t *testing.T) {
@@ -20,6 +20,7 @@ func TestGeneratePackage(t *testing.T) {
 			"dotnet/compile": typeCheckGeneratedPackage,
 			"dotnet/test":    testGeneratedPackage,
 		},
+		TestCases: test.PulumiPulumiSDKTests,
 	})
 }
 
