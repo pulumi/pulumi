@@ -7,5 +7,9 @@
   details.
   [#8882](https://github.com/pulumi/pulumi/pull/8882)
 
-- [sdk/nodejs] - Fix nodejs function serialization module path to comply with package.json exports if exports is specified.
+- [sdk/go] - Correctly parse GoLang version.
+  [#8920](https://github.com/pulumi/pulumi/pull/8920)
+
+- [sdk/nodejs] - Fix nodejs function serialization module path to comply with package.json 
+  exports if exports is specified.
   [#8893](https://github.com/pulumi/pulumi/pull/8893)

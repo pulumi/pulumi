@@ -161,4 +161,7 @@ require (
 	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
 
-require github.com/rogpeppe/go-internal v1.8.1 // indirect
+require (
+	github.com/hashicorp/go-version v1.4.0 // indirect
+	github.com/rogpeppe/go-internal v1.8.1 // indirect
+)
