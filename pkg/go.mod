@@ -1,4 +1,4 @@
-module github.com/infralight/pulumi/pkg/
+module github.com/infralight/pulumi/pkg
 
 go 1.17
 
