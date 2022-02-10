@@ -485,6 +485,7 @@ func buildHTTPRequest(pluginEndpoint, tokenType, token, username, secret string)
 
 	return req, nil
 }
+
 func getPluginResponse(pluginEndpoint string) (io.ReadCloser, int64, error) {
 	req, err := buildHTTPRequest(pluginEndpoint, "", "", "", "")
 	if err != nil {
