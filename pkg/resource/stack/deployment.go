@@ -232,7 +232,23 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv Secret
 		if err != nil {
 			return nil, err
 		}
-		dec = d
+		dec = config.NewCachedDecrypter(d)
+
+		// Do a first pass through state and collect all of the secrets that need decrypting.
+		// We will collect all secrets and decrypt them all at once, rather than just-in-time.
+		// We do this to avoid serial calls to the decryption endpoint which can result in long
+		// wait times in stacks with a large number of secrets.
+		var ciphertexts []string
+		for _, res := range deployment.Resources {
+			ciphertexts = append(ciphertexts, scanResource(res)...)
+		}
+
+		// we call BulkDecrypt to Prime the cache with the decrypted cipertexts
+		// we don't actually use the response here at this point
+		_, err = dec.BulkDecrypt(ciphertexts)
+		if err != nil {
+			return nil, err
+		}
 
 		e, err := secretsManager.Encrypter()
 		if err != nil {
@@ -398,7 +414,7 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 
 	if prop.IsSecret() {
 		// Since we are going to encrypt property value, we can elide encrypting sub-elements. We'll mark them as
-		// "secret" so we retain that information when deserializaing the overall structure, but there is no
+		// "secret" so we retain that information when deserializing the overall structure, but there is no
 		// need to double encrypt everything.
 		value, err := SerializePropertyValue(prop.SecretValue().Element, config.NopEncrypter, showSecrets)
 		if err != nil {
@@ -438,6 +454,36 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 
 	// All others are returned as-is.
 	return prop.V, nil
+}
+
+// scanProperties collects encrypted secrets from resource properties.
+func scanProperties(props map[string]interface{}) []string {
+	var cipertexts []string
+	for _, prop := range props {
+		if prop != nil {
+			if obj, ok := prop.(map[string]interface{}); ok {
+				if sig, hasSig := obj[resource.SigKey]; hasSig {
+					if sig == resource.SecretSig {
+						if ciphertext, cipherOk := obj["ciphertext"].(string); cipherOk {
+							cipertexts = append(cipertexts, ciphertext)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return cipertexts
+}
+
+// scanResource collects encrypted secrets from a serialized resource.
+func scanResource(res apitype.ResourceV3) []string {
+	var cipertexts []string
+	// Scan resource properties for secrets.
+	cipertexts = append(cipertexts, scanProperties(res.Inputs)...)
+	cipertexts = append(cipertexts, scanProperties(res.Outputs)...)
+
+	return cipertexts
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
@@ -560,7 +606,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					} else {
 						unencryptedText, err := dec.DecryptValue(ciphertext)
 						if err != nil {
-							return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
+							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %s", err.Error())
 						}
 						plaintext = unencryptedText
 					}

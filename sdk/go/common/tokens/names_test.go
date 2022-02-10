@@ -31,6 +31,7 @@ func TestIsAsName(t *testing.T) {
 		"_",       // permit underscore.
 		"s1MPl3_", // mixed-case alphanumeric/underscore.
 		"_s1MPl3", // ditto.
+		"hy-phy",  // permit hyphens.
 	}
 	for _, nm := range goodNames {
 		assert.True(t, IsName(nm), "IsName expected to be true: %v", nm)
@@ -85,7 +86,7 @@ func TestIntoQName(t *testing.T) {
 		{"foo/bar", "foo/bar"},
 		{input: "https:", expected: "https_"},
 		{"https://github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go#L61-L86",
-			"https_/github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go_L61_L86"},
+			"https_/github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go_L61-L86"},
 		{"", "_"},
 		{"///", "_"},
 	}

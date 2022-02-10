@@ -237,5 +237,10 @@ endif
 # As a convinece, we provide a format target that folks can build to
 # run go fmt over all the go code in their tree.
 .PHONY: format
-format:
-	find . -iname "*.go" -not -path "./vendor/*" | xargs gofmt -s -w
+format::
+	$(call STEP_MESSAGE)
+	find . -iname "*.go" -not \( \
+		-path "./vendor/*" -or \
+		-path "./*/compilation_error/*" -or \
+		-path "./*/testdata/*" \
+	\) | xargs gofmt -s -w

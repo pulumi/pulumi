@@ -245,6 +245,16 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 		}
 	}
 
+	// Provide a better error if using an authenticated call without having logged in first.
+	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && tok.String() == "" {
+		return "", nil, errors.New("this command requires logging in; try running 'pulumi login' first")
+	}
+
+	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)
+	if resp.StatusCode == 429 {
+		return "", nil, errors.New("pulumi service: request rate-limit exceeded")
+	}
+
 	// For 4xx and 5xx failures, attempt to provide better diagnostics about what may have gone wrong.
 	if resp.StatusCode >= 400 && resp.StatusCode <= 599 {
 		// 4xx and 5xx responses should be of type ErrorResponse. See if we can unmarshal as that
@@ -252,11 +262,6 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 		respBody, err := readBody(resp)
 		if err != nil {
 			return "", nil, fmt.Errorf("API call failed (%s), could not read response: %w", resp.Status, err)
-		}
-
-		// Provide a better error if using an authenticated call without having logged in first.
-		if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && tok.String() == "" {
-			return "", nil, errors.New("this command requires logging in; try running 'pulumi login' first")
 		}
 
 		var errResp apitype.ErrorResponse

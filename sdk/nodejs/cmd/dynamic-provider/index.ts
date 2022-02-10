@@ -118,7 +118,7 @@ async function checkRPC(call: any, callback: any): Promise<void> {
         let inputs: any = news;
         let failures: any[] = [];
         if (provider.check) {
-            const result = await provider.check(olds, news, req.getSequencenumber());
+            const result = await provider.check(olds, news);
             if (result.inputs) {
                 inputs = result.inputs;
             }

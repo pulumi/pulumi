@@ -76,10 +76,13 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     steps:
-      - name: Reduce TESTPARALLELISM on Windows to work around OOM
-        if: ${{ matrix.platform == 'windows-latest' }}
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
+      - name: Fetch Tags
         run: |
-          echo "TESTPARALLELISM=1" >> $GITHUB_ENV
+          git fetch --quiet --prune --unshallow --tags
       - name: Set PULUMI_TEST_SUBSET env var
         run: |
           echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV
@@ -95,6 +98,18 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ inputs.go-version }}
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+      - name: Go Cache
+        uses: actions/cache@v2
+        id: go-cache
+        with:
+          path: |
+              ${{ steps.go-cache-paths.outputs.go-build }}
+              ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ matrix.platform }}-${{ matrix.test-subset }}-go-test-cache-${{ hashFiles('**/go.sum') }}
       - name: Set up Python ${{ inputs.python-version }}
         uses: actions/setup-python@v1
         with:
@@ -121,13 +136,6 @@ jobs:
         run: |
           git config --global user.email "you@example.com"
           git config --global user.name "Your Name"
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ env.PR_COMMIT_SHA }}
-      - name: Fetch Tags
-        run: |
-          git fetch --quiet --prune --unshallow --tags
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
@@ -154,16 +162,6 @@ jobs:
         with:
           repo: t0yv0/goteststats
           tag: v0.0.7
-      - name: Lock go toolchain to prevent concurrent OOM on go linker
-        if: ${{ matrix.platform == 'windows-latest' }}
-        run: |
-          LOCKED_GO=$(./scripts/locked-go-toolchain.sh)
-          echo "Adding LOCKED_GO=$LOCKED_GO to PATH"
-          echo $LOCKED_GO >> $GITHUB_PATH
-      - name: Verify go toolchain modification
-        run: |
-          command -v go
-          go version
       - name: Download Pulumi Go Binaries (linux-x64)
         if: ${{ matrix.platform == 'ubuntu-latest' }}
         uses: actions/download-artifact@v2

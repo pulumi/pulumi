@@ -118,7 +118,7 @@ export interface ResourceProvider {
      * @param olds The old input properties to use for validation.
      * @param news The new input properties to use for validation.
      */
-    check?: (olds: any, news: any, sequenceNumber: number) => Promise<CheckResult>;
+    check?: (olds: any, news: any) => Promise<CheckResult>;
 
     /**
      * Diff checks what impacts a hypothetical update will have on the resource's properties.

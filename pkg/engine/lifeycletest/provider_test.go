@@ -1205,3 +1205,92 @@ func TestPluginDownloadURLDefaultProvider(t *testing.T) {
 	}
 	assert.Truef(t, foundDefaultProvider, "Found resources: %#v", snapshot.Resources)
 }
+
+func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
+	cases := []struct {
+		name       string
+		f          deploytest.ProgramFunc
+		disabled   string
+		expectFail bool
+	}{
+		{
+			name: "default-blocked",
+			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+				assert.NoError(t, err)
+				_, _, _, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
+				assert.NoError(t, err)
+
+				return nil
+			},
+			disabled:   `["pkgA"]`,
+			expectFail: true,
+		},
+		{
+			name: "explicit-not-blocked",
+			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
+				assert.NoError(t, err)
+				provRef, err := providers.NewReference(provURN, provID)
+				assert.NoError(t, err)
+
+				_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+					Provider: provRef.String(),
+				})
+				assert.NoError(t, err)
+
+				_, _, _, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
+				assert.NoError(t, err)
+
+				return nil
+			},
+			disabled:   `["pkgA"]`,
+			expectFail: false,
+		},
+		{
+			name: "wildcard",
+			f: func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+				assert.NoError(t, err)
+				_, _, _, err = monitor.RegisterResource("pkgB:m:typB", "resB", true)
+				assert.NoError(t, err)
+
+				return nil
+			},
+			disabled:   `["*"]`,
+			expectFail: true,
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{}, nil
+				}),
+				deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{}, nil
+				}),
+			}
+
+			program := deploytest.NewLanguageRuntime(tt.f)
+			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+			c := config.Map{}
+			k := config.MustMakeKey("pulumi", "disable-default-providers")
+			c[k] = config.NewValue(tt.disabled)
+
+			expectedCreated := 4
+			if tt.expectFail {
+				expectedCreated = 0
+			}
+			update := MakeBasicLifecycleSteps(t, expectedCreated)[:1]
+			update[0].ExpectFailure = tt.expectFail
+			p := &TestPlan{
+				Options: UpdateOptions{Host: host},
+				Steps:   update,
+				Config:  c,
+			}
+			p.Run(t, nil)
+		})
+	}
+}

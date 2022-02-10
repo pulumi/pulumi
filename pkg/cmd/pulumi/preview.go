@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -23,8 +24,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -38,6 +41,8 @@ func newPreviewCmd() *cobra.Command {
 	var configArray []string
 	var configPath bool
 	var client string
+	var planFilePath string
+	var showSecrets bool
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
@@ -180,11 +185,12 @@ func newPreviewCmd() *cobra.Command {
 					DisableOutputValues:       disableOutputValues(),
 					UpdateTargets:             targetURNs,
 					TargetDependents:          targetDependents,
+					ExperimentalPlans:         hasExperimentalCommands() || planFilePath != "",
 				},
 				Display: displayOpts,
 			}
 
-			changes, res := s.Preview(commandContext(), backend.UpdateOperation{
+			plan, changes, res := s.Preview(commandContext(), backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -200,6 +206,24 @@ func newPreviewCmd() *cobra.Command {
 			case expectNop && changes != nil && changes.HasChanges():
 				return result.FromError(errors.New("error: no changes were expected but changes were proposed"))
 			default:
+				if planFilePath != "" {
+					encrypter, err := sm.Encrypter()
+					if err != nil {
+						return result.FromError(err)
+					}
+					if err = writePlan(planFilePath, plan, encrypter, showSecrets); err != nil {
+						return result.FromError(err)
+					}
+
+					// Write out message on how to use the plan
+					var buf bytes.Buffer
+					fprintf(&buf, "Update plan written to '%s'", planFilePath)
+					fprintf(
+						&buf,
+						"\nRun `pulumi up --plan='%s'` to constrain the update to the operations planned by this preview",
+						planFilePath)
+					cmdutil.Diag().Infof(diag.RawMessage("" /*urn*/, buf.String()))
+				}
 				return nil
 			}
 		}),
@@ -223,6 +247,14 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
+	cmd.PersistentFlags().StringVar(
+		&planFilePath, "save-plan", "",
+		"[EXPERIMENTAL] Save the operations proposed by the preview to a plan file at the given path")
+	if !hasExperimentalCommands() {
+		contract.AssertNoError(cmd.PersistentFlags().MarkHidden("save-plan"))
+	}
+	cmd.Flags().BoolVarP(
+		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in the plan file. Defaults to `false`")
 
 	cmd.PersistentFlags().StringVar(
 		&client, "client", "", "The address of an existing language runtime host to connect to")

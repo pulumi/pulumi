@@ -93,6 +93,7 @@
         "tests/runtime/closureLoader.spec.ts",
         "tests/runtime/registrations.spec.ts",
         "tests/runtime/tsClosureCases.ts",
+        "tests/runtime/package.spec.ts",
         "tests/runtime/props.spec.ts",
         "tests/runtime/settings.spec.ts",
         "tests/runtime/langhost/run.spec.ts",

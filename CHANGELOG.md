@@ -1,13 +1,168 @@
 CHANGELOG
 =========
 
+## 3.24.1 (2022-02-4)
+
+### Bug Fixes
+
+- [release] - Update .gitignore to allow for a clean git repository for release.
+  [#8932](https://github.com/pulumi/pulumi/pull/8932)
+
+## 3.24.0 (2022-02-4)
+
+### Improvements
+
+- [codegen/go] - Implement go type conversions for optional string, boolean, int, and float32
+  arguments, and changes our behavior for optional spilling from variable declaration hoisting to
+  instead rewrite as calls to these functions. Fixes #8821.
+  [#8839](https://github.com/pulumi/pulumi/pull/8839)
+
+- [sdk/go] Added new conversion functions for Read methods on resources exported at the top level
+  of the Pulumi sdk. They are `StringRef`, `BoolRef`, `IntRef`, and `Float64Ref`. They are used for
+  creating a pointer to the type they name, e.g.: StringRef takes `string` and returns `*string`.
+  Data source methods which take optional strings, bools, ints, and float64 values can be set to
+  the return value of these functions. These functions will appear in generated programs as well as
+  future docs updates.
+
+- [sdk/nodejs] - Fix resource plugins advertising a `pluginDownloadURL` not being downloaded. This
+  should allow resource plugins published via boilerplates to find and consume plugins published
+  outside the registry. See: https://github.com/pulumi/pulumi/issues/8890 for the tracking issue to
+  document this feature.
+
+- [cli] Experimental support for update plans. Only enabled when PULUMI_EXPERIMENTAL is
+  set. This enables preview to save a plan of what the engine expects to happen in a file
+  with --save-plan. That plan can then be read in by up with --plan and is used to ensure
+  only the expected operations happen.
+  [#8448](https://github.com/pulumi/pulumi/pull/8448)
+
+- [codegen] - Add language option to make codegen respect the `Version` field in
+  the Pulumi package schema. 
+  [#8881](https://github.com/pulumi/pulumi/pull/8881)
+
+- [cli] - Support wildcards for `pulumi up --target <urn>` and similar commands.
+  [#8883](https://github.com/pulumi/pulumi/pull/8883).
+
+- [cli/import] - The import command now takes an extra argument --properties to instruct the engine which
+  properties to use for the import. This can be used to import resources which the engine couldn't automaticly
+  infer the correct property set for.
+  [#8846](https://github.com/pulumi/pulumi/pull/8846)
+
+- [cli] Ensure defaultOrg is used as part of any stack name
+  [#8903](https://github.com/pulumi/pulumi/pull/8903)
+
+### Bug Fixes
+
+- [codegen] - Correctly handle third party resource imports.
+  [#8861](https://github.com/pulumi/pulumi/pull/8861)
+
+- [sdk/dotnet] - Normalize merge behavior for ComponentResourceOptions, inline
+  with other SDKs. See https://github.com/pulumi/pulumi/issues/8796 for more
+  details.
+  [#8838](https://github.com/pulumi/pulumi/pull/8838)
+
+- [codegen/nodejs] - Respect compat modes when referencing external types.
+  [#8850](https://github.com/pulumi/pulumi/pull/8850)
+
+- [cli] The engine will allow a resource to be replaced if either it's old or new state
+  (or both) is not protected.
+  [#8873](https://github.com/pulumi/pulumi/pull/8873)
+
+- [cli] - Fixed CLI duplicating prompt question.
+  [#8858](https://github.com/pulumi/pulumi/pull/8858)
+
+- [cli] - `pulumi plugin install --reinstall` now always reinstalls plugins.
+  [#8892](https://github.com/pulumi/pulumi/pull/8892)
+
+- [codegen/go] - Honor import aliases for external types/resources.
+  [#8833](https://github.com/pulumi/pulumi/pull/8833)
+
+- [codegen/python] - Correctly reference external types/resources with same module name.
+  [#8910](https://github.com/pulumi/pulumi/pull/8910)
+
+- [sdk/nodejs] - Correctly pickup provider as a member of providers.
+  [#8923](https://github.com/pulumi/pulumi/pull/8923)
+
+## 3.23.2 (2022-01-28)
+
+## Bug Fixes
+
+- [sdk/{nodejs,python}] - Remove sequence numbers from the dynamic provider interfaces.
+  [#8849](https://github.com/pulumi/pulumi/pull/8849)
+
+## 3.23.0 (2022-01-26)
+
+### Improvements
+
+- [codegen/dotnet] - Add C# extension `rootNamespace`, allowing the user to
+  replace `Pulumi` as the default C# global namespace in generated programs.
+  The `Company` and `Author` fields of the .csproj file are now driven by
+  `schema.publisher`.
+  [#8735](https://github.com/pulumi/pulumi/pull/8735)
+
+- [cli] Download provider plugins from GitHub Releases
+  [#8785](https://github.com/pulumi/pulumi/pull/8785)
+
+- [cli] Using a decryptAll functionality when deserializing a deployment. This will allow
+  decryption of secrets stored in the Pulumi Service backend to happen in bulk for
+  performance increase
+  [#8676](https://github.com/pulumi/pulumi/pull/8676)
+
+- [sdk/dotnet] - Changed `Output<T>.ToString()` to return an informative message rather than just "Output`1[X]"
+  [#8767](https://github.com/pulumi/pulumi/pull/8767)
+
+- [cli] Add the concept of sequence numbers to the engine and resource provider interface.
+  [#8631](https://github.com/pulumi/pulumi/pull/8631)
+
+- [common] Allow names with hyphens.
+
+- [cli] - Add support for overriding plugin download URLs.
+  [#8798](https://github.com/pulumi/pulumi/pull/8798)
+
+- [automation] - Add `color` option to stack up, preview, refresh, and destroy commands.
+  [#8811](https://github.com/pulumi/pulumi/pull/8811)
+
+- [sdk/nodejs] - Support top-level default exports in ESM.
+  [#8766](https://github.com/pulumi/pulumi/pull/8766)
+
+- [cli] - Allow disabling default providers via the Pulumi config.
+  [#8829](https://github.com/pulumi/pulumi/pull/8829)
+
+- [cli] Add better error message for pulumi service rate limit responses
+  [#7963](https://github.com/pulumi/pulumi/issues/7963)
+
+### Bug Fixes
+
+- [sdk/{python,nodejs}] - Prevent `ResourceOptions.merge` from promoting between the
+  `.provider` and `.providers` fields. This changes the general behavior of merging
+  for `.provider` and `.providers`, as described in [#8796](https://github.com/pulumi/pulumi/issues/8796).
+  Note that this is a breaking change in two ways:
+    1. Passing a provider to a custom resource of the wrong package now
+       produces a `ValueError`. In the past it would send to the provider, and
+       generally crash the provider.
+    2. Merging two `ResourceOptions` with `provider` set no longer hoists to `providers`.
+       One `provider` will now take priority over the other. The new behavior reflects the
+       common case for `ResourceOptions.merge`. To restore the old behavior, replace
+       `ResourceOptions(provider=FooProvider).merge(ResourceOptions(provider=BarProvider))`
+       with `ResourceOptions(providers=[FooProvider]).merge(ResourceOptions(providers=[BarProvider]))`.
+  [#8770](https://github.com/pulumi/pulumi/pull/8770)
+
+- [codegen/nodejs] - Generate an install script that runs `pulumi plugin install` with
+  the `--server` flag when necessary.
+  [#8730](https://github.com/pulumi/pulumi/pull/8730)
+
+- [cli] The engine will no longer try to replace resources that are protected as that entails a delete.
+  [#8810](https://github.com/pulumi/pulumi/pull/8810)
+
+- [codegen/pcl] - Fix handling of function invokes without args
+  [#8805](https://github.com/pulumi/pulumi/pull/8805)
+
 ## 3.22.1 (2022-01-14)
 
 ### Improvements
 
 - [sdk/dotnet] - Add `PluginDownloadURL` as a resource option. When provided by
   the schema, `PluginDownloadURL` will be baked into `new Resource` and `Invoke`
-  requests in generated SDKs. 
+  requests in generated SDKs.
   [#8739](https://github.com/pulumi/pulumi/pull/8739)
 
 - [sdk] - Allow property paths to accept `[*]` as sugar for `["*"]`.

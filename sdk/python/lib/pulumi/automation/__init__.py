@@ -88,15 +88,9 @@ conflicts::
 
 """
 
-from ._cmd import (
-    CommandResult,
-    OnOutput
-)
+from ._cmd import CommandResult, OnOutput
 
-from ._config import (
-    ConfigMap,
-    ConfigValue
-)
+from ._config import ConfigMap, ConfigValue
 
 # pylint: disable=redefined-builtin
 from .errors import (
@@ -107,7 +101,7 @@ from .errors import (
     InlineSourceRuntimeError,
     RuntimeError,
     CompilationError,
-    InvalidVersionError
+    InvalidVersionError,
 )
 
 from .events import (
@@ -126,7 +120,7 @@ from .events import (
     StepEventMetadata,
     SummaryEvent,
     OpMap,
-    OpType
+    OpType,
 )
 
 from ._local_workspace import (
@@ -134,7 +128,7 @@ from ._local_workspace import (
     LocalWorkspaceOptions,
     create_stack,
     select_stack,
-    create_or_select_stack
+    create_or_select_stack,
 )
 
 from ._workspace import (
@@ -146,10 +140,7 @@ from ._workspace import (
     Deployment,
 )
 
-from ._output import (
-    OutputMap,
-    OutputValue
-)
+from ._output import OutputMap, OutputValue
 
 from ._project_settings import (
     ProjectBackend,
@@ -157,9 +148,7 @@ from ._project_settings import (
     ProjectRuntimeInfo,
 )
 
-from ._stack_settings import (
-    StackSettings
-)
+from ._stack_settings import StackSettings
 
 from ._stack import (
     OnEvent,
@@ -176,11 +165,9 @@ __all__ = [
     # _cmd
     "CommandResult",
     "OnOutput",
-
     # _config
     "ConfigMap",
     "ConfigValue",
-
     # errors
     "StackNotFoundError",
     "StackAlreadyExistsError",
@@ -190,7 +177,6 @@ __all__ = [
     "RuntimeError",
     "CompilationError",
     "InvalidVersionError",
-
     # events
     "CancelEvent",
     "DiagnosticEvent",
@@ -208,14 +194,12 @@ __all__ = [
     "SummaryEvent",
     "OpType",
     "OpMap",
-
     # _local_workspace
     "LocalWorkspace",
     "LocalWorkspaceOptions",
     "create_stack",
     "select_stack",
     "create_or_select_stack",
-
     # _workspace
     "PluginInfo",
     "StackSummary",
@@ -223,19 +207,15 @@ __all__ = [
     "Workspace",
     "Deployment",
     "WhoAmIResult",
-
     # _output
     "OutputMap",
     "OutputValue",
-
     # _project_settings
     "ProjectBackend",
     "ProjectSettings",
     "ProjectRuntimeInfo",
-
     # _stack_settings
     "StackSettings",
-
     # _stack
     "OnEvent",
     "Stack",
@@ -245,8 +225,7 @@ __all__ = [
     "RefreshResult",
     "DestroyResult",
     "fully_qualified_stack_name",
-
     # sub-modules
     "errors",
-    "events"
+    "events",
 ]

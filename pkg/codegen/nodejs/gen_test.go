@@ -13,8 +13,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
@@ -26,6 +26,7 @@ func TestGeneratePackage(t *testing.T) {
 			"nodejs/compile": typeCheckGeneratedPackage,
 			"nodejs/test":    testGeneratedPackage,
 		},
+		TestCases: test.PulumiPulumiSDKTests,
 	})
 }
 

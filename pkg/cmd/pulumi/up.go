@@ -76,6 +76,7 @@ func newUpCmd() *cobra.Command {
 	var replaces []string
 	var targetReplaces []string
 	var targetDependents bool
+	var planFilePath string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -110,18 +111,33 @@ func newUpCmd() *cobra.Command {
 		}
 
 		targetURNs := []resource.URN{}
+		snap, err := s.Snapshot(commandContext())
+		if err != nil {
+			return result.FromError(err)
+		}
 		for _, t := range targets {
-			targetURNs = append(targetURNs, resource.URN(t))
+			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(t))...)
 		}
 
 		replaceURNs := []resource.URN{}
 		for _, r := range replaces {
-			replaceURNs = append(replaceURNs, resource.URN(r))
+			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(r))...)
 		}
 
 		for _, tr := range targetReplaces {
-			targetURNs = append(targetURNs, resource.URN(tr))
-			replaceURNs = append(replaceURNs, resource.URN(tr))
+			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(tr))...)
+			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(tr))...)
+		}
+
+		if len(targetURNs) == 0 && len(targets)+len(targetReplaces) > 0 {
+			// Wildcards were used, but they all evaluated to empty. We don't
+			// want a targeted update to turn into a general update, so we
+			// should abort.
+			if !jsonDisplay {
+				fmt.Printf("There were no resources matching the wildcards provided.\n")
+				fmt.Printf("Wildcards can only be used to target resources that already exist.\n")
+			}
+			return nil
 		}
 
 		refreshOption, err := getRefreshOption(proj, refresh)
@@ -141,6 +157,23 @@ func newUpCmd() *cobra.Command {
 			DisableOutputValues:       disableOutputValues(),
 			UpdateTargets:             targetURNs,
 			TargetDependents:          targetDependents,
+			ExperimentalPlans:         hasExperimentalCommands() || planFilePath != "",
+		}
+
+		if planFilePath != "" {
+			dec, err := sm.Decrypter()
+			if err != nil {
+				return result.FromError(err)
+			}
+			enc, err := sm.Encrypter()
+			if err != nil {
+				return result.FromError(err)
+			}
+			plan, err := readPlan(planFilePath, dec, enc)
+			if err != nil {
+				return result.FromError(err)
+			}
+			opts.Engine.Plan = plan
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -299,10 +332,11 @@ func newUpCmd() *cobra.Command {
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:         parallel,
-			Debug:            debug,
-			Refresh:          refreshOption,
+			LocalPolicyPacks:  engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:          parallel,
+			Debug:             debug,
+			Refresh:           refreshOption,
+			ExperimentalPlans: hasExperimentalCommands() || planFilePath != "",
 		}
 
 		// TODO for the URL case:
@@ -445,10 +479,12 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&targets, "target", "t", []string{},
 		"Specify a single resource URN to update. Other resources will not be updated."+
-			" Multiple resources can be specified using --target urn1 --target urn2")
+			" Multiple resources can be specified using --target urn1 --target urn2."+
+			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().StringArrayVar(
 		&replaces, "replace", []string{},
-		"Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2")
+		"Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2."+
+			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().StringArrayVar(
 		&targetReplaces, "target-replace", []string{},
 		"Specify a single resource URN to replace. Other resources will not be updated."+
@@ -504,6 +540,15 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
+
+	cmd.PersistentFlags().StringVar(
+		&planFilePath, "plan", "",
+		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
+			"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
+			"of sames).")
+	if !hasExperimentalCommands() {
+		contract.AssertNoError(cmd.PersistentFlags().MarkHidden("plan"))
+	}
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(

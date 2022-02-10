@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build nodejs || python || all
 // +build nodejs python all
 
 package workspace
@@ -31,6 +32,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // createTGZ creates an in-memory tarball.
@@ -63,7 +65,7 @@ func createTGZ(files map[string][]byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, PluginInfo) {
+func prepareTestPluginTGZ(t *testing.T, files map[string][]byte) io.ReadCloser {
 	if files == nil {
 		files = map[string][]byte{}
 	}
@@ -73,11 +75,15 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 	files["pulumi-resource-test.exe"] = nil
 
 	tgz, err := createTGZ(files)
-	assert.NoError(t, err)
-	tarball := ioutil.NopCloser(bytes.NewReader(tgz))
+	require.NoError(t, err)
+	return ioutil.NopCloser(bytes.NewReader(tgz))
+}
+
+func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, PluginInfo) {
+	tarball := prepareTestPluginTGZ(t, files)
 
 	dir, err := ioutil.TempDir("", "plugins-test-dir")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	v1 := semver.MustParse("0.1.0")
 	plugin := PluginInfo{
@@ -143,7 +149,7 @@ func testPluginInstall(t *testing.T, expectedDir string, files map[string][]byte
 	dir, tarball, plugin := prepareTestDir(t, files)
 	defer os.RemoveAll(dir)
 
-	err := plugin.Install(tarball)
+	err := plugin.Install(tarball, false)
 	assert.NoError(t, err)
 
 	assertPluginInstalled(t, dir, plugin)
@@ -166,13 +172,47 @@ func TestInstallNoDeps(t *testing.T) {
 	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
 	defer os.RemoveAll(dir)
 
-	err := plugin.Install(tarball)
-	assert.NoError(t, err)
+	err := plugin.Install(tarball, false)
+	require.NoError(t, err)
 
 	assertPluginInstalled(t, dir, plugin)
 
 	b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	assert.Equal(t, content, b)
+
+	testDeletePlugin(t, dir, plugin)
+}
+
+func TestReinstall(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("TODO[pulumi/pulumi#8649] Skipped on Windows: issues with TEMP dir")
+	}
+
+	name := "foo.txt"
+	content := []byte("hello\n")
+
+	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
+	defer os.RemoveAll(dir)
+
+	err := plugin.Install(tarball, false)
+	require.NoError(t, err)
+
+	assertPluginInstalled(t, dir, plugin)
+
+	b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
+	require.NoError(t, err)
+	assert.Equal(t, content, b)
+
+	content = []byte("world\n")
+	tarball = prepareTestPluginTGZ(t, map[string][]byte{name: content})
+
+	err = plugin.Install(tarball, true)
+
+	assertPluginInstalled(t, dir, plugin)
+
+	b, err = ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
+	require.NoError(t, err)
 	assert.Equal(t, content, b)
 
 	testDeletePlugin(t, dir, plugin)
@@ -205,7 +245,7 @@ func TestConcurrentInstalls(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			err := plugin.Install(tarball)
+			err := plugin.Install(tarball, false)
 			assert.NoError(t, err)
 
 			assertSuccess()
@@ -235,7 +275,7 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	err = ioutil.WriteFile(partialPath, nil, 0600)
 	assert.NoError(t, err)
 
-	err = plugin.Install(tarball)
+	err = plugin.Install(tarball, false)
 	assert.NoError(t, err)
 
 	assertPluginInstalled(t, dir, plugin)
@@ -254,7 +294,7 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 	dir, tarball, plugin := prepareTestDir(t, nil)
 	defer os.RemoveAll(dir)
 
-	err := plugin.Install(tarball)
+	err := plugin.Install(tarball, false)
 	assert.NoError(t, err)
 
 	err = ioutil.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0600)

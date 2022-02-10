@@ -53,6 +53,9 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 	g.Formatter = format.NewFormatter(g)
 
+	// Creating a list to store and later print helper methods if they turn out to be needed
+	preambleHelperMethods := codegen.NewStringSet()
+
 	for _, p := range program.Packages() {
 		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
 			return nil, nil, err
@@ -60,7 +63,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 
 	var index bytes.Buffer
-	g.genPreamble(&index, program)
+	g.genPreamble(&index, program, preambleHelperMethods)
 	for _, n := range nodes {
 		if r, ok := n.(*pcl.Resource); ok && requiresAsyncMain(r) {
 			g.asyncMain = true
@@ -150,7 +153,7 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 	}
 }
 
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
 	// Print the @pulumi/pulumi import at the top.
 	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
 
@@ -160,12 +163,23 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
-			importSet.Add("@pulumi/" + pkg)
+			pkgName := "@pulumi/" + pkg
+			if r.Schema != nil && r.Schema.Package != nil {
+				if info, ok := r.Schema.Package.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
+					pkgName = info.PackageName
+				}
+			}
+			importSet.Add(pkgName)
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
-				if i := g.getFunctionImports(call); i != "" {
-					importSet.Add(i)
+				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {
+					for _, importPackage := range i {
+						importSet.Add(importPackage)
+					}
+				}
+				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name); ok {
+					preambleHelperMethods.Add(helperMethodBody)
 				}
 			}
 			return n, nil
@@ -192,6 +206,11 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 		g.Fprintln(w, i)
 	}
 	g.Fprint(w, "\n")
+
+	// If we collected any helper methods that should be added, write them just before the main func
+	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
+	}
 }
 
 func (g *generator) genNode(w io.Writer, n pcl.Node) {

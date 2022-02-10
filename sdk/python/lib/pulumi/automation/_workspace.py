@@ -14,13 +14,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import (
-    Callable,
-    Mapping,
-    Any,
-    List,
-    Optional
-)
+from typing import Callable, Mapping, Any, List, Optional
 
 from ._stack_settings import StackSettings
 from ._project_settings import ProjectSettings
@@ -32,6 +26,7 @@ PulumiFn = Callable[[], None]
 
 class StackSummary:
     """A summary of the status of a given stack."""
+
     name: str
     current: bool
     update_in_progress: bool
@@ -39,13 +34,15 @@ class StackSummary:
     resource_count: Optional[int]
     url: Optional[str]
 
-    def __init__(self,
-                 name: str,
-                 current: bool,
-                 update_in_progress: bool = False,
-                 last_update: Optional[datetime] = None,
-                 resource_count: Optional[int] = None,
-                 url: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        current: bool,
+        update_in_progress: bool = False,
+        last_update: Optional[datetime] = None,
+        resource_count: Optional[int] = None,
+        url: Optional[str] = None,
+    ) -> None:
         self.name = name
         self.current = current
         self.update_in_progress = update_in_progress
@@ -56,6 +53,7 @@ class StackSummary:
 
 class WhoAmIResult:
     """The currently logged-in Pulumi identity."""
+
     user: str
 
     def __init__(self, user: str):
@@ -70,13 +68,15 @@ class PluginInfo:
     install_time: Optional[datetime]
     version: Optional[str]
 
-    def __init__(self,
-                 name: str,
-                 kind: str,
-                 size: int,
-                 last_used_time: datetime,
-                 install_time: Optional[datetime] = None,
-                 version: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        kind: str,
+        size: int,
+        last_used_time: datetime,
+        install_time: Optional[datetime] = None,
+        version: Optional[str] = None,
+    ) -> None:
         self.name = name
         self.kind = kind
         self.size = size
@@ -89,7 +89,11 @@ class Deployment:
     version: Optional[int]
     deployment: Optional[Mapping[str, Any]]
 
-    def __init__(self, version: Optional[int] = None, deployment: Optional[Mapping[str, Any]] = None) -> None:
+    def __init__(
+        self,
+        version: Optional[int] = None,
+        deployment: Optional[Mapping[str, Any]] = None,
+    ) -> None:
         self.version = version
         self.deployment = deployment
 
@@ -322,10 +326,12 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def remove_plugin(self,
-                      name: Optional[str] = None,
-                      version_range: Optional[str] = None,
-                      kind: str = "resource") -> None:
+    def remove_plugin(
+        self,
+        name: Optional[str] = None,
+        version_range: Optional[str] = None,
+        kind: str = "resource",
+    ) -> None:
         """
         Removes a plugin from the Workspace matching the specified name and version.
 

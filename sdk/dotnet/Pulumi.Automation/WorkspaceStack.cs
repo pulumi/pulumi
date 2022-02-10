@@ -263,6 +263,12 @@ namespace Pulumi.Automation
                     args.Add("--parallel");
                     args.Add(options.Parallel.Value.ToString());
                 }
+
+                if (!string.IsNullOrWhiteSpace(options.Color))
+                {
+                    args.Add("--color");
+                    args.Add(options.Color);
+                }
             }
 
             InlineLanguageHost? inlineHost = null;
@@ -380,6 +386,12 @@ namespace Pulumi.Automation
                     args.Add("--parallel");
                     args.Add(options.Parallel.Value.ToString());
                 }
+
+                if (!string.IsNullOrWhiteSpace(options.Color))
+                {
+                    args.Add("--color");
+                    args.Add(options.Color);
+                }
             }
 
             InlineLanguageHost? inlineHost = null;
@@ -493,6 +505,12 @@ namespace Pulumi.Automation
                     args.Add("--parallel");
                     args.Add(options.Parallel.Value.ToString());
                 }
+
+                if (!string.IsNullOrWhiteSpace(options.Color))
+                {
+                    args.Add("--color");
+                    args.Add(options.Color);
+                }
             }
 
             var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
@@ -547,6 +565,12 @@ namespace Pulumi.Automation
                 {
                     args.Add("--parallel");
                     args.Add(options.Parallel.Value.ToString());
+                }
+
+                if (!string.IsNullOrWhiteSpace(options.Color))
+                {
+                    args.Add("--color");
+                    args.Add(options.Color);
                 }
             }
 

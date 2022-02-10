@@ -3,7 +3,7 @@ LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go
 VERSION          := $(shell cd ../../ && pulumictl get version)
 TEST_FAST_PKGS   := $(shell go list ./pulumi/... ./pulumi-language-go/... ./common/... | grep -v /vendor/ | grep -v templates)
 TEST_AUTO_PKGS   := $(shell go list ./auto/... | grep -v /vendor/ | grep -v templates)
-TESTPARALLELISM  ?= 10
+TESTPARALLELISM  := 10
 PROJECT_ROOT     := $(realpath ../..)
 
 include ../../build/common.mk
@@ -37,3 +37,6 @@ dist::
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
+
+lint::
+	cd .. && golangci-lint run -c ../.golangci.yml --timeout 5m

@@ -394,6 +394,18 @@ func (pc *Client) LogBulk3rdPartySecretsProviderDecryptionEvent(ctx context.Cont
 	return nil
 }
 
+// BulkDecryptValue decrypts a ciphertext value in the context of the indicated stack.
+func (pc *Client) BulkDecryptValue(ctx context.Context, stack StackIdentifier,
+	ciphertexts [][]byte) (map[string][]byte, error) {
+	req := apitype.BulkDecryptValueRequest{Ciphertexts: ciphertexts}
+	var resp apitype.BulkDecryptValueResponse
+	if err := pc.restCall(ctx, "POST", getStackPath(stack, "batch-decrypt"), nil, &req, &resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Plaintexts, nil
+}
+
 // GetStackUpdates returns all updates to the indicated stack.
 func (pc *Client) GetStackUpdates(
 	ctx context.Context,
