@@ -33,9 +33,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
+	"unicode"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -449,8 +449,8 @@ func determinePluginDependency(
 		version, err = determinePluginVersion(pkg.Version)
 		if err != nil {
 			logging.V(5).Infof(
-				"GetRequiredPlugins: Could not determine plugin version for package %s with version %s",
-				pkg.Name, pkg.Version)
+				"GetRequiredPlugins: Could not determine plugin version for package %s with version %s: %s",
+				pkg.Name, pkg.Version, err.Error())
 			return nil, nil
 		}
 	}
@@ -471,24 +471,120 @@ func determinePluginDependency(
 }
 
 // determinePluginVersion attempts to convert a PEP440 package version into a plugin version.
-// The package version must have only major.minor.patch components and each must be integers only.
-// If there are any other characters in the component (e.g. pre-release tags), an error is returned
-// because there isn't enough information to determine the plugin version from a pre-release tag.
+//
+// Supported versions:
+//   PEP440 defines a version as `[N!]N(.N)*[{a|b|rc}N][.postN][.devN]`, but
+//   determinePluginVersion only supports a subset of that. Translations are provided for
+//   `N(.N)*[{a|b|rc}N][.postN][.devN]`.
+//
+// Translations:
+//   We ensure that there are at least 3 version segments. Missing segments are `0`
+//   padded.
+//   Example: 1.0 => 1.0.0
+//
+//   We translate a,b,rc to alpha,beta,rc respectively with a hyphen separator.
+//   Example: 1.2.3a4 => 1.2.3-alpha.4, 1.2.3rc4 => 1.2.3-rc.4
+//
+//   We translate `.post` and `.dev` by replacing the `.` with a `+`. If both `.post`
+//   and `.dev` are present, only one separator is used.
+//   Example: 1.2.3.post4 => 1.2.3+post4, 1.2.3.post4.dev5 => 1.2.3+post4dev5
+//
+// Reference on PEP440: https://www.python.org/dev/peps/pep-0440/
 func determinePluginVersion(packageVersion string) (string, error) {
-	components := strings.Split(packageVersion, ".")
-	if len(components) < 2 || len(components) > 3 {
-		return "", errors.Errorf("unexpected number of components in version %q", packageVersion)
+	if len(packageVersion) == 0 {
+		return "", fmt.Errorf("Cannot parse empty string")
 	}
-
-	// Ensure each component is an integer.
-	for i := range components {
-		if _, err := strconv.ParseInt(components[i], 10, 64); err != nil {
-			names := []string{"major", "minor", "patch"}
-			return "", errors.Errorf("parsing %s: %q", names[i], components[i])
+	// Verify ASCII
+	for i := 0; i < len(packageVersion); i++ {
+		c := packageVersion[i]
+		if c > unicode.MaxASCII {
+			return "", fmt.Errorf("byte %d is not ascii", i)
 		}
 	}
 
-	return packageVersion, nil
+	parseNumber := func(s string) (string, string) {
+		i := 0
+		for _, c := range []rune(s) {
+			if c > '9' || c < '0' {
+				break
+			}
+			i++
+		}
+		return s[:i], s[i:]
+	}
+
+	// Explicitly err on epochs
+	if num, maybeEpoch := parseNumber(packageVersion); num != "" && strings.HasPrefix(maybeEpoch, "!") {
+		return "", fmt.Errorf("Epochs are not supported")
+	}
+
+	segments := []string{}
+	num, rest := "", packageVersion
+	foundDot := false
+	for {
+		if num, rest = parseNumber(rest); num != "" {
+			foundDot = false
+			segments = append(segments, num)
+			if strings.HasPrefix(rest, ".") {
+				rest = rest[1:]
+				foundDot = true
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+	if foundDot {
+		rest = "." + rest
+	}
+
+	for len(segments) < 3 {
+		segments = append(segments, "0")
+	}
+
+	if rest == "" {
+		r := strings.Join(segments, ".")
+		return r, nil
+	}
+
+	var preRelease string
+
+	switch {
+	case rest[0] == 'a':
+		preRelease, rest = parseNumber(rest[1:])
+		preRelease = "-alpha." + preRelease
+	case rest[0] == 'b':
+		preRelease, rest = parseNumber(rest[1:])
+		preRelease = "-beta." + preRelease
+	case strings.HasPrefix(rest, "rc"):
+		preRelease, rest = parseNumber(rest[2:])
+		preRelease = "-rc." + preRelease
+	}
+
+	var postRelease string
+	if strings.HasPrefix(rest, ".post") {
+		postRelease, rest = parseNumber(rest[5:])
+		postRelease = "+post" + postRelease
+	}
+
+	var developmentRelease string
+	if strings.HasPrefix(rest, ".dev") {
+		developmentRelease, rest = parseNumber(rest[4:])
+		join := ""
+		if postRelease == "" {
+			join = "+"
+		}
+		developmentRelease = join + "dev" + developmentRelease
+	}
+
+	if rest != "" {
+		return "", fmt.Errorf("'%s' still unparsed", rest)
+	}
+
+	result := strings.Join(segments, ".") + preRelease + postRelease + developmentRelease
+
+	return result, nil
 }
 
 func runPythonCommand(virtualenv, cwd string, arg ...string) ([]byte, error) {
