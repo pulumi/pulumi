@@ -483,7 +483,7 @@ func determinePluginDependency(
 //   Example: 1.0 => 1.0.0
 //
 //   We translate a,b,rc to alpha,beta,rc respectively with a hyphen separator.
-//   Example: 1.2.3a4 => 1.2.3-alpha4, 1.2.3rc4 => 1.2.3-rc4
+//   Example: 1.2.3a4 => 1.2.3-alpha.4, 1.2.3rc4 => 1.2.3-rc.4
 //
 //   We translate `.post` and `.dev` by replacing the `.` with a `+`. If both `.post`
 //   and `.dev` are present, only one separator is used.
