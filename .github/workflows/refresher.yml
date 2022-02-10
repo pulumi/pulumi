@@ -27,7 +27,7 @@ jobs:
       - name: Build and push image to staging
         env:
           GOPRIVATE: "github.com/infralight/*"
-        run: make docker-build tag-version publish-version GIT_HASH=${GITHUB_SHA::6}  IMG=094724549126.dkr.ecr.us-west-2.amazonaws.com/pulumi_mapper ACCESS_TOKEN_USR=${{ secrets.ACCESS_TOKEN_USER }} ACCESS_TOKEN_PWD=${{ secrets.PAT }}
+        run: make docker-build tag-version publish GIT_HASH=${GITHUB_SHA::6}  IMG=094724549126.dkr.ecr.us-west-2.amazonaws.com/pulumi_mapper ACCESS_TOKEN_USR=${{ secrets.ACCESS_TOKEN_USER }} ACCESS_TOKEN_PWD=${{ secrets.PAT }}
       - name: Slack Notification
         uses: rtCamp/action-slack-notify@v2
         env:
