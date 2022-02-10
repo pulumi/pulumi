@@ -10,11 +10,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/rs/zerolog"
+	"strings"
 	"time"
 )
 
-
-func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId, stackName, projectName, organizationName string, logger *zerolog.Logger,) (result []map[string]interface{}, err error) {
+func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId, stackName, projectName, organizationName string, logger *zerolog.Logger) (result []map[string]interface{}, err error) {
 
 	var s3Nodes = make([]map[string]interface{}, 0, len(events))
 
@@ -29,6 +29,10 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 		iacMetadata["organizationName"] = organizationName
 		iacMetadata["pulumiType"] = metadata.Type.String()
 
+		if !strings.HasPrefix(metadata.Type.String(), "aws:") {
+			continue
+		}
+
 		s3Node["stackId"] = stackId
 		s3Node["iac"] = "pulumi"
 		s3Node["accountId"] = accountId
@@ -40,69 +44,100 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 			s3Node["objectType"] = terraformType
 		}
 
-
 		switch metadata.Op {
 		case deploy.OpSame:
 			newState := *metadata.New
 			if len(newState.Outputs) > 0 {
 				iacMetadata["pulumiState"] = "managed"
 				s3Node["metadata"] = iacMetadata
-				s3Node["arn"] = newState.Outputs["arn"].V
-				region, err := getRegionFromArn(s3Node["arn"].(string))
-				if err != nil {
-					logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
-						Str("stackName", stackName).Str("OrganizationName", organizationName).Str("arn",s3Node["arn"].(string) ).Msg("failed to parse arn")
+				if ARN := newState.Outputs["arn"].V; ARN != nil {
+					s3Node["arn"] = ARN
+					awsAccount, region, err := getAccountAndRegionFromArn(fmt.Sprintf("%v", ARN))
+					if err != nil {
+						logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).
+							Str("projectName", projectName).Str("stackName", stackName).
+							Str("OrganizationName", organizationName).Interface("arn", ARN).
+							Msg("failed to parse arn")
+						continue
+					}
+					s3Node["region"] = region
+					s3Node["providerAccountId"] = awsAccount
+				} else {
+					logger.Warn().Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).
+						Str("projectName", projectName).Str("stackName", stackName).
+						Str("OrganizationName", organizationName).Str("type", metadata.Type.String()).
+						Msg("no arn for resource")
 					continue
 				}
-				s3Node["region"] = region
 				s3Node["attributes"] = getIacAttributes(newState.Outputs)
 				s3Nodes = append(s3Nodes, s3Node)
 			}
-			case deploy.OpDelete:
+		case deploy.OpDelete:
 			oldState := *metadata.Old
 			if len(oldState.Outputs) > 0 {
 				iacMetadata["pulumiState"] = "ghost"
 				s3Node["metadata"] = iacMetadata
-				s3Node["arn"] = oldState.Outputs["arn"].V
-				region, err := getRegionFromArn(s3Node["arn"].(string))
-				if err != nil {
-					logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
-						Str("stackName", stackName).Str("OrganizationName", organizationName).Str("arn",s3Node["arn"].(string) ).Msg("failed to parse arn")
+				if ARN := oldState.Outputs["arn"].V; ARN != nil {
+					s3Node["arn"] = ARN
+					awsAccount, region, err := getAccountAndRegionFromArn(fmt.Sprintf("%v", ARN))
+					if err != nil {
+						logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).
+							Str("projectName", projectName).Str("stackName", stackName).
+							Str("OrganizationName", organizationName).Interface("arn", ARN).
+							Msg("failed to parse arn")
+						continue
+					}
+					s3Node["region"] = region
+					s3Node["providerAccountId"] = awsAccount
+				} else {
+					logger.Warn().Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).
+						Str("projectName", projectName).Str("stackName", stackName).
+						Str("OrganizationName", organizationName).Str("type", metadata.Type.String()).
+						Msg("no arn for resource")
 					continue
 				}
-				s3Node["region"] = region
 				s3Node["attributes"] = getIacAttributes(oldState.Outputs)
 				s3Nodes = append(s3Nodes, s3Node)
 
 			}
-			case deploy.OpUpdate:
-				newState := *metadata.New
-				if len(newState.Outputs) > 0 {
-					drifts := refresher.CalcDrift(metadata)
-					iacMetadata["pulumiState"] = "modified"
-					iacMetadata["pulumiDrifts"] = drifts
+		case deploy.OpUpdate:
+			newState := *metadata.New
+			if len(newState.Outputs) > 0 {
+				drifts := refresher.CalcDrift(metadata)
+				iacMetadata["pulumiState"] = "modified"
+				iacMetadata["pulumiDrifts"] = drifts
 
-					s3Node["metadata"] = iacMetadata
-					s3Node["arn"] = newState.Outputs["arn"].V
-					region, err := getRegionFromArn(s3Node["arn"].(string))
+				s3Node["metadata"] = iacMetadata
+				if ARN := newState.Outputs["arn"].V; ARN != nil {
+					s3Node["arn"] = ARN
+					awsAccount, region, err := getAccountAndRegionFromArn(fmt.Sprintf("%v", ARN))
 					if err != nil {
-						logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
-							Str("stackName", stackName).Str("OrganizationName", organizationName).Str("arn",s3Node["arn"].(string) ).Msg("failed to parse arn")
+						logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).
+							Str("projectName", projectName).Str("stackName", stackName).
+							Str("OrganizationName", organizationName).Interface("arn", ARN).
+							Msg("failed to parse arn")
 						continue
 					}
 					s3Node["region"] = region
-					s3Nodes = append(s3Nodes, s3Node)
-
-
-					s3Node["attributes"] = getIacAttributes(newState.Outputs)
+					s3Node["providerAccountId"] = awsAccount
+				} else {
+					logger.Warn().Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).
+						Str("projectName", projectName).Str("stackName", stackName).
+						Str("OrganizationName", organizationName).Str("type", metadata.Type.String()).
+						Msg("no arn for resource")
+					continue
 				}
+				s3Node["attributes"] = getIacAttributes(newState.Outputs)
+
+				s3Nodes = append(s3Nodes, s3Node)
+			}
 		}
 
 	}
 	return s3Nodes, nil
 }
 
-func getSameMetadata(event engine.Event)  engine.StepEventMetadata {
+func getSameMetadata(event engine.Event) engine.StepEventMetadata {
 	var metadata engine.StepEventMetadata
 	if event.Type == engine.ResourcePreEvent {
 		metadata = event.Payload().(engine.ResourcePreEventPayload).Metadata
@@ -113,16 +148,16 @@ func getSameMetadata(event engine.Event)  engine.StepEventMetadata {
 	return metadata
 }
 
-func getRegionFromArn(assetArn string) (region string, err error) {
-	parsedArn,err := arn.Parse(assetArn)
+func getAccountAndRegionFromArn(assetArn string) (account, region string, err error) {
+	parsedArn, err := arn.Parse(assetArn)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	region = parsedArn.Location
 	if region == "" {
 		region = "global"
 	}
-	return region, nil
+	return parsedArn.AccountID, region, nil
 }
 
 func getIacAttributes(outputs resource.PropertyMap) string {
