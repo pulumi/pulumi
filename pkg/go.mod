@@ -1,4 +1,4 @@
-github.com/pulumi/pulumi/pkg/v3
+module github.com/pulumi/pulumi/pkg/v3
 
 go 1.17
 

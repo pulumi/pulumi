@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func pulumiMapper(
+func PulumiMapper(
 	ctx context.Context,
 	logger *zerolog.Logger,
 	consumer *common.Consumer,
@@ -78,7 +78,7 @@ func pulumiMapper(
 
 	s3Path := fmt.Sprintf("%s/pulumi_resources/%s/iac_objects.jsonl", accountId, stackId)
 
-	err = utils.WriteFile(consumer.Config.FetchedResourcesBucket, s3Path, jsonlinesNodes, "jsonl")
+	err = utils.WriteFile(consumer.Config, s3Path, jsonlinesNodes, "jsonl")
 	if err != nil {
 		logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
 			Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("failed to write nodes to s3 buceket")

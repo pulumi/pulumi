@@ -8,8 +8,8 @@ import (
 	"github.com/infralight/pulumi/refresher/config"
 )
 
-func WriteFile(bucket, path string, content []byte, fileType string) (err error) {
-	awsSession := config.LoadAwsSession()
+func WriteFile(cfg *config.Config, path string, content []byte, fileType string) (err error) {
+	awsSession := cfg.LoadAwsSession()
 	if awsSession == nil {
 		return errors.New("failed to create AWS session.")
 	}
@@ -17,7 +17,7 @@ func WriteFile(bucket, path string, content []byte, fileType string) (err error)
 
 	_, err = svc.PutObject(
 		&s3.PutObjectInput{
-			Bucket:        aws.String(bucket),
+			Bucket:        aws.String(cfg.FetchedResourcesBucket),
 			Key:           aws.String(path),
 			Body:          bytes.NewReader(content),
 			ContentLength: aws.Int64(int64(len(content))),

@@ -2,20 +2,14 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/infralight/pulumi/refresher/common"
 	"github.com/infralight/pulumi/refresher/config"
-	"github.com/infralight/pulumi/refresher/consumer/dispatcher"
 	"github.com/infralight/pulumi/refresher/consumer/engine"
-	"github.com/infralight/pulumi/refresher/consumer/queue"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"io"
 	"os"
-	"time"
 )
 
 var (
@@ -36,7 +30,7 @@ func init() {
 	}
 
 	// Load aws credentials
-	sess = config.LoadAwsSession()
+	sess = cfg.LoadAwsSession()
 
 	consumer, err = common.NewConsumer(cfg)
 	if err != nil {
@@ -54,29 +48,13 @@ func init() {
 
 }
 
-func handler(ctx context.Context, sqsEvent events.SQSEvent) (string, error) {
-	errs := make(map[string]error)
-
-	for _, message := range sqsEvent.Records {
-		logger = log.With().Str("messageId", message.MessageId).
-			Str("eventSource", message.EventSource).
-			Str("component", component).
-			Logger()
-
-		err := engine.ProcessMessage(ctx, &logger, consumer, message.Body)
-		if err != nil {
-			// we want to continue processing other messages, so only log this,
-			// we'll only return an error if _all_ messages failed processing
-			logger.Warn().Err(err).Msg("failed processing message")
-			errs[message.MessageId] = err
-			continue
-		}
+func handler(ctx context.Context) (string, error) {
+	lastUpdate := int64(cfg.LastUpdate)
+	resourceCount := cfg.ResourceCount
+	err := engine.PulumiMapper(ctx, &logger, consumer, cfg.AccountId, cfg.PulumiIntegrationId, cfg.StackName, cfg.ProjectName, cfg.OrganizationName, cfg.StackId, &lastUpdate, &resourceCount )
+	if err != nil {
+		return "failed", err
 	}
-
-	if len(errs) == len(sqsEvent.Records) {
-		return "failure", fmt.Errorf("all %d messages failed processing", len(sqsEvent.Records))
-	}
-
 	return "success", nil
 
 }
@@ -86,44 +64,7 @@ func main() {
 		Str("component", component).Logger()
 
 	if cfg.RunImmediately {
-		//load message body from standard input
-		b, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			logger.Fatal().
-				Err(err).
-				Msg("Message must be provided via standard input")
-		}
-		_, err = handler(context.Background(), events.SQSEvent{
-			Records: []events.SQSMessage{{
-				MessageId: "local-test",
-				Body:      string(b),
-			}},
-		})
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Consumer failed")
-			os.Exit(1)
-		}
-
-		logger.Info().Msg("Consumer succeeded")
-		os.Exit(0)
+		handler(context.Background())
 	}
-
-	if cfg.Lambda {
-		lambda.Start(handler)
-	} else {
-		pubsub := queue.NewSQS(sess, time.Second*10, time.Second*1500)
-		logger = log.With().Str("component", component).Int("MaxWorkers", cfg.MaxWorkers).Logger()
-
-		if cfg.PulumiMapperSqsUrl == "" {
-			logger.Fatal().Msg("failed missing drift detector sqs url environment variable")
-			os.Exit(1)
-		}
-
-		dispatcher.NewConsumer(pubsub, dispatcher.ConsumerConfig{
-			Type:      dispatcher.AsyncConsumer,
-			QueueURL:  cfg.PulumiMapperSqsUrl,
-			MaxWorker: cfg.MaxWorkers,
-			MaxMsg:    cfg.MaxMsg,
-		}, &logger, consumer, engine.ProcessMessage).Start(context.Background())
-	}
+	lambda.Start(handler)
 }

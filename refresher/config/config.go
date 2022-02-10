@@ -4,30 +4,33 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"os"
-	"runtime"
 	"strconv"
-	"strings"
 )
 
 type Config struct {
 	RunImmediately         bool
 	DebugMode              bool
-	Env                    string
 	MongoURI               string
 	PulumiToken            string
 	PulumiUrl              string
 	FetchedResourcesBucket string
-	PulumiMapperSqsUrl     string
-	MaxWorkers             int
-	MaxMsg                 int
-	AwsAccessKeyId         string
-	AwsAccessSecretKey     string
 	AwsRegion              string
-	Lambda                 bool
+	PulumiIntegrationId    string
+	AccountId              string
+	ProjectName            string
+	StackName              string
+	OrganizationName       string
+	StackId                string
+	ResourceCount          int
+	LastUpdate             int
+	FireflyAWSAccessKey    string
+	FireflyAWSSecretKey    string
+	FireflyAWSSessionToken string
 }
 
 func LoadConfig() (*Config, error) {
@@ -43,32 +46,12 @@ func LoadConfig() (*Config, error) {
 		cfg.DebugMode = true
 	}
 
-	if cfg.Lambda, err = strconv.ParseBool(os.Getenv("LAMBDA_MODE")); err != nil {
-		cfg.Lambda = false
-	}
-
 	if cfg.MongoURI = os.Getenv("MONGO_URI"); cfg.MongoURI == "" {
 		merr = multierror.Append(merr, errors.New("failed, environment variable MONGO_URI must be provided"))
 	}
 
 	if cfg.PulumiToken = os.Getenv(httpstate.AccessTokenEnvVar); cfg.PulumiToken == "" {
 		merr = multierror.Append(merr, errors.New(fmt.Sprintf("failed, environment variable %s must be provided", httpstate.AccessTokenEnvVar)))
-	}
-
-	if cfg.Env = os.Getenv("INFRALIGHT_ENV"); cfg.Env == "" {
-		merr = multierror.Append(merr, errors.New("failed, environment variable INFRALIGHT_ENV must be provided"))
-	}
-
-	if cfg.PulumiMapperSqsUrl = os.Getenv("PULUMI_MAPPER_SQS_QUEUE_URL"); cfg.PulumiMapperSqsUrl == "" {
-		merr = multierror.Append(merr, errors.New("failed, environment variable PULUMI_MAPPER_SQS_QUEUE_URL must be provided"))
-	}
-
-	if cfg.MaxWorkers, err = strconv.Atoi(os.Getenv("MAX_WORKERS")); err != nil {
-		cfg.MaxWorkers = runtime.NumCPU()
-	}
-
-	if cfg.MaxMsg, err = strconv.Atoi(os.Getenv("MAX_MESSAGES")); err != nil {
-		cfg.MaxMsg = 10
 	}
 
 	if cfg.PulumiUrl = os.Getenv("PULUMI_URL"); cfg.PulumiUrl == "" {
@@ -81,35 +64,81 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
-	cfg.AwsAccessKeyId = os.Getenv("AWS_ACCESS_KEY_ID")
-	cfg.AwsAccessSecretKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
-
 	if cfg.FetchedResourcesBucket = os.Getenv("FETCHED_RESOURCES_BUCKET"); cfg.FetchedResourcesBucket == "" {
-		if strings.Contains(cfg.Env, "prod") {
-			cfg.FetchedResourcesBucket = "prod-fetched-resources"
-		} else {
-			cfg.FetchedResourcesBucket = "stag-fetched-resources"
-		}
+		merr = multierror.Append(merr, errors.New("failed, environment variable FETCHED_RESOURCES_BUCKET must be provided"))
+	}
+
+	if cfg.PulumiIntegrationId = os.Getenv("INTEGRATION_ID"); cfg.PulumiIntegrationId == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable INTEGRATION_ID must be provided"))
+	}
+
+	if cfg.AccountId = os.Getenv("ACCOUNT_ID"); cfg.AccountId == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable ACCOUNT_ID must be provided"))
+	}
+
+	if cfg.ProjectName = os.Getenv("PROJECT_NAME"); cfg.ProjectName == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable PROJECT_NAME must be provided"))
+	}
+
+	if cfg.StackName = os.Getenv("STACK_NAME"); cfg.StackName == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable STACK_NAME must be provided"))
+	}
+
+	if cfg.OrganizationName = os.Getenv("ORGANIZATION_NAME"); cfg.OrganizationName == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable ORGANIZATION_NAME must be provided"))
+	}
+
+	if cfg.StackId = os.Getenv("STACK_ID"); cfg.StackId == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable STACK_ID must be provided"))
+	}
+
+	if cfg.StackId = os.Getenv("STACK_ID"); cfg.StackId == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable STACK_ID must be provided"))
+	}
+
+	if cfg.FireflyAWSAccessKey = os.Getenv("FIREFLY_AWS_ACCESS_KEY_ID"); cfg.FireflyAWSAccessKey == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable FIREFLY_AWS_ACCESS_KEY_ID must be provided"))
+	}
+
+	if cfg.FireflyAWSSecretKey = os.Getenv("FIREFLY_AWS_SECRET_ACCESS_KEY"); cfg.StackId == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable FIREFLY_AWS_SECRET_ACCESS_KEY must be provided"))
+	}
+
+	if cfg.FireflyAWSSessionToken = os.Getenv("FIREFLY_AWS_SESSION_TOKEN"); cfg.StackId == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable FIREFLY_AWS_SESSION_TOKEN must be provided"))
+	}
+
+	cfg.ResourceCount, err = strconv.Atoi(os.Getenv("RESOURCE_COUNT"))
+	if err != nil {
+		merr = multierror.Append(merr, errors.New("failed, environment variable RESOURCE_COUNT must be provided"))
+	}
+
+	cfg.LastUpdate, err = strconv.Atoi(os.Getenv("LAST_UPDATE"))
+	if err != nil {
+		merr = multierror.Append(merr, errors.New("failed, environment variable LAST_UPDATE must be provided"))
 	}
 
 	return cfg, merr.ErrorOrNil()
 }
 
-func LoadAwsSession() *session.Session {
-	config := aws.Config{}
+func (cfg *Config) LoadAwsSession() *session.Session {
+	config := aws.NewConfig().
+		WithCredentials(credentials.NewStaticCredentialsFromCreds(credentials.Value{
+			AccessKeyID:     cfg.FireflyAWSAccessKey,
+			SecretAccessKey: cfg.FireflyAWSSessionToken,
+			SessionToken:    cfg.FireflyAWSSessionToken,
+		}))
 	region := os.Getenv("AWS_REGION")
 	if region == "" {
 		region = os.Getenv("AWS_DEFAULT_REGION")
 	}
 
 	if region != "" {
-		config = aws.Config{
-			Region: aws.String(region),
-		}
+		config.WithRegion(region)
 	}
 
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		Config:            config,
+		Config:            *config,
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 
