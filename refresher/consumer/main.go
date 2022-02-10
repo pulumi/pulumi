@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/infralight/pulumi/refresher/common"
 	"github.com/infralight/pulumi/refresher/config"
@@ -62,9 +61,6 @@ func handler(ctx context.Context) (string, error) {
 func main() {
 	logger = log.With().
 		Str("component", component).Logger()
+	handler(context.Background())
 
-	if cfg.RunImmediately {
-		handler(context.Background())
-	}
-	lambda.Start(handler)
 }
