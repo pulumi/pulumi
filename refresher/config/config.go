@@ -100,11 +100,11 @@ func LoadConfig() (*Config, error) {
 		merr = multierror.Append(merr, errors.New("failed, environment variable FIREFLY_AWS_ACCESS_KEY_ID must be provided"))
 	}
 
-	if cfg.FireflyAWSSecretKey = os.Getenv("FIREFLY_AWS_SECRET_ACCESS_KEY"); cfg.StackId == "" {
+	if cfg.FireflyAWSSecretKey = os.Getenv("FIREFLY_AWS_SECRET_ACCESS_KEY"); cfg.FireflyAWSSecretKey == "" {
 		merr = multierror.Append(merr, errors.New("failed, environment variable FIREFLY_AWS_SECRET_ACCESS_KEY must be provided"))
 	}
 
-	if cfg.FireflyAWSSessionToken = os.Getenv("FIREFLY_AWS_SESSION_TOKEN"); cfg.StackId == "" {
+	if cfg.FireflyAWSSessionToken = os.Getenv("FIREFLY_AWS_SESSION_TOKEN"); cfg.FireflyAWSSessionToken == "" {
 		merr = multierror.Append(merr, errors.New("failed, environment variable FIREFLY_AWS_SESSION_TOKEN must be provided"))
 	}
 
@@ -125,7 +125,7 @@ func (cfg *Config) LoadAwsSession() *session.Session {
 	config := aws.NewConfig().
 		WithCredentials(credentials.NewStaticCredentialsFromCreds(credentials.Value{
 			AccessKeyID:     cfg.FireflyAWSAccessKey,
-			SecretAccessKey: cfg.FireflyAWSSessionToken,
+			SecretAccessKey: cfg.FireflyAWSSecretKey,
 			SessionToken:    cfg.FireflyAWSSessionToken,
 		}))
 	region := os.Getenv("AWS_REGION")

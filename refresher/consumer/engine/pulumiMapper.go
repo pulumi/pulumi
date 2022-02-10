@@ -81,7 +81,7 @@ func PulumiMapper(
 	err = utils.WriteFile(consumer.Config, s3Path, jsonlinesNodes, "jsonl")
 	if err != nil {
 		logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
-			Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("failed to write nodes to s3 buceket")
+			Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("failed to write nodes to s3 bucket")
 		return err
 	}
 
