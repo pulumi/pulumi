@@ -4401,7 +4401,7 @@ func TestDeleteBehaviour_Protect(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
-	assert.Equal(t, true, snap.Resources[1].Protect)
+	assert.Equal(t, resource.DeleteBehaviourProtect, snap.Resources[1].DeleteBehaviour)
 	assert.Equal(t, 0, deleteCounter)
 
 	// Run a new update to remove the protect and replace in the same update, this should delete the old one
@@ -4413,7 +4413,7 @@ func TestDeleteBehaviour_Protect(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
-	assert.Equal(t, false, snap.Resources[1].Protect)
+	assert.Equal(t, resource.DeleteBehaviourDelete, snap.Resources[1].DeleteBehaviour)
 	assert.Equal(t, 1, deleteCounter)
 
 	// Run a new update to add the protect flag, nothing else should change
@@ -4423,7 +4423,7 @@ func TestDeleteBehaviour_Protect(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
-	assert.Equal(t, true, snap.Resources[1].Protect)
+	assert.Equal(t, resource.DeleteBehaviourProtect, snap.Resources[1].DeleteBehaviour)
 	assert.Equal(t, 1, deleteCounter)
 
 	// Edit the snapshot to remove the protect flag and try and replace
