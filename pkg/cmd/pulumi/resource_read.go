@@ -40,13 +40,9 @@ func newResourceReadCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "read",
 		Short: "Read resource",
-		Args:  cmdutil.ExactArgs(4),
+		Args:  cmdutil.ExactArgs(3),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			packageVersion, err := semver.Parse(args[1])
-			if err != nil {
-				return err
-			}
-			return resourceRead(cmd.OutOrStdout(), config, args[0], &packageVersion, args[2], args[3])
+			return resourceRead(cmd.OutOrStdout(), config, args[0], args[1], args[2])
 		}),
 	}
 
@@ -62,7 +58,7 @@ type serialisedReadResult struct {
 	Outputs map[string]interface{} `json:"outputs"`
 }
 
-func resourceRead(writer io.Writer, configValues []string, packageName string, packageVersion *semver.Version, resourceType string, resourceId string) error {
+func resourceRead(writer io.Writer, configValues []string, packageSpec, resourceType, resourceId string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -85,7 +81,21 @@ func resourceRead(writer io.Writer, configValues []string, packageName string, p
 	}
 	defer contract.IgnoreClose(ctx)
 
-	prov, err := ctx.Host.Provider(tokens.Package(packageName), packageVersion)
+	parts := strings.SplitN(packageSpec, "@", 2)
+	var packageVersion *semver.Version
+	var packageName tokens.Package
+	if len(parts) == 2 {
+		version, err := semver.Parse(parts[1])
+		if err != nil {
+			return err
+		}
+		packageVersion = &version
+		packageName = tokens.Package(parts[0])
+	} else {
+		packageName = tokens.Package(packageSpec)
+	}
+
+	prov, err := ctx.Host.Provider(packageName, packageVersion)
 	if err != nil {
 		return err
 	}
