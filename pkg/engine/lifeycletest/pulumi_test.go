@@ -4288,7 +4288,6 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 }
 
 func TestDeleteBehaviour_Protect(t *testing.T) {
-
 	idCounter := 0
 	deleteCounter := 0
 
@@ -4328,6 +4327,7 @@ func TestDeleteBehaviour_Protect(t *testing.T) {
 		"foo": "bar",
 	})
 
+	deleteBehaviour := resource.DeleteBehaviourProtect
 	createResource := true
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -4335,7 +4335,7 @@ func TestDeleteBehaviour_Protect(t *testing.T) {
 		if createResource {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:          ins,
-				DeleteBehaviour: resource.DeleteBehaviourProtect,
+				DeleteBehaviour: deleteBehaviour,
 			})
 			assert.NoError(t, err)
 		}
@@ -4358,11 +4358,32 @@ func TestDeleteBehaviour_Protect(t *testing.T) {
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 	assert.Equal(t, 0, deleteCounter)
 
-	// Run a new update which will cause a replace, we should see get an error
+	expectedUrn := snap.Resources[1].URN
+	expectedMessage := ""
+
+	// Both updates below should give a diagnostic event
+	validate := func(project workspace.Project,
+		target deploy.Target, entries JournalEntries,
+		events []Event, res result.Result) result.Result {
+		for _, event := range events {
+			if event.Type == DiagEvent {
+				payload := event.Payload().(DiagEventPayload)
+				assert.Equal(t, expectedUrn, payload.URN)
+				assert.Equal(t, expectedMessage, payload.Message)
+				break
+			}
+		}
+		return res
+	}
+
+	// Run a new update which will cause a replace, we should get an error
+	expectedMessage = "<{%reset%}>unable to replace resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
+		"as it is currently marked for protection. To unprotect the resource, remove the `protect` flag from " +
+		"the resource in your Pulumi program and run `pulumi up`<{%reset%}>\n"
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"foo": "baz",
 	})
-	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
 	assert.NotNil(t, res)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
@@ -4370,13 +4391,52 @@ func TestDeleteBehaviour_Protect(t *testing.T) {
 	assert.Equal(t, 0, deleteCounter)
 
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete
+	expectedMessage = "<{%reset%}>unable to delete resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
+		"as it is currently marked for protection. To unprotect the resource, either remove the `protect` flag " +
+		"from the resource in your Pulumi program and run `pulumi up` or use the command:\n" +
+		"`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>\n"
 	createResource = false
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	assert.NotNil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
+	assert.Equal(t, true, snap.Resources[1].Protect)
+	assert.Equal(t, 0, deleteCounter)
+
+	// Run a new update to remove the protect and replace in the same update, this should delete the old one
+	// and create the new one
+	createResource = true
+	deleteBehaviour = resource.DeleteBehaviourDelete
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 2)
-	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
-	assert.Equal(t, 0, deleteCounter)
+	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
+	assert.Equal(t, false, snap.Resources[1].Protect)
+	assert.Equal(t, 1, deleteCounter)
+
+	// Run a new update to add the protect flag, nothing else should change
+	deleteBehaviour = resource.DeleteBehaviourProtect
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "created-id-1", snap.Resources[1].ID.String())
+	assert.Equal(t, true, snap.Resources[1].Protect)
+	assert.Equal(t, 1, deleteCounter)
+
+	// Edit the snapshot to remove the protect flag and try and replace
+	snap.Resources[1].DeleteBehaviour = resource.DeleteBehaviourDelete
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "daz",
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, "created-id-2", snap.Resources[1].ID.String())
+	assert.Equal(t, 2, deleteCounter)
 }
 
 func TestDeleteBehaviour_Drop(t *testing.T) {
