@@ -370,17 +370,15 @@ func getPluginFromPrivateGitHubResponse(info PluginInfo, opSy, arch string) (io.
 	if err != nil {
 		return nil, -1, err
 	}
-	return getHttpResponse(req)
+	return getHTTPResponse(req)
 }
 
-func buildPluginFromPrivateGitHubRequest(assetURL string) (*http.Request, error) {
-	var req *http.Request = nil
-	var err error = nil
+func buildPluginFromPrivateGitHubRequest(assetURL string) (req *http.Request, err error) {
 	if ghToken, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
-		req, err = buildHttpRequest(assetURL, "token", ghToken, "", "")
+		req, err = buildHTTPRequest(assetURL, "token", ghToken, "", "")
 	} else if paToken, ok := os.LookupEnv("GITHUB_PERSONAL_ACCESS_TOKEN"); ok {
 		if actor, ok := os.LookupEnv("GITHUB_ACTOR"); ok {
-			req, err = buildHttpRequest(assetURL, "", "", actor, paToken)
+			req, err = buildHTTPRequest(assetURL, "", "", actor, paToken)
 		}
 	}
 	if err != nil {
@@ -412,7 +410,7 @@ func buildPluginPrivateGitHubReleaseAPIRequest(info PluginInfo) (*http.Request, 
 		repoOwner, info.Name, info.Version.String())
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
 
-	req, err := buildHttpRequest(releaseURL, "token", ghToken, actor, paToken)
+	req, err := buildHTTPRequest(releaseURL, "token", ghToken, actor, paToken)
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +423,7 @@ func getPluginPrivateGitHubReleaseAPIResponse(info PluginInfo) (io.ReadCloser, i
 	if err != nil {
 		return nil, -1, err
 	}
-	return getHttpResponse(req)
+	return getHTTPResponse(req)
 }
 
 func buildGitHubReleasesPluginURL(kind PluginKind, name string, version *semver.Version, opSy, arch string) string {
@@ -467,7 +465,7 @@ func buildUserSpecifiedPluginURL(serverURL string, kind PluginKind, name string,
 	return endpoint
 }
 
-func buildHttpRequest(pluginEndpoint, tokenType, token, username, secret string) (*http.Request, error) {
+func buildHTTPRequest(pluginEndpoint, tokenType, token, username, secret string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", pluginEndpoint, nil)
 	if err != nil {
 		return nil, err
@@ -488,14 +486,14 @@ func buildHttpRequest(pluginEndpoint, tokenType, token, username, secret string)
 	return req, nil
 }
 func getPluginResponse(pluginEndpoint string) (io.ReadCloser, int64, error) {
-	req, err := buildHttpRequest(pluginEndpoint, "", "", "", "")
+	req, err := buildHTTPRequest(pluginEndpoint, "", "", "", "")
 	if err != nil {
 		return nil, -1, err
 	}
-	return getHttpResponse(req)
+	return getHTTPResponse(req)
 }
 
-func getHttpResponse(req *http.Request) (io.ReadCloser, int64, error) {
+func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("full plugin download url: %s", req.URL)
 	logging.V(9).Infof("plugin install request headers: %v", req.Header)
 
