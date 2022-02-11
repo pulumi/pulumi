@@ -220,6 +220,17 @@ function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
   return provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_PluginAttach(arg) {
+  if (!(arg instanceof plugin_pb.PluginAttach)) {
+    throw new Error('Expected argument of type pulumirpc.PluginAttach');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_PluginAttach(buffer_arg) {
+  return plugin_pb.PluginAttach.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PluginInfo(arg) {
   if (!(arg instanceof plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
@@ -477,6 +488,18 @@ getPluginInfo: {
     requestDeserialize: deserialize_google_protobuf_Empty,
     responseSerialize: serialize_pulumirpc_PluginInfo,
     responseDeserialize: deserialize_pulumirpc_PluginInfo,
+  },
+  // Attach sends the engine address to an already running plugin.
+attach: {
+    path: '/pulumirpc.ResourceProvider/Attach',
+    requestStream: false,
+    responseStream: false,
+    requestType: plugin_pb.PluginAttach,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_PluginAttach,
+    requestDeserialize: deserialize_pulumirpc_PluginAttach,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
   },
 };
 
