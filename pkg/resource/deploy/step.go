@@ -345,19 +345,26 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			"`pulumi state unprotect '%s'`", s.old.URN, s.old.URN)
 	}
 
-	// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
-	// Deleting a "drop on delete" is a no-op as the user has explicitly asked us to not delete the resource.
-	if !preview && !s.old.External && (s.old.DeleteBehaviour != resource.DeleteBehaviourDrop) {
-		if s.old.Custom {
-			// Invoke the Delete RPC function for this provider:
-			prov, err := getProvider(s)
-			if err != nil {
-				return resource.StatusOK, nil, err
-			}
+	if preview {
+		// Do nothing in preview
+	} else if s.old.External {
+		// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
+	} else if s.old.DeleteBehaviour == resource.DeleteBehaviourDrop {
+		// Deleting a "drop on delete" is a no-op as the user has explicitly asked us to not delete the resource.
+		// But we want to diag warn that Pulumi has stopped tracking this resource
+		msg := fmt.Sprintf("Reference to %s dropped, Pulumi has not deleted this resource", s.old.ID)
+		s.Deployment().Diag().Warningf(diag.RawMessage(s.URN(), msg))
+	} else if s.old.Custom {
+		// Not preview and not external and not Drop and is custom, do the actual delete
 
-			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
-				return rst, nil, err
-			}
+		// Invoke the Delete RPC function for this provider:
+		prov, err := getProvider(s)
+		if err != nil {
+			return resource.StatusOK, nil, err
+		}
+
+		if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
+			return rst, nil, err
 		}
 	}
 
