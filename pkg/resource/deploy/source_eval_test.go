@@ -67,7 +67,8 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 			}
 			s.Done(&RegisterResult{
 				State: resource.NewState(g.Type, urn, g.Custom, false, id, g.Properties, outs, g.Parent, g.Protect,
-					false, g.Dependencies, nil, g.Provider, g.PropertyDependencies, false, nil, nil, nil, "", 0, resource.DeleteBehaviourDelete),
+					false, g.Dependencies, nil, g.Provider, g.PropertyDependencies, false, nil, nil, nil,
+					"", 0, resource.DeleteBehaviourDelete),
 			})
 		}
 		return nil
