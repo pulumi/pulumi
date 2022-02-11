@@ -43,12 +43,17 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 
 	// Read the non-flags args and connect to the engine.
 	args := flag.Args()
+	var host *HostClient
 	if len(args) == 0 {
+		// Start the provider in Attach mode
+	} else if len(args) == 1 {
+		var err error
+		host, err = NewHostClient(args[0])
+		if err != nil {
+			return fmt.Errorf("fatal: could not connect to host RPC: %v", err)
+		}
+	} else {
 		return errors.New("fatal: could not connect to host RPC; missing argument")
-	}
-	host, err := NewHostClient(args[0])
-	if err != nil {
-		return fmt.Errorf("fatal: could not connect to host RPC: %v", err)
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port for us.

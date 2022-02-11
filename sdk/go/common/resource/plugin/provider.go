@@ -103,6 +103,7 @@ type Provider interface {
 	SignalCancellation() error
 
 	// Attach triggers an attach for a currently running provider to the engine
+	// TODO It would be nice if this was a HostClient rather than the string address but due to dependency ordering we don't have access to declare that here.
 	Attach(address string) error
 }
 
