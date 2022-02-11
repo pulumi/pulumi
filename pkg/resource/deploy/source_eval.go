@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -410,6 +411,12 @@ func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (boo
 		if !value.IsString() {
 			return true, fmt.Errorf("Unexpected encoding of pulumi:disable-default-providers")
 		}
+		if value.StringValue() == "" {
+			// If the list is provided but empty, we don't encode a empty json
+			// list, we just encode the empty string. Check to ensure we don't
+			// get parse errors.
+			return false, nil
+		}
 		if err := json.Unmarshal([]byte(value.StringValue()), &array); err != nil {
 			return true, fmt.Errorf("Failed to parse %s: %w", value.StringValue(), err)
 		}
@@ -628,9 +635,15 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	if err != nil {
 		return nil, err
 	}
+	if deny, err := rm.defaultProviders.shouldDenyRequest(providerReq); err != nil {
+		return nil, fmt.Errorf("Invoke: %w", err)
+	} else if deny {
+		msg := diag.GetDefaultProviderDenied("Invoke").Message
+		return nil, fmt.Errorf(msg, providerReq.Package(), tok)
+	}
 	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Invoke: %w", err)
 	}
 
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
