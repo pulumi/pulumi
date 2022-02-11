@@ -28,3 +28,12 @@ message PluginDependency {
     string version = 3; // the semver for this plugin.
     string server = 4; // the URL of a server that can be used to download this plugin, if needed.
 }
+
+// PluginAttach is used to attach an already running plugin to the engine.
+//
+// Normally the engine starts the plugin process itself and passes the engine address as the first argumnent.
+// But when debugging it can be useful to have an already running provider that the engine instead attaches
+// to, this message is used so the provider can still be passed the engine address to communicate with.
+message PluginAttach {
+    string address = 1; // the grpc address for the engine
+}
