@@ -174,7 +174,7 @@ export function run(
 
     if (typeScript) {
         tsnode.register({
-            typeCheck,
+            transpileOnly,
             skipProject: skipProject,
             compilerOptions: {
                 target: "es6",
