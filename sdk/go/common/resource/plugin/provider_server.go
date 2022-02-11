@@ -143,6 +143,14 @@ func (p *providerServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) 
 	return &pulumirpc.PluginInfo{Version: info.Version.String()}, nil
 }
 
+func (p *providerServer) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
+	err := p.provider.Attach(req.GetAddress())
+	if err != nil {
+		return nil, err
+	}
+	return &pbempty.Empty{}, nil
+}
+
 func (p *providerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Empty, error) {
 	if err := p.provider.SignalCancellation(); err != nil {
 		return nil, err

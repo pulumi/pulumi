@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -29,13 +30,17 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -76,35 +81,101 @@ type provider struct {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
 	options map[string]interface{}, disableProviderPreview bool) (Provider, error) {
-	// Load the plugin's path by using the standard workspace logic.
-	_, path, err := workspace.GetPluginPath(
-		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
-	if err != nil {
-		return nil, err
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind:    workspace.ResourcePlugin,
-			Name:    string(pkg),
-			Version: version,
-		})
+
+	prefix := fmt.Sprintf("%v (resource)", pkg)
+
+	// See if this is a provider we just want to attach to
+	var plug *plugin
+	optAttach, isFound := os.LookupEnv("PULUMI_PROVIDER_" + strings.ToUpper(pkg.String()))
+	if isFound {
+		conn, err := grpc.Dial(
+			"127.0.0.1:"+optAttach,
+			grpc.WithInsecure(),
+			grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
+			rpcutil.GrpcChannelOptions(),
+		)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not dial plugin [%s:%s] over RPC", prefix, optAttach)
+		}
+
+		// Now wait for the gRPC connection to the plugin to become ready.
+		// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
+		//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
+		//     while this bug exists, we'll simply do a bit of waiting of our own up front.
+		timeout, _ := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
+		for {
+			s := conn.GetState()
+			if s == connectivity.Ready {
+				// The connection is supposedly ready; but we will make sure it is *actually* ready by sending a dummy
+				// method invocation to the server.  Until it responds successfully, we can't safely proceed.
+			outer:
+				for {
+					err = grpc.Invoke(timeout, "", nil, nil, conn)
+					if err == nil {
+						break // successful connect
+					} else {
+						// We have an error; see if it's a known status and, if so, react appropriately.
+						status, ok := status.FromError(err)
+						if ok {
+							switch status.Code() {
+							case codes.Unavailable:
+								// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
+								time.Sleep(time.Millisecond * 10)
+								continue // keep retrying
+							default:
+								// Since we sent "" as the method above, this is the expected response.  Ready to go.
+								break outer
+							}
+						}
+
+						// Unexpected error; get outta dodge.
+						return nil, errors.Wrapf(err, "%s:%s plugin did not come alive", prefix, optAttach)
+					}
+				}
+				break
+			}
+			// Not ready yet; ask the gRPC client APIs to block until the state transitions again so we can retry.
+			if !conn.WaitForStateChange(timeout, s) {
+				return nil, errors.Errorf("%s:%s plugin did not begin responding to RPC connections", prefix, optAttach)
+			}
+		}
+
+		// Done; store the connection and return the plugin info.
+		plug = &plugin{
+			Conn: conn,
+		}
+	} else {
+		// Load the plugin's path by using the standard workspace logic.
+		_, path, err := workspace.GetPluginPath(
+			workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
+		if err != nil {
+			return nil, err
+		} else if path == "" {
+			return nil, workspace.NewMissingError(workspace.PluginInfo{
+				Kind:    workspace.ResourcePlugin,
+				Name:    string(pkg),
+				Version: version,
+			})
+		}
+
+		// Runtime options are passed as environment variables to the provider.
+		env := os.Environ()
+		for k, v := range options {
+			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
+		}
+
+		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
+			[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Runtime options are passed as environment variables to the provider.
-	env := os.Environ()
-	for k, v := range options {
-		env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
-	}
-
-	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg),
-		[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
-	if err != nil {
-		return nil, err
-	}
 	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
-	return &provider{
+	p := &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
 		plug:                   plug,
@@ -112,7 +183,14 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		cfgdone:                make(chan bool),
 		disableProviderPreview: disableProviderPreview,
 		legacyPreview:          legacyPreview,
-	}, nil
+	}
+
+	// If we just attached (i.e. plugin bin is nil) we need to call attach
+	if plug.Bin == "" {
+		p.Attach(host.ServerAddr())
+	}
+
+	return p, nil
 }
 
 func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
@@ -1466,6 +1544,23 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 		Kind:    workspace.ResourcePlugin,
 		Version: version,
 	}, nil
+}
+
+// Attach attaches this plugin to the engine
+func (p *provider) Attach(address string) error {
+	label := fmt.Sprintf("%s.Attach()", p.label())
+	logging.V(7).Infof("%s executing", label)
+
+	// Calling Attach happens immediately after loading, and does not require configuration to proceed.
+	// Thus, we access the clientRaw property, rather than calling getClient.
+	_, err := p.clientRaw.Attach(p.requestContext(), &pulumirpc.PluginAttach{Address: address})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		return rpcError
+	}
+
+	return nil
 }
 
 func (p *provider) SignalCancellation() error {

@@ -200,3 +200,14 @@ func (p *componentProvider) Call(ctx context.Context,
 func (p *componentProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
 	return &pbempty.Empty{}, nil
 }
+
+// Attach attaches to the engine for an already running provider.
+func (p *componentProvider) Attach(ctx context.Context,
+	req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
+	host, err := NewHostClient(req.GetAddress())
+	if err != nil {
+		return nil, err
+	}
+	p.host = host
+	return &pbempty.Empty{}, nil
+}

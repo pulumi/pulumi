@@ -215,6 +215,11 @@ func (p *builtinProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{}, errors.New("the builtin provider does not report plugin info")
 }
 
+func (p *builtinProvider) Attach(_ string) error {
+	// return an error: this should not be called for the builtin provider
+	return errors.New("the builtin provider does not support attach")
+}
+
 func (p *builtinProvider) SignalCancellation() error {
 	p.cancel()
 	return nil

@@ -101,6 +101,9 @@ type Provider interface {
 	// non-blocking; it is up to the host to decide how long to wait after SignalCancellation is
 	// called before (e.g.) hard-closing any gRPC connection.
 	SignalCancellation() error
+
+	// Attach triggers an attach for a currently running provider to the engine
+	Attach(address string) error
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.
