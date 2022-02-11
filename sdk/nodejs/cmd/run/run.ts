@@ -161,7 +161,7 @@ export function run(
     const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
     
-    const typeCheck = (process.env["PULUMI_NODEJS_TYPECHECK"] ?? "true") === "true";
+    const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
 
     let compilerOptions: object;
     try {
