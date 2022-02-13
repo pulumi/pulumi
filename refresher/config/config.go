@@ -31,6 +31,8 @@ type Config struct {
 	FireflyAWSAccessKey    string
 	FireflyAWSSecretKey    string
 	FireflyAWSSessionToken string
+	FireflyEngineLambdaArn string
+	ClientAWSIntegrationId string
 }
 
 func LoadConfig() (*Config, error) {
@@ -106,6 +108,14 @@ func LoadConfig() (*Config, error) {
 
 	if cfg.FireflyAWSSessionToken = os.Getenv("FIREFLY_AWS_SESSION_TOKEN"); cfg.FireflyAWSSessionToken == "" {
 		merr = multierror.Append(merr, errors.New("failed, environment variable FIREFLY_AWS_SESSION_TOKEN must be provided"))
+	}
+
+	if cfg.FireflyEngineLambdaArn = os.Getenv("ENGINE_PRODUCER_LAMBDA_ARN"); cfg.FireflyEngineLambdaArn == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable ENGINE_PRODUCER_LAMBDA_ARN must be provided"))
+	}
+
+	if cfg.ClientAWSIntegrationId = os.Getenv("AWS_INTEGRATION_ID"); cfg.ClientAWSIntegrationId == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable AWS_INTEGRATION_ID must be provided"))
 	}
 
 	cfg.ResourceCount, err = strconv.Atoi(os.Getenv("RESOURCE_COUNT"))

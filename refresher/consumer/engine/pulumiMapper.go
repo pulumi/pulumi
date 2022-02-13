@@ -84,7 +84,18 @@ func PulumiMapper(
 			Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("failed to write nodes to s3 bucket")
 		return err
 	}
+	logger.Info().Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
+		Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("Successfully wrote nodes to s3 bucket")
 
+	//TODO - filter engine invocation by asset type
+	//err = utils.TriggerFireflyEngine(consumer.Config)
+	//if err != nil {
+	//	logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
+	//		Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("failed to trigger engine producer")
+	//	return err
+	//}
+	//logger.Info().Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
+	//	Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("Successfully triggered engine producer")
 	return nil
 
 }
