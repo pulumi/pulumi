@@ -90,8 +90,10 @@ type DiagInfo struct {
 type ProgressDisplay struct {
 	opts           Options
 	progressOutput chan<- Progress
-	debounceTimer  *time.Timer
-	debounceMutex  sync.Mutex
+
+	// non-interactive timer and mutex to debounce heartbeat message
+	debounceTimer *time.Timer
+	debounceMutex sync.Mutex
 
 	// action is the kind of action (preview, update, refresh, etc) being performed.
 	action apitype.UpdateKind
@@ -261,21 +263,23 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 		display.nonInteractiveSpinner.Reset()
 	}
 
-	func() {
-		display.debounceMutex.Lock()
-		defer display.debounceMutex.Unlock()
+	if !display.opts.IsInteractive {
+		func() {
+			display.debounceMutex.Lock()
+			defer display.debounceMutex.Unlock()
 
-		if display.debounceTimer != nil {
-			display.debounceTimer.Stop()
-		}
-		//display.debounceTimer = time.AfterFunc(time.Duration(display.opts.HeartbeatRate)*time.Second, func() {
-		var sendWorkingMessage func()
-		sendWorkingMessage = func() {
-			fmt.Println("working...")
+			if display.debounceTimer != nil {
+				display.debounceTimer.Stop()
+			}
+			//display.debounceTimer = time.AfterFunc(time.Duration(display.opts.HeartbeatRate)*time.Second, func() {
+			var sendWorkingMessage func()
+			sendWorkingMessage = func() {
+				fmt.Println("working...")
+				display.debounceTimer = time.AfterFunc(time.Duration(display.opts.HeartbeatRate)*time.Second, sendWorkingMessage)
+			}
 			display.debounceTimer = time.AfterFunc(time.Duration(display.opts.HeartbeatRate)*time.Second, sendWorkingMessage)
-		}
-		display.debounceTimer = time.AfterFunc(time.Duration(display.opts.HeartbeatRate)*time.Second, sendWorkingMessage)
-	}()
+		}()
+	}
 
 	display.progressOutput <- progress
 }
