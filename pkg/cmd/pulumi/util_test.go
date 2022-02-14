@@ -49,7 +49,9 @@ func TestReadingGitRepo(t *testing.T) {
 	e := pul_testing.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.RunCommand("git", "init")
+	e.RunCommand("git", "init", "-b", "master")
+	e.RunCommand("git", "config", "user.email", "test@test.org")
+	e.RunCommand("git", "config", "user.name", "test")
 	e.RunCommand("git", "remote", "add", "origin", "git@github.com:owner-name/repo-name")
 	e.RunCommand("git", "checkout", "-b", "master")
 
@@ -207,7 +209,9 @@ func TestReadingGitLabMetadata(t *testing.T) {
 	e := pul_testing.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.RunCommand("git", "init")
+	e.RunCommand("git", "init", "-b", "master")
+	e.RunCommand("git", "config", "user.email", "test@test.org")
+	e.RunCommand("git", "config", "user.name", "test")
 	e.RunCommand("git", "remote", "add", "origin", "git@gitlab.com:owner-name/repo-name")
 	e.RunCommand("git", "checkout", "-b", "master")
 
