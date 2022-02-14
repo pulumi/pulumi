@@ -466,11 +466,6 @@ func (r *Registry) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 	return plugin.CallResult{}, errors.New("the provider registry is not callable")
 }
 
-func (r *Registry) Attach(_ string) error {
-	// return an error: this should not be called for the provider registry
-	return errors.New("the provider registry does not support attach")
-}
-
 func (r *Registry) GetPluginInfo() (workspace.PluginInfo, error) {
 	// return an error: this should not be called for the provider registry
 	return workspace.PluginInfo{}, errors.New("the provider registry does not report plugin info")

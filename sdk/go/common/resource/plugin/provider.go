@@ -101,6 +101,10 @@ type Provider interface {
 	// non-blocking; it is up to the host to decide how long to wait after SignalCancellation is
 	// called before (e.g.) hard-closing any gRPC connection.
 	SignalCancellation() error
+}
+
+type GrpcProvider interface {
+	Provider
 
 	// Attach triggers an attach for a currently running provider to the engine
 	// TODO It would be nice if this was a HostClient rather than the string address but due to dependency ordering we don't have access to declare that here.

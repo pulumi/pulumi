@@ -30,12 +30,12 @@ import (
 )
 
 type providerServer struct {
-	provider      Provider
+	provider      GrpcProvider
 	keepSecrets   bool
 	keepResources bool
 }
 
-func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
+func NewProviderServer(provider GrpcProvider) pulumirpc.ResourceProviderServer {
 	return &providerServer{provider: provider}
 }
 
