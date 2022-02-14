@@ -46,6 +46,7 @@ func newPreviewCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var heartbeatMessageInterval int
 	var policyPackPaths []string
 	var policyPackConfigPaths []string
 	var diffDisplay bool
@@ -96,6 +97,7 @@ func newPreviewCmd() *cobra.Command {
 				IsInteractive:        cmdutil.Interactive(),
 				Type:                 displayType,
 				JSONDisplay:          jsonDisplay,
+				HeartbeatRate:        heartbeatMessageInterval,
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
 			}
@@ -289,6 +291,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.PersistentFlags().IntVar(
+		&heartbeatMessageInterval, "heartbeat-message-interval", 30,
+		"Number of seconds to wait before printing a waiting message in non-interactive mode")
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the preview diffs, operations, and overall output as JSON")

@@ -23,6 +23,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -89,6 +90,8 @@ type DiagInfo struct {
 type ProgressDisplay struct {
 	opts           Options
 	progressOutput chan<- Progress
+	debounceTimer  *time.Timer
+	debounceMutex  sync.Mutex
 
 	// action is the kind of action (preview, update, refresh, etc) being performed.
 	action apitype.UpdateKind
@@ -258,6 +261,22 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 		display.nonInteractiveSpinner.Reset()
 	}
 
+	func() {
+		display.debounceMutex.Lock()
+		defer display.debounceMutex.Unlock()
+
+		if display.debounceTimer != nil {
+			display.debounceTimer.Stop()
+		}
+		//display.debounceTimer = time.AfterFunc(time.Duration(display.opts.HeartbeatRate)*time.Second, func() {
+		var sendWorkingMessage func()
+		sendWorkingMessage = func() {
+			fmt.Println("working...")
+			display.debounceTimer = time.AfterFunc(time.Duration(display.opts.HeartbeatRate)*time.Second, sendWorkingMessage)
+		}
+		display.debounceTimer = time.AfterFunc(time.Duration(display.opts.HeartbeatRate)*time.Second, sendWorkingMessage)
+	}()
+
 	display.progressOutput <- progress
 }
 
@@ -291,9 +310,6 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 		spinner, ticker = cmdutil.NewSpinnerAndTicker(
 			fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
 			nil, 1 /*timesPerSecond*/)
-	} else if true {
-		spinner = &nonInteractiveSpinner{}
-		ticker = time.NewTicker(8 * time.Second)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)

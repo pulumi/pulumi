@@ -41,6 +41,7 @@ func newDestroyCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var heartbeatMessageInterval int
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
@@ -96,6 +97,7 @@ func newDestroyCmd() *cobra.Command {
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
 				JSONDisplay:          jsonDisplay,
+				HeartbeatRate:        heartbeatMessageInterval,
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -248,6 +250,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.PersistentFlags().IntVar(
+		&heartbeatMessageInterval, "heartbeat-message-interval", 30,
+		"Number of seconds to wait before printing a waiting message in non-interactive mode")
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the destroy diffs, operations, and overall output as JSON")

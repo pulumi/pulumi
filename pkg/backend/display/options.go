@@ -49,6 +49,7 @@ type Options struct {
 	JSONDisplay          bool                // true if we should emit the entire diff as JSON.
 	EventLogPath         string              // the path to the file to use for logging events, if any.
 	Debug                bool                // true to enable debug output.
+	HeartbeatRate        int                 // the rate in seconds for non-interactive mode to send output.
 	Stdout               io.Writer           // the writer to use for stdout. Defaults to os.Stdout if unset.
 	Stderr               io.Writer           // the writer to use for stderr. Defaults to os.Stderr if unset.
 }
