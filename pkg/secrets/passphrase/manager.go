@@ -114,6 +114,13 @@ func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
 var lock sync.Mutex
 var cache map[string]secrets.Manager
 
+// clearCache is used to clear the cache, for tests.
+func clearCache() {
+	lock.Lock()
+	cache = nil
+	lock.Unlock()
+}
+
 func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, error) {
 	// check the cache first, if we have already seen this state before, return a cached value.
 	lock.Lock()

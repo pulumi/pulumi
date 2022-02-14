@@ -18,6 +18,8 @@ const (
 )
 
 func setIncorrectPassphraseTestEnvVars() func() {
+	clearCache()
+
 	oldPassphrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
 	oldPassphraseFile := os.Getenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password123")
@@ -42,6 +44,8 @@ func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 }
 
 func setCorrectPassphraseTestEnvVars() func() {
+	clearCache()
+
 	oldPassphrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
 	oldPassphraseFile := os.Getenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
@@ -69,6 +73,8 @@ func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 }
 
 func unsetAllPassphraseEnvVars() func() {
+	clearCache()
+
 	oldPassphrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
 	oldPassphraseFile := os.Getenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
