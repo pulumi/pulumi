@@ -67,7 +67,7 @@ func PulumiMapper(
 
 	httpCloudBackend.Apply(ctx, apitype.RefreshUpdate, stack, *updateOpts, *dryRunApplierOpts, eventsChannel)
 	close(eventsChannel)
-	nodes, err := CreatePulumiNodes(events, accountId, stackId, integrationId, stackName, projectName, organizationName, logger)
+	nodes, assetTypes, err := CreatePulumiNodes(events, accountId, stackId, integrationId, stackName, projectName, organizationName, logger)
 
 	jsonlinesNodes, err := utils.ToJsonLines(nodes)
 	if err != nil {
@@ -87,15 +87,15 @@ func PulumiMapper(
 	logger.Info().Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
 		Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("Successfully wrote nodes to s3 bucket")
 
-	//TODO - filter engine invocation by asset type
-	//err = utils.TriggerFireflyEngine(consumer.Config)
-	//if err != nil {
-	//	logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
-	//		Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("failed to trigger engine producer")
-	//	return err
-	//}
-	//logger.Info().Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
-	//	Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("Successfully triggered engine producer")
+
+	err = utils.InvokeEngineLambda(consumer.Config, assetTypes, logger)
+	if err != nil {
+		logger.Err(err).Str("accountId", accountId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
+			Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("failed to trigger engine producer")
+		return err
+	}
+	logger.Info().Str("accountId", accountId).Str("awsIntegrationId", consumer.Config.ClientAWSIntegrationId).Str("pulumiIntegrationId", integrationId).Str("projectName", projectName).
+		Str("stackName", stackName).Str("OrganizationName", organizationName).Msg("Successfully triggered engine producer")
 	return nil
 
 }

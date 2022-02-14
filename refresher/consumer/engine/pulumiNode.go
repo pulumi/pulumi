@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/infralight/go-kit/flywheel/arn"
+	"github.com/infralight/go-kit/helpers"
 	goKit "github.com/infralight/go-kit/pulumi"
 	"github.com/infralight/pulumi/refresher"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -14,7 +15,7 @@ import (
 	"time"
 )
 
-func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId, stackName, projectName, organizationName string, logger *zerolog.Logger) (result []map[string]interface{}, err error) {
+func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId, stackName, projectName, organizationName string, logger *zerolog.Logger) (result []map[string]interface{}, assetTypes []string, err error) {
 
 	var s3Nodes = make([]map[string]interface{}, 0, len(events))
 
@@ -42,6 +43,11 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 
 		if terraformType, ok := goKit.TypesMapping[metadata.Type.String()]; ok {
 			s3Node["objectType"] = terraformType
+			if !helpers.StringSliceContains(assetTypes, terraformType) {
+				assetTypes = append(assetTypes, terraformType)
+			}
+		} else {
+			logger.Warn().Str("pulumiAssetType", metadata.Type.String()).Msg("missing pulumi to terraform type mapping")
 		}
 
 		switch metadata.Op {
@@ -134,7 +140,7 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 		}
 
 	}
-	return s3Nodes, nil
+	return s3Nodes, assetTypes,nil
 }
 
 func getSameMetadata(event engine.Event) engine.StepEventMetadata {
