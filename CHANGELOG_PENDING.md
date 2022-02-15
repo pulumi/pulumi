@@ -1,5 +1,8 @@
 ### Improvements
 
+- [codegen/go] - Add GenerateProgramWithOpts function to enable configurable codegen options.
+  [#8997](https://github.com/pulumi/pulumi/pull/8997)
+
 - [cli] -  Enabled dot spinner for non-interactive mode
   [#8996](https://github.com/pulumi/pulumi/pull/8996)
 

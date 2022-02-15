@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/iancoleman/strcase"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -36,30 +37,22 @@ type generator struct {
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
 	configCreated       bool
+	createResourceVar   bool // Assign resource to a new variable instead of _.
 }
 
-func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+// GenerateProgramOption functions are used to configure optional generator behavior.
+type GenerateProgramOption func(g *generator)
+
+// CreateResourceVar enables the `createResourceVar` generator option.
+func CreateResourceVar() GenerateProgramOption {
+	return func(g *generator) {
+		g.createResourceVar = true
+	}
+}
+
+func generateProgram(program *pcl.Program, g *generator) (map[string][]byte, hcl.Diagnostics, error) {
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
-
-	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
-	for _, pkg := range program.Packages() {
-		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
-	}
-
-	g := &generator{
-		program:             program,
-		packages:            packages,
-		contexts:            contexts,
-		spills:              &spills{counts: map[string]int{}},
-		jsonTempSpiller:     &jsonSpiller{},
-		ternaryTempSpiller:  &tempSpiller{},
-		readDirTempSpiller:  &readDirSpiller{},
-		splatSpiller:        &splatSpiller{},
-		optionalSpiller:     &optionalSpiller{},
-		scopeTraversalRoots: codegen.NewStringSet(),
-		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
-	}
 
 	g.Formatter = format.NewFormatter(g)
 
@@ -100,6 +93,58 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		"main.go": formattedSource,
 	}
 	return files, g.diagnostics, nil
+}
+
+func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
+	for _, pkg := range program.Packages() {
+		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
+	}
+
+	g := &generator{
+		program:             program,
+		packages:            packages,
+		contexts:            contexts,
+		spills:              &spills{counts: map[string]int{}},
+		jsonTempSpiller:     &jsonSpiller{},
+		ternaryTempSpiller:  &tempSpiller{},
+		readDirTempSpiller:  &readDirSpiller{},
+		splatSpiller:        &splatSpiller{},
+		optionalSpiller:     &optionalSpiller{},
+		scopeTraversalRoots: codegen.NewStringSet(),
+		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
+	}
+
+	return generateProgram(program, g)
+}
+
+func GenerateProgramWithOpts(program *pcl.Program, opts ...GenerateProgramOption) (
+	map[string][]byte, hcl.Diagnostics, error) {
+	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
+	for _, pkg := range program.Packages() {
+		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
+	}
+
+	g := &generator{
+		program:             program,
+		packages:            packages,
+		contexts:            contexts,
+		spills:              &spills{counts: map[string]int{}},
+		jsonTempSpiller:     &jsonSpiller{},
+		ternaryTempSpiller:  &tempSpiller{},
+		readDirTempSpiller:  &readDirSpiller{},
+		splatSpiller:        &splatSpiller{},
+		optionalSpiller:     &optionalSpiller{},
+		scopeTraversalRoots: codegen.NewStringSet(),
+		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
+	}
+
+	// Apply any generate options.
+	for _, opt := range opts {
+		opt(g)
+	}
+
+	return generateProgram(program, g)
 }
 
 var packageContexts sync.Map
@@ -486,7 +531,12 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			if g.isErrAssigned {
 				assignment = "="
 			}
-			g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, modOrAlias, typ, resourceName)
+			if g.createResourceVar {
+				g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ",
+					strcase.ToLowerCamel(resourceName), modOrAlias, typ, resourceName)
+			} else {
+				g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, modOrAlias, typ, resourceName)
+			}
 		}
 		g.isErrAssigned = true
 
