@@ -86,8 +86,19 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 
 	// See if this is a provider we just want to attach to
 	var plug *plugin
-	optAttach, isFound := os.LookupEnv("PULUMI_PROVIDER_" + strings.ToUpper(pkg.String()))
-	if isFound {
+	var optAttach string
+	if providersEnvVar, has := os.LookupEnv("PULUMI_DEBUG_PROVIDERS"); has {
+		for _, provider := range strings.Split(providersEnvVar, ",") {
+			parts := strings.SplitN(provider, ":", 2)
+
+			if parts[0] == pkg.String() {
+				optAttach = parts[1]
+				break
+			}
+		}
+	}
+
+	if optAttach != "" {
 		conn, err := grpc.Dial(
 			"127.0.0.1:"+optAttach,
 			grpc.WithInsecure(),
