@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"time"
 	"unicode/utf8"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 // NewSpinnerAndTicker returns a new Spinner and a ticker that will fire an event when the next call
@@ -25,7 +27,7 @@ import (
 // connected to a tty or not and returns either a nice animated spinner that updates quickly, using
 // the specified ttyFrames, or a simple spinner that just prints a dot on each tick and updates
 // slowly.
-func NewSpinnerAndTicker(prefix string, ttyFrames []string, timesPerSecond time.Duration) (Spinner, *time.Ticker) {
+func NewSpinnerAndTicker(prefix string, ttyFrames []string, color colors.Colorization, timesPerSecond time.Duration) (Spinner, *time.Ticker) {
 	if ttyFrames == nil {
 		// If explicit tick frames weren't specified, default to unicode for Mac and ASCII for Windows/Linux.
 		if Emoji {
@@ -43,6 +45,7 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string, timesPerSecond time.
 	}
 
 	return &dotSpinner{
+		color:  color,
 		prefix: prefix,
 	}, time.NewTicker(time.Second * 20)
 }
@@ -104,13 +107,14 @@ func (spin *ttySpinner) Reset() {
 // dotSpinner is the spinner that can be used when standard out is not a tty. In this case, we just write a single
 // dot on each tick.
 type dotSpinner struct {
+	color      colors.Colorization
 	prefix     string
 	hasWritten bool
 }
 
 func (spin *dotSpinner) Tick() {
 	if !spin.hasWritten {
-		fmt.Print(spin.prefix)
+		fmt.Print(spin.color.Colorize(colors.Yellow + spin.prefix))
 	}
 	fmt.Printf(".")
 	spin.hasWritten = true
@@ -118,7 +122,7 @@ func (spin *dotSpinner) Tick() {
 
 func (spin *dotSpinner) Reset() {
 	if spin.hasWritten {
-		fmt.Println()
+		fmt.Println(spin.color.Colorize(colors.Reset))
 	}
 	spin.hasWritten = false
 }
