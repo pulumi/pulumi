@@ -99,7 +99,7 @@ type ResourceOptions struct {
 	Aliases               []resource.URN
 	ImportID              resource.ID
 	CustomTimeouts        *resource.CustomTimeouts
-	DeleteBehaviour       resource.DeleteBehaviour
+	RetainOnDelete        bool
 	SupportsPartialValues *bool
 	Remote                bool
 	Providers             map[string]string
@@ -191,7 +191,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		ReplaceOnChanges:           opts.ReplaceOnChanges,
 		Providers:                  opts.Providers,
 		PluginDownloadURL:          opts.PluginDownloadURL,
-		DeleteBehaviour:            pulumirpc.DeleteBehaviour(opts.DeleteBehaviour),
+		RetainOnDelete:             opts.RetainOnDelete,
 	}
 
 	// submit request

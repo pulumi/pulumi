@@ -90,7 +90,7 @@ namespace Pulumi
                     Update = TimeoutString(options.CustomTimeouts?.Update),
                 },
                 Remote = remote,
-                DeleteBehaviour = (Pulumirpc.DeleteBehaviour)(options.DeleteBehaviour ?? DeleteBehaviour.Delete),
+                RetainOnDelete = options.RetainOnDelete ?? false,
             };
 
             if (customOpts != null)

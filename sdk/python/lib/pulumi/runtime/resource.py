@@ -558,12 +558,6 @@ def register_resource(
                 in {"TRUE", "1"}
             )
 
-            delete_behaviour = resource_pb2.DELETE
-            if opts.delete_behaviour == "protect":
-                delete_behaviour = resource_pb2.PROTECT
-            if opts.delete_behaviour == "drop":
-                delete_behaviour = resource_pb2.DROP
-
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -589,7 +583,7 @@ def register_resource(
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
-                deleteBehaviour=delete_behaviour,
+                retainOnDelete=opts.retain_on_delete or false,
             )
 
             from ..resource import create_urn  # pylint: disable=import-outside-toplevel

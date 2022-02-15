@@ -198,8 +198,8 @@ Pulumi.ResourceOptions.Version.get -> string
 Pulumi.ResourceOptions.Version.set -> void
 Pulumi.ResourceOptions.PluginDownloadURL.get -> string
 Pulumi.ResourceOptions.PluginDownloadURL.set -> void
-Pulumi.ResourceOptions.DeleteBehaviour.get -> Pulumi.DeleteBehaviour?
-Pulumi.ResourceOptions.DeleteBehaviour.set -> void
+Pulumi.ResourceOptions.RetainOnDelete.get -> bool?
+Pulumi.ResourceOptions.RetainOnDelete.set -> void
 Pulumi.ResourceTransformation
 Pulumi.ResourceTransformationArgs
 Pulumi.ResourceTransformationArgs.Args.get -> Pulumi.ResourceArgs
@@ -391,7 +391,3 @@ static readonly Pulumi.CallArgs.Empty -> Pulumi.CallArgs
 static readonly Pulumi.InvokeArgs.Empty -> Pulumi.InvokeArgs
 static readonly Pulumi.ResourceArgs.Empty -> Pulumi.ResourceArgs
 Pulumi.DeploymentInstance.Invoke<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> Pulumi.Output<T>
-Pulumi.DeleteBehaviour
-Pulumi.DeleteBehaviour.Delete = 0 -> Pulumi.DeleteBehaviour
-Pulumi.DeleteBehaviour.Drop = 1 -> Pulumi.DeleteBehaviour
-Pulumi.DeleteBehaviour.Protect = 2 -> Pulumi.DeleteBehaviour

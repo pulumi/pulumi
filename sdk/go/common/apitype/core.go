@@ -326,8 +326,8 @@ type ResourceV3 struct {
 	ImportID resource.ID `json:"importID,omitempty" yaml:"importID,omitempty"`
 	// An auto-incrementing sequence number for each time this resource gets created/replaced (0 means sequence numbers are unknown, -1 means the last replace didn't use a sequence number).
 	SequenceNumber int `json:"sequenceNumber,omitempty" yaml:"sequenceNumber,omitempty"`
-	// Delete behaviour, 0 is the default behaviour of actually deleting the resource.
-	DeleteBehaviour resource.DeleteBehaviour `json:"deleteBehaviour,omitempty" yaml:"deleteBehaviour,omitempty"`
+	// Delete behaviour, false is the default behaviour of actually deleting the resource.
+	RetainOnDelete bool `json:"retainOnDelete,omitempty" yaml:"retainOnDelete,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

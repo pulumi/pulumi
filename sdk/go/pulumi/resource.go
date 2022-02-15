@@ -300,7 +300,7 @@ type resourceOptions struct {
 	// information inferred from the current package and should rarely be used.
 	PluginDownloadURL string
 	// Controls what the engine does when deleting this resource.
-	DeleteBehaviour resource.DeleteBehaviour
+	RetainOnDelete bool
 }
 
 type invokeOptions struct {
@@ -550,9 +550,9 @@ func PluginDownloadURL(o string) ResourceOrInvokeOption {
 	})
 }
 
-// DeleteBehaviour to control how the engine deletes resources.
-func DeleteBehaviour(r resource.DeleteBehaviour) ResourceOption {
+// RetainOnDelete to control how the engine deletes resources.
+func RetainOnDelete(b bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.DeleteBehaviour = r
+		ro.RetainOnDelete = b
 	})
 }

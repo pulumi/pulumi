@@ -129,11 +129,11 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil,   /* propertyDependencies */
 		false, /* deleteBeforeCreate */
 		event.AdditionalSecretOutputs(),
-		nil,                            /* aliases */
-		nil,                            /* customTimeouts */
-		"",                             /* importID */
-		1,                              /* sequenceNumber */
-		resource.DeleteBehaviourDelete, /* deleteBehaviour */
+		nil,   /* aliases */
+		nil,   /* customTimeouts */
+		"",    /* importID */
+		1,     /* sequenceNumber */
+		false, /* retainOnDelete */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -321,7 +321,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "", 1, goal.DeleteBehaviour)
+		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "", 1, goal.RetainOnDelete)
 	if hasOld {
 		new.SequenceNumber = old.SequenceNumber
 	}
@@ -694,8 +694,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			// If this resource is protected we can't replace it because that entails a delete
 			// Note that we do allow unprotecting and replacing to happen in a single update
 			// cycle, we don't look at old.Protect here.
-			if (new.Protect || new.DeleteBehaviour == resource.DeleteBehaviourProtect) &&
-				(old.Protect || old.DeleteBehaviour == resource.DeleteBehaviourProtect) {
+			if new.Protect && old.Protect {
 				message := fmt.Sprintf("unable to replace resource %q\n"+
 					"as it is currently marked for protection. To unprotect the resource, "+
 					"remove the `protect` flag from the resource in your Pulumi "+

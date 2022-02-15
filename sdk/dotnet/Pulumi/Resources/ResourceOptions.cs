@@ -122,6 +122,6 @@ namespace Pulumi
         /// <summary>
         /// Controls how the engine should behave when deleting this resource.
         /// </summary>
-        public DeleteBehaviour? DeleteBehaviour { get; set; }
+        public RetainOnDelete? RetainOnDelete { get; set; }
     }
 }
