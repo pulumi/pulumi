@@ -124,7 +124,7 @@ func (spin *dotSpinner) Tick() {
 
 func (spin *dotSpinner) Reset() {
 	if spin.hasWritten {
-		fmt.Println(spin.color.Colorize(colors.Reset))
+		fmt.Println()
 	}
 	spin.hasWritten = false
 }
