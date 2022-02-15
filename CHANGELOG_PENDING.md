@@ -23,3 +23,5 @@
 - [cli/python] - Parse a larger subset of PEP440 when guessing Pulumi package versions.
   [#8958](https://github.com/pulumi/pulumi/pull/8958)
 
+- [sdk/nodejs] - Allow disabling TypeScript typechecking 
+  [#8981](https://github.com/pulumi/pulumi/pull/8981)
