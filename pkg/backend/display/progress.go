@@ -271,7 +271,6 @@ func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
 			if display.debounceTimer != nil {
 				display.debounceTimer.Stop()
 			}
-			//display.debounceTimer = time.AfterFunc(time.Duration(display.opts.HeartbeatRate)*time.Second, func() {
 			var sendWorkingMessage func()
 			sendWorkingMessage = func() {
 				fmt.Println("working...")
@@ -368,6 +367,9 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 		// no more progress events from this point on.  By closing the pipe, this will then cause
 		// DisplayJSONMessagesToStream to finish once it processes the last message is receives from
 		// pipeReader, causing DisplayEvents to finally complete.
+		if display.debounceTimer != nil {
+			display.debounceTimer.Stop()
+		}
 		close(progressOutput)
 	}()
 
