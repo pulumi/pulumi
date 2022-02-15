@@ -37,6 +37,9 @@ type CSharpPackageInfo struct {
 
 	// The root namespace used for the package. This defaults to `Pulumi`.
 	RootNamespace string `json:"rootNamespace,omitempty"`
+
+	// Allow the Pkg.Version field to filter down to emitted code.
+	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
 }
 
 // Returns the root namespace, or "Pulumi" if not provided.

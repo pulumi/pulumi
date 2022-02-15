@@ -54,7 +54,7 @@ interface RunCase {
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
         custom?: boolean, protect?: boolean, parent?: string, provider?: string,
         propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
-        replaceOnChanges?: string[]) => {
+        replaceOnChanges?: string[], providers?: any) => {
         urn: URN | undefined; id: ID | undefined; props: any | undefined;
     };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
@@ -1192,6 +1192,19 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        "remote_component_providers": {
+            program: path.join(base, "068.remote_component_providers"),
+            expectResourceCount: 4,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                               custom?: boolean, protect?: boolean, parent?: string, provider?: string,
+                               propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
+                               replaceOnChanges?: string[], providers?: any) => {
+                if (name === "singular" || name === "map" || name === "array") {
+                    assert.deepStrictEqual(Object.keys(providers), ["test"]);
+                }
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -1266,8 +1279,13 @@ describe("rpc", () => {
                                     }, {});
                                 const version: string = req.getVersion();
                                 const importID: string = req.getImportid();
+                                const providers: any = Array.from(req.getProvidersMap().entries())
+                                    .reduce((o: any, [key, value]: any) => {
+                                        return { ...o, [key]: value };
+                                    }, {});
                                 const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps,
-                                    custom, protect, parent, provider, propertyDeps, ignoreChanges, version, importID, replaceOnChanges);
+                                    custom, protect, parent, provider, propertyDeps, ignoreChanges, version,
+                                    importID, replaceOnChanges, providers);
                                 resp.setUrn(urn);
                                 resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));

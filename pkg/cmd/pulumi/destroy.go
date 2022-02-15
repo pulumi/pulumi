@@ -143,9 +143,19 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return result.FromError(err)
+			}
 			targetUrns := []resource.URN{}
 			for _, t := range *targets {
-				targetUrns = append(targetUrns, resource.URN(t))
+				targetUrns = append(targetUrns, snap.GlobUrn(resource.URN(t))...)
+			}
+			if len(targetUrns) == 0 && len(*targets) > 0 {
+				if !jsonDisplay {
+					fmt.Printf("There were no resources matching the wildcards provided.\n")
+				}
+				return nil
 			}
 
 			refreshOption, err := getRefreshOption(proj, refresh)
@@ -226,7 +236,8 @@ func newDestroyCmd() *cobra.Command {
 	targets = cmd.PersistentFlags().StringArrayP(
 		"target", "t", []string{},
 		"Specify a single resource URN to destroy. All resources necessary to destroy this target will also be destroyed."+
-			" Multiple resources can be specified using: --target urn1 --target urn2")
+			" Multiple resources can be specified using: --target urn1 --target urn2."+
+			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().BoolVar(
 		&targetDependents, "target-dependents", false,
 		"Allows destroying of dependent targets discovered but not specified in --target list")

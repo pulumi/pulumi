@@ -106,6 +106,8 @@ type Options struct {
 	DebugLogOpts debug.LoggingOptions
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
 	UserAgent string
+	// Colorize output. Choices are: always, never, raw, auto (default "auto")
+	Color string
 }
 
 type optionFunc func(*Options)

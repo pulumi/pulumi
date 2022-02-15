@@ -4,10 +4,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
 func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {
@@ -61,6 +63,30 @@ func TestMakeSafeEnumName(t *testing.T) {
 			}
 			if got != tt.expected {
 				t.Errorf("makeSafeEnumName() got = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMakePyPiVersion(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"1.2.3", "1.2.3"},
+		{"1.2.3+dirty", "1.2.3+dirty"},
+		{"1.2.3-alpha123+beta123", "1.2.3a123+beta123"},
+		{"1.2.3-rc789", "1.2.3rc789"},
+		{"1.2.3-dev321", "1.2.3.dev321"},
+		{"1.2.3-post456", "1.2.3.post456"},
+		{"1.2.3-posttt456", "1.2.3+posttt456"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			v := semver.MustParse(tt.input)
+			actual := pypiVersion(v)
+			if tt.expected != actual {
+				t.Errorf("expected %q != actual %q", tt.expected, actual)
 			}
 		})
 	}

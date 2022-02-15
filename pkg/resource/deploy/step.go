@@ -335,11 +335,12 @@ func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
 func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	// Refuse to delete protected resources.
-	if s.old.Protect {
+	// Refuse to delete protected resources (unless we're replacing them in
+	// which case we will of checked protect elsewhere)
+	if !s.replacing && s.old.Protect {
 		return resource.StatusOK, nil, fmt.Errorf("unable to delete resource %q\n"+
 			"as it is currently marked for protection. To unprotect the resource, "+
-			"either remove the `protect` flag from the resource in your Pulumi"+
+			"either remove the `protect` flag from the resource in your Pulumi "+
 			"program and run `pulumi up` or use the command:\n"+
 			"`pulumi state unprotect '%s'`", s.old.URN, s.old.URN)
 	}
@@ -930,10 +931,33 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		if !ok {
 			return resource.StatusOK, nil, fmt.Errorf("unknown resource type '%v'", s.new.Type)
 		}
-		for _, p := range r.InputProperties {
-			if p.IsRequired() {
-				k := resource.PropertyKey(p.Name)
-				s.new.Inputs[k] = s.old.Inputs[k]
+
+		// Get the import object and see if it had properties set
+		var inputProperties []string
+		for _, imp := range s.deployment.imports {
+			if imp.ID == s.old.ID {
+				inputProperties = imp.Properties
+				break
+			}
+		}
+
+		if len(inputProperties) == 0 {
+			logging.V(9).Infof("Importing %v with required properties", s.URN())
+
+			for _, p := range r.InputProperties {
+				if p.IsRequired() {
+					k := resource.PropertyKey(p.Name)
+					s.new.Inputs[k] = s.old.Inputs[k]
+				}
+			}
+		} else {
+			logging.V(9).Infof("Importing %v with supplied properties: %v", s.URN(), inputProperties)
+
+			for _, p := range inputProperties {
+				k := resource.PropertyKey(p)
+				if value, has := s.old.Inputs[k]; has {
+					s.new.Inputs[k] = value
+				}
 			}
 		}
 	} else {
@@ -1166,6 +1190,28 @@ func (op StepOp) Suffix() string {
 	return ""
 }
 
+// ConstrainedTo returns true if this operation is no more impactful than the constraint.
+func (op StepOp) ConstrainedTo(constraint StepOp) bool {
+	var allowed []StepOp
+	switch constraint {
+	case OpSame, OpDelete, OpRead, OpReadReplacement, OpRefresh, OpReadDiscard, OpDiscardReplaced,
+		OpRemovePendingReplace, OpImport, OpImportReplacement:
+		allowed = []StepOp{constraint}
+	case OpCreate:
+		allowed = []StepOp{OpSame, OpCreate}
+	case OpUpdate:
+		allowed = []StepOp{OpSame, OpUpdate}
+	case OpReplace, OpCreateReplacement, OpDeleteReplaced:
+		allowed = []StepOp{OpSame, OpUpdate, constraint}
+	}
+	for _, candidate := range allowed {
+		if candidate == op {
+			return true
+		}
+	}
+	return false
+}
+
 // getProvider fetches the provider for the given step.
 func getProvider(s Step) (plugin.Provider, error) {
 	if providers.IsProviderType(s.Type()) {
@@ -1174,6 +1220,11 @@ func getProvider(s Step) (plugin.Provider, error) {
 	ref, err := providers.ParseReference(s.Provider())
 	if err != nil {
 		return nil, fmt.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
+	}
+	if providers.IsDenyDefaultsProvider(ref) {
+		pkg := providers.GetDeniedDefaultProviderPkg(ref)
+		msg := diag.GetDefaultProviderDenied(s.URN()).Message
+		return nil, fmt.Errorf(msg, pkg, s.URN())
 	}
 	provider, ok := s.Deployment().GetProvider(ref)
 	if !ok {

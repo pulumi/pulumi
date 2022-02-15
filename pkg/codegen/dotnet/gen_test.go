@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
 func TestGeneratePackage(t *testing.T) {
@@ -20,13 +20,18 @@ func TestGeneratePackage(t *testing.T) {
 			"dotnet/compile": typeCheckGeneratedPackage,
 			"dotnet/test":    testGeneratedPackage,
 		},
+		TestCases: test.PulumiPulumiSDKTests,
 	})
 }
 
 func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	versionPath := filepath.Join(pwd, "version.txt")
-	err := os.WriteFile(versionPath, []byte("0.0.0\n"), 0600)
-	require.NoError(t, err)
+	if _, err := os.Stat(versionPath); os.IsNotExist(err) {
+		err := os.WriteFile(versionPath, []byte("0.0.0\n"), 0600)
+		require.NoError(t, err)
+	} else if err != nil {
+		require.NoError(t, err)
+	}
 
 	test.RunCommand(t, "dotnet build", pwd, "dotnet", "build")
 }

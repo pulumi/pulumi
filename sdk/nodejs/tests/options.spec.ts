@@ -135,7 +135,7 @@ describe("options", () => {
 
             it("merges singleton into map", () => {
                 const result = mergeOptions({ providers: { aws: awsProvider } }, { provider: azureProvider });
-                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
+                assert.deepStrictEqual(result, { providers: { aws: awsProvider}, provider: azureProvider  });
             });
             it("merges singleton-array into map", () => {
                 const result = mergeOptions({ providers: { aws: awsProvider } }, { providers: [azureProvider] });
@@ -148,7 +148,7 @@ describe("options", () => {
 
             it("merges map into singleton", () => {
                 const result = mergeOptions({ provider: awsProvider }, { providers: { azure: azureProvider } });
-                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
+                assert.deepStrictEqual(result, { provider: awsProvider, providers: { azure: azureProvider } });
             });
             it("merges map into singleton-array", () => {
                 const result = mergeOptions({ providers: [awsProvider] }, { providers: { azure: azureProvider } });
@@ -171,7 +171,7 @@ describe("options", () => {
 
             it("merges singleton into singleton", () => {
                 const result = mergeOptions(<ComponentResourceOptions>{ provider: awsProvider }, { provider: azureProvider });
-                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
+                assert.deepStrictEqual(result, { provider: azureProvider });
             });
         });
 

@@ -165,9 +165,6 @@ func (mod *modContext) modNameAndName(pkg *schema.Package, t schema.Type, input 
 	}
 
 	modName = tokenToModule(token, pkg, info.ModuleNameOverrides)
-	if modName == mod.mod {
-		modName = ""
-	}
 	if modName != "" {
 		modName = strings.ReplaceAll(modName, "/", ".") + "."
 	}
@@ -1959,6 +1956,11 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 		Name:     pkg.Name,
 		Server:   pkg.PluginDownloadURL,
 	}
+
+	if info, ok := pkg.Language["python"].(PackageInfo); pkg.Version != nil && ok && info.RespectSchemaVersion {
+		plugin.Version = pkg.Version.String()
+	}
+
 	return plugin.JSON()
 }
 
@@ -1977,8 +1979,15 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "\n\n")
 
 	// Create a constant for the version number to replace during build
-	fmt.Fprintf(w, "VERSION = \"0.0.0\"\n")
-	fmt.Fprintf(w, "PLUGIN_VERSION = \"0.0.0\"\n\n")
+	version := "0.0.0"
+	pluginVersion := version
+	info, ok := pkg.Language["python"].(PackageInfo)
+	if pkg.Version != nil && ok && info.RespectSchemaVersion {
+		version = pypiVersion(*pkg.Version)
+		pluginVersion = pkg.Version.String()
+	}
+	fmt.Fprintf(w, "VERSION = \"%s\"\n", version)
+	fmt.Fprintf(w, "PLUGIN_VERSION = \"%s\"\n\n", pluginVersion)
 
 	// Create a command that will install the Pulumi plugin for this resource provider.
 	fmt.Fprintf(w, "class InstallPluginCommand(install):\n")

@@ -111,7 +111,7 @@ class Server implements grpc.UntypedServiceImplementation {
             let inputs: any = news;
             let failures: any[] = [];
             if (this.provider.check) {
-                const result = await this.provider.check(req.getUrn(), olds, news, req.getSequencenumber());
+                const result = await this.provider.check(req.getUrn(), olds, news);
                 if (result.inputs) {
                     inputs = result.inputs;
                 }

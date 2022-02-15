@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -30,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -341,6 +343,15 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (providers.Reference, error) {
 	logging.V(5).Infof("handling default provider request for package %s", req)
 
+	denyCreation, err := d.shouldDenyRequest(req)
+	if err != nil {
+		return providers.Reference{}, err
+	}
+	if denyCreation {
+		logging.V(5).Infof("denied default provider request for package %s", req)
+		return providers.NewDenyDefaultProvider(tokens.AsQName(string(req.Package().Name()))), nil
+	}
+
 	// Have we loaded this provider before? Use the existing reference, if so.
 	//
 	// Note that we are using the request's String as the key for the provider map. Go auto-derives hash and equality
@@ -384,6 +395,48 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	d.providers[req.String()] = ref
 
 	return ref, nil
+}
+
+// If req should be allowed, or if we should prevent the request.
+func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (bool, error) {
+	logging.V(9).Infof("checking if %s should be denied", req)
+	pConfig, err := d.config.GetPackageConfig("pulumi")
+	if err != nil {
+		return true, err
+	}
+
+	denyCreation := false
+	if value, ok := pConfig["disable-default-providers"]; ok {
+		array := []interface{}{}
+		if !value.IsString() {
+			return true, fmt.Errorf("Unexpected encoding of pulumi:disable-default-providers")
+		}
+		if value.StringValue() == "" {
+			// If the list is provided but empty, we don't encode a empty json
+			// list, we just encode the empty string. Check to ensure we don't
+			// get parse errors.
+			return false, nil
+		}
+		if err := json.Unmarshal([]byte(value.StringValue()), &array); err != nil {
+			return true, fmt.Errorf("Failed to parse %s: %w", value.StringValue(), err)
+		}
+		for i, v := range array {
+			s, ok := v.(string)
+			if !ok {
+				return true, fmt.Errorf("pulumi:disable-default-providers[%d] must be a string", i)
+			}
+			barred := strings.TrimSpace(s)
+			if barred == "*" || barred == req.Package().Name().String() {
+				logging.V(7).Infof("denying %s (star=%t)", req, barred == "*")
+				denyCreation = true
+				break
+			}
+		}
+	} else {
+		logging.V(9).Infof("Did not find a config for 'pulumi'")
+	}
+
+	return denyCreation, nil
 }
 
 // serve is the primary loop responsible for handling default provider requests.
@@ -582,9 +635,15 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	if err != nil {
 		return nil, err
 	}
+	if deny, err := rm.defaultProviders.shouldDenyRequest(providerReq); err != nil {
+		return nil, fmt.Errorf("Invoke: %w", err)
+	} else if deny {
+		msg := diag.GetDefaultProviderDenied("Invoke").Message
+		return nil, fmt.Errorf(msg, providerReq.Package(), tok)
+	}
 	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Invoke: %w", err)
 	}
 
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)

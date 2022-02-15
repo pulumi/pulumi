@@ -251,6 +251,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "mime.TypeByExtension(path.Ext(%.v))", expr.Args[0])
 	case "sha1":
 		g.Fgenf(w, "sha1Hash(%v)", expr.Args[0])
+	case "goOptionalFloat64":
+		g.Fgenf(w, "pulumi.Float64Ref(%.v)", expr.Args[0])
+	case "goOptionalBool":
+		g.Fgenf(w, "pulumi.BoolRef(%.v)", expr.Args[0])
+	case "goOptionalInt":
+		g.Fgenf(w, "pulumi.IntRef(%.v)", expr.Args[0])
+	case "goOptionalString":
+		g.Fgenf(w, "pulumi.StringRef(%.v)", expr.Args[0])
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
@@ -274,7 +282,7 @@ func outputVersionFunctionArgTypeName(t model.Type) (string, error) {
 
 	var ty string
 	if pkg.isExternalReference(objType) {
-		ty = pkg.contextForExternalReferenceType(objType).tokenToType(objType.Token)
+		ty = pkg.contextForExternalReference(objType).tokenToType(objType.Token)
 	} else {
 		ty = pkg.tokenToType(objType.Token)
 	}
@@ -978,9 +986,7 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 				break
 			}
 		}
-		var buf bytes.Buffer
-		g.GenTemplateExpression(&buf, x)
-		return buf.String(), true
+		return "", false
 	default:
 		return "", false
 	}

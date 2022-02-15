@@ -56,7 +56,7 @@ type MockBackend struct {
 	LogoutAllF              func() error
 	CurrentUserF            func() (string, error)
 	PreviewF                func(context.Context, Stack,
-		UpdateOperation) (engine.ResourceChanges, result.Result)
+		UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	UpdateF func(context.Context, Stack,
 		UpdateOperation) (engine.ResourceChanges, result.Result)
 	ImportF func(context.Context, Stack,
@@ -179,7 +179,7 @@ func (be *MockBackend) GetStackCrypter(stackRef StackReference) (config.Crypter,
 }
 
 func (be *MockBackend) Preview(ctx context.Context, stack Stack,
-	op UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 
 	if be.PreviewF != nil {
 		return be.PreviewF(ctx, stack, op)
@@ -334,7 +334,7 @@ type MockStack struct {
 	ConfigF   func() config.Map
 	SnapshotF func(ctx context.Context) (*deploy.Snapshot, error)
 	BackendF  func() Backend
-	PreviewF  func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	UpdateF   func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	ImportF   func(ctx context.Context, op UpdateOperation,
 		imports []deploy.Import) (engine.ResourceChanges, result.Result)
@@ -380,7 +380,10 @@ func (ms *MockStack) Backend() Backend {
 	panic("not implemented")
 }
 
-func (ms *MockStack) Preview(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (ms *MockStack) Preview(
+	ctx context.Context,
+	op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+
 	if ms.PreviewF != nil {
 		return ms.PreviewF(ctx, op)
 	}

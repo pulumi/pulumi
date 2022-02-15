@@ -318,8 +318,11 @@ func (host *pluginHost) plugin(kind workspace.PluginKind, name string, version *
 
 func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 	plug, err := host.plugin(workspace.ResourcePlugin, string(pkg), version, nil)
-	if err != nil || plug == nil {
+	if err != nil {
 		return nil, err
+	}
+	if plug == nil {
+		return nil, fmt.Errorf("Could not find plugin for (%s, %s)", pkg.String(), version.String())
 	}
 	return plug.(plugin.Provider), nil
 }
