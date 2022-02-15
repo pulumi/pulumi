@@ -23,3 +23,5 @@
 - [cli/python] - Parse a larger subset of PEP440 when guessing Pulumi package versions.
   [#8958](https://github.com/pulumi/pulumi/pull/8958)
 
+- [cli] -  Re-enabled dot spinner for non-interactive mode
+  [#8996](https://github.com/pulumi/pulumi/pull/8996)
