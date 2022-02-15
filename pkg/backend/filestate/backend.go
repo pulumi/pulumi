@@ -467,22 +467,50 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	op.Imports = imports
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
@@ -510,15 +538,6 @@ func (b *localBackend) apply(
 		// Print a banner so it's clear this is a local deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
-	}
-
-	// Take a lock unless this is just a preview
-	if kind != apitype.PreviewUpdate {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, nil, result.FromError(err)
-		}
-		defer b.Unlock(ctx, stack.Ref())
 	}
 
 	// Start the update.
