@@ -589,7 +589,7 @@ export interface ResourceOptions {
     /**
      * retainOnDelete is an option to not actually delete resources from providers when the engine calls Delete.
      */
-     retainOnDelete?: boolean;
+    retainOnDelete?: boolean;
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
