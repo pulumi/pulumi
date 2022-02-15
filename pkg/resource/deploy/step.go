@@ -351,7 +351,6 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
 	} else if s.old.RetainOnDelete {
 		// Deleting a "drop on delete" is a no-op as the user has explicitly asked us to not delete the resource.
-		// But we want to diag warn that Pulumi has stopped tracking this resource
 	} else if s.old.Custom {
 		// Not preview and not external and not Drop and is custom, do the actual delete
 
