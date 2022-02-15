@@ -37,17 +37,14 @@ type generator struct {
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
 	configCreated       bool
-	createResourceVar   bool // Assign resource to a new variable instead of _.
+
+	// User-configurable options
+	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
 }
 
-// GenerateProgramOption functions are used to configure optional generator behavior.
-type GenerateProgramOption func(g *generator)
-
-// CreateResourceVar enables the `createResourceVar` generator option.
-func CreateResourceVar() GenerateProgramOption {
-	return func(g *generator) {
-		g.createResourceVar = true
-	}
+// GenerateProgramOptions are used to configure optional generator behavior.
+type GenerateProgramOptions struct {
+	AssignResourcesToVariables bool
 }
 
 func generateProgram(program *pcl.Program, g *generator) (map[string][]byte, hcl.Diagnostics, error) {
@@ -118,7 +115,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return generateProgram(program, g)
 }
 
-func GenerateProgramWithOpts(program *pcl.Program, opts ...GenerateProgramOption) (
+func GenerateProgramWithOpts(program *pcl.Program, opts GenerateProgramOptions) (
 	map[string][]byte, hcl.Diagnostics, error) {
 	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
 	for _, pkg := range program.Packages() {
@@ -140,9 +137,7 @@ func GenerateProgramWithOpts(program *pcl.Program, opts ...GenerateProgramOption
 	}
 
 	// Apply any generate options.
-	for _, opt := range opts {
-		opt(g)
-	}
+	g.assignResourcesToVariables = opts.AssignResourcesToVariables
 
 	return generateProgram(program, g)
 }
@@ -531,7 +526,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			if g.isErrAssigned {
 				assignment = "="
 			}
-			if g.createResourceVar {
+			if g.assignResourcesToVariables {
 				g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ",
 					strcase.ToLowerCamel(resourceName), modOrAlias, typ, resourceName)
 			} else {
