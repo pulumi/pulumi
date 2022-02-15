@@ -116,9 +116,9 @@ type dotSpinner struct {
 
 func (spin *dotSpinner) Tick() {
 	if !spin.hasWritten {
-		fmt.Print(spin.color.Colorize(colors.Yellow + spin.prefix))
+		fmt.Print(spin.color.Colorize(colors.Yellow + spin.prefix + colors.Reset))
 	}
-	fmt.Printf(".")
+	fmt.Print(spin.color.Colorize(colors.Yellow + "." + colors.Reset))
 	spin.hasWritten = true
 }
 
