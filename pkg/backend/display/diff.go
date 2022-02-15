@@ -52,7 +52,7 @@ func ShowDiffEvents(op string, action apitype.UpdateKind,
 
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
-	if stdout == os.Stdout && stderr == os.Stderr && opts.IsInteractive {
+	if stdout == os.Stdout && stderr == os.Stderr {
 		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
 	} else {
 		spinner = &nopSpinner{}
