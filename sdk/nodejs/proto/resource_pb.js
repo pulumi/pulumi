@@ -1316,7 +1316,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
     replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 24, "")
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 24, ""),
+    retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 25, false)
   };
 
   if (includeInstance) {
@@ -1454,6 +1455,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 24:
       var value = /** @type {string} */ (reader.readString());
       msg.setPlugindownloadurl(value);
+      break;
+    case 25:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setRetainondelete(value);
       break;
     default:
       reader.skipField();
@@ -1645,6 +1650,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeString(
       24,
+      f
+    );
+  }
+  f = message.getRetainondelete();
+  if (f) {
+    writer.writeBool(
+      25,
       f
     );
   }
@@ -2567,6 +2579,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getPlugindownloadurl = functio
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setPlugindownloadurl = function(value) {
   return jspb.Message.setProto3StringField(this, 24, value);
+};
+
+
+/**
+ * optional bool retainOnDelete = 25;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getRetainondelete = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 25, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setRetainondelete = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 25, value);
 };
 
 

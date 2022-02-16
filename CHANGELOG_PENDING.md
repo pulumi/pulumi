@@ -6,6 +6,9 @@
 - [cli] -  Enabled dot spinner for non-interactive mode
   [#8996](https://github.com/pulumi/pulumi/pull/8996)
 
+- [sdk] - Add `RetainOnDelete` as a resource option.
+  [#8746](https://github.com/pulumi/pulumi/pull/8746)
+
 ### Bug Fixes
 
 - [sdk/go] - Normalize merge behavior for `ResourceOptions`, inline
