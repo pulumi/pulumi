@@ -1,10 +1,13 @@
 ### Improvements
 
-- [sdk] - Add `RetainOnDelete` as a resource option.
-  [#8746](https://github.com/pulumi/pulumi/pull/8746)
+- [codegen/go] - Add GenerateProgramWithOpts function to enable configurable codegen options.
+  [#8997](https://github.com/pulumi/pulumi/pull/8997)
 
 - [cli] -  Enabled dot spinner for non-interactive mode
   [#8996](https://github.com/pulumi/pulumi/pull/8996)
+
+- [sdk] - Add `RetainOnDelete` as a resource option.
+  [#8746](https://github.com/pulumi/pulumi/pull/8746)
 
 ### Bug Fixes
 
