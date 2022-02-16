@@ -109,7 +109,10 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 		case deploy.OpUpdate:
 			newState := *metadata.New
 			if len(newState.Outputs) > 0 {
-				drifts := refresher.CalcDrift(metadata)
+				drifts, err := refresher.CalcDrift(metadata)
+				if err != nil {
+					logger.Warn().Err(err).Msg("failed to calc some of the drifts")
+				}
 				if drifts == nil {
 					iacMetadata["pulumiState"] = "managed"
 
