@@ -482,7 +482,7 @@ class ResourceOptions:
     require replacement instead of update only if `"*"` is passed.
     """
 
-    retain_on_delete : Optional[bool]
+    retain_on_delete: Optional[bool]
     """
     Option to not actually delete resources from providers when the engine calls Delete.
     """
@@ -511,7 +511,7 @@ class ResourceOptions:
         urn: Optional[str] = None,
         replace_on_changes: Optional[List[str]] = None,
         plugin_download_url: Optional[str] = None,
-        retain_on_delete: Optional[bool] = None
+        retain_on_delete: Optional[bool] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -699,7 +699,11 @@ class ResourceOptions:
         dest.import_ = dest.import_ if source.import_ is None else source.import_
         dest.urn = dest.urn if source.urn is None else source.urn
         dest.provider = dest.provider if source.provider is None else source.provider
-        dest.retain_on_delete = dest.retain_on_delete if source.retain_on_delete is None else source.retain_on_delete
+        dest.retain_on_delete = (
+            dest.retain_on_delete
+            if source.retain_on_delete is None
+            else source.retain_on_delete
+        )
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
         # collapse that down into .provider form.
