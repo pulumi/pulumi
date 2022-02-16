@@ -484,7 +484,7 @@ class ResourceOptions:
 
     retain_on_delete: Optional[bool]
     """
-    Option to not actually delete resources from providers when the engine calls Delete.
+    If set to True, the providers Delete method will not be called for this resource.
     """
 
     # pylint: disable=redefined-builtin
@@ -551,7 +551,7 @@ class ResourceOptions:
         :param Optional[str] plugin_download_url: An optional url. If provided, the engine loads a provider with downloaded
                from the provided url. This url overrides the plugin download url inferred from the current package and should
                rarely be used.
-        :param Optional[bool] retain_on_delete: Option to not actually delete resources from providers when the engine calls Delete.
+        :param Optional[bool] retain_on_delete: If set to True, the providers Delete method will not be called for this resource.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.

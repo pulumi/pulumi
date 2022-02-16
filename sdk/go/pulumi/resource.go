@@ -299,7 +299,7 @@ type resourceOptions struct {
 	// plugin that should be used when operating on this resource. This url overrides the url
 	// information inferred from the current package and should rarely be used.
 	PluginDownloadURL string
-	// Controls what the engine does when deleting this resource.
+	// If set to True, the providers Delete method will not be called for this resource.
 	RetainOnDelete bool
 }
 
@@ -550,7 +550,7 @@ func PluginDownloadURL(o string) ResourceOrInvokeOption {
 	})
 }
 
-// RetainOnDelete to control how the engine deletes resources.
+// If set to True, the providers Delete method will not be called for this resource.
 func RetainOnDelete(b bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.RetainOnDelete = b

@@ -44,7 +44,7 @@ type State struct {
 	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
 	SequenceNumber          int                   // an auto-incrementing sequence number for each time this resource gets created/replaced (0 means sequence numbers are unknown, -1 means the last replace didn't use a sequence number).
-	RetainOnDelete          bool                  // controls what happens when the engine plans a Delete for this resource.
+	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
 }
 
 // NewState creates a new resource value from existing resource state information.

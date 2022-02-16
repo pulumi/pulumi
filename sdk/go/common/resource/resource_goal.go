@@ -38,7 +38,7 @@ type Goal struct {
 	ID                      ID                    // the expected ID of the resource, if any.
 	CustomTimeouts          CustomTimeouts        // an optional config object for resource options
 	ReplaceOnChanges        []string              // a list of property paths that if changed should force a replacement.
-	RetainOnDelete          bool                  // controls how this resource handles deletes.
+	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
 }
 
 // NewGoal allocates a new resource goal state.

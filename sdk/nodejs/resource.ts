@@ -587,7 +587,7 @@ export interface ResourceOptions {
      */
     pluginDownloadURL?: string;
     /**
-     * retainOnDelete is an option to not actually delete resources from providers when the engine calls Delete.
+     * If set to True, the providers Delete method will not be called for this resource.
      */
     retainOnDelete?: boolean;
 
