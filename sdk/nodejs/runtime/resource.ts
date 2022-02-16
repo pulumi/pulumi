@@ -223,7 +223,6 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setAcceptsecrets(true);
         req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
-        req.setRetainondelete(opts.retainOnDelete);
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.readResource(${label})`;
