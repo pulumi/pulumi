@@ -21,7 +21,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -30,17 +29,13 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/connectivity"
-	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -99,56 +94,9 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	}
 
 	if optAttach != "" {
-		conn, err := grpc.Dial(
-			"127.0.0.1:"+optAttach,
-			grpc.WithInsecure(),
-			grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
-			rpcutil.GrpcChannelOptions(),
-		)
+		conn, err := dialPlugin(optAttach, pkg.String(), prefix)
 		if err != nil {
-			return nil, errors.Wrapf(err, "could not dial plugin [%s:%s] over RPC", prefix, optAttach)
-		}
-
-		// Now wait for the gRPC connection to the plugin to become ready.
-		// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
-		//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
-		//     while this bug exists, we'll simply do a bit of waiting of our own up front.
-		timeout, _ := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
-		for {
-			s := conn.GetState()
-			if s == connectivity.Ready {
-				// The connection is supposedly ready; but we will make sure it is *actually* ready by sending a dummy
-				// method invocation to the server.  Until it responds successfully, we can't safely proceed.
-			outer:
-				for {
-					err = grpc.Invoke(timeout, "", nil, nil, conn)
-					if err == nil {
-						break // successful connect
-					} else {
-						// We have an error; see if it's a known status and, if so, react appropriately.
-						status, ok := status.FromError(err)
-						if ok {
-							switch status.Code() {
-							case codes.Unavailable:
-								// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
-								time.Sleep(time.Millisecond * 10)
-								continue // keep retrying
-							default:
-								// Since we sent "" as the method above, this is the expected response.  Ready to go.
-								break outer
-							}
-						}
-
-						// Unexpected error; get outta dodge.
-						return nil, errors.Wrapf(err, "%s:%s plugin did not come alive", prefix, optAttach)
-					}
-				}
-				break
-			}
-			// Not ready yet; ask the gRPC client APIs to block until the state transitions again so we can retry.
-			if !conn.WaitForStateChange(timeout, s) {
-				return nil, errors.Errorf("%s:%s plugin did not begin responding to RPC connections", prefix, optAttach)
-			}
+			return nil, err
 		}
 
 		// Done; store the connection and return the plugin info.
@@ -198,7 +146,10 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 
 	// If we just attached (i.e. plugin bin is nil) we need to call attach
 	if plug.Bin == "" {
-		p.Attach(host.ServerAddr())
+		err := p.Attach(host.ServerAddr())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return p, nil

@@ -177,6 +177,10 @@ func (k *testproviderProvider) GetPluginInfo(context.Context, *pbempty.Empty) (*
 	}, nil
 }
 
+func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach) (*pbempty.Empty, error) {
+	return &pbempty.Empty{}, nil
+}
+
 // GetSchema returns the JSON-serialized schema for the provider.
 func (k *testproviderProvider) GetSchema(ctx context.Context,
 	req *rpc.GetSchemaRequest) (*rpc.GetSchemaResponse, error) {
