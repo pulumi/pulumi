@@ -44,7 +44,7 @@ type generator struct {
 
 // GenerateProgramOptions are used to configure optional generator behavior.
 type GenerateProgramOptions struct {
-	AssignResourcesToVariables bool
+	AssignResourcesToVariables bool // Assign resource to a new variable instead of _.
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
