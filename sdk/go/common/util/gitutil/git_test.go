@@ -186,7 +186,9 @@ func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 }
 
 func createTestRepo(e *ptesting.Environment) {
-	e.RunCommand("git", "init")
+	e.RunCommand("git", "init", "-b", "master")
+	e.RunCommand("git", "config", "user.name", "test")
+	e.RunCommand("git", "config", "user.email", "test@test.org")
 
 	e.WriteTestFile("README.md", "test repo")
 	e.RunCommand("git", "add", "*")
