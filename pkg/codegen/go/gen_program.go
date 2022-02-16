@@ -98,7 +98,7 @@ func newGenerator(program *pcl.Program) *generator {
 		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
 	}
 
-	g := &generator{
+	return &generator{
 		program:             program,
 		packages:            packages,
 		contexts:            contexts,
@@ -111,8 +111,6 @@ func newGenerator(program *pcl.Program) *generator {
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 	}
-
-	return g
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
