@@ -287,10 +287,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 	// let the user know what is still being worked on.
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
-	if stdout == os.Stdout && stderr == os.Stderr && opts.IsInteractive {
+	if stdout == os.Stdout && stderr == os.Stderr {
 		spinner, ticker = cmdutil.NewSpinnerAndTicker(
 			fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
-			nil, 1 /*timesPerSecond*/)
+			nil, opts.Color, 1 /*timesPerSecond*/)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)
