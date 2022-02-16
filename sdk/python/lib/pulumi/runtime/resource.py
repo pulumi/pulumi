@@ -583,7 +583,7 @@ def register_resource(
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
-                retainOnDelete=opts.retain_on_delete or false,
+                retainOnDelete=opts.retain_on_delete or False,
             )
 
             from ..resource import create_urn  # pylint: disable=import-outside-toplevel
