@@ -110,8 +110,13 @@ func CreatePulumiNodes(events []engine.Event, accountId, stackId, integrationId,
 			newState := *metadata.New
 			if len(newState.Outputs) > 0 {
 				drifts := refresher.CalcDrift(metadata)
-				iacMetadata["pulumiState"] = "modified"
-				iacMetadata["pulumiDrifts"] = drifts
+				if drifts == nil {
+					iacMetadata["pulumiState"] = "managed"
+
+				} else {
+					iacMetadata["pulumiState"] = "modified"
+					iacMetadata["pulumiDrifts"] = drifts
+				}
 
 				s3Node["metadata"] = iacMetadata
 				if ARN := newState.Outputs["arn"].V; ARN != nil {
@@ -170,7 +175,7 @@ func getIacAttributes(outputs resource.PropertyMap) string {
 	iacAttributes := make(map[string]interface{})
 	for key, val := range outputs {
 		stringKey := fmt.Sprintf("%v", key)
-		iacAttributes[stringKey] = val.V
+		iacAttributes[stringKey] = val.Mappable()
 	}
 
 	attributesBytes, err := json.Marshal(&iacAttributes)

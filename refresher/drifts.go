@@ -21,13 +21,20 @@ func CalcDrift(step engine.StepEventMetadata) []map[string]interface{} {
 
 		if outputDiff != nil {
 			for key, val := range outputDiff.Updates {
-				if val.Array == nil && val.Object == nil {
-					drifts = append(drifts, map[string]interface{}{
-						"keyName":       key,
-						"providerValue": val.New.V,
-						"iacValue":      val.Old.V,
-					})
-				}
+				drifts = append(drifts, map[string]interface{}{
+					"keyName":       key,
+					"providerValue": val.New.Mappable(),
+					"iacValue":      val.Old.Mappable(),
+				})
+
+			}
+			for key, val := range outputDiff.Adds {
+				drifts = append(drifts, map[string]interface{}{
+					"keyName":       key,
+					"providerValue": "undefined",
+					"iacValue":      val.Mappable(),
+				})
+
 			}
 		}
 	}
