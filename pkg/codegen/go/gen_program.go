@@ -92,7 +92,7 @@ func generateProgram(program *pcl.Program, g *generator) (map[string][]byte, hcl
 	return files, g.diagnostics, nil
 }
 
-func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func newGenerator(program *pcl.Program) *generator {
 	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
 	for _, pkg := range program.Packages() {
 		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
@@ -111,30 +111,19 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 	}
+
+	return g
+}
+
+func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	g := newGenerator(program)
 
 	return generateProgram(program, g)
 }
 
 func GenerateProgramWithOpts(program *pcl.Program, opts GenerateProgramOptions) (
 	map[string][]byte, hcl.Diagnostics, error) {
-	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
-	for _, pkg := range program.Packages() {
-		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
-	}
-
-	g := &generator{
-		program:             program,
-		packages:            packages,
-		contexts:            contexts,
-		spills:              &spills{counts: map[string]int{}},
-		jsonTempSpiller:     &jsonSpiller{},
-		ternaryTempSpiller:  &tempSpiller{},
-		readDirTempSpiller:  &readDirSpiller{},
-		splatSpiller:        &splatSpiller{},
-		optionalSpiller:     &optionalSpiller{},
-		scopeTraversalRoots: codegen.NewStringSet(),
-		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
-	}
+	g := newGenerator(program)
 
 	// Apply any generate options.
 	g.assignResourcesToVariables = opts.AssignResourcesToVariables
