@@ -223,7 +223,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setAcceptsecrets(true);
         req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
-        req.setRetainOnDelete(opts.retainOnDelete);
+        req.setRetainondelete(opts.retainOnDelete);
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.readResource(${label})`;
@@ -320,7 +320,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setRemote(remote);
         req.setReplaceonchangesList(opts.replaceOnChanges || []);
         req.setPlugindownloadurl(opts.pluginDownloadURL || "");
-        req.setRetainOnDelete(opts.retainOnDelete || false);
+        req.setRetainondelete(opts.retainOnDelete || false);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {
