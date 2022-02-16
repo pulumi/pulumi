@@ -47,19 +47,46 @@ type GenerateProgramOptions struct {
 	AssignResourcesToVariables bool
 }
 
-func generateProgram(program *pcl.Program, g *generator) (map[string][]byte, hcl.Diagnostics, error) {
-	// Linearize the nodes into an order appropriate for procedural code generation.
-	nodes := pcl.Linearize(program)
+func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	return GenerateProgramWithOptions(program, GenerateProgramOptions{})
+}
+
+func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOptions) (
+	map[string][]byte, hcl.Diagnostics, error) {
+	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
+	for _, pkg := range program.Packages() {
+		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
+	}
+
+	g := &generator{
+		program:             program,
+		packages:            packages,
+		contexts:            contexts,
+		spills:              &spills{counts: map[string]int{}},
+		jsonTempSpiller:     &jsonSpiller{},
+		ternaryTempSpiller:  &tempSpiller{},
+		readDirTempSpiller:  &readDirSpiller{},
+		splatSpiller:        &splatSpiller{},
+		optionalSpiller:     &optionalSpiller{},
+		scopeTraversalRoots: codegen.NewStringSet(),
+		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
+	}
+
+	// Apply any generate options.
+	g.assignResourcesToVariables = opts.AssignResourcesToVariables
 
 	g.Formatter = format.NewFormatter(g)
 
-	// we must collect imports once before lowering, and once after.
-	// this allows us to avoid complexity of traversing apply expressions for things like JSON
+	// We must collect imports once before lowering, and once after.
+	// This allows us to avoid complexity of traversing apply expressions for things like JSON
 	// but still have access to types provided by __convert intrinsics after lowering.
 	pulumiImports := codegen.NewStringSet()
 	stdImports := codegen.NewStringSet()
 	preambleHelperMethods := codegen.NewStringSet()
 	g.collectImports(program, stdImports, pulumiImports, preambleHelperMethods)
+
+	// Linearize the nodes into an order appropriate for procedural code generation.
+	nodes := pcl.Linearize(program)
 
 	var progPostamble bytes.Buffer
 	for _, n := range nodes {
@@ -90,43 +117,6 @@ func generateProgram(program *pcl.Program, g *generator) (map[string][]byte, hcl
 		"main.go": formattedSource,
 	}
 	return files, g.diagnostics, nil
-}
-
-func newGenerator(program *pcl.Program) *generator {
-	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
-	for _, pkg := range program.Packages() {
-		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
-	}
-
-	return &generator{
-		program:             program,
-		packages:            packages,
-		contexts:            contexts,
-		spills:              &spills{counts: map[string]int{}},
-		jsonTempSpiller:     &jsonSpiller{},
-		ternaryTempSpiller:  &tempSpiller{},
-		readDirTempSpiller:  &readDirSpiller{},
-		splatSpiller:        &splatSpiller{},
-		optionalSpiller:     &optionalSpiller{},
-		scopeTraversalRoots: codegen.NewStringSet(),
-		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
-	}
-}
-
-func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-	g := newGenerator(program)
-
-	return generateProgram(program, g)
-}
-
-func GenerateProgramWithOpts(program *pcl.Program, opts GenerateProgramOptions) (
-	map[string][]byte, hcl.Diagnostics, error) {
-	g := newGenerator(program)
-
-	// Apply any generate options.
-	g.assignResourcesToVariables = opts.AssignResourcesToVariables
-
-	return generateProgram(program, g)
 }
 
 var packageContexts sync.Map
