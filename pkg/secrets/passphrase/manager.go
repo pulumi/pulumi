@@ -114,40 +114,49 @@ func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
 var lock sync.Mutex
 var cache map[string]secrets.Manager
 
-// clearCache is used to clear the cache, for tests.
-func clearCache() {
+// clearCachedSecretsManagers is used to clear the cache, for tests.
+func clearCachedSecretsManagers() {
 	lock.Lock()
+	defer lock.Unlock()
 	cache = nil
-	lock.Unlock()
+}
+
+// getCachedSecretsManager returns a cached secret manager and true, or nil and false if not in the cache.
+func getCachedSecretsManager(state string) (secrets.Manager, bool) {
+	lock.Lock()
+	defer lock.Unlock()
+	sm, ok := cache[state]
+	return sm, ok
+}
+
+// setCachedSecretsManager saves a secret manager in the cache.
+func setCachedSecretsManager(state string, sm secrets.Manager) {
+	lock.Lock()
+	defer lock.Unlock()
+	if cache == nil {
+		cache = make(map[string]secrets.Manager)
+	}
+	cache[state] = sm
 }
 
 func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, error) {
-	// check the cache first, if we have already seen this state before, return a cached value.
-	lock.Lock()
-	cachedValue := cache[state]
-	lock.Unlock()
-	if cachedValue != nil {
-		return cachedValue, nil
+	// Check the cache first, if we have already seen this state before, return a cached value.
+	if cached, ok := getCachedSecretsManager(state); ok {
+		return cached, nil
 	}
 
-	// wasn't in the cache so try to construct it and add it if there's no error.
+	// Wasn't in the cache so try to construct it and add it if there's no error.
 	crypter, err := symmetricCrypterFromPhraseAndState(phrase, state)
 	if err != nil {
 		return nil, err
 	}
-
-	lock.Lock()
-	defer lock.Unlock()
 	sm := &localSecretsManager{
 		crypter: crypter,
 		state: localSecretsManagerState{
 			Salt: state,
 		},
 	}
-	if cache == nil {
-		cache = make(map[string]secrets.Manager)
-	}
-	cache[state] = sm
+	setCachedSecretsManager(state, sm)
 	return sm, nil
 }
 
@@ -156,11 +165,8 @@ func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, e
 // PULUMI_CONFIG_PASSPHRASE_FILE, or otherwise will prompt for the passphrase if interactive.
 func NewPromptingPassphraseSecretsManager(state string) (secrets.Manager, error) {
 	// Check the cache first, if we have already seen this state before, return a cached value.
-	lock.Lock()
-	cachedValue := cache[state]
-	lock.Unlock()
-	if cachedValue != nil {
-		return cachedValue, nil
+	if cached, ok := getCachedSecretsManager(state); ok {
+		return cached, nil
 	}
 
 	// Otherwise, prompt for the password.
