@@ -30,12 +30,12 @@ import (
 )
 
 type providerServer struct {
-	provider      GrpcProvider
+	provider      Provider
 	keepSecrets   bool
 	keepResources bool
 }
 
-func NewProviderServer(provider GrpcProvider) pulumirpc.ResourceProviderServer {
+func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
 	return &providerServer{provider: provider}
 }
 
@@ -144,11 +144,17 @@ func (p *providerServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) 
 }
 
 func (p *providerServer) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
-	err := p.provider.Attach(req.GetAddress())
-	if err != nil {
-		return nil, err
+	// NewProviderServer should take a GrpcProvider instead of Provider, but that's a breaking change
+	// so for now we type test here
+	if grpcProvider, ok := p.provider.(GrpcProvider); ok {
+		err := grpcProvider.Attach(req.GetAddress())
+		if err != nil {
+			return nil, err
+		}
+		return &pbempty.Empty{}, nil
 	}
-	return &pbempty.Empty{}, nil
+	// Else report this is unsupported
+	return nil, status.Error(codes.Unimplemented, "Attach is not yet implemented")
 }
 
 func (p *providerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Empty, error) {
