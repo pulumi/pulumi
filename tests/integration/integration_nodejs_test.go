@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2022, Pulumi Corporation.  All rights reserved.
 //go:build nodejs || all
 // +build nodejs all
 
@@ -735,7 +735,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 			assert.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
-			_, err := passphrase.NewPassphaseSecretsManagerFromState(secretsProvider.State)
+			_, err := passphrase.NewPromptingPassphaseSecretsManagerFromState(secretsProvider.State)
 			assert.NoError(t, err)
 
 			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
@@ -753,7 +753,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 			assert.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
-			_, err := passphrase.NewPassphaseSecretsManagerFromState(secretsProvider.State)
+			_, err := passphrase.NewPromptingPassphaseSecretsManagerFromState(secretsProvider.State)
 			assert.Error(t, err)
 		},
 	})
