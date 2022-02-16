@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/iancoleman/strcase"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -36,12 +37,22 @@ type generator struct {
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
 	configCreated       bool
+
+	// User-configurable options
+	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
+}
+
+// GenerateProgramOptions are used to configure optional generator behavior.
+type GenerateProgramOptions struct {
+	AssignResourcesToVariables bool // Assign resource to a new variable instead of _.
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-	// Linearize the nodes into an order appropriate for procedural code generation.
-	nodes := pcl.Linearize(program)
+	return GenerateProgramWithOptions(program, GenerateProgramOptions{})
+}
 
+func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOptions) (
+	map[string][]byte, hcl.Diagnostics, error) {
 	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
 	for _, pkg := range program.Packages() {
 		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
@@ -61,15 +72,21 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 	}
 
+	// Apply any generate options.
+	g.assignResourcesToVariables = opts.AssignResourcesToVariables
+
 	g.Formatter = format.NewFormatter(g)
 
-	// we must collect imports once before lowering, and once after.
-	// this allows us to avoid complexity of traversing apply expressions for things like JSON
+	// We must collect imports once before lowering, and once after.
+	// This allows us to avoid complexity of traversing apply expressions for things like JSON
 	// but still have access to types provided by __convert intrinsics after lowering.
 	pulumiImports := codegen.NewStringSet()
 	stdImports := codegen.NewStringSet()
 	preambleHelperMethods := codegen.NewStringSet()
 	g.collectImports(program, stdImports, pulumiImports, preambleHelperMethods)
+
+	// Linearize the nodes into an order appropriate for procedural code generation.
+	nodes := pcl.Linearize(program)
 
 	var progPostamble bytes.Buffer
 	for _, n := range nodes {
@@ -486,7 +503,12 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			if g.isErrAssigned {
 				assignment = "="
 			}
-			g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, modOrAlias, typ, resourceName)
+			if g.assignResourcesToVariables {
+				g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ",
+					strcase.ToLowerCamel(resourceName), modOrAlias, typ, resourceName)
+			} else {
+				g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, modOrAlias, typ, resourceName)
+			}
 		}
 		g.isErrAssigned = true
 
