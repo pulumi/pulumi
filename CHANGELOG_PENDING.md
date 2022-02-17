@@ -8,6 +8,9 @@
 
 - [sdk] - Add `RetainOnDelete` as a resource option.
   [#8746](https://github.com/pulumi/pulumi/pull/8746)
+  
+- [cli] - Adding `completion` as an alias to `gen-completion`
+  [#9006](https://github.com/pulumi/pulumi/pull/9006)
 
 ### Bug Fixes
 
