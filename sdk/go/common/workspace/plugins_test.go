@@ -15,6 +15,8 @@
 package workspace
 
 import (
+	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
@@ -276,6 +278,36 @@ func TestPluginDownloadUrl(t *testing.T) {
 			"https://customurl.jfrog.io/artifactory/pulumi-packages/package-name"+
 				"/pulumi-resource-aws-v4.32.0-darwin-amd64.tar.gz",
 			serverURL)
+	})
+	t.Run("Test Searching GitHub Private Releases", func(t *testing.T) {
+		owner := "private"
+		token := "RaNd0m70K3n_"
+		os.Setenv("GITHUB_REPOSITORY_OWNER", owner)
+		os.Setenv("GITHUB_TOKEN", token)
+		version := semver.MustParse("4.32.0")
+		info := PluginInfo{
+			PluginDownloadURL: "",
+			Name:              "private",
+			Version:           &version,
+			Kind:              PluginKind("resource"),
+		}
+		httpReq, err := buildPluginPrivateGitHubReleaseAPIRequest(info)
+		assert.NoError(t, err)
+		assert.Equal(t,
+			"https://api.github.com/repos/private/pulumi-private/releases/tags/v4.32.0",
+			httpReq.URL.String())
+		assert.Equal(t, fmt.Sprintf("token %s", token), httpReq.Header.Get("Authentication"))
+		assert.Equal(t, "application/json", httpReq.Header.Get("Accept"))
+	})
+	t.Run("Test Downloading From GitHub Private Releases", func(t *testing.T) {
+		token := "RaNd0m70K3n_"
+		os.Setenv("GITHUB_TOKEN", token)
+		url := "https://api.github.com/repos/private/pulumi-private/releases/assets/123456"
+		httpReq, err := buildPluginFromPrivateGitHubRequest(url)
+		assert.NoError(t, err)
+		assert.Equal(t, url, httpReq.URL.String())
+		assert.Equal(t, fmt.Sprintf("token %s", token), httpReq.Header.Get("Authentication"))
+		assert.Equal(t, "application/octet-stream", httpReq.Header.Get("Accept"))
 	})
 }
 
