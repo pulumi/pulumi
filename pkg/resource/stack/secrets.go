@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.
 	case b64.Type:
 		sm = b64.NewBase64SecretsManager()
 	case passphrase.Type:
-		sm, err = passphrase.NewPassphaseSecretsManagerFromState(state)
+		sm, err = passphrase.NewPromptingPassphaseSecretsManagerFromState(state)
 	case service.Type:
 		sm, err = service.NewServiceSecretsManagerFromState(state)
 	case cloud.Type:

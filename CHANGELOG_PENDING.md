@@ -1,10 +1,17 @@
 ### Improvements
 
-- Add support for downloading plugin from private GitHub releases
-  [#8944](https://github.com/pulumi/pulumi/pull/8944)
+- [codegen/go] - Add GenerateProgramWithOpts function to enable configurable codegen options.
+  [#8997](https://github.com/pulumi/pulumi/pull/8997)
+
 - [cli] -  Enabled dot spinner for non-interactive mode
   [#8996](https://github.com/pulumi/pulumi/pull/8996)
 
+- [sdk] - Add `RetainOnDelete` as a resource option.
+  [#8746](https://github.com/pulumi/pulumi/pull/8746)
+
+- [cli/plugins] Add support for downloading plugin from private GitHub releases.
+  [#8944](https://github.com/pulumi/pulumi/pull/8944)
+  
 ### Bug Fixes
 
 - [sdk/go] - Normalize merge behavior for `ResourceOptions`, inline
@@ -33,3 +40,6 @@
 
 - [cli/backend] - Revert a change to file state locking that was causing stacks to stay locked.
   [#8995](https://github.com/pulumi/pulumi/pull/8995)
+
+- [cli] - Fix passphrase secrets provider prompting.
+  [#8986](https://github.com/pulumi/pulumi/pull/8986)

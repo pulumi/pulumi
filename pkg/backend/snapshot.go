@@ -204,6 +204,12 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		return true
 	}
 
+	// We need to persist the changes if CustomTimes have changed
+	if old.RetainOnDelete != new.RetainOnDelete {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of RetainOnDelete")
+		return true
+	}
+
 	contract.Assert(old.ID == new.ID)
 
 	// If this resource's provider has changed, we must write the checkpoint. This can happen in scenarios involving
