@@ -40,3 +40,6 @@
 
 - [cli] - Fix passphrase secrets provider prompting.
   [#8986](https://github.com/pulumi/pulumi/pull/8986)
+
+- [cli] - Fix an assert when replacing protected resources.
+  [#9004](https://github.com/pulumi/pulumi/pull/9004)
