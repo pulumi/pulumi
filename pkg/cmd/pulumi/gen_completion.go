@@ -30,6 +30,7 @@ import (
 func newGenCompletionCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
 		Use:    "gen-completion <SHELL>",
+		Aliases: []string{"completion"},
 		Args:   cmdutil.ExactArgs(1),
 		Short:  "Generate completion scripts for the Pulumi CLI",
 		Hidden: true,
