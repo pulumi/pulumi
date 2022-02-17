@@ -397,7 +397,12 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 	return dsm.manager.mutate(func() bool {
 		dsm.manager.markOperationComplete(step.Old())
 		if successful {
-			contract.Assert(!step.Old().Protect)
+			// Either old should not be protected or this is a replace
+			contract.Assert(
+				!step.Old().Protect ||
+					step.Op() == deploy.OpDiscardReplaced ||
+					step.Op() == deploy.OpDeleteReplaced)
+
 			if !step.Old().PendingReplacement {
 				dsm.manager.markDone(step.Old())
 			}
