@@ -278,6 +278,80 @@ func interpolateURL(serverURL string, version semver.Version, os, arch string) s
 	return replacer.Replace(serverURL)
 }
 
+// GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
+// plugins we can get from github releases.
+func (info PluginInfo) GetLatestVersion() (*semver.Version, error) {
+
+	if info.PluginDownloadURL != "" {
+		return nil, errors.New("GetLatestVersion is not supported for plugins using PluginDownloadURL")
+	}
+
+	getLatestVersion := func(repoOrganisation, tokenType, token, username, secret string) (*semver.Version, error) {
+		releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/pulumi-%s/releases/latest", repoOrganisation, info.Name)
+		logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
+		req, err := buildHTTPRequest(releaseURL, tokenType, token, username, secret)
+		if err != nil {
+			return nil, err
+		}
+		resp, length, err := getHTTPResponse(req)
+		if err != nil {
+			return nil, err
+		}
+		jsonBody, err := ioutil.ReadAll(resp)
+		if err != nil {
+			return nil, fmt.Errorf("cannot unmarshal github response len(%d): %s", length, err.Error())
+		}
+		release := struct {
+			TagName string `json:"tag_name"`
+		}{}
+		err = json.Unmarshal(jsonBody, &release)
+		if err != nil {
+			return nil, err
+		}
+		parsedVersion, err := semver.ParseTolerant(release.TagName)
+		if err != nil {
+			return nil, fmt.Errorf("invalid plugin semver: %w", err)
+		}
+		return &parsedVersion, nil
+	}
+
+	version, err := getLatestVersion("pulumi", "", "", "", "")
+	if err == nil {
+		return version, nil
+	}
+
+	if _, ok := os.LookupEnv("PULUMI_EXPERIMENTAL"); ok {
+		version, err := (func() (*semver.Version, error) {
+			repoOwner := os.Getenv("GITHUB_REPOSITORY_OWNER")
+			if repoOwner == "" {
+				return nil, errors.New("ENV[GITHUB_REPOSITORY_OWNER] not set")
+			}
+			ghToken := os.Getenv("GITHUB_TOKEN")
+			paToken := ""
+			actor := ""
+			if ghToken == "" {
+				paToken = os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+				actor = os.Getenv("GITHUB_ACTOR")
+			}
+			if ghToken == "" && (paToken == "" || actor == "") {
+				return nil, errors.New("no GitHub authentication information provided")
+			}
+
+			return getLatestVersion(repoOwner, "token", ghToken, actor, paToken)
+		})()
+
+		if err != nil {
+			return version, nil
+		}
+
+		return nil, fmt.Errorf(
+			"cannot find plugin %s on github.com/pulumi/pulumi-%s/releases or private GitHub release: %w",
+			info.Name, info.Name, err)
+	}
+
+	return nil, fmt.Errorf("cannot find plugin on github.com/pulumi/pulumi-%s/releases: %w", info.Name, err)
+}
+
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
 func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	// Figure out the OS/ARCH pair for the download URL.

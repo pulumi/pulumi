@@ -39,7 +39,7 @@ func newPluginInstallCmd() *cobra.Command {
 	var reinstall bool
 
 	var cmd = &cobra.Command{
-		Use:   "install [KIND NAME VERSION]",
+		Use:   "install [KIND NAME [VERSION]]",
 		Args:  cmdutil.MaximumNArgs(3),
 		Short: "Install one or more plugins",
 		Long: "Install one or more plugins.\n" +
@@ -47,7 +47,7 @@ func newPluginInstallCmd() *cobra.Command {
 			"This command is used manually install plugins required by your program.  It may\n" +
 			"be run either with a specific KIND, NAME, and VERSION, or by omitting these and\n" +
 			"letting Pulumi compute the set of plugins that may be required by the current\n" +
-			"project.  VERSION cannot be a range: it must be a specific number.\n" +
+			"project. If specified VERSION cannot be a range: it must be a specific number.\n" +
 			"\n" +
 			"If you let Pulumi compute the set to download, it is conservative and may end up\n" +
 			"downloading more plugins than is strictly necessary.",
@@ -63,19 +63,34 @@ func newPluginInstallCmd() *cobra.Command {
 					return fmt.Errorf("unrecognized plugin kind: %s", args[0])
 				} else if len(args) < 2 {
 					return errors.New("missing plugin name argument")
-				} else if len(args) < 3 {
-					return errors.New("missing plugin version argument")
 				}
-				version, err := semver.ParseTolerant(args[2])
-				if err != nil {
-					return fmt.Errorf("invalid plugin semver: %w", err)
+
+				var version *semver.Version
+				if len(args) == 3 {
+					parsedVersion, err := semver.ParseTolerant(args[2])
+					version = &parsedVersion
+					if err != nil {
+						return fmt.Errorf("invalid plugin semver: %w", err)
+					}
 				}
-				installs = append(installs, workspace.PluginInfo{
+
+				pluginInfo := workspace.PluginInfo{
 					Kind:              workspace.PluginKind(args[0]),
 					Name:              args[1],
-					Version:           &version,
+					Version:           version,
 					PluginDownloadURL: serverURL, // If empty, will use default plugin source.
-				})
+				}
+
+				// If we don't have a version try to look one up
+				if version == nil {
+					latestVersion, err := pluginInfo.GetLatestVersion()
+					if err != nil {
+						return err
+					}
+					pluginInfo.Version = latestVersion
+				}
+
+				installs = append(installs, pluginInfo)
 			} else {
 				if file != "" {
 					return errors.New("--file (-f) is only valid if a specific package is being installed")
