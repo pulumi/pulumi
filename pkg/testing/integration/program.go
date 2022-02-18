@@ -1587,17 +1587,15 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	}
 	defer contract.IgnoreClose(eventsFile)
 	decoder, events := json.NewDecoder(eventsFile), []apitype.EngineEvent{}
-	if len(events) > 0 {
-		for {
-			var event apitype.EngineEvent
-			if err = decoder.Decode(&event); err != nil {
-				if err == io.EOF {
-					break
-				}
-				return fmt.Errorf("decoding engine event: %w", err)
+	for {
+		var event apitype.EngineEvent
+		if err = decoder.Decode(&event); err != nil {
+			if err == io.EOF {
+				break
 			}
-			events = append(events, event)
+			return fmt.Errorf("decoding engine event: %w", err)
 		}
+		events = append(events, event)
 	}
 
 	// Populate stack info object with all of this data to pass to the validation function
