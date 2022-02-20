@@ -7,14 +7,15 @@ replace github.com/pulumi/pulumi/pkg/v3 => ../pkg
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
 require (
-	github.com/aws/aws-lambda-go v1.28.0
 	github.com/aws/aws-sdk-go v1.42.33
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/infralight/go-kit v1.21.0
+	github.com/infralight/go-kit v1.31.0
+	github.com/infralight/k8s-api v0.0.0-20220220151532-2a60b79dfca8
 	github.com/pulumi/pulumi/pkg/v3 v3.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi/sdk/v3 v3.23.2
 	github.com/rs/zerolog v1.26.1
 	github.com/thoas/go-funk v0.9.1
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
@@ -38,18 +39,23 @@ require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/agext/levenshtein v1.2.2 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
+	github.com/aquasecurity/esquery v0.2.0 // indirect
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
+	github.com/aws/aws-lambda-go v1.28.0 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
+	github.com/btubbs/datetime v0.1.1 // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
 	github.com/cheggaaa/pb v1.0.27 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/djherbis/times v1.2.0 // indirect
 	github.com/docker/docker v1.4.2-0.20200319182547-c7ad2b866182 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/elastic/go-elasticsearch/v7 v7.6.0 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/fatih/color v1.9.0 // indirect
+	github.com/fatih/structs v1.1.0 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
@@ -60,7 +66,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/google/uuid v1.2.0 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/google/wire v0.5.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.0.5 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
@@ -167,7 +173,6 @@ require (
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0 // indirect
 )

@@ -20,25 +20,26 @@ var PULUMI_AWS_CREDS_ENVS = []string{
 }
 
 type Config struct {
-	RunImmediately         bool
-	DebugMode              bool
-	MongoURI               string
-	PulumiToken            string
-	PulumiUrl              string
-	FetchedResourcesBucket string
-	AwsRegion              string
-	PulumiIntegrationId    string
-	AccountId              string
-	ProjectName            string
-	StackName              string
-	OrganizationName       string
-	StackId                string
-	ResourceCount          int
-	LastUpdate             int
-	FireflyEngineLambdaArn string
-	ClientAWSIntegrationId string
+	RunImmediately             bool
+	DebugMode                  bool
+	MongoURI                   string
+	PulumiToken                string
+	PulumiUrl                  string
+	FetchedResourcesBucket     string
+	AwsRegion                  string
+	PulumiIntegrationId        string
+	AccountId                  string
+	ProjectName                string
+	StackName                  string
+	OrganizationName           string
+	StackId                    string
+	ResourceCount              int
+	LastUpdate                 int
+	FireflyEngineLambdaArn     string
+	ClientAWSIntegrationId     string
 	FireflyAWSRoleARN          string
 	FireflyAWSWebIdentityToken string
+	ElasticsearchUrl           string
 }
 
 func LoadConfig() (*Config, error) {
@@ -130,13 +131,19 @@ func LoadConfig() (*Config, error) {
 		merr = multierror.Append(merr, errors.New("failed, environment variable LAST_UPDATE must be provided"))
 	}
 
+	if cfg.ElasticsearchUrl = os.Getenv("ELASTICSEARCH_URL"); cfg.ElasticsearchUrl == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable ELASTICSEARCH_URL must be provided"))
+	}
+
 	return cfg, merr.ErrorOrNil()
 }
 
 func (cfg *Config) LoadAwsSession() *session.Session {
 	// We clear the static AWS credentials of the AWS pulumi integration in order to use the web token identity
-	for _, env := range PULUMI_AWS_CREDS_ENVS {
-		os.Unsetenv(env)
+	if !cfg.RunImmediately {
+		for _, env := range PULUMI_AWS_CREDS_ENVS {
+			os.Unsetenv(env)
+		}
 	}
 
 	config := aws.NewConfig()

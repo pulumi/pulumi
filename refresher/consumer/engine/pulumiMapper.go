@@ -67,7 +67,7 @@ func PulumiMapper(
 
 	httpCloudBackend.Apply(ctx, apitype.RefreshUpdate, stack, *updateOpts, *dryRunApplierOpts, eventsChannel)
 	close(eventsChannel)
-	nodes, assetTypes, err := CreatePulumiNodes(events, accountId, stackId, integrationId, stackName, projectName, organizationName, logger)
+	nodes, assetTypes, err := CreatePulumiNodes(events, accountId, stackId, integrationId, stackName, projectName, organizationName, logger, consumer.Config)
 
 	jsonlinesNodes, err := utils.ToJsonLines(nodes)
 	if err != nil {
