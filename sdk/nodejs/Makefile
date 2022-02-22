@@ -28,11 +28,11 @@ build_package:: ensure
 	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	cp -R tests/automation/data/. bin/tests/automation/data/
-	cp README.md ../../LICENSE package.json ./dist/* bin/
+	cp README.md ../../LICENSE ./dist/* bin/
+	sed 's/"devDependencies"/"_devDependencies"/g' package.json > bin/package.json
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
 	cp -R proto/. bin/proto/
-	cp -R tests/mockpackage bin/tests/
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
