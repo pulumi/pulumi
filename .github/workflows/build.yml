@@ -53,7 +53,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - platform: macos-latest
+          - platform: ${{ inputs.default-build-platform }}
             os: darwin
           - platform: ${{ inputs.default-build-platform }}
             os: linux

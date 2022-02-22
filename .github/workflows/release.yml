@@ -169,7 +169,7 @@ jobs:
           make -C sdk/${{ matrix.language}} publish
   publish-binaries:
     name: Publish Binaries
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     needs: [lint, build, test]
     strategy:
       matrix:
@@ -358,9 +358,7 @@ jobs:
     name: Build
     uses: pulumi/pulumi/.github/workflows/build.yml@master
     with:
-      # Cross-compiling from ubuntu-latest is faster but the artifact
-      # checksums will not match what publish-binaries expects.
-      default-build-platform: macos-latest
+      default-build-platform: ubuntu-latest
       enable-coverage: false
       goreleaser-config: '.goreleaser.yml'
       goreleaser-flags: '-p 3 --release-notes=CHANGELOG_PENDING.md --skip-publish --skip-announce --skip-validate'
