@@ -148,3 +148,11 @@ jobs:
       enable-coverage: true
     secrets:
       pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+
+  devexp:
+    name: Developer Experience
+    needs: build
+    uses: pulumi/pulumi/.github/workflows/dev-test.yml@dixler/9019/fix-make-install
+    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    secrets:
+      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
