@@ -145,7 +145,9 @@ func (err *MissingError) Error() string {
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
 type PluginSource interface {
 	// Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
-	Download(version semver.Version, opSy string, arch string, getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error)
+	Download(
+		version semver.Version, opSy string, arch string,
+		getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error)
 	// GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
 	// plugins we can get from github releases.
 	GetLatestVersion(getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error)
@@ -161,11 +163,14 @@ func newGetPulumiSource(name string, kind PluginKind) *getPulumiSource {
 	return &getPulumiSource{name: name, kind: kind}
 }
 
-func (source *getPulumiSource) GetLatestVersion(getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+func (source *getPulumiSource) GetLatestVersion(
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
 	return nil, errors.New("GetLatestVersion is not supported for plugins from get.pulumi.com")
 }
 
-func (source *getPulumiSource) Download(version semver.Version, opSy string, arch string, getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
+func (source *getPulumiSource) Download(
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
 	serverURL := "https://get.pulumi.com/releases/plugins"
 
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
@@ -234,8 +239,11 @@ func newAuthenticatedGithubSource(organization, name string, kind PluginKind) (*
 	return source, nil
 }
 
-func (source *githubSource) GetLatestVersion(getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
-	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/pulumi-%s/releases/latest", source.organization, source.name)
+func (source *githubSource) GetLatestVersion(
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	releaseURL := fmt.Sprintf(
+		"https://api.github.com/repos/%s/pulumi-%s/releases/latest",
+		source.organization, source.name)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
 	req, err := buildHTTPRequest(releaseURL, source.tokenType, source.token, source.username, source.secret)
 	if err != nil {
@@ -263,11 +271,15 @@ func (source *githubSource) GetLatestVersion(getHTTPResponse func(*http.Request)
 	return &parsedVersion, nil
 }
 
-func (source *githubSource) Download(version semver.Version, opSy string, arch string, getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
+func (source *githubSource) Download(
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
 	if source.tokenType == "" && source.token == "" && source.username == "" && source.secret == "" {
 		// If we're not using authentication we can just download from the release/download URL
 
-		logging.V(1).Infof("%s downloading from github.com/%s/pulumi-%s/releases", source.name, source.organization, source.name)
+		logging.V(1).Infof(
+			"%s downloading from github.com/%s/pulumi-%s/releases",
+			source.name, source.organization, source.name)
 
 		pluginURL := fmt.Sprintf("https://github.com/%s/pulumi-%s/releases/download/v%s/%s",
 			source.organization, source.name, version.String(), url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz",
@@ -278,82 +290,87 @@ func (source *githubSource) Download(version semver.Version, opSy string, arch s
 			return nil, -1, err
 		}
 		return getHTTPResponse(req)
-	} else {
-		// If we are using authentication we need to lookup the asset via the github releases API
-		assetName := fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)
-
-		releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/pulumi-%s/releases/tags/v%s", source.organization, source.name, version.String())
-		logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
-
-		req, err := buildHTTPRequest(releaseURL, source.tokenType, source.token, source.username, source.secret)
-		if err != nil {
-			return nil, -1, err
-		}
-		req.Header.Set("Accept", "application/json")
-		resp, length, err := getHTTPResponse(req)
-		if err != nil {
-			return nil, -1, err
-		}
-		jsonBody, err := ioutil.ReadAll(resp)
-		if err != nil {
-			logging.V(9).Infof("cannot unmarshal github response len(%d): %s", length, err.Error())
-			return nil, -1, err
-		}
-		release := struct {
-			Assets []struct {
-				Name string `json:"name"`
-				URL  string `json:"url"`
-			} `json:"assets"`
-		}{}
-		err = json.Unmarshal(jsonBody, &release)
-		if err != nil {
-			logging.V(9).Infof("github json response: %s", jsonBody)
-			logging.V(9).Infof("cannot unmarshal github response: %s", err.Error())
-			return nil, -1, err
-		}
-		assetURL := ""
-		for _, asset := range release.Assets {
-			if asset.Name == assetName {
-				assetURL = asset.URL
-			}
-		}
-		if assetURL == "" {
-			logging.V(9).Infof("github json response: %s", jsonBody)
-			logging.V(9).Infof("plugin asset '%s' not found", assetName)
-			return nil, -1, errors.Errorf("plugin asset '%s' not found", assetName)
-		}
-
-		logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
-
-		req, err = buildHTTPRequest(assetURL, source.tokenType, source.token, source.username, source.secret)
-		if err != nil {
-			return nil, -1, err
-		}
-		req.Header.Set("Accept", "application/octet-stream")
-		return getHTTPResponse(req)
 	}
+
+	// If we are using authentication we need to lookup the asset via the github releases API
+	assetName := fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)
+
+	releaseURL := fmt.Sprintf(
+		"https://api.github.com/repos/%s/pulumi-%s/releases/tags/v%s",
+		source.organization, source.name, version.String())
+	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
+
+	req, err := buildHTTPRequest(releaseURL, source.tokenType, source.token, source.username, source.secret)
+	if err != nil {
+		return nil, -1, err
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, length, err := getHTTPResponse(req)
+	if err != nil {
+		return nil, -1, err
+	}
+	jsonBody, err := ioutil.ReadAll(resp)
+	if err != nil {
+		logging.V(9).Infof("cannot unmarshal github response len(%d): %s", length, err.Error())
+		return nil, -1, err
+	}
+	release := struct {
+		Assets []struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"assets"`
+	}{}
+	err = json.Unmarshal(jsonBody, &release)
+	if err != nil {
+		logging.V(9).Infof("github json response: %s", jsonBody)
+		logging.V(9).Infof("cannot unmarshal github response: %s", err.Error())
+		return nil, -1, err
+	}
+	assetURL := ""
+	for _, asset := range release.Assets {
+		if asset.Name == assetName {
+			assetURL = asset.URL
+		}
+	}
+	if assetURL == "" {
+		logging.V(9).Infof("github json response: %s", jsonBody)
+		logging.V(9).Infof("plugin asset '%s' not found", assetName)
+		return nil, -1, errors.Errorf("plugin asset '%s' not found", assetName)
+	}
+
+	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
+
+	req, err = buildHTTPRequest(assetURL, source.tokenType, source.token, source.username, source.secret)
+	if err != nil {
+		return nil, -1, err
+	}
+	req.Header.Set("Accept", "application/octet-stream")
+	return getHTTPResponse(req)
 }
 
-// pluginUrlSource can download a plugin from a given PluginDownloadURL, it doesn't support GetLatestVersion
-type pluginUrlSource struct {
+// pluginURLSource can download a plugin from a given PluginDownloadURL, it doesn't support GetLatestVersion
+type pluginURLSource struct {
 	name              string
 	kind              PluginKind
 	pluginDownloadURL string
 }
 
-func newPluginUrlSource(name string, kind PluginKind, pluginDownloadURL string) *pluginUrlSource {
-	return &pluginUrlSource{
+func newPluginURLSource(name string, kind PluginKind, pluginDownloadURL string) *pluginURLSource {
+	return &pluginURLSource{
 		name:              name,
 		kind:              kind,
 		pluginDownloadURL: pluginDownloadURL,
 	}
 }
 
-func (source *pluginUrlSource) GetLatestVersion(getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+func (source *pluginURLSource) GetLatestVersion(
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
 	return nil, errors.New("GetLatestVersion is not supported for plugins using PluginDownloadURL")
 }
 
-func (source *pluginUrlSource) Download(version semver.Version, opSy string, arch string, getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
+func (source *pluginURLSource) Download(
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
 	serverURL := source.pluginDownloadURL
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
 
@@ -372,7 +389,8 @@ func (source *pluginUrlSource) Download(version semver.Version, opSy string, arc
 	return getHTTPResponse(req)
 }
 
-// fallbackSource handles our current complicated default logic of trying the pulumi public github, then maybe the users private github, then get.pulumi.com
+// fallbackSource handles our current complicated default logic of trying the pulumi public github, then maybe
+// the users private github, then get.pulumi.com
 type fallbackSource struct {
 	name string
 	kind PluginKind
@@ -385,7 +403,8 @@ func newFallbackSource(name string, kind PluginKind) *fallbackSource {
 	}
 }
 
-func (source *fallbackSource) GetLatestVersion(getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+func (source *fallbackSource) GetLatestVersion(
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
 	// Try and get this package from public pulumi github
 	public := newGithubSource("pulumi", source.name, source.kind)
 	version, err := public.GetLatestVersion(getHTTPResponse)
@@ -416,7 +435,9 @@ func (source *fallbackSource) GetLatestVersion(getHTTPResponse func(*http.Reques
 	return nil, err
 }
 
-func (source *fallbackSource) Download(version semver.Version, opSy string, arch string, getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
+func (source *fallbackSource) Download(
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
 	// Try and get this package from public pulumi github
 	public := newGithubSource("pulumi", source.name, source.kind)
 	resp, length, err := public.Download(version, opSy, arch, getHTTPResponse)
@@ -587,12 +608,12 @@ func interpolateURL(serverURL string, version semver.Version, os, arch string) s
 func (info PluginInfo) GetSource() PluginSource {
 	// The plugin has a set URL use that.
 	if info.PluginDownloadURL != "" {
-		return newPluginUrlSource(info.Name, info.Kind, info.PluginDownloadURL)
+		return newPluginURLSource(info.Name, info.Kind, info.PluginDownloadURL)
 	}
 
 	// If the plugin name matches an override, download the plugin from the override URL.
 	if url, ok := pluginDownloadURLOverridesParsed.get(info.Name); ok {
-		return newPluginUrlSource(info.Name, info.Kind, url)
+		return newPluginURLSource(info.Name, info.Kind, url)
 	}
 
 	// Use our default fallback behaviour of github then get.pulumi.com

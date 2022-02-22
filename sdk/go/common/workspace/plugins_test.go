@@ -299,7 +299,8 @@ func TestPluginDownloadUrl(t *testing.T) {
 		source := info.GetSource()
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			// Test that the asset isn't on github
-			if req.URL.String() == "https://github.com/pulumi/pulumi-aws/releases/download/v4.32.0/pulumi-resource-aws-v4.32.0-darwin-amd64.tar.gz" {
+			if req.URL.String() == "https://github.com/pulumi/pulumi-aws/releases/"+
+				"download/v4.32.0/pulumi-resource-aws-v4.32.0-darwin-amd64.tar.gz" {
 				return nil, -1, errors.New("404 not found")
 			}
 			assert.Equal(t,
@@ -321,7 +322,8 @@ func TestPluginDownloadUrl(t *testing.T) {
 		source := info.GetSource()
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			assert.Equal(t,
-				"https://customurl.jfrog.io/artifactory/pulumi-packages/package-name/pulumi-resource-aws-v4.32.0-darwin-amd64.tar.gz",
+				"https://customurl.jfrog.io/artifactory/pulumi-packages/"+
+					"package-name/pulumi-resource-aws-v4.32.0-darwin-amd64.tar.gz",
 				req.URL.String())
 			return newMockReadCloser([]byte{})
 		}
@@ -344,7 +346,8 @@ func TestPluginDownloadUrl(t *testing.T) {
 		source := info.GetSource()
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			// Test that the asset isn't on github
-			if req.URL.String() == "https://github.com/pulumi/pulumi-private/releases/download/v1.22.0/pulumi-resource-private-v1.22.0-darwin-amd64.tar.gz" {
+			if req.URL.String() == "https://github.com/pulumi/pulumi-private/releases/download/"+
+				"v1.22.0/pulumi-resource-private-v1.22.0-darwin-amd64.tar.gz" {
 				return nil, -1, errors.New("404 not found")
 			}
 
