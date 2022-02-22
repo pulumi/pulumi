@@ -249,6 +249,7 @@ func (source *githubSource) GetLatestVersion(
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Accept", "application/json")
 	resp, length, err := getHTTPResponse(req)
 	if err != nil {
 		return nil, err
