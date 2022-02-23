@@ -29,7 +29,7 @@ build_package:: ensure
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	cp -R tests/automation/data/. bin/tests/automation/data/
 	cp README.md ../../LICENSE ./dist/* bin/
-	cat package.json | grep -v '"mockpackage"'> bin/package.json
+	cp package.json yarn.lock bin/ && cd bin && yarn remove mockpackage && rm yarn.lock
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
 	cp -R proto/. bin/proto/
