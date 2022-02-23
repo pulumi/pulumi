@@ -155,6 +155,12 @@ func (c *cachingCrypter) insert(secret *resource.Secret, plaintext, ciphertext s
 // where the deserializer is expected to prime the cache by scanning each resource for secrets, then decrypting all
 // of the discovered secrets en masse. Although each call to Decrypt _should_ hit the cache, a mapDecrypter does
 // carry an underlying Decrypter in the event that a secret was missed.
+//
+// Note that this is intentionally separate from cachingCrypter. A cachingCrypter is intended to prevent repeated
+// encryption of secrets when the same snapshot is repeatedly serialized over the lifetime of an update, and
+// therefore keys on the identity of the secret value itself. A mapDecrypter is intended to allow the deserializer
+// to decrypt secrets up-front and prevent repeated calls to decrypt within the context of a single deserialization,
+// and cannot key off of secret identity because secrets do not exist when the cache is initialized.
 type mapDecrypter struct {
 	decrypter config.Decrypter
 	cache     map[string]string

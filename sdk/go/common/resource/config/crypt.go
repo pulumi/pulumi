@@ -40,6 +40,8 @@ type Decrypter interface {
 
 // BulkDecrypter is a Decrypter that also supports bulk decryption of secrets.
 type BulkDecrypter interface {
+	Decrypter
+
 	BulkDecrypt(ciphertexts []string) (map[string]string, error)
 }
 
