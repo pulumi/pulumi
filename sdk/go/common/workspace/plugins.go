@@ -433,7 +433,9 @@ func (source *fallbackSource) GetLatestVersion(
 
 		logging.V(1).Infof("cannot find plugin %s on private GitHub releases: %s", source.name, privateErr.Error())
 
-		return nil, fmt.Errorf("error getting version from Pulumi github: %w\nand from private github: %s", err, privateErr.Error())
+		return nil, fmt.Errorf(
+			"error getting version from Pulumi github: %w\nand from private github: %s",
+			err, privateErr.Error())
 	}
 
 	return nil, err
