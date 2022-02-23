@@ -29,7 +29,7 @@ build_package:: ensure
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	cp -R tests/automation/data/. bin/tests/automation/data/
 	cp README.md ../../LICENSE ./dist/* bin/
-	sed 's/"devDependencies"/"_devDependencies"/g' package.json > bin/package.json
+	cat package.json | grep -v '"mockpackage"'> bin/package.json
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
 	cp -R proto/. bin/proto/
