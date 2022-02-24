@@ -1,11 +1,11 @@
 {
-    "name": "@pulumi/pulumi",
-    "version": "${VERSION}",
-    "description": "Pulumi's Node.js SDK",
+    "name": "@transcend-io/pulumi",
+    "version": "1.0.6",
+    "description": "Pulumi's Node.js SDK, forked by transcend-io",
     "license": "Apache-2.0",
     "repository": {
         "type": "git",
-        "url": "https://github.com/pulumi/pulumi.git",
+        "url": "https://github.com/transcend-io/pulumi.git",
         "directory": "sdk/nodejs"
     },
     "dependencies": {
@@ -21,8 +21,6 @@
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
         "source-map-support": "^0.4.16",
-        "ts-node": "^7.0.1",
-        "typescript": "~3.7.3",
         "upath": "^1.1.0"
     },
     "devDependencies": {
@@ -41,7 +39,13 @@
         "eslint-plugin-header": "^3.1.1",
         "eslint-plugin-import": "^2.23.4",
         "nyc": "^15.1.0",
-        "mocha": "^9.0.0"
+        "mocha": "^9.0.0",
+        "ts-node": "^7.0.1",
+        "typescript": "~3.7.3"
+    },
+    "peerDependencies": {
+        "ts-node": ">7.0.1",
+        "typescript": ">3.7.3"
     },
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"

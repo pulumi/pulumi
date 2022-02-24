@@ -157,32 +157,29 @@ export function run(
     // find a tsconfig.json. For us, it's reasonable to say that the "root" of the project is the cwd,
     // if there's a tsconfig.json file here. Otherwise, just tell ts-node to not load project options at all.
     // This helps with cases like pulumi/pulumi#1772.
-    const defaultTsConfigPath = "tsconfig.json";
-    const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
-    const skipProject = !fs.existsSync(tsConfigPath);
+    const tsConfigPath = "tsconfig.json";
 
-    const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
-
-    let compilerOptions: object;
+    let compilerOptions = {
+        target: "es6",
+        module: "commonjs",
+        moduleResolution: "node",
+        sourceMap: "true",
+    }
     try {
         const tsConfigString = fs.readFileSync(tsConfigPath).toString();
         const tsConfig = parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
-        compilerOptions = tsConfig["compilerOptions"] ?? {};
-    } catch (e) {
-        compilerOptions = {};
-    }
+        if (tsConfig["compilerOptions"]) {
+            compilerOptions = tsConfig["compilerOptions"];
+        }
+    } catch (e) {}
 
     if (typeScript) {
         tsnode.register({
-            transpileOnly,
-            skipProject: skipProject,
-            compilerOptions: {
-                target: "es6",
-                module: "commonjs",
-                moduleResolution: "node",
-                sourceMap: "true",
-                ...compilerOptions,
-            },
+            typeCheck: false,
+            skipProject: false,
+            transpileOnly: true,
+            files: true,
+            compilerOptions,
         });
     }
 
@@ -239,15 +236,6 @@ ${defaultMessage}`);
     process.on("exit", runtime.disconnectSync);
 
     programStarted();
-
-    // This needs to occur after `programStarted` to ensure execution of the parent process stops.
-    if (skipProject && tsConfigPath !== defaultTsConfigPath) {
-        return new Promise(() => {
-            const e = new Error(`tsconfig path was set to ${tsConfigPath} but the file was not found`);
-            e.stack = undefined;
-            throw e;
-        });
-    }
 
     const runProgram = async () => {
         // We run the program inside this context so that it adopts all resources.

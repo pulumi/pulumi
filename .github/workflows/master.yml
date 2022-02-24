@@ -1,7 +1,7 @@
 on:
   workflow_dispatch: {}
   push:
-    branches: ["master", "feature/**", "feature-**"]
+    branches: ["master", "feature/**", "feature-**", "dmattia/fork"]
     paths-ignore:
       - "CHANGELOG.md"
       - "CHANGELOG_PENDING.md"
