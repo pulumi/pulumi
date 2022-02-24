@@ -825,6 +825,9 @@ const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
     }
     if (logFile) {
         // remove the logfile
-        fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+        // remove with Node JS 15.X+
+        if(fs.rm) fs.rm(path.dirname(logFile), { recursive: true }, () => { return; });
+        // remove with Node JS 14.X
+        else fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
     }
 };
