@@ -150,14 +150,16 @@ export function run(
     }
 
     // If this is a typescript project, we'll want to load node-ts.
-    const typeScript: boolean = process.env["PULUMI_NODEJS_TYPESCRIPT"] === "true";
+    const typeScript = process.env["PULUMI_NODEJS_TYPESCRIPT"] === "true";
 
+    // Users can optionally disable typechecking when using typescript projects 
+    const transpileOnly = process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] === "true";
 
     if (typeScript) {
         tsnode.register({
-            typeCheck: false,
-            transpileOnly: true,
-            swc: true,
+            typeCheck: !transpileOnly,
+            transpileOnly,
+            swc: transpileOnly,
             project: process.env["PULUMI_NODEJS_TSCONFIG_PATH"], // will be undefined most of the time
         });
     }
