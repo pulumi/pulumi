@@ -21,8 +21,9 @@
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
         "source-map-support": "^0.4.16",
-        "ts-node": "^7.0.1",
-        "typescript": "~3.7.3",
+        "ts-node": "^10.5.0",
+        "@swc/core": "^1.2.145",
+        "typescript": "~3.8.3",
         "upath": "^1.1.0"
     },
     "devDependencies": {
