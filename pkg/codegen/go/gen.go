@@ -1532,6 +1532,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	}
 
 	var secretProps []*schema.Property
+	var secretInputProps []*schema.Property
 
 	for _, p := range r.Properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
@@ -1573,6 +1574,10 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
 			fmt.Fprintf(w, "\t\treturn nil, errors.New(\"invalid value for required argument '%s'\")\n", Title(p.Name))
 			fmt.Fprintf(w, "\t}\n")
+		}
+
+		if p.Secret {
+			secretInputProps = append(secretInputProps, p)
 		}
 	}
 
@@ -1642,12 +1647,14 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	}
 
 	// Setup secrets
-	if len(secretProps) > 0 {
-		for _, p := range secretProps {
+	if len(secretInputProps) > 0 {
+		for _, p := range secretInputProps {
 			fmt.Fprintf(w, "\tif args.%s != nil {\n", Title(p.Name))
 			fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", Title(p.Name), pkg.outputType(p.Type))
 			fmt.Fprintf(w, "\t}\n")
 		}
+	}
+	if len(secretProps) > 0 {
 		fmt.Fprintf(w, "\tsecrets := pulumi.AdditionalSecretOutputs([]string{\n")
 		for _, sp := range secretProps {
 			fmt.Fprintf(w, "\t\t\t%q,\n", sp.Name)
