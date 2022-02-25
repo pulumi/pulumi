@@ -119,5 +119,9 @@ namespace Pulumi
         /// </summary>
         public string? PluginDownloadURL { get; set; }
 
+        /// <summary>
+        /// If set to True, the providers Delete method will not be called for this resource.
+        /// </summary>
+        public bool? RetainOnDelete { get; set; }
     }
 }

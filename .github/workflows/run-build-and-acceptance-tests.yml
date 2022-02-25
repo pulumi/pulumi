@@ -82,6 +82,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
+          check-latest: true
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1
         with:

@@ -50,6 +50,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
+          check-latest: true
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
