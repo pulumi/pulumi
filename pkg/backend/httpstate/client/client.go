@@ -307,7 +307,7 @@ func (pc *Client) CreateStack(
 	}
 
 	stack := apitype.Stack{
-		StackName:   tokens.AsName(stackID.Stack),
+		StackName:   tokens.AsQName(stackID.Stack),
 		ProjectName: stackID.Project,
 		OrgName:     stackID.Owner,
 		Tags:        tags,

@@ -233,7 +233,7 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.Name, projectNa
 		if i.Parent != "" {
 			parentType = i.Parent.QualifiedType()
 		}
-		urn := resource.NewURN(stackName, projectName, parentType, i.Type, i.Name)
+		urn := resource.NewURN(stackName.Q(), projectName, parentType, i.Type, i.Name)
 		if state, ok := resourceTable[urn]; ok {
 			// Copy the state and override the protect bit.
 			s := *state

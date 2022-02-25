@@ -27,7 +27,7 @@ func newPassphraseSecretsManager(stackName tokens.Name, configFile string,
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName)
+		f, err := workspace.DetectProjectStackPath(stackName.Q())
 		if err != nil {
 			return nil, err
 		}

@@ -55,7 +55,8 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 
 	// First create a list of resource nodes, without parent/child relations hooked up.
 	for _, state := range source {
-		stack = state.URN.Stack()
+		// TODO This AsName cast is needed because URN.Stack() returns a QName but it should be a Name
+		stack = tokens.AsName(state.URN.Stack().String())
 		proj = state.URN.Project()
 		if !state.Delete {
 			// Only include resources which are not marked as pending-deletion.
@@ -102,7 +103,7 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 // GetChild find a child with the given type and name or returns `nil`.
 func (r *Resource) GetChild(typ string, name string) (*Resource, bool) {
 	for childURN, childResource := range r.Children {
-		if childURN.Stack() == r.Stack &&
+		if childURN.Stack() == r.Stack.Q() &&
 			childURN.Project() == r.Project &&
 			childURN.Type() == tokens.Type(typ) &&
 			childURN.Name() == tokens.QName(name) {

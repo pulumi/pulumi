@@ -166,7 +166,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 
 	projectName, stackName := i.deployment.source.Project(), i.deployment.target.Name
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
-	urn := resource.NewURN(stackName, projectName, "", typ, tokens.QName(name))
+	urn := resource.NewURN(stackName.Q(), projectName, "", typ, tokens.QName(name))
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
 		nil, false, nil, nil, nil, "", 0, false)
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?

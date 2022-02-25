@@ -28,7 +28,7 @@ func newCloudSecretsManager(stackName tokens.Name, configFile, secretsProvider s
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName)
+		f, err := workspace.DetectProjectStackPath(stackName.Q())
 		if err != nil {
 			return nil, err
 		}

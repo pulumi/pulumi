@@ -93,8 +93,9 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		ref: cloudBackendReference{
 			owner:   apistack.OrgName,
 			project: apistack.ProjectName,
-			name:    apistack.StackName,
-			b:       b,
+			// TODO This AsName cast is needed because Stack.StackName returns a QName but it should be a Name
+			name: tokens.AsName(apistack.StackName.String()),
+			b:    b,
 		},
 		cloudURL:         b.CloudURL(),
 		orgName:          apistack.OrgName,

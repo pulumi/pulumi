@@ -98,7 +98,8 @@ func DetectProjectStackPath(stackName tokens.QName) (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(filepath.Dir(projPath), proj.Config, fmt.Sprintf("%s.%s%s", ProjectFile, nameFileName(stackName),
+	// TODO This AsName cast is needed because stackName is QName but it should be a Name
+	return filepath.Join(filepath.Dir(projPath), proj.Config, fmt.Sprintf("%s.%s%s", ProjectFile, nameFileName(tokens.AsName(stackName.String())),
 		filepath.Ext(projPath))), nil
 }
 
