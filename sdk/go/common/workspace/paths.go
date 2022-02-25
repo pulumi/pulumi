@@ -99,8 +99,11 @@ func DetectProjectStackPath(stackName tokens.QName) (string, error) {
 	}
 
 	// TODO This AsName cast is needed because stackName is QName but it should be a Name
-	return filepath.Join(filepath.Dir(projPath), proj.Config, fmt.Sprintf("%s.%s%s", ProjectFile, nameFileName(tokens.AsName(stackName.String())),
-		filepath.Ext(projPath))), nil
+	fileName := nameFileName(tokens.AsName(stackName.String()))
+	return filepath.Join(
+		filepath.Dir(projPath),
+		proj.Config,
+		fmt.Sprintf("%s.%s%s", ProjectFile, fileName, filepath.Ext(projPath))), nil
 }
 
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
