@@ -53,7 +53,7 @@ const (
 )
 
 // NewURN creates a unique resource URN for the given resource object.
-func NewURN(stack tokens.Name, proj tokens.PackageName, parentType, baseType tokens.Type, name tokens.QName) URN {
+func NewURN(stack tokens.QName, proj tokens.PackageName, parentType, baseType tokens.Type, name tokens.QName) URN {
 	typ := string(baseType)
 	if parentType != "" {
 		typ = string(parentType) + URNTypeDelimiter + typ
@@ -84,8 +84,8 @@ func (urn URN) URNName() string {
 }
 
 // Stack returns the resource stack part of a URN.
-func (urn URN) Stack() tokens.Name {
-	return tokens.AsName(strings.Split(urn.URNName(), URNNameDelimiter)[0])
+func (urn URN) Stack() tokens.QName {
+	return tokens.QName(strings.Split(urn.URNName(), URNNameDelimiter)[0])
 }
 
 // Project returns the project name part of a URN.
