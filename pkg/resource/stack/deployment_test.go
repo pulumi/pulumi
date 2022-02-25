@@ -39,7 +39,7 @@ func TestDeploymentSerialization(t *testing.T) {
 	res := resource.NewState(
 		tokens.Type("Test"),
 		resource.NewURN(
-			tokens.AsName("test"),
+			tokens.AsQName("test"),
 			tokens.PackageName("resource/test"),
 			tokens.Type(""),
 			tokens.Type("Test"),

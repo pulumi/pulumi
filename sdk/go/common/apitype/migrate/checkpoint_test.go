@@ -25,7 +25,7 @@ import (
 
 func TestCheckpointV1ToV2(t *testing.T) {
 	v1 := apitype.CheckpointV1{
-		Stack: tokens.AsName("mystack"),
+		Stack: tokens.AsQName("mystack"),
 		Config: config.Map{
 			config.MustMakeKey("foo", "number"): config.NewValue("42"),
 		},
@@ -45,7 +45,7 @@ func TestCheckpointV1ToV2(t *testing.T) {
 
 func TestCheckpointV1ToV2NilLatest(t *testing.T) {
 	v1 := apitype.CheckpointV1{
-		Stack: tokens.AsName("mystack"),
+		Stack: tokens.AsQName("mystack"),
 		Config: config.Map{
 			config.MustMakeKey("foo", "number"): config.NewValue("42"),
 		},

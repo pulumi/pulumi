@@ -131,7 +131,7 @@ func urnGenerator(ctx *StackContext) *rapid.Generator {
 	}
 
 	return rapid.Custom(func(t *rapid.T) resource.URN {
-		stackName := tokens.AsName(stackNameGenerator.Draw(t, "stack name").(string))
+		stackName := tokens.AsQName(stackNameGenerator.Draw(t, "stack name").(string))
 		projectName := tokens.PackageName(projectNameGenerator.Draw(t, "project name").(string))
 		parentType := TypeGenerator().Draw(t, "parent type").(tokens.Type)
 		resourceType := TypeGenerator().Draw(t, "resource type").(tokens.Type)

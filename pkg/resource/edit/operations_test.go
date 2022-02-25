@@ -298,7 +298,7 @@ func TestRenameStack(t *testing.T) {
 
 		// Confirm the resource has been renamed.
 		updatedResourceURN := resource.NewURN(
-			tokens.AsName("new-stack"),
+			tokens.AsQName("new-stack"),
 			"test", // project name stayed the same
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
@@ -314,7 +314,7 @@ func TestRenameStack(t *testing.T) {
 
 		// Lookup the resource by URN, with both stack and project updated.
 		updatedResourceURN := resource.NewURN(
-			tokens.AsName("new-stack2"),
+			tokens.AsQName("new-stack2"),
 			"new-project",
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
