@@ -153,8 +153,8 @@ var PulumiPulumiSDKTests = []SDKTest{
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
-		Directory:        "replace-on-change",
-		Description:      "Simple use of replaceOnChange in schema",
+		Directory:   "replace-on-change",
+		Description: "Simple use of replaceOnChange in schema",
 	},
 	{
 		Directory:        "resource-property-overlap",
