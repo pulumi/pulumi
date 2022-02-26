@@ -155,7 +155,6 @@ var PulumiPulumiSDKTests = []SDKTest{
 	{
 		Directory:        "replace-on-change",
 		Description:      "Simple use of replaceOnChange in schema",
-		SkipCompileCheck: codegen.NewStringSet(golang),
 	},
 	{
 		Directory:        "resource-property-overlap",

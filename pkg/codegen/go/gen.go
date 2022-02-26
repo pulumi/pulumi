@@ -1647,12 +1647,10 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	}
 
 	// Setup secrets
-	if len(secretInputProps) > 0 {
-		for _, p := range secretInputProps {
-			fmt.Fprintf(w, "\tif args.%s != nil {\n", Title(p.Name))
-			fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", Title(p.Name), pkg.outputType(p.Type))
-			fmt.Fprintf(w, "\t}\n")
-		}
+	for _, p := range secretInputProps {
+		fmt.Fprintf(w, "\tif args.%s != nil {\n", Title(p.Name))
+		fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", Title(p.Name), pkg.outputType(p.Type))
+		fmt.Fprintf(w, "\t}\n")
 	}
 	if len(secretProps) > 0 {
 		fmt.Fprintf(w, "\tsecrets := pulumi.AdditionalSecretOutputs([]string{\n")
