@@ -14,6 +14,7 @@ type Resource struct {
 	pulumi.CustomResourceState
 
 	Bar pulumi.StringPtrOutput `pulumi:"bar"`
+	Baz pulumi.StringPtrOutput `pulumi:"baz"`
 }
 
 // NewResource registers a new resource with the given unique name, arguments, and options.
@@ -28,6 +29,7 @@ func NewResource(ctx *pulumi.Context,
 	}
 	secrets := pulumi.AdditionalSecretOutputs([]string{
 		"bar",
+		"baz",
 	})
 	opts = append(opts, secrets)
 	opts = pkgResourceDefaultOpts(opts)
