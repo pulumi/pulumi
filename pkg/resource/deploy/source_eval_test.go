@@ -666,8 +666,8 @@ func TestDisableDefaultProviders(t *testing.T) {
 					urn := newURN(event.Goal().Type, string(event.Goal().Name), event.Goal().Parent)
 					event.Done(&RegisterResult{
 						State: resource.NewState(event.Goal().Type, urn, true, false, event.Goal().ID, event.Goal().Properties,
-							resource.PropertyMap{}, event.Goal().Parent, false, false, event.Goal().Dependencies, nil, event.Goal().Provider, nil,
-							false, nil, nil, nil, "", 0, false),
+							resource.PropertyMap{}, event.Goal().Parent, false, false, event.Goal().Dependencies, nil,
+							event.Goal().Provider, nil, false, nil, nil, nil, "", 0, false),
 					})
 					registers++
 				default:
