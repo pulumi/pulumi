@@ -117,10 +117,6 @@ func LoadConfig() (*Config, error) {
 		merr = multierror.Append(merr, errors.New("failed, environment variable ENGINE_PRODUCER_LAMBDA_ARN must be provided"))
 	}
 
-	if cfg.ClientAWSIntegrationId = os.Getenv("AWS_INTEGRATION_ID"); cfg.ClientAWSIntegrationId == "" {
-		merr = multierror.Append(merr, errors.New("failed, environment variable AWS_INTEGRATION_ID must be provided"))
-	}
-
 	cfg.ResourceCount, err = strconv.Atoi(os.Getenv("RESOURCE_COUNT"))
 	if err != nil {
 		merr = multierror.Append(merr, errors.New("failed, environment variable RESOURCE_COUNT must be provided"))
@@ -135,6 +131,7 @@ func LoadConfig() (*Config, error) {
 		merr = multierror.Append(merr, errors.New("failed, environment variable ELASTICSEARCH_URL must be provided"))
 	}
 
+	cfg.ClientAWSIntegrationId = os.Getenv("AWS_INTEGRATION_ID")
 	return cfg, merr.ErrorOrNil()
 }
 

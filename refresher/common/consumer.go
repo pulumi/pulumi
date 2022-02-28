@@ -7,7 +7,7 @@ import (
 )
 
 type Consumer struct {
-	MongoDb mongo.MongoDB
+	MongoDb *mongo.Client
 	Config *config.Config
 }
 
@@ -18,7 +18,7 @@ func NewConsumer(cfg *config.Config) (*Consumer, error) {
 		Config:  cfg,
 	}
 
-	consumer.MongoDb, err = mongo.ConnectToMongo(cfg.MongoURI)
+	consumer.MongoDb, err = mongo.NewClient(cfg.MongoURI)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to mongoDB: %v", err)
 	}

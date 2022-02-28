@@ -25,6 +25,14 @@ func init() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to load configuration from environment variables")
 	}
+	logger = logger.With().
+		Str("accountId", cfg.AccountId).
+		Str("component", component).
+		Str("integrationId", cfg.PulumiIntegrationId).
+		Str("stackName", cfg.StackName).
+		Str("stackId", cfg.StackId).
+		Str("organizationName", cfg.OrganizationName).
+		Str("projectName", cfg.ProjectName).Logger()
 
 	consumer, err = common.NewConsumer(cfg)
 	if err != nil {
@@ -45,7 +53,7 @@ func init() {
 func handler(ctx context.Context) (string, error) {
 	lastUpdate := int64(cfg.LastUpdate)
 	resourceCount := cfg.ResourceCount
-	err := engine.PulumiMapper(ctx, &logger, consumer, cfg.AccountId, cfg.PulumiIntegrationId, cfg.StackName, cfg.ProjectName, cfg.OrganizationName, cfg.StackId, &lastUpdate, &resourceCount )
+	err := engine.PulumiMapper(ctx, &logger, consumer, &lastUpdate, &resourceCount)
 	if err != nil {
 		return "failed", err
 	}
