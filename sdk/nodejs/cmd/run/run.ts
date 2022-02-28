@@ -157,7 +157,6 @@ export function run(
 
     if (typeScript) {
         tsnode.register({
-            typeCheck: !transpileOnly,
             transpileOnly,
             swc: transpileOnly,
             project: process.env["PULUMI_NODEJS_TSCONFIG_PATH"], // will be undefined most of the time
