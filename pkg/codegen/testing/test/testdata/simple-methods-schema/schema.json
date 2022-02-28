@@ -53,13 +53,13 @@
             "plain": true
           },
           "name": {
-            "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           },
           "nameRequired": {
-            "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
           },
           "namePlain": {
-            "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet",
+            "$ref": "/random/v4.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet",
             "plain": true
           },
           "baz": {
