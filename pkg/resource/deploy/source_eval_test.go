@@ -134,7 +134,7 @@ func disableDefaultProviders(runInfo *EvalRunInfo, pkgs ...string) {
 	if _, ok, err := c.Get(key, false); err != nil {
 		panic(err)
 	} else if ok {
-		panic("disbaleDefaultProviders cannot be called twice")
+		panic("disableDefaultProviders cannot be called twice")
 	}
 	b, err := json.Marshal(pkgs)
 	if err != nil {
@@ -527,7 +527,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 // - enabled  vs disabled
 // - explicit vs default
 //
-// B exists as a sanity check, to ensure that we can still do perform arbitrary
+// B exists as a sanity check, to ensure that we can still perform arbitrary
 // operations that belong to other packages.
 func TestDisableDefaultProviders(t *testing.T) {
 	type TT struct {
