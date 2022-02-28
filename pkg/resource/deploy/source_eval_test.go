@@ -16,6 +16,8 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -25,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -86,6 +89,8 @@ func newTestPluginContext(program deploytest.ProgramFunc) (*plugin.Context, erro
 type testProviderSource struct {
 	providers map[providers.Reference]plugin.Provider
 	m         sync.RWMutex
+	// If nil, do not return a default provider. Otherwise, return this default provider
+	defaultProvider plugin.Provider
 }
 
 func (s *testProviderSource) registerProvider(ref providers.Reference, provider plugin.Provider) {
@@ -100,6 +105,9 @@ func (s *testProviderSource) GetProvider(ref providers.Reference) (plugin.Provid
 	defer s.m.RUnlock()
 
 	provider, ok := s.providers[ref]
+	if !ok && s.defaultProvider != nil && providers.IsDefaultProvider(ref.URN()) {
+		return s.defaultProvider, true
+	}
 	return provider, ok
 }
 
@@ -115,6 +123,27 @@ func newProviderEvent(pkg, name string, inputs resource.PropertyMap, parent reso
 		Parent:     parent,
 	}
 	return &testRegEvent{goal: goal}
+}
+
+func disableDefaultProviders(runInfo *EvalRunInfo, pkgs ...string) {
+	if runInfo.Target.Config == nil {
+		runInfo.Target.Config = config.Map{}
+	}
+	c := runInfo.Target.Config
+	key := config.MustMakeKey("pulumi", "disable-default-providers")
+	if _, ok, err := c.Get(key, false); err != nil {
+		panic(err)
+	} else if ok {
+		panic("disbaleDefaultProviders cannot be called twice")
+	}
+	b, err := json.Marshal(pkgs)
+	if err != nil {
+		panic(err)
+	}
+	err = c.Set(key, config.NewValue(string(b)), false)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestRegisterNoDefaultProviders(t *testing.T) {
@@ -490,6 +519,168 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	assert.Equal(t, len(providerSource.providers), registers)
 	assert.Equal(t, expectedReads, reads)
 	assert.Equal(t, expectedInvokes, int(invokes))
+}
+
+// Test that we can run operations with default providers disabled.
+//
+// We run against the matrix of
+// - enabled  vs disabled
+// - explicit vs default
+//
+// B exists as a sanity check, to ensure that we can still do perform arbitrary
+// operations that belong to other packages.
+func TestDisableDefaultProviders(t *testing.T) {
+	type TT struct {
+		disableDefault bool
+		hasExplicit    bool
+		expectFail     bool
+	}
+	cases := []TT{}
+	for _, disableDefault := range []bool{true, false} {
+		for _, hasExplicit := range []bool{true, false} {
+			cases = append(cases, TT{
+				disableDefault: disableDefault,
+				hasExplicit:    hasExplicit,
+				expectFail:     disableDefault && !hasExplicit,
+			})
+		}
+	}
+	for _, tt := range cases {
+		var name []string
+		if tt.disableDefault {
+			name = append(name, "disableDefault")
+		}
+		if tt.hasExplicit {
+			name = append(name, "hasExplicit")
+		}
+		if tt.expectFail {
+			name = append(name, "expectFail")
+		}
+		if len(name) == 0 {
+			name = append(name, "vanilla")
+		}
+
+		t.Run(strings.Join(name, "+"), func(t *testing.T) {
+			runInfo := &EvalRunInfo{
+				Proj:   &workspace.Project{Name: "test"},
+				Target: &Target{Name: "test"},
+			}
+			if tt.disableDefault {
+				disableDefaultProviders(runInfo, "pkgA")
+			}
+
+			newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
+				var pt tokens.Type
+				if parent != "" {
+					pt = parent.Type()
+				}
+				return resource.NewURN(runInfo.Target.Name, runInfo.Proj.Name, pt, t, tokens.QName(name))
+			}
+
+			newProviderURN := func(pkg tokens.Package, name string, parent resource.URN) resource.URN {
+				return newURN(providers.MakeProviderType(pkg), name, parent)
+			}
+
+			providerARef, err := providers.NewReference(newProviderURN("pkgA", "providerA", ""), "id1")
+			assert.NoError(t, err)
+			providerBRef, err := providers.NewReference(newProviderURN("pkgB", "providerB", ""), "id2")
+			assert.NoError(t, err)
+
+			expectedReads, expectedInvokes, expectedRegisters := 3, 3, 1
+			reads, invokes, registers := 0, int32(0), 0
+
+			if tt.expectFail {
+				expectedReads--
+				expectedInvokes--
+			}
+			if !tt.hasExplicit && !tt.disableDefault && !tt.expectFail {
+				// The register is creating the default provider
+				expectedRegisters++
+			}
+
+			noopProvider := &deploytest.Provider{
+				InvokeF: func(tokens.ModuleMember, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					atomic.AddInt32(&invokes, 1)
+					return resource.PropertyMap{}, nil, nil
+				},
+			}
+
+			providerSource := &testProviderSource{
+				providers: map[providers.Reference]plugin.Provider{
+					providerARef: noopProvider,
+					providerBRef: noopProvider,
+				},
+				defaultProvider: noopProvider,
+			}
+
+			program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
+				aErrorAssert := assert.NoError
+				if tt.expectFail {
+					aErrorAssert = assert.Error
+				}
+				var aPkgProvider string
+				if tt.hasExplicit {
+					aPkgProvider = providerARef.String()
+				}
+				// Perform some reads and invokes with explicit provider references.
+				_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, aPkgProvider, "")
+				aErrorAssert(t, perr)
+				_, _, perr = resmon.ReadResource("pkgB:m:typB", "resB", "id1", "", nil, providerBRef.String(), "")
+				assert.NoError(t, perr)
+				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "")
+				assert.NoError(t, perr)
+
+				_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, aPkgProvider, "")
+				aErrorAssert(t, perr)
+				_, _, perr = resmon.Invoke("pkgB:m:funcB", nil, providerBRef.String(), "")
+				assert.NoError(t, perr)
+				_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, "", "")
+				assert.NoError(t, perr)
+
+				return nil
+			}
+
+			// Create and iterate an eval source.
+			ctx, err := newTestPluginContext(program)
+			assert.NoError(t, err)
+
+			iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+			assert.Nil(t, res)
+
+			for {
+				event, res := iter.Next()
+				assert.Nil(t, res)
+				if event == nil {
+					break
+				}
+				switch event := event.(type) {
+				case ReadResourceEvent:
+					urn := newURN(event.Type(), string(event.Name()), event.Parent())
+					event.Done(&ReadResult{
+						State: resource.NewState(event.Type(), urn, true, false, event.ID(), event.Properties(),
+							resource.PropertyMap{}, event.Parent(), false, false, event.Dependencies(), nil, event.Provider(), nil,
+							false, nil, nil, nil, "", 0, false),
+					})
+					reads++
+				case RegisterResourceEvent:
+					urn := newURN(event.Goal().Type, string(event.Goal().Name), event.Goal().Parent)
+					event.Done(&RegisterResult{
+						State: resource.NewState(event.Goal().Type, urn, true, false, event.Goal().ID, event.Goal().Properties,
+							resource.PropertyMap{}, event.Goal().Parent, false, false, event.Goal().Dependencies, nil, event.Goal().Provider, nil,
+							false, nil, nil, nil, "", 0, false),
+					})
+					registers++
+				default:
+					panic(event)
+				}
+			}
+
+			assert.Equalf(t, expectedReads, reads, "Reads")
+			assert.Equalf(t, expectedInvokes, int(invokes), "Invokes")
+			assert.Equalf(t, expectedRegisters, registers, "Registers")
+
+		})
+	}
 }
 
 // TODO[pulumi/pulumi#2753]: We should re-enable these tests (and fix them up as needed) once we have a solution

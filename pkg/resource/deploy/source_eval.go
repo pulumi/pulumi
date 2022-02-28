@@ -582,20 +582,15 @@ func getProviderFromSource(
 
 	providerRef, err := getProviderReference(defaultProviders, req, rawProviderRef)
 	if err != nil {
-		return nil, err
-	}
-	if providers.IsDefaultProvider(providerRef.URN()) {
-		if deny, err := defaultProviders.shouldDenyRequest(req); err != nil {
-			return nil, err
-		} else if deny {
-			msg := diag.GetDefaultProviderDenied("Invoke").Message
-			return nil, fmt.Errorf(msg, req.Package(), token)
-		}
+		return nil, fmt.Errorf("getProviderFromSource: %w", err)
+	} else if providers.IsDenyDefaultsProvider(providerRef) {
+		msg := diag.GetDefaultProviderDenied("Invoke").Message
+		return nil, fmt.Errorf(msg, req.Package(), token)
 	}
 
 	provider, ok := providerSource.GetProvider(providerRef)
 	if !ok {
-		return nil, fmt.Errorf("unknown provider '%v'", rawProviderRef)
+		return nil, fmt.Errorf("unknown provider '%v' -> '%v'", rawProviderRef, providerRef)
 	}
 	return provider, nil
 }
@@ -854,6 +849,9 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
 		if provErr != nil {
 			return nil, provErr
+		} else if providers.IsDenyDefaultsProvider(ref) {
+			msg := diag.GetDefaultProviderDenied("Read").Message
+			return nil, fmt.Errorf(msg, req.GetType(), t)
 		}
 		provider = ref.String()
 	}
