@@ -576,14 +576,24 @@ func getProviderReference(defaultProviders *defaultProviders, req providers.Prov
 // package with the given unparsed provider reference. If the unparsed provider reference is empty,
 // this function returns the plugin for the indicated package's default provider.
 func getProviderFromSource(
-	providers ProviderSource, defaultProviders *defaultProviders,
-	req providers.ProviderRequest, rawProviderRef string) (plugin.Provider, error) {
+	providerSource ProviderSource, defaultProviders *defaultProviders,
+	req providers.ProviderRequest, rawProviderRef string,
+	token tokens.ModuleMember) (plugin.Provider, error) {
 
 	providerRef, err := getProviderReference(defaultProviders, req, rawProviderRef)
 	if err != nil {
 		return nil, err
 	}
-	provider, ok := providers.GetProvider(providerRef)
+	if providers.IsDefaultProvider(providerRef.URN()) {
+		if deny, err := defaultProviders.shouldDenyRequest(req); err != nil {
+			return nil, err
+		} else if deny {
+			msg := diag.GetDefaultProviderDenied("Invoke").Message
+			return nil, fmt.Errorf(msg, req.Package(), token)
+		}
+	}
+
+	provider, ok := providerSource.GetProvider(providerRef)
 	if !ok {
 		return nil, fmt.Errorf("unknown provider '%v'", rawProviderRef)
 	}
@@ -636,13 +646,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	if err != nil {
 		return nil, err
 	}
-	if deny, err := rm.defaultProviders.shouldDenyRequest(providerReq); err != nil {
-		return nil, fmt.Errorf("Invoke: %w", err)
-	} else if deny {
-		msg := diag.GetDefaultProviderDenied("Invoke").Message
-		return nil, fmt.Errorf(msg, providerReq.Package(), tok)
-	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
@@ -692,7 +696,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, err
 	}
@@ -780,7 +784,7 @@ func (rm *resmon) StreamInvoke(
 	if err != nil {
 		return err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return err
 	}
