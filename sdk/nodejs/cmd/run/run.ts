@@ -175,10 +175,6 @@ export function run(
     if (typeScript) {
         tsnode.register({
             transpileOnly,
-            // PULUMI_NODEJS_TSCONFIG_PATH might be set to a config file such as "tsconfig.pulumi.yaml" which
-            // would not get picked up by tsnode by default, so we explicitly tell tsnode which config file to
-            // use (Which might just be ./tsconfig.yaml)
-            project: tsConfigPath,
             skipProject: skipProject,
             compilerOptions: {
                 target: "es6",
