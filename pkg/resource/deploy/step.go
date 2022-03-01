@@ -952,7 +952,8 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return rst, nil, err
 		}
 
-		if issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, failures) {
+		// Print this warning before printing all the check failures to give better context.
+		if len(failures) != 0 {
 			ref, err := providers.ParseReference(s.Provider())
 			contract.Assert(err == nil)
 
@@ -960,9 +961,11 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			s.deployment.Diag().Warningf(diag.Message(s.new.URN,
 				"One or more imported inputs failed to validate. "+
 					"This is almost certainly a bug in the `%s` provider. "+
-					"The import will still proceed, but you will need to edit the generated code after copying it into your program"),
+					"The import will still proceed, but you will need to edit the generated code after copying it into your program."),
 				pkgName)
 		}
+
+		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, failures)
 
 		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
 		return rst, complete, err
