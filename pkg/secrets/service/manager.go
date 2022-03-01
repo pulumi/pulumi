@@ -32,8 +32,6 @@ import (
 
 const Type = "service"
 
-var _ config.BulkDecrypter = (*serviceCrypter)(nil)
-
 // serviceCrypter is an encrypter/decrypter that uses the Pulumi servce to encrypt/decrypt a stack's secrets.
 type serviceCrypter struct {
 	client *client.Client

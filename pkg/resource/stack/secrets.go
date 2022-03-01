@@ -129,6 +129,10 @@ func (c *cachingCrypter) DecryptValue(ciphertext string) (string, error) {
 	return c.decrypter.DecryptValue(ciphertext)
 }
 
+func (c *cachingCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return c.decrypter.BulkDecrypt(ciphertexts)
+}
+
 // encryptSecret encrypts the plaintext associated with the given secret value.
 func (c *cachingCrypter) encryptSecret(secret *resource.Secret, plaintext string) (string, error) {
 	// If the cache has an entry for this secret and the plaintext has not changed, re-use the ciphertext.
@@ -149,42 +153,4 @@ func (c *cachingCrypter) encryptSecret(secret *resource.Secret, plaintext string
 // insert associates the given secret with the given plain- and ciphertext in the cache.
 func (c *cachingCrypter) insert(secret *resource.Secret, plaintext, ciphertext string) {
 	c.cache[secret] = cacheEntry{plaintext, ciphertext}
-}
-
-// mapDecrypter is a Decrypter with a preloaded cache. This decrypter is used specifically for deserialization,
-// where the deserializer is expected to prime the cache by scanning each resource for secrets, then decrypting all
-// of the discovered secrets en masse. Although each call to Decrypt _should_ hit the cache, a mapDecrypter does
-// carry an underlying Decrypter in the event that a secret was missed.
-//
-// Note that this is intentionally separate from cachingCrypter. A cachingCrypter is intended to prevent repeated
-// encryption of secrets when the same snapshot is repeatedly serialized over the lifetime of an update, and
-// therefore keys on the identity of the secret value itself. A mapDecrypter is intended to allow the deserializer
-// to decrypt secrets up-front and prevent repeated calls to decrypt within the context of a single deserialization,
-// and cannot key off of secret identity because secrets do not exist when the cache is initialized.
-type mapDecrypter struct {
-	decrypter config.Decrypter
-	cache     map[string]string
-}
-
-func newMapDecrypter(decrypter config.Decrypter, cache map[string]string) config.Decrypter {
-	return &mapDecrypter{decrypter: decrypter, cache: cache}
-}
-
-func (c *mapDecrypter) DecryptValue(ciphertext string) (string, error) {
-	if plaintext, ok := c.cache[ciphertext]; ok {
-		return plaintext, nil
-	}
-
-	// The value is not currently in the cache. Decrypt it and add it to the cache.
-	plaintext, err := c.decrypter.DecryptValue(ciphertext)
-	if err != nil {
-		return "", err
-	}
-
-	if c.cache == nil {
-		c.cache = make(map[string]string)
-	}
-	c.cache[ciphertext] = plaintext
-
-	return plaintext, nil
 }
