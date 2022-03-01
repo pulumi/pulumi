@@ -65,4 +65,5 @@ if shutil.which('gotestsum') is not None:
     sp.check_call(['gotestsum', '--jsonfile', json_file, '--junitfile', junit_file, '--'] + \
                   options_and_packages, shell=False)
 else:
+
     sp.check_call(['go', 'test'] + options_and_packages, shell=False)

@@ -27,7 +27,7 @@ TEST_SUBSETS = {
         'github.com/pulumi/pulumi/tests/integration',
     ],
 
-    'integration-and-codegen': [
+    'integration-subtests': [
         'github.com/pulumi/pulumi/tests/integration/aliases',
         'github.com/pulumi/pulumi/tests/integration/custom_timeouts',
         'github.com/pulumi/pulumi/tests/integration/delete_before_create',
@@ -47,6 +47,9 @@ TEST_SUBSETS = {
         'github.com/pulumi/pulumi/tests/integration/targets',
         'github.com/pulumi/pulumi/tests/integration/transformations',
         'github.com/pulumi/pulumi/tests/integration/types',
+    ],
+
+    'codegen': [
         'github.com/pulumi/pulumi/pkg/v3/codegen',
         'github.com/pulumi/pulumi/pkg/v3/codegen/docs',
         'github.com/pulumi/pulumi/pkg/v3/codegen/dotnet',
