@@ -81,8 +81,7 @@ class Resource(pulumi.CustomResource):
             __props__ = ResourceArgs.__new__(ResourceArgs)
 
             __props__.__dict__["bar"] = None if bar is None else pulumi.Output.secret(bar)
-            __props__.__dict__["baz"] = None
-        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["bar", "baz"])
+        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["bar"])
         opts = pulumi.ResourceOptions.merge(opts, secret_opts)
         super(Resource, __self__).__init__(
             'example::Resource',
@@ -107,16 +106,10 @@ class Resource(pulumi.CustomResource):
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
         __props__.__dict__["bar"] = None
-        __props__.__dict__["baz"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
 
     @property
     @pulumi.getter
     def bar(self) -> pulumi.Output[Optional[str]]:
         return pulumi.get(self, "bar")
-
-    @property
-    @pulumi.getter
-    def baz(self) -> pulumi.Output[Optional[str]]:
-        return pulumi.get(self, "baz")
 
