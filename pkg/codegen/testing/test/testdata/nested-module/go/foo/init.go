@@ -29,7 +29,7 @@ func (p *pkg) ConstructProvider(ctx *pulumi.Context, name, typ, urn string) (pul
 }
 
 func init() {
-	version := PkgVersion()
+	version, _ := PkgVersion()
 	pulumi.RegisterResourcePackage(
 		"foo",
 		&pkg{version},

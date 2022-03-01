@@ -62,18 +62,20 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 }
 
 // PkgVersion uses reflection to determine the version of the current package.
-func PkgVersion() semver.Version {
+// If a version cannot be determined, v1 will be assumed. The second return
+// value is always nil.
+func PkgVersion() (semver.Version, error) {
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
 	re := regexp.MustCompile("^.*/pulumi-registrygeoreplication/sdk(/v\\d+)?")
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
 		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
-			return semver.Version{Major: 1}
+			return semver.Version{Major: 1}, nil
 		}
-		return semver.MustParse(fmt.Sprintf("%s.0.0", vStr[2:]))
+		return semver.MustParse(fmt.Sprintf("%s.0.0", vStr[2:])), nil
 	}
-	return semver.Version{Major: 1}
+	return semver.Version{Major: 1}, nil
 }
 
 // isZero is a null safe check for if a value is it's types zero value.

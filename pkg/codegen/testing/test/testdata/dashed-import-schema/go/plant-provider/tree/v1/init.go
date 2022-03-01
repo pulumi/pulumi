@@ -34,7 +34,10 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 }
 
 func init() {
-	version := plantprovider.PkgVersion()
+	version, err := plantprovider.PkgVersion()
+	if err != nil {
+		version = semver.Version{Major: 1}
+	}
 	pulumi.RegisterResourceModule(
 		"plant",
 		"tree/v1",
