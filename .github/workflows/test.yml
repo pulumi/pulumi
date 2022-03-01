@@ -49,9 +49,9 @@ jobs:
     strategy:
       matrix:
         platform:
-          - ubuntu-latest
+          # - ubuntu-latest
           - windows-latest
-          - macos-latest
+          # - macos-latest
         test-subset:
           - integration
           - integration-and-codegen
