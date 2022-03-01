@@ -352,7 +352,7 @@ jobs:
         if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
         run: |
           pulumictl cover merge --in ./coverage --out ./coverage/go-all.txt
-          rm ./coverage/*.cov
+          rm ./coverage/*.cov || true
       - name: Upload code coverage
         if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
         uses: codecov/codecov-action@v2
