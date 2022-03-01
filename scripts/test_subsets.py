@@ -27,6 +27,10 @@ TEST_SUBSETS = {
         'github.com/pulumi/pulumi/tests/integration',
     ],
 
+    'codegen': [
+        'github.com/pulumi/pulumi/pkg/v3/codegen',
+    ],
+
     'integration-and-codegen': [
         'github.com/pulumi/pulumi/tests/integration/aliases',
         'github.com/pulumi/pulumi/tests/integration/custom_timeouts',

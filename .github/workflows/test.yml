@@ -54,7 +54,7 @@ jobs:
           - macos-latest
         test-subset:
           - integration
-          - integration-and-codegen
+          - codegen
           - auto
           - etc
       fail-fast: false
