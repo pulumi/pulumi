@@ -54,10 +54,14 @@ jobs:
           - macos-latest
         test-subset:
           - integration
-          - integration-and-codegen
+          - integration-subtests
+          - codegen
           - auto
           - etc
       fail-fast: false
+
+    env:
+      PULUMI_TEST_SUBSET: ${{ matrix.test-subset }}
 
     runs-on: ${{ matrix.platform }}
 
@@ -69,9 +73,6 @@ jobs:
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
-      - name: Set PULUMI_TEST_SUBSET env var
-        run: |
-          echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV
       - name: Enable code coverage
         if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
         run: |

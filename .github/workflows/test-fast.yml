@@ -57,7 +57,8 @@ jobs:
           - macos-latest
         test-subset:
           - integration
-          - integration-and-codegen
+          - integration-subtests
+          - codegen
           - auto
           - etc
         exclude:
