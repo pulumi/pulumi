@@ -101,7 +101,7 @@ test_pkg::
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 
 test_integration::
-	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
+	cd tests && $(GO_TEST) -p 1 ${TESTS_PKGS}
 
 tidy::
 	./scripts/tidy.sh
