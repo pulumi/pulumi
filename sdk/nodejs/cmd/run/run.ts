@@ -161,6 +161,8 @@ export function run(
     const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
 
+    const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
+
     let compilerOptions: object;
     try {
         const tsConfigString = fs.readFileSync(tsConfigPath).toString();
@@ -172,7 +174,11 @@ export function run(
 
     if (typeScript) {
         tsnode.register({
-            typeCheck: true,
+            transpileOnly,
+            // PULUMI_NODEJS_TSCONFIG_PATH might be set to a config file such as "tsconfig.pulumi.yaml" which
+            // would not get picked up by tsnode by default, so we explicitly tell tsnode which config file to
+            // use (Which might just be ./tsconfig.yaml)
+            project: tsConfigPath,
             skipProject: skipProject,
             compilerOptions: {
                 target: "es6",

@@ -27,9 +27,6 @@ func NewCat(ctx *pulumi.Context,
 		args = &CatArgs{}
 	}
 
-	if args.Name != nil {
-		args.Name = pulumi.ToSecret(args.Name).(pulumi.StringPtrOutput)
-	}
 	secrets := pulumi.AdditionalSecretOutputs([]string{
 		"name",
 	})
