@@ -9,7 +9,7 @@ PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v /vendor/)
 TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v /vendor/)
 VERSION         := $(shell pulumictl get version)
 
-TESTPARALLELISM := 10
+TESTPARALLELISM ?= 4
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.

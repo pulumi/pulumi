@@ -73,6 +73,11 @@ jobs:
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
+      - name: Reduce test parallelism
+        if: ${{ matrix.test-subset == 'integration' && matrix.platform == 'windows-latest' }}
+        run: |
+          echo "Setting test parallelism to 1"
+          echo "TESTPARALLELISM=1" >> $GITHUB_ENV
       - name: Enable code coverage
         if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
         run: |
