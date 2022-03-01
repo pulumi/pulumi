@@ -576,21 +576,16 @@ func getProviderReference(defaultProviders *defaultProviders, req providers.Prov
 // package with the given unparsed provider reference. If the unparsed provider reference is empty,
 // this function returns the plugin for the indicated package's default provider.
 func getProviderFromSource(
-	providerSource ProviderSource, defaultProviders *defaultProviders,
-	req providers.ProviderRequest, rawProviderRef string,
-	token tokens.ModuleMember) (plugin.Provider, error) {
+	providers ProviderSource, defaultProviders *defaultProviders,
+	req providers.ProviderRequest, rawProviderRef string) (plugin.Provider, error) {
 
 	providerRef, err := getProviderReference(defaultProviders, req, rawProviderRef)
 	if err != nil {
-		return nil, fmt.Errorf("getProviderFromSource: %w", err)
-	} else if providers.IsDenyDefaultsProvider(providerRef) {
-		msg := diag.GetDefaultProviderDenied("Invoke").Message
-		return nil, fmt.Errorf(msg, req.Package(), token)
+		return nil, err
 	}
-
-	provider, ok := providerSource.GetProvider(providerRef)
+	provider, ok := providers.GetProvider(providerRef)
 	if !ok {
-		return nil, fmt.Errorf("unknown provider '%v' -> '%v'", rawProviderRef, providerRef)
+		return nil, fmt.Errorf("unknown provider '%v'", rawProviderRef)
 	}
 	return provider, nil
 }
@@ -641,7 +636,13 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	if deny, err := rm.defaultProviders.shouldDenyRequest(providerReq); err != nil {
+		return nil, fmt.Errorf("Invoke: %w", err)
+	} else if deny {
+		msg := diag.GetDefaultProviderDenied("Invoke").Message
+		return nil, fmt.Errorf(msg, providerReq.Package(), tok)
+	}
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
 	if err != nil {
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
@@ -691,7 +692,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
 	if err != nil {
 		return nil, err
 	}
@@ -779,7 +780,7 @@ func (rm *resmon) StreamInvoke(
 	if err != nil {
 		return err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
 	if err != nil {
 		return err
 	}
@@ -849,9 +850,6 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
 		if provErr != nil {
 			return nil, provErr
-		} else if providers.IsDenyDefaultsProvider(ref) {
-			msg := diag.GetDefaultProviderDenied("Read").Message
-			return nil, fmt.Errorf(msg, req.GetType(), t)
 		}
 		provider = ref.String()
 	}
