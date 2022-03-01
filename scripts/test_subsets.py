@@ -29,6 +29,16 @@ TEST_SUBSETS = {
 
     'codegen': [
         'github.com/pulumi/pulumi/pkg/v3/codegen',
+        'github.com/pulumi/pulumi/pkg/v3/codegen/docs',
+        'github.com/pulumi/pulumi/pkg/v3/codegen/dotnet',
+        'github.com/pulumi/pulumi/pkg/v3/codegen/go',
+        'github.com/pulumi/pulumi/pkg/v3/codegen/hcl2',
+        'github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model',
+        'github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax',
+        'github.com/pulumi/pulumi/pkg/v3/codegen/importer',
+        'github.com/pulumi/pulumi/pkg/v3/codegen/nodejs',
+        'github.com/pulumi/pulumi/pkg/v3/codegen/python',
+        'github.com/pulumi/pulumi/pkg/v3/codegen/schema',
     ],
 
     'integration-and-codegen': [
