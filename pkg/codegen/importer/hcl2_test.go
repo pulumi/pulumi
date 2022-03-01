@@ -24,11 +24,11 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -40,7 +40,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 const parentName = "parent"
 const providerName = "provider"
@@ -133,6 +133,24 @@ func renderTupleCons(t *testing.T, x *model.TupleConsExpression) resource.Proper
 
 func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) resource.PropertyValue {
 	switch x.Name {
+	case "fileArchive":
+		if !assert.Len(t, x.Args, 1) {
+			return resource.NewNullProperty()
+		}
+		path, ok := renderExpr(t, x.Args[0]).V.(string)
+		if !assert.True(t, ok) {
+			return resource.NewNullProperty()
+		}
+		return resource.NewStringProperty(path)
+	case "fileAsset":
+		if !assert.Len(t, x.Args, 1) {
+			return resource.NewNullProperty()
+		}
+		path, ok := renderExpr(t, x.Args[0]).V.(string)
+		if !assert.True(t, ok) {
+			return resource.NewNullProperty()
+		}
+		return resource.NewStringProperty(path)
 	case "secret":
 		if !assert.Len(t, x.Args, 1) {
 			return resource.NewNullProperty()
@@ -144,7 +162,7 @@ func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) resource.
 	}
 }
 
-func renderResource(t *testing.T, r *hcl2.Resource) *resource.State {
+func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 	inputs := resource.PropertyMap{}
 	for _, attr := range r.Inputs {
 		inputs[resource.PropertyKey(attr.Name)] = renderExpr(t, attr.Value)
@@ -211,7 +229,7 @@ func readTestCases(path string) (testCases, error) {
 }
 
 func TestGenerateHCL2Definition(t *testing.T) {
-	loader := schema.NewPluginLoader(test.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	cases, err := readTestCases("testdata/cases.json")
 	if !assert.NoError(t, err) {
@@ -238,7 +256,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				t.Fatal()
 			}
 
-			p, diags, err := hcl2.BindProgram(parser.Files, hcl2.Loader(loader), hcl2.AllowMissingVariables)
+			p, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
 			assert.NoError(t, err)
 			assert.False(t, diags.HasErrors())
 
@@ -246,7 +264,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				t.Fatal()
 			}
 
-			res, isResource := p.Nodes[0].(*hcl2.Resource)
+			res, isResource := p.Nodes[0].(*pcl.Resource)
 			if !assert.True(t, isResource) {
 				t.Fatal()
 			}
@@ -268,7 +286,9 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				ab, err := json.MarshalIndent(actual, "", "    ")
 				contract.IgnoreError(err)
 
-				t.Logf("%v\n\n%v\n\n%v\n", text, string(sb), string(ab))
+				t.Logf("%v", text)
+				// We know this will fail, but we want the diff
+				assert.Equal(t, string(sb), string(ab))
 			}
 		})
 	}
@@ -291,32 +311,28 @@ func TestSimplerType(t *testing.T) {
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name:       "foo",
-					Type:       schema.BoolType,
-					IsRequired: true,
+					Name: "foo",
+					Type: schema.BoolType,
 				},
 			},
 		},
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name:       "foo",
-					Type:       schema.IntType,
-					IsRequired: true,
+					Name: "foo",
+					Type: schema.IntType,
 				},
 			},
 		},
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name:       "foo",
-					Type:       schema.IntType,
-					IsRequired: true,
+					Name: "foo",
+					Type: schema.IntType,
 				},
 				{
-					Name:       "bar",
-					Type:       schema.IntType,
-					IsRequired: true,
+					Name: "bar",
+					Type: schema.IntType,
 				},
 			},
 		},

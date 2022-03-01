@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,9 @@
 package deploy
 
 import (
+	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -121,9 +120,22 @@ func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	// Retain the ID, and outputs:
+	// Retain the ID and outputs
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
+
+	// If the resource is a provider, ensure that it is present in the registry under the appropriate URNs.
+	if providers.IsProviderType(s.new.Type) {
+		ref, err := providers.NewReference(s.new.URN, s.new.ID)
+		if err != nil {
+			return resource.StatusOK, nil,
+				fmt.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
+		}
+		if s.Deployment() != nil {
+			s.Deployment().SameProvider(ref)
+		}
+	}
+
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	return resource.StatusOK, complete, nil
 }
@@ -323,27 +335,33 @@ func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
 func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	// Refuse to delete protected resources.
-	if s.old.Protect {
-		return resource.StatusOK, nil,
-			errors.Errorf("unable to delete resource %q\n"+
-				"as it is currently marked for protection. To unprotect the resource, "+
-				"either remove the `protect` flag from the resource in your Pulumi program or use the command:\n"+
-				"`pulumi state unprotect %s`", s.old.URN, s.old.URN)
+	// Refuse to delete protected resources (unless we're replacing them in
+	// which case we will of checked protect elsewhere)
+	if !s.replacing && s.old.Protect {
+		return resource.StatusOK, nil, fmt.Errorf("unable to delete resource %q\n"+
+			"as it is currently marked for protection. To unprotect the resource, "+
+			"either remove the `protect` flag from the resource in your Pulumi "+
+			"program and run `pulumi up` or use the command:\n"+
+			"`pulumi state unprotect '%s'`", s.old.URN, s.old.URN)
 	}
 
-	// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
-	if !preview && !s.old.External {
-		if s.old.Custom {
-			// Invoke the Delete RPC function for this provider:
-			prov, err := getProvider(s)
-			if err != nil {
-				return resource.StatusOK, nil, err
-			}
+	if preview {
+		// Do nothing in preview
+	} else if s.old.External {
+		// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
+	} else if s.old.RetainOnDelete {
+		// Deleting a "drop on delete" is a no-op as the user has explicitly asked us to not delete the resource.
+	} else if s.old.Custom {
+		// Not preview and not external and not Drop and is custom, do the actual delete
 
-			if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
-				return rst, nil, err
-			}
+		// Invoke the Delete RPC function for this provider:
+		prov, err := getProvider(s)
+		if err != nil {
+			return resource.StatusOK, nil, err
+		}
+
+		if rst, err := prov.Delete(s.URN(), s.old.ID, s.old.Outputs, s.old.CustomTimeouts.Delete); err != nil {
+			return rst, nil, err
 		}
 	}
 
@@ -636,7 +654,7 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 
 		// If there is no such resource, return an error indicating as such.
 		if result.Outputs == nil {
-			return resource.StatusOK, nil, errors.Errorf("resource '%s' does not exist", id)
+			return resource.StatusOK, nil, fmt.Errorf("resource '%s' does not exist", id)
 		}
 		s.new.Outputs = result.Outputs
 
@@ -761,7 +779,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, resourceID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
-			&s.old.CustomTimeouts, s.old.ImportID)
+			&s.old.CustomTimeouts, s.old.ImportID, s.old.SequenceNumber, s.old.RetainOnDelete)
 	} else {
 		s.new = nil
 	}
@@ -861,11 +879,11 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// If this is a planned import, ensure that the resource does not exist in the old state file.
 	if s.planned {
 		if _, ok := s.deployment.olds[s.new.URN]; ok {
-			return resource.StatusOK, nil, errors.Errorf("resource '%v' already exists", s.new.URN)
+			return resource.StatusOK, nil, fmt.Errorf("resource '%v' already exists", s.new.URN)
 		}
 		if s.new.Parent.Type() != resource.RootStackType {
 			if _, ok := s.deployment.olds[s.new.Parent]; !ok {
-				return resource.StatusOK, nil, errors.Errorf("unknown parent '%v' for resource '%v'",
+				return resource.StatusOK, nil, fmt.Errorf("unknown parent '%v' for resource '%v'",
 					s.new.Parent, s.new.URN)
 			}
 		}
@@ -886,12 +904,12 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 	}
 	if read.Outputs == nil {
-		return rst, nil, errors.Errorf("resource '%v' does not exist", s.new.ID)
+		return rst, nil, fmt.Errorf("resource '%v' does not exist", s.new.ID)
 	}
 	if read.Inputs == nil {
-		return resource.StatusOK, nil, errors.Errorf(
-			"provider does not support importing resources; please try updating the '%v' plugin",
-			s.new.URN.Type().Package())
+		return resource.StatusOK, nil,
+			fmt.Errorf("provider does not support importing resources; please try updating the '%v' plugin",
+				s.new.URN.Type().Package())
 	}
 	if read.ID != "" {
 		s.new.ID = read.ID
@@ -903,7 +921,8 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// differences between the old and new states are between the inputs and outputs.
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
-		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID)
+		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID,
+		s.new.SequenceNumber, s.new.RetainOnDelete)
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {
@@ -911,17 +930,40 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 		pkg, err := s.deployment.schemaLoader.LoadPackage(string(s.new.Type.Package()), nil)
 		if err != nil {
-			return resource.StatusOK, nil, errors.Wrapf(err, "failed to fetch provider schema")
+			return resource.StatusOK, nil, fmt.Errorf("failed to fetch provider schema: %w", err)
 		}
 
 		r, ok := pkg.GetResource(string(s.new.Type))
 		if !ok {
-			return resource.StatusOK, nil, errors.Errorf("unknown resource type '%v'", s.new.Type)
+			return resource.StatusOK, nil, fmt.Errorf("unknown resource type '%v'", s.new.Type)
 		}
-		for _, p := range r.InputProperties {
-			if p.IsRequired {
-				k := resource.PropertyKey(p.Name)
-				s.new.Inputs[k] = s.old.Inputs[k]
+
+		// Get the import object and see if it had properties set
+		var inputProperties []string
+		for _, imp := range s.deployment.imports {
+			if imp.ID == s.old.ID {
+				inputProperties = imp.Properties
+				break
+			}
+		}
+
+		if len(inputProperties) == 0 {
+			logging.V(9).Infof("Importing %v with required properties", s.URN())
+
+			for _, p := range r.InputProperties {
+				if p.IsRequired() {
+					k := resource.PropertyKey(p.Name)
+					s.new.Inputs[k] = s.old.Inputs[k]
+				}
+			}
+		} else {
+			logging.V(9).Infof("Importing %v with supplied properties: %v", s.URN(), inputProperties)
+
+			for _, p := range inputProperties {
+				k := resource.PropertyKey(p)
+				if value, has := s.old.Inputs[k]; has {
+					s.new.Inputs[k] = value
+				}
 			}
 		}
 	} else {
@@ -934,7 +976,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	// Check the inputs using the provider inputs for defaults.
-	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview)
+	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber)
 	if err != nil {
 		return rst, nil, err
 	}
@@ -1073,9 +1115,21 @@ func (op StepOp) Color() string {
 	}
 }
 
+// ColorProgress returns a suggested coloring for lines of this of type which
+// are progressing.
+func (op StepOp) ColorProgress() string {
+	return colors.Bold + op.Color()
+}
+
 // Prefix returns a suggested prefix for lines of this op type.
-func (op StepOp) Prefix() string {
-	return op.Color() + op.RawPrefix()
+func (op StepOp) Prefix(done bool) string {
+	var color string
+	if done {
+		color = op.Color()
+	} else {
+		color = op.ColorProgress()
+	}
+	return color + op.RawPrefix()
 }
 
 // RawPrefix returns the uncolorized prefix text.
@@ -1142,6 +1196,28 @@ func (op StepOp) Suffix() string {
 	return ""
 }
 
+// ConstrainedTo returns true if this operation is no more impactful than the constraint.
+func (op StepOp) ConstrainedTo(constraint StepOp) bool {
+	var allowed []StepOp
+	switch constraint {
+	case OpSame, OpDelete, OpRead, OpReadReplacement, OpRefresh, OpReadDiscard, OpDiscardReplaced,
+		OpRemovePendingReplace, OpImport, OpImportReplacement:
+		allowed = []StepOp{constraint}
+	case OpCreate:
+		allowed = []StepOp{OpSame, OpCreate}
+	case OpUpdate:
+		allowed = []StepOp{OpSame, OpUpdate}
+	case OpReplace, OpCreateReplacement, OpDeleteReplaced:
+		allowed = []StepOp{OpSame, OpUpdate, constraint}
+	}
+	for _, candidate := range allowed {
+		if candidate == op {
+			return true
+		}
+	}
+	return false
+}
+
 // getProvider fetches the provider for the given step.
 func getProvider(s Step) (plugin.Provider, error) {
 	if providers.IsProviderType(s.Type()) {
@@ -1149,11 +1225,16 @@ func getProvider(s Step) (plugin.Provider, error) {
 	}
 	ref, err := providers.ParseReference(s.Provider())
 	if err != nil {
-		return nil, errors.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
+		return nil, fmt.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
+	}
+	if providers.IsDenyDefaultsProvider(ref) {
+		pkg := providers.GetDeniedDefaultProviderPkg(ref)
+		msg := diag.GetDefaultProviderDenied(s.URN()).Message
+		return nil, fmt.Errorf(msg, pkg, s.URN())
 	}
 	provider, ok := s.Deployment().GetProvider(ref)
 	if !ok {
-		return nil, errors.Errorf("unknown provider '%v' for resource %v", s.Provider(), s.URN())
+		return nil, fmt.Errorf("unknown provider '%v' for resource %v", s.Provider(), s.URN())
 	}
 	return provider, nil
 }

@@ -1,10 +1,11 @@
 package passphrase
 
 import (
-	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -17,6 +18,8 @@ const (
 )
 
 func setIncorrectPassphraseTestEnvVars() func() {
+	clearCachedSecretsManagers()
+
 	oldPassphrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
 	oldPassphraseFile := os.Getenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password123")
@@ -31,7 +34,7 @@ func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 	setupEnv := setIncorrectPassphraseTestEnvVars()
 	defer setupEnv()
 
-	manager, err := NewPassphaseSecretsManagerFromState([]byte(state))
+	manager, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
 	assert.NoError(t, err) // even if we pass the wrong provider, we should get a lockedPassphraseProvider
 
 	assert.Equal(t, manager, &localSecretsManager{
@@ -41,6 +44,8 @@ func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 }
 
 func setCorrectPassphraseTestEnvVars() func() {
+	clearCachedSecretsManagers()
+
 	oldPassphrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
 	oldPassphraseFile := os.Getenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
@@ -55,7 +60,7 @@ func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 	setupEnv := setCorrectPassphraseTestEnvVars()
 	defer setupEnv()
 
-	_, err := NewPassphaseSecretsManagerFromState([]byte(brokenState))
+	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(brokenState))
 	assert.Error(t, err)
 }
 
@@ -63,11 +68,13 @@ func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 	setupEnv := setCorrectPassphraseTestEnvVars()
 	defer setupEnv()
 
-	sm, _ := NewPassphaseSecretsManagerFromState([]byte(state))
+	sm, _ := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
 	assert.NotNil(t, sm)
 }
 
 func unsetAllPassphraseEnvVars() func() {
+	clearCachedSecretsManagers()
+
 	oldPassphrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
 	oldPassphraseFile := os.Getenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
@@ -82,7 +89,7 @@ func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
 	setupEnv := unsetAllPassphraseEnvVars()
 	defer setupEnv()
 
-	_, err := NewPassphaseSecretsManagerFromState([]byte(state))
+	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
 	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
 		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
 }

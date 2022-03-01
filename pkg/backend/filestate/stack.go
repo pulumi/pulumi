@@ -64,7 +64,10 @@ func (s *localStack) Rename(ctx context.Context, newName tokens.QName) (backend.
 	return backend.RenameStack(ctx, s, newName)
 }
 
-func (s *localStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (s *localStack) Preview(
+	ctx context.Context,
+	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+
 	return backend.PreviewStack(ctx, s, op)
 }
 
@@ -85,8 +88,8 @@ func (s *localStack) Destroy(ctx context.Context, op backend.UpdateOperation) (e
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation) result.Result {
-	return backend.WatchStack(ctx, s, op)
+func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) result.Result {
+	return backend.WatchStack(ctx, s, op, paths)
 }
 
 func (s *localStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
@@ -103,21 +106,21 @@ func (s *localStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 }
 
 type localStackSummary struct {
-	s *localStack
+	name backend.StackReference
+	chk  *apitype.CheckpointV3
 }
 
-func newLocalStackSummary(s *localStack) localStackSummary {
-	return localStackSummary{s}
+func newLocalStackSummary(name backend.StackReference, chk *apitype.CheckpointV3) localStackSummary {
+	return localStackSummary{name: name, chk: chk}
 }
 
 func (lss localStackSummary) Name() backend.StackReference {
-	return lss.s.Ref()
+	return lss.name
 }
 
 func (lss localStackSummary) LastUpdate() *time.Time {
-	snap := lss.s.snapshot
-	if snap != nil {
-		if t := snap.Manifest.Time; !t.IsZero() {
+	if lss.chk != nil && lss.chk.Latest != nil {
+		if t := lss.chk.Latest.Manifest.Time; !t.IsZero() {
 			return &t
 		}
 	}
@@ -125,9 +128,8 @@ func (lss localStackSummary) LastUpdate() *time.Time {
 }
 
 func (lss localStackSummary) ResourceCount() *int {
-	snap := lss.s.snapshot
-	if snap != nil {
-		count := len(snap.Resources)
+	if lss.chk != nil && lss.chk.Latest != nil {
+		count := len(lss.chk.Latest.Resources)
 		return &count
 	}
 	return nil

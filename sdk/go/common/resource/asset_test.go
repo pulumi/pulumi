@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,7 +37,16 @@ const (
 	go19Version = "go1.9"
 )
 
+// TODO[pulumi/pulumi#8647]
+func skipWindows(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on Windows: TODO handle Windows paths in test logic")
+	}
+}
+
 func TestAssetSerialize(t *testing.T) {
+	skipWindows(t)
+
 	// Ensure that asset and archive serialization round trips.
 	{
 		text := "a test asset"
@@ -291,6 +300,8 @@ func TestDeserializeMissingHash(t *testing.T) {
 }
 
 func TestAssetFile(t *testing.T) {
+	skipWindows(t)
+
 	asset, err := NewPathAsset("../../../../pkg/resource/testdata/Fox.txt")
 	assert.Nil(t, err)
 	assert.Equal(t, "85e5f2698ac92d10d50e2f2802ed0d51a13e7c81d0d0a5998a75349469e774c5", asset.Hash)
@@ -303,6 +314,8 @@ asset jumps over the archive.
 }
 
 func TestArchiveDir(t *testing.T) {
+	skipWindows(t)
+
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir")
 	assert.Nil(t, err)
 	switch runtime.Version() {
@@ -316,6 +329,8 @@ func TestArchiveDir(t *testing.T) {
 }
 
 func TestArchiveTar(t *testing.T) {
+	skipWindows(t)
+
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.tar")
 	assert.Nil(t, err)
@@ -324,6 +339,8 @@ func TestArchiveTar(t *testing.T) {
 }
 
 func TestArchiveTgz(t *testing.T) {
+	skipWindows(t)
+
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.tgz")
 	assert.Nil(t, err)
@@ -332,6 +349,8 @@ func TestArchiveTgz(t *testing.T) {
 }
 
 func TestArchiveZip(t *testing.T) {
+	skipWindows(t)
+
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.zip")
 	assert.Nil(t, err)
@@ -340,6 +359,8 @@ func TestArchiveZip(t *testing.T) {
 }
 
 func TestArchiveJar(t *testing.T) {
+	skipWindows(t)
+
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.jar")
 	assert.Nil(t, err)
 	assert.Equal(t, "dfb9eb69f433564b07df524068621c5ac65c08868e6094b8fa4ee388a5ee66e7", arch.Hash)
@@ -368,6 +389,9 @@ func findRepositoryRoot() (string, error) {
 }
 
 func TestArchiveTarFiles(t *testing.T) {
+	// TODO[pulumi/pulumi#7976] flaky
+	t.Skip("Disabled due to flakiness. See #7976.")
+
 	repoRoot, err := findRepositoryRoot()
 	assert.Nil(t, err)
 
@@ -379,6 +403,7 @@ func TestArchiveTarFiles(t *testing.T) {
 }
 
 func TestArchiveZipFiles(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7147]
 	repoRoot, err := findRepositoryRoot()
 	assert.Nil(t, err)
 
@@ -391,6 +416,8 @@ func TestArchiveZipFiles(t *testing.T) {
 
 //nolint: gosec
 func TestNestedArchive(t *testing.T) {
+	skipWindows(t)
+
 	// Create temp dir and place some files.
 	dirName, err := ioutil.TempDir("", "")
 	assert.Nil(t, err)
@@ -431,6 +458,8 @@ func TestNestedArchive(t *testing.T) {
 
 //nolint: gosec
 func TestFileReferencedThroughMultiplePaths(t *testing.T) {
+	skipWindows(t)
+
 	// Create temp dir and place some files.
 	dirName, err := ioutil.TempDir("", "")
 	assert.Nil(t, err)

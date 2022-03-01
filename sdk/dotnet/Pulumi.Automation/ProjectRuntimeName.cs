@@ -7,6 +7,7 @@ namespace Pulumi.Automation
     /// </summary>
     public enum ProjectRuntimeName
     {
+        // ReSharper disable once InconsistentNaming
         NodeJS,
         Go,
         Python,

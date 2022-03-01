@@ -15,30 +15,60 @@
 <!-- Input properties -->
 ## Using {{ .Header.Title }} {#using}
 
+{{- if .AnyLanguageHasOutputVersion }}
+
+Two invocation forms are available. The direct form accepts plain
+arguments and either blocks until the result value is available, or
+returns a Promise-wrapped result. The output form accepts
+Input-wrapped arguments and returns an Output-wrapped result.
+
+{{- end }}
+
 {{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
 
 <!-- TS/JS -->
 {{ print "{{% choosable language nodejs %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">function </span>{{ .FunctionName.nodejs }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.nodejs }}<span class="p">): Promise<{{ template "linkify_param" .FunctionResult.nodejs }}></span></code></pre></div>
+<div class="highlight"
+><pre class="chroma"><code class="language-typescript" data-lang="typescript"
+><span class="k">function </span>{{ .FunctionName.nodejs }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.nodejs }}<span class="p">): Promise<{{ template "linkify_param" .FunctionResult.nodejs }}></span
+{{- if .HasOutputVersion.nodejs }}
+><span class="k">
+function </span>{{ .FunctionName.nodejs }}Output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.nodejs }}<span class="p">): Output<{{ template "linkify_param" .FunctionResult.nodejs }}></span
+{{- end }}
+></code></pre></div>
 {{ print "{{% /choosable %}}" }}
 
 <!-- Python -->
 {{ print "{{% choosable language python %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>{{ .FunctionName.python }}(</span>{{ htmlSafe .FunctionArgs.python }}<span class="p">) -&gt;</span> {{ .FunctionResult.python.Name }}</code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
+><span class="k">def </span>{{ .FunctionName.python }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.python }}<span class="p">) -&gt;</span> <span>{{ .FunctionResult.python.Name }}</span
+{{- if .HasOutputVersion.python }}
+><span class="k">
+def </span>{{ .FunctionName.python }}_output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.python }}<span class="p">) -&gt;</span> <span>Output[{{ .FunctionResult.python.Name }}]</span
+{{- end }}
+></code></pre></div>
 {{ print "{{% /choosable %}}" }}
 
 <!-- Go -->
 {{ print "{{% choosable language go %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>{{ .FunctionName.go }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.go }}<span class="p">) (*{{ template "linkify_param" .FunctionResult.go }}, error)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
+><span class="k">func </span>{{ .FunctionName.go }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.go }}<span class="p">) (*{{ template "linkify_param" .FunctionResult.go }}, error)</span
+{{- if .HasOutputVersion.go }}
+><span class="k">
+func </span>{{ .FunctionName.go }}Output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.go }}<span class="p">) {{ .FunctionResultOutputVersion.go.Name }}</span
+{{- end }}
+></code></pre></div>
 {{ if ne .FunctionName.go .Header.Title }}
-> Note: This function is named `{{ .FunctionName.go }}` in the Go SDK.
+&gt; Note: This function is named `{{ .FunctionName.go }}` in the Go SDK.
 {{ end }}
 {{ print "{{% /choosable %}}" }}
 
 <!-- C# -->
 {{ print "{{% choosable language csharp %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">{{ .FunctionName.csharp }} </span><span class="p">{</span><span class="k">
-    public static </span>Task<{{ template "linkify_param" .FunctionResult.csharp }}> <span class="p">InvokeAsync(</span>{{ htmlSafe .FunctionArgs.csharp }}<span class="p">)</span><span class="p">
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">{{ .FunctionName.csharp }} </span><span class="p">
+{</span><span class="k">
+    public static </span>Task<{{ template "linkify_param" .FunctionResult.csharp }}> <span class="p">InvokeAsync(</span>{{ htmlSafe .FunctionArgs.csharp }}<span class="p">)</span>{{- if .HasOutputVersion.csharp }}<span class="k">
+    public static </span>Output<{{ template "linkify_param" .FunctionResult.csharp }}> <span class="p">Invoke(</span>{{ htmlSafe .FunctionArgsOutputVersion.csharp }}<span class="p">)</span>{{- end }}<span class="p">
 }</span></code></pre></div>
 {{ print "{{% /choosable %}}" }}
 

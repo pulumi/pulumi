@@ -9,15 +9,14 @@ namespace Pulumi.Automation.Serialization.Yaml
 {
     internal class ProjectRuntimeYamlConverter : IYamlTypeConverter
     {
-        private static readonly Type Type = typeof(ProjectRuntime);
-        private static readonly Type OptionsType = typeof(ProjectRuntimeOptions);
+        private static readonly Type _type = typeof(ProjectRuntime);
+        private static readonly Type _optionsType = typeof(ProjectRuntimeOptions);
 
         private readonly IYamlTypeConverter _optionsConverter = new ProjectRuntimeOptionsYamlConverter();
 
-        public bool Accepts(Type type)
-            => type == Type;
+        public bool Accepts(Type type) => type == _type;
 
-        public object? ReadYaml(IParser parser, Type type)
+        public object ReadYaml(IParser parser, Type type)
         {
             if (parser.TryConsume<Scalar>(out var nameValueScalar))
             {
@@ -51,7 +50,7 @@ namespace Pulumi.Automation.Serialization.Yaml
             if (!parser.Accept<MappingStart>(out _))
                 throw new YamlException($"Unable to deserialize [{type.FullName}]. Runtime options property should be an object.");
 
-            var runtimeOptionsObj = this._optionsConverter.ReadYaml(parser, OptionsType);
+            var runtimeOptionsObj = this._optionsConverter.ReadYaml(parser, _optionsType);
             if (!(runtimeOptionsObj is ProjectRuntimeOptions runtimeOptions))
                 throw new YamlException("There was an issue deserializing the runtime options object.");
 
@@ -87,7 +86,7 @@ namespace Pulumi.Automation.Serialization.Yaml
                 emitter.Emit(new Scalar(runtime.Name.ToString().ToLower()));
 
                 emitter.Emit(new Scalar("options"));
-                this._optionsConverter.WriteYaml(emitter, runtime.Options, OptionsType);
+                this._optionsConverter.WriteYaml(emitter, runtime.Options, _optionsType);
 
                 emitter.Emit(new MappingEnd());
             }

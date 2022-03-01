@@ -51,6 +51,11 @@ func (ss StringSet) Has(s string) bool {
 	return ok
 }
 
+// StringSet.Except returns the string set setminus s.
+func (ss StringSet) Except(s string) StringSet {
+	return ss.Subtract(NewStringSet(s))
+}
+
 func (ss StringSet) SortedValues() []string {
 	values := make([]string, 0, len(ss))
 	for v := range ss {
@@ -60,10 +65,36 @@ func (ss StringSet) SortedValues() []string {
 	return values
 }
 
+// Contains returns true if all elements of the subset are also present in the current set. It also returns true
+// if subset is empty.
+func (ss StringSet) Contains(subset StringSet) bool {
+	for v := range subset {
+		if !ss.Has(v) {
+			return false
+		}
+	}
+	return true
+}
+
+// Subtract returns a new string set with all elements of the current set that are not present in the other set.
+func (ss StringSet) Subtract(other StringSet) StringSet {
+	result := NewStringSet()
+	for v := range ss {
+		if !other.Has(v) {
+			result.Add(v)
+		}
+	}
+	return result
+}
+
 type Set map[interface{}]struct{}
 
 func (s Set) Add(v interface{}) {
 	s[v] = struct{}{}
+}
+
+func (s Set) Delete(v interface{}) {
+	delete(s, v)
 }
 
 func (s Set) Has(v interface{}) bool {

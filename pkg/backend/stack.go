@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -40,7 +38,7 @@ type Stack interface {
 	Backend() Backend                                       // the backend this stack belongs to.
 
 	// Preview changes to this stack.
-	Preview(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Preview(ctx context.Context, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	// Update this stack.
 	Update(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Import resources into this stack.
@@ -50,7 +48,7 @@ type Stack interface {
 	// Destroy this stack's resources.
 	Destroy(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Watch this stack.
-	Watch(ctx context.Context, op UpdateOperation) result.Result
+	Watch(ctx context.Context, op UpdateOperation, paths []string) result.Result
 
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
@@ -75,7 +73,11 @@ func RenameStack(ctx context.Context, s Stack, newName tokens.QName) (StackRefer
 }
 
 // PreviewStack previews changes to this stack.
-func PreviewStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
+func PreviewStack(
+	ctx context.Context,
+	s Stack,
+	op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+
 	return s.Backend().Preview(ctx, s, op)
 }
 
@@ -103,8 +105,8 @@ func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.Reso
 
 // WatchStack watches the projects working directory for changes and automatically updates the
 // active stack.
-func WatchStack(ctx context.Context, s Stack, op UpdateOperation) result.Result {
-	return s.Backend().Watch(ctx, s, op)
+func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string) result.Result {
+	return s.Backend().Watch(ctx, s, op, paths)
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
@@ -119,7 +121,10 @@ func GetStackLogs(ctx context.Context, s Stack, cfg StackConfiguration,
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
-func ExportStackDeployment(ctx context.Context, s Stack) (*apitype.UntypedDeployment, error) {
+func ExportStackDeployment(
+	ctx context.Context,
+	s Stack) (*apitype.UntypedDeployment, error) {
+
 	return s.Backend().ExportDeployment(ctx, s)
 }
 
@@ -178,7 +183,7 @@ func GetEnvironmentTagsForCurrentStack() (map[apitype.StackTagName]string, error
 	if projPath != "" {
 		proj, err := workspace.LoadProject(projPath)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error loading project %q", projPath)
+			return nil, fmt.Errorf("error loading project %q: %w", projPath, err)
 		}
 		tags[apitype.ProjectNameTag] = proj.Name.String()
 		tags[apitype.ProjectRuntimeTag] = proj.Runtime.Name()
@@ -219,7 +224,7 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 		tags[apitype.VCSRepositoryNameTag] = vcsInfo.Repo
 		tags[apitype.VCSRepositoryKindTag] = vcsInfo.Kind
 	} else {
-		return errors.Wrapf(err, "detecting VCS info for stack tags for remote %v", remoteURL)
+		return fmt.Errorf("detecting VCS info for stack tags for remote %v: %w", remoteURL, err)
 	}
 	// Set the old stack tags keys as GitHub so that the UI will continue to work,
 	// regardless of whether the remote URL is a GitHub URL or not.

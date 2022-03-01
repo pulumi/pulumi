@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package testing
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -31,6 +32,7 @@ import (
 )
 
 const (
+	//nolint: gosec
 	pulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 )
 
@@ -48,6 +50,13 @@ type Environment struct {
 	Backend string
 	// Environment variables to add to the environment for commands (`key=value`).
 	Env []string
+	// Passphrase for config secrets, if any
+	Passphrase string
+	// Set to true to turn off setting PULUMI_CONFIG_PASSPHRASE.
+	NoPassphrase bool
+
+	// Content to pass on stdin, if any
+	Stdin io.Reader
 }
 
 // WriteYarnRCForTest writes a .yarnrc file which sets global configuration for every yarn inovcation. We use this
@@ -114,7 +123,14 @@ func (e *Environment) ImportDirectory(path string) {
 func (e *Environment) DeleteEnvironment() {
 	e.Helper()
 	err := os.RemoveAll(e.RootPath)
-	assert.NoError(e, err, "cleaning up the test directory")
+	assert.NoErrorf(e, err, "cleaning up test directory %q", e.RootPath)
+}
+
+// DeleteEnvironment deletes the environment's RootPath, and everything
+// underneath it. It tolerates failing to delete the environment.
+func (e *Environment) DeleteEnvironmentFallible() error {
+	e.Helper()
+	return os.RemoveAll(e.RootPath)
 }
 
 // DeleteIfNotFailed deletes the environment's RootPath if the test hasn't failed. Otherwise
@@ -160,7 +176,7 @@ func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string,
 // LocalURL returns a URL that uses the "fire and forget", storing its data inside the test folder (so multiple tests)
 // may reuse stack names.
 func (e *Environment) LocalURL() string {
-	return "file://" + e.RootPath
+	return "file://" + filepath.ToSlash(e.RootPath)
 }
 
 // GetCommandResults runs the given command and args in the Environments CWD, returning
@@ -173,19 +189,33 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 	var outBuffer bytes.Buffer
 	var errBuffer bytes.Buffer
 
+	passphrase := "correct horse battery staple"
+	if e.Passphrase != "" {
+		passphrase = e.Passphrase
+	}
+
 	// nolint: gas
 	cmd := exec.Command(command, args...)
 	cmd.Dir = e.CWD
+	if e.Stdin != nil {
+		cmd.Stdin = e.Stdin
+	}
 	cmd.Stdout = &outBuffer
 	cmd.Stderr = &errBuffer
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, e.Env...)
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
 	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
-	cmd.Env = append(cmd.Env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
+	if !e.NoPassphrase {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_CONFIG_PASSPHRASE=%s", passphrase))
+	}
 	if e.Backend != "" {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_BACKEND_URL=%s", e.Backend))
 	}
+	// According to https://pkg.go.dev/os/exec#Cmd.Env:
+	//     If Env contains duplicate environment keys, only the last
+	//     value in the slice for each duplicate key is used.
+	// By putting `append e.Env` last, we allow our users to override variables we include.
+	cmd.Env = append(cmd.Env, e.Env...)
 
 	runErr := cmd.Run()
 	return outBuffer.String(), errBuffer.String(), runErr

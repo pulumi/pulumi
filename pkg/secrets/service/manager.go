@@ -19,9 +19,8 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -32,6 +31,8 @@ import (
 )
 
 const Type = "service"
+
+var _ config.BulkDecrypter = (*serviceCrypter)(nil)
 
 // serviceCrypter is an encrypter/decrypter that uses the Pulumi servce to encrypt/decrypt a stack's secrets.
 type serviceCrypter struct {
@@ -56,11 +57,35 @@ func (c *serviceCrypter) DecryptValue(cipherstring string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	plaintext, err := c.client.DecryptValue(context.Background(), c.stack, ciphertext)
 	if err != nil {
 		return "", err
 	}
 	return string(plaintext), nil
+}
+
+func (c *serviceCrypter) BulkDecrypt(secrets []string) (map[string]string, error) {
+	var secretsToDecrypt [][]byte
+	for _, val := range secrets {
+		ciphertext, err := base64.StdEncoding.DecodeString(val)
+		if err != nil {
+			return nil, err
+		}
+		secretsToDecrypt = append(secretsToDecrypt, ciphertext)
+	}
+
+	decryptedList, err := c.client.BulkDecryptValue(context.Background(), c.stack, secretsToDecrypt)
+	if err != nil {
+		return nil, err
+	}
+
+	decryptedSecrets := make(map[string]string)
+	for name, val := range decryptedList {
+		decryptedSecrets[name] = string(val)
+	}
+
+	return decryptedSecrets, nil
 }
 
 type serviceSecretsManagerState struct {
@@ -112,17 +137,17 @@ func NewServiceSecretsManager(c *client.Client, id client.StackIdentifier) (secr
 func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s serviceSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling state")
+		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
 	account, err := workspace.GetAccount(s.URL)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting access token")
+		return nil, fmt.Errorf("getting access token: %w", err)
 	}
 	token := account.AccessToken
 
 	if token == "" {
-		return nil, errors.Errorf("could not find access token for %s, have you logged in?", s.URL)
+		return nil, fmt.Errorf("could not find access token for %s, have you logged in?", s.URL)
 	}
 
 	id := client.StackIdentifier{

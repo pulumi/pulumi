@@ -1,3 +1,4 @@
+//go:build !darwin || !arm64
 // +build !darwin !arm64
 
 // Copyright 2016-2019, Pulumi Corporation.
@@ -20,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/rjeczalik/notify"
@@ -34,7 +36,8 @@ import (
 
 // Watch watches the project's working directory for changes and automatically updates the active
 // stack.
-func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, apply Applier) result.Result {
+func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
+	apply Applier, paths []string) result.Result {
 
 	opts := ApplierOptions{
 		DryRun:   false,
@@ -57,7 +60,8 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, appl
 				if _, shownAlready := shown[logEntry]; !shownAlready {
 					eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
-					display.PrintfWithWatchPrefix(eventTime, logEntry.ID, "%s\n", logEntry.Message)
+					message := strings.TrimRight(logEntry.Message, "\n")
+					display.PrintfWithWatchPrefix(eventTime, logEntry.ID, "%s\n", message)
 
 					shown[logEntry] = true
 				}
@@ -67,9 +71,21 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, appl
 	}()
 
 	events := make(chan notify.EventInfo, 1)
-	if err := notify.Watch(path.Join(op.Root, "..."), events, notify.All); err != nil {
-		return result.FromError(err)
+
+	for _, p := range paths {
+		// Provided paths can be both relative and absolute.
+		watchPath := ""
+		if path.IsAbs(p) {
+			watchPath = path.Join(p, "...")
+		} else {
+			watchPath = path.Join(op.Root, p, "...")
+		}
+
+		if err := notify.Watch(watchPath, events, notify.All); err != nil {
+			return result.FromError(err)
+		}
 	}
+
 	defer notify.Stop(events)
 
 	fmt.Printf(op.Opts.Display.Color.Colorize(
@@ -80,7 +96,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, appl
 			op.Opts.Display.Color.Colorize(colors.SpecImportant+"Updating..."+colors.Reset+"\n"))
 
 		// Perform the update operation
-		_, res := apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
+		_, _, res := apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
 		if res != nil {
 			logging.V(5).Infof("watch update failed: %v", res.Error())
 			if res.Error() == context.Canceled {

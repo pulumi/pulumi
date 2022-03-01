@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.ExceptionServices;
@@ -52,6 +51,11 @@ namespace Pulumi.Automation
         /// The Workspace the Stack was created from.
         /// </summary>
         public Workspace Workspace { get; }
+
+        /// <summary>
+        /// A module for editing the Stack's state.
+        /// </summary>
+        public WorkspaceStackState State { get; }
 
         /// <summary>
         /// Creates a new stack using the given workspace, and stack name.
@@ -116,31 +120,25 @@ namespace Pulumi.Automation
         {
             this.Name = name;
             this.Workspace = workspace;
+            this.State = new WorkspaceStackState(this);
 
-            switch (mode)
+            this._readyTask = mode switch
             {
-                case WorkspaceStackInitMode.Create:
-                    this._readyTask = workspace.CreateStackAsync(name, cancellationToken);
-                    break;
-                case WorkspaceStackInitMode.Select:
-                    this._readyTask = workspace.SelectStackAsync(name, cancellationToken);
-                    break;
-                case WorkspaceStackInitMode.CreateOrSelect:
-                    this._readyTask = Task.Run(async () =>
+                WorkspaceStackInitMode.Create => workspace.CreateStackAsync(name, cancellationToken),
+                WorkspaceStackInitMode.Select => workspace.SelectStackAsync(name, cancellationToken),
+                WorkspaceStackInitMode.CreateOrSelect => Task.Run(async () =>
+                {
+                    try
                     {
-                        try
-                        {
-                            await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
-                        }
-                        catch (StackAlreadyExistsException)
-                        {
-                            await workspace.SelectStackAsync(name, cancellationToken).ConfigureAwait(false);
-                        }
-                    });
-                    break;
-                default:
-                    throw new InvalidOperationException($"Unexpected Stack creation mode: {mode}");
-            }
+                        await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (StackAlreadyExistsException)
+                    {
+                        await workspace.SelectStackAsync(name, cancellationToken).ConfigureAwait(false);
+                    }
+                }),
+                _ => throw new InvalidOperationException($"Unexpected Stack creation mode: {mode}")
+            };
         }
 
         /// <summary>
@@ -211,6 +209,7 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
+            var logger = this.Workspace.Logger;
             var args = new List<string>()
             {
                 "up",
@@ -222,6 +221,9 @@ namespace Pulumi.Automation
             {
                 if (options.Program != null)
                     program = options.Program;
+
+                if (options.Logger != null)
+                    logger = options.Logger;
 
                 if (!string.IsNullOrWhiteSpace(options.Message))
                 {
@@ -261,6 +263,12 @@ namespace Pulumi.Automation
                     args.Add("--parallel");
                     args.Add(options.Parallel.Value.ToString());
                 }
+
+                if (!string.IsNullOrWhiteSpace(options.Color))
+                {
+                    args.Add("--color");
+                    args.Add(options.Color);
+                }
             }
 
             InlineLanguageHost? inlineHost = null;
@@ -270,7 +278,7 @@ namespace Pulumi.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    inlineHost = new InlineLanguageHost(program, logger, cancellationToken);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
@@ -279,9 +287,25 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var upResult = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
-                if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
-                    exceptionInfo.Throw();
+                CommandResult upResult;
+                try
+                {
+                    upResult = await this.RunCommandAsync(
+                        args,
+                        options?.OnStandardOutput,
+                        options?.OnStandardError,
+                        options?.OnEvent,
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
+                        exceptionInfo.Throw();
+
+                    // this won't be hit if we have an inline
+                    // program exception
+                    throw;
+                }
 
                 var output = await this.GetOutputsAsync(cancellationToken).ConfigureAwait(false);
                 var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
@@ -313,12 +337,16 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
+            var logger = this.Workspace.Logger;
             var args = new List<string>() { "preview" };
 
             if (options != null)
             {
                 if (options.Program != null)
                     program = options.Program;
+
+                if (options.Logger != null)
+                    logger = options.Logger;
 
                 if (!string.IsNullOrWhiteSpace(options.Message))
                 {
@@ -358,6 +386,12 @@ namespace Pulumi.Automation
                     args.Add("--parallel");
                     args.Add(options.Parallel.Value.ToString());
                 }
+
+                if (!string.IsNullOrWhiteSpace(options.Color))
+                {
+                    args.Add("--color");
+                    args.Add(options.Color);
+                }
             }
 
             InlineLanguageHost? inlineHost = null;
@@ -381,7 +415,7 @@ namespace Pulumi.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    inlineHost = new InlineLanguageHost(program, logger, cancellationToken);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
@@ -390,9 +424,25 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, OnPreviewEvent, cancellationToken).ConfigureAwait(false);
-                if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
-                    exceptionInfo.Throw();
+                CommandResult result;
+                try
+                {
+                    result = await this.RunCommandAsync(
+                        args,
+                        options?.OnStandardOutput,
+                        options?.OnStandardError,
+                        OnPreviewEvent,
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
+                        exceptionInfo.Throw();
+
+                    // this won't be hit if we have an inline
+                    // program exception
+                    throw;
+                }
 
                 if (summaryEvent is null)
                 {
@@ -423,7 +473,7 @@ namespace Pulumi.Automation
             RefreshOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "refresh",
                 "--yes",
@@ -455,6 +505,12 @@ namespace Pulumi.Automation
                     args.Add("--parallel");
                     args.Add(options.Parallel.Value.ToString());
                 }
+
+                if (!string.IsNullOrWhiteSpace(options.Color))
+                {
+                    args.Add("--color");
+                    args.Add(options.Color);
+                }
             }
 
             var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
@@ -478,7 +534,7 @@ namespace Pulumi.Automation
             DestroyOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "destroy",
                 "--yes",
@@ -510,6 +566,12 @@ namespace Pulumi.Automation
                     args.Add("--parallel");
                     args.Add(options.Parallel.Value.ToString());
                 }
+
+                if (!string.IsNullOrWhiteSpace(options.Color))
+                {
+                    args.Add("--color");
+                    args.Add(options.Color);
+                }
             }
 
             var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
@@ -539,7 +601,7 @@ namespace Pulumi.Automation
             HistoryOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "stack",
                 "history",
@@ -610,21 +672,17 @@ namespace Pulumi.Automation
         /// supported for local backends.
         /// </summary>
         public async Task CancelAsync(CancellationToken cancellationToken = default)
-        {
-            await this.Workspace.RunCommandAsync(new[] { "cancel", "--stack", this.Name, "--yes" }, cancellationToken)
-                .ConfigureAwait(false);
-        }
+            => await this.Workspace.RunCommandAsync(new[] { "cancel", "--stack", this.Name, "--yes" }, cancellationToken).ConfigureAwait(false);
 
-        private async Task<CommandResult> RunCommandAsync(
-            IEnumerable<string> args,
+        internal async Task<CommandResult> RunCommandAsync(
+            IList<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
             Action<EngineEvent>? onEngineEvent,
             CancellationToken cancellationToken)
         {
-            var argsList = args.ToList();
-            argsList.AddRange(new List<string>() { "--stack", this.Name });
-            return await this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, onEngineEvent, cancellationToken);
+            args = args.Concat(new[] { "--stack", this.Name }).ToList();
+            return await this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, onEngineEvent, cancellationToken).ConfigureAwait(false);
         }
 
         public void Dispose()
@@ -652,6 +710,7 @@ namespace Pulumi.Automation
 
             public InlineLanguageHost(
                 PulumiFn program,
+                ILogger? logger,
                 CancellationToken cancellationToken)
             {
                 this._cancelToken = cancellationToken;
@@ -680,7 +739,7 @@ namespace Pulumi.Automation
                             .ConfigureServices(services =>
                             {
                                 // to be injected into LanguageRuntimeService
-                                var callerContext = new LanguageRuntimeService.CallerContext(program, cancellationToken);
+                                var callerContext = new LanguageRuntimeService.CallerContext(program, logger, cancellationToken);
                                 services.AddSingleton(callerContext);
 
                                 services.AddGrpc(grpcOptions =>

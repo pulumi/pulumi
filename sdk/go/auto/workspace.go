@@ -17,8 +17,10 @@ package auto
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -84,7 +86,7 @@ type Workspace interface {
 	// SelectStack selects and sets an existing stack matching the stack name, failing if none exists.
 	SelectStack(context.Context, string) error
 	// RemoveStack deletes the stack and all associated configuration and history.
-	RemoveStack(context.Context, string) error
+	RemoveStack(context.Context, string, ...optremove.Option) error
 	// ListStacks returns all Stacks created under the current Project.
 	// This queries underlying backend and may return stacks not present in the Workspace.
 	ListStacks(context.Context) ([]StackSummary, error)

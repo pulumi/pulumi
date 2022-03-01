@@ -1,0 +1,11 @@
+{
+  "emittedFiles": [
+    "_index.md",
+    "cat/_index.md",
+    "dog/_index.md",
+    "god/_index.md",
+    "norecursive/_index.md",
+    "provider/_index.md",
+    "toystore/_index.md"
+  ]
+}

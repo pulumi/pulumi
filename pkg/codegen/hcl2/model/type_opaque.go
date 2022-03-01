@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -55,7 +55,7 @@ func MustNewOpaqueType(name string, annotations ...interface{}) *OpaqueType {
 // NewOpaqueType creates a new opaque type with the given name.
 func NewOpaqueType(name string, annotations ...interface{}) (*OpaqueType, error) {
 	if _, ok := opaqueTypes[name]; ok {
-		return nil, errors.Errorf("opaque type %s is already defined", name)
+		return nil, fmt.Errorf("opaque type %s is already defined", name)
 	}
 
 	t := &OpaqueType{Name: name, Annotations: annotations}
@@ -95,51 +95,62 @@ func (t *OpaqueType) AssignableFrom(src Type) bool {
 	})
 }
 
-func (t *OpaqueType) conversionFromImpl(src Type, unifying, checkUnsafe bool, seen map[Type]struct{}) ConversionKind {
-	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
+func (t *OpaqueType) conversionFromImpl(
+	src Type, unifying, checkUnsafe bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		if constType, ok := src.(*ConstType); ok {
-			return t.ConversionFrom(constType.Type)
+			return t.conversionFrom(constType.Type, unifying, seen)
 		}
 		switch {
 		case t == NumberType:
 			// src == NumberType is handled by t == src above
 			contract.Assert(src != NumberType)
 
-			cki := IntType.conversionFromImpl(src, unifying, false, seen)
-			if cki == SafeConversion {
-				return SafeConversion
+			cki, _ := IntType.conversionFromImpl(src, unifying, false, seen)
+			switch cki {
+			case SafeConversion:
+				return SafeConversion, nil
+			case UnsafeConversion:
+				return UnsafeConversion, nil
+			default:
+				if checkUnsafe {
+					if kind, _ := StringType.conversionFromImpl(src, unifying, false, seen); kind.Exists() {
+						return UnsafeConversion, nil
+					}
+				}
 			}
-			if cki == UnsafeConversion || checkUnsafe && StringType.conversionFromImpl(src, unifying, false, seen).Exists() {
-				return UnsafeConversion
-			}
-			return NoConversion
+			return NoConversion, nil
 		case t == IntType:
-			if checkUnsafe && NumberType.conversionFromImpl(src, unifying, true, seen).Exists() {
-				return UnsafeConversion
+			if checkUnsafe {
+				if kind, _ := NumberType.conversionFromImpl(src, unifying, true, seen); kind.Exists() {
+					return UnsafeConversion, nil
+				}
 			}
-			return NoConversion
+			return NoConversion, nil
 		case t == BoolType:
-			if checkUnsafe && StringType.conversionFromImpl(src, unifying, false, seen).Exists() {
-				return UnsafeConversion
+			if checkUnsafe {
+				if kind, _ := StringType.conversionFromImpl(src, unifying, false, seen); kind.Exists() {
+					return UnsafeConversion, nil
+				}
 			}
-			return NoConversion
+			return NoConversion, nil
 		case t == StringType:
-			ckb := BoolType.conversionFromImpl(src, unifying, false, seen)
-			ckn := NumberType.conversionFromImpl(src, unifying, false, seen)
+			ckb, _ := BoolType.conversionFromImpl(src, unifying, false, seen)
+			ckn, _ := NumberType.conversionFromImpl(src, unifying, false, seen)
 			if ckb == SafeConversion || ckn == SafeConversion {
-				return SafeConversion
+				return SafeConversion, nil
 			}
 			if ckb == UnsafeConversion || ckn == UnsafeConversion {
-				return UnsafeConversion
+				return UnsafeConversion, nil
 			}
-			return NoConversion
+			return NoConversion, nil
 		default:
-			return NoConversion
+			return NoConversion, nil
 		}
 	})
 }
 
-func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
+func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
 	return t.conversionFromImpl(src, unifying, true, seen)
 }
 
@@ -155,7 +166,8 @@ func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen map[Type]struc
 // - The bool type is unsafely convertible from string
 //
 func (t *OpaqueType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false, nil)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
 func (t *OpaqueType) String() string {
@@ -196,10 +208,12 @@ func (t *OpaqueType) unify(other Type) (Type, ConversionKind) {
 
 		for _, goal := range opaquePrecedence {
 			if t == goal {
-				return goal, goal.conversionFrom(other, true, nil)
+				kind, _ := goal.conversionFrom(other, true, nil)
+				return goal, kind
 			}
 			if other == goal {
-				return goal, goal.conversionFrom(t, true, nil)
+				kind, _ := goal.conversionFrom(t, true, nil)
+				return goal, kind
 			}
 		}
 

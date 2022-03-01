@@ -15,12 +15,12 @@
 package dotnet
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 )
 
 // isReservedWord returns true if s is a C# reserved word as per
@@ -96,7 +96,7 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 
 	// If the name is one illegal character, return an error.
 	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
-		return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
+		return "", fmt.Errorf("enum name %s is not a valid identifier", safeName)
 	}
 
 	// Capitalize and make a valid identifier.
@@ -117,4 +117,30 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 	}
 
 	return safeName, nil
+}
+
+// Provides code for a method which will be placed in the program preamble if deemed
+// necessary. Because many Terraform functions are complex, it is much prettier to
+// encapsulate them as their own function in the preamble.
+func getHelperMethodIfNeeded(functionName string) (string, bool) {
+	switch functionName {
+	case "filebase64":
+		return `private static string ReadFileBase64(string path) {
+		return Convert.ToBase64String(Encoding.UTF8.GetBytes(File.ReadAllText(path)))
+	}`, true
+	case "filebase64sha256":
+		return `private static string ComputeFileBase64Sha256(string path) {
+		var fileData = Encoding.UTF8.GetBytes(File.ReadAllText(path));
+		var hashData = SHA256.Create().ComputeHash(fileData);
+		return Convert.ToBase64String(hashData);
+	}`, true
+	case "sha1":
+		return `private static string ComputeSHA1(string input) {
+		return BitConverter.ToString(
+			SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(input))
+		).Replace("-","").ToLowerInvariant());
+	}`, true
+	default:
+		return "", false
+	}
 }

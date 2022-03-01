@@ -21,7 +21,7 @@ import json
 import os
 
 # default to an empty map for config.
-CONFIG: Dict[str, Any] = dict()
+CONFIG: Dict[str, Any] = {}
 
 # default to an empty set for config secret keys.
 _SECRET_KEYS: Set[str] = set()
@@ -34,7 +34,9 @@ def set_config(k: str, v: Any):
     CONFIG[k] = v
 
 
-def set_all_config(config: Dict[str, str], secret_keys: Optional[List[str]] = None) -> None:
+def set_all_config(
+    config: Dict[str, str], secret_keys: Optional[List[str]] = None
+) -> None:
     """
     Overwrites the config map and optional list of secret keys.
     """
@@ -53,10 +55,10 @@ def get_config_env() -> Dict[str, Any]:
     """
     Returns the environment map that will be used for config checking when variables aren't set.
     """
-    if 'PULUMI_CONFIG' in os.environ:
-        env_config = os.environ['PULUMI_CONFIG']
+    if "PULUMI_CONFIG" in os.environ:
+        env_config = os.environ["PULUMI_CONFIG"]
         return json.loads(env_config)
-    return dict()
+    return {}
 
 
 def get_config_env_key(k: str) -> str:
@@ -64,23 +66,23 @@ def get_config_env_key(k: str) -> str:
     Returns a scrubbed environment variable key, PULUMI_CONFIG_<k>, that can be used for
     setting explicit variables.  This is unlike PULUMI_CONFIG which is just a JSON-serialized bag.
     """
-    env_key = ''
+    env_key = ""
     for c in k:
-        if c == '_' or 'A' <= c <= 'Z' or '0' <= c <= '9':
+        if c == "_" or "A" <= c <= "Z" or "0" <= c <= "9":
             env_key += c
-        elif 'a' <= c <= 'z':
+        elif "a" <= c <= "z":
             env_key += c.upper()
         else:
-            env_key += '_'
-    return 'PULUMI_CONFIG_%s' % env_key
+            env_key += "_"
+    return f"PULUMI_CONFIG_{env_key}"
 
 
 def get_config_secret_keys_env() -> List[str]:
     """
     Returns the list of config keys that contain secrets.
     """
-    if 'PULUMI_CONFIG_SECRET_KEYS' in os.environ:
-        keys = os.environ['PULUMI_CONFIG_SECRET_KEYS']
+    if "PULUMI_CONFIG_SECRET_KEYS" in os.environ:
+        keys = os.environ["PULUMI_CONFIG_SECRET_KEYS"]
         return json.loads(keys)
     return []
 

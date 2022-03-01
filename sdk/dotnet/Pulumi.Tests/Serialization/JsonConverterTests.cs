@@ -13,7 +13,7 @@ namespace Pulumi.Tests.Serialization
         {
             var element = JsonDocument.Parse(json).RootElement;
             var serialized = await SerializeToValueAsync(element);
-            var converted = Converter.ConvertValue<JsonElement>("", serialized);
+            var converted = Converter.ConvertValue<JsonElement>(NoWarn, "", serialized);
 
             Assert.Equal(expected, converted.Value.ToString());
         }

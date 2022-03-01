@@ -227,10 +227,10 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, "--diff")
 	}
 	for _, rURN := range preOpts.Replace {
-		sharedArgs = append(sharedArgs, "--replace %s", rURN)
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--replace=%s", rURN))
 	}
 	for _, tURN := range preOpts.Target {
-		sharedArgs = append(sharedArgs, "--target %s", tURN)
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--target=%s", tURN))
 	}
 	if preOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
@@ -240,6 +240,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	}
 	if preOpts.UserAgent != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", preOpts.UserAgent))
+	}
+	if preOpts.Color != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%q", preOpts.Color))
 	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
@@ -322,10 +325,10 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		sharedArgs = append(sharedArgs, "--diff")
 	}
 	for _, rURN := range upOpts.Replace {
-		sharedArgs = append(sharedArgs, "--replace %s", rURN)
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--replace=%s", rURN))
 	}
 	for _, tURN := range upOpts.Target {
-		sharedArgs = append(sharedArgs, "--target %s", tURN)
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--target=%s", tURN))
 	}
 	if upOpts.TargetDependents {
 		sharedArgs = append(sharedArgs, "--target-dependents")
@@ -335,6 +338,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	if upOpts.UserAgent != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", upOpts.UserAgent))
+	}
+	if upOpts.Color != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%q", upOpts.Color))
 	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
@@ -409,13 +415,16 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		args = append(args, "--expect-no-changes")
 	}
 	for _, tURN := range refreshOpts.Target {
-		args = append(args, "--target %s", tURN)
+		args = append(args, fmt.Sprintf("--target=%s", tURN))
 	}
 	if refreshOpts.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", refreshOpts.Parallel))
 	}
 	if refreshOpts.UserAgent != "" {
 		args = append(args, fmt.Sprintf("--exec-agent=%s", refreshOpts.UserAgent))
+	}
+	if refreshOpts.Color != "" {
+		args = append(args, fmt.Sprintf("--color=%q", refreshOpts.Color))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
@@ -474,7 +483,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
 	}
 	for _, tURN := range destroyOpts.Target {
-		args = append(args, "--target %s", tURN)
+		args = append(args, fmt.Sprintf("--target=%s", tURN))
 	}
 	if destroyOpts.TargetDependents {
 		args = append(args, "--target-dependents")
@@ -484,6 +493,9 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	if destroyOpts.UserAgent != "" {
 		args = append(args, fmt.Sprintf("--exec-agent=%s", destroyOpts.UserAgent))
+	}
+	if destroyOpts.Color != "" {
+		args = append(args, fmt.Sprintf("--color=%q", destroyOpts.Color))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
@@ -938,7 +950,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 		defer func() {
 			if r := recover(); r != nil {
 				if pErr, ok := r.(error); ok {
-					err = errors.Wrap(pErr, "go inline source runtime error, an unhandled error occurred:")
+					err = errors.Wrap(pErr, "go inline source runtime error, an unhandled error occurred")
 				} else {
 					err = errors.New("go inline source runtime error, an unhandled error occurred: unknown error")
 				}

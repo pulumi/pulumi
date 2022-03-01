@@ -1,0 +1,17 @@
+{
+  "emittedFiles": [
+    "README.md",
+    "index.ts",
+    "package.json",
+    "provider.ts",
+    "resource.ts",
+    "resourceInput.ts",
+    "scripts/install-pulumi-plugin.js",
+    "tsconfig.json",
+    "types/enums/index.ts",
+    "types/index.ts",
+    "types/input.ts",
+    "types/output.ts",
+    "utilities.ts"
+  ]
+}

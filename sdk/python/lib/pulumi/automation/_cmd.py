@@ -35,13 +35,16 @@ class CommandResult:
         return f"\n code: {self.code}\n stdout: {self.stdout}\n stderr: {self.stderr}"
 
 
-def _run_pulumi_cmd(args: List[str],
-                    cwd: str,
-                    additional_env: Mapping[str, str],
-                    on_output: Optional[OnOutput] = None) -> CommandResult:
+def _run_pulumi_cmd(
+    args: List[str],
+    cwd: str,
+    additional_env: Mapping[str, str],
+    on_output: Optional[OnOutput] = None,
+) -> CommandResult:
     # All commands should be run in non-interactive mode.
     # This causes commands to fail rather than prompting for input (and thus hanging indefinitely).
-    args.append("--non-interactive")
+    if "--non-interactive" not in args:
+        args.append("--non-interactive")
     env = {**os.environ, **additional_env}
     cmd = ["pulumi"]
     cmd.extend(args)
@@ -49,18 +52,16 @@ def _run_pulumi_cmd(args: List[str],
     stdout_chunks: List[str] = []
 
     with tempfile.TemporaryFile() as stderr_file:
-        with subprocess.Popen(cmd,
-                              stdout=subprocess.PIPE,
-                              stderr=stderr_file,
-                              cwd=cwd,
-                              env=env) as process:
+        with subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=stderr_file, cwd=cwd, env=env
+        ) as process:
             assert process.stdout is not None
             while True:
                 output = process.stdout.readline().decode(encoding="utf-8")
                 if output == "" and process.poll() is not None:
                     break
                 if output:
-                    text = output.strip()
+                    text = output.rstrip()
                     if on_output:
                         on_output(text)
                     stdout_chunks.append(text)
@@ -70,7 +71,9 @@ def _run_pulumi_cmd(args: List[str],
         stderr_file.seek(0)
         stderr_contents = stderr_file.read().decode("utf-8")
 
-    result = CommandResult(stderr=stderr_contents, stdout='\n'.join(stdout_chunks), code=code)
+    result = CommandResult(
+        stderr=stderr_contents, stdout="\n".join(stdout_chunks), code=code
+    )
     if code != 0:
         raise create_command_error(result)
 

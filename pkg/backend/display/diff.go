@@ -52,8 +52,8 @@ func ShowDiffEvents(op string, action apitype.UpdateKind,
 
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
-	if stdout == os.Stdout && stderr == os.Stderr && opts.IsInteractive {
-		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
+	if stdout == os.Stdout && stderr == os.Stderr {
+		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)
@@ -196,7 +196,7 @@ func renderSummaryEvent(action apitype.UpdateKind, event engine.SummaryEventPayl
 
 				// Print a summary of the changes of this kind
 				fprintIgnoreError(out, opts.Color.Colorize(
-					fmt.Sprintf("    %s%d %s%s%s\n", op.Prefix(), c, planTo, opDescription, colors.Reset)))
+					fmt.Sprintf("    %s%d %s%s%s\n", op.Prefix(true /*done*/), c, planTo, opDescription, colors.Reset)))
 			}
 		}
 	}

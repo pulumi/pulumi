@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,9 +32,9 @@ resource rta "aws:ec2:RouteTableAssociation" {
 	g, err := newGenerator(program)
 	assert.NoError(t, err)
 
-	var rta *hcl2.Resource
+	var rta *pcl.Resource
 	for _, n := range g.program.Nodes {
-		if r, ok := n.(*hcl2.Resource); ok && r.Name() == "rta" {
+		if r, ok := n.(*pcl.Resource); ok && r.Name() == "rta" {
 			rta = r
 			break
 		}

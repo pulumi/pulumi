@@ -15,7 +15,8 @@
 package engine
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
+
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -34,7 +35,7 @@ func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host,
 	conn, err := grpc.Dial(address, grpc.WithInsecure(),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()), rpcutil.GrpcChannelOptions())
 	if err != nil {
-		return nil, errors.Wrap(err, "could not connect to language host")
+		return nil, fmt.Errorf("could not connect to language host: %w", err)
 	}
 
 	client := pulumirpc.NewLanguageRuntimeClient(conn)

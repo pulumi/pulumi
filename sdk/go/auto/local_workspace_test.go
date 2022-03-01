@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -48,6 +50,8 @@ var pulumiOrg = getTestOrg()
 
 const pName = "testproj"
 const agent = "pulumi/pulumi/test"
+const pulumiTestOrg = "pulumi-test"
+const windows = "windows"
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	ctx := context.Background()
@@ -119,6 +123,86 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func TestRemoveWithForce(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
+		},
+	}
+
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	// Set environment variables scoped to the workspace.
+	envvars := map[string]string{
+		"foo":    "bar",
+		"barfoo": "foobar",
+	}
+	err = s.Workspace().SetEnvVars(envvars)
+	assert.Nil(t, err, "failed to set environment values")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+
+	s.Workspace().SetEnvVar("bar", "buzz")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment value after setting")
+
+	s.Workspace().UnsetEnvVar("bar")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+
+	// -- pulumi up --
+	res, err := s.Up(ctx)
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
+	assert.False(t, res.Outputs["exp_static"].Secret)
+	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
+	assert.False(t, res.Outputs["exp_cfg"].Secret)
+	assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
+	assert.True(t, res.Outputs["exp_secret"].Secret)
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	const permalinkSearchStr = "https://app.pulumi.com"
+	var startRegex = regexp.MustCompile(permalinkSearchStr)
+	permalink, err := GetPermalink(res.StdOut)
+	assert.Nil(t, err, "failed to get permalink.")
+	assert.True(t, startRegex.MatchString(permalink))
+
+	if err = s.Workspace().RemoveStack(ctx, stackName, optremove.Force()); err != nil {
+		t.Errorf("remove stack with force failed")
+		t.FailNow()
+	}
+
+	// to make sure stack was removed
+	err = s.Workspace().SelectStack(ctx, s.Name())
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "no stack named"))
 }
 
 func TestNewStackLocalSource(t *testing.T) {
@@ -344,6 +428,10 @@ func rangeIn(low, hi int) int {
 }
 
 func TestNewStackRemoteSource(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -436,6 +524,10 @@ func TestNewStackRemoteSource(t *testing.T) {
 }
 
 func TestUpsertStackRemoteSource(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -528,6 +620,10 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 }
 
 func TestNewStackRemoteSourceWithSetup(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -632,6 +728,10 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 }
 
 func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
+	}
+
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -1127,8 +1227,41 @@ func TestImportExportStack(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+func TestConfigFlagLike(t *testing.T) {
+	if getTestOrg() != pulumiTestOrg {
+		return
+	}
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	err = s.SetConfig(ctx, "key", ConfigValue{"-value", false})
+	if err != nil {
+		t.Error(err)
+	}
+	err = s.SetConfig(ctx, "secret-key", ConfigValue{"-value", true})
+	if err != nil {
+		t.Error(err)
+	}
+	cm, err := s.GetAllConfig(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equalf(t, "-value", cm["testproj:key"].Value, "wrong key")
+	assert.Equalf(t, "-value", cm["testproj:secret-key"].Value, "wrong secret-key")
+	assert.Equalf(t, false, cm["testproj:key"].Secret, "key should not be secret")
+	assert.Equalf(t, true, cm["testproj:secret-key"].Secret, "secret-key should be secret")
+}
+
 func TestNestedConfig(t *testing.T) {
-	if getTestOrg() != "pulumi-test" {
+	if getTestOrg() != pulumiTestOrg {
 		return
 	}
 	ctx := context.Background()
@@ -1142,11 +1275,26 @@ func TestNestedConfig(t *testing.T) {
 		t.FailNow()
 	}
 
+	// Also retrieve the stack settings directly from the yaml file and
+	// make sure the config agrees with the config loaded by Pulumi.
+	stackSettings, err := s.Workspace().StackSettings(ctx, stackName)
+	require.NoError(t, err)
+	confKeys := map[string]bool{}
+	for k := range stackSettings.Config {
+		confKeys[k.String()] = true
+	}
+
 	allConfig, err := s.GetAllConfig(ctx)
 	if err != nil {
 		t.Errorf("failed to get config, err: %v", err)
 		t.FailNow()
 	}
+	allConfKeys := map[string]bool{}
+	for k := range allConfig {
+		allConfKeys[k] = true
+	}
+	assert.Equal(t, confKeys, allConfKeys)
+	assert.NotEmpty(t, confKeys)
 
 	outerVal, ok := allConfig["nested_config:outer"]
 	assert.True(t, ok)
@@ -1309,9 +1457,15 @@ func TestSupportsStackOutputs(t *testing.T) {
 	// initialize
 	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
 		c := config.New(ctx, "")
+
+		nestedObj := pulumi.Map{
+			"not_a_secret": pulumi.String("foo"),
+			"is_a_secret":  pulumi.ToSecret("iamsecret"),
+		}
 		ctx.Export("exp_static", pulumi.String("foo"))
 		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
 		ctx.Export("exp_secret", c.GetSecret("buzz"))
+		ctx.Export("nested_obj", nestedObj)
 		return nil
 	})
 	if err != nil {
@@ -1332,13 +1486,18 @@ func TestSupportsStackOutputs(t *testing.T) {
 	}
 
 	assertOutputs := func(t *testing.T, outputs OutputMap) {
-		assert.Equal(t, 3, len(outputs), "expected three outputs")
+		assert.Equal(t, 4, len(outputs), "expected four outputs")
 		assert.Equal(t, "foo", outputs["exp_static"].Value)
 		assert.False(t, outputs["exp_static"].Secret)
 		assert.Equal(t, "abc", outputs["exp_cfg"].Value)
 		assert.False(t, outputs["exp_cfg"].Secret)
 		assert.Equal(t, "secret", outputs["exp_secret"].Value)
 		assert.True(t, outputs["exp_secret"].Secret)
+		assert.Equal(t, map[string]interface{}{
+			"is_a_secret":  "iamsecret",
+			"not_a_secret": "foo",
+		}, outputs["nested_obj"].Value)
+		assert.True(t, outputs["nested_obj"].Secret)
 	}
 
 	initialOutputs, err := s.Outputs(ctx)
@@ -1400,72 +1559,87 @@ func TestPulumiVersion(t *testing.T) {
 	assert.Regexp(t, `(\d+\.)(\d+\.)(\d+)(-.*)?`, version)
 }
 
+const PARSE = `Unable to parse`
+const MAJOR = `Major version mismatch.`
+const MINIMUM = `Minimum version requirement failed.`
+
 var minVersionTests = []struct {
 	name           string
-	currentVersion semver.Version
-	expectError    bool
+	currentVersion string
+	expectedError  string
 	optOut         bool
 }{
 	{
 		"higher_major",
-		semver.Version{Major: 100, Minor: 0, Patch: 0},
-		true,
+		"100.0.0",
+		MAJOR,
 		false,
 	},
 	{
 		"lower_major",
-		semver.Version{Major: 1, Minor: 0, Patch: 0},
-		true,
+		"1.0.0",
+		MINIMUM,
 		false,
 	},
 	{
 		"higher_minor",
-		semver.Version{Major: 2, Minor: 22, Patch: 0},
-		false,
+		"2.2.0",
+		MINIMUM,
 		false,
 	},
 	{
 		"lower_minor",
-		semver.Version{Major: 2, Minor: 1, Patch: 0},
-		true,
+		"2.1.0",
+		MINIMUM,
 		false,
 	},
 	{
 		"equal_minor_higher_patch",
-		semver.Version{Major: 2, Minor: 21, Patch: 2},
-		false,
+		"2.2.2",
+		MINIMUM,
 		false,
 	},
 	{
 		"equal_minor_equal_patch",
-		semver.Version{Major: 2, Minor: 21, Patch: 1},
-		false,
+		"2.2.1",
+		MINIMUM,
 		false,
 	},
 	{
 		"equal_minor_lower_patch",
-		semver.Version{Major: 2, Minor: 21, Patch: 0},
-		true,
+		"2.2.0",
+		MINIMUM,
 		false,
 	},
 	{
 		"equal_minor_equal_patch_prerelease",
 		// Note that prerelease < release so this case will error
-		semver.Version{Major: 2, Minor: 21, Patch: 1,
-			Pre: []semver.PRVersion{{VersionStr: "alpha"}, {VersionNum: 1234, IsNum: true}}},
-		true,
+		"2.21.1-alpha.1234",
+		MINIMUM,
 		false,
 	},
 	{
 		"opt_out_of_check_would_fail_otherwise",
-		semver.Version{Major: 2, Minor: 20, Patch: 0},
-		false,
+		"2.2.0",
+		"",
 		true,
 	},
 	{
 		"opt_out_of_check_would_succeed_otherwise",
-		semver.Version{Major: 2, Minor: 22, Patch: 0},
+		"2.2.0",
+		"",
+		true,
+	},
+	{
+		"unparsable_version",
+		"invalid",
+		PARSE,
 		false,
+	},
+	{
+		"opt_out_unparsable_version",
+		"invalid",
+		"",
 		true,
 	},
 }
@@ -1475,15 +1649,11 @@ func TestMinimumVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			minVersion := semver.Version{Major: 2, Minor: 21, Patch: 1}
 
-			err := validatePulumiVersion(minVersion, tt.currentVersion, tt.optOut)
+			_, err := parseAndValidatePulumiVersion(minVersion, tt.currentVersion, tt.optOut)
 
-			if tt.expectError {
+			if tt.expectedError != "" {
 				assert.Error(t, err)
-				if minVersion.Major < tt.currentVersion.Major {
-					assert.Regexp(t, `Major version mismatch.`, err.Error())
-				} else {
-					assert.Regexp(t, `Minimum version requirement failed.`, err.Error())
-				}
+				assert.Regexp(t, tt.expectedError, err.Error())
 			} else {
 				assert.Nil(t, err)
 			}
@@ -2203,7 +2373,7 @@ func BenchmarkBulkSetConfigSecret(b *testing.B) {
 }
 
 func getTestOrg() string {
-	testOrg := "pulumi-test"
+	testOrg := pulumiTestOrg
 	if _, set := os.LookupEnv("PULUMI_TEST_ORG"); set {
 		testOrg = os.Getenv("PULUMI_TEST_ORG")
 	}

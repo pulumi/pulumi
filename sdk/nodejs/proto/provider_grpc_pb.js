@@ -33,6 +33,28 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
   return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_CallRequest(arg) {
+  if (!(arg instanceof provider_pb.CallRequest)) {
+    throw new Error('Expected argument of type pulumirpc.CallRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CallRequest(buffer_arg) {
+  return provider_pb.CallRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_CallResponse(arg) {
+  if (!(arg instanceof provider_pb.CallResponse)) {
+    throw new Error('Expected argument of type pulumirpc.CallResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CallResponse(buffer_arg) {
+  return provider_pb.CallResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_CheckRequest(arg) {
   if (!(arg instanceof provider_pb.CheckRequest)) {
     throw new Error('Expected argument of type pulumirpc.CheckRequest');
@@ -329,6 +351,18 @@ streamInvoke: {
     requestDeserialize: deserialize_pulumirpc_InvokeRequest,
     responseSerialize: serialize_pulumirpc_InvokeResponse,
     responseDeserialize: deserialize_pulumirpc_InvokeResponse,
+  },
+  // Call dynamically executes a method in the provider associated with a component resource.
+call: {
+    path: '/pulumirpc.ResourceProvider/Call',
+    requestStream: false,
+    responseStream: false,
+    requestType: provider_pb.CallRequest,
+    responseType: provider_pb.CallResponse,
+    requestSerialize: serialize_pulumirpc_CallRequest,
+    requestDeserialize: deserialize_pulumirpc_CallRequest,
+    responseSerialize: serialize_pulumirpc_CallResponse,
+    responseDeserialize: deserialize_pulumirpc_CallResponse,
   },
   // Check validates that the given property bag is valid for a resource of the given type and returns the inputs
 // that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider

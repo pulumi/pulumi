@@ -1,6 +1,7 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
+using System.Collections.Generic;
 
 namespace Pulumi
 {
@@ -21,6 +22,13 @@ namespace Pulumi
         public RunException(string message, Exception? innerException)
             : base(message, innerException)
         {
+        }
+
+        public static RunException OutputsHaveIncorrectType(
+            IEnumerable<string> outputAttributeNames)
+        {
+            var message = $"Output(s) '{string.Join(", ", outputAttributeNames)}' have incorrect type. [Output] attributed properties must be instances of Output<T>.";
+            return new RunException(message);
         }
     }
 }

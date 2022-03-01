@@ -53,15 +53,36 @@ func RegisterOutputType(output Output) {
 	}
 }
 
-type waitGroups []*sync.WaitGroup
+var inputInterfaceTypeToConcreteType sync.Map // map[reflect.Type]reflect.Type
 
-func (wgs waitGroups) add() {
+// RegisterInputType registers an Input type with the Pulumi runtime. This allows the input type to be instantiated
+// for a given input interface.
+func RegisterInputType(interfaceType reflect.Type, input Input) {
+	if interfaceType.Kind() != reflect.Interface {
+		panic(fmt.Errorf("expected %v to be an interface", interfaceType))
+	}
+	if !interfaceType.Implements(inputType) {
+		panic(fmt.Errorf("expected %v to implement %v", interfaceType, inputType))
+	}
+	concreteType := reflect.TypeOf(input)
+	if !concreteType.Implements(interfaceType) {
+		panic(fmt.Errorf("expected %v to implement interface %v", concreteType, interfaceType))
+	}
+	existing, hasExisting := inputInterfaceTypeToConcreteType.LoadOrStore(interfaceType, concreteType)
+	if hasExisting {
+		panic(fmt.Errorf("an input type for %v is already registered: %v", interfaceType, existing))
+	}
+}
+
+type workGroups []*workGroup
+
+func (wgs workGroups) add() {
 	for _, g := range wgs {
 		g.Add(1)
 	}
 }
 
-func (wgs waitGroups) done() {
+func (wgs workGroups) done() {
 	for _, g := range wgs {
 		g.Done()
 	}
@@ -78,7 +99,7 @@ type OutputState struct {
 	mutex sync.Mutex
 	cond  *sync.Cond
 
-	join *sync.WaitGroup // the wait group associated with this output, if any.
+	join *workGroup // the wait group associated with this output, if any.
 
 	state uint32 // one of output{Pending,Resolved,Rejected}
 
@@ -238,7 +259,7 @@ func (o *OutputState) getState() *OutputState {
 	return o
 }
 
-func newOutputState(join *sync.WaitGroup, elementType reflect.Type, deps ...Resource) *OutputState {
+func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource) *OutputState {
 	if join != nil {
 		join.Add(1)
 	}
@@ -255,7 +276,7 @@ func newOutputState(join *sync.WaitGroup, elementType reflect.Type, deps ...Reso
 var outputStateType = reflect.TypeOf((*OutputState)(nil))
 var outputTypeToOutputState sync.Map // map[reflect.Type]int
 
-func newOutput(wg *sync.WaitGroup, typ reflect.Type, deps ...Resource) Output {
+func newOutput(wg *workGroup, typ reflect.Type, deps ...Resource) Output {
 	contract.Assert(typ.Implements(outputType))
 
 	// All values that implement Output must embed a field of type `*OutputState` by virtue of the unexported
@@ -283,7 +304,7 @@ func newOutput(wg *sync.WaitGroup, typ reflect.Type, deps ...Resource) Output {
 	return output.Interface().(Output)
 }
 
-func newAnyOutput(wg *sync.WaitGroup) (Output, func(interface{}), func(error)) {
+func newAnyOutput(wg *workGroup) (Output, func(interface{}), func(error)) {
 	out := newOutputState(wg, anyType)
 
 	resolve := func(v interface{}) {
@@ -507,18 +528,18 @@ func AllWithContext(ctx context.Context, inputs ...interface{}) ArrayOutput {
 	return ToOutputWithContext(ctx, inputs).(ArrayOutput)
 }
 
-func gatherDependencies(v interface{}) ([]Resource, waitGroups) {
+func gatherDependencies(v interface{}) ([]Resource, workGroups) {
 	if v == nil {
 		return nil, nil
 	}
 
 	depSet := make(map[Resource]struct{})
-	joinSet := make(map[*sync.WaitGroup]struct{})
+	joinSet := make(map[*workGroup]struct{})
 	gatherDependencySet(reflect.ValueOf(v), depSet, joinSet)
 
-	var joins waitGroups
+	var joins workGroups
 	if len(joinSet) > 0 {
-		joins = make([]*sync.WaitGroup, 0, len(joinSet))
+		joins = make([]*workGroup, 0, len(joinSet))
 		for j := range joinSet {
 			joins = append(joins, j)
 		}
@@ -537,7 +558,7 @@ func gatherDependencies(v interface{}) ([]Resource, waitGroups) {
 
 var resourceType = reflect.TypeOf((*Resource)(nil)).Elem()
 
-func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[*sync.WaitGroup]struct{}) {
+func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[*workGroup]struct{}) {
 	for {
 		// Check for an Output that we can pull dependencies off of.
 		if v.Type().Implements(outputType) && v.CanInterface() {
@@ -705,7 +726,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		}
 	}
 
-	contract.Assert(valueType.AssignableTo(resolved.Type()))
+	contract.Assertf(valueType.AssignableTo(resolved.Type()), "%s not assignable to %s", valueType.String(), resolved.Type().String())
 
 	// If the resolved type is an interface, make an appropriate destination from the value's type.
 	if resolved.Kind() == reflect.Interface {
@@ -796,7 +817,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	return known, secret, deps, err
 }
 
-func toOutputTWithContext(ctx context.Context, join *sync.WaitGroup, outputType reflect.Type, v interface{}, result reflect.Value, forceSecretVal *bool) Output {
+func toOutputTWithContext(ctx context.Context, join *workGroup, outputType reflect.Type, v interface{}, result reflect.Value, forceSecretVal *bool) Output {
 	deps, joins := gatherDependencies(v)
 
 	done := joins.done
@@ -807,7 +828,7 @@ func toOutputTWithContext(ctx context.Context, join *sync.WaitGroup, outputType 
 		case 1:
 			join, joins, done = joins[0], nil, func() {}
 		default:
-			join = &sync.WaitGroup{}
+			join = &workGroup{}
 			done = func() {
 				join.Wait()
 				joins.done()
@@ -849,7 +870,7 @@ func ToOutputWithContext(ctx context.Context, v interface{}) Output {
 	return toOutputWithContext(ctx, nil, v, nil)
 }
 
-func toOutputWithContext(ctx context.Context, join *sync.WaitGroup, v interface{}, forceSecretVal *bool) Output {
+func toOutputWithContext(ctx context.Context, join *workGroup, v interface{}, forceSecretVal *bool) Output {
 	resultType := reflect.TypeOf(v)
 	if input, ok := v.(Input); ok {
 		resultType = input.ElementType()
@@ -941,7 +962,7 @@ func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
 	return anyWithContext(ctx, nil, v)
 }
 
-func anyWithContext(ctx context.Context, join *sync.WaitGroup, v interface{}) AnyOutput {
+func anyWithContext(ctx context.Context, join *workGroup, v interface{}) AnyOutput {
 	var result interface{}
 	return toOutputTWithContext(ctx, join, anyOutputType, v, reflect.ValueOf(&result).Elem(), nil).(AnyOutput)
 }
@@ -1017,6 +1038,117 @@ func (ResourceOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Resource)(nil)).Elem()
 }
 
+func (o ResourceOutput) ToResourceOutput() ResourceOutput {
+	return o
+}
+
+func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) ResourceOutput {
+	return o
+}
+
+// An Input type carrying Resource values.
+//
+// Unfortunately `Resource` values do not implement `ResourceInput` in
+// the current version. Use `NewResourceInput` instead.
+type ResourceInput interface {
+	Input
+
+	ToResourceOutput() ResourceOutput
+	ToResourceOutputWithContext(context.Context) ResourceOutput
+}
+
+func NewResourceInput(resource Resource) ResourceInput {
+	return NewResourceOutput(resource)
+}
+
+func NewResourceOutput(resource Resource) ResourceOutput {
+	return Int(0).ToIntOutput().ApplyT(func(int) Resource { return resource }).(ResourceOutput)
+}
+
+var _ ResourceInput = &ResourceOutput{}
+
+var resourceArrayType = reflect.TypeOf((*[]Resource)(nil)).Elem()
+
+// ResourceArrayInput is an input type that accepts ResourceArray and ResourceArrayOutput values.
+type ResourceArrayInput interface {
+	Input
+
+	ToResourceArrayOutput() ResourceArrayOutput
+	ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput
+}
+
+// ResourceArray is an input type for []ResourceInput values.
+type ResourceArray []ResourceInput
+
+// ElementType returns the element type of this Input ([]Resource).
+func (ResourceArray) ElementType() reflect.Type {
+	return resourceArrayType
+}
+
+func (in ResourceArray) ToResourceArrayOutput() ResourceArrayOutput {
+	return ToOutput(in).(ResourceArrayOutput)
+}
+
+func (in ResourceArray) ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput {
+	return ToOutputWithContext(ctx, in).(ResourceArrayOutput)
+}
+
+// ResourceArrayOutput is an Output that returns []Resource values.
+type ResourceArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([]Resource).
+func (ResourceArrayOutput) ElementType() reflect.Type {
+	return resourceArrayType
+}
+
+func (o ResourceArrayOutput) ToResourceArrayOutput() ResourceArrayOutput {
+	return o
+}
+
+func (o ResourceArrayOutput) ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o ResourceArrayOutput) Index(i IntInput) ResourceOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) Resource {
+		arr := vs[0].([]Resource)
+		idx := vs[1].(int)
+		var ret Resource
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(ResourceOutput)
+}
+
+func ToResourceArray(in []Resource) ResourceArray {
+	return NewResourceArray(in...)
+}
+
+func NewResourceArray(in ...Resource) ResourceArray {
+	a := make(ResourceArray, len(in))
+	for i, v := range in {
+		a[i] = NewResourceInput(v)
+	}
+	return a
+}
+
+func ToResourceArrayOutput(in []ResourceOutput) ResourceArrayOutput {
+	return NewResourceArrayOutput(in...)
+}
+
+func NewResourceArrayOutput(in ...ResourceOutput) ResourceArrayOutput {
+	a := make(ResourceArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToResourceArrayOutput()
+}
+
 func init() {
+	RegisterInputType(reflect.TypeOf((*ResourceArrayInput)(nil)).Elem(), ResourceArray{})
 	RegisterOutputType(ResourceOutput{})
+	RegisterOutputType(ResourceArrayOutput{})
 }

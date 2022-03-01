@@ -93,11 +93,11 @@ export interface Mocks {
 
      * @param args: MockResourceArgs
      */
-    newResource(args: MockResourceArgs): { id: string | undefined, state: Record<string, any> };
+    newResource(args: MockResourceArgs): { id: string | undefined; state: Record<string, any> };
 }
 
 export class MockMonitor {
-    readonly resources = new Map<string, { urn: string, id: string | undefined, state: any }>();
+    readonly resources = new Map<string, { urn: string; id: string | undefined; state: any }>();
 
     constructor(readonly mocks: Mocks) {
     }
@@ -206,8 +206,14 @@ export class MockMonitor {
     }
 
     public supportsFeature(req: any, callback: (err: any, innerResponse: any) => void) {
+        const id = req.getId();
+
+        // Support for "outputValues" is deliberately disabled for the mock monitor so
+        // instances of `Output` don't show up in `MockResourceArgs` inputs.
+        const hasSupport = id === "secrets" || id === "resourceReferences";
+
         callback(null, {
-            getHassupport: () => true,
+            getHassupport: () => hasSupport,
         });
     }
 }

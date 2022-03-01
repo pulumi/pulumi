@@ -30,28 +30,33 @@ PROVIDER_KEY = "__provider"
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
+_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 def get_provider(props) -> ResourceProvider:
     byts = base64.b64decode(props[PROVIDER_KEY])
     return dill.loads(byts)
 
+
 class DynamicResourceProviderServicer(ResourceProviderServicer):
     def CheckConfig(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("CheckConfig is not implemented by the dynamic provider")
-        raise NotImplementedError("CheckConfig is not implemented by the dynamic provider")
+        raise NotImplementedError(
+            "CheckConfig is not implemented by the dynamic provider"
+        )
 
     def DiffConfig(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("DiffConfig is not implemented by the dynamic provider")
-        raise NotImplementedError("DiffConfig is not implemented by the dynamic provider")
+        raise NotImplementedError(
+            "DiffConfig is not implemented by the dynamic provider"
+        )
 
     def Invoke(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("Invoke is not implemented by the dynamic provider")
-        raise NotImplementedError("unknown function %s" % request.token)
+        raise NotImplementedError(f"unknown function {request.token}")
 
     def Diff(self, request, context):
         olds = rpc.deserialize_properties(request.olds, True)
@@ -60,15 +65,21 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
             provider = get_provider(olds)
         else:
             provider = get_provider(news)
-        result = provider.diff(request.id, olds, news)
+        result = provider.diff(request.id, olds, news)  # pylint: disable=no-member
         fields = {}
         if result.changes is not None:
             if result.changes:
-                fields["changes"] = proto.DiffResponse.DIFF_SOME # pylint: disable=no-member
+                fields[
+                    "changes"
+                ] = proto.DiffResponse.DIFF_SOME  # pylint: disable=no-member
             else:
-                fields["changes"] = proto.DiffResponse.DIFF_NONE # pylint: disable=no-member
+                fields[
+                    "changes"
+                ] = proto.DiffResponse.DIFF_NONE  # pylint: disable=no-member
         else:
-            fields["changes"] = proto.DiffResponse.DIFF_UNKNOWN # pylint: disable=no-member
+            fields[
+                "changes"
+            ] = proto.DiffResponse.DIFF_UNKNOWN  # pylint: disable=no-member
         if result.replaces is not None:
             fields["replaces"] = result.replaces
         if result.delete_before_replace is not None:
@@ -80,7 +91,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         news = rpc.deserialize_properties(request.news)
         provider = get_provider(news)
 
-        result = provider.update(request.id, olds, news)
+        result = provider.update(request.id, olds, news)  # pylint: disable=no-member
         outs = {}
         if result.outs is not None:
             outs = result.outs
@@ -97,7 +108,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
-        provider.delete(id_, props)
+        provider.delete(id_, props)  # pylint: disable=no-member
         return empty_pb2.Empty()
 
     def Cancel(self, request, context):
@@ -106,7 +117,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def Create(self, request, context):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
-        result = provider.create(props)
+        result = provider.create(props)  # pylint: disable=no-member
         outs = result.outs if result.outs is not None else {}
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
@@ -125,7 +136,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         else:
             provider = get_provider(news)
 
-        result = provider.check(olds, news)
+        result = provider.check(olds, news)  # pylint: disable=no-member
         inputs = result.inputs
         failures = result.failures
 
@@ -135,7 +146,9 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         inputs_proto = loop.run_until_complete(rpc.serialize_properties(inputs, {}))
         loop.close()
 
-        failures_proto = [proto.CheckFailure(property=f.property, reason=f.reason) for f in failures]
+        failures_proto = [
+            proto.CheckFailure(property=f.property, reason=f.reason) for f in failures
+        ]
 
         fields = {"inputs": inputs_proto, "failures": failures_proto}
         return proto.CheckResponse(**fields)
@@ -151,13 +164,15 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def GetSchema(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("GetSchema is not implemented by the dynamic provider")
-        raise NotImplementedError("GetSchema is not implemented by the dynamic provider")
+        raise NotImplementedError(
+            "GetSchema is not implemented by the dynamic provider"
+        )
 
     def Read(self, request, context):
         id_ = request.id
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
-        result = provider.read(id_, props)
+        result = provider.read(id_, props)  # pylint: disable=no-member
         outs = result.outs
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
@@ -171,11 +186,14 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def __init__(self):
         pass
 
+
 def main():
     monitor = DynamicResourceProviderServicer()
     server = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=4),
-        options=_GRPC_CHANNEL_OPTIONS
+        futures.ThreadPoolExecutor(
+            max_workers=4
+        ),  # pylint: disable=consider-using-with
+        options=_GRPC_CHANNEL_OPTIONS,
     )
     provider_pb2_grpc.add_ResourceProviderServicer_to_server(monitor, server)
     port = server.add_insecure_port(address="0.0.0.0:0")
@@ -186,5 +204,6 @@ def main():
             time.sleep(_ONE_DAY_IN_SECONDS)
     except KeyboardInterrupt:
         server.stop(0)
+
 
 main()

@@ -16,12 +16,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -208,7 +209,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	defer os.RemoveAll(fileStateDir)
 
 	// Now override to local filesystem backend
-	backendURL := "file://" + fileStateDir
+	backendURL := "file://" + filepath.ToSlash(fileStateDir)
 	_ = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "how now brown cow")
 	_ = os.Setenv(workspace.PulumiBackendURLEnvVar, backendURL)
 	defer func() {

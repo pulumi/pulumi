@@ -33,16 +33,18 @@ type State struct {
 	Outputs                 PropertyMap           // the resource's complete output state (as returned by the resource provider).
 	Parent                  URN                   // an optional parent URN that this resource belongs to.
 	Protect                 bool                  // true to "protect" this resource (protected resources cannot be deleted).
-	External                bool                  // true if this resource is "external" to Pulumi and we don't control the lifecycle
-	Dependencies            []URN                 // the resource's dependencies
+	External                bool                  // true if this resource is "external" to Pulumi and we don't control the lifecycle.
+	Dependencies            []URN                 // the resource's dependencies.
 	InitErrors              []string              // the set of errors encountered in the process of initializing resource.
 	Provider                string                // the provider to use for this resource.
 	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
 	PendingReplacement      bool                  // true if this resource was deleted and is awaiting replacement.
 	AdditionalSecretOutputs []PropertyKey         // an additional set of outputs that should be treated as secrets.
 	Aliases                 []URN                 // TODO
-	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations
+	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
+	SequenceNumber          int                   // an auto-incrementing sequence number for each time this resource gets created/replaced (0 means sequence numbers are unknown, -1 means the last replace didn't use a sequence number).
+	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
 }
 
 // NewState creates a new resource value from existing resource state information.
@@ -51,7 +53,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	external bool, dependencies []URN, initErrors []string, provider string,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
-	importID ID) *State {
+	importID ID, sequenceNumber int, retainOnDelete bool) *State {
 
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -76,6 +78,8 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		AdditionalSecretOutputs: additionalSecretOutputs,
 		Aliases:                 aliases,
 		ImportID:                importID,
+		SequenceNumber:          sequenceNumber,
+		RetainOnDelete:          retainOnDelete,
 	}
 
 	if timeouts != nil {

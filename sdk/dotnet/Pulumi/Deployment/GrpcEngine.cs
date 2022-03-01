@@ -1,7 +1,7 @@
 // Copyright 2016-2020, Pulumi Corporation
 
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Grpc.Core;
 using Pulumirpc;
 
@@ -21,7 +21,7 @@ namespace Pulumi
         
         public async Task LogAsync(LogRequest request)
             => await this._engine.LogAsync(request);
-        
+
         public async Task<SetRootResourceResponse> SetRootResourceAsync(SetRootResourceRequest request)
             => await this._engine.SetRootResourceAsync(request);
 

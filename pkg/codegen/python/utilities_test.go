@@ -4,13 +4,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
+
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
-func parseAndBindProgram(t *testing.T, text, name string, options ...hcl2.BindOption) (*hcl2.Program, hcl.Diagnostics) {
+func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {
 	parser := syntax.NewParser()
 	err := parser.ParseFile(strings.NewReader(text), name)
 	if err != nil {
@@ -20,9 +22,9 @@ func parseAndBindProgram(t *testing.T, text, name string, options ...hcl2.BindOp
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, hcl2.PluginHost(test.NewHost(testdataPath)))
+	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
 
-	program, diags, err := hcl2.BindProgram(parser.Files, options...)
+	program, diags, err := pcl.BindProgram(parser.Files, options...)
 	if err != nil {
 		t.Fatalf("could not bind program: %v", err)
 	}
@@ -61,6 +63,30 @@ func TestMakeSafeEnumName(t *testing.T) {
 			}
 			if got != tt.expected {
 				t.Errorf("makeSafeEnumName() got = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMakePyPiVersion(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"1.2.3", "1.2.3"},
+		{"1.2.3+dirty", "1.2.3+dirty"},
+		{"1.2.3-alpha123+beta123", "1.2.3a123+beta123"},
+		{"1.2.3-rc789", "1.2.3rc789"},
+		{"1.2.3-dev321", "1.2.3.dev321"},
+		{"1.2.3-post456", "1.2.3.post456"},
+		{"1.2.3-posttt456", "1.2.3+posttt456"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			v := semver.MustParse(tt.input)
+			actual := pypiVersion(v)
+			if tt.expected != actual {
+				t.Errorf("expected %q != actual %q", tt.expected, actual)
 			}
 		})
 	}

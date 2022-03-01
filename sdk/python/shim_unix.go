@@ -1,4 +1,5 @@
-//+build !windows
+//go:build !windows
+// +build !windows
 
 // Copyright 2020, Pulumi Corporation.
 //

@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System.Collections.Generic;
 using System.Linq;
@@ -18,9 +18,12 @@ namespace Pulumi
                 IgnoreChanges = options.IgnoreChanges.ToList(),
                 Protect = options.Protect,
                 Provider = options.Provider,
+                ReplaceOnChanges = options.ReplaceOnChanges.ToList(),
                 ResourceTransformations = options.ResourceTransformations.ToList(),
                 Urn = options.Urn,
-                Version = options.Version
+                Version = options.Version,
+                PluginDownloadURL = options.PluginDownloadURL,
+                RetainOnDelete = options.RetainOnDelete
             };
 
         internal static CustomResourceOptions CreateCustomResourceOptionsCopy(ResourceOptions? options)

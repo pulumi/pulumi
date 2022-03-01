@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -169,4 +169,199 @@ func TestSecretUnknown(t *testing.T) {
 	co := MakeSecret(so)
 	assert.True(t, c.ContainsUnknowns())
 	assert.True(t, co.ContainsUnknowns())
+}
+
+func TestTypeString(t *testing.T) {
+	tests := []struct {
+		prop     PropertyValue
+		expected string
+	}{
+		{
+			prop:     MakeComputed(NewStringProperty("")),
+			expected: "output<string>",
+		},
+		{
+			prop:     MakeSecret(NewStringProperty("")),
+			expected: "secret<string>",
+		},
+		{
+			prop:     MakeOutput(NewStringProperty("")),
+			expected: "output<string>",
+		},
+		{
+			prop: NewOutputProperty(Output{
+				Element: NewStringProperty(""),
+				Known:   true,
+			}),
+			expected: "string",
+		},
+		{
+			prop: NewOutputProperty(Output{
+				Element: NewStringProperty(""),
+				Known:   true,
+				Secret:  true,
+			}),
+			expected: "secret<string>",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.expected, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.prop.TypeString())
+		})
+	}
+}
+
+func TestString(t *testing.T) {
+	tests := []struct {
+		prop     PropertyValue
+		expected string
+	}{
+		{
+			prop:     MakeComputed(NewStringProperty("")),
+			expected: "output<string>{}",
+		},
+		{
+			prop:     MakeSecret(NewStringProperty("shh")),
+			expected: "{&{{shh}}}",
+		},
+		{
+			prop:     MakeOutput(NewStringProperty("")),
+			expected: "output<string>{}",
+		},
+		{
+			prop: NewOutputProperty(Output{
+				Element: NewStringProperty("hello"),
+				Known:   true,
+			}),
+			expected: "{hello}",
+		},
+		{
+			prop: NewOutputProperty(Output{
+				Element: NewStringProperty("shh"),
+				Known:   true,
+				Secret:  true,
+			}),
+			expected: "{&{{shh}}}",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.expected, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.prop.String())
+		})
+	}
+}
+
+func TestContainsUnknowns(t *testing.T) {
+	tests := []struct {
+		name     string
+		prop     PropertyValue
+		expected bool
+	}{
+		{
+			name:     "computed unknown",
+			prop:     MakeComputed(NewStringProperty("")),
+			expected: true,
+		},
+		{
+			name:     "output unknown",
+			prop:     MakeOutput(NewStringProperty("")),
+			expected: true,
+		},
+		{
+			name: "output known",
+			prop: NewOutputProperty(Output{
+				Element: NewStringProperty(""),
+				Known:   true,
+			}),
+			expected: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.prop.ContainsUnknowns())
+		})
+	}
+}
+
+func TestContainsSecrets(t *testing.T) {
+	tests := []struct {
+		name     string
+		prop     PropertyValue
+		expected bool
+	}{
+		{
+			name:     "secret",
+			prop:     MakeSecret(NewStringProperty("")),
+			expected: true,
+		},
+		{
+			name:     "output unknown",
+			prop:     MakeOutput(NewStringProperty("")),
+			expected: false,
+		},
+		{
+			name:     "output unknown containing secret",
+			prop:     MakeOutput(MakeSecret(NewStringProperty(""))),
+			expected: true,
+		},
+		{
+			name: "output unknown secret",
+			prop: NewOutputProperty(Output{
+				Element: NewStringProperty(""),
+				Secret:  true,
+			}),
+			expected: true,
+		},
+		{
+			name: "output known secret",
+			prop: NewOutputProperty(Output{
+				Element: NewStringProperty(""),
+				Known:   true,
+				Secret:  true,
+			}),
+			expected: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.prop.ContainsSecrets())
+		})
+	}
+}
+
+func TestHasValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		prop     PropertyValue
+		expected bool
+	}{
+		{
+			name:     "null",
+			prop:     NewNullProperty(),
+			expected: false,
+		},
+		{
+			name:     "string",
+			prop:     NewStringProperty(""),
+			expected: true,
+		},
+		{
+			name:     "output unknown",
+			prop:     MakeOutput(NewStringProperty("")),
+			expected: false,
+		},
+		{
+			name: "output known",
+			prop: NewOutputProperty(Output{
+				Element: NewStringProperty(""),
+				Known:   true,
+			}),
+			expected: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.prop.HasValue())
+		})
+	}
 }

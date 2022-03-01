@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,11 +16,12 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -166,9 +167,9 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 	var depl *deploy.Deployment
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
-			plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
+			plugctx, target, target.Snapshot, opts.Plan, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
-		_, defaultProviderVersions, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
+		_, defaultProviderInfo, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
 			false /*returnInstallErrors*/)
 		if pluginErr != nil {
 			return nil, pluginErr
@@ -177,12 +178,17 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 			imp := &opts.imports[i]
 			_, err := tokens.ParseTypeToken(imp.Type.String())
 			if err != nil {
-				return nil, errors.New(fmt.Sprintf("import type %q is not a valid resource type token. "+
+				return nil, fmt.Errorf("import type %q is not a valid resource type token. "+
 					"Type tokens must be of the format <package>:<module>:<type> - "+
-					"refer to the import section of the provider resource documentation.", imp.Type.String()))
+					"refer to the import section of the provider resource documentation.", imp.Type.String())
 			}
-			if imp.Provider == "" && imp.Version == nil {
-				imp.Version = defaultProviderVersions[imp.Type.Package()]
+			if imp.Provider == "" {
+				if imp.Version == nil {
+					imp.Version = defaultProviderInfo[imp.Type.Package()].Version
+				}
+				if imp.PluginDownloadURL == "" {
+					imp.PluginDownloadURL = defaultProviderInfo[imp.Type.Package()].PluginDownloadURL
+				}
 			}
 		}
 
@@ -217,12 +223,12 @@ type runActions interface {
 
 // run executes the deployment. It is primarily responsible for handling cancellation.
 func (deployment *deployment) run(cancelCtx *Context, actions runActions, policyPacks map[string]string,
-	preview bool) (ResourceChanges, result.Result) {
+	preview bool) (*deploy.Plan, ResourceChanges, result.Result) {
 
 	// Change into the plugin context's working directory.
 	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer chdir()
 
@@ -241,6 +247,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	start := time.Now()
 
 	done := make(chan bool)
+	var newPlan *deploy.Plan
 	var walkResult result.Result
 	go func() {
 		opts := deploy.Options{
@@ -256,8 +263,10 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 			TrustDependencies:         deployment.Options.trustDependencies,
 			UseLegacyDiff:             deployment.Options.UseLegacyDiff,
 			DisableResourceReferences: deployment.Options.DisableResourceReferences,
+			DisableOutputValues:       deployment.Options.DisableOutputValues,
+			ExperimentalPlans:         deployment.Options.UpdateOptions.ExperimentalPlans,
 		}
-		walkResult = deployment.Deployment.Execute(ctx, opts, preview)
+		newPlan, walkResult = deployment.Deployment.Execute(ctx, opts, preview)
 		close(done)
 	}()
 
@@ -288,7 +297,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	// Emit a summary event.
 	deployment.Options.Events.summaryEvent(preview, actions.MaybeCorrupt(), duration, changes, policyPacks)
 
-	return changes, res
+	return newPlan, changes, res
 }
 
 func (deployment *deployment) Close() error {

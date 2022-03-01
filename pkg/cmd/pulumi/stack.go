@@ -140,6 +140,10 @@ func newStackCmd() *cobra.Command {
 					fmt.Printf("\n")
 					printStackOutputs(outputs)
 				}
+
+				if showSecrets {
+					log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack")
+				}
 			}
 
 			// Add a link to the pulumi.com console page for this stack, if it has one.

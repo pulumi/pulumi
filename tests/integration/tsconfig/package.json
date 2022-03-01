@@ -1,0 +1,9 @@
+{
+  "name": "tsconfig",
+  "devDependencies": {
+    "@types/node": "^14"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^3.0.0"
+  }
+}

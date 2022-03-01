@@ -23,11 +23,15 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConcurrentUpdateError(t *testing.T) {
-	t.Skip("disabled, see https://github.com/pulumi/pulumi/issues/5312")
+	// TODO[pulumi/pulumi#8122] - investigate underlying sporadic 404 error
+	t.Skip("disabled as flaky and resource-intensive")
+
+	n := 50
 	ctx := context.Background()
 	pName := "conflict_error"
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -50,7 +54,7 @@ func TestConcurrentUpdateError(t *testing.T) {
 	c := make(chan error)
 
 	// parallel updates to cause conflict
-	for i := 0; i < 50; i++ {
+	for i := 0; i < n; i++ {
 		go func() {
 			_, err := s.Up(ctx)
 			c <- err
@@ -58,11 +62,16 @@ func TestConcurrentUpdateError(t *testing.T) {
 	}
 
 	conflicts := 0
+	var otherErrors []error
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < n; i++ {
 		err := <-c
-		if IsConcurrentUpdateError(err) {
-			conflicts++
+		if err != nil {
+			if IsConcurrentUpdateError(err) {
+				conflicts++
+			} else {
+				otherErrors = append(otherErrors, err)
+			}
 		}
 	}
 
@@ -74,8 +83,16 @@ func TestConcurrentUpdateError(t *testing.T) {
 		t.FailNow()
 	}
 
-	// should have at least one conflict
-	assert.Greater(t, conflicts, 0)
+	if len(otherErrors) > 0 {
+		t.Logf("Concurrent updates incurred %d non-conflict errors, including:", len(otherErrors))
+		for _, err := range otherErrors {
+			t.Error(err)
+		}
+	}
+
+	if conflicts == 0 {
+		t.Errorf("Expected at least one conflict error from the %d concurrent updates, but got none", n)
+	}
 }
 
 func TestInlineConcurrentUpdateError(t *testing.T) {
@@ -370,13 +387,30 @@ func TestRuntimeErrorPython(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
-	pDir := filepath.Join(".", "test", "errors", "runtime_error", "python")
-
-	cmd := exec.Command("python3", "-m", "venv", "venv")
-	cmd.Dir = pDir
-	err := cmd.Run()
+	pDir, err := filepath.Abs(filepath.Join(".", "test", "errors", "runtime_error", "python"))
 	if err != nil {
-		t.Errorf("failed to install project dependencies")
+		t.Error(err)
+		t.FailNow()
+	}
+
+	err = python.InstallDependencies(pDir, "venv", true /*showOutput*/)
+	if err != nil {
+		t.Errorf("failed to create a venv and install project dependencies: %v", err)
+		t.FailNow()
+	}
+
+	pySDK, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk", "python", "env", "src"))
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
+	pyCmd := python.VirtualEnvCommand(filepath.Join(pDir, "venv"), "python", "-m", "pip", "install", "-e", pySDK)
+	pyCmd.Dir = pDir
+	err = pyCmd.Run()
+	if err != nil {
+		t.Errorf("failed to link venv against in-source pulumi: %v", err)
 		t.FailNow()
 	}
 
@@ -395,6 +429,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 	_, err = s.Up(ctx)
 	assert.NotNil(t, err)
 	assert.True(t, IsRuntimeError(err), "%+v", err)
+	assert.Contains(t, fmt.Sprintf("%v", err), "IndexError: list index out of range")
 
 	// -- pulumi destroy --
 

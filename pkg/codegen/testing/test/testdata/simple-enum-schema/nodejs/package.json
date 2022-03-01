@@ -1,0 +1,18 @@
+{
+    "name": "@pulumi/plant",
+    "version": "0.0.1",
+    "scripts": {
+        "build": "tsc",
+        "install": "node scripts/install-pulumi-plugin.js resource plant 0.0.1"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+    },
+    "devDependencies": {
+        "typescript": "^3.7.0"
+    },
+    "pulumi": {
+        "version": "0.0.1",
+        "resource": true
+    }
+}

@@ -20,7 +20,13 @@ from inspect import isawaitable
 from typing import Callable, Any, Dict, List, TYPE_CHECKING
 
 from ..resource import ComponentResource, Resource, ResourceTransformation
-from .settings import get_project, get_stack, get_root_resource, is_dry_run, set_root_resource
+from .settings import (
+    get_project,
+    get_stack,
+    get_root_resource,
+    is_dry_run,
+    set_root_resource,
+)
 from .rpc_manager import RPC_MANAGER
 from .sync_await import _all_tasks, _get_current_task
 from .. import log
@@ -61,11 +67,15 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
         # We await each RPC in turn so that this loop will actually block rather than busy-wait.
         while len(RPC_MANAGER.rpcs) > 0:
             await asyncio.sleep(0)
-            log.debug(f"waiting for quiescence; {len(RPC_MANAGER.rpcs)} RPCs outstanding")
+            log.debug(
+                f"waiting for quiescence; {len(RPC_MANAGER.rpcs)} RPCs outstanding"
+            )
             await RPC_MANAGER.rpcs.pop()
 
         if RPC_MANAGER.unhandled_exception is not None:
-            raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
+            raise RPC_MANAGER.unhandled_exception.with_traceback(
+                RPC_MANAGER.exception_traceback
+            )
 
         log.debug("RPCs successfully completed")
 
@@ -76,9 +86,13 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
             if len(outstanding_tasks) == 0:
                 log.debug("No outstanding tasks to complete")
             else:
-                log.debug(f"Waiting for {len(outstanding_tasks)} outstanding tasks to complete")
+                log.debug(
+                    f"Waiting for {len(outstanding_tasks)} outstanding tasks to complete"
+                )
 
-                done, pending = await asyncio.wait(outstanding_tasks, return_when="FIRST_EXCEPTION")
+                done, pending = await asyncio.wait(
+                    outstanding_tasks, return_when="FIRST_EXCEPTION"
+                )
 
                 if len(pending) > 0:
                     # If there are any pending tasks, it's because an exception was thrown.
@@ -90,7 +104,9 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
                 for task in done:
                     exception = task.exception()
                     if exception is not None:
-                        log.debug("A future resolved in an exception, raising exception.")
+                        log.debug(
+                            "A future resolved in an exception, raising exception."
+                        )
                         raise exception
 
                 log.debug("All outstanding tasks completed.")
@@ -120,14 +136,14 @@ class Stack(ComponentResource):
     def __init__(self, func: Callable) -> None:
         # Ensure we don't already have a stack registered.
         if get_root_resource() is not None:
-            raise Exception('Only one root Pulumi Stack may be active at once')
+            raise Exception("Only one root Pulumi Stack may be active at once")
 
         # Now invoke the registration to begin creating this resource.
-        name = '%s-%s' % (get_project(), get_stack())
-        super().__init__('pulumi:pulumi:Stack', name, None, None)
+        name = f"{get_project()}-{get_stack()}"
+        super().__init__("pulumi:pulumi:Stack", name, None, None)
 
         # Invoke the function while this stack is active and then register its outputs.
-        self.outputs = dict()
+        self.outputs = {}
         set_root_resource(self)
         try:
             func()
@@ -245,7 +261,9 @@ def register_stack_transformation(t: ResourceTransformation):
     """
     root_resource = get_root_resource()
     if root_resource is None:
-        raise Exception("The root stack resource was referenced before it was initialized.")
+        raise Exception(
+            "The root stack resource was referenced before it was initialized."
+        )
     if root_resource._transformations is None:
         root_resource._transformations = [t]
     else:

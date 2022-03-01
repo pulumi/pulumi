@@ -2,10 +2,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using Xunit;
-using Pulumi.Automation.Commands;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Pulumi.Automation.Commands;
+using Xunit;
 
 namespace Pulumi.Automation.Tests
 {
@@ -15,8 +16,8 @@ namespace Pulumi.Automation.Tests
         public async Task CheckVersionCommand()
         {
             var localCmd = new LocalPulumiCmd();
-            IDictionary<string, string?> extraEnv = new Dictionary<string, string?>();
-            IEnumerable<string> args = new string[]{ "version" };
+            var extraEnv = new Dictionary<string, string?>();
+            var args = new[] { "version" };
 
             var stdoutLines = new List<string>();
             var stderrLines = new List<string>();
@@ -35,17 +36,26 @@ namespace Pulumi.Automation.Tests
             Assert.Equal(0, result.Code);
 
             Assert.Matches(@"^v?\d+\.\d+\.\d+", result.StandardOutput);
-            Assert.Matches(@"^(warning: A new version of Pulumi[^\n]+\n)?$",
-                           result.StandardError);
+            // stderr must strictly begin with the version warning message or be an empty string:
+            if (result.StandardError.Length > 0) {
+                Assert.StartsWith("warning: A new version of Pulumi", result.StandardError);
+            }
 
-            Assert.Equal(Lines(result.StandardOutput), stdoutLines);
-            Assert.Equal(Lines(result.StandardError), stderrLines);
+            // If these tests begin failing, it may be because the automation output now emits CRLF
+            // (\r\n) on Windows.
+            //
+            // If so, update the Lines method to split on Environment.NewLine instead of "\n".
+            Assert.Equal(Lines(result.StandardOutput), stdoutLines.Select(x => x.Trim()).ToList());
+            Assert.Equal(Lines(result.StandardError), stderrLines.Select(x => x.Trim()).ToList());
         }
 
-        private IEnumerable<string> Lines(string s) {
-            return s.Split(Environment.NewLine,
+        private List<string> Lines(string s)
+        {
+            return s.Split("\n",
                            StringSplitOptions.RemoveEmptyEntries)
-                .Select(x => x.Trim());
+                .Select(x => x.Trim())
+                .ToList();
         }
     }
+
 }

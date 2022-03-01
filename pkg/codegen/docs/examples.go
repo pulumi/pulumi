@@ -43,12 +43,12 @@ type docInfo struct {
 	importDetails string
 }
 
-func decomposeDocstring(docstring string) docInfo {
+func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 	if docstring == "" {
 		return docInfo{}
 	}
 
-	languages := codegen.NewStringSet(snippetLanguages...)
+	languages := codegen.NewStringSet(dctx.snippetLanguages...)
 
 	source := []byte(docstring)
 	parsed := schema.ParseDocs(source)
@@ -70,7 +70,7 @@ func decomposeDocstring(docstring string) docInfo {
 				if exampleShortcode == nil {
 					exampleShortcode, title, snippets = shortcode, "", map[string]string{}
 				} else if !enter && shortcode == exampleShortcode {
-					for _, l := range snippetLanguages {
+					for _, l := range dctx.snippetLanguages {
 						if _, ok := snippets[l]; !ok {
 							snippets[l] = defaultMissingExampleSnippetPlaceholder
 						}

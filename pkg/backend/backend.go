@@ -16,11 +16,10 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -109,6 +108,12 @@ type ListStacksFilter struct {
 	TagValue     *string
 }
 
+// ContinuationToken is an opaque string used for paginated backend requests. If non-nil, means
+// there are more results to be returned and the continuation token should be passed into a
+// subsequent call to the backend method. A nil continuation token means all results have been
+// returned.
+type ContinuationToken *string
+
 // Backend is the contract between the Pulumi engine and pluggable backend implementations of the Pulumi Cloud Service.
 type Backend interface {
 	// Name returns a friendly name for this backend.
@@ -120,10 +125,12 @@ type Backend interface {
 	GetPolicyPack(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
 
 	// ListPolicyGroups returns all Policy Groups for an organization in this backend or an error if it cannot be found.
-	ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error)
+	ListPolicyGroups(ctx context.Context, orgName string, inContToken ContinuationToken) (
+		apitype.ListPolicyGroupsResponse, ContinuationToken, error)
 
 	// ListPolicyPacks returns all Policy Packs for an organization in this backend, or an error if it cannot be found.
-	ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error)
+	ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
+		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
@@ -146,14 +153,15 @@ type Backend interface {
 	// first boolean return value will be set to true.
 	RemoveStack(ctx context.Context, stack Stack, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
-	ListStacks(ctx context.Context, filter ListStacksFilter) ([]StackSummary, error)
+	ListStacks(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
+		[]StackSummary, ContinuationToken, error)
 
 	// RenameStack renames the given stack to a new name, and then returns an updated stack reference that
 	// can be used to refer to the newly renamed stack.
 	RenameStack(ctx context.Context, stack Stack, newName tokens.QName) (StackReference, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Preview(ctx context.Context, stack Stack, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Import imports resources into a stack.
@@ -164,7 +172,7 @@ type Backend interface {
 	// Destroy destroys all of this stack's resources.
 	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
-	Watch(ctx context.Context, stack Stack, op UpdateOperation) result.Result
+	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) result.Result
 
 	// Query against the resource outputs in a stack's state checkpoint.
 	Query(ctx context.Context, op QueryOperation) result.Result
@@ -245,6 +253,8 @@ type UpdateOptions struct {
 	AutoApprove bool
 	// SkipPreview, when true, causes the preview step to be skipped.
 	SkipPreview bool
+	// Experimental plan support, when true cause plans to be generated.
+	ExperimentalPlans bool
 }
 
 // QueryOptions configures a query to operate against a backend and the engine.
@@ -289,7 +299,7 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 		return nil, err
 	}
 	if s == nil {
-		return nil, errors.Errorf("unknown stack %q", name)
+		return nil, fmt.Errorf("unknown stack %q", name)
 	}
 	snap, err := s.Snapshot(ctx)
 	if err != nil {
@@ -297,7 +307,7 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	}
 	res, err := stack.GetRootStackResource(snap)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting root stack resources")
+		return nil, fmt.Errorf("getting root stack resources: %w", err)
 	}
 	if res == nil {
 		return resource.PropertyMap{}, nil
@@ -316,7 +326,7 @@ func (c *backendClient) GetStackResourceOutputs(
 		return nil, err
 	}
 	if s == nil {
-		return nil, errors.Errorf("unknown stack %q", name)
+		return nil, fmt.Errorf("unknown stack %q", name)
 	}
 	snap, err := s.Snapshot(ctx)
 	if err != nil {

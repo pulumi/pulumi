@@ -1,0 +1,16 @@
+{
+  "emittedFiles": [
+    "plant-provider/doc.go",
+    "plant-provider/init.go",
+    "plant-provider/provider.go",
+    "plant-provider/pulumi-plugin.json",
+    "plant-provider/pulumiEnums.go",
+    "plant-provider/pulumiTypes.go",
+    "plant-provider/pulumiUtilities.go",
+    "plant-provider/tree/v1/init.go",
+    "plant-provider/tree/v1/nursery.go",
+    "plant-provider/tree/v1/pulumiEnums.go",
+    "plant-provider/tree/v1/pulumiUtilities.go",
+    "plant-provider/tree/v1/rubberTree.go"
+  ]
+}

@@ -38,6 +38,13 @@ type Decrypter interface {
 	DecryptValue(ciphertext string) (string, error)
 }
 
+// BulkDecrypter is a Decrypter that also supports bulk decryption of secrets.
+type BulkDecrypter interface {
+	Decrypter
+
+	BulkDecrypt(ciphertexts []string) (map[string]string, error)
+}
+
 // Crypter can both encrypt and decrypt values.
 type Crypter interface {
 	Encrypter
@@ -100,8 +107,8 @@ func NewBlindingDecrypter() Decrypter {
 
 type blindingCrypter struct{}
 
-func (b blindingCrypter) DecryptValue(ciphertext string) (string, error) {
-	return "[secret]", nil
+func (b blindingCrypter) DecryptValue(_ string) (string, error) {
+	return "[secret]", nil //nolint:goconst
 }
 
 func (b blindingCrypter) EncryptValue(plaintext string) (string, error) {
@@ -115,11 +122,11 @@ func NewPanicCrypter() Crypter {
 
 type panicCrypter struct{}
 
-func (p panicCrypter) EncryptValue(plaintext string) (string, error) {
+func (p panicCrypter) EncryptValue(_ string) (string, error) {
 	panic("attempt to encrypt value")
 }
 
-func (p panicCrypter) DecryptValue(ciphertext string) (string, error) {
+func (p panicCrypter) DecryptValue(_ string) (string, error) {
 	panic("attempt to decrypt value")
 }
 
@@ -133,7 +140,7 @@ func NewSymmetricCrypter(key []byte) Crypter {
 // NewSymmetricCrypterFromPassphrase uses a passphrase and salt to generate a key, and then returns a crypter using it.
 func NewSymmetricCrypterFromPassphrase(phrase string, salt []byte) Crypter {
 	// Generate a key using PBKDF2 to slow down attempts to crack it.  1,000,000 iterations was chosen because it
-	// took a little over a second on an i7-7700HQ Quad Core procesor
+	// took a little over a second on an i7-7700HQ Quad Core processor
 	key := pbkdf2.Key([]byte(phrase), salt, 1000000, SymmetricCrypterKeyBytes, sha256.New)
 	return NewSymmetricCrypter(key)
 }
@@ -225,4 +232,26 @@ func (c prefixCrypter) DecryptValue(ciphertext string) (string, error) {
 
 func (c prefixCrypter) EncryptValue(plaintext string) (string, error) {
 	return c.prefix + plaintext, nil
+}
+
+// BulkDecrypt decrypts a list of ciphertexts. If decrypter implements BulkDecrypter, then its BulkDecrypt method will
+// be called. Otherwise, each ciphertext is decrypted individually. The returned map maps from ciphertext to plaintext.
+func BulkDecrypt(decrypter Decrypter, ciphertexts []string) (map[string]string, error) {
+	if len(ciphertexts) == 0 {
+		return nil, nil
+	}
+
+	if bulk, ok := decrypter.(BulkDecrypter); ok {
+		return bulk.BulkDecrypt(ciphertexts)
+	}
+
+	secretMap := map[string]string{}
+	for _, ct := range ciphertexts {
+		pt, err := decrypter.DecryptValue(ct)
+		if err != nil {
+			return nil, err
+		}
+		secretMap[ct] = pt
+	}
+	return secretMap, nil
 }

@@ -47,15 +47,18 @@ interface RunCase {
     };
     skipRootResourceEndpoints?: boolean;
     showRootResourceRegistration?: boolean;
-    invoke?: (ctx: any, tok: string, args: any, version: string, provider: string) => { failures: any, ret: any };
+    invoke?: (ctx: any, tok: string, args: any, version: string, provider: string) => { failures: any; ret: any };
     readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any, version: string) => {
-        urn: URN | undefined, props: any | undefined,
+        urn: URN | undefined; props: any | undefined;
     };
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
-                        custom?: boolean, protect?: boolean, parent?: string, provider?: string,
-                        propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string) => { urn: URN | undefined, id: ID | undefined, props: any | undefined };
+        custom?: boolean, protect?: boolean, parent?: string, provider?: string,
+        propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
+        replaceOnChanges?: string[], providers?: any) => {
+        urn: URN | undefined; id: ID | undefined; props: any | undefined;
+    };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
-                               t: string, name: string, res: any, outputs: any | undefined) => void;
+        t: string, name: string, res: any, outputs: any | undefined) => void;
     log?: (ctx: any, severity: any, message: string, urn: URN, streamId: number) => void;
     getRootResource?: (ctx: any) => { urn: string };
     setRootResource?: (ctx: any, urn: string) => void;
@@ -208,42 +211,42 @@ describe("rpc", () => {
                 let id: ID | undefined;
                 let props: any | undefined;
                 switch (t) {
-                    case "test:index:ResourceA": {
-                        assert.strictEqual(name, "resourceA");
-                        assert.deepStrictEqual(res, { inprop: 777 });
-                        if (!dryrun) {
-                            id = name;
-                            props = { outprop: "output yeah" };
-                        }
-                        break;
+                case "test:index:ResourceA": {
+                    assert.strictEqual(name, "resourceA");
+                    assert.deepStrictEqual(res, { inprop: 777 });
+                    if (!dryrun) {
+                        id = name;
+                        props = { outprop: "output yeah" };
                     }
-                    case "test:index:ResourceB": {
-                        assert.strictEqual(name, "resourceB");
-                        assert.deepStrictEqual(dependencies, ["test:index:ResourceA::resourceA"]);
+                    break;
+                }
+                case "test:index:ResourceB": {
+                    assert.strictEqual(name, "resourceB");
+                    assert.deepStrictEqual(dependencies, ["test:index:ResourceA::resourceA"]);
 
-                        if (dryrun) {
-                            // If this is a dry-run, we will have no known values.
-                            assert.deepStrictEqual(res, {
-                                otherIn: runtime.unknownValue,
-                                otherOut: runtime.unknownValue,
-                            });
-                        }
-                        else {
-                            // Otherwise, we will:
-                            assert.deepStrictEqual(res, {
-                                otherIn: 777,
-                                otherOut: "output yeah",
-                            });
-                        }
-
-                        if (!dryrun) {
-                            id = name;
-                        }
-                        break;
+                    if (dryrun) {
+                        // If this is a dry-run, we will have no known values.
+                        assert.deepStrictEqual(res, {
+                            otherIn: runtime.unknownValue,
+                            otherOut: runtime.unknownValue,
+                        });
                     }
-                    default:
-                        assert.fail(`Unrecognized resource type ${t}`);
-                        throw new Error();
+                    else {
+                        // Otherwise, we will:
+                        assert.deepStrictEqual(res, {
+                            otherIn: 777,
+                            otherOut: "output yeah",
+                        });
+                    }
+
+                    if (!dryrun) {
+                        id = name;
+                    }
+                    break;
+                }
+                default:
+                    assert.fail(`Unrecognized resource type ${t}`);
+                    throw new Error();
                 }
                 return {
                     urn: makeUrn(t, name),
@@ -488,27 +491,27 @@ describe("rpc", () => {
             },
             log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
                 switch (message) {
-                    case "info message":
-                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
-                        return;
-                    case "warning message":
-                        assert.strictEqual(severity, engineproto.LogSeverity.WARNING);
-                        return;
-                    case "error message":
-                        assert.strictEqual(severity, engineproto.LogSeverity.ERROR);
-                        return;
-                    case "attached to resource":
-                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
-                        assert.strictEqual(urn, ctx.testUrn);
-                        return;
-                    case "with streamid":
-                        assert.strictEqual(severity, engineproto.LogSeverity.INFO);
-                        assert.strictEqual(urn, ctx.testUrn);
-                        assert.strictEqual(streamId, 42);
-                        return;
-                    default:
-                        assert.fail("unexpected message: " + message);
-                        break;
+                case "info message":
+                    assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                    return;
+                case "warning message":
+                    assert.strictEqual(severity, engineproto.LogSeverity.WARNING);
+                    return;
+                case "error message":
+                    assert.strictEqual(severity, engineproto.LogSeverity.ERROR);
+                    return;
+                case "attached to resource":
+                    assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                    assert.strictEqual(urn, ctx.testUrn);
+                    return;
+                case "with streamid":
+                    assert.strictEqual(severity, engineproto.LogSeverity.INFO);
+                    assert.strictEqual(urn, ctx.testUrn);
+                    assert.strictEqual(streamId, 42);
+                    return;
+                default:
+                    assert.fail("unexpected message: " + message);
+                    break;
                 }
             },
         },
@@ -580,40 +583,40 @@ describe("rpc", () => {
                 assert.strictEqual(t, "test:index:MyResource");
 
                 switch (name) {
-                    case "resA":
-                        assert.deepStrictEqual(deps, []);
-                        assert.deepStrictEqual(propertyDeps, {});
-                        break;
-                    case "resB":
-                        assert.deepStrictEqual(deps, ["resA"]);
-                        assert.deepStrictEqual(propertyDeps, {});
-                        break;
-                    case "resC":
-                        assert.deepStrictEqual(deps, ["resA", "resB"]);
-                        assert.deepStrictEqual(propertyDeps, {
-                            "propA": ["resA"],
-                            "propB": ["resB"],
-                            "propC": [],
-                        });
-                        break;
-                    case "resD":
-                        assert.deepStrictEqual(deps, ["resA", "resB", "resC"]);
-                        assert.deepStrictEqual(propertyDeps, {
-                            "propA": ["resA", "resB"],
-                            "propB": ["resC"],
-                            "propC": [],
-                        });
-                        break;
-                    case "resE":
-                        assert.deepStrictEqual(deps, ["resA", "resB", "resC", "resD"]);
-                        assert.deepStrictEqual(propertyDeps, {
-                            "propA": ["resC"],
-                            "propB": ["resA", "resB"],
-                            "propC": [],
-                        });
-                        break;
-                    default:
-                        break;
+                case "resA":
+                    assert.deepStrictEqual(deps, []);
+                    assert.deepStrictEqual(propertyDeps, {});
+                    break;
+                case "resB":
+                    assert.deepStrictEqual(deps, ["resA"]);
+                    assert.deepStrictEqual(propertyDeps, {});
+                    break;
+                case "resC":
+                    assert.deepStrictEqual(deps, ["resA", "resB"]);
+                    assert.deepStrictEqual(propertyDeps, {
+                        "propA": ["resA"],
+                        "propB": ["resB"],
+                        "propC": [],
+                    });
+                    break;
+                case "resD":
+                    assert.deepStrictEqual(deps, ["resA", "resB", "resC"]);
+                    assert.deepStrictEqual(propertyDeps, {
+                        "propA": ["resA", "resB"],
+                        "propB": ["resC"],
+                        "propC": [],
+                    });
+                    break;
+                case "resE":
+                    assert.deepStrictEqual(deps, ["resA", "resB", "resC", "resD"]);
+                    assert.deepStrictEqual(propertyDeps, {
+                        "propA": ["resC"],
+                        "propB": ["resA", "resB"],
+                        "propC": [],
+                    });
+                    break;
+                default:
+                    break;
                 }
 
                 return { urn: name, id: undefined, props: { "outprop": "qux" } };
@@ -625,9 +628,9 @@ describe("rpc", () => {
             expectResourceCount: 2,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
-                    case "cust1": assert.deepStrictEqual(deps, []); break;
-                    case "cust2": assert.deepStrictEqual(deps, ["test:index:MyResource::cust1"]); break;
-                    default: throw new Error("Didn't check: " + name);
+                case "cust1": assert.deepStrictEqual(deps, []); break;
+                case "cust2": assert.deepStrictEqual(deps, ["test:index:MyResource::cust1"]); break;
+                default: throw new Error("Didn't check: " + name);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
@@ -638,10 +641,10 @@ describe("rpc", () => {
             expectResourceCount: 3,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
-                    case "cust1": assert.deepStrictEqual(deps, []); break;
-                    case "cust2": assert.deepStrictEqual(deps, ["test:index:MyResource::cust1"]); break;
-                    case "cust3": assert.deepStrictEqual(deps, ["test:index:MyResource::cust1"]); break;
-                    default: throw new Error("Didn't check: " + name);
+                case "cust1": assert.deepStrictEqual(deps, []); break;
+                case "cust2": assert.deepStrictEqual(deps, ["test:index:MyResource::cust1"]); break;
+                case "cust3": assert.deepStrictEqual(deps, ["test:index:MyResource::cust1"]); break;
+                default: throw new Error("Didn't check: " + name);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
@@ -658,10 +661,10 @@ describe("rpc", () => {
             expectResourceCount: 3,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
-                    case "cust1": assert.deepStrictEqual(deps, []); break;
-                    case "cust2": assert.deepStrictEqual(deps, []); break;
-                    case "comp1": assert.deepStrictEqual(deps, []); break;
-                    default: throw new Error("Didn't check: " + name);
+                case "cust1": assert.deepStrictEqual(deps, []); break;
+                case "cust2": assert.deepStrictEqual(deps, []); break;
+                case "comp1": assert.deepStrictEqual(deps, []); break;
+                default: throw new Error("Didn't check: " + name);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
@@ -672,11 +675,11 @@ describe("rpc", () => {
             expectResourceCount: 4,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
-                    case "cust1": assert.deepStrictEqual(deps, []); break;
-                    case "cust2": assert.deepStrictEqual(deps, []); break;
-                    case "comp1": assert.deepStrictEqual(deps, []); break;
-                    case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1", "test:index:MyCustomResource::cust2"]); break;
-                    default: throw new Error("Didn't check: " + name);
+                case "cust1": assert.deepStrictEqual(deps, []); break;
+                case "cust2": assert.deepStrictEqual(deps, []); break;
+                case "comp1": assert.deepStrictEqual(deps, []); break;
+                case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1", "test:index:MyCustomResource::cust2"]); break;
+                default: throw new Error("Didn't check: " + name);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
@@ -687,13 +690,13 @@ describe("rpc", () => {
             expectResourceCount: 6,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
-                    case "comp1": assert.deepStrictEqual(deps, []); break;
-                    case "cust1": assert.deepStrictEqual(deps, []); break;
-                    case "comp2": assert.deepStrictEqual(deps, []); break;
-                    case "cust2": assert.deepStrictEqual(deps, []); break;
-                    case "cust3": assert.deepStrictEqual(deps, []); break;
-                    case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1", "test:index:MyCustomResource::cust2", "test:index:MyCustomResource::cust3"]); break;
-                    default: throw new Error("Didn't check: " + name);
+                case "comp1": assert.deepStrictEqual(deps, []); break;
+                case "cust1": assert.deepStrictEqual(deps, []); break;
+                case "comp2": assert.deepStrictEqual(deps, []); break;
+                case "cust2": assert.deepStrictEqual(deps, []); break;
+                case "cust3": assert.deepStrictEqual(deps, []); break;
+                case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1", "test:index:MyCustomResource::cust2", "test:index:MyCustomResource::cust3"]); break;
+                default: throw new Error("Didn't check: " + name);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
@@ -704,17 +707,17 @@ describe("rpc", () => {
             expectResourceCount: 10,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
-                    case "comp1": assert.deepStrictEqual(deps, []); break;
-                    case "cust1": assert.deepStrictEqual(deps, []); break;
-                    case "comp2": assert.deepStrictEqual(deps, []); break;
-                    case "cust2": assert.deepStrictEqual(deps, []); break;
-                    case "cust3": assert.deepStrictEqual(deps, []); break;
-                    case "cust4": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2"]); break;
-                    case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1", "test:index:MyCustomResource::cust2", "test:index:MyCustomResource::cust3"]); break;
-                    case "res2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2", "test:index:MyCustomResource::cust3"]); break;
-                    case "res3": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2"]); break;
-                    case "res4": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust4"]); break;
-                    default: throw new Error("Didn't check: " + name);
+                case "comp1": assert.deepStrictEqual(deps, []); break;
+                case "cust1": assert.deepStrictEqual(deps, []); break;
+                case "comp2": assert.deepStrictEqual(deps, []); break;
+                case "cust2": assert.deepStrictEqual(deps, []); break;
+                case "cust3": assert.deepStrictEqual(deps, []); break;
+                case "cust4": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2"]); break;
+                case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1", "test:index:MyCustomResource::cust2", "test:index:MyCustomResource::cust3"]); break;
+                case "res2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2", "test:index:MyCustomResource::cust3"]); break;
+                case "res3": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2"]); break;
+                case "res4": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust4"]); break;
+                default: throw new Error("Didn't check: " + name);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
@@ -725,13 +728,13 @@ describe("rpc", () => {
             expectResourceCount: 6,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
-                    case "comp1": assert.deepStrictEqual(deps, []); break;
-                    case "cust1": assert.deepStrictEqual(deps, []); break;
-                    case "cust2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
-                    case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
-                    case "res2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
-                    case "res3": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2"]); break;
-                    default: throw new Error("Didn't check: " + name);
+                case "comp1": assert.deepStrictEqual(deps, []); break;
+                case "cust1": assert.deepStrictEqual(deps, []); break;
+                case "cust2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
+                case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
+                case "res2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
+                case "res3": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust2"]); break;
+                default: throw new Error("Didn't check: " + name);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
@@ -742,10 +745,10 @@ describe("rpc", () => {
             expectResourceCount: 3,
             registerResource: (ctx, dryrun, t, name, res, deps) => {
                 switch (name) {
-                    case "cust1": assert.deepStrictEqual(deps, []); break;
-                    case "cust2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
-                    case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
-                    default: throw new Error("Didn't check: " + name);
+                case "cust1": assert.deepStrictEqual(deps, []); break;
+                case "cust2": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
+                case "res1": assert.deepStrictEqual(deps, ["test:index:MyCustomResource::cust1"]); break;
+                default: throw new Error("Didn't check: " + name);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
@@ -808,19 +811,21 @@ describe("rpc", () => {
             expectResourceCount: 3,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                                custom?: boolean, protect?: boolean, parent?: string, provider?: string,
-                               propertyDeps?: any, ignoreChanges?: string[], version?: string) => {
+                               propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
+                               replaceOnChanges?: string[],
+            ) => {
                 switch (name) {
-                    case "testResource":
-                        assert.strictEqual("0.19.1", version);
-                        break;
-                    case "testResource2":
-                        assert.strictEqual("0.19.2", version);
-                        break;
-                    case "testResource3":
-                        assert.strictEqual("", version);
-                        break;
-                    default:
-                        assert.fail(`unknown resource: ${name}`);
+                case "testResource":
+                    assert.strictEqual("0.19.1", version);
+                    break;
+                case "testResource2":
+                    assert.strictEqual("0.19.2", version);
+                    break;
+                case "testResource3":
+                    assert.strictEqual("", version);
+                    break;
+                default:
+                    assert.fail(`unknown resource: ${name}`);
                 }
                 return {
                     urn: makeUrn(t, name),
@@ -830,17 +835,17 @@ describe("rpc", () => {
             },
             invoke: (ctx: any, tok: string, args: any, version: string) => {
                 switch (tok) {
-                    case "invoke:index:doit":
-                        assert.strictEqual(version, "0.19.1");
-                        break;
-                    case "invoke:index:doit_v2":
-                        assert.strictEqual(version, "0.19.2");
-                        break;
-                    case "invoke:index:doit_noversion":
-                        assert.strictEqual(version, "");
-                        break;
-                    default:
-                        assert.fail(`unknown invoke: ${tok}`);
+                case "invoke:index:doit":
+                    assert.strictEqual(version, "0.19.1");
+                    break;
+                case "invoke:index:doit_v2":
+                    assert.strictEqual(version, "0.19.2");
+                    break;
+                case "invoke:index:doit_noversion":
+                    assert.strictEqual(version, "");
+                    break;
+                default:
+                    assert.fail(`unknown invoke: ${tok}`);
                 }
 
                 return {
@@ -850,14 +855,14 @@ describe("rpc", () => {
             },
             readResource: (ctx: any, t: string, name: string, id: string, par: string, state: any, version: string) => {
                 switch (name) {
-                    case "foo":
-                        assert.strictEqual(version, "0.20.0");
-                        break;
-                    case "foo_noversion":
-                        assert.strictEqual(version, "");
-                        break;
-                    default:
-                        assert.fail(`unknown read: ${name}`);
+                case "foo":
+                    assert.strictEqual(version, "0.20.0");
+                    break;
+                case "foo_noversion":
+                    assert.strictEqual(version, "");
+                    break;
+                default:
+                    assert.fail(`unknown read: ${name}`);
                 }
                 return {
                     urn: makeUrn(t, name),
@@ -1157,6 +1162,49 @@ describe("rpc", () => {
                 };
             },
         },
+        "replace_on_changes": {
+            program: path.join(base, "066.replace_on_changes"),
+            expectResourceCount: 1,
+            registerResource: (
+                ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                custom?: boolean, protect?: boolean, parent?: string, provider?: string,
+                propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
+                replaceOnChanges?: string[],
+            ) => {
+                if (name === "testResource") {
+                    assert.deepStrictEqual(replaceOnChanges, ["foo"]);
+                }
+                return {
+                    urn: makeUrn(t, name),
+                    id: name,
+                    props: {},
+                };
+            },
+        },
+        // A program that allocates a single resource using a native ES module
+        "native_es_module": {
+            // Dynamic import won't automatically resolve to /index.js on a directory, specifying explicitly
+            program: path.join(base, "067.native_es_module/index.js"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "remote_component_providers": {
+            program: path.join(base, "068.remote_component_providers"),
+            expectResourceCount: 4,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                               custom?: boolean, protect?: boolean, parent?: string, provider?: string,
+                               propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
+                               replaceOnChanges?: string[], providers?: any) => {
+                if (name === "singular" || name === "map" || name === "array") {
+                    assert.deepStrictEqual(Object.keys(providers), ["test"]);
+                }
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -1224,14 +1272,20 @@ describe("rpc", () => {
                                 const parent: string = req.getParent();
                                 const provider: string = req.getProvider();
                                 const ignoreChanges: string[] = req.getIgnorechangesList().sort();
+                                const replaceOnChanges: string[] = req.getReplaceonchangesList().sort();
                                 const propertyDeps: any = Array.from(req.getPropertydependenciesMap().entries())
                                     .reduce((o: any, [key, value]: any) => {
                                         return { ...o, [key]: value.getUrnsList().sort() };
                                     }, {});
                                 const version: string = req.getVersion();
                                 const importID: string = req.getImportid();
+                                const providers: any = Array.from(req.getProvidersMap().entries())
+                                    .reduce((o: any, [key, value]: any) => {
+                                        return { ...o, [key]: value };
+                                    }, {});
                                 const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps,
-                                    custom, protect, parent, provider, propertyDeps, ignoreChanges, version, importID);
+                                    custom, protect, parent, provider, propertyDeps, ignoreChanges, version,
+                                    importID, replaceOnChanges, providers);
                                 resp.setUrn(urn);
                                 resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));
@@ -1375,27 +1429,27 @@ function parentDefaultsRegisterResource(
         const rpath = name.split("/");
         for (let i = 1; i < rpath.length; i++) {
             switch (rpath[i]) {
-                case "c0":
-                case "r0":
-                    // Pass through parent values
-                    break;
-                case "c1":
-                case "r1":
-                    // Force protect to false
-                    expectProtect = false;
-                    break;
-                case "c2":
-                case "r2":
-                    // Force protect to true
-                    expectProtect = true;
-                    break;
-                case "c3":
-                case "r3":
-                    // Force provider
-                    expectProviderName = `${rpath.slice(0, i).join("/")}-p`;
-                    break;
-                default:
-                    assert.fail(`unexpected path element in name: ${rpath[i]}`);
+            case "c0":
+            case "r0":
+                // Pass through parent values
+                break;
+            case "c1":
+            case "r1":
+                // Force protect to false
+                expectProtect = false;
+                break;
+            case "c2":
+            case "r2":
+                // Force protect to true
+                expectProtect = true;
+                break;
+            case "c3":
+            case "r3":
+                // Force provider
+                expectProviderName = `${rpath.slice(0, i).join("/")}-p`;
+                break;
+            default:
+                assert.fail(`unexpected path element in name: ${rpath[i]}`);
             }
         }
 
@@ -1501,7 +1555,7 @@ async function createMockEngineAsync(
     return { server: server, addr: `0.0.0.0:${port}` };
 }
 
-function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.ChildProcess, addr: Promise<string> } {
+function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.ChildProcess; addr: Promise<string> } {
     // A quick note about this:
     //
     // Normally, `pulumi-language-nodejs` launches `./node-modules/@pulumi/pulumi/cmd/run` which is responsible

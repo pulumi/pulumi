@@ -1,0 +1,20 @@
+{
+  "name": "fake-provider",
+  "version": "0.0.1",
+  "types": {
+    "fake-provider:module1:BadEnum": {
+      "type": "boolean",
+      "enum": [
+        {
+          "value": true
+        },
+        {
+          "value": "marshmallow"
+        },
+        {
+          "value": false
+        }
+      ]
+    }
+  }
+}

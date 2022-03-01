@@ -48,3 +48,29 @@ func linkedConstructInputsCopyTo(ctx *Context, inputs map[string]interface{}, ar
 func linkedNewConstructResult(resource ComponentResource) (URNInput, Input, error) {
 	return newConstructResult(resource)
 }
+
+//go:linkname linkedCall github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedCall
+func linkedCall(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
+	callF callFunc) (*pulumirpc.CallResponse, error) {
+	return call(ctx, req, engineConn, callF)
+}
+
+//go:linkname linkedCallArgsCopyTo github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedCallArgsCopyTo
+func linkedCallArgsCopyTo(ctx *Context, source map[string]interface{}, args interface{}) (Resource, error) {
+	return callArgsCopyTo(ctx, source, args)
+}
+
+//go:linkname linkedCallArgsSelf github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedCallArgsSelf
+func linkedCallArgsSelf(ctx *Context, source map[string]interface{}) (Resource, error) {
+	return callArgsSelf(ctx, source)
+}
+
+//go:linkname linkedNewCallResult github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedNewCallResult
+func linkedNewCallResult(result interface{}) (Input, error) {
+	return newCallResult(result)
+}
+
+//go:linkname linkedNewCallFailure github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedNewCallFailure
+func linkedNewCallFailure(property, reason string) interface{} {
+	return newCallFailure(property, reason)
+}

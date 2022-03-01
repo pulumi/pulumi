@@ -52,6 +52,23 @@ type NodePackageInfo struct {
 	DisableUnionOutputTypes bool `json:"disableUnionOutputTypes,omitempty"`
 	// An indicator for whether the package contains enums.
 	ContainsEnums bool `json:"containsEnums,omitempty"`
+	// A map allowing you to map the name of a provider to the name of the module encapsulating the provider.
+	ProviderNameToModuleName map[string]string `json:"providerNameToModuleName,omitempty"`
+	// The name of the plugin, which might be different from the package name.
+	PluginName string `json:"pluginName,omitempty"`
+	// The version of the plugin, which might be different from the version of the package..
+	PluginVersion string `json:"pluginVersion,omitempty"`
+	// Additional files to include in TypeScript compilation.
+	// These paths are added to the `files` section of the
+	// generated `tsconfig.json`. A typical use case for this is
+	// compiling hand-authored unit test files that check the
+	// generated code.
+	ExtraTypeScriptFiles []string `json:"extraTypeScriptFiles,omitempty"`
+	// Determines whether to make single-return-value methods return an output object or the single value.
+	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
+
+	// Respect the Pkg.Version field in the schema
+	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
 }
 
 // NodeObjectInfo contains NodeJS-specific information for an object.

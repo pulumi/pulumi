@@ -140,7 +140,10 @@ func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) (backend.
 	return backend.RenameStack(ctx, s, newName)
 }
 
-func (s *cloudStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (s *cloudStack) Preview(
+	ctx context.Context,
+	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+
 	return backend.PreviewStack(ctx, s, op)
 }
 
@@ -161,8 +164,8 @@ func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (e
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation) result.Result {
-	return backend.WatchStack(ctx, s, op)
+func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) result.Result {
+	return backend.WatchStack(ctx, s, op, paths)
 }
 
 func (s *cloudStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,

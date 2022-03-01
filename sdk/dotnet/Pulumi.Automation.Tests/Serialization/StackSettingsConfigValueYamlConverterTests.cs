@@ -9,7 +9,7 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     public class StackSettingsConfigValueYamlConverterTests
     {
-        private static LocalSerializer _serializer = new LocalSerializer();
+        private static readonly LocalSerializer _serializer = new LocalSerializer();
 
         [Fact]
         public void CanDeserializePlainString()
@@ -20,7 +20,7 @@ config:
 ";
 
             var settings = _serializer.DeserializeYaml<StackSettings>(yaml);
-            Assert.NotNull(settings?.Config);
+            Assert.NotNull(settings.Config);
             Assert.True(settings!.Config!.ContainsKey("test"));
 
             var value = settings.Config["test"];
@@ -39,7 +39,7 @@ config:
 ";
 
             var settings = _serializer.DeserializeYaml<StackSettings>(yaml);
-            Assert.NotNull(settings?.Config);
+            Assert.NotNull(settings.Config);
             Assert.True(settings!.Config!.ContainsKey("test"));
 
             var value = settings.Config["test"];

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 """Manually constructed mypy typings. We should explore automated
 mypy typing generation from protobufs in the future.
 
@@ -21,14 +20,12 @@ mypy typing generation from protobufs in the future.
 from typing import Dict, List, Optional
 from google.protobuf.struct_pb2 import Struct
 
-
 class ConstructRequest:
     class PropertyDependencies:
         urns: List[str]
-
     project: str
     stack: str
-    config: Dict[str,str]
+    config: Dict[str, str]
     dryRun: bool
     parallel: int
     monitorEndpoint: str
@@ -36,60 +33,87 @@ class ConstructRequest:
     name: str
     parent: str
     inputs: Struct
-    inputDependencies: Dict[str,PropertyDependencies]
+    inputDependencies: Dict[str, PropertyDependencies]
     protect: bool
     providers: Dict[str, str]
     aliases: List[str]
     dependencies: List[str]
-
+    configSecretKeys: List[str]
 
 class ConstructResponse:
-
-    def __init__(self,
-                 urn: Optional[str]=None,
-                 state: Optional[Struct]=None,
-                 stateDependencies: Optional[Dict[str,PropertyDependencies]]=None) -> void:
+    def __init__(
+        self,
+        urn: Optional[str] = None,
+        state: Optional[Struct] = None,
+        stateDependencies: Optional[Dict[str, PropertyDependencies]] = None,
+    ) -> None:
         pass
 
     class PropertyDependencies:
         urns: List[str]
 
-        def __init__(self, urns: List[str]) -> void:
+        def __init__(self, urns: List[str]) -> None:
             pass
-
     urn: str
     state: Struct
-    stateDependencies: Dict[str,PropertyDependencies]
+    stateDependencies: Dict[str, PropertyDependencies]
 
+class CallRequest:
+    class ArgumentDependencies:
+        urns: List[str]
+    tok: str
+    args: Struct
+    argDependencies: Dict[str, ArgumentDependencies]
+    provider: str
+    version: str
+    project: str
+    stack: str
+    config: Dict[str, str]
+    configSecretKeys: List[str]
+    dryRun: bool
+    parallel: int
+    monitorEndpoint: str
 
-class CheckResponse:
-    def __init__(self, inputs: Optional[Struct]=None, failures: List[CheckFailure]=[]) -> void:
+class CallResponse:
+    def __init__(self, **kwargs) -> None:
         pass
 
+    class ReturnDependencies:
+        urns: List[str]
+
+        def __init__(self, urns: List[str]) -> None:
+            pass
+
+class CheckResponse:
+    def __init__(
+        self, inputs: Optional[Struct] = None, failures: List[CheckFailure] = []
+    ) -> None:
+        pass
     inputs: Struct
     failures: List[CheckFailure]
 
-
 class CheckFailure:
+    def __init__(self, property: str, reason: str) -> None:
+        pass
     property: str
     reason: str
 
-
 class ConfigureResponse:
-
-    def __init__(self,
-                 acceptSecrets: bool=False,
-                 supportsPreview: bool=False,
-                 acceptResources: bool=False) -> void: ...
+    def __init__(
+        self,
+        acceptSecrets: bool = False,
+        supportsPreview: bool = False,
+        acceptResources: bool = False,
+        acceptOutputs: bool = False,
+    ) -> None: ...
 
     acceptSecrets: bool
     supportsPreview: bool
     acceptResources: bool
-
+    acceptOutputs: bool
 
 class GetSchemaRequest:
     version: int
-
 
 class GetSchemaResponse:
     def __init__(self, schema: str):

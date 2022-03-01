@@ -7,7 +7,7 @@ linters:
     - errcheck
     - goconst
     - gofmt
-    - golint
+    - revive
     - gosec
     - govet
     - ineffassign

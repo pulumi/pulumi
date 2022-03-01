@@ -287,10 +287,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 	// let the user know what is still being worked on.
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
-	if stdout == os.Stdout && stderr == os.Stderr && opts.IsInteractive {
+	if stdout == os.Stdout && stderr == os.Stderr {
 		spinner, ticker = cmdutil.NewSpinnerAndTicker(
 			fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
-			nil, 1 /*timesPerSecond*/)
+			nil, opts.Color, 1 /*timesPerSecond*/)
 	} else {
 		spinner = &nopSpinner{}
 		ticker = time.NewTicker(math.MaxInt64)
@@ -1390,8 +1390,8 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.
 	return op
 }
 
-func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata) string {
-	return display.getStepOp(step).Prefix() + colors.Reset
+func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata, done bool) string {
+	return display.getStepOp(step).Prefix(done) + colors.Reset
 }
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
@@ -1442,7 +1442,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
 	}
-	return op.Color() + getDescription() + colors.Reset
+	return op.ColorProgress() + getDescription() + colors.Reset
 }
 
 func writeString(b io.StringWriter, s string) {

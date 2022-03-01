@@ -1,0 +1,3 @@
+name: construct_component_methods_resources_nodejs
+description: A program that constructs remote component resources with methods that create resources.
+runtime: nodejs

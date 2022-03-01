@@ -19,8 +19,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 
-	"github.com/pkg/errors"
 	gosecrets "gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/awskms"        // support for awskms://
 	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://
@@ -41,18 +41,18 @@ type cloudSecretsManagerState struct {
 
 // NewCloudSecretsManagerFromState deserialize configuration from state and returns a secrets
 // manager that uses the target cloud key management service to encrypt/decrypt a data key used for
-// envelope encyrtion of secrets values.
+// envelope encryption of secrets values.
 func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s cloudSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling state")
+		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
 	return NewCloudSecretsManager(s.URL, s.EncryptedKey)
 }
 
 // GenerateNewDataKey generates a new DataKey seeded by a fresh random 32-byte key and encrypted
-// using the target coud key management service.
+// using the target cloud key management service.
 func GenerateNewDataKey(url string) ([]byte, error) {
 	plaintextDataKey := make([]byte, 32)
 	_, err := rand.Read(plaintextDataKey)

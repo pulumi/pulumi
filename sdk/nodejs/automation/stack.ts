@@ -97,22 +97,22 @@ export class Stack {
         this.workspace = workspace;
 
         switch (mode) {
-            case "create":
-                this.ready = workspace.createStack(name);
-                return this;
-            case "select":
-                this.ready = workspace.selectStack(name);
-                return this;
-            case "createOrSelect":
-                this.ready = workspace.createStack(name).catch((err) => {
-                    if (err instanceof StackAlreadyExistsError) {
-                        return workspace.selectStack(name);
-                    }
-                    throw err;
-                });
-                return this;
-            default:
-                throw new Error(`unexpected Stack creation mode: ${mode}`);
+        case "create":
+            this.ready = workspace.createStack(name);
+            return this;
+        case "select":
+            this.ready = workspace.selectStack(name);
+            return this;
+        case "createOrSelect":
+            this.ready = workspace.createStack(name).catch((err) => {
+                if (err instanceof StackAlreadyExistsError) {
+                    return workspace.selectStack(name);
+                }
+                throw err;
+            });
+            return this;
+        default:
+            throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
     private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<ReadlineResult> {
@@ -183,6 +183,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
+            }
+            if (opts.color) {
+                args.push("--color", opts.color);
             }
         }
 
@@ -295,6 +298,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.color) {
+                args.push("--color", opts.color);
+            }
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -390,6 +396,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.color) {
+                args.push("--color", opts.color);
+            }
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
@@ -444,6 +453,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
+            }
+            if (opts.color) {
+                args.push("--color", opts.color);
             }
         }
 
@@ -659,20 +671,20 @@ export type UpdateResult = "not-started" | "in-progress" | "succeeded" | "failed
  * The granular CRUD operation performed on a particular resource during an update.
  */
 export type OpType = "same"
-    | "create"
-    | "update"
-    | "delete"
-    | "replace"
-    | "create-replacement"
-    | "delete-replaced"
-    | "read"
-    | "read-replacement"
-    | "refresh"
-    | "discard"
-    | "discard-replaced"
-    | "remove-pending-replace"
-    | "import"
-    | "import-replacement";
+| "create"
+| "update"
+| "delete"
+| "replace"
+| "create-replacement"
+| "delete-replaced"
+| "read"
+| "read-replacement"
+| "refresh"
+| "discard"
+| "discard-replaced"
+| "remove-pending-replace"
+| "import"
+| "import-replacement";
 
 /**
  * A map of operation types and their corresponding counts.
@@ -738,6 +750,7 @@ export interface UpOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 /**
@@ -755,6 +768,7 @@ export interface PreviewOptions {
     program?: PulumiFn;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 /**
@@ -768,6 +782,7 @@ export interface RefreshOptions {
     userAgent?: string;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 /**
@@ -781,6 +796,7 @@ export interface DestroyOptions {
     userAgent?: string;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 const execKind = {
@@ -809,6 +825,12 @@ const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
     }
     if (logFile) {
         // remove the logfile
-        fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+        if(fs.rm) {
+            // remove with Node JS 15.X+
+            fs.rm(path.dirname(logFile), { recursive: true }, () => { return; });
+        } else {
+            // remove with Node JS 14.X
+            fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+        }
     }
 };

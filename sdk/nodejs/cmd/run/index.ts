@@ -113,7 +113,9 @@ function printErrorUsageAndExit(message: string): never {
 function main(args: string[]): void {
     // See usage above for the intended usage of this program, including flags and required args.
     const argv: minimist.ParsedArgs = minimist(args, {
+        // eslint-disable-next-line id-blacklist
         boolean: [ "dry-run", "query-mode" ],
+        // eslint-disable-next-line id-blacklist
         string: [ "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
         unknown: (arg: string) => {
             return true;

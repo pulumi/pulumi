@@ -9,7 +9,7 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     public class StackSettingsConfigValueJsonConverterTests
     {
-        private static LocalSerializer _serializer = new LocalSerializer();
+        private static readonly LocalSerializer _serializer = new LocalSerializer();
 
         [Fact]
         public void CanDeserializePlainString()
@@ -23,7 +23,7 @@ namespace Pulumi.Automation.Tests.Serialization
 ";
 
             var settings = _serializer.DeserializeJson<StackSettings>(json);
-            Assert.NotNull(settings?.Config);
+            Assert.NotNull(settings.Config);
             Assert.True(settings!.Config!.ContainsKey("test"));
 
             var value = settings.Config["test"];
@@ -46,7 +46,7 @@ namespace Pulumi.Automation.Tests.Serialization
 ";
 
             var settings = _serializer.DeserializeJson<StackSettings>(json);
-            Assert.NotNull(settings?.Config);
+            Assert.NotNull(settings.Config);
             Assert.True(settings!.Config!.ContainsKey("test"));
 
             var value = settings.Config["test"];

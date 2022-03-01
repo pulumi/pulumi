@@ -4,7 +4,7 @@
 const cases = [];
 cases.push({
     title: "Async anonymous function closure (js)",
-    // tslint:disable-next-line
+    // eslint-disable-next-line
     func: async function (a) { await a; },
     expectText: `exports.handler = __f0;
 
@@ -22,7 +22,7 @@ return async function (a) { await a; };
 
 cases.push({
     title: "Async anonymous function closure - extra space (js)",
-    // tslint:disable-next-line
+    // eslint-disable-next-line
     func: async  function (a) { await a; },
     expectText: `exports.handler = __f0;
 
@@ -40,7 +40,7 @@ return async function (a) { await a; };
 
 cases.push({
     title: "Async named function closure (js)",
-    // tslint:disable-next-line
+    // eslint-disable-next-line
     func: async function foo(a) { await a; },
     expectText: `exports.handler = __foo;
 
@@ -58,7 +58,7 @@ return async function /*foo*/(a) { await a; };
 
 cases.push({
     title: "Async arrow function closure (js)",
-    // tslint:disable-next-line
+    // eslint-disable-next-line
     func: async (a) => { await a; },
     expectText: `exports.handler = __f0;
 

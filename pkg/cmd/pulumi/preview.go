@@ -15,14 +15,19 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"bytes"
+	"errors"
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -36,6 +41,8 @@ func newPreviewCmd() *cobra.Command {
 	var configArray []string
 	var configPath bool
 	var client string
+	var planFilePath string
+	var showSecrets bool
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
@@ -44,13 +51,13 @@ func newPreviewCmd() *cobra.Command {
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
-	var refresh bool
+	var refresh string
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
 	var showReads bool
 	var suppressOutputs bool
-	var suppressPermaLink string
+	var suppressPermalink string
 	var targets []string
 	var replaces []string
 	var targetReplaces []string
@@ -95,10 +102,10 @@ func newPreviewCmd() *cobra.Command {
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
-			if suppressPermaLink == "true" {
-				displayOpts.SuppressPermaLink = true
+			if suppressPermalink == "true" {
+				displayOpts.SuppressPermalink = true
 			} else {
-				displayOpts.SuppressPermaLink = false
+				displayOpts.SuppressPermalink = false
 			}
 			filestateBackend, err := isFilestateBackend(displayOpts)
 			if err != nil {
@@ -106,9 +113,9 @@ func newPreviewCmd() *cobra.Command {
 			}
 
 			// by default, we are going to suppress the permalink when using self-managed backends
-			// this can be re-enabled by explicitly passing "false" to the `supppress-permalink` flag
-			if suppressPermaLink != "false" && filestateBackend {
-				displayOpts.SuppressPermaLink = true
+			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
+			if suppressPermalink != "false" && filestateBackend {
+				displayOpts.SuppressPermalink = true
 			}
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
@@ -132,17 +139,17 @@ func newPreviewCmd() *cobra.Command {
 
 			m, err := getUpdateMetadata(message, root, execKind, execAgent)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
 			sm, err := getStackSecretsManager(s)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
 			cfg, err := getStackConfiguration(s, sm)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
 			targetURNs := []resource.URN{}
@@ -160,23 +167,30 @@ func newPreviewCmd() *cobra.Command {
 				replaceURNs = append(replaceURNs, resource.URN(tr))
 			}
 
+			refreshOption, err := getRefreshOption(proj, refresh)
+			if err != nil {
+				return result.FromError(err)
+			}
+
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
 					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 					Parallel:                  parallel,
 					Debug:                     debug,
-					Refresh:                   refresh,
+					Refresh:                   refreshOption,
 					ReplaceTargets:            replaceURNs,
 					UseLegacyDiff:             useLegacyDiff(),
 					DisableProviderPreview:    disableProviderPreview(),
 					DisableResourceReferences: disableResourceReferences(),
+					DisableOutputValues:       disableOutputValues(),
 					UpdateTargets:             targetURNs,
 					TargetDependents:          targetDependents,
+					ExperimentalPlans:         hasExperimentalCommands() || planFilePath != "",
 				},
 				Display: displayOpts,
 			}
 
-			changes, res := s.Preview(commandContext(), backend.UpdateOperation{
+			plan, changes, res := s.Preview(commandContext(), backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -192,6 +206,24 @@ func newPreviewCmd() *cobra.Command {
 			case expectNop && changes != nil && changes.HasChanges():
 				return result.FromError(errors.New("error: no changes were expected but changes were proposed"))
 			default:
+				if planFilePath != "" {
+					encrypter, err := sm.Encrypter()
+					if err != nil {
+						return result.FromError(err)
+					}
+					if err = writePlan(planFilePath, plan, encrypter, showSecrets); err != nil {
+						return result.FromError(err)
+					}
+
+					// Write out message on how to use the plan
+					var buf bytes.Buffer
+					fprintf(&buf, "Update plan written to '%s'", planFilePath)
+					fprintf(
+						&buf,
+						"\nRun `pulumi up --plan='%s'` to constrain the update to the operations planned by this preview",
+						planFilePath)
+					cmdutil.Diag().Infof(diag.RawMessage("" /*urn*/, buf.String()))
+				}
 				return nil
 			}
 		}),
@@ -215,6 +247,14 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
+	cmd.PersistentFlags().StringVar(
+		&planFilePath, "save-plan", "",
+		"[EXPERIMENTAL] Save the operations proposed by the preview to a plan file at the given path")
+	if !hasExperimentalCommands() {
+		contract.AssertNoError(cmd.PersistentFlags().MarkHidden("save-plan"))
+	}
+	cmd.Flags().BoolVarP(
+		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in the plan file. Defaults to `false`")
 
 	cmd.PersistentFlags().StringVar(
 		&client, "client", "", "The address of an existing language runtime host to connect to")
@@ -255,9 +295,10 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
-	cmd.PersistentFlags().BoolVarP(
-		&refresh, "refresh", "r", false,
+	cmd.PersistentFlags().StringVarP(
+		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
+	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -276,7 +317,7 @@ func newPreviewCmd() *cobra.Command {
 		"Suppress display of stack outputs (in case they contain sensitive values)")
 
 	cmd.PersistentFlags().StringVar(
-		&suppressPermaLink, "suppress-permalink", "",
+		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 

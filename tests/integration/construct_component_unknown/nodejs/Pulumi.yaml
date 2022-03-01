@@ -1,0 +1,3 @@
+name: construct_component_unknown_nodejs
+description: A program that constructs remote component resources with unknowns during preview.
+runtime: nodejs

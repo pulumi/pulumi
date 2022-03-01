@@ -14,11 +14,12 @@
 import asyncio
 import unittest
 from enum import Enum
-from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, cast
 
 from google.protobuf import struct_pb2
-from pulumi.resource import ComponentResource, CustomResource, ResourceOptions
-from pulumi.runtime import Mocks, MockCallArgs, MockResourceArgs, ResourceModule, rpc, rpc_manager, known_types, set_mocks, settings
+from google.protobuf import json_format
+from pulumi.resource import ComponentResource, CustomResource, DependencyResource, Resource, ResourceOptions
+from pulumi.runtime import Mocks, MockCallArgs, MockResourceArgs, ResourceModule, rpc, rpc_manager, set_mocks, settings
 from pulumi import Input, Output, UNKNOWN, input_type
 from pulumi.asset import (
     FileAsset,
@@ -178,7 +179,7 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(id, prop["id"])
 
         res = rpc.deserialize_properties(prop)
-        self.assertTrue(isinstance(res, MyCustomResource))
+        self.assertIsInstance(res, MyCustomResource)
 
         rpc._RESOURCE_MODULES.clear()
         res = rpc.deserialize_properties(prop)
@@ -208,7 +209,7 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(id, prop["id"])
 
         res = rpc.deserialize_properties(prop)
-        self.assertTrue(isinstance(res, MyCustomResource))
+        self.assertIsInstance(res, MyCustomResource)
 
         rpc._RESOURCE_MODULES.clear()
         res = rpc.deserialize_properties(prop)
@@ -1434,3 +1435,80 @@ class TypeMetaDataSerializationTests(unittest.TestCase):
         self.assertEqual("second", result.some_bar["a"]["the_first"])
         self.assertEqual({"the_second": "later"}, result.some_bar["a"].the_second)
         self.assertEqual({"the_second": "later"}, result.some_bar["a"]["the_second"])
+
+
+class OutputValueSerializationTests(unittest.TestCase):
+    async def assertOutputEqual(self, first: Output[Any], second: Output[Any]):
+        async def urns(res: Set[Resource]) -> Set[str]:
+            return cast(Set[str], {await r.urn.future() for r in res})
+
+        self.assertEqual(await first.future(), await second.future())
+        self.assertEqual(await first.is_known(), await second.is_known())
+        self.assertEqual(await first.is_secret(), await second.is_secret())
+        self.assertEqual(await urns(await first.resources()), await urns(await second.resources()))
+
+
+    @pulumi_test
+    async def test_serialize(self):
+        settings.SETTINGS.feature_support["outputValues"] = True
+
+        def gen_test_parameters():
+            for value in [None, 0, 1, "", "hi", {}, []]:
+                for deps in [[], ["fakeURN1", "fakeURN2"]]:
+                    for is_known in [True, False]:
+                        for is_secret in [True, False]:
+                            yield (value, deps, is_known, is_secret)
+
+        for (value, deps, is_known, is_secret) in gen_test_parameters():
+            with self.subTest(value=value, deps=deps, is_known=is_known, is_secret=is_secret):
+                resources: Set[Resource] = set(map(DependencyResource, deps))
+
+                obj: Dict[str, Any] = {
+                    rpc._special_sig_key: rpc._special_output_value_sig
+                }
+                if is_known:
+                    obj["value"] = value
+                if is_secret:
+                    obj["secret"] = is_secret
+                if deps:
+                    obj["dependencies"] = deps
+
+                inputs = {"value": Output(resources, future(value), future(is_known), future(is_secret))}
+                expected = struct_pb2.Struct()
+                expected["value"] = obj
+
+                expected_round_trip = Output(resources, future(value if is_known else None), future(is_known),
+                    future(is_secret))
+
+                actual = await rpc.serialize_properties(inputs, {}, keep_output_values=True)
+                self.assertDictEqual(json_format.MessageToDict(expected), json_format.MessageToDict(actual))
+
+                # Roundtrip
+                back = rpc.deserialize_properties(actual)
+                await self.assertOutputEqual(expected_round_trip, back["value"])
+
+    @pulumi_test
+    async def test_serialize_nested_dict(self):
+        settings.SETTINGS.feature_support["outputValues"] = True
+
+        inputs = {
+            "value": {
+                "foo": Output(set(), future("bar"), future(True), future(True)),
+            }
+        }
+        expected = struct_pb2.Struct()
+        expected["value"] = {
+            "foo": {
+                rpc._special_sig_key: rpc._special_output_value_sig,
+                "value": "bar",
+                "secret": True,
+            },
+        }
+        actual = await rpc.serialize_properties(inputs, {}, keep_output_values=True)
+        self.assertDictEqual(json_format.MessageToDict(expected), json_format.MessageToDict(actual))
+
+
+def future(val):
+    fut = asyncio.Future()
+    fut.set_result(val)
+    return fut

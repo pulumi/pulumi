@@ -3,8 +3,7 @@
 namespace Pulumi
 {
     /// <summary>
-    /// Options to help control the behavior of <see cref="IDeployment.InvokeAsync{T}(string,
-    /// InvokeArgs, InvokeOptions)"/>.
+    /// Options to help control the behavior of <see cref="IDeployment.InvokeAsync{T}(string, InvokeArgs, InvokeOptions)"/>.
     /// </summary>
     public class InvokeOptions
     {
@@ -25,5 +24,11 @@ namespace Pulumi
         /// used when performing this invoke.
         /// </summary>
         public string? Version { get; set; }
+
+        /// <summary>
+        /// An optional URL, corresponding to the download URL of the provider plugin that should be
+        /// used when performing this invoke.
+        /// </summary>
+        public string? PluginDownloadURL { get; set; }
     }
 }
