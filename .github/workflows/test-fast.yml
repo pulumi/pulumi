@@ -123,10 +123,27 @@ jobs:
         with:
           go-version: ${{ inputs.go-version }}
           check-latest: true
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+      - name: Go Cache
+        uses: actions/cache@v2
+        id: go-cache
+        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
+        with:
+          path: |
+              ${{ steps.go-cache-paths.outputs.go-build }}
+              ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Set up Python ${{ inputs.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ inputs.python-version }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
       - name: Set up DotNet ${{ inputs.dotnet-version }}
         uses: actions/setup-dotnet@v1
         with:
@@ -135,6 +152,9 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: ${{ inputs.node-version }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/package.json
+
       - name: Uninstall pre-installed Pulumi (windows)
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
