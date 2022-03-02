@@ -31,3 +31,6 @@
 
 - [backend/filestate] - Fix a bug creating `stack.json.bak` files.
   [#9476](https://github.com/pulumi/pulumi/pull/9476)
+
+- [sdk/go] Fix awaits for outputs containing resources.
+  [#9106](https://github.com/pulumi/pulumi/pull/9106)
