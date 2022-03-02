@@ -814,6 +814,14 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		}
 		resolved.Set(v)
 	}
+	if v.CanAddr() && v.Addr().Type().Implements(resourceType) {
+		r := v.Addr().Interface().(Resource)
+		urn, known, secret, err := r.URN().awaitURN(ctx)
+		contract.AssertNoErrorf(err, "URNs should resolve without error")
+		contract.Assertf(known, "Should know the URN")
+		contract.Assertf(!secret, "Should not be a secret")
+		fmt.Printf("Got an URN: '%s' from value: %v\n", urn, r.URN())
+	}
 	return known, secret, deps, err
 }
 

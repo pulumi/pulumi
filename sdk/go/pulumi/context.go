@@ -1234,7 +1234,21 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	}
 
 	// Serialize all properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
-	resolvedProps, propertyDeps, rpcDeps, err := marshalInputs(props)
+	var (
+		resolvedProps resource.PropertyMap
+		propertyDeps  map[string][]URN
+		rpcDeps       []URN
+	)
+	func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf("prepareResourceInputs: marshalling inputs for res: %T failed", res)
+				panic(err)
+			}
+		}()
+		resolvedProps, propertyDeps, rpcDeps, err = marshalInputs(props)
+
+	}()
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
