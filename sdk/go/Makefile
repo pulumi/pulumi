@@ -10,7 +10,7 @@ include ../../build/common.mk
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
-TEST_ALL_DEPS = install
+TEST_ALL_DEPS ?= install
 
 gen::
 	go generate ./pulumi/...
@@ -26,10 +26,10 @@ install:: install_plugin
 test_all:: test_fast test_auto
 
 test_fast:: $(TEST_ALL_DEPS)
-	$(GO_TEST_FAST) $(TEST_FAST_PKGS)
+	@$(GO_TEST_FAST) $(TEST_FAST_PKGS)
 
 test_auto:: $(TEST_ALL_DEPS)
-	$(GO_TEST) $(TEST_AUTO_PKGS)
+	@$(GO_TEST) $(TEST_AUTO_PKGS)
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}

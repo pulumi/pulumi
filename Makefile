@@ -1,19 +1,21 @@
 PROJECT_NAME := Pulumi SDK
 PROJECT_ROOT := $(realpath .)
-SUB_PROJECTS := sdk/dotnet sdk/nodejs sdk/python sdk/go
+SDKS         := dotnet nodejs python go
+SUB_PROJECTS := $(SDKS:%=sdk/%)
 
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v /vendor/)
-TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v /vendor/)
+INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
+TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v /vendor/ | grep -v ^${INTEGRATION_PKG}$)
 VERSION         := $(shell pulumictl get version)
 
 TESTPARALLELISM := 10
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
-TEST_ALL_DEPS = build $(SUB_PROJECTS:%=%_install)
+TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
 
 ensure::
 	$(call STEP_MESSAGE)
@@ -100,8 +102,16 @@ test_all:: test_build test_pkg test_integration
 test_pkg::
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 
+
+subset=$(subst test_integration_,,$(word 1,$(subst !, ,$@)))
+test_integration_%:
+	@cd tests && PULUMI_INTEGRATION_TESTS=$(subset) $(GO_TEST) $(INTEGRATION_PKG)
+
+test_integration_subpkgs:
+	@cd tests && $(GO_TEST) $(TESTS_PKGS)
+
+test_integration:: $(SDKS:%=test_integration_%) test_integration_rest test_integration_subpkgs
 test_integration::
-	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
 
 tidy::
 	./scripts/tidy.sh

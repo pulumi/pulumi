@@ -11,7 +11,7 @@ TEST_FAST_TIMEOUT := 2m
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
-TEST_ALL_DEPS = build
+TEST_ALL_DEPS ?= build
 
 include ../../build/common.mk
 
@@ -52,34 +52,30 @@ install_plugin:: build
 install:: install_package install_plugin
 
 unit_tests:: $(TEST_ALL_DEPS)
-	$(TESTSUITE_SKIPPED) --skip-windows unit-nodejs || \
-		yarn run nyc -x 'bin/tests/runtime/*ClosureCases*.js' -s mocha --timeout 120000 \
-			--exclude 'bin/tests/automation/**/*.spec.js' \
-			--exclude 'bin/tests/runtime/closureLoader.spec.js' \
-			'bin/tests/**/*.spec.js'
-	$(TESTSUITE_SKIPPED) --skip-windows unit-nodejs || \
-		yarn run mocha --timeout 120000 'bin/tests/runtime/closureLoader.spec.js'
-	$(TESTSUITE_SKIPPED) --skip-windows unit-with-mocks-nodejs || \
-		yarn run nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
+	yarn run nyc -x 'bin/tests/runtime/*ClosureCases*.js' -s mocha --timeout 120000 \
+		--exclude 'bin/tests/automation/**/*.spec.js' \
+		--exclude 'bin/tests/runtime/closureLoader.spec.js' \
+		'bin/tests/**/*.spec.js'
+	yarn run mocha --timeout 120000 'bin/tests/runtime/closureLoader.spec.js'
+	yarn run nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
-auto_tests:: $(TEST_ALL_DEPS)
-	$(TESTSUITE_SKIPPED) --skip-windows auto-nodejs || yarn run nyc -s mocha --timeout 120000 'bin/tests/automation/**/*.spec.js'
+test_auto:: $(TEST_ALL_DEPS)
+	yarn run nyc -s mocha --timeout 120000 'bin/tests/automation/**/*.spec.js'
 
 sxs_tests:: $(TEST_ALL_DEPS)
-	$(TESTSUITE_SKIPPED) --skip-windows sxs || ( \
-		pushd tests/sxs_ts_3.6    && yarn && tsc && popd && \
-		pushd tests/sxs_ts_latest && yarn && tsc && popd )
+	cd tests/sxs_ts_3.6    && yarn && tsc
+	cd tests/sxs_ts_latest && yarn && tsc
 
 test_fast:: sxs_tests unit_tests
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
-	$(GO_TEST_FAST) ${PROJECT_PKGS}
+	@$(GO_TEST_FAST) ${PROJECT_PKGS}
 
-go_tests:: $(TEST_ALL_DEPS)
-	$(GO_TEST) ${PROJECT_PKGS}
+test_go:: $(TEST_ALL_DEPS)
+	@$(GO_TEST) ${PROJECT_PKGS}
 
-test_all:: sxs_tests unit_tests auto_tests go_tests
+test_all:: sxs_tests unit_tests test_auto test_go
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
