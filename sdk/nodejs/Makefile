@@ -29,6 +29,7 @@ build_package:: ensure
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	cp -R tests/automation/data/. bin/tests/automation/data/
 	cp README.md ../../LICENSE ./dist/* bin/
+# safely remove mockpackage dependency see [pulumi/pulumi#9026]
 	cp package.json yarn.lock bin/ && cd bin && yarn remove mockpackage && rm yarn.lock
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
