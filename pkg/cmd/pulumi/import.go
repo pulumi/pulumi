@@ -202,7 +202,7 @@ func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
 
 type programGeneratorFunc func(p *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
-func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectName tokens.PackageName,
+func generateImportedDefinitions(out io.Writer, stackName tokens.Name, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
 	imports []deploy.Import, protectResources bool) (bool, error) {
 
@@ -233,7 +233,7 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectN
 		if i.Parent != "" {
 			parentType = i.Parent.QualifiedType()
 		}
-		urn := resource.NewURN(stackName, projectName, parentType, i.Type, i.Name)
+		urn := resource.NewURN(stackName.Q(), projectName, parentType, i.Type, i.Name)
 		if state, ok := resourceTable[urn]; ok {
 			// Copy the state and override the protect bit.
 			s := *state

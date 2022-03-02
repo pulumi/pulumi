@@ -557,7 +557,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	return cloudBackendReference{
 		owner:   qualifiedName.Owner,
 		project: qualifiedName.Project,
-		name:    tokens.QName(qualifiedName.Name),
+		name:    tokens.AsName(qualifiedName.Name),
 		b:       b,
 	}, nil
 }
