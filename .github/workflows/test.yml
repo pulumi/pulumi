@@ -78,7 +78,10 @@ jobs:
               make test_fast
               make test_auto
 
-          - run: make test_pkg
+          - run: make test_pkg_nodejs
+            require-build: true
+
+          - run: make test_pkg_rest
             require-build: true
 
           - run: make test_integration_dotnet

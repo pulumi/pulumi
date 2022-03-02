@@ -6,9 +6,11 @@ SUB_PROJECTS := $(SDKS:%=sdk/%)
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
-PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v /vendor/)
+# Exclude longest running test: codegen/nodejs to run in a separate worker
+PKG_CODEGEN_NODEJS := github.com/pulumi/pulumi/pkg/v3/codegen/nodejs
+PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v ^${PKG_CODEGEN_NODEJS}$)
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
-TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v /vendor/ | grep -v ^${INTEGRATION_PKG}$)
+TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$)
 VERSION         := $(shell pulumictl get version)
 
 TESTPARALLELISM := 10
@@ -80,7 +82,7 @@ lint_tests:
 	cd tests && golangci-lint run -c ../.golangci.yml --timeout 5m
 
 test_fast:: build
-	cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS}
+	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
 
 test_build:: $(TEST_ALL_DEPS)
 	cd tests/testprovider && go build -o pulumi-resource-testprovider$(shell go env GOEXE)
@@ -99,9 +101,13 @@ test_build:: $(TEST_ALL_DEPS)
 
 test_all:: test_build test_pkg test_integration
 
-test_pkg::
-	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
+test_pkg_nodejs:
+	@cd pkg && $(GO_TEST) ${PKG_CODEGEN_NODEJS}
 
+test_pkg_rest:
+	@cd pkg && $(GO_TEST) ${PROJECT_PKGS}
+
+test_pkg:: test_pkg_nodejs test_pkg_rest
 
 subset=$(subst test_integration_,,$(word 1,$(subst !, ,$@)))
 test_integration_%:
