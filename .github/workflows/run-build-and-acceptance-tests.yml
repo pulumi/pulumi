@@ -161,14 +161,14 @@ jobs:
 
   build:
     name: Build
-    uses: pulumi/pulumi/.github/workflows/build.yml@master
+    uses: pulumi/pulumi/.github/workflows/build.yml@aaronfriel/ci-revamp
     with:
       enable-coverage: true
 
   test:
     name: Test
     needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+    uses: pulumi/pulumi/.github/workflows/test.yml@aaronfriel/ci-revamp
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     with:
       enable-coverage: true
