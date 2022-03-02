@@ -1161,10 +1161,12 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		outprops["id"] = resource.MakeComputed(resource.PropertyValue{})
 	}
 
-	if _, hasRemainingOutput := state.outputs[""]; hasRemainingOutput {
+	if o, hasRemainingOutput := state.outputs[""]; hasRemainingOutput {
+		isDynamic := o.ElementType() == dynamicType
+
 		remaining, known := resource.PropertyMap{}, true
 		for k, v := range outprops {
-			if v.IsNull() || v.IsComputed() || v.IsOutput() {
+			if !isDynamic && (v.IsNull() || v.IsComputed() || v.IsOutput()) {
 				known = !dryrun
 			}
 			if _, ok := state.outputs[string(k)]; !ok {
@@ -1183,6 +1185,24 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		v, ok := outprops[resource.PropertyKey(k)]
 		if !ok && !dryrun {
 			v = inprops[resource.PropertyKey(k)]
+		}
+
+		t := output.ElementType()
+		if t == dynamicType {
+			dv, err := unmarshalDynamicValue(ctx, v)
+			if err != nil {
+				output.getState().reject(err)
+			} else if dv.IsOutput() {
+				vv, known, secret, deps, err := dv.OutputValue().await(context.TODO())
+				if err != nil {
+					output.getState().reject(err)
+				} else {
+					output.getState().resolve(vv, known, secret, deps)
+				}
+			} else {
+				output.getState().resolve(dv, true, false, nil)
+			}
+			continue
 		}
 
 		known := true

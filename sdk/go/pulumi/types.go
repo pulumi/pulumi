@@ -579,6 +579,10 @@ func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[
 			}
 			return
 		}
+		// Check for Dyanmic.
+		if v.Type() == dynamicType {
+			return
+		}
 
 		switch v.Kind() {
 		case reflect.Interface, reflect.Ptr:
@@ -639,6 +643,12 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	contract.Assert(v.IsValid())
 
 	if !resolved.CanSet() {
+		return true, false, nil, nil
+	}
+
+	// If both values are Dynamic, just copy the value as-is without awaiting.
+	if resolved.Type() == dynamicType && v.Type() == resolved.Type() {
+		resolved.Set(v)
 		return true, false, nil, nil
 	}
 

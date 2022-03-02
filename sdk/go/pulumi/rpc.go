@@ -167,6 +167,18 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		rt = rt.Elem()
 	}
 
+	if dv, ok := props.(Dynamic); ok {
+		if !dv.IsMap() {
+			return nil, nil, nil, fmt.Errorf("cannot marshal Dynamic Input that is not a map, saw type %T", dv.v)
+		}
+		for key, val := range dv.MapValue() {
+			if err := marshalProperty(key, val, anyType); err != nil {
+				return nil, nil, nil, err
+			}
+		}
+		return pmap, pdeps, deps.values(), nil
+	}
+
 	switch pt.Kind() {
 	case reflect.Struct:
 		contract.Assert(rt.Kind() == reflect.Struct)
@@ -225,6 +237,11 @@ func marshalInputImpl(v interface{},
 	var deps []Resource
 	for {
 		valueType := reflect.TypeOf(v)
+
+		if dynamic, ok := v.(Dynamic); ok {
+			v = dynamic.v
+			continue
+		}
 
 		// If this is an Input, make sure it is of the proper type and await it if it is an output/
 		if input, ok := v.(Input); !skipInputCheck && ok {
@@ -516,6 +533,111 @@ func unmarshalResourceReference(ctx *Context, ref resource.ResourceReference) (R
 	return ctx.newDependencyResource(URN(ref.URN)), nil
 }
 
+func unmarshalDynamicValue(ctx *Context, v resource.PropertyValue) (Dynamic, error) {
+	switch {
+	case v.IsNull():
+		return Dynamic{}, nil
+	case v.IsBool():
+		return NewDynamicBool(v.BoolValue()), nil
+	case v.IsNumber():
+		return NewDynamicNumber(v.NumberValue()), nil
+	case v.IsString():
+		return NewDynamicString(v.StringValue()), nil
+	case v.IsComputed():
+		o := newOutput(&ctx.join, dynamicType)
+		o.getState().resolve(nil, false, false, nil)
+		return NewDynamicOutput(o.(DynamicOutput)), nil
+	case v.IsOutput():
+		ov := v.OutputValue()
+
+		var deps []Resource
+		for _, dep := range ov.Dependencies {
+			deps = append(deps, ctx.newDependencyResource(URN(dep)))
+		}
+
+		var elem Dynamic
+		if ov.Known {
+			e, err := unmarshalDynamicValue(ctx, ov.Element)
+			if err != nil {
+				return Dynamic{}, err
+			}
+			elem = e
+		}
+
+		o := newOutput(&ctx.join, dynamicType)
+		o.getState().resolve(elem, ov.Known, ov.Secret, deps)
+		return NewDynamicOutput(o.(DynamicOutput)), nil
+	case v.IsSecret():
+		sv, err := unmarshalDynamicValue(ctx, v.SecretValue().Element)
+		if err != nil {
+			return Dynamic{}, err
+		}
+
+		o := newOutput(&ctx.join, dynamicType)
+		o.getState().resolve(sv, true, true, nil)
+		return NewDynamicOutput(o.(DynamicOutput)), nil
+	case v.IsArray():
+		arr := v.ArrayValue()
+		rv := make([]Dynamic, len(arr))
+		for i, e := range arr {
+			ev, err := unmarshalDynamicValue(ctx, e)
+			if err != nil {
+				return Dynamic{}, err
+			}
+			rv[i] = ev
+		}
+		return NewDynamicArray(rv), nil
+	case v.IsObject():
+		m := make(map[string]Dynamic)
+		for k, e := range v.ObjectValue() {
+			ev, err := unmarshalDynamicValue(ctx, e)
+			if err != nil {
+				return Dynamic{}, err
+			}
+			m[string(k)] = ev
+		}
+		return NewDynamicMap(m), nil
+	case v.IsAsset():
+		asset := v.AssetValue()
+		switch {
+		case asset.IsPath():
+			return NewDynamicAsset(NewFileAsset(asset.Path)), nil
+		case asset.IsText():
+			return NewDynamicAsset(NewStringAsset(asset.Text)), nil
+		case asset.IsURI():
+			return NewDynamicAsset(NewRemoteAsset(asset.URI)), nil
+		}
+		return Dynamic{}, errors.New("expected asset to be one of File, String, or Remote; got none")
+	case v.IsArchive():
+		archive := v.ArchiveValue()
+		switch {
+		case archive.IsAssets():
+			as := make(map[string]interface{})
+			for k, v := range archive.Assets {
+				a, err := unmarshalDynamicValue(ctx, resource.NewPropertyValue(v))
+				if err != nil {
+					return Dynamic{}, err
+				}
+				as[k] = a
+			}
+			return NewDynamicArchive(NewAssetArchive(as)), nil
+		case archive.IsPath():
+			return NewDynamicArchive(NewFileArchive(archive.Path)), nil
+		case archive.IsURI():
+			return NewDynamicArchive(NewRemoteArchive(archive.URI)), nil
+		}
+		return Dynamic{}, errors.New("expected asset to be one of File, String, or Remote; got none")
+	case v.IsResourceReference():
+		resource, err := unmarshalResourceReference(ctx, v.ResourceReferenceValue())
+		if err != nil {
+			return Dynamic{}, err
+		}
+		return NewDynamicResource(resource), nil
+	default:
+		return Dynamic{}, fmt.Errorf("unexpected property value of type %v", v.TypeString())
+	}
+}
+
 func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}, bool, error) {
 	switch {
 	case v.IsComputed():
@@ -609,8 +731,17 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 	contract.Assert(dest.CanSet())
 
 	// Check for nils and unknowns. The destination will be left with the zero value.
-	if v.IsNull() || v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known) {
+	if v.IsNull() {
 		return false, nil
+	}
+	if v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known) {
+		t := dest.Type()
+		for t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+		if t != dynamicType {
+			return false, nil
+		}
 	}
 
 	// Allocate storage as necessary.
@@ -618,6 +749,16 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		elem := reflect.New(dest.Type().Elem())
 		dest.Set(elem)
 		dest = elem.Elem()
+	}
+
+	// Check for the dynamic type.
+	if dest.Type() == dynamicType {
+		dv, err := unmarshalDynamicValue(ctx, v)
+		if err != nil {
+			return false, err
+		}
+		dest.Set(reflect.ValueOf(dv))
+		return false, nil
 	}
 
 	// In the case of assets and archives, turn these into real asset and archive structures.
