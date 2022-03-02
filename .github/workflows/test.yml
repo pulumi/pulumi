@@ -72,6 +72,7 @@ jobs:
               make unit_tests
               make test_auto
               make test_go
+            reduce-parallelism-windows: true
 
           - run: |
               cd sdk/go
@@ -80,6 +81,7 @@ jobs:
 
           - run: make test_pkg_nodejs
             require-build: true
+            reduce-parallelism-windows: true
 
           - run: make test_pkg_rest
             require-build: true
@@ -90,12 +92,14 @@ jobs:
             require-build: true
           - run: make test_integration_nodejs
             require-build: true
+            reduce-parallelism-windows: true
           - run: make test_integration_python
             require-build: true
           - run: make test_integration_rest
             require-build: true
           - run: make test_integration_subpkgs
             require-build: true
+            reduce-parallelism-windows: true
 
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
@@ -112,6 +116,10 @@ jobs:
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
+      - name: Reduce test parallelism
+        if: ${{ matrix.test-suite.reduce-parallelism-windows && matrix.platform == 'windows-latest' }}
+        run: |
+          echo "TESTPARALLELISM=2" >> $GITHUB_ENV
       - name: Enable code coverage
         if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
         run: |
