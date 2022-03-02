@@ -57,12 +57,6 @@ jobs:
           - integration-and-codegen
           - auto
           - etc
-        # Workaround, test flaking on Windows. See ongoing issue https://github.com/pulumi/pulumi/issues/8820
-        exclude:
-          - platform: windows-latest
-        include:
-          - platform: windows-latest
-            test-subset: etc
       fail-fast: false
 
     runs-on: ${{ matrix.platform }}
