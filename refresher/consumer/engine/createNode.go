@@ -38,10 +38,10 @@ func CreateS3Node(events []engine.Event,  logger *zerolog.Logger, config *config
 		}
 
 		if node.AwsIntegration != "" {
-			s3Node["awsIntegration"] = node.AwsIntegration
+			s3Node["awsIntegrationId"] = node.AwsIntegration
 		}
 		if node.K8sIntegration != "" {
-			s3Node["k8sIntegration"] = node.K8sIntegration
+			s3Node["k8sIntegrationId"] = node.K8sIntegration
 		}
 
 		if node.Type == "k8s" {
