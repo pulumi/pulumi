@@ -42,6 +42,8 @@ func newConsoleCmd() *cobra.Command {
 				return err
 			}
 
+			ctx := commandContext()
+
 			// Do a type assertion in order to determine if this is a cloud backend based on whether the assertion
 			// succeeds or not.
 			cloudBackend, isCloud := currentBackend.(httpstate.Backend)
@@ -53,31 +55,25 @@ func newConsoleCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
-					selectedStack, err := currentBackend.GetStack(commandContext(), ref)
+					stack, err = currentBackend.GetStack(ctx, ref)
 					if err != nil {
 						return err
 					}
-					stack = selectedStack
 				} else {
-					currentStack, err := state.CurrentStack(commandContext(), currentBackend)
+					stack, err = state.CurrentStack(ctx, currentBackend)
 					if err != nil {
 						return err
 					}
-					stack = currentStack
 				}
 
 				// Open the stack specific URL (e.g. app.pulumi.com/{org}/{project}/{stack}) for this
 				// stack if a stack is selected and is a cloud stack, else open the cloud backend URL
 				// home page, e.g. app.pulumi.com.
-				if s, ok := stack.(httpstate.Stack); ok {
-					if consoleURL, err := s.ConsoleURL(); err == nil {
-						launchConsole(consoleURL)
-					} else {
-						// Open the cloud backend home page if retrieving the stack
-						// console URL fails.
-						launchConsole(cloudBackend.URL())
-					}
+				if consoleURL, err := cloudBackend.StackConsoleURL(stack.Ref()); err != nil {
+					launchConsole(consoleURL)
 				} else {
+					// Open the cloud backend home page if retrieving the stack
+					// console URL fails.
 					launchConsole(cloudBackend.URL())
 				}
 				return nil

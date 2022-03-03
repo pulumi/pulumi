@@ -35,7 +35,6 @@ type Stack interface {
 	backend.Stack
 	CloudURL() string                           // the URL to the cloud containing this stack.
 	OrgName() string                            // the organization that owns this stack.
-	ConsoleURL() (string, error)                // the URL to view the stack's information on Pulumi.com.
 	CurrentOperation() *apitype.OperationStatus // in progress operation, if applicable.
 	Tags() map[apitype.StackTagName]string      // the stack's tags.
 	StackIdentifier() client.StackIdentifier
@@ -179,10 +178,6 @@ func (s *cloudStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDepl
 
 func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
 	return backend.ImportStackDeployment(ctx, s, deployment)
-}
-
-func (s *cloudStack) ConsoleURL() (string, error) {
-	return s.b.StackConsoleURL(s.ref)
 }
 
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping

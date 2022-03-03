@@ -108,6 +108,7 @@ type Backend interface {
 	CloudURL() string
 
 	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
+	// The URL to view the stack's information on Pulumi.com.
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 	Client() *client.Client
 }
