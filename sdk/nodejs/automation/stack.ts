@@ -238,6 +238,11 @@ Event: ${line}\n${e.toString()}`);
             [upResult, logResult] = await Promise.all([upPromise, logPromise]);
         } catch (e) {
             didError = true;
+            if(!logResult) {
+                // Get log result even if error occurs
+                logResult = await logPromise;
+            }
+
             throw e;
         } finally {
             onExit(didError);
