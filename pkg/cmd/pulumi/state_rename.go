@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,6 +65,10 @@ pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 			newResourceName := args[1]
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
+
+			if !urn.IsValid() {
+				return result.Error("The provided input URN is not valid")
+			}
 
 			res := runTotalStateEdit(stack, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
 				// Check whether the input URN corresponds to an existing resource
