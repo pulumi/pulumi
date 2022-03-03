@@ -861,3 +861,17 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 	// The local backend does not currently persist tags.
 	return errors.New("stack tags not supported in --local mode")
 }
+
+func (b *localBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
+	// Try to delete the lock file
+	err := b.bucket.Delete(ctx, b.lockPath(stackRef.Name()))
+	if err != nil {
+		// Don't error if it just wasn't found
+		if gcerrors.Code(err) == gcerrors.NotFound {
+			return nil
+		}
+		return err
+	}
+
+	return nil
+}
