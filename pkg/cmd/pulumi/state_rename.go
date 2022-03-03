@@ -34,8 +34,8 @@ func newStateRenameCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "rename <resource URN> <new name>",
-		Short: "Renames a resouce from a stack's state",
-		Long: `Renames a resouce from a stack's state
+		Short: "Renames a resource from a stack's state",
+		Long: `Renames a resource from a stack's state
 
 This command renames a resource from a stack's state. The resource is specified 
 by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it) and the new name of the resource.
@@ -57,7 +57,8 @@ pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 
 				// the resource is protected but the user didn't use --force
 				if !force && resource.Protect {
-					return errors.New("Cannot rename a protected resource. You can either unprotect the resource first or use --force flag")
+					return errors.New(`Cannot rename a protected resource
+You can either unprotect the resource first or use --force flag`)
 				}
 
 				if resource.Protect {
@@ -72,7 +73,7 @@ pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 			})
 
 			if res != nil {
-				// an error occured
+				// an error occurred
 				// return it
 				return res
 			}
