@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -38,7 +37,6 @@ type Stack interface {
 	ConsoleURL() (string, error)                // the URL to view the stack's information on Pulumi.com.
 	CurrentOperation() *apitype.OperationStatus // in progress operation, if applicable.
 	Tags() map[apitype.StackTagName]string      // the stack's tags.
-	StackIdentifier() client.StackIdentifier
 }
 
 type cloudBackendReference struct {
@@ -110,13 +108,6 @@ func (s *cloudStack) CloudURL() string                           { return s.clou
 func (s *cloudStack) OrgName() string                            { return s.orgName }
 func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
 func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
-
-func (s *cloudStack) StackIdentifier() client.StackIdentifier {
-
-	si, err := s.b.getCloudStackIdentifier(s.ref)
-	contract.AssertNoError(err) // the above only fails when ref is of the wrong type.
-	return si
-}
 
 func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 	if s.snapshot != nil {

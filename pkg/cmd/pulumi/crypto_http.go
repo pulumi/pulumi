@@ -39,8 +39,10 @@ func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName, configF
 		return nil, err
 	}
 
-	client := s.Backend().(httpstate.Backend).Client()
-	id := s.StackIdentifier()
+	cloudBackend := s.Backend().(httpstate.Backend)
+
+	client := cloudBackend.Client()
+	id := cloudBackend.StackIdentifier(s.Ref())
 
 	// We should only save the ProjectStack at this point IF we have changed the
 	// secrets provider. To change the secrets provider to a serviceSecretsManager

@@ -922,27 +922,23 @@ func buildStackName(stackName string) (string, error) {
 // of messages we will log here will range from single secret decryption events
 // to requesting a list of secrets in an individual event e.g. stack export
 // the logging event will only happen during the `--show-secrets` path within the cli
-func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend backend.Stack,
+func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, stack backend.Stack,
 	secretName, commandName string) {
-	if stack, ok := backend.(httpstate.Stack); ok {
-		// we only want to do something if this is a service backend
-		if be, ok := stack.Backend().(httpstate.Backend); ok {
-			client := be.Client()
-			if client != nil {
-				id := backend.(httpstate.Stack).StackIdentifier()
-				// we don't really care if these logging calls fail as they should not stop the execution
-				if secretName != "" {
-					contract.Assert(commandName == "")
-					err := client.Log3rdPartySecretsProviderDecryptionEvent(ctx, id, secretName)
-					contract.IgnoreError(err)
-				}
+	// we only want to do something if this is a service backend
+	if be, ok := stack.Backend().(httpstate.Backend); ok {
+		client := be.Client()
+		id := be.StackIdentifier(stack.Ref())
+		// we don't really care if these logging calls fail as they should not stop the execution
+		if secretName != "" {
+			contract.Assert(commandName == "")
+			err := client.Log3rdPartySecretsProviderDecryptionEvent(ctx, id, secretName)
+			contract.IgnoreError(err)
+		}
 
-				if commandName != "" {
-					contract.Assert(secretName == "")
-					err := client.LogBulk3rdPartySecretsProviderDecryptionEvent(ctx, id, commandName)
-					contract.IgnoreError(err)
-				}
-			}
+		if commandName != "" {
+			contract.Assert(secretName == "")
+			err := client.LogBulk3rdPartySecretsProviderDecryptionEvent(ctx, id, commandName)
+			contract.IgnoreError(err)
 		}
 	}
 }
