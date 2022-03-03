@@ -18,8 +18,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -27,10 +28,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func updateDependencies(dependencies []resource.URN, oldUrn resource.URN, newUrn resource.URN) []resource.URN {
+	var updatedDependencies []resource.URN
+	for _, dependency := range dependencies {
+		if dependency == oldUrn {
+			// replace old URN with new URN
+			updatedDependencies = append(updatedDependencies, newUrn)
+		} else {
+			updatedDependencies = append(updatedDependencies, dependency)
+		}
+	}
+	return updatedDependencies
+}
+
 func newStateRenameCommand() *cobra.Command {
 	var stack string
 	var yes bool
-	var force bool
 
 	cmd := &cobra.Command{
 		Use:   "rename <resource URN> <new name>",
@@ -53,21 +66,37 @@ pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			res := runStateEdit(stack, showPrompt, urn, func(snap *deploy.Snapshot, resource *resource.State) error {
-
-				// the resource is protected but the user didn't use --force
-				if !force && resource.Protect {
-					return errors.New(`Cannot rename a protected resource
-You can either unprotect the resource first or use --force flag`)
+			res := runTotalStateEdit(stack, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
+				// Check whether the input URN corresponds to an existing resource
+				existingResources := edit.LocateResource(snap, urn)
+				if len(existingResources) != 1 {
+					return errors.New("The input URN does not correspond to an existing resource")
 				}
 
-				if resource.Protect {
-					cmdutil.Diag().Warningf(diag.RawMessage("" /*urn*/, "renaming protected resource due to presence of --force"))
-					resource.Protect = false
-				}
-
+				inputResource := existingResources[0]
+				oldUrn := inputResource.URN
 				// update the URN with only the name part changed
-				resource.URN = resource.URN.Rename(newResourceName)
+				newUrn := oldUrn.Rename(newResourceName)
+				// Check whether the new URN _does not_ correspond to an existing resource
+				candidateResources := edit.LocateResource(snap, newUrn)
+				if len(candidateResources) > 0 {
+					return errors.New("The chosen new name for the state corresponds to an already existing resource")
+				}
+
+				// Update the URN of the input resource
+				inputResource.URN = newUrn
+				// Update the dependants of the input resource
+				for _, existingResource := range snap.Resources {
+					// update resources other than the input resource
+					if existingResource.URN != inputResource.URN {
+						// Update dependencies
+						existingResource.Dependencies = updateDependencies(existingResource.Dependencies, oldUrn, newUrn)
+						// Update property dependencies
+						for property, dependencies := range existingResource.PropertyDependencies {
+							existingResource.PropertyDependencies[property] = updateDependencies(dependencies, oldUrn, newUrn)
+						}
+					}
+				}
 
 				return nil
 			})
@@ -87,7 +116,6 @@ You can either unprotect the resource first or use --force flag`)
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 
-	cmd.Flags().BoolVar(&force, "force", false, "Force rename of protected resources")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
 	return cmd
 }
