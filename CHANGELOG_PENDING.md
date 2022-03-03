@@ -1,4 +1,5 @@
 ### Improvements
+ - [area/cli] - Implemented `state rename` command [#9098](https://github.com/pulumi/pulumi/pull/9098)
 
 ### Bug Fixes
 
