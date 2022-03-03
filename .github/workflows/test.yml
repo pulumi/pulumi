@@ -164,11 +164,10 @@ jobs:
           node-version: ${{ inputs.node-version }}
           cache: yarn
           cache-dependency-path: sdk/nodejs/package.json
-
       - name: Uninstall pre-installed Pulumi (windows)
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
-          chocolatey uninstall pulumi
+          rm -rf C:\ProgramData\chocolatey\lib\pulumi\tools\Pulumi\bin || true
       - name: Install yarn
         run: |
           npm install -g yarn
