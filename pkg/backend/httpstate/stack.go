@@ -33,7 +33,6 @@ import (
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
 type Stack interface {
 	backend.Stack
-	CloudURL() string                           // the URL to the cloud containing this stack.
 	OrgName() string                            // the organization that owns this stack.
 	CurrentOperation() *apitype.OperationStatus // in progress operation, if applicable.
 	Tags() map[apitype.StackTagName]string      // the stack's tags.
@@ -72,8 +71,6 @@ func (c cloudBackendReference) Name() tokens.QName {
 type cloudStack struct {
 	// ref is the stack's unique name.
 	ref cloudBackendReference
-	// cloudURL is the URl to the cloud containing this stack.
-	cloudURL string
 	// orgName is the organization that owns this stack.
 	orgName string
 	// currentOperation contains information about any current operation being performed on the stack, as applicable.
@@ -95,7 +92,6 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 			name:    apistack.StackName,
 			b:       b,
 		},
-		cloudURL:         b.CloudURL(),
 		orgName:          apistack.OrgName,
 		currentOperation: apistack.CurrentOperation,
 		snapshot:         nil, // We explicitly allocate the snapshot on first use, since it is expensive to compute.
@@ -105,7 +101,6 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 }
 func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
 func (s *cloudStack) Backend() backend.Backend                   { return s.b }
-func (s *cloudStack) CloudURL() string                           { return s.cloudURL }
 func (s *cloudStack) OrgName() string                            { return s.orgName }
 func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
 func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
