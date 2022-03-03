@@ -124,10 +124,6 @@ jobs:
         if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> $GITHUB_ENV
-      - name: Set up Make (windows)
-        if: ${{ matrix.platform == 'windows-latest' }}
-        run: |
-          choco install make
       - name: Set up Go ${{ inputs.go-version }}
         uses: actions/setup-go@v2
         with:
@@ -167,7 +163,10 @@ jobs:
       - name: Uninstall pre-installed Pulumi (windows)
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
-          rm -rf C:\ProgramData\chocolatey\lib\pulumi\tools\Pulumi\bin || true
+          if which pulumi.exe; then
+            echo "Deleting pulumi"
+            rm -rf "$(which pulumi.exe)/../pulumi*"
+          fi
       - name: Install yarn
         run: |
           npm install -g yarn
