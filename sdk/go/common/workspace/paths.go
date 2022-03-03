@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,8 +98,18 @@ func DetectProjectStackPath(stackName tokens.QName) (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(filepath.Dir(projPath), proj.Config, fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName),
-		filepath.Ext(projPath))), nil
+	fileName := fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName), filepath.Ext(projPath))
+
+	if proj.StacksDirectory != "" {
+		return filepath.Join(filepath.Dir(projPath), proj.StacksDirectory, fileName), nil
+	}
+
+	// Back compat: If Config is given and it's a non-empty string use it for the stacks directory.
+	if configValue, ok := proj.Config.(string); ok && configValue != "" {
+		return filepath.Join(filepath.Dir(projPath), configValue, fileName), nil
+	}
+
+	return filepath.Join(filepath.Dir(projPath), fileName), nil
 }
 
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
