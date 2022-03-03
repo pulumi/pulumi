@@ -223,7 +223,6 @@ func marshalInputImpl(v interface{},
 	await,
 	skipInputCheck bool) (resource.PropertyValue, []Resource, error) {
 	var deps []Resource
-	originalValue := v
 	for {
 		valueType := reflect.TypeOf(v)
 
@@ -263,8 +262,6 @@ func marshalInputImpl(v interface{},
 				}
 
 				// Await the output.
-				// TODO remove this assert
-				contract.Assertf(output.getState() != nil, "Getting empty state for %T", output)
 				ov, known, secret, outputDeps, err := output.getState().await(context.TODO())
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
@@ -273,6 +270,9 @@ func marshalInputImpl(v interface{},
 				// Get the underlying value, if known.
 				var element resource.PropertyValue
 				if known {
+					if r, ok := ov.(Resource); ok {
+						contract.Assertf(r.URN().OutputState != nil, "Produced a resolved resource")
+					}
 					element, _, err = marshalInputImpl(ov, destType, await, true /*skipInputCheck*/)
 					if err != nil {
 						return resource.PropertyValue{}, nil, err
@@ -347,7 +347,7 @@ func marshalInputImpl(v interface{},
 				URI:    v.URI(),
 			}), deps, nil
 		case Resource:
-			contract.Assertf(v.URN().OutputState != nil, "URN for %[1]T must not be empty\nOriginal (%[2]T): %[2]#v", v, originalValue)
+			contract.Assertf(v.URN().OutputState != nil, "URN for %[1]T must not be empty", v)
 			deps = append(deps, v)
 
 			urn, known, secretURN, err := v.URN().awaitURN(context.Background())

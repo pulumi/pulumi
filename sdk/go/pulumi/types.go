@@ -216,6 +216,7 @@ func (o *OutputState) resolve(value interface{}, known, secret bool, deps []Reso
 }
 
 func (o *OutputState) resolveValue(value reflect.Value, known, secret bool, deps []Resource) {
+	contract.Assertf(value.IsValid(), "invalid value")
 	o.fulfillValue(value, known, secret, deps, nil)
 }
 
@@ -223,6 +224,8 @@ func (o *OutputState) reject(err error) {
 	o.fulfill(nil, true, false, nil, err)
 }
 
+// await waits for the result of an Output.
+// The return signature is (awaited value, known, secret, dependencies, error)
 func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
 	for {
 		if o == nil {
@@ -249,6 +252,9 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 		// the element type of the outer output. We should reconsider this.
 		ov, ok := o.value.(Output)
 		if !ok {
+			if r, ok := o.value.(Resource); ok {
+				contract.Assertf(r.URN().OutputState != nil, "await returned an invalid resource of type %T", o.value)
+			}
 			return o.value, true, o.secret, o.deps, nil
 		}
 		o = ov.getState()
@@ -687,6 +693,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 				val := reflect.ValueOf(e)
 				if !val.IsValid() {
 					val = reflect.Zero(output.ElementType())
+					contract.Failf("Don't tolerate invalid values")
 				}
 				resolved.Set(val)
 			} else {
@@ -759,6 +766,13 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 			if err == nil {
 				err = ferr
 			}
+		}
+		if v.CanAddr() && v.Addr().Type().Implements(resourceType) {
+			fmt.Printf("Found a resource: %#v\n", v.Type().Name())
+			// If the first test passes
+			contract.Assertf(v.Addr().Interface().(Resource).URN().OutputState != nil, "v is valid after await")
+			// the second one should too
+			contract.Assertf(resolved.Addr().Interface().(Resource).URN().OutputState != nil, "resolved is valid after await")
 		}
 	case reflect.Array:
 		l := v.Len()
