@@ -107,8 +107,6 @@ type Backend interface {
 
 	CloudURL() string
 
-	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
-	// The URL to view the stack's information on Pulumi.com.
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 	Client() *client.Client
 }
@@ -229,10 +227,6 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 	WelcomeUser(opts)
 
 	return New(d, cloudURL)
-}
-
-func SetDefaultOrg(url string, orgName string) error {
-	return workspace.SetBackendConfigDefaultOrg(url, orgName)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.

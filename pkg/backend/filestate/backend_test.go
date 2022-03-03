@@ -204,3 +204,63 @@ func TestDrillError(t *testing.T) {
 	_, err = b.GetStack(ctx, stackRef)
 	assert.Nil(t, err)
 }
+
+func TestCancel(t *testing.T) {
+	// Login to a temp dir filestate backend
+	tmpDir, err := ioutil.TempDir("", "filestatebackend")
+	assert.NoError(t, err)
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	// Check that trying to cancel a stack that isn't created yet doesn't error
+	aStackRef, err := b.ParseStackReference("a")
+	assert.NoError(t, err)
+	err = b.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+
+	// Check that trying to cancel a stack that isn't locked doesn't error
+	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+	err = b.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+
+	// Locking and lock checks are only part of the internal interface
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Lock the stack and check CancelCurrentUpdate deletes the lock file
+	err = lb.Lock(ctx, aStackRef)
+	assert.NoError(t, err)
+	// check the lock file exists
+	lockExists, err := lb.bucket.Exists(ctx, lb.lockPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.True(t, lockExists)
+	// Call CancelCurrentUpdate
+	err = lb.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+	// Now check the lock file no longer exists
+	lockExists, err = lb.bucket.Exists(ctx, lb.lockPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.False(t, lockExists)
+
+	// Make another filestate backend which will have a different lockId
+	ob, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	assert.NoError(t, err)
+	otherBackend, ok := ob.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Lock the stack with this new backend, then check that checkForLocks on the first backend now errors
+	err = otherBackend.Lock(ctx, aStackRef)
+	assert.NoError(t, err)
+	err = lb.checkForLock(ctx, aStackRef)
+	assert.Error(t, err)
+	// Now call CancelCurrentUpdate and check that checkForLocks no longer errors
+	err = lb.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+	err = lb.checkForLock(ctx, aStackRef)
+	assert.NoError(t, err)
+}
