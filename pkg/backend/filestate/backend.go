@@ -863,14 +863,29 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 }
 
 func (b *localBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
-	// Try to delete the lock file
-	err := b.bucket.Delete(ctx, b.lockPath(stackRef.Name()))
+	// Try to delete ALL the lock files
+	allFiles, err := listBucket(b.bucket, stackLockDir(stackRef.Name()))
 	if err != nil {
 		// Don't error if it just wasn't found
 		if gcerrors.Code(err) == gcerrors.NotFound {
 			return nil
 		}
 		return err
+	}
+
+	for _, file := range allFiles {
+		if file.IsDir {
+			continue
+		}
+
+		err := b.bucket.Delete(ctx, file.Key)
+		if err != nil {
+			// Race condition, don't error if the file was delete between us calling list and now
+			if gcerrors.Code(err) == gcerrors.NotFound {
+				return nil
+			}
+			return err
+		}
 	}
 
 	return nil
