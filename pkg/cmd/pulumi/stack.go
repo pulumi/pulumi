@@ -147,8 +147,8 @@ func newStackCmd() *cobra.Command {
 			}
 
 			// Add a link to the pulumi.com console page for this stack, if it has one.
-			if cs, ok := s.(httpstate.Stack); ok {
-				if consoleURL, err := cs.ConsoleURL(); err == nil {
+			if isCloud {
+				if consoleURL, err := cloudBe.StackConsoleURL(s.Ref()); err == nil {
 					fmt.Printf("\n")
 					fmt.Printf("More information at: %s\n", consoleURL)
 				}
