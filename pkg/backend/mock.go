@@ -49,7 +49,6 @@ type MockBackend struct {
 	QueryF                  func(context.Context, QueryOperation) result.Result
 	GetLatestConfigurationF func(context.Context, Stack) (config.Map, error)
 	GetHistoryF             func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
-	GetStackTagsF           func(context.Context, Stack) (map[apitype.StackTagName]string, error)
 	UpdateStackTagsF        func(context.Context, Stack, map[apitype.StackTagName]string) error
 	ExportDeploymentF       func(context.Context, Stack) (*apitype.UntypedDeployment, error)
 	ImportDeploymentF       func(context.Context, Stack, *apitype.UntypedDeployment) error
@@ -271,15 +270,6 @@ func (be *MockBackend) GetLatestConfiguration(ctx context.Context,
 	panic("not implemented")
 }
 
-func (be *MockBackend) GetStackTags(ctx context.Context,
-	stack Stack) (map[apitype.StackTagName]string, error) {
-
-	if be.GetStackTagsF != nil {
-		return be.GetStackTagsF(ctx, stack)
-	}
-	panic("not implemented")
-}
-
 func (be *MockBackend) UpdateStackTags(ctx context.Context, stack Stack,
 	tags map[apitype.StackTagName]string) error {
 
@@ -343,6 +333,7 @@ type MockStack struct {
 	RefF      func() StackReference
 	ConfigF   func() config.Map
 	SnapshotF func(ctx context.Context) (*deploy.Snapshot, error)
+	TagsF     func() (map[apitype.StackTagName]string, error)
 	BackendF  func() Backend
 	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	UpdateF   func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
@@ -379,6 +370,13 @@ func (ms *MockStack) Config() config.Map {
 func (ms *MockStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 	if ms.SnapshotF != nil {
 		return ms.SnapshotF(ctx)
+	}
+	panic("not implemented")
+}
+
+func (ms *MockStack) Tags() (map[apitype.StackTagName]string, error) {
+	if ms.TagsF != nil {
+		return ms.TagsF()
 	}
 	panic("not implemented")
 }

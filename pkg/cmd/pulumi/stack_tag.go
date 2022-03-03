@@ -68,7 +68,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			tags, err := backend.GetStackTags(commandContext(), s)
+			tags, err := s.Tags()
 			if err != nil {
 				return err
 			}
@@ -98,7 +98,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			tags, err := backend.GetStackTags(commandContext(), s)
+			tags, err := s.Tags()
 			if err != nil {
 				return err
 			}
@@ -152,16 +152,14 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ctx := commandContext()
-
-			tags, err := backend.GetStackTags(ctx, s)
+			tags, err := s.Tags()
 			if err != nil {
 				return err
 			}
 
 			delete(tags, name)
 
-			return backend.UpdateStackTags(ctx, s, tags)
+			return backend.UpdateStackTags(commandContext(), s, tags)
 		}),
 	}
 }
@@ -183,9 +181,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ctx := commandContext()
-
-			tags, err := backend.GetStackTags(ctx, s)
+			tags, err := s.Tags()
 			if err != nil {
 				return err
 			}
@@ -195,7 +191,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			}
 			tags[name] = value
 
-			return backend.UpdateStackTags(ctx, s, tags)
+			return backend.UpdateStackTags(commandContext(), s, tags)
 		}),
 	}
 }

@@ -186,8 +186,6 @@ type Backend interface {
 	// Get the configuration from the most recent deployment of the stack.
 	GetLatestConfiguration(ctx context.Context, stack Stack) (config.Map, error)
 
-	// GetStackTags fetches the stack's existing tags.
-	GetStackTags(ctx context.Context, stack Stack) (map[apitype.StackTagName]string, error)
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
 

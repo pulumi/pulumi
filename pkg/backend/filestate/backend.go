@@ -846,14 +846,6 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 	return stacks, nil
 }
 
-// GetStackTags fetches the stack's existing tags.
-func (b *localBackend) GetStackTags(ctx context.Context,
-	stack backend.Stack) (map[apitype.StackTagName]string, error) {
-
-	// The local backend does not currently persist tags.
-	return nil, errors.New("stack tags not supported in --local mode")
-}
-
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func (b *localBackend) UpdateStackTags(ctx context.Context,
 	stack backend.Stack, tags map[apitype.StackTagName]string) error {

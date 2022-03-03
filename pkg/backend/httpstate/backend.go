@@ -1467,12 +1467,6 @@ func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool
 	return true, username, nil
 }
 
-// GetStackTags fetches the stack's existing tags.
-func (b *cloudBackend) GetStackTags(ctx context.Context,
-	stack backend.Stack) (map[apitype.StackTagName]string, error) {
-	return stack.(Stack).Tags(), nil
-}
-
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func (b *cloudBackend) UpdateStackTags(ctx context.Context,
 	stack backend.Stack, tags map[apitype.StackTagName]string) error {

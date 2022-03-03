@@ -33,7 +33,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -501,8 +500,10 @@ func getStack(stack string, opts display.Options) (backend.Stack, string, string
 	name := ""
 	description := ""
 	if s != nil {
-		if cs, ok := s.(httpstate.Stack); ok {
-			tags := cs.Tags()
+		tags, err := s.Tags()
+		// The only error we really expect from Tags is that the backend doesn't support them. We just
+		// silently ignore that case.
+		if err == nil {
 			name = tags[apitype.ProjectNameTag]
 			description = tags[apitype.ProjectDescriptionTag]
 		}

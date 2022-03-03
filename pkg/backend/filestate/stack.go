@@ -16,6 +16,7 @@ package filestate
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -55,6 +56,11 @@ func (s *localStack) Ref() backend.StackReference                            { r
 func (s *localStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { return s.snapshot, nil }
 func (s *localStack) Backend() backend.Backend                               { return s.b }
 func (s *localStack) Path() string                                           { return s.path }
+
+func (s *localStack) Tags() (map[apitype.StackTagName]string, error) {
+	// The local backend does not currently persist tags.
+	return nil, errors.New("stack tags not supported in --local mode")
+}
 
 func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
