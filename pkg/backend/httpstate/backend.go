@@ -109,6 +109,7 @@ type Backend interface {
 
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 	Client() *client.Client
+	StackIdentifier(stackRef backend.StackReference) client.StackIdentifier
 }
 
 type cloudBackend struct {
@@ -1483,6 +1484,12 @@ func (b *cloudBackend) UpdateStackTags(ctx context.Context,
 	}
 
 	return b.client.UpdateStackTags(ctx, stackID, tags)
+}
+
+func (b *cloudBackend) StackIdentifier(stackRef backend.StackReference) client.StackIdentifier {
+	si, err := b.getCloudStackIdentifier(stackRef)
+	contract.AssertNoError(err) // the above only fails when ref is of the wrong type.
+	return si
 }
 
 type httpstateBackendClient struct {
