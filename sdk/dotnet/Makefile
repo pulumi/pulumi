@@ -6,7 +6,7 @@ PROJECT_ROOT    := $(realpath ../..)
 
 DOTNET_VERSION  := $(shell cd ../../ && pulumictl get version --language dotnet)
 
-TESTPARALLELISM := 10
+TESTPARALLELISM ?= 10
 
 include ../../build/common.mk
 

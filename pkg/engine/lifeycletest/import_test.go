@@ -18,6 +18,8 @@ import (
 )
 
 func TestImportOption(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -268,6 +270,8 @@ func TestImportOption(t *testing.T) {
 // TestImportWithDifferingImportIdentifierFormat tests importing a resource that has a different format of identifier
 // for the import input than for the ID property, ensuring that a second update does not result in a replace.
 func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -363,6 +367,8 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 }
 
 func TestImportUpdatedID(t *testing.T) {
+	t.Parallel()
+
 	p := &TestPlan{}
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
@@ -461,6 +467,8 @@ func diffImportResource(urn resource.URN, id resource.ID,
 }
 
 func TestImportPlan(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -519,6 +527,8 @@ func TestImportPlan(t *testing.T) {
 }
 
 func TestImportIgnoreChanges(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -573,6 +583,8 @@ func TestImportIgnoreChanges(t *testing.T) {
 }
 
 func TestImportPlanExistingImport(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -657,6 +669,8 @@ func TestImportPlanExistingImport(t *testing.T) {
 }
 
 func TestImportPlanEmptyState(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -705,6 +719,8 @@ func TestImportPlanEmptyState(t *testing.T) {
 }
 
 func TestImportPlanSpecificProvider(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -762,6 +778,8 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 }
 
 func TestImportPlanSpecificProperties(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{

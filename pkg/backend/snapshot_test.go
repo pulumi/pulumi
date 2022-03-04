@@ -98,6 +98,8 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 }
 
 func TestIdenticalSames(t *testing.T) {
+	t.Parallel()
+
 	sameState := NewResource("a-unique-urn")
 	snap := NewSnapshot([]*resource.State{
 		sameState,
@@ -133,6 +135,8 @@ func TestIdenticalSames(t *testing.T) {
 }
 
 func TestSamesWithEmptyDependencies(t *testing.T) {
+	t.Parallel()
+
 	res := NewResourceWithDeps("a-unique-urn-resource-a", nil)
 	snap := NewSnapshot([]*resource.State{
 		res,
@@ -148,6 +152,8 @@ func TestSamesWithEmptyDependencies(t *testing.T) {
 }
 
 func TestSamesWithEmptyArraysInInputs(t *testing.T) {
+	t.Parallel()
+
 	// Model reading from state file
 	state := map[string]interface{}{"defaults": []interface{}{}}
 	inputs, err := stack.DeserializeProperties(state, config.NopDecrypter, config.NopEncrypter)
@@ -181,6 +187,8 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 //
 // The correctness of the `snap` function in snapshot.go is tested here.
 func TestSamesWithDependencyChanges(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a-unique-urn-resource-a")
 	resourceB := NewResource("a-unique-urn-resource-b", resourceA.URN)
 
@@ -245,6 +253,8 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 // This test exercises same steps with meaningful changes to properties _other_ than `Dependencies` in order to ensure
 // that the snapshot is written.
 func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
+	t.Parallel()
+
 	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider")
 	provider.Custom, provider.Type, provider.ID = true, "pulumi:providers:pkgA", "id"
 
@@ -382,6 +392,8 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 // This test exercises the merge operation with a particularly vexing deployment
 // state that was useful in shaking out bugs.
 func TestVexingDeployment(t *testing.T) {
+	t.Parallel()
+
 	// This is the dependency graph we are going for in the base snapshot:
 	//
 	//       +-+
@@ -521,6 +533,8 @@ func TestVexingDeployment(t *testing.T) {
 }
 
 func TestDeletion(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
@@ -545,6 +559,8 @@ func TestDeletion(t *testing.T) {
 }
 
 func TestFailedDelete(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
@@ -570,6 +586,8 @@ func TestFailedDelete(t *testing.T) {
 }
 
 func TestRecordingCreateSuccess(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	snap := NewSnapshot(nil)
 	manager, sp := MockSetup(t, snap)
@@ -601,6 +619,8 @@ func TestRecordingCreateSuccess(t *testing.T) {
 }
 
 func TestRecordingCreateFailure(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	snap := NewSnapshot(nil)
 	manager, sp := MockSetup(t, snap)
@@ -631,6 +651,8 @@ func TestRecordingCreateFailure(t *testing.T) {
 }
 
 func TestRecordingUpdateSuccess(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	resourceA.Inputs["key"] = resource.NewStringProperty("old")
 	resourceANew := NewResource("a")
@@ -670,6 +692,8 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 }
 
 func TestRecordingUpdateFailure(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	resourceA.Inputs["key"] = resource.NewStringProperty("old")
 	resourceANew := NewResource("a")
@@ -709,6 +733,8 @@ func TestRecordingUpdateFailure(t *testing.T) {
 }
 
 func TestRecordingDeleteSuccess(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
@@ -739,6 +765,8 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 }
 
 func TestRecordingDeleteFailure(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,
@@ -770,6 +798,8 @@ func TestRecordingDeleteFailure(t *testing.T) {
 }
 
 func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	resourceA.External = true
 	resourceA.Custom = true
@@ -800,6 +830,8 @@ func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 }
 
 func TestRecordingReadSuccessPreviousResource(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	resourceA.External = true
 	resourceA.Custom = true
@@ -843,6 +875,8 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 }
 
 func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	resourceA.External = true
 	resourceA.Custom = true
@@ -872,6 +906,8 @@ func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
 }
 
 func TestRecordingReadFailurePreviousResource(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	resourceA.External = true
 	resourceA.Custom = true
@@ -916,6 +952,8 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 }
 
 func TestRegisterOutputs(t *testing.T) {
+	t.Parallel()
+
 	resourceA := NewResource("a")
 	snap := NewSnapshot([]*resource.State{
 		resourceA,

@@ -15,6 +15,8 @@ import (
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func TestGenerateProgram(t *testing.T) {
+	t.Parallel()
+
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{
 			Language:   "python",

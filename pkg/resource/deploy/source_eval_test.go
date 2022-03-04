@@ -147,6 +147,8 @@ func disableDefaultProviders(runInfo *EvalRunInfo, pkgs ...string) {
 }
 
 func TestRegisterNoDefaultProviders(t *testing.T) {
+	t.Parallel()
+
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
 		Target: &Target{Name: "test"},
@@ -244,6 +246,8 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 }
 
 func TestRegisterDefaultProviders(t *testing.T) {
+	t.Parallel()
+
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
 		Target: &Target{Name: "test"},
@@ -336,6 +340,8 @@ func TestRegisterDefaultProviders(t *testing.T) {
 }
 
 func TestReadInvokeNoDefaultProviders(t *testing.T) {
+	t.Parallel()
+
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
 		Target: &Target{Name: "test"},
@@ -426,6 +432,8 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 }
 
 func TestReadInvokeDefaultProviders(t *testing.T) {
+	t.Parallel()
+
 	runInfo := &EvalRunInfo{
 		Proj:   &workspace.Project{Name: "test"},
 		Target: &Target{Name: "test"},
@@ -530,6 +538,8 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 // B exists as a sanity check, to ensure that we can still perform arbitrary
 // operations that belong to other packages.
 func TestDisableDefaultProviders(t *testing.T) {
+	t.Parallel()
+
 	type TT struct {
 		disableDefault bool
 		hasExplicit    bool
@@ -545,7 +555,9 @@ func TestDisableDefaultProviders(t *testing.T) {
 			})
 		}
 	}
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range cases {
+		tt := tt
 		var name []string
 		if tt.disableDefault {
 			name = append(name, "disableDefault")
@@ -561,6 +573,8 @@ func TestDisableDefaultProviders(t *testing.T) {
 		}
 
 		t.Run(strings.Join(name, "+"), func(t *testing.T) {
+			t.Parallel()
+
 			runInfo := &EvalRunInfo{
 				Proj:   &workspace.Project{Name: "test"},
 				Target: &Target{Name: "test"},

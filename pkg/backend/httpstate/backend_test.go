@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // mutates environment variables
 func TestValueOrDefaultURL(t *testing.T) {
 	t.Run("TestValueOrDefault", func(t *testing.T) {
 		// Validate trailing slash gets cut

@@ -26,9 +26,12 @@ import (
 )
 
 func TestAboutCommands(t *testing.T) {
+	t.Parallel()
 
 	// pulumi about --json
 	t.Run("json", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -47,6 +50,8 @@ func TestAboutCommands(t *testing.T) {
 
 	// pulumi about
 	t.Run("plain", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {

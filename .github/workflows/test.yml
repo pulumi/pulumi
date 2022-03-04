@@ -41,6 +41,7 @@ env:
   PULUMI_TEST_OWNER: "moolumi"
   PULUMI_ACCESS_TOKEN: ${{ secrets.pulumi-access-token }}
   PYTHON: python
+  TESTPARALLELISM: 4
 
 jobs:
   test:
@@ -72,7 +73,7 @@ jobs:
               make unit_tests
               make test_auto
               make test_go
-            reduce-parallelism-windows: true
+            test-parallelism: 2
 
           - run: |
               cd sdk/go
@@ -81,25 +82,40 @@ jobs:
 
           - run: make test_pkg_nodejs
             require-build: true
-            reduce-parallelism-windows: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
+
+          - run: make test_pkg_python
+            require-build: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
 
           - run: make test_pkg_rest
             require-build: true
+            test-parallelism: 2
 
           - run: make test_integration_dotnet
             require-build: true
+            test-parallelism: 4
           - run: make test_integration_go
             require-build: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
           - run: make test_integration_nodejs
             require-build: true
-            reduce-parallelism-windows: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
           - run: make test_integration_python
             require-build: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
           - run: make test_integration_rest
             require-build: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
           - run: make test_integration_subpkgs
             require-build: true
-            reduce-parallelism-windows: true
+            test-parallelism: 6
 
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
@@ -116,14 +132,27 @@ jobs:
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
-      - name: Reduce test parallelism
-        if: ${{ matrix.test-suite.reduce-parallelism-windows && matrix.platform == 'windows-latest' }}
+      - name: Set test parallelism
+        if: ${{ matrix.test-suite.test-parallelism }}
         run: |
-          echo "TESTPARALLELISM=2" >> $GITHUB_ENV
+          echo "TESTPARALLELISM=${{ matrix.test-suite.test-parallelism }}" >> $GITHUB_ENV
+      - name: Set Windows test parallelism, temp dir
+        if: ${{ matrix.test-suite.test-parallelism-windows }}
+        run: |
+          echo "TESTPARALLELISM=${{ matrix.test-suite.test-parallelism-windows }}" >> $GITHUB_ENV
+          mkdir -p "${{ runner.temp }}/tmp"
       - name: Enable code coverage
         if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> $GITHUB_ENV
+      # See: https://github.com/actions/virtual-environments/issues/2642#issuecomment-774988591
+      - name: Configure Windows pagefile
+        uses: aaronfriel/action-configure-pagefile@v2.0-beta.1
+        if: ${{ runner.os == 'Windows' }}
+        with:
+            minimum-size: 4GB
+            maximum-size: 4GB
+            disk-root: 'D:'
       - name: Set up Go ${{ inputs.go-version }}
         uses: actions/setup-go@v2
         with:

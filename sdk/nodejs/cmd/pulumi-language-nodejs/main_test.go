@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//     htp://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,51 +30,63 @@ import (
 func TestArgumentConstruction(t *testing.T) {
 	t.Parallel()
 
-	t.Run("DryRun-NoArguments", func(tt *testing.T) {
+	t.Run("DryRun-NoArguments", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{DryRun: true}
 		args := host.constructArguments(rr, "", "")
-		assert.Contains(tt, args, "--dry-run")
-		assert.NotContains(tt, args, "true")
+		assert.Contains(t, args, "--dry-run")
+		assert.NotContains(t, args, "true")
 	})
 
-	t.Run("OptionalArgs-PassedIfSpecified", func(tt *testing.T) {
+	t.Run("OptionalArgs-PassedIfSpecified", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{Project: "foo"}
 		args := strings.Join(host.constructArguments(rr, "", ""), " ")
-		assert.Contains(tt, args, "--project foo")
+		assert.Contains(t, args, "--project foo")
 	})
 
-	t.Run("OptionalArgs-NotPassedIfNotSpecified", func(tt *testing.T) {
+	t.Run("OptionalArgs-NotPassedIfNotSpecified", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{}
 		args := strings.Join(host.constructArguments(rr, "", ""), " ")
-		assert.NotContains(tt, args, "--stack")
+		assert.NotContains(t, args, "--stack")
 	})
 
-	t.Run("DotIfProgramNotSpecified", func(tt *testing.T) {
+	t.Run("DotIfProgramNotSpecified", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{}
 		args := strings.Join(host.constructArguments(rr, "", ""), " ")
-		assert.Contains(tt, args, ".")
+		assert.Contains(t, args, ".")
 	})
 
-	t.Run("ProgramIfProgramSpecified", func(tt *testing.T) {
+	t.Run("ProgramIfProgramSpecified", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{Program: "foobar"}
 		args := strings.Join(host.constructArguments(rr, "", ""), " ")
-		assert.Contains(tt, args, "foobar")
+		assert.Contains(t, args, "foobar")
 	})
 }
 
 func TestConfig(t *testing.T) {
 	t.Parallel()
-	t.Run("Config-Empty", func(tt *testing.T) {
+	t.Run("Config-Empty", func(t *testing.T) {
+		t.Parallel()
+
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{Project: "foo"}
 		str, err := host.constructConfig(rr)
-		assert.NoError(tt, err)
-		assert.JSONEq(tt, "{}", str)
+		assert.NoError(t, err)
+		assert.JSONEq(t, "{}", str)
 	})
 }
 
@@ -109,6 +121,8 @@ func TestCompatibleVersions(t *testing.T) {
 }
 
 func TestGetRequiredPlugins(t *testing.T) {
+	t.Parallel()
+
 	dir, err := ioutil.TempDir("", "test-dir")
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)

@@ -36,6 +36,8 @@ import (
 
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
 func TestDeploymentSerialization(t *testing.T) {
+	t.Parallel()
+
 	res := resource.NewState(
 		tokens.Type("Test"),
 		resource.NewURN(
@@ -187,6 +189,8 @@ func TestDeploymentSerialization(t *testing.T) {
 }
 
 func TestLoadTooNewDeployment(t *testing.T) {
+	t.Parallel()
+
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: apitype.DeploymentSchemaVersionCurrent + 1,
 	}
@@ -198,6 +202,8 @@ func TestLoadTooNewDeployment(t *testing.T) {
 }
 
 func TestLoadTooOldDeployment(t *testing.T) {
+	t.Parallel()
+
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: DeploymentSchemaVersionOldestSupported - 1,
 	}
@@ -209,6 +215,8 @@ func TestLoadTooOldDeployment(t *testing.T) {
 }
 
 func TestUnsupportedSecret(t *testing.T) {
+	t.Parallel()
+
 	rawProp := map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
 	}
@@ -217,6 +225,8 @@ func TestUnsupportedSecret(t *testing.T) {
 }
 
 func TestUnknownSig(t *testing.T) {
+	t.Parallel()
+
 	rawProp := map[string]interface{}{
 		resource.SigKey: "foobar",
 	}
@@ -228,6 +238,8 @@ func TestUnknownSig(t *testing.T) {
 // that were serialized without unwrapping their ID PropertyValue due to a bug in the serializer. Such resource
 // references were produced by Pulumi v2.18.0.
 func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
+	t.Parallel()
+
 	// Serialize replicates Pulumi 2.18.0's buggy resource reference serializer. We round-trip the value through JSON
 	// in order to convert the ID property value into a plain map[string]interface{}.
 	serialize := func(v resource.PropertyValue) interface{} {
@@ -262,6 +274,8 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 }
 
 func TestCustomSerialization(t *testing.T) {
+	t.Parallel()
+
 	textAsset, err := resource.NewTextAsset("alpha beta gamma")
 	assert.NoError(t, err)
 
@@ -309,6 +323,8 @@ func TestCustomSerialization(t *testing.T) {
 	// but we confirm the expected shape here while we migrate older code that relied on the
 	// specific format.
 	t.Run("SerializeToJSON", func(t *testing.T) {
+		t.Parallel()
+
 		b, err := json.Marshal(propMap)
 		if err != nil {
 			t.Fatalf("Marshalling PropertyMap: %v", err)
@@ -355,6 +371,8 @@ func TestCustomSerialization(t *testing.T) {
 	// Using stack.SerializeProperties will get the correct behavior and should be used
 	// whenever persisting resources into some durable form.
 	t.Run("SerializeProperties", func(t *testing.T) {
+		t.Parallel()
+
 		serializedPropMap, err := SerializeProperties(propMap, config.BlindingCrypter, false /* showSecrets */)
 		assert.NoError(t, err)
 
@@ -407,6 +425,8 @@ func TestCustomSerialization(t *testing.T) {
 }
 
 func TestDeserializeDeploymentSecretCache(t *testing.T) {
+	t.Parallel()
+
 	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
 	_, err := DeserializeDeploymentV3(apitype.DeploymentV3{
 		SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
@@ -423,6 +443,8 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 }
 
 func TestDeserializeInvalidResourceErrors(t *testing.T) {
+	t.Parallel()
+
 	deployment, err := DeserializeDeploymentV3(apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{},
@@ -460,6 +482,8 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 }
 
 func TestSerializePropertyValue(t *testing.T) {
+	t.Parallel()
+
 	rapid.Check(t, func(t *rapid.T) {
 		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue)
 		_, err := SerializePropertyValue(v, config.NopEncrypter, false)
@@ -468,6 +492,8 @@ func TestSerializePropertyValue(t *testing.T) {
 }
 
 func TestDeserializePropertyValue(t *testing.T) {
+	t.Parallel()
+
 	rapid.Check(t, func(t *rapid.T) {
 		v := ObjectValueGenerator(6).Draw(t, "property value")
 		_, err := DeserializePropertyValue(v, config.NopDecrypter, config.NopEncrypter)
@@ -495,6 +521,9 @@ func wireValue(v resource.PropertyValue) (interface{}, error) {
 }
 
 func TestPropertyValueSchema(t *testing.T) {
+	t.Parallel()
+
+	//nolint:paralleltest // uses rapid.T not golang testing.T
 	t.Run("serialized", rapid.MakeCheck(func(t *rapid.T) {
 		wireObject, err := wireValue(resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue))
 		require.NoError(t, err)
@@ -503,6 +532,7 @@ func TestPropertyValueSchema(t *testing.T) {
 		assert.NoError(t, err)
 	}))
 
+	//nolint:paralleltest // uses rapid.T not golang testing.T
 	t.Run("synthetic", rapid.MakeCheck(func(t *rapid.T) {
 		wireObject := ObjectValueGenerator(6).Draw(t, "wire object")
 		err := propertyValueSchema.Validate(wireObject)
@@ -531,6 +561,8 @@ func replaceOutputsWithComputed(v resource.PropertyValue) resource.PropertyValue
 }
 
 func TestRoundTripPropertyValue(t *testing.T) {
+	t.Parallel()
+
 	rapid.Check(t, func(t *rapid.T) {
 		original := resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue)
 		wireObject, err := wireValue(original)

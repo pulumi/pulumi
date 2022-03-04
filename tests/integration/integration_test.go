@@ -65,7 +65,10 @@ func (t assertPerfBenchmark) ReportCommand(stats integration.TestCommandStats) {
 
 // TestStackTagValidation verifies various error scenarios related to stack names and tags.
 func TestStackTagValidation(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Error_StackName", func(t *testing.T) {
+		t.Parallel()
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -83,6 +86,7 @@ func TestStackTagValidation(t *testing.T) {
 	})
 
 	t.Run("Error_DescriptionLength", func(t *testing.T) {
+		t.Parallel()
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -113,7 +117,10 @@ func TestStackTagValidation(t *testing.T) {
 
 // TestStackInitValidation verifies various error scenarios related to init'ing a stack.
 func TestStackInitValidation(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Error_InvalidStackYaml", func(t *testing.T) {
+		t.Parallel()
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -143,6 +150,7 @@ func TestStackInitValidation(t *testing.T) {
 
 // TestConfigSave ensures that config commands in the Pulumi CLI work as expected.
 func TestConfigSave(t *testing.T) {
+	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -217,6 +225,8 @@ func TestConfigSave(t *testing.T) {
 
 // TestConfigPaths ensures that config commands with paths work as expected.
 func TestConfigPaths(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -638,6 +648,8 @@ func testComponentPlainPathEnv(t *testing.T) string {
 
 // nolint: unused,deadcode
 func testComponentProviderSchema(t *testing.T, path string) {
+	t.Parallel()
+
 	tests := []struct {
 		name          string
 		env           []string
@@ -661,7 +673,9 @@ func testComponentProviderSchema(t *testing.T, path string) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			// Start the plugin binary.
 			cmd := exec.Command(path, "ignored")
 			cmd.Env = append(os.Environ(), test.env...)
@@ -700,6 +714,8 @@ func testComponentProviderSchema(t *testing.T, path string) {
 // Test remote component inputs properly handle unknowns.
 // nolint: unused,deadcode
 func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
+	t.Parallel()
+
 	const testDir = "construct_component_unknown"
 	tests := []struct {
 		componentDir string
@@ -715,6 +731,7 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
@@ -729,7 +746,6 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 				SkipExportImport:       true,
 				SkipEmptyPreviewUpdate: true,
 				Quick:                  false,
-				NoParallel:             true,
 			})
 		})
 	}
@@ -738,6 +754,8 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 // Test methods properly handle unknowns.
 // nolint: unused,deadcode
 func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...string) {
+	t.Parallel()
+
 	const testDir = "construct_component_methods_unknown"
 	tests := []struct {
 		componentDir string
@@ -753,6 +771,7 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
@@ -767,7 +786,6 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 				SkipExportImport:       true,
 				SkipEmptyPreviewUpdate: true,
 				Quick:                  false,
-				NoParallel:             true,
 			})
 		})
 	}
@@ -776,6 +794,8 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 // Test methods that create resources.
 // nolint: unused,deadcode
 func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
+	t.Parallel()
+
 	const testDir = "construct_component_methods_resources"
 	tests := []struct {
 		componentDir string
@@ -791,6 +811,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
@@ -800,7 +821,6 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 				Dir:          filepath.Join(testDir, lang),
 				Dependencies: dependencies,
 				Quick:        true,
-				NoParallel:   true, // avoid contention for Dir
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.NotNil(t, stackInfo.Deployment)
 					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
@@ -825,6 +845,8 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 // Test failures returned from methods are observed.
 // nolint: unused,deadcode
 func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...string) {
+	t.Parallel()
+
 	const testDir = "construct_component_methods_errors"
 	tests := []struct {
 		componentDir string
@@ -840,6 +862,7 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			expectedError := "the failure reason (the failure property)"
@@ -850,7 +873,6 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 				Dir:           filepath.Join(testDir, lang),
 				Dependencies:  dependencies,
 				Quick:         true,
-				NoParallel:    true, // avoid contention for Dir
 				Stderr:        stderr,
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -862,6 +884,7 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 	}
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestRotatePassphrase(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
@@ -898,6 +921,7 @@ func assertOutputContainsEvent(t *testing.T, evt apitype.EngineEvent, output str
 	assert.Contains(t, output, evtJSON.String())
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestJSONOutput(t *testing.T) {
 	stdout := &bytes.Buffer{}
 
@@ -922,6 +946,7 @@ func TestJSONOutput(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // uses parallel programtest
 func TestJSONOutputWithStreamingPreview(t *testing.T) {
 	stdout := &bytes.Buffer{}
 
@@ -948,6 +973,7 @@ func TestJSONOutputWithStreamingPreview(t *testing.T) {
 }
 
 func TestExcludeProtected(t *testing.T) {
+	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -975,6 +1001,8 @@ func TestExcludeProtected(t *testing.T) {
 
 // nolint: unused,deadcode
 func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
+	t.Parallel()
+
 	const testDir = "construct_component_output_values"
 	tests := []struct {
 		componentDir string
@@ -990,6 +1018,7 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
@@ -999,13 +1028,14 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 				Dir:          filepath.Join(testDir, lang),
 				Dependencies: dependencies,
 				Quick:        true,
-				NoParallel:   true, // avoid contention for Dir
 			})
 		})
 	}
 }
 
 func TestProviderDownloadURL(t *testing.T) {
+	t.Parallel()
+
 	validate := func(t *testing.T, stdout []byte) {
 		deployment := &apitype.UntypedDeployment{}
 		err := json.Unmarshal(stdout, deployment)
@@ -1043,7 +1073,9 @@ func TestProviderDownloadURL(t *testing.T) {
 		{"go", "github.com/pulumi/pulumi/sdk/v3"},
 	}
 
+	//nolint:paralleltest // uses parallel programtest
 	for _, lang := range languages {
+		lang := lang
 		t.Run(lang.name, func(t *testing.T) {
 			env := pathEnv(t, filepath.Join("..", "testprovider"))
 			dir := filepath.Join("gather_plugin", lang.name)
@@ -1078,6 +1110,7 @@ func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStack
 	assert.Equal(t, 11, foundStderr)
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestPassphrasePrompting(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {

@@ -5,6 +5,8 @@ import (
 )
 
 func TestSplitGoPathShouldReturnExpected(t *testing.T) {
+	t.Parallel()
+
 	tt := []struct {
 		path     string
 		os       string

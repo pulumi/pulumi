@@ -30,8 +30,8 @@ namespace Pulumi.Automation.Tests
         private static string GetTestSuffix()
         {
             var random = new Random();
-            var result = 100000 + random.Next(0, 900000);
-            return result.ToString();
+            var result = random.Next(); // 31 bits, highest bit will be 0 (signed)
+            return result.ToString("x"); // 8 hex characters
         }
 
         private static string RandomStackName()

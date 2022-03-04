@@ -58,6 +58,8 @@ func deserializeProperty(v interface{}, dec config.Decrypter) (resource.Property
 }
 
 func TestCachingCrypter(t *testing.T) {
+	t.Parallel()
+
 	sm := &testSecretsManager{}
 	csm := NewCachingSecretsManager(sm)
 
@@ -230,6 +232,8 @@ func (t *mapTestDecrypter) BulkDecrypt(ciphertexts []string) (map[string]string,
 }
 
 func TestMapCrypter(t *testing.T) {
+	t.Parallel()
+
 	bytes, err := ioutil.ReadFile("testdata/checkpoint-secrets.json")
 	require.NoError(t, err)
 

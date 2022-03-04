@@ -6,14 +6,15 @@ SUB_PROJECTS := $(SDKS:%=sdk/%)
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
-# Exclude longest running test: codegen/nodejs to run in a separate worker
+# Exclude longest running tests to run in separate workers
 PKG_CODEGEN_NODEJS := github.com/pulumi/pulumi/pkg/v3/codegen/nodejs
-PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v ^${PKG_CODEGEN_NODEJS}$)
+PKG_CODEGEN_PYTHON := github.com/pulumi/pulumi/pkg/v3/codegen/python
+PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v -E '^(${PKG_CODEGEN_NODEJS}|${PKG_CODEGEN_PYTHON})$$')
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$)
 VERSION         := $(shell pulumictl get version)
 
-TESTPARALLELISM := 10
+TESTPARALLELISM ?= 10
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
@@ -104,10 +105,13 @@ test_all:: test_build test_pkg test_integration
 test_pkg_nodejs:
 	@cd pkg && $(GO_TEST) ${PKG_CODEGEN_NODEJS}
 
+test_pkg_python:
+	@cd pkg && $(GO_TEST) ${PKG_CODEGEN_PYTHON}
+
 test_pkg_rest:
 	@cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 
-test_pkg:: test_pkg_nodejs test_pkg_rest
+test_pkg:: test_pkg_nodejs test_pkg_python test_pkg_rest
 
 subset=$(subst test_integration_,,$(word 1,$(subst !, ,$@)))
 test_integration_%:

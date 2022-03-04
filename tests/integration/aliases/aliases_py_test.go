@@ -11,6 +11,8 @@ import (
 )
 
 func TestPythonAliases(t *testing.T) {
+	t.Parallel()
+
 	var dirs = []string{
 		"rename",
 		"adopt_into_component",

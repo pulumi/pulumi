@@ -43,7 +43,11 @@ func newMockClient(server *httptest.Server) *Client {
 }
 
 func TestAPIErrorResponses(t *testing.T) {
+	t.Parallel()
+
 	t.Run("TestAuthError", func(t *testing.T) {
+		t.Parallel()
+
 		// check 401 error is handled
 		unauthorizedServer := newMockServer(401, "401: Unauthorized")
 		defer unauthorizedServer.Close()
@@ -55,6 +59,8 @@ func TestAPIErrorResponses(t *testing.T) {
 		assert.Equal(t, unauthorizedErr.Error(), "this command requires logging in; try running 'pulumi login' first")
 	})
 	t.Run("TestRateLimitError", func(t *testing.T) {
+		t.Parallel()
+
 		// test handling 429: Too Many Requests/rate-limit response
 		rateLimitedServer := newMockServer(429, "rate-limit error")
 		defer rateLimitedServer.Close()
@@ -66,6 +72,8 @@ func TestAPIErrorResponses(t *testing.T) {
 		assert.Equal(t, rateLimitErr.Error(), "pulumi service: request rate-limit exceeded")
 	})
 	t.Run("TestDefaultError", func(t *testing.T) {
+		t.Parallel()
+
 		// test handling non-standard error message
 		defaultErrorServer := newMockServer(418, "I'm a teapot")
 		defer defaultErrorServer.Close()

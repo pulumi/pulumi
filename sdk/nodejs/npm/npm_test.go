@@ -23,11 +23,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func chdir(t *testing.T, dir string) {
+	cwd, err := os.Getwd()
+	assert.NoError(t, err)
+	assert.NoError(t, os.Chdir(dir)) // Set directory
+	t.Cleanup(func() {
+		assert.NoError(t, os.Chdir(cwd)) // Restore directory
+		restoredDir, err := os.Getwd()
+		assert.NoError(t, err)
+		assert.Equal(t, cwd, restoredDir)
+	})
+}
+
+//nolint:paralleltest // mutates environment variables, changes working directory
 func TestNPMInstall(t *testing.T) {
 	testInstall(t, "npm", false /*production*/)
 	testInstall(t, "npm", true /*production*/)
 }
 
+//nolint:paralleltest // mutates environment variables, changes working directory
 func TestYarnInstall(t *testing.T) {
 	os.Setenv("PULUMI_PREFER_YARN", "true")
 	testInstall(t, "yarn", false /*production*/)
@@ -43,7 +57,7 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 	// Create a new empty test directory and change the current working directory to it.
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	// Create a package directory to install dependencies into.
 	pkgdir := filepath.Join(tempdir, "package")

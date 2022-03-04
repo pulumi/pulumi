@@ -22,6 +22,8 @@ import (
 )
 
 func TestLoadV0Checkpoint(t *testing.T) {
+	t.Parallel()
+
 	bytes, err := ioutil.ReadFile("testdata/checkpoint-v0.json")
 	assert.NoError(t, err)
 
@@ -32,6 +34,8 @@ func TestLoadV0Checkpoint(t *testing.T) {
 }
 
 func TestLoadV1Checkpoint(t *testing.T) {
+	t.Parallel()
+
 	bytes, err := ioutil.ReadFile("testdata/checkpoint-v1.json")
 	assert.NoError(t, err)
 
@@ -42,6 +46,8 @@ func TestLoadV1Checkpoint(t *testing.T) {
 }
 
 func TestLoadV3Checkpoint(t *testing.T) {
+	t.Parallel()
+
 	bytes, err := ioutil.ReadFile("testdata/checkpoint-v3.json")
 	assert.NoError(t, err)
 
