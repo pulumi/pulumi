@@ -19,7 +19,9 @@ import (
 	"reflect"
 	"sort"
 
+	proto "github.com/golang/protobuf/proto"
 	structpb "github.com/golang/protobuf/ptypes/struct"
+
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -254,6 +256,8 @@ func marshalUnknownProperty(elem resource.PropertyValue, opts MarshalOptions) *s
 // UnmarshalProperties unmarshals a "JSON-like" protobuf structure into a new resource property map.
 func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.PropertyMap, error) {
 	result := make(resource.PropertyMap)
+
+	logging.V(9).Infof("Incoming PROTO: %s", proto.MarshalTextString(props))
 
 	// First sort the keys so we enumerate them in order (in case errors happen, we want determinism).
 	var keys []string
