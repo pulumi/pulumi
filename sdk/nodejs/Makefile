@@ -27,12 +27,14 @@ build_package:: ensure
 	yarn run tsc
 	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
+	mkdir -p bin/tests/automation/data/
 	cp -R tests/automation/data/. bin/tests/automation/data/
 	cp README.md ../../LICENSE ./dist/* bin/
 # safely remove mockpackage dependency see [pulumi/pulumi#9026]
 	cp package.json yarn.lock bin/ && cd bin && yarn remove mockpackage && rm yarn.lock
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
+	mkdir -p bin/proto
 	cp -R proto/. bin/proto/
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
