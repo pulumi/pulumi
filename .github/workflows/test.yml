@@ -184,20 +184,11 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
-      - name: Install gotestsum from source
-        run: |
-          go install gotest.tools/gotestsum@latest
-        env:
-          GOBIN: ${{ github.workspace }}/bin
-      # Binary installer for gotestsum does not work because the
-      # project distributes tarballs for Windows instead of zips
-      # expected by the action.
-      #
-      # - name: Install gotestsum
-      #   uses: jaxxstorm/action-install-gh-release@v1.3.1
-      #   with:
-      #     repo: gotestyourself/gotestsum
-      #     tag: v1.7.0
+      - name: Install gotestsum
+        uses: aaronfriel/action-install-gh-release@v1.4.0-beta.4
+        with:
+          repo: gotestyourself/gotestsum
+          tag: v1.7.0
       - name: Install goteststats
         uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
