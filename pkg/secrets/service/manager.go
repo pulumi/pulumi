@@ -89,10 +89,11 @@ func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) (map
 }
 
 type serviceSecretsManagerState struct {
-	URL     string `json:"url,omitempty"`
-	Owner   string `json:"owner"`
-	Project string `json:"project"`
-	Stack   string `json:"stack"`
+	URL      string `json:"url,omitempty"`
+	Owner    string `json:"owner"`
+	Project  string `json:"project"`
+	Stack    string `json:"stack"`
+	Insecure bool   `json:"insecure,omitempty"`
 }
 
 var _ secrets.Manager = &serviceSecretsManager{}
@@ -151,10 +152,11 @@ func NewServiceSecretsManager(
 
 	return &serviceSecretsManager{
 		state: serviceSecretsManagerState{
-			URL:     client.URL(),
-			Owner:   id.Owner,
-			Project: id.Project,
-			Stack:   id.Stack,
+			URL:      client.URL(),
+			Owner:    id.Owner,
+			Project:  id.Project,
+			Stack:    id.Stack,
+			Insecure: client.Insecure(),
 		},
 		crypter: newServiceCrypter(client, id),
 	}, nil
@@ -183,7 +185,7 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		Project: s.Project,
 		Stack:   s.Stack,
 	}
-	c := client.NewClient(s.URL, token, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+	c := client.NewClient(s.URL, token, s.Insecure, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never}))
 
 	return &serviceSecretsManager{

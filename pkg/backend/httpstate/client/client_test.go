@@ -52,14 +52,17 @@ func newMockServerRequestProcessor(statusCode int, processor func(req *http.Requ
 }
 
 func newMockClient(server *httptest.Server) *Client {
+	httpClient := http.DefaultClient
+
 	return &Client{
-		apiURL:   server.URL,
-		apiToken: "",
-		apiUser:  "",
-		diag:     nil,
-		client: &defaultRESTClient{
+		apiURL:     server.URL,
+		apiToken:   "",
+		apiUser:    "",
+		diag:       nil,
+		httpClient: httpClient,
+		restClient: &defaultRESTClient{
 			client: &defaultHTTPClient{
-				client: http.DefaultClient,
+				client: httpClient,
 			},
 		},
 	}
