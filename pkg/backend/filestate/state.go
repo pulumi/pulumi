@@ -265,7 +265,7 @@ func backupTarget(bucket Bucket, file string, keepOriginal bool) string {
 
 	err := bucket.Copy(context.TODO(), file, bck, nil)
 	if err != nil {
-		logging.V(5).Infof("error copying %s to %s: %w", file, bck, err)
+		logging.V(5).Infof("error copying %s to %s: %s", file, bck, err)
 	}
 
 	if !keepOriginal {
