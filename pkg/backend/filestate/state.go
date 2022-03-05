@@ -260,8 +260,17 @@ func (b *localBackend) removeStack(name tokens.QName) error {
 func backupTarget(bucket Bucket, file string) string {
 	contract.Require(file != "", "file")
 	bck := file + ".bak"
-	err := renameObject(bucket, file, bck)
-	contract.IgnoreError(err) // ignore errors.
+
+	err := bucket.Copy(context.TODO(), file, bck, nil)
+	if err != nil {
+		logging.V(5).Infof("error copying %s to %s: %w", file, bck, err)
+	}
+
+	err = bucket.Delete(context.TODO(), file)
+	if err != nil {
+		logging.V(5).Infof("error deleting source object after rename: %v (%v) skipping", file, err)
+	}
+
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 	return bck
 }
