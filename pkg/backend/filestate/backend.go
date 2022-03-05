@@ -423,7 +423,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 
 	// To remove the old stack, just make a backup of the file and don't write out anything new.
 	file := b.stackPath(stackName)
-	backupTarget(b.bucket, file)
+	backupTarget(b.bucket, file, false)
 
 	// And rename the histoy folder as well.
 	if err = b.renameHistory(stackName, newName); err != nil {
