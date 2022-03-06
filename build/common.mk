@@ -90,7 +90,7 @@
 #
 # Importing common.mk should be the first thing your Makefile does, after
 # optionally setting SUB_PROJECTS, PROJECT_NAME and NODE_MODULE_NAME.
-SHELL       := /bin/bash
+SHELL       ?= /bin/bash
 .SHELLFLAGS := -ec
 
 STEP_MESSAGE = @echo -e "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):\033[0m"

@@ -4,7 +4,7 @@ LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-do
 PROJECT_PKGS    := $(shell go list ./cmd...)
 PROJECT_ROOT    := $(realpath ../..)
 
-DOTNET_VERSION  := $(shell cd ../../ && pulumictl get version --language dotnet)
+DOTNET_VERSION  := $(if ${PULUMI_VERSION},${PULUMI_VERSION}, $(shell cd ../../ && pulumictl get version --language dotnet))
 
 TESTPARALLELISM := 10
 
