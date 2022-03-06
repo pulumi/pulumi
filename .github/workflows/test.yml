@@ -53,7 +53,7 @@ jobs:
         platform:
           - ubuntu-latest
           - windows-latest
-          - macos-latest
+          # - macos-latest
         test-suite:
           - run: |
               cd sdk/python
@@ -115,7 +115,7 @@ jobs:
             test-parallelism-windows: 2
           - run: make test_integration_subpkgs
             require-build: true
-            test-parallelism: 6
+            test-parallelism: 4
 
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
