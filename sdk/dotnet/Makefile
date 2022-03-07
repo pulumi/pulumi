@@ -68,7 +68,7 @@ test_all:: dotnet_test auto_test go_test
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
-brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
+brew:: BREW_VERSION := $(shell pulumictl get version)
 brew::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 
