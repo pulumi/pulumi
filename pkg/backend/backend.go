@@ -201,6 +201,9 @@ type Backend interface {
 	LogoutAll() error
 	// Returns the identity of the current user for the backend.
 	CurrentUser() (string, error)
+
+	// Cancel the current update for the given stack.
+	CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the

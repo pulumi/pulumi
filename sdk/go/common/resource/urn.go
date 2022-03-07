@@ -110,3 +110,16 @@ func (urn URN) Type() tokens.Type {
 func (urn URN) Name() tokens.QName {
 	return tokens.QName(strings.Split(urn.URNName(), URNNameDelimiter)[3])
 }
+
+// Returns a new URN with an updated name part
+func (urn URN) Rename(newName string) URN {
+	return NewURN(
+		urn.Stack(),
+		urn.Project(),
+		// parent type is empty because
+		// assuming the qualified type already includes it
+		"",
+		urn.QualifiedType(),
+		tokens.QName(newName),
+	)
+}

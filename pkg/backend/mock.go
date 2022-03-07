@@ -70,6 +70,8 @@ type MockBackend struct {
 		UpdateOperation, []string) result.Result
 	GetLogsF func(context.Context, Stack, StackConfiguration,
 		operations.LogQuery) ([]operations.LogEntry, error)
+
+	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
 }
 
 var _ Backend = (*MockBackend)(nil)
@@ -322,6 +324,13 @@ func (be *MockBackend) LogoutAll() error {
 func (be *MockBackend) CurrentUser() (string, error) {
 	if be.CurrentUserF != nil {
 		return be.CurrentUserF()
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error {
+	if be.CancelCurrentUpdateF != nil {
+		return be.CancelCurrentUpdateF(ctx, stackRef)
 	}
 	panic("not implemented")
 }

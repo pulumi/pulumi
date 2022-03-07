@@ -34,7 +34,7 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 func init() {
 	version, err := foo.PkgVersion()
 	if err != nil {
-		fmt.Printf("failed to determine package version. defaulting to v1: %v\n", err)
+		version = semver.Version{Major: 1}
 	}
 	pulumi.RegisterResourceModule(
 		"foo-bar",

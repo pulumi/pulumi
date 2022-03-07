@@ -2812,7 +2812,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 
 	fmt.Fprintf(w, "func init() {\n")
 	if topLevelModule {
-		fmt.Fprintf(w, "\tversion, err := PkgVersion()\n")
+		fmt.Fprintf(w, "\tversion, _ := PkgVersion()\n")
 	} else {
 		// Some package names contain '-' characters, so grab the name from the base path, unless there is an alias
 		// in which case we use that instead.
@@ -2824,10 +2824,12 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		}
 		pkgName = strings.ReplaceAll(pkgName, "-", "")
 		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
+		// To avoid breaking compatibility, we don't change the function
+		// signature. We instead just ignore the error.
+		fmt.Fprintf(w, "\tif err != nil {\n")
+		fmt.Fprintf(w, "\t\tversion = semver.Version{Major: 1}\n")
+		fmt.Fprintf(w, "\t}\n")
 	}
-	fmt.Fprintf(w, "\tif err != nil {\n")
-	fmt.Fprintf(w, "\t\tfmt.Printf(\"failed to determine package version. defaulting to v1: %%v\\n\", err)\n")
-	fmt.Fprintf(w, "\t}\n")
 	if len(registrations) > 0 {
 		for _, mod := range registrations.SortedValues() {
 			fmt.Fprintf(w, "\tpulumi.RegisterResourceModule(\n")
@@ -3629,6 +3631,8 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 }
 
 // PkgVersion uses reflection to determine the version of the current package.
+// If a version cannot be determined, v1 will be assumed. The second return
+// value is always nil.
 func PkgVersion() (semver.Version, error) {
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
@@ -3640,7 +3644,7 @@ func PkgVersion() (semver.Version, error) {
 		}
 		return semver.MustParse(fmt.Sprintf("%%s.0.0", vStr[2:])), nil
 	}
-	return semver.Version{}, fmt.Errorf("failed to determine the package version from %%s", pkgPath)
+	return semver.Version{Major: 1}, nil
 }
 
 // isZero is a null safe check for if a value is it's types zero value.
