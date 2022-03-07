@@ -142,7 +142,7 @@ func newLoginCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
-					if err := httpstate.SetDefaultOrg(cloudURL, defaultOrg); err != nil {
+					if err := workspace.SetBackendConfigDefaultOrg(cloudURL, defaultOrg); err != nil {
 						return err
 					}
 				}

@@ -1,4 +1,12 @@
 ### Improvements
+- [area/cli] - Implemented `state rename` command.
+  [#9098](https://github.com/pulumi/pulumi/pull/9098)
+
+- [cli/plugins] `pulumi plugin install` can now look up the latest version of plugins on GitHub releases.
+  [#9012](https://github.com/pulumi/pulumi/pull/9012)
+
+- [cli/backend] - `pulumi cancel` is now supported for the file state backend.
+  [#9100](https://github.com/pulumi/pulumi/pull/9100)
 
 - [cli/import] - The import command no longer errors if resource properties do not validate. Instead the
   engine warns about property issues returned by the provider but then continues with the import and codegen
@@ -8,15 +16,3 @@
   [#8922](https://github.com/pulumi/pulumi/pull/8922)
 
 ### Bug Fixes
-
-- [sdk/nodejs] - Fix Node `fs.rmdir` DeprecationWarning for Node JS 15.X+
-  [#9044](https://github.com/pulumi/pulumi/pull/9044)
-
-- [engine] - Fix deny default provider handling for Invokes and Reads.
-  [#9067](https://github.com/pulumi/pulumi/pull/9067)
-
-- [codegen/go] - Fix secret codegen for input properties
-  [#9052](https://github.com/pulumi/pulumi/pull/9052)
-
-- [sdk/nodejs] - `PULUMI_NODEJS_TSCONFIG_PATH` is now explicitly passed to tsnode for the tsconfig file.
-  [#9062](https://github.com/pulumi/pulumi/pull/9062)
