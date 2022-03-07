@@ -55,7 +55,7 @@ func newStackRenameCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			oldConfigPath, err := workspace.DetectProjectStackPath(s.Ref().Name())
+			oldConfigPath, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
 			if err != nil {
 				return err
 			}
@@ -66,7 +66,7 @@ func newStackRenameCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			newConfigPath, err := workspace.DetectProjectStackPath(newStackRef.Name())
+			newConfigPath, err := workspace.DetectProjectStackPath(newStackRef.Name().Q())
 			if err != nil {
 				return err
 			}
