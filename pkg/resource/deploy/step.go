@@ -960,15 +960,23 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 		// Print this warning before printing all the check failures to give better context.
 		if len(failures) != 0 {
-			ref, err := providers.ParseReference(s.Provider())
-			contract.Assert(err == nil)
 
-			pkgName := ref.URN().Type().Name()
+			// Based on if the user passed 'properties' or not we want to change the error message here.
+			var errorMessage string
+			if len(inputProperties) == 0 {
+				ref, err := providers.ParseReference(s.Provider())
+				contract.Assert(err == nil)
+
+				pkgName := ref.URN().Type().Name()
+				errorMessage = fmt.Sprintf("This is almost certainly a bug in the `%s` provider.", pkgName)
+			} else {
+				errorMessage = "Try specifying a different set of properties to import with in the future."
+			}
+
 			s.deployment.Diag().Warningf(diag.Message(s.new.URN,
-				"One or more imported inputs failed to validate. "+
-					"This is almost certainly a bug in the `%s` provider. "+
+				"One or more imported inputs failed to validate. %s "+
 					"The import will still proceed, but you will need to edit the generated code after copying it into your program."),
-				pkgName)
+				errorMessage)
 		}
 
 		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, failures)
