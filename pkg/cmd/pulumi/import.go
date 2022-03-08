@@ -380,7 +380,7 @@ func newImportCmd() *cobra.Command {
 			}
 
 			if !generateCode && outputFilePath != "" {
-				fmt.Print("Output file will not be used as --generate-code is false.\n")
+				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
 			}
 
 			var outputResult bytes.Buffer
