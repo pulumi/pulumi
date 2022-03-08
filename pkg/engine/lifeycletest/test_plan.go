@@ -160,7 +160,7 @@ type TestPlan struct {
 }
 
 //nolint: goconst
-func (p *TestPlan) getNames() (stack tokens.QName, project tokens.PackageName, runtime string) {
+func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, runtime string) {
 	project = tokens.PackageName(p.Project)
 	if project == "" {
 		project = "test"
@@ -169,7 +169,7 @@ func (p *TestPlan) getNames() (stack tokens.QName, project tokens.PackageName, r
 	if runtime == "" {
 		runtime = "test"
 	}
-	stack = tokens.QName(p.Stack)
+	stack = tokens.Name(p.Stack)
 	if stack == "" {
 		stack = "test"
 	}
@@ -182,7 +182,7 @@ func (p *TestPlan) NewURN(typ tokens.Type, name string, parent resource.URN) res
 	if parent != "" {
 		pt = parent.Type()
 	}
-	return resource.NewURN(stack, project, pt, typ, tokens.QName(name))
+	return resource.NewURN(stack.Q(), project, pt, typ, tokens.QName(name))
 }
 
 func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resource.URN) resource.URN {

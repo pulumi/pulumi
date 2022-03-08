@@ -9,5 +9,9 @@
 
 ### Bug Fixes
 
+- [sdk/python] - Fix build warnings. See
+  [#9011](https://github.com/pulumi/pulumi/issues/9011) for more details.
+  [#9139](https://github.com/pulumi/pulumi/pull/9139)
+
 - [cli/backend] - Fixed an issue with non-atomicity when saving file state stacks.
   [#9122](https://github.com/pulumi/pulumi/pull/9122)

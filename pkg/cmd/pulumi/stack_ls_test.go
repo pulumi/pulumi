@@ -76,8 +76,8 @@ type mockStackReference struct {
 	name string
 }
 
-func (msr *mockStackReference) Name() tokens.QName {
-	return tokens.QName(msr.name)
+func (msr *mockStackReference) Name() tokens.Name {
+	return tokens.Name(msr.name)
 }
 
 func (msr *mockStackReference) String() string {
