@@ -23,11 +23,6 @@ on:
         default: '6.0.x'
         required: false
         type: string
-      dotnet-package-version:
-        description: 'Version of the Pulumi dotnet SDK package'
-        default: '4.0.0'
-        required: false
-        type: string
       goreleaser-config:
         description: 'Config file for goreleaser'
         default: '.goreleaser.prerelease.yml'
@@ -242,17 +237,14 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
-      - name: Compute current version to inform the NuGet package build
-        run: |
-          echo "DOTNET_VERSION=$(pulumictl get version --language dotnet)" >> $GITHUB_ENV
       - name: Build the .NET SDK package
         run: |
           cd sdk/dotnet
-          dotnet build --configuration Release dotnet.sln /p:Version=${{ inputs.dotnet-package-version }}
+          dotnet build --configuration Release dotnet.sln /p:Version=$(pulumictl get version --language dotnet)
       - name: Pack the .NET SDK package
         run: |
           cd sdk/dotnet
-          dotnet pack --configuration Release --output nupkgs dotnet.sln /p:Version=${{ inputs.dotnet-package-version }}
+          dotnet pack --configuration Release --output nupkgs dotnet.sln /p:Version=$(pulumictl get version --language dotnet)
       - name: Upload the NuGet packages
         uses: actions/upload-artifact@v2
         with:
