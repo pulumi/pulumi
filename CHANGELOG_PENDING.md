@@ -1,5 +1,5 @@
 ### Improvements
- - [area/cli] - Implemented `state rename` command [#9098](https://github.com/pulumi/pulumi/pull/9098)
+- [cli] - Implemented `state rename` command [#9098](https://github.com/pulumi/pulumi/pull/9098)
 
 - [cli/plugins] `pulumi plugin install` can now look up the latest version of plugins on GitHub releases.
   [#9012](https://github.com/pulumi/pulumi/pull/9012)
@@ -12,3 +12,6 @@
 - [sdk/python] - Fix build warnings. See
   [#9011](https://github.com/pulumi/pulumi/issues/9011) for more details.
   [#9139](https://github.com/pulumi/pulumi/pull/9139)
+
+- [cli/backend] - Fixed an issue with non-atomicity when saving file state stacks.
+  [#9122](https://github.com/pulumi/pulumi/pull/9122)

@@ -182,8 +182,11 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 		return "", fmt.Errorf("An IO error occurred while marshalling the checkpoint: %w", err)
 	}
 
-	// Back up the existing file if it already exists.
-	bck := backupTarget(b.bucket, file)
+	// Back up the existing file if it already exists. Don't delete the original, the following WriteAll will
+	// atomically replace it anyway and various other bits of the system depend on being able to find the
+	// .json file to know the stack currently exists (see https://github.com/pulumi/pulumi/issues/9033 for
+	// context).
+	bck := backupTarget(b.bucket, file, true)
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = b.bucket.WriteAll(context.TODO(), file, byts, nil); err != nil {
@@ -249,19 +252,29 @@ func (b *localBackend) removeStack(name tokens.Name) error {
 
 	// Just make a backup of the file and don't write out anything new.
 	file := b.stackPath(name)
-	backupTarget(b.bucket, file)
+	backupTarget(b.bucket, file, false)
 
 	historyDir := b.historyDirectory(name)
 	return removeAllByPrefix(b.bucket, historyDir)
 }
 
-// backupTarget makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
-// simply renames the file, which is simpler, more efficient, etc.
-func backupTarget(bucket Bucket, file string) string {
+// backupTarget makes a backup of an existing file, in preparation for writing a new one.
+func backupTarget(bucket Bucket, file string, keepOriginal bool) string {
 	contract.Require(file != "", "file")
 	bck := file + ".bak"
-	err := renameObject(bucket, file, bck)
-	contract.IgnoreError(err) // ignore errors.
+
+	err := bucket.Copy(context.TODO(), file, bck, nil)
+	if err != nil {
+		logging.V(5).Infof("error copying %s to %s: %s", file, bck, err)
+	}
+
+	if !keepOriginal {
+		err = bucket.Delete(context.TODO(), file)
+		if err != nil {
+			logging.V(5).Infof("error deleting source object after rename: %v (%v) skipping", file, err)
+		}
+	}
+
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 	return bck
 }
