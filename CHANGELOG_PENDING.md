@@ -7,6 +7,9 @@
 - [cli/backend] - `pulumi cancel` is now supported for the file state backend.
   [#9100](https://github.com/pulumi/pulumi/pull/9100)
 
+- [cli/import] - Code generation in `pulumi import` can now be disabled with the `--generate-code=false` flag.
+  [#9141](https://github.com/pulumi/pulumi/pull/9141)
+
 ### Bug Fixes
 
 - [sdk/python] - Fix build warnings. See
