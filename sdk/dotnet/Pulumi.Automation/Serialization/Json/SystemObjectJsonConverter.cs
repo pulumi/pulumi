@@ -38,17 +38,19 @@ namespace Pulumi.Automation.Serialization.Json
                     return datetime;
                 }
 
-                return reader.GetString();
+                var value = reader.GetString();
+                return value!;
             }
 
             if (reader.TokenType == JsonTokenType.StartArray)
             {
-                return JsonSerializer.Deserialize<object[]>(ref reader, options);
+                var deserializedObjects = JsonSerializer.Deserialize<object[]>(ref reader, options);
+                return deserializedObjects ?? new object[] { };
             }
 
             if (reader.TokenType == JsonTokenType.StartObject)
             {
-                var dictionary = new Dictionary<string, object>();
+                var dictionary = new Dictionary<string, object?>();
 
                 reader.Read();
                 while (reader.TokenType != JsonTokenType.EndObject)

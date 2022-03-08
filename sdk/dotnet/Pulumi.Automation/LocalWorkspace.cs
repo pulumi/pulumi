@@ -509,7 +509,7 @@ namespace Pulumi.Automation
         public override async Task<ConfigValue> GetConfigAsync(string stackName, string key, CancellationToken cancellationToken = default)
         {
             var result = await this.RunCommandAsync(new[] { "config", "get", key, "--json", "--stack", stackName }, cancellationToken).ConfigureAwait(false);
-            return this._serializer.DeserializeJson<ConfigValue>(result.StandardOutput);
+            return this._serializer.DeserializeJson<ConfigValue>(result.StandardOutput)!;
         }
 
         /// <inheritdoc/>
@@ -520,7 +520,8 @@ namespace Pulumi.Automation
                 return ImmutableDictionary<string, ConfigValue>.Empty;
 
             var dict = this._serializer.DeserializeJson<Dictionary<string, ConfigValue>>(result.StandardOutput);
-            return dict.ToImmutableDictionary();
+            var emptryDict = new Dictionary<string, ConfigValue>();
+            return (dict ?? emptryDict).ToImmutableDictionary();
         }
 
         /// <inheritdoc/>
@@ -601,7 +602,8 @@ namespace Pulumi.Automation
                 return ImmutableList<StackSummary>.Empty;
 
             var stacks = this._serializer.DeserializeJson<List<StackSummary>>(result.StandardOutput);
-            return stacks.ToImmutableList();
+            var empryStacks = new List<StackSummary>();
+            return (stacks ?? empryStacks).ToImmutableList();
         }
 
         /// <inheritdoc/>
@@ -681,7 +683,8 @@ namespace Pulumi.Automation
         {
             var result = await this.RunCommandAsync(new[] { "plugin", "ls", "--json" }, cancellationToken).ConfigureAwait(false);
             var plugins = this._serializer.DeserializeJson<List<PluginInfo>>(result.StandardOutput);
-            return plugins.ToImmutableList();
+            var emptyPlugins = new List<PluginInfo>();
+            return (plugins ?? emptyPlugins).ToImmutableList();
         }
 
         /// <inheritdoc/>
@@ -700,10 +703,16 @@ namespace Pulumi.Automation
                 : _serializer.DeserializeJson<Dictionary<string, object>>(plaintextResult.StandardOutput);
 
             var output = new Dictionary<string, OutputValue>();
+            
+            if (plaintextOutput is null || maskedOutput is null)
+            {
+                return output.ToImmutableDictionary();
+            }
+
             foreach (var (key, value) in plaintextOutput)
             {
-                var secret = maskedOutput[key] is string maskedValue && maskedValue == "[secret]";
-                output[key] = new OutputValue(value, secret);
+                var isSecret = maskedOutput[key] is string maskedValue && maskedValue == "[secret]";
+                output[key] = new OutputValue(value, isSecret);
             }
 
             return output.ToImmutableDictionary();

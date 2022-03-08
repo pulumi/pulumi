@@ -145,7 +145,10 @@ namespace Pulumi.Automation.Commands
                 var dir = Path.GetDirectoryName(this.FilePath);
                 try
                 {
-                    Directory.Delete(dir, recursive: true);
+                    if (dir != null)
+                    {
+                        Directory.Delete(dir, recursive: true);
+                    }
                 }
                 catch (Exception e)
                 {

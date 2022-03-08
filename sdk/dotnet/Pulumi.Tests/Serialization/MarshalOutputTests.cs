@@ -127,7 +127,7 @@ namespace Pulumi.Tests.Serialization
         private static object[] UnknownDefaultValue<T>()
             where T : notnull
         {
-            T inner = default;
+            T inner = default(T)!;
             var outputdata = OutputData.Create(ImmutableHashSet<Resource>.Empty, inner!, isKnown: false, isSecret: false);
             var output = new Output<T>(Task.FromResult(outputdata));
             return new object[]

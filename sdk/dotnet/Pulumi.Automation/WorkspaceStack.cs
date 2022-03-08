@@ -630,7 +630,7 @@ namespace Pulumi.Automation
 
             var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
             var list = JsonSerializer.Deserialize<List<UpdateSummary>>(result.StandardOutput, jsonOptions);
-            return list.ToImmutableList();
+            return (list ?? new List<UpdateSummary>()).ToImmutableList();
         }
 
         /// <summary>
@@ -765,7 +765,7 @@ namespace Pulumi.Automation
                     try
                     {
                         var serverFeatures = this._host.Services.GetRequiredService<IServer>().Features;
-                        var addresses = serverFeatures.Get<IServerAddressesFeature>().Addresses.ToList();
+                        var addresses = serverFeatures.Get<IServerAddressesFeature>()?.Addresses?.ToList() ?? new List<string>();
                         Debug.Assert(addresses.Count == 1, "Server should only be listening on one address");
                         var uri = new Uri(addresses[0]);
                         this._portTcs.TrySetResult(uri.Port);

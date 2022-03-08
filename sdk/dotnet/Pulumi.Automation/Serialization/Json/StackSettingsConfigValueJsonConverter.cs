@@ -16,7 +16,9 @@ namespace Pulumi.Automation.Serialization.Json
             if (element.ValueKind == JsonValueKind.String)
             {
                 var value = element.GetString();
-                return new StackSettingsConfigValue(value, false);
+                // telling the compiler this is non-null because otherwise 
+                // element.ValueKind would have been JsonValueKind.Null
+                return new StackSettingsConfigValue(value!, false);
             }
 
             // confirm object
@@ -31,7 +33,9 @@ namespace Pulumi.Automation.Serialization.Json
                     throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}] as a secure string. Expecting a string secret.");
 
                 var secret = secureProperty.GetString();
-                return new StackSettingsConfigValue(secret, true);
+                // telling the compiler this is non-null because otherwise 
+                // secureProperty.ValueKind would have been JsonValueKind.Null
+                return new StackSettingsConfigValue(secret!, true);
             }
 
             throw new NotSupportedException("Automation API does not currently support deserializing complex objects from stack settings.");

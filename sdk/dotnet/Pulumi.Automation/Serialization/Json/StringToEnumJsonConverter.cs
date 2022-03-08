@@ -14,7 +14,11 @@ namespace Pulumi.Automation.Serialization.Json
 
         public override TEnum Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            return _converter.Convert(reader.GetString());
+            var enumValue = reader.GetString();
+            if (String.IsNullOrEmpty(enumValue))
+                throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}] as an enum from empty string.");
+            
+            return _converter.Convert(enumValue);
         }
 
         public override void Write(Utf8JsonWriter writer, TEnum value, JsonSerializerOptions options)

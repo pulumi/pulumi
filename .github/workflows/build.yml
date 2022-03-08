@@ -20,7 +20,12 @@ on:
         type: string
       dotnet-version:
         description: 'Version of the .NET toolchain for the build'
-        default: '3.1.x'
+        default: '6.0.x'
+        required: false
+        type: string
+      dotnet-package-version:
+        description: 'Version of the Pulumi dotnet SDK package'
+        default: '4.0.0'
         required: false
         type: string
       goreleaser-config:
@@ -243,11 +248,11 @@ jobs:
       - name: Build the .NET SDK package
         run: |
           cd sdk/dotnet
-          dotnet build --configuration Release dotnet.sln /p:Version=$DOTNET_VERSION
+          dotnet build --configuration Release dotnet.sln /p:Version=${{ inputs.dotnet-package-version }}
       - name: Pack the .NET SDK package
         run: |
           cd sdk/dotnet
-          dotnet pack --configuration Release --output nupkgs dotnet.sln /p:Version=$DOTNET_VERSION
+          dotnet pack --configuration Release --output nupkgs dotnet.sln /p:Version=${{ inputs.dotnet-package-version }}
       - name: Upload the NuGet packages
         uses: actions/upload-artifact@v2
         with:

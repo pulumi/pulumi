@@ -23,6 +23,10 @@ namespace Pulumi.Automation.Tests.Serialization
 ";
 
             var settings = _serializer.DeserializeJson<StackSettings>(json);
+            if (settings == null)
+            {
+                throw new JsonException("Deserializing StackSettings failed");
+            }
             Assert.NotNull(settings.Config);
             Assert.True(settings!.Config!.ContainsKey("test"));
 
@@ -46,7 +50,12 @@ namespace Pulumi.Automation.Tests.Serialization
 ";
 
             var settings = _serializer.DeserializeJson<StackSettings>(json);
-            Assert.NotNull(settings.Config);
+
+            if (settings == null)
+            {
+                throw new JsonException("Deserializing StackSettings failed");
+            }
+            
             Assert.True(settings!.Config!.ContainsKey("test"));
 
             var value = settings.Config["test"];

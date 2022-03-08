@@ -101,8 +101,11 @@ namespace Pulumi.Automation.Events
                 if (!string.IsNullOrWhiteSpace(line))
                 {
                     line = line.Trim();
-                    var @event = _localSerializer.DeserializeJson<EngineEvent>(line);
-                    _onEvent.Invoke(@event);
+                    var engineEvent = _localSerializer.DeserializeJson<EngineEvent>(line);
+                    if (engineEvent != null)
+                    {
+                        _onEvent.Invoke(engineEvent);
+                    }
                 }
             }
         }

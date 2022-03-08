@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using Pulumi.Automation.Serialization;
 using Xunit;
 
@@ -28,7 +29,10 @@ namespace Pulumi.Automation.Tests.Serialization
 ";
 
             var config = _serializer.DeserializeJson<Dictionary<string, ConfigValue>>(json);
-            Assert.NotNull(config);
+            if (config == null)
+            {
+                throw new JsonException("Deserializing Dictionary<string, ConfigValue> failed");
+            }
             Assert.True(config.TryGetValue("aws:region", out var regionValue));
             Assert.Equal("us-east-1", regionValue!.Value);
             Assert.False(regionValue.IsSecret);
@@ -53,7 +57,8 @@ namespace Pulumi.Automation.Tests.Serialization
             var installTime = new DateTime(2020, 12, 9, 19, 24, 23, 214);
             var lastUsedTime = new DateTime(2020, 12, 9, 19, 24, 26, 059);
 
-            var info = _serializer.DeserializeJson<PluginInfo>(json);
+            var info = _serializer.DeserializeJson<PluginInfo>(json)!;
+            
             Assert.NotNull(info);
             Assert.Equal("aws", info.Name);
             Assert.Equal(PluginKind.Resource, info.Kind);
@@ -117,10 +122,9 @@ namespace Pulumi.Automation.Tests.Serialization
 ]
 ";
 
-            var history = _serializer.DeserializeJson<List<UpdateSummary>>(json);
+            var history = _serializer.DeserializeJson<List<UpdateSummary>>(json)!;
             Assert.NotNull(history);
             Assert.Equal(2, history.Count);
-
             var destroy = history[0];
             Assert.Equal(UpdateKind.Destroy, destroy.Kind);
             Assert.Equal(UpdateState.InProgress, destroy.Result);

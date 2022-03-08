@@ -43,7 +43,7 @@ nested:
 }
 ";
 
-            var dict = _serializer.DeserializeJson<Dictionary<string, object>>(json);
+            var dict = _serializer.DeserializeJson<Dictionary<string, object>>(json)!;
             Assert.NotNull(dict);
             Assert.NotEmpty(dict);
             Assert.Equal(4, dict.Count);

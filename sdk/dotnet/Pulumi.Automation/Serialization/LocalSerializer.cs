@@ -26,7 +26,7 @@ namespace Pulumi.Automation.Serialization
             this._yamlSerializer = BuildYamlSerializer();
         }
 
-        public T DeserializeJson<T>(string content)
+        public T? DeserializeJson<T>(string content)
             => JsonSerializer.Deserialize<T>(content, this._jsonOptions);
 
         public T DeserializeYaml<T>(string content)
@@ -45,7 +45,7 @@ namespace Pulumi.Automation.Serialization
             var options = new JsonSerializerOptions
             {
                 AllowTrailingCommas = true,
-                IgnoreNullValues = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             };
 
