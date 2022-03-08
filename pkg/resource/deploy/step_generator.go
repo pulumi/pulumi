@@ -1346,8 +1346,14 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	return diff, nil
 }
 
-// issueCheckErrors prints any check errors to the diagnostics sink.
+// issueCheckErrors prints any check errors to the diagnostics error sink.
 func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.URN,
+	failures []plugin.CheckFailure) bool {
+	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures)
+}
+
+// issueCheckErrors prints any check errors to the given printer function.
+func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.State, urn resource.URN,
 	failures []plugin.CheckFailure) bool {
 
 	if len(failures) == 0 {
@@ -1356,10 +1362,10 @@ func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
-			deployment.Diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn),
+			printf(diag.GetResourcePropertyInvalidValueError(urn),
 				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
-			deployment.Diag().Errorf(
+			printf(
 				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
 		}
 	}
