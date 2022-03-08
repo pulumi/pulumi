@@ -49,7 +49,6 @@ func TestDetectProjectAndPath(t *testing.T) {
 }
 
 func TestProjectStackPath(t *testing.T) {
-	t.Parallel()
 	expectedPath := func(expectedPath string) func(t *testing.T, projectDir, path string, err error) {
 		return func(t *testing.T, projectDir, path string, err error) {
 			assert.NoError(t, err)
@@ -84,7 +83,6 @@ func TestProjectStackPath(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			tmpDir, err := ioutil.TempDir("", "projecttest")
 			assert.NoError(t, err)
 			cwd, err := os.Getwd()
