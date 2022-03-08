@@ -29,8 +29,9 @@ func TestDetectProjectAndPath(t *testing.T) {
 	assert.NoError(t, err)
 	cwd, err := os.Getwd()
 	assert.NoError(t, err)
-	defer os.Chdir(cwd)
-	os.Chdir(tmpDir)
+	defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
+	err = os.Chdir(tmpDir)
+	assert.NoError(t, err)
 
 	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
 	yamlContents :=
@@ -53,8 +54,9 @@ func TestProjectStackPath(t *testing.T) {
 		assert.NoError(t, err)
 		cwd, err := os.Getwd()
 		assert.NoError(t, err)
-		defer os.Chdir(cwd)
-		os.Chdir(tmpDir)
+		defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
+		err = os.Chdir(tmpDir)
+		assert.NoError(t, err)
 
 		err = os.WriteFile(
 			filepath.Join(tmpDir, "Pulumi.yaml"),

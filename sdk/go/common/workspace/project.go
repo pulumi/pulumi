@@ -90,7 +90,8 @@ type Project struct {
 	// Config has been renamed to StacksDirectory.
 	Config interface{} `json:"config,omitempty" yaml:"config,omitempty"`
 
-	// StacksDirectory indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder Pulumi.yaml is in.
+	// StacksDirectory indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder
+	// Pulumi.yaml is in.
 	StacksDirectory string `json:"stacksDirectory,omitempty" yaml:"stacksDirectory,omitempty"`
 
 	// Template is an optional template manifest, if this project is a template.
