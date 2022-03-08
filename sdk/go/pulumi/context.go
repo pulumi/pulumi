@@ -1308,7 +1308,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		version:                 state.version,
 		pluginDownloadURL:       state.pluginDownloadURL,
 		replaceOnChanges:        resOpts.replaceOnChanges,
-		retainOnDelete:          opts.RetainOnDelete,		
+		retainOnDelete:          opts.RetainOnDelete,
 	}, nil
 }
 
