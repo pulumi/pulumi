@@ -27,7 +27,6 @@ func (m *testMonitor) Call(args MockCallArgs) (resource.PropertyMap, error) {
 }
 
 func (m *testMonitor) NewResource(args MockResourceArgs) (string, resource.PropertyMap, error) {
-
 	if m.NewResourceF == nil {
 		return args.Name, resource.PropertyMap{}, nil
 	}
