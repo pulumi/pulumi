@@ -1158,7 +1158,7 @@ func (op StepOp) RawPrefix() string {
 
 func (op StepOp) PastTense() string {
 	switch op {
-	case OpSame, OpCreate, OpDelete, OpReplace, OpCreateReplacement, OpDeleteReplaced, OpUpdate, OpReadReplacement:
+	case OpSame, OpCreate, OpReplace, OpCreateReplacement, OpUpdate, OpReadReplacement:
 		return string(op) + "d"
 	case OpRefresh:
 		return "refreshed"
@@ -1166,6 +1166,8 @@ func (op StepOp) PastTense() string {
 		return "read"
 	case OpReadDiscard, OpDiscardReplaced:
 		return "discarded"
+	case OpDelete, OpDeleteReplaced:
+		return "deleted"
 	case OpImport, OpImportReplacement:
 		return "imported"
 	default:
