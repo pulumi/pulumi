@@ -780,10 +780,12 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 						Inputs: resource.PropertyMap{
 							"foo":  resource.NewStringProperty("bar"),
 							"frob": resource.NewNumberProperty(1),
+							"baz":  resource.NewNumberProperty(2),
 						},
 						Outputs: resource.PropertyMap{
 							"foo":  resource.NewStringProperty("bar"),
 							"frob": resource.NewNumberProperty(1),
+							"baz":  resource.NewNumberProperty(2),
 						},
 					}, resource.StatusOK, nil
 				},
@@ -822,19 +824,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
-	snap, res = ImportOp([]deploy.Import{{
-		Type:     "pkgA:m:typA",
-		Name:     "resB",
-		ID:       "imported-id",
-		Provider: p.NewProviderURN("pkgA", "provA", ""),
-	}}).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
-
-	// This should fail to import because the default behaviour only imports with required fields
-	// (frob) but our check function needs foo and frob.
-	assert.NotNil(t, res)
-	assert.Len(t, snap.Resources, 2)
-
-	// Try and import again specifying foo and frob
+	// Import specifying to use just foo and frob
 	snap, res = ImportOp([]deploy.Import{{
 		Type:       "pkgA:m:typA",
 		Name:       "resB",
@@ -845,4 +835,8 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 
 	assert.Nil(t, res)
 	assert.Len(t, snap.Resources, 3)
+
+	// We should still have the baz output but will be missing its input
+	assert.Equal(t, resource.NewNumberProperty(2), snap.Resources[2].Outputs["baz"])
+	assert.NotContains(t, snap.Resources[2].Inputs, "baz")
 }

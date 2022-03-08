@@ -538,27 +538,6 @@ func newImportCmd() *cobra.Command {
 			}
 
 			if res != nil {
-				// Check if the user used "properties" to control the error message we print
-				usedProperties := false
-				for _, resourceImport := range imports {
-					usedProperties = usedProperties || (resourceImport.Properties != nil)
-				}
-
-				// TODO: This helpful message prints even in the case of the user doing a successful preview and then
-				// choosing "no" to not actually do the import. We need a way to distinguish Import _failing_ vs
-				// being canceled by user request.
-				if usedProperties {
-					fmt.Print("Import failed, try specifying a different set of properties to import with.\n")
-				} else {
-					fmt.Print("Import failed, try specifying the set of properties to import with.\n")
-					if importFilePath == "" {
-						fmt.Print("This can be done by passing the property names with the --properties flag.\n")
-					} else {
-						fmt.Print("This can be done by adding a \"properties\" key with an array of " +
-							"strings to the resource object in the input file.\n")
-					}
-				}
-
 				if res.Error() == context.Canceled {
 					return result.FromError(errors.New("import cancelled"))
 				}
