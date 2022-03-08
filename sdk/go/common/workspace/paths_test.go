@@ -49,43 +49,55 @@ func TestDetectProjectAndPath(t *testing.T) {
 }
 
 func TestProjectStackPath(t *testing.T) {
-	doTest := func(t *testing.T, yamlContents, expectedStackPath string) {
-		tmpDir, err := ioutil.TempDir("", "projecttest")
-		assert.NoError(t, err)
-		cwd, err := os.Getwd()
-		assert.NoError(t, err)
-		defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
-		err = os.Chdir(tmpDir)
-		assert.NoError(t, err)
-
-		err = os.WriteFile(
-			filepath.Join(tmpDir, "Pulumi.yaml"),
-			[]byte(yamlContents),
-			0600)
-		assert.NoError(t, err)
-
-		path, err := DetectProjectStackPath("my_stack")
-		assert.NoError(t, err)
-		assert.Equal(t, filepath.Join(tmpDir, expectedStackPath), path)
+	expectedPath := func(expectedPath string) func(t *testing.T, projectDir, path string, err error) {
+		return func(t *testing.T, projectDir, path string, err error) {
+			assert.NoError(t, err)
+			assert.Equal(t, filepath.Join(projectDir, expectedPath), path)
+		}
 	}
 
-	t.Run("WithoutStacksDirectory", func(t *testing.T) {
-		doTest(t,
-			"name: some_project\ndescription: Some project\nruntime: nodejs\n",
-			"Pulumi.my_stack.yaml")
-	})
+	tests := []struct {
+		name         string
+		yamlContents string
+		validate     func(t *testing.T, projectDir, path string, err error)
+	}{{
+		"WithoutStacksDirectory",
+		"name: some_project\ndescription: Some project\nruntime: nodejs\n",
+		expectedPath("Pulumi.my_stack.yaml"),
+	}, {
+		"WithStacksDirectory",
+		"name: some_project\ndescription: Some project\nruntime: nodejs\nstacksDirectory: stacks\n",
+		expectedPath(filepath.Join("stacks", "Pulumi.my_stack.yaml")),
+	}, {
+		"WithConfig",
+		"name: some_project\ndescription: Some project\nruntime: nodejs\nconfig: stacks\n",
+		expectedPath(filepath.Join("stacks", "Pulumi.my_stack.yaml")),
+	}, {
+		"WithBoth",
+		"name: some_project\ndescription: Some project\nruntime: nodejs\nconfig: stacks\nstacksDirectory: stacks\n",
+		func(t *testing.T, projectDir, path string, err error) {
+			assert.Error(t, err)
+		},
+	}}
 
-	t.Run("WithStacksDirectory", func(t *testing.T) {
-		doTest(t,
-			"name: some_project\ndescription: Some project\nruntime: nodejs\n"+
-				"stacksDirectory: stacks\n",
-			filepath.Join("stacks", "Pulumi.my_stack.yaml"))
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir, err := ioutil.TempDir("", "projecttest")
+			assert.NoError(t, err)
+			cwd, err := os.Getwd()
+			assert.NoError(t, err)
+			defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
+			err = os.Chdir(tmpDir)
+			assert.NoError(t, err)
 
-	t.Run("WithConfig", func(t *testing.T) {
-		doTest(t,
-			"name: some_project\ndescription: Some project\nruntime: nodejs\n"+
-				"config: stacks\n",
-			filepath.Join("stacks", "Pulumi.my_stack.yaml"))
-	})
+			err = os.WriteFile(
+				filepath.Join(tmpDir, "Pulumi.yaml"),
+				[]byte(tt.yamlContents),
+				0600)
+			assert.NoError(t, err)
+
+			path, err := DetectProjectStackPath("my_stack")
+			tt.validate(t, tmpDir, path, err)
+		})
+	}
 }
