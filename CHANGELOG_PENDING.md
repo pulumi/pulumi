@@ -14,6 +14,9 @@
   generate some code, at the cost that the generated code may not work as is in an update. Users will have to
   edit the code to successfully run.
   [#8922](https://github.com/pulumi/pulumi/pull/8922)
+  
+- [cli/import] - Code generation in `pulumi import` can now be disabled with the `--generate-code=false` flag.
+  [#9141](https://github.com/pulumi/pulumi/pull/9141)
 
 ### Bug Fixes
 

@@ -279,6 +279,7 @@ func newImportCmd() *cobra.Command {
 	var providerSpec string
 	var importFilePath string
 	var outputFilePath string
+	var generateCode bool
 
 	var debug bool
 	var message string
@@ -376,6 +377,10 @@ func newImportCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 				importFile = f
+			}
+
+			if !generateCode && outputFilePath != "" {
+				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
 			}
 
 			var outputResult bytes.Buffer
@@ -496,37 +501,39 @@ func newImportCmd() *cobra.Command {
 				Scopes:             cancellationScopes,
 			}, imports)
 
-			deployment, err := getCurrentDeploymentForStack(s)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			validImports, err := generateImportedDefinitions(
-				output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
-				protectResources)
-			if err != nil {
-				if _, ok := err.(*importer.DiagnosticsError); ok {
-					err = fmt.Errorf("internal error: %w", err)
+			if generateCode {
+				deployment, err := getCurrentDeploymentForStack(s)
+				if err != nil {
+					return result.FromError(err)
 				}
-				return result.FromError(err)
-			}
 
-			if validImports {
-				// we only want to output the helper string if there is a set of valid imports to convert into code
-				// this protects against invalid package types or import errors that will not actually result in
-				// in a codegen call
-				// It's a little bit more memory but is a better experience that writing to stdout and then an error
-				// occurring
-				if outputFilePath == "" {
-					fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
-						"will cause Pulumi to report that an update will happen on the next update command.\n\n")
-					if protectResources {
-						fmt.Print(("Please note that the imported resources are marked as protected. " +
-							"To destroy them\n" +
-							"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
-							"the destroy will take effect.\n\n"))
+				validImports, err := generateImportedDefinitions(
+					output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+					protectResources)
+				if err != nil {
+					if _, ok := err.(*importer.DiagnosticsError); ok {
+						err = fmt.Errorf("internal error: %w", err)
 					}
-					fmt.Print(outputResult.String())
+					return result.FromError(err)
+				}
+
+				if validImports {
+					// we only want to output the helper string if there is a set of valid imports to convert into code
+					// this protects against invalid package types or import errors that will not actually result in
+					// in a codegen call
+					// It's a little bit more memory but is a better experience that writing to stdout and then an error
+					// occurring
+					if outputFilePath == "" {
+						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
+							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
+						if protectResources {
+							fmt.Print(("Please note that the imported resources are marked as protected. " +
+								"To destroy them\n" +
+								"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
+								"the destroy will take effect.\n\n"))
+						}
+						fmt.Print(outputResult.String())
+					}
 				}
 			}
 
@@ -553,6 +560,8 @@ func newImportCmd() *cobra.Command {
 		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")
 	cmd.PersistentFlags().StringVarP(
 		&outputFilePath, "out", "o", "", "The path to the file that will contain the generated resource declarations")
+	cmd.PersistentFlags().BoolVar(
+		&generateCode, "generate-code", true, "Generate resource declaration code for the imported resources")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
