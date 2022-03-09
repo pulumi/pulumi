@@ -86,5 +86,6 @@ func GetDefaultProviderDenied(urn resource.URN) *Diag {
 }
 
 func GetInvalidResourceName() *Diag {
-	return newError("", 2016, "Invalid resource name '%v'; resource names may only contain alphanumeric, hyphens, underscores, and periods")
+	return newError("", 2016, "Invalid resource name '%v'; "+
+		"resource names may only contain alphanumeric, hyphens, underscores, and periods")
 }

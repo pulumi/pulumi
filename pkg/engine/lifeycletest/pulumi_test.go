@@ -4379,6 +4379,7 @@ func TestInvalidResourceName(t *testing.T) {
 	}
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		//nolint:errcheck
 		monitor.RegisterResource("pkgA:m:typA", "invalid::name", true, deploytest.ResourceOptions{})
 		assert.Fail(t, "RegisterResource should fail and so won't return")
 		return nil
@@ -4400,7 +4401,8 @@ func TestInvalidResourceName(t *testing.T) {
 				payload := event.Payload().(DiagEventPayload)
 				// URN should be empty (the name is invalid so we can't make an URN)
 				assert.Equal(t, resource.URN(""), payload.URN)
-				assert.Equal(t, "<{%reset%}>Invalid resource name 'invalid::name'; resource names may only contain alphanumeric, hyphens, underscores, and periods<{%reset%}>\n", payload.Message)
+				assert.Equal(t, "<{%reset%}>Invalid resource name 'invalid::name'; "+
+					"resource names may only contain alphanumeric, hyphens, underscores, and periods<{%reset%}>\n", payload.Message)
 			}
 		}
 
