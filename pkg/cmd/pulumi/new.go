@@ -1052,7 +1052,7 @@ func promptForValue(
 			if validationError := isValidFn(value); validationError != nil {
 				// If validation failed, let the user know. If interactive, we will print the error and
 				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
-				err := fmt.Errorf("Sorry, '%s' is not a valid %s. %w.", value, valueType, validationError)
+				err := fmt.Errorf("Sorry, '%s' is not a valid %s. %w", value, valueType, validationError)
 				if yes {
 					return "", err
 				}
