@@ -1,8 +1,6 @@
 // Copyright 2016-2020, Pulumi Corporation
 
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using Grpc.Core;
 using Grpc.Net.Client;
 using Pulumirpc;
 
