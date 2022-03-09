@@ -271,17 +271,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
-
-	// Validate the resource name is valid, if the name is invalid we can't even generate an URN for this
-	resourceName := goal.Name.String()
-	if !tokens.IsName(resourceName) {
-		sg.deployment.Diag().Errorf(diag.GetInvalidResourceName(), resourceName)
-		return nil, result.Bail()
-	}
-	// TODO We ought to do a similar check as above for the resource type. But the IsValid logic for that is a
-	// bit more complicated and isn't already in place, and it's much less likely for users to be making up
-	// type tokens and thus getting it wrong.
-
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(goal.Parent, goal.Type, goal.Name)
 	if sg.urns[urn] {
