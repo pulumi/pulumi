@@ -26,3 +26,6 @@
 
 - [cli/backend] - Fixed an issue with non-atomicity when saving file state stacks.
   [#9122](https://github.com/pulumi/pulumi/pull/9122)
+
+- [sdk/go] - Fixed an issue where the RetainOnDelete resource option is not applied. 
+  [#9147](https://github.com/pulumi/pulumi/pull/9147)
