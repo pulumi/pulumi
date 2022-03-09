@@ -15,16 +15,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
+var ProgramCodegenOptions = test.ProgramCodegenOptions{
+	Language:   "nodejs",
+	Extension:  "ts",
+	OutputFile: "index.ts",
+	Check:      nodejsCheck,
+	GenProgram: GenerateProgram,
+	TestCases:  test.PulumiPulumiProgramTests,
+}
+
 func TestGenerateProgram(t *testing.T) {
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "nodejs",
-			Extension:  "ts",
-			OutputFile: "index.ts",
-			Check:      nodejsCheck,
-			GenProgram: GenerateProgram,
-			TestCases:  test.PulumiPulumiProgramTests,
-		})
+	test.TestProgramCodegen(t, ProgramCodegenOptions)
 }
 
 func nodejsCheck(t *testing.T, path string, dependencies codegen.StringSet) {

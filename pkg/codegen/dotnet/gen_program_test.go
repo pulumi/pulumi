@@ -15,17 +15,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
+var ProgramCodegenOptions = test.ProgramCodegenOptions{
+	Language:   "dotnet",
+	Extension:  "cs",
+	OutputFile: "MyStack.cs",
+	Check:      checkDotnet,
+	GenProgram: GenerateProgram,
+	TestCases:  test.PulumiPulumiProgramTests,
+}
+
 func TestGenerateProgram(t *testing.T) {
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "dotnet",
-			Extension:  "cs",
-			OutputFile: "MyStack.cs",
-			Check:      checkDotnet,
-			GenProgram: GenerateProgram,
-			TestCases:  test.PulumiPulumiProgramTests,
-		},
-	)
+	test.TestProgramCodegen(t, ProgramCodegenOptions)
 }
 
 func checkDotnet(t *testing.T, path string, dependencies codegen.StringSet) {

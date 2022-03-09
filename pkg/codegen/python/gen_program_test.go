@@ -14,16 +14,17 @@ import (
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
+var ProgramCodegenOptions = test.ProgramCodegenOptions{
+	Language:   "python",
+	Extension:  "py",
+	OutputFile: "__main__.py",
+	Check:      pythonCheck,
+	GenProgram: GenerateProgram,
+	TestCases:  test.PulumiPulumiProgramTests,
+}
+
 func TestGenerateProgram(t *testing.T) {
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "python",
-			Extension:  "py",
-			OutputFile: "__main__.py",
-			Check:      pythonCheck,
-			GenProgram: GenerateProgram,
-			TestCases:  test.PulumiPulumiProgramTests,
-		})
+	test.TestProgramCodegen(t, ProgramCodegenOptions)
 }
 
 func pythonCheck(t *testing.T, path string, _ codegen.StringSet) {

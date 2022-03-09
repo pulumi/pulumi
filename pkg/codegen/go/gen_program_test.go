@@ -23,16 +23,17 @@ import (
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
+var ProgramCodegenOptions = test.ProgramCodegenOptions{
+	Language:   "go",
+	Extension:  "go",
+	OutputFile: "main.go",
+	Check:      goCheck,
+	GenProgram: GenerateProgram,
+	TestCases:  test.PulumiPulumiProgramTests,
+}
+
 func TestGenerateProgram(t *testing.T) {
-	test.TestProgramCodegen(t,
-		test.ProgramCodegenOptions{
-			Language:   "go",
-			Extension:  "go",
-			OutputFile: "main.go",
-			Check:      goCheck,
-			GenProgram: GenerateProgram,
-			TestCases:  test.PulumiPulumiProgramTests,
-		})
+	test.TestProgramCodegen(t, ProgramCodegenOptions)
 }
 
 func TestCollectImports(t *testing.T) {
