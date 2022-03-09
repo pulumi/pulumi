@@ -16,5 +16,6 @@
     },
     "files": [
         "index.ts",
+        "random.ts"
     ]
 }
