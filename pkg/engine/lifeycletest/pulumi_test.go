@@ -4369,3 +4369,48 @@ func TestRetainOnDelete(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
 }
+
+func TestInvalidResourceName(t *testing.T) {
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		//nolint:errcheck
+		monitor.RegisterResource("pkgA:m:typA", "invalid::name", true, deploytest.ResourceOptions{})
+		assert.Fail(t, "RegisterResource should fail and so won't return")
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
+		events []Event, res result.Result) result.Result {
+		assert.NotNil(t, res)
+
+		for _, event := range events {
+			if event.Type == DiagEvent {
+				payload := event.Payload().(DiagEventPayload)
+				// URN should be empty (the name is invalid so we can't make an URN)
+				assert.Equal(t, resource.URN(""), payload.URN)
+				assert.Equal(t, "<{%reset%}>Invalid resource name 'invalid::name'; "+
+					"resource names may only contain alphanumeric, hyphens, underscores, and periods<{%reset%}>\n", payload.Message)
+			}
+		}
+
+		return nil
+	}
+
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 1)
+}
