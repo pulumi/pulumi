@@ -52,3 +52,20 @@ func SetCurrentStack(name string) error {
 	w.Settings().Stack = name
 	return w.Save()
 }
+
+// Resets the currently selected stack from the current workspace such that next time the users get prompted with a stack to select
+func UnselectStack() error {
+	currentWorkspace, err := workspace.New()
+	if err != nil {
+		return err
+	}
+
+	settings := currentWorkspace.Settings()
+	if !settings.IsEmpty() {
+		// a stack is selected
+		// reset it
+		settings.Stack = ""
+	}
+
+	return currentWorkspace.Save()
+}
