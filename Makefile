@@ -64,7 +64,7 @@ dist:: build
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 # NOTE: the brew target intentionally avoids the dependency on `build`, as it does not require the language SDKs.
-brew:: BREW_VERSION := $(shell pulumictl get version)
+brew:: BREW_VERSION := $(shell scripts/get-version HEAD)
 brew::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${BREW_VERSION}" ${PROJECT}
 
