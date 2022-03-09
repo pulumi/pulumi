@@ -279,6 +279,7 @@ func newImportCmd() *cobra.Command {
 	var providerSpec string
 	var importFilePath string
 	var outputFilePath string
+	var generateCode bool
 
 	var debug bool
 	var message string
@@ -376,6 +377,10 @@ func newImportCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 				importFile = f
+			}
+
+			if !generateCode && outputFilePath != "" {
+				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
 			}
 
 			var outputResult bytes.Buffer
@@ -496,62 +501,43 @@ func newImportCmd() *cobra.Command {
 				Scopes:             cancellationScopes,
 			}, imports)
 
-			deployment, err := getCurrentDeploymentForStack(s)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			validImports, err := generateImportedDefinitions(
-				output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
-				protectResources)
-			if err != nil {
-				if _, ok := err.(*importer.DiagnosticsError); ok {
-					err = fmt.Errorf("internal error: %w", err)
+			if generateCode {
+				deployment, err := getCurrentDeploymentForStack(s)
+				if err != nil {
+					return result.FromError(err)
 				}
-				return result.FromError(err)
-			}
 
-			if validImports {
-				// we only want to output the helper string if there is a set of valid imports to convert into code
-				// this protects against invalid package types or import errors that will not actually result in
-				// in a codegen call
-				// It's a little bit more memory but is a better experience that writing to stdout and then an error
-				// occurring
-				if outputFilePath == "" {
-					fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
-						"will cause Pulumi to report that an update will happen on the next update command.\n\n")
-					if protectResources {
-						fmt.Print(("Please note that the imported resources are marked as protected. " +
-							"To destroy them\n" +
-							"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
-							"the destroy will take effect.\n\n"))
+				validImports, err := generateImportedDefinitions(
+					output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+					protectResources)
+				if err != nil {
+					if _, ok := err.(*importer.DiagnosticsError); ok {
+						err = fmt.Errorf("internal error: %w", err)
 					}
-					fmt.Print(outputResult.String())
+					return result.FromError(err)
+				}
+
+				if validImports {
+					// we only want to output the helper string if there is a set of valid imports to convert into code
+					// this protects against invalid package types or import errors that will not actually result in
+					// in a codegen call
+					// It's a little bit more memory but is a better experience that writing to stdout and then an error
+					// occurring
+					if outputFilePath == "" {
+						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
+							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
+						if protectResources {
+							fmt.Print(("Please note that the imported resources are marked as protected. " +
+								"To destroy them\n" +
+								"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
+								"the destroy will take effect.\n\n"))
+						}
+						fmt.Print(outputResult.String())
+					}
 				}
 			}
 
 			if res != nil {
-				// Check if the user used "properties" to control the error message we print
-				usedProperties := false
-				for _, resourceImport := range imports {
-					usedProperties = usedProperties || (resourceImport.Properties != nil)
-				}
-
-				// TODO: This helpful message prints even in the case of the user doing a successful preview and then
-				// choosing "no" to not actually do the import. We need a way to distinguish Import _failing_ vs
-				// being canceled by user request.
-				if usedProperties {
-					fmt.Print("Import failed, try specifying a different set of properties to import with.\n")
-				} else {
-					fmt.Print("Import failed, try specifying the set of properties to import with.\n")
-					if importFilePath == "" {
-						fmt.Print("This can be done by passing the property names with the --properties flag.\n")
-					} else {
-						fmt.Print("This can be done by adding a \"properties\" key with an array of " +
-							"strings to the resource object in the input file.\n")
-					}
-				}
-
 				if res.Error() == context.Canceled {
 					return result.FromError(errors.New("import cancelled"))
 				}
@@ -574,6 +560,8 @@ func newImportCmd() *cobra.Command {
 		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")
 	cmd.PersistentFlags().StringVarP(
 		&outputFilePath, "out", "o", "", "The path to the file that will contain the generated resource declarations")
+	cmd.PersistentFlags().BoolVar(
+		&generateCode, "generate-code", true, "Generate resource declaration code for the imported resources")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,

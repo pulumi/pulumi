@@ -928,16 +928,6 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	if s.planned {
 		contract.Assert(len(s.new.Inputs) == 0)
 
-		pkg, err := s.deployment.schemaLoader.LoadPackage(string(s.new.Type.Package()), nil)
-		if err != nil {
-			return resource.StatusOK, nil, fmt.Errorf("failed to fetch provider schema: %w", err)
-		}
-
-		r, ok := pkg.GetResource(string(s.new.Type))
-		if !ok {
-			return resource.StatusOK, nil, fmt.Errorf("unknown resource type '%v'", s.new.Type)
-		}
-
 		// Get the import object and see if it had properties set
 		var inputProperties []string
 		for _, imp := range s.deployment.imports {
@@ -948,17 +938,10 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		}
 
 		if len(inputProperties) == 0 {
-			logging.V(9).Infof("Importing %v with required properties", s.URN())
-
-			for _, p := range r.InputProperties {
-				if p.IsRequired() {
-					k := resource.PropertyKey(p.Name)
-					s.new.Inputs[k] = s.old.Inputs[k]
-				}
-			}
+			logging.V(9).Infof("Importing %v with all properties", s.URN())
+			s.new.Inputs = s.old.Inputs.Copy()
 		} else {
 			logging.V(9).Infof("Importing %v with supplied properties: %v", s.URN(), inputProperties)
-
 			for _, p := range inputProperties {
 				k := resource.PropertyKey(p)
 				if value, has := s.old.Inputs[k]; has {
@@ -966,14 +949,48 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				}
 			}
 		}
-	} else {
-		// Set inputs back to their old values (if any) for any "ignored" properties
-		processedInputs, res := processIgnoreChanges(s.new.Inputs, s.old.Inputs, s.ignoreChanges)
-		if res != nil {
-			return resource.StatusOK, nil, res.Error()
+
+		// Check the provider inputs for consistency. If the inputs fail validation, the import will still succeed, but
+		// we will display the validation failures and a message informing the user that the failures are almost
+		// definitely a provider bug.
+		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber)
+		if err != nil {
+			return rst, nil, err
 		}
-		s.new.Inputs = processedInputs
+
+		// Print this warning before printing all the check failures to give better context.
+		if len(failures) != 0 {
+
+			// Based on if the user passed 'properties' or not we want to change the error message here.
+			var errorMessage string
+			if len(inputProperties) == 0 {
+				ref, err := providers.ParseReference(s.Provider())
+				contract.Assert(err == nil)
+
+				pkgName := ref.URN().Type().Name()
+				errorMessage = fmt.Sprintf("This is almost certainly a bug in the `%s` provider.", pkgName)
+			} else {
+				errorMessage = "Try specifying a different set of properties to import with in the future."
+			}
+
+			s.deployment.Diag().Warningf(diag.Message(s.new.URN,
+				"One or more imported inputs failed to validate. %s "+
+					"The import will still proceed, but you will need to edit the generated code after copying it into your program."),
+				errorMessage)
+		}
+
+		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, failures)
+
+		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
+		return rst, complete, err
 	}
+
+	// Set inputs back to their old values (if any) for any "ignored" properties
+	processedInputs, res := processIgnoreChanges(s.new.Inputs, s.old.Inputs, s.ignoreChanges)
+	if res != nil {
+		return resource.StatusOK, nil, res.Error()
+	}
+	s.new.Inputs = processedInputs
 
 	// Check the inputs using the provider inputs for defaults.
 	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber)
@@ -993,52 +1010,22 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		return rst, nil, err
 	}
 
-	if !s.planned {
-		s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
+	s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
 
-		if diff.Changes != plugin.DiffNone {
-			const message = "inputs to import do not match the existing resource"
+	if diff.Changes != plugin.DiffNone {
+		const message = "inputs to import do not match the existing resource"
 
-			if preview {
-				s.deployment.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN,
-					message+"; importing this resource will fail", 0))
-			} else {
-				err = errors.New(message)
-			}
+		if preview {
+			s.deployment.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN,
+				message+"; importing this resource will fail", 0))
+		} else {
+			err = errors.New(message)
 		}
+	}
 
-		// If we were asked to replace an existing, non-External resource, pend the deletion here.
-		if err == nil && s.replacing {
-			s.original.Delete = true
-		}
-	} else {
-		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
-
-		// If there were diffs between the inputs supplied by the import and the actual state of the resource, copy
-		// the differing properties from the actual inputs/state. This is only possible if the provider returned a
-		// detailed diff. If no detailed diff was returned, take the actual inputs wholesale.
-		if diff.Changes != plugin.DiffNone {
-			if diff.DetailedDiff == nil {
-				s.new.Inputs = s.old.Inputs
-			} else {
-				for path, pdiff := range diff.DetailedDiff {
-					elements, err := resource.ParsePropertyPath(path)
-					if err != nil {
-						continue
-					}
-
-					source := s.old.Outputs
-					if pdiff.InputDiff {
-						source = s.old.Inputs
-					}
-
-					if old, ok := elements.Get(resource.NewObjectProperty(source)); ok {
-						// Ignore failure here.
-						elements.Add(resource.NewObjectProperty(s.new.Inputs), old)
-					}
-				}
-			}
-		}
+	// If we were asked to replace an existing, non-External resource, pend the deletion here.
+	if err == nil && s.replacing {
+		s.original.Delete = true
 	}
 
 	return rst, complete, err
