@@ -7,6 +7,8 @@
 - [cli/backend] - `pulumi cancel` is now supported for the file state backend.
   [#9100](https://github.com/pulumi/pulumi/pull/9100)
 
+- [language/dotnet] - updated Pulumi dotnet packages to use grpc-dotnet instead of grpc [#9149](https://github.com/pulumi/pulumi/pull/9149)
+
 ### Bug Fixes
 
 - [sdk/python] - Fix build warnings. See
