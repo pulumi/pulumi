@@ -416,12 +416,12 @@ func (d *Deployment) generateURN(parent resource.URN, ty tokens.Type, name token
 		parentType = parent.QualifiedType()
 	}
 
-	return resource.NewURN(d.Target().Name.Q(), d.source.Project(), parentType, ty, name)
+	return resource.NewURN(d.Target().Name, d.source.Project(), parentType, ty, name)
 }
 
 // defaultProviderURN generates the URN for the global provider given a package.
 func defaultProviderURN(target *Target, source Source, pkg tokens.Package) resource.URN {
-	return resource.NewURN(target.Name.Q(), source.Project(), "", providers.MakeProviderType(pkg), "default")
+	return resource.NewURN(target.Name, source.Project(), "", providers.MakeProviderType(pkg), "default")
 }
 
 // generateEventURN generates a URN for the resource associated with the given event.

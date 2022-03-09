@@ -290,7 +290,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	urn := data.step.URN
 	if urn == "" {
 		// If we don't have a URN yet, mock parent it to the global stack.
-		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
+		urn = resource.DefaultRootStackURN(data.display.stack, data.display.proj)
 	}
 	name := string(urn.Name())
 	typ := simplifyTypeName(urn.Type())

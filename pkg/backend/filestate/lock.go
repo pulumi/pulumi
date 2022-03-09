@@ -142,12 +142,12 @@ func lockDir() string {
 	return path.Join(workspace.BookkeepingDir, workspace.LockDir)
 }
 
-func stackLockDir(stack tokens.Name) string {
+func stackLockDir(stack tokens.QName) string {
 	contract.Require(stack != "", "stack")
-	return path.Join(lockDir(), fsutil.NamePath(stack))
+	return path.Join(lockDir(), fsutil.QnamePath(stack))
 }
 
-func (b *localBackend) lockPath(stack tokens.Name) string {
+func (b *localBackend) lockPath(stack tokens.QName) string {
 	contract.Require(stack != "", "stack")
 	return path.Join(stackLockDir(stack), b.lockID+".json")
 }

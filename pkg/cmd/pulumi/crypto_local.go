@@ -22,12 +22,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPassphraseSecretsManager(stackName tokens.Name, configFile string,
+func newPassphraseSecretsManager(stackName tokens.QName, configFile string,
 	rotatePassphraseSecretsProvider bool) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName.Q())
+		f, err := workspace.DetectProjectStackPath(stackName)
 		if err != nil {
 			return nil, err
 		}
