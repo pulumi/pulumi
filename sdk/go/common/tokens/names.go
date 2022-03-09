@@ -35,8 +35,8 @@ var nameRestCharRegexp = regexp.MustCompile("^" + nameRestCharRegexpPattern + "$
 
 var NameRegexpPattern = nameFirstCharRegexpPattern + nameRestCharRegexpPattern
 
-const nameFirstCharRegexpPattern = "[A-Za-z_.]"
-const nameRestCharRegexpPattern = `[A-Za-z0-9_.-]*`
+const nameFirstCharRegexpPattern = "[A-Za-z0-9_.-]"
+const nameRestCharRegexpPattern = "[A-Za-z0-9_.-]*"
 
 // IsName checks whether a string is a legal Name.
 func IsName(s string) bool {
