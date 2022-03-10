@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+## 3.26.1 (2022-03-09)
+
+### Improvements
+
+### Bug Fixes
+
+- [cli/new] Fix an error message when the project name picked by default was already used.
+  [#9156](https://github.com/pulumi/pulumi/pull/9156)
+
 ## 3.26.0 (2022-03-09)
 
 ### Improvements
