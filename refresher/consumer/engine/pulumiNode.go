@@ -149,13 +149,24 @@ func CreatePulumiNodes(events []engine.Event, logger *zerolog.Logger, config *co
 			node.Type = "k8s"
 			// k8s flow currently supports only managed state
 			var uid string
-			newState := *metadata.New
-			node.Attributes, err = getK8sIacAttributes(newState.Outputs, []string{"status", "__inputs", "__initialApiVersion"})
+			var state engine.StepEventStateMetadata
+			switch metadata.Op {
+			case deploy.OpSame:
+				state = *metadata.New
+			case deploy.OpUpdate:
+				state = *metadata.New
+			case deploy.OpDelete:
+				state = *metadata.Old
+			default:
+				continue
+
+			}
+			node.Attributes, err = getK8sIacAttributes(state.Outputs, []string{"status", "__inputs", "__initialApiVersion"})
 			if err != nil {
 				logger.Err(err).Msg("failed to get iac attributes")
 				continue
 			}
-			if resourceMetadata := newState.Outputs["metadata"].Mappable(); resourceMetadata != nil {
+			if resourceMetadata := state.Outputs["metadata"].Mappable(); resourceMetadata != nil {
 				namespace := funk.Get(resourceMetadata, "namespace")
 				name := funk.Get(resourceMetadata, "name")
 				interfaceUid := funk.Get(resourceMetadata, "uid")
@@ -178,7 +189,7 @@ func CreatePulumiNodes(events []engine.Event, logger *zerolog.Logger, config *co
 				continue
 			}
 			var resourceKind interface{}
-			if resourceKind = newState.Outputs["kind"].V; resourceKind == nil {
+			if resourceKind = state.Outputs["kind"].V; resourceKind == nil {
 				logger.Warn().Msg("found k8s resource without kind")
 				continue
 			}
