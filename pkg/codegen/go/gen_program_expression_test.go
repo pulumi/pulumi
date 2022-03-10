@@ -33,6 +33,8 @@ func (e environment) scope() *model.Scope {
 }
 
 func TestLiteralExpression(t *testing.T) {
+	t.Parallel()
+
 	cases := []exprTestCase{
 		{hcl2Expr: "false", goCode: "false"},
 		{hcl2Expr: "true", goCode: "true"},
@@ -41,11 +43,14 @@ func TestLiteralExpression(t *testing.T) {
 		{hcl2Expr: "\"foo\"", goCode: "\"foo\""},
 	}
 	for _, c := range cases {
+		c := c
 		testGenerateExpression(t, c.hcl2Expr, c.goCode, nil, nil)
 	}
 }
 
 func TestBinaryOpExpression(t *testing.T) {
+	t.Parallel()
+
 	env := environment(map[string]interface{}{
 		"a": model.BoolType,
 		"b": model.BoolType,
@@ -80,6 +85,8 @@ func TestBinaryOpExpression(t *testing.T) {
 }
 
 func TestUnaryOpExrepssion(t *testing.T) {
+	t.Parallel()
+
 	env := environment(map[string]interface{}{
 		"a": model.NumberType,
 		"b": model.BoolType,
@@ -100,6 +107,8 @@ func TestUnaryOpExrepssion(t *testing.T) {
 
 // nolint: lll
 func TestConditionalExpression(t *testing.T) {
+	t.Parallel()
+
 	cases := []exprTestCase{
 		{
 			hcl2Expr: "true ? 1 : 0",
@@ -129,6 +138,8 @@ func TestConditionalExpression(t *testing.T) {
 }
 
 func TestObjectConsExpression(t *testing.T) {
+	t.Parallel()
+
 	env := environment(map[string]interface{}{
 		"a": model.StringType,
 	})
@@ -162,6 +173,8 @@ func TestObjectConsExpression(t *testing.T) {
 }
 
 func TestTupleConsExpression(t *testing.T) {
+	t.Parallel()
+
 	env := environment(map[string]interface{}{
 		"a": model.StringType,
 	})
@@ -189,6 +202,7 @@ func TestTupleConsExpression(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
+		c := c
 		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope, nil)
 	}
 }
@@ -200,6 +214,8 @@ func testGenerateExpression(
 	gen func(w io.Writer, g *generator, e model.Expression),
 ) {
 	t.Run(hcl2Expr, func(t *testing.T) {
+		t.Parallel()
+
 		// test program is only for schema info
 		g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
 		var index bytes.Buffer

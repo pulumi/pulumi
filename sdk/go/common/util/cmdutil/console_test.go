@@ -23,6 +23,8 @@ import (
 )
 
 func TestMeasureText(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		text     string
 		expected int
@@ -50,7 +52,10 @@ func TestMeasureText(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.text, func(t *testing.T) {
+			t.Parallel()
+
 			count := MeasureText(c.text)
 			assert.Equal(t, c.expected, count)
 		})
@@ -58,6 +63,8 @@ func TestMeasureText(t *testing.T) {
 }
 
 func TestTablePrinting(t *testing.T) {
+	t.Parallel()
+
 	rows := []TableRow{
 		{Columns: []string{"A", "B", "C"}},
 		{Columns: []string{"Some A", "B", "Some C"}},
@@ -78,6 +85,7 @@ func TestTablePrinting(t *testing.T) {
 }
 
 func TestColorTablePrinting(t *testing.T) {
+	t.Parallel()
 
 	greenText := func(msg string) string {
 		return colors.Always.Colorize(colors.Green + msg + colors.Reset)

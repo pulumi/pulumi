@@ -1,4 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+//go:build dotnet || all
 // +build dotnet all
 
 package ints
@@ -19,6 +20,8 @@ var dirs = []string{
 }
 
 func TestDotNetAliases(t *testing.T) {
+	t.Parallel()
+
 	for _, dir := range dirs {
 		d := filepath.Join("dotnet", dir)
 		t.Run(d, func(t *testing.T) {

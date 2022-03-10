@@ -18,6 +18,8 @@ import (
 )
 
 func TestDestroyTarget(t *testing.T) {
+	t.Parallel()
+
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
 	subsets := combinations.All(complexTestDependencyGraphNames)
 
@@ -138,6 +140,8 @@ func destroySpecificTargets(
 }
 
 func TestUpdateTarget(t *testing.T) {
+	t.Parallel()
+
 	// Try refreshing a stack with combinations of the above resources as target to destroy.
 	subsets := combinations.All(complexTestDependencyGraphNames)
 
@@ -316,6 +320,8 @@ func updateInvalidTarget(t *testing.T) {
 }
 
 func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -376,6 +382,8 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 }
 
 func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -433,6 +441,8 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 }
 
 func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -482,6 +492,8 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testin
 }
 
 func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -546,6 +558,8 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 }
 
 func TestReplaceSpecificTargets(t *testing.T) {
+	t.Parallel()
+
 	//             A
 	//    _________|_________
 	//    B        C        D
@@ -737,6 +751,8 @@ func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 }
 
 func TestDestroyTargetWithChildren(t *testing.T) {
+	t.Parallel()
+
 	// when deleting 'A' with targetDependents specified we expect A, D, G, H, I, K and N to be deleted.
 	destroySpecificTargetsWithChildren(
 		t, []string{"A"}, true, /*targetDependents*/

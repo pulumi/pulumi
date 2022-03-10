@@ -25,6 +25,8 @@ import (
 )
 
 func TestMassageBlobPath(t *testing.T) {
+	t.Parallel()
+
 	testMassagePath := func(t *testing.T, s string, want string) {
 		massaged, err := massageBlobPath(s)
 		assert.NoError(t, err)
@@ -34,12 +36,16 @@ func TestMassageBlobPath(t *testing.T) {
 
 	// URLs not prefixed with "file://" are kept as-is. Also why we add FilePathPrefix as a prefix for other tests.
 	t.Run("NonFilePrefixed", func(t *testing.T) {
+		t.Parallel()
+
 		testMassagePath(t, "asdf-123", "asdf-123")
 	})
 
 	// The home directory is converted into the user's actual home directory.
 	// Which requires even more tweaks to work on Windows.
 	t.Run("PrefixedWithTilde", func(t *testing.T) {
+		t.Parallel()
+
 		usr, err := user.Current()
 		if err != nil {
 			t.Fatalf("Unable to get current user: %v", err)
@@ -52,6 +58,8 @@ func TestMassageBlobPath(t *testing.T) {
 			t.Logf("Running on %v", runtime.GOOS)
 
 			t.Run("NormalizeDirSeparator", func(t *testing.T) {
+				t.Parallel()
+
 				testMassagePath(t, FilePathPrefix+`C:\Users\steve\`, FilePathPrefix+"/C:/Users/steve")
 			})
 
@@ -65,6 +73,8 @@ func TestMassageBlobPath(t *testing.T) {
 	})
 
 	t.Run("MakeAbsolute", func(t *testing.T) {
+		t.Parallel()
+
 		// Run the expected result through filepath.Abs, since on Windows we expect "C:\1\2".
 		expected := "/1/2"
 		abs, err := filepath.Abs(expected)
@@ -80,6 +90,8 @@ func TestMassageBlobPath(t *testing.T) {
 }
 
 func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
+	t.Parallel()
+
 	target := &deploy.Target{
 		Name:      "test",
 		Config:    config.Map{},
@@ -126,6 +138,7 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 	}, nil
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Login to a temp dir filestate backend
 	tmpDir, err := ioutil.TempDir("", "filestatebackend")
@@ -189,6 +202,8 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 }
 
 func TestDrillError(t *testing.T) {
+	t.Parallel()
+
 	// Login to a temp dir filestate backend
 	tmpDir, err := ioutil.TempDir("", "filestatebackend")
 	assert.NoError(t, err)
@@ -206,6 +221,8 @@ func TestDrillError(t *testing.T) {
 }
 
 func TestCancel(t *testing.T) {
+	t.Parallel()
+
 	// Login to a temp dir filestate backend
 	tmpDir, err := ioutil.TempDir("", "filestatebackend")
 	assert.NoError(t, err)

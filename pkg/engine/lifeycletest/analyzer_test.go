@@ -44,6 +44,8 @@ func NewRequiredPolicy(name, version string, config map[string]*json.RawMessage)
 }
 
 func TestSimpleAnalyzer(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.PluginLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -73,6 +75,8 @@ func TestSimpleAnalyzer(t *testing.T) {
 }
 
 func TestSimpleAnalyzeResourceFailure(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.PluginLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -113,6 +117,8 @@ func TestSimpleAnalyzeResourceFailure(t *testing.T) {
 }
 
 func TestSimpleAnalyzeStackFailure(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.PluginLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil

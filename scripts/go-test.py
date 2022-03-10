@@ -2,56 +2,52 @@
 Wraps `go test`.
 """
 
-from test_subsets import TEST_SUBSETS
+from datetime import datetime
+from integration_test_subsets import INTEGRATION_TESTS
 import os
 import pathlib
+import platform
 import shutil
 import subprocess as sp
 import sys
 import uuid
+import threading
 
-
-def options(options_and_packages):
-    return [o for o in options_and_packages if '/' not in o]
-
-
-def packages(options_and_packages):
-    return [o for o in options_and_packages if '/' in o]
-
-
-def filter_packages(packages, test_subset=None):
-    if test_subset is None:
-        return packages
-
-    if test_subset == 'etc':
-        s = set([])
-        for k in TEST_SUBSETS:
-            s = s | set(TEST_SUBSETS[k])
-        return [p for p in packages if p not in s]
-
-    s = set(TEST_SUBSETS[test_subset])
-    return [p for p in packages if p in s]
-
+dryrun = os.environ.get("PULUMI_TEST_DRYRUN", None) == "true"
 
 root = pathlib.Path(__file__).absolute().parent.parent
-test_subset = os.environ.get('PULUMI_TEST_SUBSET', None)
-options_and_packages = sys.argv[1:]
-packages = filter_packages(packages(options_and_packages), test_subset=test_subset)
-
-
-if not packages:
-    print(f'No packages matching PULUMI_TEST_SUBSET={test_subset}')
-    sys.exit(0)
-
-
-options = options(options_and_packages)
+integration_test_subset = os.environ.get('PULUMI_INTEGRATION_TESTS', None)
+options = sys.argv[1:]
 cov = os.environ.get('PULUMI_TEST_COVERAGE_PATH', None)
 if cov is not None:
     options = options + [f'-coverprofile={cov}/go-test-{os.urandom(4).hex()}.cov', '-coverpkg=github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/...']
 
+if integration_test_subset:
+    print(f"Using test subset: {integration_test_subset}")
+    options += ['-run', INTEGRATION_TESTS[integration_test_subset]]
 
-options_and_packages = options + packages
+if os.environ.get("CI") != "true":
+    options += ['-v']
 
+
+class RepeatTimer(threading.Timer):
+    def run(self):
+        while not self.finished.wait(self.interval):
+            self.function(*self.args, **self.kwargs)
+
+windows = platform.system() == 'Windows'
+
+heartbeat_str = '💓' if not windows else 'heartbeat'
+
+start_time = datetime.now()
+def heartbeat():
+    print(heartbeat_str, file=sys.stderr) # Ensures GitHub receives stdout during long, silent package tests.
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+timer = RepeatTimer(10, heartbeat)
+timer.daemon = True
+timer.start()
 
 if shutil.which('gotestsum') is not None:
     test_run = str(uuid.uuid4())
@@ -62,7 +58,14 @@ if shutil.which('gotestsum') is not None:
 
     json_file = str(test_results_dir.joinpath(f'{test_run}.json'))
     junit_file = str(test_results_dir.joinpath(f'{test_run}.xml'))
-    sp.check_call(['gotestsum', '--jsonfile', json_file, '--junitfile', junit_file, '--'] + \
-                  options_and_packages, shell=False)
+    args = ['gotestsum', '--jsonfile', json_file, '--junitfile', junit_file, '--'] + \
+        options
+
+    print(' '.join(args))
+    if not dryrun:
+        sp.check_call(args, shell=False)
 else:
-    sp.check_call(['go', 'test'] + options_and_packages, shell=False)
+    args = ['go', 'test'] + options
+    print(' '.join(args))
+    if not dryrun:
+        sp.check_call(args, shell=False)

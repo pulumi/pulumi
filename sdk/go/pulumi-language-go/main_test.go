@@ -25,6 +25,8 @@ import (
 )
 
 func TestGetPlugin(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		Name      string
 		Mod       *modInfo
@@ -198,7 +200,10 @@ func TestGetPlugin(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.Name, func(t *testing.T) {
+			t.Parallel()
+
 			cwd := t.TempDir()
 			if c.JSON != nil {
 				if c.Mod.Dir == "" {

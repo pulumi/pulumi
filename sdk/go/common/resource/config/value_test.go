@@ -24,6 +24,8 @@ import (
 )
 
 func TestMarshallNormalValueYAML(t *testing.T) {
+	t.Parallel()
+
 	v := NewValue("value")
 
 	b, err := yaml.Marshal(v)
@@ -36,6 +38,8 @@ func TestMarshallNormalValueYAML(t *testing.T) {
 }
 
 func TestMarshallSecureValueYAML(t *testing.T) {
+	t.Parallel()
+
 	v := NewSecureValue("value")
 
 	b, err := yaml.Marshal(v)
@@ -48,6 +52,8 @@ func TestMarshallSecureValueYAML(t *testing.T) {
 }
 
 func TestMarshallNormalValueJSON(t *testing.T) {
+	t.Parallel()
+
 	v := NewValue("value")
 
 	b, err := json.Marshal(v)
@@ -60,6 +66,8 @@ func TestMarshallNormalValueJSON(t *testing.T) {
 }
 
 func TestMarshallSecureValueJSON(t *testing.T) {
+	t.Parallel()
+
 	v := NewSecureValue("value")
 
 	b, err := json.Marshal(v)
@@ -72,6 +80,8 @@ func TestMarshallSecureValueJSON(t *testing.T) {
 }
 
 func TestHasSecureValue(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Value    interface{}
 		Expected bool
@@ -124,8 +134,12 @@ func TestHasSecureValue(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
+			t.Parallel()
+
 			jsonBytes, err := json.Marshal(test.Value)
 			assert.NoError(t, err)
 
@@ -139,6 +153,8 @@ func TestHasSecureValue(t *testing.T) {
 }
 
 func TestDecryptingValue(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Value    Value
 		Expected string
@@ -179,8 +195,12 @@ func TestDecryptingValue(t *testing.T) {
 
 	decrypter := NewBlindingDecrypter()
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
+			t.Parallel()
+
 			actual, err := test.Value.Value(decrypter)
 			assert.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
@@ -200,6 +220,8 @@ func (d passThroughDecrypter) DecryptValue(ciphertext string) (string, error) {
 }
 
 func TestSecureValues(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Value    Value
 		Expected []string
@@ -236,8 +258,12 @@ func TestSecureValues(t *testing.T) {
 
 	decrypter := passThroughDecrypter{}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test.Value), func(t *testing.T) {
+			t.Parallel()
+
 			actual, err := test.Value.SecureValues(decrypter)
 			assert.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
@@ -246,6 +272,8 @@ func TestSecureValues(t *testing.T) {
 }
 
 func TestCopyValue(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Val      Value
 		Expected Value
@@ -272,8 +300,12 @@ func TestCopyValue(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			newConfig, err := test.Val.Copy(newPrefixCrypter("stackA"), newPrefixCrypter("stackB"))
 			assert.NoError(t, err)
 

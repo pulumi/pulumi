@@ -66,10 +66,13 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 	if os.Getenv("PULUMI_ACCEPT") == "" {
 		runTests := func(where string, props []*schema.Property, inputShape bool) {
 			for _, p := range props {
+				p := p
 				if testCase, ok := p.Language["test"].(*typeTestCase); ok {
 					if expected, ok := testCase.Expected[language]; ok {
 						typ := p.Type
 						t.Run(where+"/"+p.Name, func(t *testing.T) {
+							t.Parallel()
+
 							var expectedName string
 							switch expected := expected.(type) {
 							case string:

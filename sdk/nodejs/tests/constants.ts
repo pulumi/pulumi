@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build python || all
-// +build python all
-
-package workspace
-
-import (
-	"testing"
-)
-
-func TestPythonInstall(t *testing.T) {
-	t.Parallel()
-	testPluginInstall(t, "venv", map[string][]byte{
-		"PulumiPlugin.yaml": []byte("runtime: python\n"),
-		"package.json":      []byte("pulumi==2.0.0\n"),
-	})
-}
+/** @internal */
+export const platformIndependentEOL = /\r\n|\r|\n/g;

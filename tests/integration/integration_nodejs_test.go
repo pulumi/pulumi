@@ -63,8 +63,6 @@ func TestEngineEventPerf(t *testing.T) {
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		ReportStats:  benchmarkEnforcer,
-		// Don't run in parallel since it is sensitive to system resources.
-		NoParallel: true,
 	})
 }
 
@@ -74,7 +72,6 @@ func TestEngineEvents(t *testing.T) {
 		Dir:          "single_resource",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
-		NoParallel:   true, // avoid contention for Dir
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure that we have a non-empty list of events.
 			assert.NotEmpty(t, stackInfo.Events)
@@ -108,6 +105,8 @@ func TestProjectMain(t *testing.T) {
 	integration.ProgramTest(t, &test)
 
 	t.Run("AbsolutePath", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -136,6 +135,8 @@ func TestProjectMain(t *testing.T) {
 	})
 
 	t.Run("ParentFolder", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -169,6 +170,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
+	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer func() {
@@ -215,6 +217,7 @@ func TestStackOutputsNodeJS(t *testing.T) {
 
 // TestStackOutputsJSON ensures the CLI properly formats stack outputs as JSON when requested.
 func TestStackOutputsJSON(t *testing.T) {
+	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -715,17 +718,18 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 	testOptions := integration.ProgramTestOptions{
 		Dir:             "cloud_secrets_provider",
 		Dependencies:    []string{"@pulumi/pulumi"},
 		SecretsProvider: fmt.Sprintf("passphrase"),
 		Env:             []string{"PULUMI_CONFIG_PASSPHRASE=\"\""},
-		NoParallel:      true,
 		Secrets: map[string]string{
 			"mysecret": "THISISASECRET",
 		},
-		CloudURL: "file://~",
+		CloudURL:   "file://~",
+		NoParallel: true, // mutates environment variables
 	}
 
 	workingTestOptions := testOptions.With(integration.ProgramTestOptions{
@@ -768,6 +772,8 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 }
 
 func TestCloudSecretProvider(t *testing.T) {
+	t.Parallel()
+
 	awsKmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
 	if awsKmsKeyAlias == "" {
 		t.Skipf("Skipping: PULUMI_TEST_KMS_KEY_ALIAS is not set")
@@ -865,6 +871,7 @@ func TestConstructNode(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows")
 	}
+	t.Parallel()
 
 	tests := []struct {
 		componentDir          string
@@ -885,6 +892,7 @@ func TestConstructNode(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
@@ -903,8 +911,7 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",
 		},
-		Quick:      true,
-		NoParallel: true,
+		Quick: true,
 		// verify that additional flags don't cause the component provider hang
 		UpdateCommandlineFlags: []string{"--logflow", "--logtostderr"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -971,6 +978,8 @@ func TestConstructSlowNode(t *testing.T) {
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainNode(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -990,6 +999,7 @@ func TestConstructPlainNode(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
@@ -1006,7 +1016,6 @@ func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, env ...s
 		Dir:          filepath.Join("construct_component_plain", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
-		NoParallel:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
@@ -1021,6 +1030,8 @@ func TestConstructUnknownNode(t *testing.T) {
 
 // Test methods on remote components.
 func TestConstructMethodsNode(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -1035,6 +1046,7 @@ func TestConstructMethodsNode(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -1042,7 +1054,6 @@ func TestConstructMethodsNode(t *testing.T) {
 				Dir:          filepath.Join("construct_component_methods", "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
-				NoParallel:   true, // avoid contention for Dir
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
 				},
@@ -1064,6 +1075,8 @@ func TestConstructMethodsErrorsNode(t *testing.T) {
 }
 
 func TestConstructProviderNode(t *testing.T) {
+	t.Parallel()
+
 	const testDir = "construct_component_provider"
 	tests := []struct {
 		componentDir string
@@ -1079,6 +1092,7 @@ func TestConstructProviderNode(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -1086,7 +1100,6 @@ func TestConstructProviderNode(t *testing.T) {
 				Dir:          filepath.Join(testDir, "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
-				NoParallel:   true, // avoid contention for Dir
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
@@ -1118,6 +1131,8 @@ func TestComponentProviderSchemaNode(t *testing.T) {
 // Test throwing an error within an apply in a remote component written in nodejs.
 // The provider should return the error and shutdown gracefully rather than hanging.
 func TestConstructNodeErrorApply(t *testing.T) {
+	t.Parallel()
+
 	dir := "construct_component_error_apply"
 	componentDir := "testcomponent"
 
@@ -1129,7 +1144,6 @@ func TestConstructNodeErrorApply(t *testing.T) {
 		Dir:           filepath.Join(dir, "nodejs"),
 		Dependencies:  []string{"@pulumi/pulumi"},
 		Quick:         true,
-		NoParallel:    true,
 		Stderr:        stderr,
 		ExpectFailure: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -1214,6 +1228,7 @@ func TestAboutNodeJS(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Skip on windows because we lack yarn")
 	}
+	t.Parallel()
 
 	dir := filepath.Join("about", "nodejs")
 	e := ptesting.NewEnvironment(t)
@@ -1244,6 +1259,7 @@ func TestTSConfigOption(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Skip on windows because we lack yarn")
 	}
+	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer func() {

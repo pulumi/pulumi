@@ -18,6 +18,8 @@ import (
 )
 
 func TestInputUsage(t *testing.T) {
+	t.Parallel()
+
 	pkg := &pkgContext{}
 	arrayUsage := pkg.getInputUsage("FooArray")
 	assert.Equal(
@@ -49,6 +51,8 @@ func TestInputUsage(t *testing.T) {
 }
 
 func TestGoPackageName(t *testing.T) {
+	t.Parallel()
+
 	assert.Equal(t, "aws", goPackage("aws"))
 	assert.Equal(t, "azurenextgen", goPackage("azure-nextgen"))
 	assert.Equal(t, "plantprovider", goPackage("plant-provider"))
@@ -56,6 +60,8 @@ func TestGoPackageName(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
+	t.Parallel()
+
 	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
 
 		for f := range files {
@@ -117,6 +123,8 @@ func testGeneratedPackage(t *testing.T, codeDir string) {
 }
 
 func TestGenerateTypeNames(t *testing.T) {
+	t.Parallel()
+
 	test.TestTypeNameCodegen(t, "go", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
 		err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer})
 		require.NoError(t, err)
@@ -156,6 +164,8 @@ func readSchemaFile(file string) *schema.Package {
 
 // We test the naming/module structure of generated packages.
 func TestPackageNaming(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		importBasePath  string
 		rootPackageName string
@@ -177,7 +187,10 @@ func TestPackageNaming(t *testing.T) {
 		},
 	}
 	for _, tt := range testCases {
+		tt := tt
 		t.Run(tt.expectedRoot, func(t *testing.T) {
+			t.Parallel()
+
 			// This schema is arbitrary. We just needed a filled out schema. All
 			// path decisions should be made based off of the Name and
 			// Language[go] fields (which we set after import).
@@ -215,6 +228,8 @@ func TestPackageNaming(t *testing.T) {
 }
 
 func TestTokenToType(t *testing.T) {
+	t.Parallel()
+
 	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
 	awsSpec := schema.PackageSpec{
 		Name: "aws",
@@ -264,8 +279,12 @@ func TestTokenToType(t *testing.T) {
 			expected: "dns.DnsKeySpec",
 		},
 	}
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
+			t.Parallel()
+
 			actual := tt.pkg.tokenToType(tt.token)
 			assert.Equal(t, tt.expected, actual)
 		})
@@ -273,6 +292,8 @@ func TestTokenToType(t *testing.T) {
 }
 
 func TestTokenToResource(t *testing.T) {
+	t.Parallel()
+
 	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
 	awsSpec := schema.PackageSpec{
 		Name: "aws",
@@ -322,8 +343,12 @@ func TestTokenToResource(t *testing.T) {
 			expected: "dns.Policy",
 		},
 	}
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
+			t.Parallel()
+
 			actual := tt.pkg.tokenToResource(tt.token)
 			assert.Equal(t, tt.expected, actual)
 		})
