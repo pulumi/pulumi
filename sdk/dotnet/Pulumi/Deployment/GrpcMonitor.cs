@@ -4,7 +4,8 @@ using System;
 using System.Threading.Tasks;
 using Grpc.Net.Client;
 using Pulumirpc;
- 
+using Grpc.Core;
+
 namespace Pulumi
 {
     internal class GrpcMonitor : IMonitor
@@ -22,10 +23,13 @@ namespace Pulumi
             {
                 if (_monitorChannel == null)
                 {
+                    AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
                     // Inititialize the monitor channel once
-                    _monitorChannel = GrpcChannel.ForAddress($"http://{monitor}", new GrpcChannelOptions
+                    _monitorChannel = GrpcChannel.ForAddress(new Uri($"http://{monitor}"), new GrpcChannelOptions
                     {
-                        MaxReceiveMessageSize = maxRpcMessageSize
+                        MaxReceiveMessageSize = maxRpcMessageSize,
+                        MaxSendMessageSize = maxRpcMessageSize,
+                        Credentials = ChannelCredentials.Insecure
                     });
                 }
             }

@@ -1,5 +1,8 @@
 // Copyright 2016-2020, Pulumi Corporation
 
+using System;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Grpc.Net.Client;
 using Pulumirpc;
@@ -20,10 +23,13 @@ namespace Pulumi
             {
                 if (_engineChannel == null)
                 {
+                    AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
                     // Inititialize the engine channel once
-                    _engineChannel = GrpcChannel.ForAddress($"http://{engine}", new GrpcChannelOptions
+                    _engineChannel = GrpcChannel.ForAddress(new Uri($"http://{engine}"), new GrpcChannelOptions
                     {
-                        MaxReceiveMessageSize = maxRpcMessageSize
+                        MaxReceiveMessageSize = maxRpcMessageSize,
+                        MaxSendMessageSize = maxRpcMessageSize,
+                        Credentials = Grpc.Core.ChannelCredentials.Insecure,
                     });
                 }
             }
