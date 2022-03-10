@@ -10,7 +10,7 @@ import (
 
 func CreateS3Node(events []engine.Event,  logger *zerolog.Logger, config *config.Config, consumer *common.Consumer) ([]map[string]interface{},[]string, error) {
 
-	nodes, assetTypes, err := CreatePulumiNodes(events, logger, config, consumer)
+	nodes, assetTypesWithRegions, err := CreatePulumiNodes(events, logger, config, consumer)
 	if err != nil {
 		logger.Err(err).Msg("failed to create pulumi Nodes")
 		return nil, nil, err
@@ -53,5 +53,5 @@ func CreateS3Node(events []engine.Event,  logger *zerolog.Logger, config *config
 		s3Nodes = append(s3Nodes, s3Node)
 
 	}
-	return s3Nodes, assetTypes, nil
+	return s3Nodes, assetTypesWithRegions, nil
 }

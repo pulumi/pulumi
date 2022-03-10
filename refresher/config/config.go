@@ -40,6 +40,8 @@ type Config struct {
 	FireflyAWSRoleARN          string
 	FireflyAWSWebIdentityToken string
 	ElasticsearchUrl           string
+	EngineAccumulatorDynamo    string
+	EngineAccumulatorTTL       int
 }
 
 func LoadConfig() (*Config, error) {
@@ -129,6 +131,15 @@ func LoadConfig() (*Config, error) {
 
 	if cfg.ElasticsearchUrl = os.Getenv("ELASTICSEARCH_URL"); cfg.ElasticsearchUrl == "" {
 		merr = multierror.Append(merr, errors.New("failed, environment variable ELASTICSEARCH_URL must be provided"))
+	}
+
+	if cfg.EngineAccumulatorDynamo = os.Getenv("ACCUMULATOR_DYNAMODB_NAME"); cfg.EngineAccumulatorDynamo == "" {
+		merr = multierror.Append(merr, errors.New("failed, environment variable ACCUMULATOR_DYNAMODB_NAME must be provided"))
+	}
+
+	cfg.EngineAccumulatorTTL, err = strconv.Atoi(os.Getenv("DYNAMO_EXPIRATION_IN_SECONDS"))
+	if err != nil {
+		merr = multierror.Append(merr, errors.New("failed, environment variable DYNAMO_EXPIRATION_IN_SECONDS must be provided"))
 	}
 
 	cfg.ClientAWSIntegrationId = os.Getenv("AWS_INTEGRATION_ID")

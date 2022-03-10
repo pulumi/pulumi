@@ -7,9 +7,9 @@ replace github.com/pulumi/pulumi/pkg/v3 => ../pkg
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
 require (
-	github.com/aws/aws-sdk-go v1.42.33
+	github.com/aws/aws-sdk-go v1.43.15
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/infralight/go-kit v1.46.0
+	github.com/infralight/go-kit v1.56.0
 	github.com/infralight/k8s-api v0.0.0-20220220151532-2a60b79dfca8
 	github.com/pulumi/pulumi/pkg/v3 v3.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi/sdk/v3 v3.23.2
@@ -153,11 +153,11 @@ require (
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
 	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/oauth2 v0.0.0-20210427180440-81ed05c6b58c // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20211025201205-69cdffdb9359 // indirect
-	golang.org/x/term v0.0.0-20210503060354-a79de5458b56 // indirect
+	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
 	golang.org/x/tools v0.1.7 // indirect

@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-func CreatePulumiNodes(events []engine.Event, logger *zerolog.Logger, config *config.Config, consumer *common.Consumer) (result []PulumiNode, assetTypes []string, err error) {
+func CreatePulumiNodes(events []engine.Event, logger *zerolog.Logger, config *config.Config, consumer *common.Consumer) (result []PulumiNode, assetTypesWithRegions []string, err error) {
 
 	var nodes []PulumiNode
 	var k8sNodes []PulumiNode
@@ -78,9 +78,6 @@ func CreatePulumiNodes(events []engine.Event, logger *zerolog.Logger, config *co
 				logger.Err(err).Str("pulumiAssetType", metadata.Type.String()).Msg("missing pulumi to terraform type mapping")
 			} else {
 				node.ObjectType = terraformType
-				if !helpers.StringSliceContains(assetTypes, terraformType) {
-					assetTypes = append(assetTypes, terraformType)
-				}
 			}
 
 			switch metadata.Op {
@@ -135,6 +132,12 @@ func CreatePulumiNodes(events []engine.Event, logger *zerolog.Logger, config *co
 				} else {
 					awsCommonProviders[awsAccount] = 1
 				}
+				if len(node.ObjectType) > 0 {
+					assetTypeAndRegion := fmt.Sprintf("%s-%s", node.ObjectType,node.Region)
+					if !helpers.StringSliceContains(assetTypesWithRegions, assetTypeAndRegion) {
+						assetTypesWithRegions = append(assetTypesWithRegions, assetTypeAndRegion)
+					}
+				}
 
 			} else {
 				logger.Warn().Str("type", metadata.Type.String()).Msg("no arn for resource")
@@ -182,7 +185,7 @@ func CreatePulumiNodes(events []engine.Event, logger *zerolog.Logger, config *co
 					node.Location = ""
 				}
 				node.Name = goKitTypes.ToString(name)
-				node.ResourceId = goKitTypes.ToString(interfaceUid)
+				node.ResourceId = uid
 
 			} else {
 				logger.Warn().Msg("found k8s resource without metadata")
@@ -194,7 +197,7 @@ func CreatePulumiNodes(events []engine.Event, logger *zerolog.Logger, config *co
 				continue
 			}
 			kind := goKitTypes.ToString(resourceKind)
-			node.ObjectType = k8sUtils.GetKubernetesResourceType(kind, goKitTypes.ToString(node.Name))
+			node.ObjectType = k8sUtils.GetKubernetesResourceType(kind, node.Name)
 			node.Kind = kind
 			if !helpers.StringSliceContains(uids, uid) {
 				uids = append(uids, uid)
@@ -203,13 +206,16 @@ func CreatePulumiNodes(events []engine.Event, logger *zerolog.Logger, config *co
 			if !helpers.StringSliceContains(kinds, kind) {
 				kinds = append(kinds, kind)
 			}
-			assetTypes = append(assetTypes, goKitTypes.ToString(node.ObjectType))
+
+			if !helpers.StringSliceContains(assetTypesWithRegions,  node.ObjectType) {
+				assetTypesWithRegions = append(assetTypesWithRegions, node.ObjectType)
+			}
 			k8sNodes = append(k8sNodes, node)
 		}
 
 	}
 	if len(k8sNodes) > 0 {
-		k8sNodes, clusterId, err := buildK8sArns(k8sNodes, uids, kinds , logger, consumer, k8sIntegrations)
+		k8sNodes, clusterId, err := buildK8sArns(k8sNodes, uids, kinds, logger, consumer, k8sIntegrations)
 		if err != nil {
 			logger.Err(err).Msg("failed to build k8s arns")
 		} else {
@@ -219,17 +225,19 @@ func CreatePulumiNodes(events []engine.Event, logger *zerolog.Logger, config *co
 		}
 	}
 
-	err = handleCommonProviders(ctx, awsCommonProviders, stack, awsIntegrations, consumer, "aws")
+	err, awsIntegrationId := handleCommonProviders(ctx, awsCommonProviders, stack, awsIntegrations, consumer, "aws")
 	if err != nil {
 		logger.Err(err).Msg("failed to update aws common provider")
 	}
 
-	err = handleCommonProviders(ctx, k8sCommonProviders, stack, k8sIntegrations, consumer, "k8s")
+	err, k8sIntegrationId := handleCommonProviders(ctx, k8sCommonProviders, stack, k8sIntegrations, consumer, "k8s")
 	if err != nil {
 		logger.Err(err).Msg("failed to update aws common provider")
 	}
 
-	return nodes, assetTypes, nil
+	atrs := buildAtrs(awsIntegrationId, k8sIntegrationId, assetTypesWithRegions)
+
+	return nodes, atrs, nil
 }
 
 func getSameMetadata(event engine.Event) engine.StepEventMetadata {
@@ -299,7 +307,7 @@ func getIacAttributes(outputs resource.PropertyMap) string {
 	return string(attributesBytes)
 }
 
-func buildK8sArns(k8sNodes []PulumiNode,  uids, kinds []string,  logger *zerolog.Logger,consumer *common.Consumer, k8sIntegrations []mongo.K8sIntegration) ([]PulumiNode, string, error) {
+func buildK8sArns(k8sNodes []PulumiNode, uids, kinds []string, logger *zerolog.Logger, consumer *common.Consumer, k8sIntegrations []mongo.K8sIntegration) ([]PulumiNode, string, error) {
 	var clusterId string
 	integrationIds, err := utils.GetK8sIntegrationIds(consumer.Config.AccountId, uids, kinds, logger)
 	if err != nil || len(integrationIds) == 0 {
@@ -362,8 +370,8 @@ func getK8sIntegrationObjectById(k8sIntegrations []mongo.K8sIntegration, integra
 	return nil
 }
 
-func handleCommonProviders(ctx context.Context, commonProviderMap map[string]int, stack *mongo.GlobalStack, integrationsArray interface{}, consumer *common.Consumer, provider string) error {
-
+func handleCommonProviders(ctx context.Context, commonProviderMap map[string]int, stack *mongo.GlobalStack, integrationsArray interface{}, consumer *common.Consumer, provider string) (error, string) {
+	var integrationId string
 	if len(commonProviderMap) != 0 {
 		max := 0
 		var mostCommonProvider string
@@ -374,7 +382,6 @@ func handleCommonProviders(ctx context.Context, commonProviderMap map[string]int
 				mostCommonProvider = providerId
 			}
 		}
-		var integrationId string
 		if provider == "aws" {
 			integrationArray := integrationsArray.([]mongo.AwsIntegration)
 			integrationId = getAwsIntegrationId(integrationArray, mostCommonProvider)
@@ -395,7 +402,7 @@ func handleCommonProviders(ctx context.Context, commonProviderMap map[string]int
 				if IntegrationId != integrationId && integrationId != "" {
 					updateDict[fmt.Sprintf("integrations.%s.id", provider)], err = primitive.ObjectIDFromHex(integrationId)
 					if err != nil {
-						return err
+						return err, ""
 					}
 				}
 			}
@@ -405,7 +412,7 @@ func handleCommonProviders(ctx context.Context, commonProviderMap map[string]int
 			if integrationId != "" {
 				updateDict[fmt.Sprintf("integrations.%s.id", provider)], err = primitive.ObjectIDFromHex(integrationId)
 				if err != nil {
-					return err
+					return err, ""
 				}
 			}
 		}
@@ -416,10 +423,24 @@ func handleCommonProviders(ctx context.Context, commonProviderMap map[string]int
 				"$set": updateDict,
 			})
 			if err != nil {
-				return err
+				return err, ""
 			}
 		}
 
 	}
-	return nil
+	return nil, integrationId
+}
+
+func buildAtrs(awsIntegrationId, k8sIntegrationId string, assetTypesWithRegions []string) (atrs []string) {
+	for _, assetTypesWithRegion := range assetTypesWithRegions {
+		var atr string
+		if strings.HasPrefix(assetTypesWithRegion, "aws") && len(awsIntegrationId) > 0 {
+			atr = fmt.Sprintf("%s-%s", awsIntegrationId, assetTypesWithRegion)
+			atrs = append(atrs, atr)
+		} else  if strings.HasPrefix(assetTypesWithRegion, "kubernetes") && len(k8sIntegrationId) > 0 {
+			atr = fmt.Sprintf("%s-%s", k8sIntegrationId, assetTypesWithRegion)
+			atrs = append(atrs, atr)
+		}
+	}
+	return
 }
