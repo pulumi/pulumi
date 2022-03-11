@@ -30,6 +30,7 @@ func setIncorrectPassphraseTestEnvVars() func() {
 	}
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 	setupEnv := setIncorrectPassphraseTestEnvVars()
 	defer setupEnv()
@@ -56,6 +57,7 @@ func setCorrectPassphraseTestEnvVars() func() {
 	}
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 	setupEnv := setCorrectPassphraseTestEnvVars()
 	defer setupEnv()
@@ -64,6 +66,7 @@ func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 	setupEnv := setCorrectPassphraseTestEnvVars()
 	defer setupEnv()
@@ -85,6 +88,7 @@ func unsetAllPassphraseEnvVars() func() {
 	}
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
 	setupEnv := unsetAllPassphraseEnvVars()
 	defer setupEnv()

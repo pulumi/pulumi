@@ -97,7 +97,7 @@ STEP_MESSAGE = @echo -e "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):
 
 # Our install targets place items item into $PULUMI_ROOT.
 ifeq ($(PULUMI_ROOT),)
-	PULUMI_ROOT:=$(shell realpath "$$HOME/.pulumi-dev")
+	PULUMI_ROOT:=$(realpath "$$HOME/.pulumi-dev")
 endif
 
 # Use Python 3 explicitly vs expecting that `python` will resolve to a python 3
@@ -108,10 +108,10 @@ PIP ?= pip3
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
+GO_TEST_OPTIONS     :=
 
-TESTSUITE_SKIPPED = $(PYTHON) ${PROJECT_ROOT}/scripts/skipped.py
-GO_TEST_FAST = $(PYTHON) ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM}
-GO_TEST = $(PYTHON) $(PROJECT_ROOT)/scripts/go-test.py -count=1 -cover -timeout 1h -tags=all -parallel ${TESTPARALLELISM}
+GO_TEST_FAST = $(PYTHON) ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM} ${GO_TEST_OPTIONS}
+GO_TEST = $(PYTHON) $(PROJECT_ROOT)/scripts/go-test.py -count=1 -cover -timeout 1h -tags=all -parallel ${TESTPARALLELISM} ${GO_TEST_OPTIONS}
 GOPROXY = 'https://proxy.golang.org'
 
 .PHONY: default all ensure only_build only_test build lint install test_all core

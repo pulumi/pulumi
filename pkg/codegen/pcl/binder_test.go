@@ -13,12 +13,16 @@ import (
 )
 
 func TestBindProgram(t *testing.T) {
+	t.Parallel()
+
 	testdata, err := ioutil.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, v := range testdata {
+		v := v
 		if !v.IsDir() {
 			continue
 		}
@@ -27,13 +31,15 @@ func TestBindProgram(t *testing.T) {
 		if err != nil {
 			t.Fatalf("could not read test data: %v", err)
 		}
-		for _, f := range files {
-			fileName := f.Name()
+		for _, fileName := range files {
+			fileName := fileName.Name()
 			if filepath.Ext(fileName) != ".pp" {
 				continue
 			}
 
 			t.Run(fileName, func(t *testing.T) {
+				t.Parallel()
+
 				path := filepath.Join(folderPath, fileName)
 				contents, err := ioutil.ReadFile(path)
 				if err != nil {

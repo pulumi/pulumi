@@ -23,6 +23,8 @@ import (
 )
 
 func TestURNRoundTripping(t *testing.T) {
+	t.Parallel()
+
 	stack := tokens.QName("stck")
 	proj := tokens.PackageName("foo/bar/baz")
 	parentType := tokens.Type("")
@@ -37,6 +39,8 @@ func TestURNRoundTripping(t *testing.T) {
 }
 
 func TestURNRoundTripping2(t *testing.T) {
+	t.Parallel()
+
 	stack := tokens.QName("stck")
 	proj := tokens.PackageName("foo/bar/baz")
 	parentType := tokens.Type("parent$type")

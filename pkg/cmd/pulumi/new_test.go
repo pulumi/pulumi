@@ -31,12 +31,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func chdir(t *testing.T, dir string) {
+	cwd, err := os.Getwd()
+	assert.NoError(t, err)
+	assert.NoError(t, os.Chdir(dir)) // Set directory
+	t.Cleanup(func() {
+		assert.NoError(t, os.Chdir(cwd)) // Restore directory
+		restoredDir, err := os.Getwd()
+		assert.NoError(t, err)
+		assert.Equal(t, cwd, restoredDir)
+	})
+}
+
+//nolint:paralleltest // changes directory for process
 func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	var args = newArgs{
 		interactive:       false,
@@ -54,12 +67,13 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	removeStack(t, stackName)
 }
 
+//nolint:paralleltest // changes directory for process
 func TestFailInInteractiveWithoutYes(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	var args = newArgs{
 		interactive:       false,
@@ -74,12 +88,13 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 	assert.Error(t, err)
 }
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingStackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir)
 
 	var args = newArgs{
@@ -96,12 +111,13 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	removeStack(t, stackName)
 }
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
 
@@ -121,12 +137,13 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	removeStack(t, stackName)
 }
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	uniqueProjectName := filepath.Base(tempdir)
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
@@ -145,12 +162,13 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	removeStack(t, stackName)
 }
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	// the project name and the project name in the stack name must match
 	uniqueProjectName := filepath.Base(tempdir)
@@ -172,12 +190,13 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	removeStack(t, stackName)
 }
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingProjectWithDefaultName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
 	var args = newArgs{
@@ -198,6 +217,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	assert.Equal(t, defaultProjectName, proj.Name.String())
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
@@ -220,7 +240,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	backendInstance = nil
 	tempdir, _ := ioutil.TempDir("", "test-env-local")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
 	var args = newArgs{
@@ -244,12 +264,13 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	assert.Equal(t, backendURL, b.URL())
 }
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
 	var args = newArgs{
@@ -271,12 +292,13 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
 }
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingProjectWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
 	var args = newArgs{
@@ -295,12 +317,13 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
 }
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
@@ -322,12 +345,13 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "project with this name already exists")
 }
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
@@ -347,12 +371,13 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "project with this name already exists")
 }
 
+//nolint:paralleltest // changes directory for process
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
@@ -378,12 +403,13 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	assert.Equal(t, projectName, proj.Name.String())
 }
 
+//nolint:paralleltest // changes directory for process
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
@@ -407,12 +433,13 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	assert.Equal(t, projectName, proj.Name.String())
 }
 
+//nolint:paralleltest // changes directory for process
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
@@ -436,12 +463,13 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "project name may only contain")
 }
 
+//nolint:paralleltest // changes directory for process
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
@@ -471,14 +499,14 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "project name may not be empty")
 }
 
+//nolint:paralleltest // changes directory for process
 func TestInvalidTemplateName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	t.Run("NoTemplateSpecified", func(t *testing.T) {
-		t.Parallel()
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
-		assert.NoError(t, os.Chdir(tempdir))
+		chdir(t, tempdir)
 
 		var args = newArgs{
 			interactive:       false,
@@ -494,10 +522,9 @@ func TestInvalidTemplateName(t *testing.T) {
 	})
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
-		t.Parallel()
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
-		assert.NoError(t, os.Chdir(tempdir))
+		chdir(t, tempdir)
 
 		// A template that will never exist.
 		template := "this-is-not-the-template-youre-looking-for"
@@ -516,11 +543,9 @@ func TestInvalidTemplateName(t *testing.T) {
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
-		t.Parallel()
-
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
-		assert.NoError(t, os.Chdir(tempdir))
+		chdir(t, tempdir)
 
 		// A template that will never exist remotely.
 		template := "this-is-not-the-template-youre-looking-for"
@@ -541,6 +566,8 @@ func TestInvalidTemplateName(t *testing.T) {
 }
 
 func TestParseConfigSuccess(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Array    []string
 		Path     bool
@@ -773,8 +800,12 @@ func TestParseConfigSuccess(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			actual, err := parseConfig(test.Array, test.Path)
 			assert.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
@@ -783,6 +814,8 @@ func TestParseConfigSuccess(t *testing.T) {
 }
 
 func TestSetFail(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Array    []string
 		Expected config.Map
@@ -804,8 +837,12 @@ func TestSetFail(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			_, err := parseConfig(test.Array, true /*path*/)
 			assert.Error(t, err)
 		})

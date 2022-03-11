@@ -20,7 +20,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // sets env var, must be run in isolation
 func TestConsoleURL(t *testing.T) {
+
+	//nolint:paralleltest // sets env var, must be run in isolation
 	t.Run("HonorEnvVar", func(t *testing.T) {
 		initial := os.Getenv("PULUMI_CONSOLE_DOMAIN")
 		defer func() {

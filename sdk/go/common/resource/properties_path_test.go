@@ -7,6 +7,8 @@ import (
 )
 
 func TestPropertyPath(t *testing.T) {
+	t.Parallel()
+
 	value := NewObjectProperty(NewPropertyMapFromMap(map[string]interface{}{
 		"root": map[string]interface{}{
 			"nested": map[string]interface{}{
@@ -131,7 +133,10 @@ func TestPropertyPath(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.path, func(t *testing.T) {
+			t.Parallel()
+
 			parsed, err := ParsePropertyPath(c.path)
 			assert.NoError(t, err)
 			assert.Equal(t, c.parsed, parsed)
@@ -184,8 +189,13 @@ func TestPropertyPath(t *testing.T) {
 	}
 
 	t.Run("Simple", func(t *testing.T) {
+		t.Parallel()
+
 		for _, c := range simpleCases {
+			c := c
 			t.Run(c.path, func(t *testing.T) {
+				t.Parallel()
+
 				parsed, err := ParsePropertyPath(c.path)
 				assert.NoError(t, err)
 				assert.Equal(t, c.expected, parsed)
@@ -208,8 +218,12 @@ func TestPropertyPath(t *testing.T) {
 		"foo",
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, c := range negativeCases {
+		c := c
 		t.Run(c, func(t *testing.T) {
+			t.Parallel()
+
 			parsed, err := ParsePropertyPath(c)
 			if err == nil {
 				v, ok := parsed.Get(value)
@@ -221,6 +235,8 @@ func TestPropertyPath(t *testing.T) {
 }
 
 func TestPropertyPathContains(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		p1       PropertyPath
 		p2       PropertyPath
@@ -330,6 +346,8 @@ func TestPropertyPathContains(t *testing.T) {
 }
 
 func TestAddResizePropertyPath(t *testing.T) {
+	t.Parallel()
+
 	// Regression test for https://github.com/pulumi/pulumi/issues/5871:
 	// Ensure that adding a new element beyond the size of an array will resize it.
 	path, err := ParsePropertyPath("[1]")

@@ -8,6 +8,8 @@ import (
 )
 
 func TestAbbreviateFilePath(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		path     string
 		expected string

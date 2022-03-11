@@ -92,8 +92,13 @@ var success = []JSONTestCaseSuccess{
 }
 
 func TestParsePolicyPackConfigFromAPISuccess(t *testing.T) {
+	t.Parallel()
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range success {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			config := make(map[string]*json.RawMessage)
 			unmarshalErr := json.Unmarshal([]byte(test.JSON), &config)
 			assert.NoError(t, unmarshalErr)
@@ -106,6 +111,8 @@ func TestParsePolicyPackConfigFromAPISuccess(t *testing.T) {
 }
 
 func TestParsePolicyPackConfigSuccess(t *testing.T) {
+	t.Parallel()
+
 	tests := []JSONTestCaseSuccess{
 		{
 			JSON:     "",
@@ -160,8 +167,12 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 	}
 	tests = append(tests, success...)
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			result, err := parsePolicyPackConfig([]byte(test.JSON))
 			assert.NoError(t, err)
 			assert.Equal(t, test.Expected, result)
@@ -170,6 +181,8 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 }
 
 func TestParsePolicyPackConfigFail(t *testing.T) {
+	t.Parallel()
+
 	tests := []string{
 		`{"foo":[]}`,
 		`{"foo":null}`,
@@ -189,8 +202,12 @@ func TestParsePolicyPackConfigFail(t *testing.T) {
 		`{"foo":{"enforcementLevel":""}}`,
 		`{"foo":{"enforcementLevel":"bar"}}`,
 	}
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			result, err := parsePolicyPackConfig([]byte(test))
 			assert.Nil(t, result)
 			assert.Error(t, err)
@@ -199,6 +216,8 @@ func TestParsePolicyPackConfigFail(t *testing.T) {
 }
 
 func TestExtractEnforcementLevelSuccess(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Properties               map[string]interface{}
 		ExpectedEnforcementLevel apitype.EnforcementLevel
@@ -244,8 +263,12 @@ func TestExtractEnforcementLevelSuccess(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			result, err := extractEnforcementLevel(test.Properties)
 			assert.NoError(t, err)
 			assert.Equal(t, test.ExpectedEnforcementLevel, result)
@@ -255,6 +278,8 @@ func TestExtractEnforcementLevelSuccess(t *testing.T) {
 }
 
 func TestExtractEnforcementLevelFail(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Properties    map[string]interface{}
 		ExpectedError string
@@ -291,8 +316,12 @@ func TestExtractEnforcementLevelFail(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			result, err := extractEnforcementLevel(test.Properties)
 			assert.Equal(t, apitype.EnforcementLevel(""), result)
 			assert.Error(t, err)
@@ -304,6 +333,8 @@ func TestExtractEnforcementLevelFail(t *testing.T) {
 }
 
 func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Test     string
 		Policies []plugin.AnalyzerPolicyInfo
@@ -819,7 +850,10 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.Test, func(t *testing.T) {
+			t.Parallel()
+
 			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, nil, test.Config)
 			assert.NoError(t, err)
 			assert.Empty(t, validationErrors)
@@ -829,6 +863,8 @@ func TestReconcilePolicyPackConfigSuccess(t *testing.T) {
 }
 
 func TestReconcilePolicyPackConfigWithInitialConfig(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Test          string
 		Policies      []plugin.AnalyzerPolicyInfo
@@ -945,7 +981,10 @@ func TestReconcilePolicyPackConfigWithInitialConfig(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.Test, func(t *testing.T) {
+			t.Parallel()
+
 			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, test.InitialConfig, test.Config)
 			assert.NoError(t, err)
 			assert.Empty(t, validationErrors)
@@ -955,6 +994,8 @@ func TestReconcilePolicyPackConfigWithInitialConfig(t *testing.T) {
 }
 
 func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Test                     string
 		Policies                 []plugin.AnalyzerPolicyInfo
@@ -1182,7 +1223,10 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.Test, func(t *testing.T) {
+			t.Parallel()
+
 			result, validationErrors, err := ReconcilePolicyPackConfig(test.Policies, nil, test.Config)
 			assert.NoError(t, err)
 			assert.Nil(t, result)

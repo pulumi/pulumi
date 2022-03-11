@@ -888,7 +888,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 			Name:         python.InitParamName(p.Name),
 			DefaultValue: " = None",
 			Type: propertyType{
-				Name: fmt.Sprintf("%s", typ),
+				Name: typ,
 			},
 		})
 	}
@@ -1639,7 +1639,7 @@ func (mod *modContext) gen(fs fs) error {
 		return err
 	}
 
-	fs.add(path.Join(modName, "_index.md"), []byte(buffer.String()))
+	fs.add(path.Join(modName, "_index.md"), buffer.Bytes())
 	return nil
 }
 

@@ -22,6 +22,8 @@ import (
 )
 
 func TestParallelRefresh(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -79,6 +81,8 @@ func TestParallelRefresh(t *testing.T) {
 }
 
 func TestExternalRefresh(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -121,6 +125,8 @@ func TestExternalRefresh(t *testing.T) {
 }
 
 func TestRefreshInitFailure(t *testing.T) {
+	t.Parallel()
+
 	p := &TestPlan{}
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
@@ -235,8 +241,14 @@ func TestRefreshInitFailure(t *testing.T) {
 // Test that tests that Refresh can detect that resources have been deleted and removes them
 // from the snapshot.
 func TestRefreshWithDelete(t *testing.T) {
+	t.Parallel()
+
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, parallelFactor := range []int{1, 4} {
+		parallelFactor := parallelFactor
 		t.Run(fmt.Sprintf("parallel-%d", parallelFactor), func(t *testing.T) {
+			t.Parallel()
+
 			loaders := []*deploytest.ProviderLoader{
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 					return &deploytest.Provider{
@@ -276,6 +288,8 @@ func TestRefreshWithDelete(t *testing.T) {
 
 // Tests that dependencies are correctly rewritten when refresh removes deleted resources.
 func TestRefreshDeleteDependencies(t *testing.T) {
+	t.Parallel()
+
 	names := []string{"resA", "resB", "resC"}
 
 	// Try refreshing a stack with every combination of the three above resources as a target to
@@ -452,6 +466,8 @@ func containsURN(urns []resource.URN, urn resource.URN) bool {
 
 // Tests basic refresh functionality.
 func TestRefreshBasics(t *testing.T) {
+	t.Parallel()
+
 	names := []string{"resA", "resB", "resC"}
 
 	// Try refreshing a stack with every combination of the three above resources as a target to
@@ -634,6 +650,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 // Tests that an interrupted refresh leaves behind an expected state.
 func TestCanceledRefresh(t *testing.T) {
+	t.Parallel()
+
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
@@ -790,6 +808,8 @@ func TestCanceledRefresh(t *testing.T) {
 }
 
 func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
+	t.Parallel()
+
 	p := &TestPlan{}
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
@@ -852,6 +872,8 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 // TestRefreshUpdateWithDeletedResource validates that the engine handles a deleted resource without error on an
 // update with refresh.
 func TestRefreshUpdateWithDeletedResource(t *testing.T) {
+	t.Parallel()
+
 	p := &TestPlan{}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")

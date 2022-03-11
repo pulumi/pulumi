@@ -24,6 +24,8 @@ import (
 // TestMappable ensures that we properly convert from resource property maps to their "weakly typed" JSON-like
 // equivalents.
 func TestMappable(t *testing.T) {
+	t.Parallel()
+
 	ma1 := map[string]interface{}{
 		"a": float64(42.3),
 		"b": false,
@@ -45,6 +47,8 @@ func TestMappable(t *testing.T) {
 // TestMapReplValues ensures that we properly convert from resource property maps to their "weakly typed" JSON-like
 // equivalents, but with additional and optional functions that replace values inline as we go.
 func TestMapReplValues(t *testing.T) {
+	t.Parallel()
+
 	// First, no replacements (nil repl).
 	ma1 := map[string]interface{}{
 		"a": float64(42.3),
@@ -109,6 +113,8 @@ func TestMapReplValues(t *testing.T) {
 }
 
 func TestMapReplKeys(t *testing.T) {
+	t.Parallel()
+
 	m := map[string]interface{}{
 		"a": float64(42.3),
 		"b": false,
@@ -135,6 +141,8 @@ func TestMapReplKeys(t *testing.T) {
 }
 
 func TestMapReplComputedOutput(t *testing.T) {
+	t.Parallel()
+
 	m := make(PropertyMap)
 	m["a"] = NewComputedProperty(Computed{Element: NewStringProperty("X")})
 	m["b"] = NewOutputProperty(Output{Element: NewNumberProperty(46)})
@@ -145,6 +153,8 @@ func TestMapReplComputedOutput(t *testing.T) {
 }
 
 func TestCopy(t *testing.T) {
+	t.Parallel()
+
 	src := NewPropertyMapFromMap(map[string]interface{}{
 		"a": "str",
 		"b": 42,
@@ -161,6 +171,8 @@ func TestCopy(t *testing.T) {
 }
 
 func TestSecretUnknown(t *testing.T) {
+	t.Parallel()
+
 	o := NewOutputProperty(Output{Element: NewNumberProperty(46)})
 	so := MakeSecret(o)
 	assert.True(t, o.ContainsUnknowns())
@@ -172,6 +184,8 @@ func TestSecretUnknown(t *testing.T) {
 }
 
 func TestTypeString(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		prop     PropertyValue
 		expected string
@@ -205,13 +219,18 @@ func TestTypeString(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.expected, func(t *testing.T) {
+			t.Parallel()
+
 			assert.Equal(t, tt.expected, tt.prop.TypeString())
 		})
 	}
 }
 
 func TestString(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		prop     PropertyValue
 		expected string
@@ -245,13 +264,18 @@ func TestString(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.expected, func(t *testing.T) {
+			t.Parallel()
+
 			assert.Equal(t, tt.expected, tt.prop.String())
 		})
 	}
 }
 
 func TestContainsUnknowns(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		prop     PropertyValue
@@ -277,13 +301,18 @@ func TestContainsUnknowns(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			assert.Equal(t, tt.expected, tt.prop.ContainsUnknowns())
 		})
 	}
 }
 
 func TestContainsSecrets(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		prop     PropertyValue
@@ -323,13 +352,18 @@ func TestContainsSecrets(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			assert.Equal(t, tt.expected, tt.prop.ContainsSecrets())
 		})
 	}
 }
 
 func TestHasValue(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		prop     PropertyValue
@@ -360,7 +394,10 @@ func TestHasValue(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			assert.Equal(t, tt.expected, tt.prop.HasValue())
 		})
 	}

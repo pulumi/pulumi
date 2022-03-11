@@ -24,6 +24,8 @@ import (
 )
 
 func TestMarshalMap(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Value        Map
 		ExpectedYAML string
@@ -81,7 +83,10 @@ func TestMarshalMap(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.ExpectedYAML, func(t *testing.T) {
+			t.Parallel()
+
 			yamlBytes, err := yaml.Marshal(test.Value)
 			assert.NoError(t, err)
 			assert.Equal(t, test.ExpectedYAML, string(yamlBytes))
@@ -100,6 +105,8 @@ func TestMarshalMap(t *testing.T) {
 }
 
 func TestMarshalling(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Value    map[string]interface{}
 		Expected Map
@@ -206,10 +213,14 @@ func TestMarshalling(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		yamlBytes, err := yaml.Marshal(test.Value)
 		assert.NoError(t, err)
 		t.Run(fmt.Sprintf("YAML: %s", yamlBytes), func(t *testing.T) {
+			t.Parallel()
+
 			var m Map
 			err := yaml.Unmarshal(yamlBytes, &m)
 
@@ -224,6 +235,8 @@ func TestMarshalling(t *testing.T) {
 		jsonBytes, err := json.Marshal(test.Value)
 		assert.NoError(t, err)
 		t.Run(fmt.Sprintf("JSON: %s", jsonBytes), func(t *testing.T) {
+			t.Parallel()
+
 			var m Map
 			err := json.Unmarshal(jsonBytes, &m)
 
@@ -238,6 +251,8 @@ func TestMarshalling(t *testing.T) {
 }
 
 func TestDecrypt(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Config   Map
 		Expected map[Key]string
@@ -285,8 +300,12 @@ func TestDecrypt(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			decrypter := NewBlindingDecrypter()
 			actual, err := test.Config.Decrypt(decrypter)
 			assert.NoError(t, err)
@@ -296,6 +315,8 @@ func TestDecrypt(t *testing.T) {
 }
 
 func TestGetSuccess(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Key            string
 		Path           bool
@@ -478,8 +499,12 @@ func TestGetSuccess(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			key, err := ParseKey(test.Key)
 			assert.NoError(t, err)
 
@@ -497,6 +522,8 @@ func TestGetSuccess(t *testing.T) {
 }
 
 func TestGetFail(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Key string
 	}{
@@ -505,8 +532,12 @@ func TestGetFail(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test.Key), func(t *testing.T) {
+			t.Parallel()
+
 			config := make(Map)
 
 			key, err := ParseKey(test.Key)
@@ -520,6 +551,8 @@ func TestGetFail(t *testing.T) {
 }
 
 func TestRemoveSuccess(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Key      string
 		Path     bool
@@ -624,8 +657,12 @@ func TestRemoveSuccess(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			key, err := ParseKey(test.Key)
 			assert.NoError(t, err)
 			err = test.Config.Remove(key, test.Path)
@@ -636,6 +673,8 @@ func TestRemoveSuccess(t *testing.T) {
 }
 
 func TestRemoveFail(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Key    string
 		Config Map
@@ -652,8 +691,12 @@ func TestRemoveFail(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			key, err := ParseKey(test.Key)
 			assert.NoError(t, err)
 
@@ -664,6 +707,8 @@ func TestRemoveFail(t *testing.T) {
 }
 
 func TestSetSuccess(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Key      string
 		Value    Value
@@ -1137,8 +1182,12 @@ func TestSetSuccess(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			if test.Config == nil {
 				test.Config = make(Map)
 			}
@@ -1155,6 +1204,8 @@ func TestSetSuccess(t *testing.T) {
 }
 
 func TestSetFail(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Key    string
 		Config Map
@@ -1210,8 +1261,12 @@ func TestSetFail(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			if test.Config == nil {
 				test.Config = make(Map)
 			}
@@ -1226,6 +1281,8 @@ func TestSetFail(t *testing.T) {
 }
 
 func TestCopyMap(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		Config   Map
 		Expected Map
@@ -1290,8 +1347,12 @@ func TestCopyMap(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
+			t.Parallel()
+
 			newConfig, err := test.Config.Copy(newPrefixCrypter("stackA"), newPrefixCrypter("stackB"))
 			assert.NoError(t, err)
 

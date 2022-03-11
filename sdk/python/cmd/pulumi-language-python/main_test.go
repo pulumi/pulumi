@@ -26,6 +26,8 @@ import (
 )
 
 func TestDeterminePluginVersion(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input    string
 		expected string
@@ -101,7 +103,10 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			result, err := determinePluginVersion(tt.input)
 			if tt.err != nil {
 				assert.Error(t, err)
@@ -115,7 +120,11 @@ func TestDeterminePluginVersion(t *testing.T) {
 }
 
 func TestDeterminePulumiPackages(t *testing.T) {
+	t.Parallel()
+
 	t.Run("empty", func(t *testing.T) {
+		t.Parallel()
+
 		cwd := t.TempDir()
 		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
@@ -124,6 +133,8 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.Empty(t, packages)
 	})
 	t.Run("non-empty", func(t *testing.T) {
+		t.Parallel()
+
 		cwd := t.TempDir()
 		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
 		assert.NoError(t, err)
@@ -140,6 +151,8 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		assert.NotEmpty(t, random.Location)
 	})
 	t.Run("pulumiplugin", func(t *testing.T) {
+		t.Parallel()
+
 		cwd := t.TempDir()
 		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
 		require.NoError(t, err)

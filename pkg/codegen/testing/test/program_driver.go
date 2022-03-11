@@ -187,7 +187,6 @@ func TestProgramCodegen(
 	// genProgram func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error
 	testcase ProgramCodegenOptions,
 ) {
-
 	if runtime.GOOS == "windows" {
 		t.Skip("TestProgramCodegen is skipped on Windows")
 	}
@@ -196,7 +195,9 @@ func TestProgramCodegen(
 	ensureValidSchemaVersions(t)
 	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 	for _, tt := range testcase.TestCases {
+		tt := tt // avoid capturing loop variable
 		t.Run(tt.Description, func(t *testing.T) {
+			t.Parallel()
 			var err error
 			if tt.Skip.Has(testcase.Language) {
 				t.Skip()

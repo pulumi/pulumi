@@ -26,6 +26,8 @@ import (
 )
 
 func TestParseTagFilter(t *testing.T) {
+	t.Parallel()
+
 	p := func(s string) *string {
 		return &s
 	}
@@ -76,8 +78,8 @@ type mockStackReference struct {
 	name string
 }
 
-func (msr *mockStackReference) Name() tokens.Name {
-	return tokens.Name(msr.name)
+func (msr *mockStackReference) Name() tokens.QName {
+	return tokens.QName(msr.name)
 }
 
 func (msr *mockStackReference) String() string {
@@ -112,6 +114,8 @@ type stackLSOutputs struct {
 }
 
 func TestListStacksPagination(t *testing.T) {
+	t.Parallel()
+
 	// We mock out the ListStacks call so that it will return 4x well-known responses, and
 	// keep track of the parameters used for validation.
 	var requestsMade []stackLSInputs

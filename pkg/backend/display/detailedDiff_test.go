@@ -11,6 +11,8 @@ import (
 )
 
 func TestTranslateDetailedDiff(t *testing.T) {
+	t.Parallel()
+
 	var (
 		A = plugin.PropertyDiff{Kind: plugin.DiffAdd}
 		D = plugin.PropertyDiff{Kind: plugin.DiffDelete}

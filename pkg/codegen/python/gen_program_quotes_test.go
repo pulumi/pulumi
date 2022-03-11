@@ -10,6 +10,7 @@ import (
 )
 
 func TestLowerPropertyAccess(t *testing.T) {
+	t.Parallel()
 
 	const source = `zones = invoke("aws:index:getAvailabilityZones", {})
 

@@ -82,7 +82,7 @@ func newStackImportCmd() *cobra.Command {
 			}
 			var result error
 			for _, res := range snapshot.Resources {
-				if res.URN.Stack() != stackName.Q() {
+				if res.URN.Stack() != stackName {
 					msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
 						res.URN, res.URN.Stack(), stackName)
 					if force {

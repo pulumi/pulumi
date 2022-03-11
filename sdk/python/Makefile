@@ -8,13 +8,13 @@ PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
 PROJECT_PKGS    := $(shell go list ./cmd/...)
-TESTPARALLELISM := 10
+TESTPARALLELISM ?= 10
 
 include ../../build/common.mk
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
-TEST_ALL_DEPS = build
+TEST_ALL_DEPS ?= build
 
 ensure::
 	$(PYTHON) -m venv venv
@@ -59,7 +59,7 @@ install_plugin:: build_plugin
 install:: install_package install_plugin
 
 test_go:: $(TEST_ALL_DEPS)
-	$(GO_TEST) ${PROJECT_PKGS}
+	@$(GO_TEST) ${PROJECT_PKGS}
 
 test_fast:: $(TEST_ALL_DEPS)
 	. venv/*/activate && ./scripts/test_fast.sh
@@ -75,7 +75,7 @@ dist::
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
 
-brew:: BREW_VERSION := $(shell pulumictl get version)
+brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/

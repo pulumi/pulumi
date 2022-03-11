@@ -17,8 +17,8 @@ package auto
 import (
 	"bytes"
 	"context"
-	"fmt"
-	"math/rand"
+	cryptorand "crypto/rand"
+	"encoding/hex"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,7 +26,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -41,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
@@ -54,8 +54,10 @@ const pulumiTestOrg = "pulumi-test"
 const windows = "windows"
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	opts := []LocalWorkspaceOption{
@@ -125,9 +127,10 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestRemoveWithForce(t *testing.T) {
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -205,9 +208,10 @@ func TestRemoveWithForce(t *testing.T) {
 	assert.True(t, strings.Contains(err.Error(), "no stack named"))
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestNewStackLocalSource(t *testing.T) {
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -317,9 +321,10 @@ func TestNewStackLocalSource(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestUpsertStackLocalSource(t *testing.T) {
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -422,19 +427,23 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
-func rangeIn(low, hi int) int {
-	rand.Seed(time.Now().UnixNano())
-	return low + rand.Intn(hi-low) //nolint:gosec
+func randomStackName() string {
+	b := make([]byte, 4)
+	_, err := cryptorand.Read(b)
+	contract.AssertNoError(err)
+	return "test" + hex.EncodeToString(b)
 }
 
 func TestNewStackRemoteSource(t *testing.T) {
+	t.Parallel()
+
 	if runtime.GOOS == windows {
 		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -524,13 +533,15 @@ func TestNewStackRemoteSource(t *testing.T) {
 }
 
 func TestUpsertStackRemoteSource(t *testing.T) {
+	t.Parallel()
+
 	if runtime.GOOS == windows {
 		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -620,13 +631,15 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 }
 
 func TestNewStackRemoteSourceWithSetup(t *testing.T) {
+	t.Parallel()
+
 	if runtime.GOOS == windows {
 		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -728,13 +741,15 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 }
 
 func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
+	t.Parallel()
+
 	if runtime.GOOS == windows {
 		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
 	}
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -836,8 +851,10 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 }
 
 func TestNewStackInlineSource(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -930,8 +947,10 @@ func TestNewStackInlineSource(t *testing.T) {
 }
 
 func TestUpsertStackInlineSource(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -1023,10 +1042,12 @@ func TestUpsertStackInlineSource(t *testing.T) {
 }
 
 func TestNestedStackFails(t *testing.T) {
+	t.Parallel()
+
 	// FIXME: see https://github.com/pulumi/pulumi/issues/5301
 	t.Skip("skipping test, see pulumi/pulumi#5301")
 	testCtx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	parentstackName := FullyQualifiedStackName(pulumiOrg, "parent", sName)
 	nestedstackName := FullyQualifiedStackName(pulumiOrg, "nested", sName)
 
@@ -1085,9 +1106,11 @@ func TestNestedStackFails(t *testing.T) {
 }
 
 func TestProgressStreams(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	pName := "inline_progress_streams"
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -1156,8 +1179,10 @@ func TestProgressStreams(t *testing.T) {
 }
 
 func TestImportExportStack(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -1228,11 +1253,13 @@ func TestImportExportStack(t *testing.T) {
 }
 
 func TestConfigFlagLike(t *testing.T) {
+	t.Parallel()
+
 	if getTestOrg() != pulumiTestOrg {
 		return
 	}
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
 	pDir := filepath.Join(".", "test", "testproj")
@@ -1261,6 +1288,8 @@ func TestConfigFlagLike(t *testing.T) {
 }
 
 func TestNestedConfig(t *testing.T) {
+	t.Parallel()
+
 	if getTestOrg() != pulumiTestOrg {
 		return
 	}
@@ -1323,9 +1352,10 @@ func TestNestedConfig(t *testing.T) {
 	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", list.Value)
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestStructuredOutput(t *testing.T) {
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -1441,8 +1471,10 @@ func TestStructuredOutput(t *testing.T) {
 }
 
 func TestSupportsStackOutputs(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"bar": ConfigValue{
@@ -1548,6 +1580,8 @@ func TestSupportsStackOutputs(t *testing.T) {
 }
 
 func TestPulumiVersion(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	ws, err := NewLocalWorkspace(ctx)
 	if err != nil {
@@ -1645,8 +1679,13 @@ var minVersionTests = []struct {
 }
 
 func TestMinimumVersion(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range minVersionTests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			minVersion := semver.Version{Major: 2, Minor: 21, Patch: 1}
 
 			_, err := parseAndValidatePulumiVersion(minVersion, tt.currentVersion, tt.optOut)
@@ -1662,8 +1701,10 @@ func TestMinimumVersion(t *testing.T) {
 }
 
 func TestProjectSettingsRespected(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	pName := "correct_project"
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	badProjectName := "project_was_overwritten"
@@ -1685,8 +1726,10 @@ func TestProjectSettingsRespected(t *testing.T) {
 }
 
 func TestSaveStackSettings(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
 	opts := []LocalWorkspaceOption{
@@ -1744,10 +1787,12 @@ func TestSaveStackSettings(t *testing.T) {
 }
 
 func TestConfigSecretWarnings(t *testing.T) {
+	t.Parallel()
+
 	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
 	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
 	ctx := context.Background()
-	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	sName := randomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	cfg := ConfigMap{
 		"plainstr1":    ConfigValue{Value: "1"},

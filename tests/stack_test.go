@@ -39,9 +39,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // mutates environment variables
 func TestStackCommands(t *testing.T) {
 	// stack init, stack ls, stack rm, stack ls
 	t.Run("SanityTest", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -71,6 +74,8 @@ func TestStackCommands(t *testing.T) {
 	})
 
 	t.Run("StackSelect", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -109,6 +114,8 @@ func TestStackCommands(t *testing.T) {
 	})
 
 	t.Run("StackRm", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -151,6 +158,8 @@ func TestStackCommands(t *testing.T) {
 	// Test that stack import fails if the version of the deployment we give it is not
 	// one that the CLI supports.
 	t.Run("CheckpointVersioning", func(t *testing.T) {
+		t.Parallel()
+
 		versions := []int{
 			apitype.DeploymentSchemaVersionCurrent + 1,
 			stack.DeploymentSchemaVersionOldestSupported - 1,
@@ -270,8 +279,11 @@ func TestStackCommands(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestStackBackups(t *testing.T) {
 	t.Run("StackBackupCreatedSanityTest", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -350,6 +362,8 @@ func TestStackBackups(t *testing.T) {
 }
 
 func TestStackRenameAfterCreate(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -368,6 +382,8 @@ func TestStackRenameAfterCreate(t *testing.T) {
 // TestStackRenameServiceAfterCreateBackend tests a few edge cases about renaming
 // stacks owned by organizations in the service backend.
 func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -409,6 +425,7 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 
 func TestLocalStateLocking(t *testing.T) {
 	t.Skip() // TODO[pulumi/pulumi#7269] flaky test
+	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {

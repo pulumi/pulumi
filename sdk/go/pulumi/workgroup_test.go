@@ -23,6 +23,8 @@ import (
 )
 
 func TestWorkGroupActsAsWaitGroup(t *testing.T) {
+	t.Parallel()
+
 	check := func(j int) func(*testing.T) {
 		return func(*testing.T) {
 			var n int32
@@ -42,10 +44,10 @@ func TestWorkGroupActsAsWaitGroup(t *testing.T) {
 		}
 	}
 
-	t.Run("j=1", check(1))
-	t.Run("j=2", check(2))
-	t.Run("j=3", check(3))
-	t.Run("j=4", check(4))
+	t.Run("j=1", check(1)) //nolint:paralleltest // uses shared state with parent
+	t.Run("j=2", check(2)) //nolint:paralleltest // uses shared state with parent
+	t.Run("j=3", check(3)) //nolint:paralleltest // uses shared state with parent
+	t.Run("j=4", check(4)) //nolint:paralleltest // uses shared state with parent
 
 	// test Wait does not block on empty
 	wg := &workGroup{}

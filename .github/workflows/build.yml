@@ -96,11 +96,14 @@ jobs:
       - name: Go Cache
         uses: actions/cache@v2
         id: go-cache
+        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
         with:
           path: |
               ${{ steps.go-cache-paths.outputs.go-build }}
               ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ matrix.os }}-go-cache-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Compute current version to inform GoReleaser
         run: |
           echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
@@ -147,9 +150,11 @@ jobs:
         with:
           repo: pulumi/pulumictl
       - name: Set up Python ${{ inputs.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ inputs.python-version }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
       - name: Compute current version to inform wheel build
         run: |
           echo "PYPI_VERSION=$(pulumictl get version --language python)" >> $GITHUB_ENV
@@ -186,9 +191,11 @@ jobs:
         with:
           repo: pulumi/pulumictl
       - name: Set up Node ${{ inputs.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           node-version: ${{ inputs.node-version }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/package.json
       - name: Install yarn
         run: |
           npm install -g yarn
@@ -253,3 +260,12 @@ jobs:
         with:
             name: pulumi-nuget-packages
             path: sdk/dotnet/nupkgs/*.nupkg
+
+# Note [Windows Go Cache]
+# ~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# Due to an issue in the actions/cache provider, caching is extremely slow on Windows, see:
+# https://github.com/actions/cache/issues/442. Extracting a ~400MiB cache may take up to 4m31s to
+# complete, which defeats the purpose of the cache. Example:
+#
+# https://github.com/pulumi/pulumi/runs/5396976132?check_suite_focus=true#step:9:25

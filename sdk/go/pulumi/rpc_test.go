@@ -171,6 +171,8 @@ func (testInputs) ElementType() reflect.Type {
 
 // TestMarshalRoundtrip ensures that marshaling a complex structure to and from its on-the-wire gRPC format succeeds.
 func TestMarshalRoundtrip(t *testing.T) {
+	t.Parallel()
+
 	// Create interesting inputs.
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
@@ -412,6 +414,8 @@ type testResource struct {
 }
 
 func TestResourceState(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
@@ -495,6 +499,8 @@ func TestResourceState(t *testing.T) {
 }
 
 func TestUnmarshalSecret(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
@@ -512,6 +518,8 @@ func TestUnmarshalSecret(t *testing.T) {
 }
 
 func TestUnmarshalInternalMapValue(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
@@ -533,6 +541,8 @@ func TestUnmarshalInternalMapValue(t *testing.T) {
 // TestMarshalRoundtripNestedSecret ensures that marshaling a complex structure to and from
 // its on-the-wire gRPC format succeeds including a nested secret property.
 func TestMarshalRoundtripNestedSecret(t *testing.T) {
+	t.Parallel()
+
 	// Create interesting inputs.
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
@@ -624,6 +634,8 @@ func (UntypedArgs) ElementType() reflect.Type {
 }
 
 func TestMapInputMarshalling(t *testing.T) {
+	t.Parallel()
+
 	var theResource simpleCustomResource
 	out := newOutput(nil, reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
 	out.getState().resolve("outputty", true, false, nil)
@@ -671,6 +683,8 @@ func TestMapInputMarshalling(t *testing.T) {
 }
 
 func TestVersionedMap(t *testing.T) {
+	t.Parallel()
+
 	resourceModules := versionedMap{
 		versions: map[string][]Versioned{},
 	}
@@ -737,7 +751,10 @@ func TestVersionedMap(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			pkg, found := resourceModules.Load(tt.pkg, tt.version)
 			assert.Equal(t, tt.expectFound, found)
 			if tt.expectFound {
@@ -748,6 +765,8 @@ func TestVersionedMap(t *testing.T) {
 }
 
 func TestRegisterResourcePackage(t *testing.T) {
+	t.Parallel()
+
 	pkg := "testPkg"
 
 	tests := []struct {
@@ -768,7 +787,10 @@ func TestRegisterResourcePackage(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			RegisterResourcePackage(pkg, tt.resourcePackage)
 			assert.Panics(t, func() {
 				RegisterResourcePackage(pkg, tt.resourcePackage)
@@ -778,6 +800,8 @@ func TestRegisterResourcePackage(t *testing.T) {
 }
 
 func TestRegisterResourceModule(t *testing.T) {
+	t.Parallel()
+
 	pkg := "testPkg"
 	mod := "testMod"
 
@@ -799,7 +823,10 @@ func TestRegisterResourceModule(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			RegisterResourceModule(pkg, mod, tt.resourceModule)
 			assert.Panics(t, func() {
 				RegisterResourceModule(pkg, mod, tt.resourceModule)
@@ -809,6 +836,8 @@ func TestRegisterResourceModule(t *testing.T) {
 }
 
 func TestInvalidAsset(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
@@ -823,6 +852,8 @@ func TestInvalidAsset(t *testing.T) {
 }
 
 func TestInvalidArchive(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
@@ -837,6 +868,8 @@ func TestInvalidArchive(t *testing.T) {
 }
 
 func TestDependsOnComponent(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
@@ -887,6 +920,8 @@ func TestDependsOnComponent(t *testing.T) {
 }
 
 func TestOutputValueMarshalling(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
@@ -902,6 +937,7 @@ func TestOutputValueMarshalling(t *testing.T) {
 		{value: map[string]string{}, expected: resource.NewObjectProperty(resource.PropertyMap{})},
 		{value: []string{}, expected: resource.NewArrayProperty(nil)},
 	}
+	//nolint:paralleltest // parallel parent, would require refactor to silence lint
 	for _, value := range values {
 		for _, deps := range [][]resource.URN{nil, {"fakeURN1", "fakeURN2"}} {
 			for _, known := range []bool{true, false} {
@@ -937,6 +973,7 @@ func TestOutputValueMarshalling(t *testing.T) {
 					}
 
 					name := fmt.Sprintf("value=%v, known=%v, secret=%v, deps=%v", value, known, secret, deps)
+					//nolint:paralleltest // very small test, parallel parent
 					t.Run(name, func(t *testing.T) {
 						actual, _, _, err := marshalInputs(inputs)
 						assert.NoError(t, err)
@@ -1175,6 +1212,8 @@ func (MyNestedOutputArgs) ElementType() reflect.Type {
 }
 
 func TestOutputValueMarshallingNested(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
@@ -1452,7 +1491,10 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			inputs := Map{"value": tt.input}
 			expected := resource.PropertyMap{"value": tt.expected}
 
@@ -1677,6 +1719,8 @@ func (o TreeSizeMapOutput) MapIndex(k StringInput) TreeSizeOutput {
 }
 
 func TestOutputValueMarshallingEnums(t *testing.T) {
+	t.Parallel()
+
 	_, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
@@ -1700,7 +1744,10 @@ func TestOutputValueMarshallingEnums(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			inputs := Map{"value": tt.input}
 			expected := resource.PropertyMap{"value": tt.expected}
 
