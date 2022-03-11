@@ -5,36 +5,33 @@ using System.Threading.Tasks;
 using Grpc.Net.Client;
 using Pulumirpc;
 using Grpc.Core;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 namespace Pulumi
 {
     internal class GrpcMonitor : IMonitor
     {
         private readonly ResourceMonitor.ResourceMonitorClient _client;
-
-        private static GrpcChannel? _monitorChannel = null;
-        private readonly object _monitorChannelLock = new object();
-
+        private static ConcurrentDictionary<string, GrpcChannel> _monitorChannels = new ConcurrentDictionary<string, GrpcChannel>();
         public GrpcMonitor(string monitor)
         {
             // maxRpcMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
             var maxRpcMessageSize = 400 * 1024 * 1024;
-            lock (_monitorChannelLock)
+            if (!_monitorChannels.ContainsKey(monitor))
             {
-                if (_monitorChannel == null)
+                // Allow for insecure HTTP/2 transport (only needed for netcoreapp3.x)
+                AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+                // Inititialize the monitor channel once for this monitor address
+                _monitorChannels[monitor] = GrpcChannel.ForAddress(new Uri($"http://{monitor}"), new GrpcChannelOptions
                 {
-                    AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-                    // Inititialize the monitor channel once
-                    _monitorChannel = GrpcChannel.ForAddress(new Uri($"http://{monitor}"), new GrpcChannelOptions
-                    {
-                        MaxReceiveMessageSize = maxRpcMessageSize,
-                        MaxSendMessageSize = maxRpcMessageSize,
-                        Credentials = ChannelCredentials.Insecure
-                    });
-                }
+                    MaxReceiveMessageSize = maxRpcMessageSize,
+                    MaxSendMessageSize = maxRpcMessageSize,
+                    Credentials = ChannelCredentials.Insecure
+                });
             }
-            
-            this._client = new ResourceMonitor.ResourceMonitorClient(_monitorChannel);
+
+            this._client = new ResourceMonitor.ResourceMonitorClient(_monitorChannels[monitor]);
         }
         
         public async Task<SupportsFeatureResponse> SupportsFeatureAsync(SupportsFeatureRequest request)

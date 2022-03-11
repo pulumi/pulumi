@@ -1,6 +1,8 @@
 // Copyright 2016-2020, Pulumi Corporation
 
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -12,29 +14,29 @@ namespace Pulumi
     internal class GrpcEngine : IEngine
     {
         private readonly Engine.EngineClient _engine;
-        private static GrpcChannel? _engineChannel = null;
-        private readonly object _engineChannelLock = new object();
+        // Using a static dictionary to keep track of and re-use gRPC channels
+        // According to the docs, creating GrpcChannels is expensive so we keep track of a bunch of them here
+        private static ConcurrentDictionary<string, GrpcChannel> _engineChannels = new ConcurrentDictionary<string, GrpcChannel>();
 
         public GrpcEngine(string engine)
         {
             // maxRpcMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
             var maxRpcMessageSize = 400 * 1024 * 1024;
-            lock (_engineChannelLock)
+
+            if (!_engineChannels.ContainsKey(engine))
             {
-                if (_engineChannel == null)
+                // Allow for insecure HTTP/2 transport (only needed for netcoreapp3.1)
+                AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+                // Inititialize the engine channel once for this address
+                _engineChannels[engine] = GrpcChannel.ForAddress(new Uri($"http://{engine}"), new GrpcChannelOptions
                 {
-                    AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-                    // Inititialize the engine channel once
-                    _engineChannel = GrpcChannel.ForAddress(new Uri($"http://{engine}"), new GrpcChannelOptions
-                    {
-                        MaxReceiveMessageSize = maxRpcMessageSize,
-                        MaxSendMessageSize = maxRpcMessageSize,
-                        Credentials = Grpc.Core.ChannelCredentials.Insecure,
-                    });
-                }
+                    MaxReceiveMessageSize = maxRpcMessageSize,
+                    MaxSendMessageSize = maxRpcMessageSize,
+                    Credentials = Grpc.Core.ChannelCredentials.Insecure,
+                });
             }
-            
-            this._engine = new Engine.EngineClient(_engineChannel);
+
+            this._engine = new Engine.EngineClient(_engineChannels[engine]);
         }
         
         public async Task LogAsync(LogRequest request)
