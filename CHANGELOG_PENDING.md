@@ -15,7 +15,7 @@
   edit the code to successfully run.
   [#8922](https://github.com/pulumi/pulumi/pull/8922)
 
-- [cli/config] Rename the `config` property in `Pulumi.ymal` to `stacksDirectory`. The `config` key will continue to be supported.
+- [cli/config] Rename the `config` property in `Pulumi.yaml` to `stacksDirectory`. The `config` key will continue to be supported.
   [#9145](https://github.com/pulumi/pulumi/pull/9145)
 
 ### Bug Fixes
