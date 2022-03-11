@@ -27,7 +27,6 @@ func (m *testMonitor) Call(args MockCallArgs) (resource.PropertyMap, error) {
 }
 
 func (m *testMonitor) NewResource(args MockResourceArgs) (string, resource.PropertyMap, error) {
-
 	if m.NewResourceF == nil {
 		return args.Name, resource.PropertyMap{}, nil
 	}
@@ -75,6 +74,8 @@ type invokeResult struct {
 }
 
 func TestRegisterResource(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 
@@ -162,6 +163,8 @@ func TestRegisterResource(t *testing.T) {
 }
 
 func TestReadResource(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 
@@ -226,6 +229,8 @@ func TestReadResource(t *testing.T) {
 }
 
 func TestInvoke(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			assert.Equal(t, "test:index:func", args.Token)
@@ -351,6 +356,8 @@ func (module) Version() semver.Version {
 }
 
 func TestRegisterResourceWithResourceReferences(t *testing.T) {
+	t.Parallel()
+
 	RegisterOutputType(testInstanceResourceOutput{})
 
 	RegisterResourceModule("pkg", "index", module(0))
@@ -408,6 +415,8 @@ type testMyRemoteComponent struct {
 }
 
 func TestRemoteComponent(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 
@@ -453,6 +462,8 @@ func TestRemoteComponent(t *testing.T) {
 }
 
 func TestWaitOrphanedApply(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
@@ -480,6 +491,8 @@ func TestWaitOrphanedApply(t *testing.T) {
 }
 
 func TestWaitOrphanedNestedApply(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
@@ -510,6 +523,8 @@ func TestWaitOrphanedNestedApply(t *testing.T) {
 }
 
 func TestWaitOrphanedAllApply(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
@@ -540,6 +555,8 @@ func TestWaitOrphanedAllApply(t *testing.T) {
 }
 
 func TestWaitOrphanedAnyApply(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
@@ -580,6 +597,8 @@ func TestWaitOrphanedAnyApply(t *testing.T) {
 }
 
 func TestWaitOrphanedContextAllApply(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
@@ -610,6 +629,8 @@ func TestWaitOrphanedContextAllApply(t *testing.T) {
 }
 
 func TestWaitOrphanedContextAnyApply(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
@@ -650,6 +671,8 @@ func TestWaitOrphanedContextAnyApply(t *testing.T) {
 }
 
 func TestWaitOrphanedResource(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
@@ -672,6 +695,8 @@ func TestWaitOrphanedResource(t *testing.T) {
 }
 
 func TestWaitResourceInsideApply(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
@@ -701,6 +726,8 @@ func TestWaitResourceInsideApply(t *testing.T) {
 }
 
 func TestWaitOrphanedApplyOnResourceInsideApply(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
@@ -737,6 +764,8 @@ func TestWaitOrphanedApplyOnResourceInsideApply(t *testing.T) {
 }
 
 func TestWaitRecursiveApply(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
@@ -774,6 +803,8 @@ func TestWaitRecursiveApply(t *testing.T) {
 }
 
 func TestWaitOrphanedManualOutput(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
@@ -809,6 +840,8 @@ func TestWaitOrphanedManualOutput(t *testing.T) {
 }
 
 func TestWaitOrphanedDeprecatedOutput(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil

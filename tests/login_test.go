@@ -8,8 +8,11 @@ import (
 )
 
 func TestLogin(t *testing.T) {
+	t.Parallel()
 
 	t.Run("RespectsEnvVar", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer deleteIfNotFailed(e)
 

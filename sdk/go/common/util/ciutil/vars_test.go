@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // mutates environment variables
 func TestDetectVars(t *testing.T) {
 	buildNumber := "123"
 	buildID := "87638724"
@@ -116,6 +117,7 @@ func TestDetectVars(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestDetectVarsBaseCI(t *testing.T) {
 	systemAndEnvVars := map[SystemName]map[string]string{
 		// Since the `pulumi/pulumi` repo runs on Travis,
@@ -164,6 +166,7 @@ func TestDetectVarsBaseCI(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestDetectVarsDisableCIDetection(t *testing.T) {
 	os.Setenv("PULUMI_DISABLE_CI_DETECTION", "nonEmptyString")
 	os.Setenv("TRAVIS", "true")

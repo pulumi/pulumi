@@ -77,7 +77,7 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.Chec
 }
 
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
-func SerializeCheckpoint(stack tokens.Name, snap *deploy.Snapshot,
+func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 	sm secrets.Manager, showSecrets bool) (*apitype.VersionedCheckpoint, error) {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
 	var latest *apitype.DeploymentV3
@@ -90,7 +90,7 @@ func SerializeCheckpoint(stack tokens.Name, snap *deploy.Snapshot,
 	}
 
 	b, err := json.Marshal(apitype.CheckpointV3{
-		Stack:  stack.Q(),
+		Stack:  stack,
 		Latest: latest,
 	})
 	if err != nil {

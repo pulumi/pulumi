@@ -11,6 +11,8 @@ import (
 )
 
 func TestNodejsTransformations(t *testing.T) {
+	t.Parallel()
+
 	for _, dir := range Dirs {
 		d := filepath.Join("nodejs", dir)
 		t.Run(d, func(t *testing.T) {

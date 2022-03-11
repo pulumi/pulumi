@@ -22,6 +22,8 @@ import (
 )
 
 func TestEnvOverrideGetCommandResults(t *testing.T) {
+	t.Parallel()
+
 	e := NewGoEnvironment(t)
 	checkDebug := func(expect string) {
 		stdout, stderr, err := e.GetCommandResults("bash", "-c", "echo $PULUMI_DEBUG_COMMANDS")

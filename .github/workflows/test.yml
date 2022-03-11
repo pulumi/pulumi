@@ -41,23 +41,86 @@ env:
   PULUMI_TEST_OWNER: "moolumi"
   PULUMI_ACCESS_TOKEN: ${{ secrets.pulumi-access-token }}
   PYTHON: python
+  TESTPARALLELISM: 4
 
 jobs:
   test:
     name: Test
 
     strategy:
+      fail-fast: false
       matrix:
         platform:
           - ubuntu-latest
           - windows-latest
           - macos-latest
-        test-subset:
-          - integration
-          - integration-and-codegen
-          - auto
-          - etc
-      fail-fast: false
+        test-suite:
+          - run: |
+              cd sdk/python
+              make test_fast
+              make test_auto
+              make test_go
+
+          - run: |
+              cd sdk/dotnet
+              make dotnet_test
+              make test_auto
+              make test_go
+
+          - run: |
+              cd sdk/nodejs
+              make sxs_tests
+              make unit_tests
+              make test_auto
+              make test_go
+            test-parallelism: 2
+
+          - run: |
+              cd sdk/go
+              make test_fast
+              make test_auto
+
+          - run: make test_pkg_nodejs
+            require-build: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
+
+          - run: make test_pkg_python
+            require-build: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
+
+          - run: make test_pkg_rest
+            require-build: true
+            test-parallelism: 2
+
+          - run: make test_integration_dotnet
+            require-build: true
+            test-parallelism: 4
+          - run: make test_integration_go
+            require-build: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
+          - run: make test_integration_nodejs
+            require-build: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
+          - run: make test_integration_python
+            require-build: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
+          - run: make test_integration_rest
+            require-build: true
+            test-parallelism: 4
+            test-parallelism-windows: 2
+          - run: make test_integration_subpkgs
+            require-build: true
+            test-parallelism: 4
+
+    env:
+      PULUMI_HOME: ${{ github.workspace }}/home
+      PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
+      TEST_ALL_DEPS: ""
 
     runs-on: ${{ matrix.platform }}
 
@@ -69,17 +132,27 @@ jobs:
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
-      - name: Set PULUMI_TEST_SUBSET env var
+      - name: Set test parallelism
+        if: ${{ matrix.test-suite.test-parallelism }}
         run: |
-          echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV
+          echo "TESTPARALLELISM=${{ matrix.test-suite.test-parallelism }}" >> $GITHUB_ENV
+      - name: Set Windows test parallelism, temp dir
+        if: ${{ matrix.test-suite.test-parallelism-windows }}
+        run: |
+          echo "TESTPARALLELISM=${{ matrix.test-suite.test-parallelism-windows }}" >> $GITHUB_ENV
+          mkdir -p "${{ runner.temp }}/tmp"
       - name: Enable code coverage
         if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> $GITHUB_ENV
-      - name: Set up Make (windows)
-        if: ${{ matrix.platform == 'windows-latest' }}
-        run: |
-          choco install make
+      # See: https://github.com/actions/virtual-environments/issues/2642#issuecomment-774988591
+      - name: Configure Windows pagefile
+        uses: aaronfriel/action-configure-pagefile@v2.0-beta.1
+        if: ${{ runner.os == 'Windows' }}
+        with:
+            minimum-size: 4GB
+            maximum-size: 4GB
+            disk-root: 'D:'
       - name: Set up Go ${{ inputs.go-version }}
         uses: actions/setup-go@v2
         with:
@@ -92,15 +165,20 @@ jobs:
       - name: Go Cache
         uses: actions/cache@v2
         id: go-cache
+        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
         with:
           path: |
               ${{ steps.go-cache-paths.outputs.go-build }}
               ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ matrix.platform }}-${{ matrix.test-subset }}-go-test-cache-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Set up Python ${{ inputs.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ inputs.python-version }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
       - name: Set up DotNet ${{ inputs.dotnet-version }}
         uses: actions/setup-dotnet@v1
         with:
@@ -109,10 +187,15 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: ${{ inputs.node-version }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/package.json
       - name: Uninstall pre-installed Pulumi (windows)
         if: ${{ matrix.platform == 'windows-latest' }}
         run: |
-          chocolatey uninstall pulumi
+          if which pulumi.exe; then
+            echo "Deleting pulumi"
+            rm -rf "$(which pulumi.exe)/../pulumi*"
+          fi
       - name: Install yarn
         run: |
           npm install -g yarn
@@ -130,20 +213,11 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
-      - name: Install gotestsum from source
-        run: |
-          go install gotest.tools/gotestsum@latest
-        env:
-          GOBIN: ${{ github.workspace }}/bin
-      # Binary installer for gotestsum does not work because the
-      # project distributes tarballs for Windows instead of zips
-      # expected by the action.
-      #
-      # - name: Install gotestsum
-      #   uses: jaxxstorm/action-install-gh-release@v1.3.1
-      #   with:
-      #     repo: gotestyourself/gotestsum
-      #     tag: v1.7.0
+      - name: Install gotestsum
+        uses: aaronfriel/action-install-gh-release@v1.4.0-beta.4
+        with:
+          repo: gotestyourself/gotestsum
+          tag: v1.7.0
       - name: Install goteststats
         uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
@@ -232,110 +306,16 @@ jobs:
         run: |
            cd sdk/python
            make build_package
-      - name: python sdk fast tests
-        run: cd sdk/python && make TEST_ALL_DEPS= test_fast
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: python sdk auto tests
-        run: cd sdk/python && make TEST_ALL_DEPS= test_auto
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: python sdk go tests
-        run: cd sdk/python && make TEST_ALL_DEPS= test_go
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: dotnet sdk tests
-        run: cd sdk/dotnet && make TEST_ALL_DEPS= dotnet_test
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: dotnet sdk auto tests
-        run: cd sdk/dotnet && make TEST_ALL_DEPS= auto_test
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: dotnet sdk go tests
-        run: cd sdk/dotnet && make TEST_ALL_DEPS= go_test
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: node sdk sxs tests
-        run: cd sdk/nodejs && make TEST_ALL_DEPS= sxs_tests
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: node sdk unit tests
-        run: cd sdk/nodejs && make TEST_ALL_DEPS= unit_tests
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: node sdk auto tests
-        run: cd sdk/nodejs && make TEST_ALL_DEPS= auto_tests
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: node sdk go tests
-        run: cd sdk/nodejs && make TEST_ALL_DEPS= go_tests
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: go sdk fast tests
-        run: cd sdk/go && make TEST_ALL_DEPS= test_fast
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: go sdk auto tests
-        run: cd sdk/go && make TEST_ALL_DEPS= test_auto
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: build tests
-        run: make TEST_ALL_DEPS= test_build
+        if: ${{ matrix.test-suite.require-build }}
+        run: make test_build
         env:
-          PULUMI_HOME: ${{ github.workspace }}/home
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: pkg tests
-        run: make TEST_ALL_DEPS= test_pkg
+      - name: run tests
+        run: ${{ matrix.test-suite.run }}
         env:
-          PULUMI_HOME: ${{ github.workspace }}/home
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: integration tests
-        run: make TEST_ALL_DEPS= test_integration
-        env:
-          PULUMI_HOME: ${{ github.workspace }}/home
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Convert Node coverage data
         if: ${{ matrix.platform != 'windows-latest' }}
@@ -346,7 +326,7 @@ jobs:
         if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
         run: |
           pulumictl cover merge --in ./coverage --out ./coverage/go-all.txt
-          rm ./coverage/*.cov
+          rm ./coverage/*.cov || true
       - name: Upload code coverage
         if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
         uses: codecov/codecov-action@v2
@@ -360,7 +340,7 @@ jobs:
           mkdir -p test-results
           touch test-results/empty.json # otherwise goteststats fails below when no files match
           goteststats -statistic pkg-time test-results/*.json
-      - name: Summarize Test Times by Indivudal Test
+      - name: Summarize Test Times by Individual Test
         run: |
           goteststats -statistic test-time test-results/*.json | head -n 100 || \
                       if [[ $? -eq 141 ]]; then true; else exit $?; fi

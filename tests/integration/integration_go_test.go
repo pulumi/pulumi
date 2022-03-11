@@ -420,6 +420,8 @@ func TestLargeResourceGo(t *testing.T) {
 
 // Test remote component construction in Go.
 func TestConstructGo(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -447,6 +449,7 @@ func TestConstructGo(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
@@ -466,8 +469,7 @@ func optsForConstructGo(t *testing.T, expectedResourceCount int, env ...string) 
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",
 		},
-		Quick:      true,
-		NoParallel: true, // avoid contention for Dir
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -541,6 +543,8 @@ func TestConstructSlowGo(t *testing.T) {
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainGo(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -568,6 +572,7 @@ func TestConstructPlainGo(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
@@ -585,8 +590,7 @@ func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, env ...str
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v2",
 		},
-		Quick:      true,
-		NoParallel: true, // avoid contention for Dir
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
@@ -600,6 +604,8 @@ func TestConstructUnknownGo(t *testing.T) {
 }
 
 func TestConstructMethodsGo(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		componentDir string
 		env          []string
@@ -615,6 +621,7 @@ func TestConstructMethodsGo(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -623,8 +630,7 @@ func TestConstructMethodsGo(t *testing.T) {
 				Dependencies: []string{
 					"github.com/pulumi/pulumi/sdk/v3",
 				},
-				Quick:      true,
-				NoParallel: true, // avoid contention for Dir
+				Quick: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
 				},
@@ -646,6 +652,8 @@ func TestConstructMethodsErrorsGo(t *testing.T) {
 }
 
 func TestConstructProviderGo(t *testing.T) {
+	t.Parallel()
+
 	const testDir = "construct_component_provider"
 	tests := []struct {
 		componentDir string
@@ -661,6 +669,7 @@ func TestConstructProviderGo(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -669,8 +678,7 @@ func TestConstructProviderGo(t *testing.T) {
 				Dependencies: []string{
 					"github.com/pulumi/pulumi/sdk/v3",
 				},
-				Quick:      true,
-				NoParallel: true, // avoid contention for Dir
+				Quick: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
@@ -763,6 +771,8 @@ func TestTracePropagationGo(t *testing.T) {
 // results of each runtime independently, we have an integration test in each
 // language.
 func TestAboutGo(t *testing.T) {
+	t.Parallel()
+
 	dir := filepath.Join("about", "go")
 
 	e := ptesting.NewEnvironment(t)

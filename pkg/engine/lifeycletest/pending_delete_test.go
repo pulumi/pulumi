@@ -16,6 +16,8 @@ import (
 )
 
 func TestDestroyWithPendingDelete(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -92,6 +94,8 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 }
 
 func TestUpdateWithPendingDelete(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil

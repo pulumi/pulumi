@@ -33,13 +33,19 @@ func testPrintf(t *testing.T, ins ...interface{}) {
 }
 
 func TestSprintfPrompt(t *testing.T) {
+	t.Parallel()
+
 	testPrintf(t, "foo", 42, true)
 }
 
 func TestSprintfInputs(t *testing.T) {
+	t.Parallel()
+
 	testPrintf(t, String("foo"), Int(42), Bool(true))
 }
 
 func TestSprintfOutputs(t *testing.T) {
+	t.Parallel()
+
 	testPrintf(t, ToOutput("foo"), ToOutput(42), ToOutput(true))
 }

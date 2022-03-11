@@ -79,6 +79,8 @@ func TestNameNamespace(t *testing.T) {
 }
 
 func TestIntoQName(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		input    string
 		expected string
@@ -92,7 +94,9 @@ func TestIntoQName(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.input, func(t *testing.T) {
+			t.Parallel()
 			assert.Equal(t, AsQName(c.expected), IntoQName(c.input))
 		})
 	}

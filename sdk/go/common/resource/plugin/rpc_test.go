@@ -33,6 +33,8 @@ func setProperty(key resource.PropertyKey, s *structpb.Value, k string, v interf
 }
 
 func TestAssetSerialize(t *testing.T) {
+	t.Parallel()
+
 	// Ensure that asset and archive serialization round trips.
 	text := "a test asset"
 	pk := resource.PropertyKey("a test asset uri")
@@ -122,6 +124,8 @@ func TestAssetSerialize(t *testing.T) {
 }
 
 func TestComputedSerialize(t *testing.T) {
+	t.Parallel()
+
 	// Ensure that computed properties survive round trips.
 	opts := MarshalOptions{KeepUnknowns: true}
 	pk := resource.PropertyKey("pk")
@@ -148,6 +152,8 @@ func TestComputedSerialize(t *testing.T) {
 }
 
 func TestComputedSkip(t *testing.T) {
+	t.Parallel()
+
 	// Ensure that computed properties are skipped when KeepUnknowns == false.
 	opts := MarshalOptions{KeepUnknowns: false}
 	pk := resource.PropertyKey("pk")
@@ -168,6 +174,8 @@ func TestComputedSkip(t *testing.T) {
 }
 
 func TestComputedReject(t *testing.T) {
+	t.Parallel()
+
 	// Ensure that computed properties produce errors when RejectUnknowns == true.
 	opts := MarshalOptions{RejectUnknowns: true}
 	pk := resource.PropertyKey("pk")
@@ -190,6 +198,8 @@ func TestComputedReject(t *testing.T) {
 }
 
 func TestAssetReject(t *testing.T) {
+	t.Parallel()
+
 	// Ensure that asset and archive properties produce errors when RejectAssets == true.
 
 	opts := MarshalOptions{RejectAssets: true}
@@ -229,6 +239,8 @@ func TestAssetReject(t *testing.T) {
 }
 
 func TestUnsupportedSecret(t *testing.T) {
+	t.Parallel()
+
 	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
 		"value":         "foo",
@@ -244,6 +256,8 @@ func TestUnsupportedSecret(t *testing.T) {
 }
 
 func TestSupportedSecret(t *testing.T) {
+	t.Parallel()
+
 	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: resource.SecretSig,
 		"value":         "foo",
@@ -260,6 +274,8 @@ func TestSupportedSecret(t *testing.T) {
 }
 
 func TestUnknownSig(t *testing.T) {
+	t.Parallel()
+
 	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: "foobar",
 	}))
@@ -273,6 +289,8 @@ func TestUnknownSig(t *testing.T) {
 }
 
 func TestSkipInternalKeys(t *testing.T) {
+	t.Parallel()
+
 	opts := MarshalOptions{SkipInternalKeys: true}
 	expected := &structpb.Struct{
 		Fields: map[string]*structpb.Value{
@@ -297,6 +315,8 @@ func TestSkipInternalKeys(t *testing.T) {
 }
 
 func TestMarshalProperties(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		opts     MarshalOptions
@@ -724,7 +744,10 @@ func TestMarshalProperties(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			actual, err := MarshalProperties(tt.props, tt.opts)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, actual)
@@ -733,6 +756,8 @@ func TestMarshalProperties(t *testing.T) {
 }
 
 func TestResourceReference(t *testing.T) {
+	t.Parallel()
+
 	// Test round-trip
 	opts := MarshalOptions{KeepResources: true}
 	rawProp := resource.MakeCustomResourceReference("fakeURN", "fakeID", "fakeVersion")
@@ -776,6 +801,8 @@ func TestResourceReference(t *testing.T) {
 }
 
 func TestOutputValueRoundTrip(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		raw  resource.PropertyValue
@@ -837,7 +864,10 @@ func TestOutputValueRoundTrip(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			opts := MarshalOptions{KeepOutputValues: true}
 			prop, err := MarshalPropertyValue("", tt.raw, opts)
 			assert.NoError(t, err)
@@ -849,6 +879,8 @@ func TestOutputValueRoundTrip(t *testing.T) {
 }
 
 func TestOutputValueMarshaling(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		opts     MarshalOptions
@@ -1119,7 +1151,10 @@ func TestOutputValueMarshaling(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			actual, err := MarshalPropertyValue("", tt.raw, tt.opts)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, actual)
@@ -1128,6 +1163,8 @@ func TestOutputValueMarshaling(t *testing.T) {
 }
 
 func TestOutputValueUnmarshaling(t *testing.T) {
+	t.Parallel()
+
 	ptr := func(v resource.PropertyValue) *resource.PropertyValue {
 		return &v
 	}
@@ -1544,7 +1581,10 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			prop, err := UnmarshalPropertyValue("", tt.raw, tt.opts)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, prop)
@@ -1553,6 +1593,8 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 }
 
 func TestMarshalPropertiesDiscardsListNestedUnknowns(t *testing.T) {
+	t.Parallel()
+
 	proto := pbStruct("resources", pbList(pbString(UnknownStringValue)))
 
 	propsWithUnknowns, err := UnmarshalProperties(proto, MarshalOptions{KeepUnknowns: true})
@@ -1652,6 +1694,8 @@ func walkValueSelfWithDescendants(
 }
 
 func TestMarshalPropertiesDontSkipOutputs(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		opts     MarshalOptions
@@ -1762,7 +1806,10 @@ func TestMarshalPropertiesDontSkipOutputs(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			actual, err := MarshalProperties(tt.props, tt.opts)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, actual)

@@ -24,6 +24,8 @@ import (
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func TestGenerateProgram(t *testing.T) {
+	t.Parallel()
+
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{
 			Language:   "go",
@@ -36,6 +38,8 @@ func TestGenerateProgram(t *testing.T) {
 }
 
 func TestCollectImports(t *testing.T) {
+	t.Parallel()
+
 	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
 	pulumiImports := codegen.NewStringSet()
 	stdImports := codegen.NewStringSet()

@@ -26,12 +26,16 @@ import (
 )
 
 func TestCLI(t *testing.T) {
+	t.Parallel()
+
 	cli := getCLIAbout()
 	assert.Equal(t, cli.GoVersion, runtime.Version())
 	assert.Equal(t, cli.GoCompiler, runtime.Compiler)
 }
 
 func TestProjectRuntime(t *testing.T) {
+	t.Parallel()
+
 	cmd, err := python.Command("--version")
 	var out []byte
 	if err != nil {
@@ -52,6 +56,8 @@ func TestProjectRuntime(t *testing.T) {
 }
 
 func TestBackend(t *testing.T) {
+	t.Parallel()
+
 	stats, err := host.Info()
 	if err != nil {
 		t.Skipf("Underlying stats call failed: %s", err)

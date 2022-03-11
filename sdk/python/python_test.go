@@ -26,6 +26,8 @@ import (
 )
 
 func TestIsVirtualEnv(t *testing.T) {
+	t.Parallel()
+
 	// Create a new empty test directory.
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
@@ -45,6 +47,8 @@ func TestIsVirtualEnv(t *testing.T) {
 }
 
 func TestActivateVirtualEnv(t *testing.T) {
+	t.Parallel()
+
 	venvName := "venv"
 	venvDir := filepath.Join(venvName, "bin")
 	if runtime.GOOS == windows {
@@ -64,8 +68,12 @@ func TestActivateVirtualEnv(t *testing.T) {
 			expected: []string{"FOO=blah", fmt.Sprintf("PATH=%s", venvDir)},
 		},
 	}
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(fmt.Sprintf("%#v", test.input), func(t *testing.T) {
+			t.Parallel()
+
 			actual := ActivateVirtualEnv(test.input, venvName)
 			assert.Equal(t, test.expected, actual)
 		})
@@ -73,6 +81,8 @@ func TestActivateVirtualEnv(t *testing.T) {
 }
 
 func TestRunningPipInVirtualEnvironment(t *testing.T) {
+	t.Parallel()
+
 	// Skip during short test runs since this test involves downloading dependencies.
 	if testing.Short() {
 		t.Skip("Skipped in short test run")

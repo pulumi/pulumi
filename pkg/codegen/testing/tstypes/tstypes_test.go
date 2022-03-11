@@ -25,6 +25,8 @@ import (
 )
 
 func TestParenInsert(t *testing.T) {
+	t.Parallel()
+
 	ast := astGenerator()
 	rapid.Check(t, func(t *rapid.T) {
 		example := ast.Draw(t, "ast").(TypeAst)

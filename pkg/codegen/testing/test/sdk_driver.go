@@ -9,12 +9,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // Defines an extra check logic that accepts the directory with the
@@ -37,10 +37,13 @@ type SDKTest struct {
 	// Do not compile the generated code for the languages in this set.
 	// This is a helper form of `Skip`.
 	SkipCompileCheck codegen.StringSet
+
+	// Mutex to ensure only a single test operates on directory at a time
+	Mutex sync.Mutex
 }
 
 // ShouldSkipTest indicates if a given test for a given language should be run.
-func (tt SDKTest) ShouldSkipTest(language, test string) bool {
+func (tt *SDKTest) ShouldSkipTest(language, test string) bool {
 
 	// Only language-specific checks.
 	if !strings.HasPrefix(test, language+"/") {
@@ -65,7 +68,7 @@ func (tt SDKTest) ShouldSkipTest(language, test string) bool {
 
 // ShouldSkipCodegen determines if codegen should be run. ShouldSkipCodegen=true
 // further implies no other tests will be run.
-func (tt SDKTest) ShouldSkipCodegen(language string) bool {
+func (tt *SDKTest) ShouldSkipCodegen(language string) bool {
 	return tt.Skip.Has(language + "/any")
 }
 
@@ -78,7 +81,7 @@ const (
 
 var allLanguages = codegen.NewStringSet("python/any", "nodejs/any", "dotnet/any", "go/any", "docs/any")
 
-var PulumiPulumiSDKTests = []SDKTest{
+var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "naming-collisions",
 		Description: "Schema with types that could potentially produce collisions (go).",
@@ -294,7 +297,7 @@ type SDKCodegenOptions struct {
 
 	// The tests to run. A testcase `tt` are assumed to be located at
 	// ../testing/test/testdata/${tt.Directory}
-	TestCases []SDKTest
+	TestCases []*SDKTest
 }
 
 // TestSDKCodegen runs the complete set of SDK code generation tests
@@ -351,24 +354,20 @@ type SDKCodegenOptions struct {
 // `go/tests/go_test.go` before performing compilation and unit test
 // checks over the project generated in `go`.
 func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-line
-
 	if runtime.GOOS == "windows" {
 		t.Skip("TestSDKCodegen is skipped on Windows")
 	}
 
 	testDir := filepath.Join("..", "testing", "test", "testdata")
 
-	// Motivation for flagging: concerns about memory utilizaion
-	// in CI. It can be a nice feature for developing though.
-	parallel := cmdutil.IsTruthy(os.Getenv("PULUMI_PARALLEL_SDK_CODEGEN_TESTS"))
-
 	require.NotNil(t, opts.TestCases, "No test cases were provided. This was probably a mistake")
-	for _, sdkTest := range opts.TestCases {
-		tt := sdkTest // avoid capturing loop variable `sdkTest` in the closure
+	for _, tt := range opts.TestCases {
+		tt := tt // avoid capturing loop variable `sdkTest` in the closure
 		t.Run(tt.Directory, func(t *testing.T) {
-			if parallel {
-				t.Parallel()
-			}
+			t.Parallel()
+
+			tt.Mutex.Lock()
+			t.Cleanup(tt.Mutex.Unlock)
 
 			t.Log(tt.Description)
 
@@ -423,8 +422,9 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			codeDir := filepath.Join(dirPath, opts.Language)
 
 			// Perform the checks.
-			for _, checkVar := range checkOrder {
-				check := checkVar
+			//nolint:paralleltest // test functions are ordered
+			for _, check := range checkOrder {
+				check := check
 				t.Run(check, func(t *testing.T) {
 					if tt.ShouldSkipTest(opts.Language, check) {
 						t.Skip()

@@ -21,6 +21,8 @@ import (
 )
 
 func TestLogFlowArgumentPropagation(t *testing.T) {
+	t.Parallel()
+
 	var engine = "127.0.0.1:12345"
 
 	assert.Equal(t, buildPluginArguments(pluginArgumentOptions{

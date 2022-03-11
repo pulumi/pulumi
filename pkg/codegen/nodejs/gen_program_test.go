@@ -16,6 +16,8 @@ import (
 )
 
 func TestGenerateProgram(t *testing.T) {
+	t.Parallel()
+
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{
 			Language:   "nodejs",
