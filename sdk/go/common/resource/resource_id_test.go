@@ -23,6 +23,8 @@ import (
 )
 
 func TestNewUniqueHex(t *testing.T) {
+	t.Parallel()
+
 	prefix := "prefix"
 	randlen := 8
 	maxlen := 100
@@ -33,6 +35,8 @@ func TestNewUniqueHex(t *testing.T) {
 }
 
 func TestNewUniqueHexNonDeterminism(t *testing.T) {
+	t.Parallel()
+
 	prefix := "prefix"
 	randlen := 8
 	maxlen := 100
@@ -44,6 +48,8 @@ func TestNewUniqueHexNonDeterminism(t *testing.T) {
 }
 
 func TestNewUniqueHexMaxLen2(t *testing.T) {
+	t.Parallel()
+
 	prefix := "prefix"
 	randlen := 8
 	maxlen := 13
@@ -52,6 +58,8 @@ func TestNewUniqueHexMaxLen2(t *testing.T) {
 }
 
 func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
+	t.Parallel()
+
 	prefix := "prefix"
 	// Just enough space to have 8 chars of randomenss
 	randlen := 8
@@ -63,6 +71,8 @@ func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
 }
 
 func TestNewUniqueDefaults(t *testing.T) {
+	t.Parallel()
+
 	prefix := "prefix"
 	id, err := NewUniqueHex(prefix, -1, -1)
 	assert.Nil(t, err)
@@ -71,6 +81,8 @@ func TestNewUniqueDefaults(t *testing.T) {
 }
 
 func TestNewUniqueHexID(t *testing.T) {
+	t.Parallel()
+
 	prefix := "prefix"
 	randlen := 8
 	maxlen := 100
@@ -81,6 +93,8 @@ func TestNewUniqueHexID(t *testing.T) {
 }
 
 func TestNewUniqueHexMaxLenID(t *testing.T) {
+	t.Parallel()
+
 	prefix := "prefix"
 	randlen := 8
 	maxlen := 20
@@ -91,6 +105,8 @@ func TestNewUniqueHexMaxLenID(t *testing.T) {
 }
 
 func TestNewUniqueDefaultsID(t *testing.T) {
+	t.Parallel()
+
 	prefix := "prefix"
 	id, err := NewUniqueHexID(prefix, -1, -1)
 	assert.Nil(t, err)
@@ -99,6 +115,8 @@ func TestNewUniqueDefaultsID(t *testing.T) {
 }
 
 func TestNewUniqueV2HexFallback(t *testing.T) {
+	t.Parallel()
+
 	urn := NewURN("stack", "project", "", "test:index:custom", "test")
 	sequenceNumber := 0
 	prefix := "prefix"
@@ -111,6 +129,8 @@ func TestNewUniqueV2HexFallback(t *testing.T) {
 }
 
 func TestNewUniqueV2Hex(t *testing.T) {
+	t.Parallel()
+
 	urn := NewURN("stack", "project", "", "test:index:custom", "test")
 	sequenceNumber := 1
 	prefix := "prefix"
@@ -123,6 +143,8 @@ func TestNewUniqueV2Hex(t *testing.T) {
 }
 
 func TestNewUniqueHexV2MaxLen2(t *testing.T) {
+	t.Parallel()
+
 	urn := NewURN("stack", "project", "", "test:index:custom", "test")
 	sequenceNumber := 1
 	prefix := "prefix"
@@ -133,6 +155,8 @@ func TestNewUniqueHexV2MaxLen2(t *testing.T) {
 }
 
 func TestNewUniqueHexV2EnsureRandomness2(t *testing.T) {
+	t.Parallel()
+
 	urn := NewURN("stack", "project", "", "test:index:custom", "test")
 	sequenceNumber := 1
 	prefix := "prefix"
@@ -146,6 +170,8 @@ func TestNewUniqueHexV2EnsureRandomness2(t *testing.T) {
 }
 
 func TestNewUniqueV2Defaults(t *testing.T) {
+	t.Parallel()
+
 	urn := NewURN("stack", "project", "", "test:index:custom", "test")
 	sequenceNumber := 1
 	prefix := "prefix"
@@ -156,6 +182,8 @@ func TestNewUniqueV2Defaults(t *testing.T) {
 }
 
 func TestNewUniqueV2HexDeterminism(t *testing.T) {
+	t.Parallel()
+
 	urn := NewURN("stack", "project", "", "test:index:custom", "test")
 	sequenceNumber := 1
 	prefix := "prefix"

@@ -5,6 +5,8 @@ import (
 )
 
 func TestMakeSafeEnumName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input    string
 		expected string
@@ -24,7 +26,10 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"Equals", "EqualsValue", false},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := makeSafeEnumName(tt.input, "TypeName")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("makeSafeEnumName() error = %v, wantErr %v", err, tt.wantErr)
@@ -38,6 +43,8 @@ func TestMakeSafeEnumName(t *testing.T) {
 }
 
 func Test_makeValidIdentifier(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input    string
 		expected string
@@ -46,7 +53,10 @@ func Test_makeValidIdentifier(t *testing.T) {
 		{"8", "_8"},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			if got := makeValidIdentifier(tt.input); got != tt.expected {
 				t.Errorf("makeValidIdentifier() = %v, want %v", got, tt.expected)
 			}

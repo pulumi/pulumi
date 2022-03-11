@@ -35,6 +35,8 @@ import (
 //
 // The test is was made to pass by using a custom-made `workGroup`.
 func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
+	t.Parallel()
+
 	// Usually panics on iteration 100-200
 	for i := 0; i < 1000; i++ {
 		t.Logf("Iteration %d\n", i)
@@ -54,6 +56,8 @@ func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 // An extended version of `TestLoggingFromApplyCausesNoPanics`, more
 // realistically demonstrating the original usage pattern.
 func TestLoggingFromResourceApplyCausesNoPanics(t *testing.T) {
+	t.Parallel()
+
 	// Usually panics on iteration 100-200
 	for i := 0; i < 1000; i++ {
 		t.Logf("Iteration %d\n", i)
@@ -108,6 +112,8 @@ func NewLoggingTestResource(
 // called from a separate goroutine). This used to cause a panic but
 // is now resolved by using `workGroup`.
 func TestWaitingCausesNoPanics(t *testing.T) {
+	t.Parallel()
+
 	for i := 0; i < 10; i++ {
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
@@ -123,6 +129,8 @@ func TestWaitingCausesNoPanics(t *testing.T) {
 }
 
 func TestCollapseAliases(t *testing.T) {
+	t.Parallel()
+
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			assert.Equal(t, "test:resource:type", args.TypeToken)
@@ -261,6 +269,8 @@ func (rs *Res) i(ctx *Context, t *testing.T) Resource {
 	return r
 }
 func TestMergeProviders(t *testing.T) {
+	t.Parallel()
+
 	provType := func(t string) string {
 		return "pulumi:providers:" + t
 	}
@@ -311,8 +321,12 @@ func TestMergeProviders(t *testing.T) {
 			expected:  []string{"t2"},
 		},
 	}
+	// nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, tt := range tests {
+		i, tt := i, tt
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			t.Parallel()
+
 			err := RunErr(func(ctx *Context) error {
 				providers := map[string]ProviderResource{}
 				for _, p := range tt.providers {

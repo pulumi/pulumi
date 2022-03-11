@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // mutates environment
 func TestConcurrentCredentialsWrites(t *testing.T) {
 	// save and remember to restore creds in ~/.pulumi/credentials
 	// as the test will be modifying them

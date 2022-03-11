@@ -23,6 +23,8 @@ import (
 )
 
 func TestGeneratePackageTree(t *testing.T) {
+	t.Parallel()
+
 	dctx := newDocGenContext()
 	initTestPackageSpec(t)
 
@@ -38,6 +40,8 @@ func TestGeneratePackageTree(t *testing.T) {
 	assert.NotEmpty(t, pkgTree, "Package tree was empty")
 
 	t.Run("ValidatePackageTreeTopLevelItems", func(t *testing.T) {
+		t.Parallel()
+
 		assert.Equal(t, entryTypeModule, pkgTree[0].Type)
 		assert.Equal(t, entryTypeModule, pkgTree[1].Type)
 		assert.Equal(t, entryTypeResource, pkgTree[2].Type)
@@ -46,6 +50,8 @@ func TestGeneratePackageTree(t *testing.T) {
 	})
 
 	t.Run("ValidateSortOrder", func(t *testing.T) {
+		t.Parallel()
+
 		assert.Equal(t, "module", pkgTree[0].Name)
 		assert.Equal(t, "module2", pkgTree[1].Name)
 		assert.Equal(t, "PackageLevelResource", pkgTree[2].Name)
@@ -54,6 +60,8 @@ func TestGeneratePackageTree(t *testing.T) {
 	})
 
 	t.Run("ValidatePackageTreeModuleChildren", func(t *testing.T) {
+		t.Parallel()
+
 		assert.Equal(t, 2, len(pkgTree[0].Children))
 		children := pkgTree[0].Children
 		assert.Equal(t, entryTypeResource, children[0].Type)

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build nodejs || all
 // +build nodejs all
 
 package workspace
@@ -27,9 +28,11 @@ var tarball = map[string][]byte{
 }
 
 func TestNodeNPMInstall(t *testing.T) {
+	t.Parallel()
 	testPluginInstall(t, "node_modules", tarball)
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestNodeYarnInstall(t *testing.T) {
 	os.Setenv("PULUMI_PREFER_YARN", "true")
 	testPluginInstall(t, "node_modules", tarball)

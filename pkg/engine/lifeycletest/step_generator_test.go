@@ -14,6 +14,8 @@ import (
 
 // TestDuplicateURN tests that duplicate URNs are disallowed.
 func TestDuplicateURN(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -41,6 +43,8 @@ func TestDuplicateURN(t *testing.T) {
 
 // TestDuplicateAlias tests that multiple new resources may not claim to be aliases for the same old resource.
 func TestDuplicateAlias(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil

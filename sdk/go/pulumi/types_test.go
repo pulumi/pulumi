@@ -40,6 +40,8 @@ func newIntOutput() IntOutput {
 }
 
 func TestBasicOutputs(t *testing.T) {
+	t.Parallel()
+
 	// Just test basic resolve and reject functionality.
 	{
 		out, resolve, _ := NewOutput()
@@ -66,6 +68,8 @@ func TestBasicOutputs(t *testing.T) {
 }
 
 func TestArrayOutputs(t *testing.T) {
+	t.Parallel()
+
 	out := ArrayOutput{newOutputState(nil, reflect.TypeOf([]interface{}{}))}
 	go func() {
 		out.resolve([]interface{}{nil, 0, "x"}, true, false, nil)
@@ -84,6 +88,8 @@ func TestArrayOutputs(t *testing.T) {
 }
 
 func TestBoolOutputs(t *testing.T) {
+	t.Parallel()
+
 	out := BoolOutput{newOutputState(nil, reflect.TypeOf(false))}
 	go func() {
 		out.resolve(true, true, false, nil)
@@ -97,6 +103,8 @@ func TestBoolOutputs(t *testing.T) {
 }
 
 func TestMapOutputs(t *testing.T) {
+	t.Parallel()
+
 	out := MapOutput{newOutputState(nil, reflect.TypeOf(map[string]interface{}{}))}
 	go func() {
 		out.resolve(map[string]interface{}{
@@ -117,6 +125,8 @@ func TestMapOutputs(t *testing.T) {
 }
 
 func TestNumberOutputs(t *testing.T) {
+	t.Parallel()
+
 	out := Float64Output{newOutputState(nil, reflect.TypeOf(float64(0)))}
 	go func() {
 		out.resolve(42.345, true, false, nil)
@@ -130,6 +140,8 @@ func TestNumberOutputs(t *testing.T) {
 }
 
 func TestStringOutputs(t *testing.T) {
+	t.Parallel()
+
 	out := StringOutput{newOutputState(nil, reflect.TypeOf(""))}
 	go func() {
 		out.resolve("a stringy output", true, false, nil)
@@ -143,6 +155,8 @@ func TestStringOutputs(t *testing.T) {
 }
 
 func TestResolveOutputToOutput(t *testing.T) {
+	t.Parallel()
+
 	// Test that resolving an output to an output yields the value, not the output.
 	{
 		out, resolve, _ := NewOutput()
@@ -172,6 +186,8 @@ func TestResolveOutputToOutput(t *testing.T) {
 
 // Test that ToOutput works with a struct type.
 func TestToOutputStruct(t *testing.T) {
+	t.Parallel()
+
 	out := ToOutput(nestedTypeInputs{Foo: String("bar"), Bar: Int(42)})
 	_, ok := out.(nestedTypeOutput)
 	assert.True(t, ok)
@@ -236,6 +252,8 @@ func (i arrayLenInput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutp
 
 // Test that ToOutput converts inputs appropriately.
 func TestToOutputConvert(t *testing.T) {
+	t.Parallel()
+
 	out := ToOutput(nestedTypeInputs{Foo: ID("bar"), Bar: arrayLenInput{Int(42)}})
 	_, ok := out.(nestedTypeOutput)
 	assert.True(t, ok)
@@ -250,6 +268,8 @@ func TestToOutputConvert(t *testing.T) {
 
 // Test that ToOutput correctly handles nested inputs and outputs when the argument is an input or interface{}.
 func TestToOutputAny(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		S StringInput
 		I IntInput
@@ -291,6 +311,8 @@ func TestToOutputAny(t *testing.T) {
 }
 
 func TestToOutputAnyDeps(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		S StringInput
 		I IntInput
@@ -375,6 +397,8 @@ func (*argsInputs) ElementType() reflect.Type {
 
 // Test that ToOutput correctly handles nested inputs when the argument is an input with no corresponding output type.
 func TestToOutputInputAny(t *testing.T) {
+	t.Parallel()
+
 	out := ToOutput(&argsInputs{
 		S: ID("hello"),
 		I: Int(42),
@@ -398,6 +422,8 @@ func TestToOutputInputAny(t *testing.T) {
 
 // Test that Unsecret will return an Output that has an unwrapped secret
 func TestUnsecret(t *testing.T) {
+	t.Parallel()
+
 	s := ToSecret(String("foo"))
 	// assert that secret is immediately secret
 	assert.True(t, IsSecret(s))
@@ -440,6 +466,8 @@ func TestUnsecret(t *testing.T) {
 
 // Test that SecretT sets appropriate internal state and that IsSecret appropriately reads it.
 func TestSecrets(t *testing.T) {
+	t.Parallel()
+
 	s := ToSecret(String("foo"))
 	// assert that secret is immediately secret
 	assert.True(t, IsSecret(s))
@@ -479,6 +507,8 @@ func TestSecrets(t *testing.T) {
 
 // Test that secretness is properly bubbled up with all/apply.
 func TestSecretApply(t *testing.T) {
+	t.Parallel()
+
 	s1 := ToSecret(String("foo"))
 	// assert that secret is immediately secret
 	assert.True(t, IsSecret(s1))
@@ -522,6 +552,8 @@ func TestSecretApply(t *testing.T) {
 }
 
 func TestNil(t *testing.T) {
+	t.Parallel()
+
 	ao := Any(nil)
 	v, known, secret, deps, err := await(ao)
 	assert.True(t, known)
@@ -569,6 +601,8 @@ func TestNil(t *testing.T) {
 
 // Test that dependencies flow through all/apply.
 func TestDeps(t *testing.T) {
+	t.Parallel()
+
 	stringDep1, stringDep2 := &ResourceState{}, &ResourceState{}
 	stringOut := StringOutput{newOutputState(nil, reflect.TypeOf(""), stringDep1)}
 	assert.ElementsMatch(t, []Resource{stringDep1}, stringOut.deps)
@@ -631,18 +665,24 @@ func testMixedWaitGroups(t *testing.T, combine func(o1, o2 Output) Output) {
 }
 
 func TestMixedWaitGroupsAll(t *testing.T) {
+	t.Parallel()
+
 	testMixedWaitGroups(t, func(o1, o2 Output) Output {
 		return All(o1, o2)
 	})
 }
 
 func TestMixedWaitGroupsAny(t *testing.T) {
+	t.Parallel()
+
 	testMixedWaitGroups(t, func(o1, o2 Output) Output {
 		return Any(struct{ O1, O2 Output }{o1, o2})
 	})
 }
 
 func TestMixedWaitGroupsApply(t *testing.T) {
+	t.Parallel()
+
 	testMixedWaitGroups(t, func(o1, o2 Output) Output {
 		return o1.ApplyT(func(_ interface{}) interface{} {
 			return o2
@@ -666,6 +706,8 @@ func (FooArgs) ElementType() reflect.Type {
 }
 
 func TestRegisterInputType(t *testing.T) {
+	t.Parallel()
+
 	assert.PanicsWithError(t, "expected string to be an interface", func() {
 		RegisterInputType(reflect.TypeOf(""), FooArgs{})
 	})

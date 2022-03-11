@@ -23,6 +23,8 @@ import (
 )
 
 func TestTrimPartialCommand(t *testing.T) {
+	t.Parallel()
+
 	noPartial := Red + "foo" + Green + "bar" + Reset
 	assert.Equal(t, noPartial, TrimPartialCommand(noPartial))
 
@@ -37,6 +39,8 @@ func codes(codes ...string) string {
 }
 
 func TestColorizer(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		command, codes string
 	}{
@@ -61,7 +65,10 @@ func TestColorizer(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.command, func(t *testing.T) {
+			t.Parallel()
+
 			const content = "hello"
 			str := c.command + content + Reset + "\n"
 
@@ -83,6 +90,8 @@ func TestColorizer(t *testing.T) {
 
 // TestTrimColorizedString provides extra coverage for TrimColorizedString.
 func TestTrimColorizedString(t *testing.T) {
+	t.Parallel()
+
 	str := "hello, " + Green + "world" + Reset + "!!"
 
 	actual := TrimColorizedString(str, len("hello"))

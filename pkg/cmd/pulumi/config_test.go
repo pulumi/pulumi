@@ -25,6 +25,8 @@ import (
 )
 
 func TestPrettyKeyForProject(t *testing.T) {
+	t.Parallel()
+
 	proj := &workspace.Project{
 		Name:    tokens.PackageName("test-package"),
 		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
@@ -36,6 +38,8 @@ func TestPrettyKeyForProject(t *testing.T) {
 }
 
 func TestSecretDetection(t *testing.T) {
+	t.Parallel()
+
 	assert.True(t, looksLikeSecret(config.MustMakeKey("test", "token"), "1415fc1f4eaeb5e096ee58c1480016638fff29bf"))
 	assert.True(t, looksLikeSecret(config.MustMakeKey("test", "apiToken"), "1415fc1f4eaeb5e096ee58c1480016638fff29bf"))
 

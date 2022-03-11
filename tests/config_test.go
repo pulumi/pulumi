@@ -28,7 +28,11 @@ import (
 )
 
 func TestConfigCommands(t *testing.T) {
+	t.Parallel()
+
 	t.Run("SanityTest", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -119,6 +123,8 @@ func TestConfigCommands(t *testing.T) {
 	})
 
 	t.Run("YAMLTest", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {

@@ -68,6 +68,8 @@ func getTestPackage(t *testing.T) *schema.Package {
 }
 
 func TestGetDocLinkForResourceType(t *testing.T) {
+	t.Parallel()
+
 	pkg := getTestPackage(t)
 
 	d := DocLanguageHelper{}
@@ -77,6 +79,8 @@ func TestGetDocLinkForResourceType(t *testing.T) {
 }
 
 func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
+	t.Parallel()
+
 	pkg := getTestPackage(t)
 
 	namespaces := map[string]string{

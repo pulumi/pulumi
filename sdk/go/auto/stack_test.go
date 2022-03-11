@@ -22,6 +22,8 @@ import (
 const testPermalink = "Permalink: https://gotest"
 
 func TestGetPermalink(t *testing.T) {
+	t.Parallel()
+
 	tests := map[string]struct {
 		testee string
 		want   string
@@ -31,8 +33,12 @@ func TestGetPermalink(t *testing.T) {
 		"failed parsing":     {testee: testPermalink, err: ErrParsePermalinkFailed},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for name, test := range tests {
+		name, test := name, test
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := GetPermalink(test.testee)
 			if err != nil {
 				if test.err == nil || test.err != err {

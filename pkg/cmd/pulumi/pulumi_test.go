@@ -21,6 +21,7 @@ import (
 )
 
 func TestIsDevVersion(t *testing.T) {
+	t.Parallel()
 
 	// This function primarily focuses on the "Pre" section of the semver string,
 	// so we'll focus on testing that.

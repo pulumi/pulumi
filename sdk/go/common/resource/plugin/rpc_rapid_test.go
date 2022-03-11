@@ -34,6 +34,8 @@ var marshalOpts = MarshalOptions{
 }
 
 func TestOutputValueTurnaround(t *testing.T) {
+	t.Parallel()
+
 	rapid.Check(t, func(t *rapid.T) {
 		v := resource_testing.OutputPropertyGenerator(1).Draw(t, "output").(resource.PropertyValue)
 		pb, err := MarshalPropertyValue("", v, marshalOpts)
@@ -48,6 +50,8 @@ func TestOutputValueTurnaround(t *testing.T) {
 }
 
 func TestSerializePropertyValues(t *testing.T) {
+	t.Parallel()
+
 	rapid.Check(t, func(t *rapid.T) {
 		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue)
 		_, err := MarshalPropertyValue("", v, marshalOpts)
@@ -56,6 +60,8 @@ func TestSerializePropertyValues(t *testing.T) {
 }
 
 func TestDeserializePropertyValues(t *testing.T) {
+	t.Parallel()
+
 	rapid.Check(t, func(t *rapid.T) {
 		v := ValueGenerator(6).Draw(t, "wire value").(*structpb.Value)
 		_, err := UnmarshalPropertyValue("", v, marshalOpts)

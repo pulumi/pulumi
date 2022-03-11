@@ -28,6 +28,8 @@ import (
 
 // Test that RunCommand writes the command's output to a log file.
 func TestRunCommandLog(t *testing.T) {
+	t.Parallel()
+
 	// Try to find node on the path. We need a program to run, and node is probably
 	// available on all platforms where we're testing. If it's not found, skip the test.
 	node, err := exec.LookPath("node")
@@ -58,6 +60,8 @@ func TestRunCommandLog(t *testing.T) {
 }
 
 func TestSanitizedPkg(t *testing.T) {
+	t.Parallel()
+
 	v2 := getSanitizedModulePath("github.com/pulumi/pulumi-docker/sdk/v2")
 	assert.Equal(t, "github.com/pulumi/pulumi-docker/sdk", v2)
 
@@ -69,6 +73,8 @@ func TestSanitizedPkg(t *testing.T) {
 }
 
 func TestDepRootCalc(t *testing.T) {
+	t.Parallel()
+
 	var dep string
 
 	dep = getRewritePath("github.com/pulumi/pulumi-docker/sdk/v2", "/gopath", "")

@@ -12,6 +12,8 @@ import (
 )
 
 func TestRewriteConversions(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		input, output string
 		to            model.Type
@@ -124,6 +126,8 @@ func TestRewriteConversions(t *testing.T) {
 }
 
 func TestRewriteConversionsAfterApply(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		input, output string
 	}{

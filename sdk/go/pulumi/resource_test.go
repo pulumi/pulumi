@@ -41,6 +41,8 @@ type testProv struct {
 }
 
 func TestResourceOptionMergingParent(t *testing.T) {
+	t.Parallel()
+
 	// last parent always wins, including nil values
 	p1 := &testRes{foo: "a"}
 	p2 := &testRes{foo: "b"}
@@ -59,6 +61,8 @@ func TestResourceOptionMergingParent(t *testing.T) {
 }
 
 func TestResourceOptionMergingProvider(t *testing.T) {
+	t.Parallel()
+
 	// all providers are merged into a map
 	// last specified provider for a given pkg wins
 	p1 := &testProv{foo: "a"}
@@ -126,6 +130,8 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 }
 
 func TestResourceOptionMergingDependsOn(t *testing.T) {
+	t.Parallel()
+
 	// Depends on arrays are always appended together
 
 	newRes := func(name string) (Resource, URN) {
@@ -172,18 +178,24 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 }
 
 func TestResourceOptionMergingProtect(t *testing.T) {
+	t.Parallel()
+
 	// last value wins
 	opts := merge(Protect(true), Protect(false))
 	assert.Equal(t, false, opts.Protect)
 }
 
 func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
+	t.Parallel()
+
 	// last value wins
 	opts := merge(DeleteBeforeReplace(true), DeleteBeforeReplace(false))
 	assert.Equal(t, false, opts.DeleteBeforeReplace)
 }
 
 func TestResourceOptionMergingImport(t *testing.T) {
+	t.Parallel()
+
 	id1 := ID("a")
 	id2 := ID("a")
 
@@ -201,6 +213,8 @@ func TestResourceOptionMergingImport(t *testing.T) {
 }
 
 func TestResourceOptionMergingCustomTimeout(t *testing.T) {
+	t.Parallel()
+
 	c1 := &CustomTimeouts{Create: "1m"}
 	c2 := &CustomTimeouts{Create: "2m"}
 	var c3 *CustomTimeouts
@@ -219,6 +233,8 @@ func TestResourceOptionMergingCustomTimeout(t *testing.T) {
 }
 
 func TestResourceOptionMergingIgnoreChanges(t *testing.T) {
+	t.Parallel()
+
 	// IgnoreChanges arrays are always appended together
 	i1 := "a"
 	i2 := "b"
@@ -242,6 +258,8 @@ func TestResourceOptionMergingIgnoreChanges(t *testing.T) {
 }
 
 func TestResourceOptionMergingAdditionalSecretOutputs(t *testing.T) {
+	t.Parallel()
+
 	// AdditionalSecretOutputs arrays are always appended together
 	a1 := "a"
 	a2 := "b"
@@ -265,6 +283,8 @@ func TestResourceOptionMergingAdditionalSecretOutputs(t *testing.T) {
 }
 
 func TestResourceOptionMergingAliases(t *testing.T) {
+	t.Parallel()
+
 	// Aliases arrays are always appended together
 	a1 := Alias{Name: String("a")}
 	a2 := Alias{Name: String("b")}
@@ -288,6 +308,8 @@ func TestResourceOptionMergingAliases(t *testing.T) {
 }
 
 func TestResourceOptionMergingTransformations(t *testing.T) {
+	t.Parallel()
+
 	// Transormations arrays are always appended together
 	t1 := func(args *ResourceTransformationArgs) *ResourceTransformationResult {
 		return &ResourceTransformationResult{}
@@ -326,6 +348,8 @@ func assertTransformations(t *testing.T, t1 []ResourceTransformation, t2 []Resou
 }
 
 func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
+	t.Parallel()
+
 	// ReplaceOnChanges arrays are always appended together
 	i1 := "a"
 	i2 := "b"
@@ -349,6 +373,8 @@ func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
 }
 
 func TestNewResourceInput(t *testing.T) {
+	t.Parallel()
+
 	var resource Resource = &testRes{foo: "abracadabra"}
 	var resourceInput ResourceInput = NewResourceInput(resource)
 
@@ -367,7 +393,11 @@ func TestNewResourceInput(t *testing.T) {
 }
 
 func TestDependsOnInputs(t *testing.T) {
+	t.Parallel()
+
 	t.Run("known", func(t *testing.T) {
+		t.Parallel()
+
 		err := RunErr(func(ctx *Context) error {
 			depTracker := trackDependencies(ctx)
 
@@ -387,6 +417,8 @@ func TestDependsOnInputs(t *testing.T) {
 	})
 
 	t.Run("dynamic", func(t *testing.T) {
+		t.Parallel()
+
 		err := RunErr(func(ctx *Context) error {
 			depTracker := trackDependencies(ctx)
 
