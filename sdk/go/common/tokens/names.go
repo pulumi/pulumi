@@ -61,7 +61,7 @@ const QNameDelimiter = "/"
 var QNameRegexp = regexp.MustCompile(QNameRegexpPattern)
 var QNameRegexpPattern = "(" + NameRegexpPattern + "\\" + QNameDelimiter + ")*" + NameRegexpPattern
 
-// IsQName checks whether a string is a legal Name.
+// IsQName checks whether a string is a legal QName.
 func IsQName(s string) bool {
 	return s != "" && QNameRegexp.FindString(s) == s
 }
