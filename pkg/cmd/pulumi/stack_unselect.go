@@ -15,11 +15,14 @@
 package main
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"fmt"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
+// Resets the currently selected stack from the current workspace such that next time the users get prompted with a stack to select
 func newStackUnselectCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "unselect",
@@ -30,7 +33,27 @@ func newStackUnselectCmd() *cobra.Command {
 			"from.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			state.UnselectStack()
+			currentWorkspace, err := workspace.New()
+			if err != nil {
+				return err
+			}
+
+			settings := currentWorkspace.Settings()
+			if !settings.IsEmpty() {
+				// a stack is selected
+				// reset it
+				settings.Stack = ""
+				saveResult := currentWorkspace.Save()
+				if saveResult == nil {
+					// saving changes was successful
+					fmt.Println("Stack was unselected")
+				} else {
+					fmt.Println("Something went wrong when unselecting the current stack from the workspace")
+				}
+
+				return saveResult
+			}
+
 			return nil
 		}),
 	}
