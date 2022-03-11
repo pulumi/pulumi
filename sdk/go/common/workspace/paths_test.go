@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // Theses test use and change the current working directory
 func TestDetectProjectAndPath(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "projecttest")
 	assert.NoError(t, err)
@@ -48,6 +49,7 @@ func TestDetectProjectAndPath(t *testing.T) {
 	assert.Equal(t, "nodejs", project.Runtime.name)
 }
 
+//nolint:paralleltest // Theses test use and change the current working directory
 func TestProjectStackPath(t *testing.T) {
 	expectedPath := func(expectedPath string) func(t *testing.T, projectDir, path string, err error) {
 		return func(t *testing.T, projectDir, path string, err error) {
