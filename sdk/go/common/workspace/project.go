@@ -87,12 +87,12 @@ type Project struct {
 	// License is the optional license governing this project's usage.
 	License *string `json:"license,omitempty" yaml:"license,omitempty"`
 
-	// Config has been renamed to StacksDirectory.
+	// Config has been renamed to StackConfigDir.
 	Config interface{} `json:"config,omitempty" yaml:"config,omitempty"`
 
-	// StacksDirectory indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder
+	// StackConfigDir indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder
 	// Pulumi.yaml is in.
-	StacksDirectory string `json:"stacksDirectory,omitempty" yaml:"stacksDirectory,omitempty"`
+	StackConfigDir string `json:"stackConfigDir,omitempty" yaml:"stackConfigDir,omitempty"`
 
 	// Template is an optional template manifest, if this project is a template.
 	Template *ProjectTemplate `json:"template,omitempty" yaml:"template,omitempty"`

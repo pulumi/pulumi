@@ -63,12 +63,12 @@ func TestProjectStackPath(t *testing.T) {
 		yamlContents string
 		validate     func(t *testing.T, projectDir, path string, err error)
 	}{{
-		"WithoutStacksDirectory",
+		"WithoutStackConfigDir",
 		"name: some_project\ndescription: Some project\nruntime: nodejs\n",
 		expectedPath("Pulumi.my_stack.yaml"),
 	}, {
-		"WithStacksDirectory",
-		"name: some_project\ndescription: Some project\nruntime: nodejs\nstacksDirectory: stacks\n",
+		"WithStackConfigDir",
+		"name: some_project\ndescription: Some project\nruntime: nodejs\nstackConfigDir: stacks\n",
 		expectedPath(filepath.Join("stacks", "Pulumi.my_stack.yaml")),
 	}, {
 		"WithConfig",
@@ -76,9 +76,10 @@ func TestProjectStackPath(t *testing.T) {
 		expectedPath(filepath.Join("stacks", "Pulumi.my_stack.yaml")),
 	}, {
 		"WithBoth",
-		"name: some_project\ndescription: Some project\nruntime: nodejs\nconfig: stacks\nstacksDirectory: stacks\n",
+		"name: some_project\ndescription: Some project\nruntime: nodejs\nconfig: stacksA\nstackConfigDir: stacksB\n",
 		func(t *testing.T, projectDir, path string, err error) {
 			assert.Error(t, err)
+			assert.Equal(t, "can not set `config` and `stackConfigDir`, remove the `config` entry", err.Error())
 		},
 	}}
 

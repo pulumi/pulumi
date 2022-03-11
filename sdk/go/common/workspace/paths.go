@@ -100,20 +100,20 @@ func DetectProjectStackPath(stackName tokens.QName) (string, error) {
 
 	fileName := fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName), filepath.Ext(projPath))
 
-	// Back compat: StacksDirectory used to be called Config.
+	// Back compat: StackConfigDir used to be called Config.
 	configValue, hasConfigValue := proj.Config.(string)
 	hasConfigValue = hasConfigValue && configValue != ""
 
-	if proj.StacksDirectory != "" {
-		// If config and stacksDirectory are both set return an error
+	if proj.StackConfigDir != "" {
+		// If config and stackConfigDir are both set return an error
 		if hasConfigValue {
-			return "", fmt.Errorf("can not set `config` and `stacksDirectory`, remove the `config` entry")
+			return "", fmt.Errorf("can not set `config` and `stackConfigDir`, remove the `config` entry")
 		}
 
-		return filepath.Join(filepath.Dir(projPath), proj.StacksDirectory, fileName), nil
+		return filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
 	}
 
-	// Back compat: If StacksDirectory is not present and Config is given and it's a non-empty string use it
+	// Back compat: If StackConfigDir is not present and Config is given and it's a non-empty string use it
 	// for the stacks directory.
 	if hasConfigValue {
 		return filepath.Join(filepath.Dir(projPath), configValue, fileName), nil
