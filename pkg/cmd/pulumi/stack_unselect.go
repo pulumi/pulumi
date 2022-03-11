@@ -22,7 +22,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Resets the currently selected stack from the current workspace such that next time the users get prompted with a stack to select
+// Resets the currently selected stack from the current workspace such that
+// next time the users get prompted with a stack to select
 func newStackUnselectCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "unselect",
