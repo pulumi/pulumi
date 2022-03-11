@@ -136,8 +136,8 @@ func TestStackCommands(t *testing.T) {
 		assert.Equal(t, "two", *current)
 
 		e.RunCommand("pulumi", "stack", "unselect")
-		stacks, current = integration.GetStacks(e)
-		if current != nil {
+		_, updatedCurrentStack := integration.GetStacks(e)
+		if updatedCurrentStack != nil {
 			t.Fatal("No stack should be selected after unselect was executed")
 		}
 	})
