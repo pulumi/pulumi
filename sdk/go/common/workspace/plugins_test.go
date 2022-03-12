@@ -429,7 +429,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		assert.Nil(t, version)
 		assert.Equal(t, "GetLatestVersion is not supported for plugins using PluginDownloadURL", err.Error())
 	})
-	t.Run("Test Downloading From GitHub Private Releases", func(t *testing.T) {
+	t.Run("Test GetLatestVersion From GitHub Private Releases", func(t *testing.T) {
 		token := "RaNd0m70K3n_"
 		os.Setenv("PULUMI_EXPERIMENTAL", "true")
 		os.Setenv("GITHUB_REPOSITORY_OWNER", "private")
@@ -453,6 +453,32 @@ func TestPluginGetLatestVersion(t *testing.T) {
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
 					"tag_name": "v1.0.2"
+				}`)
+			}
+
+			panic("Unexpected call to getHTTPResponse")
+		}
+		version, err := source.GetLatestVersion(getHTTPResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedVersion, *version)
+	})
+	t.Run("Test GetLatestVersion From Private Pulumi GitHub Releases", func(t *testing.T) {
+		token := "RaNd0m70K3n_"
+		os.Setenv("GITHUB_TOKEN", token)
+		info := PluginInfo{
+			PluginDownloadURL: "",
+			Name:              "mock-private",
+			Kind:              PluginKind("resource"),
+		}
+		expectedVersion := semver.MustParse("4.37.5")
+		source := info.GetSource()
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mock-private/releases/latest" {
+				assert.Equal(t, fmt.Sprintf("token %s", token), req.Header.Get("Authentication"))
+				assert.Equal(t, "application/json", req.Header.Get("Accept"))
+				// Minimal JSON from the releases API to get the test to pass
+				return newMockReadCloserString(`{
+					"tag_name": "v4.37.5"
 				}`)
 			}
 
