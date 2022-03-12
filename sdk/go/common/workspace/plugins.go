@@ -183,7 +183,7 @@ func (source *getPulumiSource) Download(
 		serverURL,
 		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)))
 
-	req, err := buildHTTPRequest(endpoint, "", "", "")
+	req, err := buildHTTPRequest(endpoint, "")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -196,36 +196,22 @@ type githubSource struct {
 	name         string
 	kind         PluginKind
 
-	token               string
-	username            string
-	personalAccessToken string
+	token string
 }
 
 // Creates a new github source adding authentication data in the environment, if it exists
 func newGithubSource(organization, name string, kind PluginKind) *githubSource {
-	ghToken := os.Getenv("GITHUB_TOKEN")
-	paToken := ""
-	actor := ""
-	if ghToken == "" {
-		paToken = os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
-		actor = os.Getenv("GITHUB_ACTOR")
-	}
-
-	source := &githubSource{
+	return &githubSource{
 		organization: organization,
 		name:         name,
 		kind:         kind,
 
-		token:               ghToken,
-		username:            actor,
-		personalAccessToken: paToken,
+		token: os.Getenv("GITHUB_TOKEN"),
 	}
-
-	return source
 }
 
 func (source *githubSource) HasAuthentication() bool {
-	return source.token != "" || (source.username != "" && source.personalAccessToken != "")
+	return source.token != ""
 }
 
 func (source *githubSource) GetLatestVersion(
@@ -234,7 +220,7 @@ func (source *githubSource) GetLatestVersion(
 		"https://api.github.com/repos/%s/pulumi-%s/releases/latest",
 		source.organization, source.name)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
-	req, err := buildHTTPRequest(releaseURL, source.token, source.username, source.personalAccessToken)
+	req, err := buildHTTPRequest(releaseURL, source.token)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +261,7 @@ func (source *githubSource) Download(
 			source.organization, source.name, version.String(), url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz",
 				source.kind, source.name, version.String(), opSy, arch)))
 
-		req, err := buildHTTPRequest(pluginURL, "", "", "")
+		req, err := buildHTTPRequest(pluginURL, "")
 		if err != nil {
 			return nil, -1, err
 		}
@@ -290,7 +276,7 @@ func (source *githubSource) Download(
 		source.organization, source.name, version.String())
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
 
-	req, err := buildHTTPRequest(releaseURL, source.token, source.username, source.personalAccessToken)
+	req, err := buildHTTPRequest(releaseURL, source.token)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -330,7 +316,7 @@ func (source *githubSource) Download(
 
 	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
 
-	req, err = buildHTTPRequest(assetURL, source.token, source.username, source.personalAccessToken)
+	req, err = buildHTTPRequest(assetURL, source.token)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -372,7 +358,7 @@ func (source *pluginURLSource) Download(
 		serverURL,
 		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)))
 
-	req, err := buildHTTPRequest(endpoint, "", "", "")
+	req, err := buildHTTPRequest(endpoint, "")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -652,7 +638,7 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	return source.Download(*info.Version, opSy, arch, getHTTPResponse)
 }
 
-func buildHTTPRequest(pluginEndpoint, token, username, password string) (*http.Request, error) {
+func buildHTTPRequest(pluginEndpoint string, token string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", pluginEndpoint, nil)
 	if err != nil {
 		return nil, err
@@ -662,9 +648,7 @@ func buildHTTPRequest(pluginEndpoint, token, username, password string) (*http.R
 	req.Header.Set("User-Agent", userAgent)
 
 	if token != "" {
-		req.Header.Set("Authentication", fmt.Sprintf("token %s", token))
-	} else if username != "" && password != "" {
-		req.SetBasicAuth(username, password)
+		req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 	}
 
 	return req, nil
