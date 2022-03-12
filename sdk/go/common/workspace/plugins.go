@@ -183,7 +183,7 @@ func (source *getPulumiSource) Download(
 		serverURL,
 		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)))
 
-	req, err := buildHTTPRequest(endpoint, "", "", "", "")
+	req, err := buildHTTPRequest(endpoint, "", "", "")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -196,33 +196,19 @@ type githubSource struct {
 	name         string
 	kind         PluginKind
 
-	tokenType string
-	token     string
-	username  string
-	secret    string
+	token               string
+	username            string
+	personalAccessToken string
 }
 
+// Creates a new github source adding authentication data in the environment, if it exists
 func newGithubSource(organization, name string, kind PluginKind) *githubSource {
-	return &githubSource{
-		organization: organization,
-		name:         name,
-		kind:         kind,
-	}
-}
-
-// Creates a new github source from authentication data in the environment, if it exists
-func newAuthenticatedGithubSource(organization, name string, kind PluginKind) (*githubSource, error) {
 	ghToken := os.Getenv("GITHUB_TOKEN")
 	paToken := ""
 	actor := ""
-	tokenType := "token"
 	if ghToken == "" {
-		tokenType = ""
 		paToken = os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
 		actor = os.Getenv("GITHUB_ACTOR")
-	}
-	if ghToken == "" && (paToken == "" || actor == "") {
-		return nil, errors.New("no GitHub authentication information provided")
 	}
 
 	source := &githubSource{
@@ -230,13 +216,16 @@ func newAuthenticatedGithubSource(organization, name string, kind PluginKind) (*
 		name:         name,
 		kind:         kind,
 
-		tokenType: tokenType,
-		token:     ghToken,
-		username:  actor,
-		secret:    paToken,
+		token:               ghToken,
+		username:            actor,
+		personalAccessToken: paToken,
 	}
 
-	return source, nil
+	return source
+}
+
+func (source *githubSource) HasAuthentication() bool {
+	return source.token != "" || (source.username != "" && source.personalAccessToken != "")
 }
 
 func (source *githubSource) GetLatestVersion(
@@ -245,7 +234,7 @@ func (source *githubSource) GetLatestVersion(
 		"https://api.github.com/repos/%s/pulumi-%s/releases/latest",
 		source.organization, source.name)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
-	req, err := buildHTTPRequest(releaseURL, source.tokenType, source.token, source.username, source.secret)
+	req, err := buildHTTPRequest(releaseURL, source.token, source.username, source.personalAccessToken)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +264,7 @@ func (source *githubSource) GetLatestVersion(
 func (source *githubSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
-	if source.tokenType == "" && source.token == "" && source.username == "" && source.secret == "" {
+	if !source.HasAuthentication() {
 		// If we're not using authentication we can just download from the release/download URL
 
 		logging.V(1).Infof(
@@ -286,7 +275,7 @@ func (source *githubSource) Download(
 			source.organization, source.name, version.String(), url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz",
 				source.kind, source.name, version.String(), opSy, arch)))
 
-		req, err := buildHTTPRequest(pluginURL, "", "", "", "")
+		req, err := buildHTTPRequest(pluginURL, "", "", "")
 		if err != nil {
 			return nil, -1, err
 		}
@@ -301,7 +290,7 @@ func (source *githubSource) Download(
 		source.organization, source.name, version.String())
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
 
-	req, err := buildHTTPRequest(releaseURL, source.tokenType, source.token, source.username, source.secret)
+	req, err := buildHTTPRequest(releaseURL, source.token, source.username, source.personalAccessToken)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -341,7 +330,7 @@ func (source *githubSource) Download(
 
 	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
 
-	req, err = buildHTTPRequest(assetURL, source.tokenType, source.token, source.username, source.secret)
+	req, err = buildHTTPRequest(assetURL, source.token, source.username, source.personalAccessToken)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -383,7 +372,7 @@ func (source *pluginURLSource) Download(
 		serverURL,
 		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)))
 
-	req, err := buildHTTPRequest(endpoint, "", "", "", "")
+	req, err := buildHTTPRequest(endpoint, "", "", "")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -413,7 +402,7 @@ func (source *fallbackSource) GetLatestVersion(
 		return version, nil
 	}
 
-	// Are we in experimental mode? Try a private github release
+	// Are we in experimental mode? Try a users private github release
 	if _, ok := os.LookupEnv("PULUMI_EXPERIMENTAL"); ok {
 		// Check if we have a repo owner set
 		repoOwner := os.Getenv("GITHUB_REPOSITORY_OWNER")
@@ -421,9 +410,10 @@ func (source *fallbackSource) GetLatestVersion(
 		if repoOwner == "" {
 			privateErr = errors.New("ENV[GITHUB_REPOSITORY_OWNER] not set")
 		} else {
-			var private PluginSource
-			private, privateErr = newAuthenticatedGithubSource(repoOwner, source.name, source.kind)
-			if privateErr == nil {
+			private := newGithubSource(repoOwner, source.name, source.kind)
+			if !private.HasAuthentication() {
+				privateErr = errors.New("no GitHub authentication information provided")
+			} else {
 				version, privateErr = private.GetLatestVersion(getHTTPResponse)
 				if privateErr == nil {
 					return version, nil
@@ -458,8 +448,10 @@ func (source *fallbackSource) Download(
 		if repoOwner == "" {
 			err = errors.New("ENV[GITHUB_REPOSITORY_OWNER] not set")
 		} else {
-			private, err := newAuthenticatedGithubSource(repoOwner, source.name, source.kind)
-			if err == nil {
+			private := newGithubSource(repoOwner, source.name, source.kind)
+			if !private.HasAuthentication() {
+				err = errors.New("no GitHub authentication information provided")
+			} else {
 				resp, length, err := private.Download(version, opSy, arch, getHTTPResponse)
 				if err == nil {
 					return resp, length, nil
@@ -660,7 +652,7 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	return source.Download(*info.Version, opSy, arch, getHTTPResponse)
 }
 
-func buildHTTPRequest(pluginEndpoint, tokenType, token, username, secret string) (*http.Request, error) {
+func buildHTTPRequest(pluginEndpoint, token, username, password string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", pluginEndpoint, nil)
 	if err != nil {
 		return nil, err
@@ -670,12 +662,9 @@ func buildHTTPRequest(pluginEndpoint, tokenType, token, username, secret string)
 	req.Header.Set("User-Agent", userAgent)
 
 	if token != "" {
-		if tokenType == "" {
-			tokenType = "Bearer"
-		}
-		req.Header.Set("Authentication", fmt.Sprintf("%s %s", tokenType, token))
-	} else if secret != "" && username != "" {
-		req.SetBasicAuth(username, secret)
+		req.Header.Set("Authentication", fmt.Sprintf("token %s", token))
+	} else if username != "" && password != "" {
+		req.SetBasicAuth(username, password)
 	}
 
 	return req, nil
