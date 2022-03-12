@@ -142,7 +142,8 @@ func DetectProjectAndPath() (*Project, string, error) {
 		return nil, "", err
 	} else if path == "" {
 		return nil, "", errors.Errorf("no Pulumi project found in the current working directory. " +
-			"Move to a directory with a Pulumi project or try creating a project first with `pulumi new`.")
+			"Move to a directory with a Pulumi project or try creating a project first with `pulumi new`.\n" +
+			"If you're using the --stack flag, make sure to pass the fully qualified name (org/project/stack)")
 	}
 
 	proj, err := LoadProject(path)
