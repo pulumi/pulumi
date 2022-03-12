@@ -71,6 +71,11 @@ type GoPackageInfo struct {
 
 	// Respect the Pkg.Version field for emitted code.
 	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
+
+	// InternalReferences is used to reference the specified types in the generated SDK. This can be used to ensure
+	// a reference to a module is included in the generated SDK so that `go mod tidy` will not remove the dependency.
+	// The format of each value is `importpath.type`, e.g. `github.com/pulumi/pulumi-random/sdk/v4/go/random.Provider`.
+	InternalReferences []string `json:"internalReferences,omitempty"`
 }
 
 // Importer implements schema.Language for Go.
@@ -109,5 +114,14 @@ func (importer) ImportPackageSpec(pkg *schema.Package, raw json.RawMessage) (int
 	if err := json.Unmarshal(raw, &info); err != nil {
 		return nil, err
 	}
+
+	// Validate InternalReferences.
+	for _, ref := range info.InternalReferences {
+		_, _, err := parseInternalReference(ref)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return info, nil
 }

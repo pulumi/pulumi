@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "language": {
+    "go": {
+      "internalReferences": [
+        "github.com/pulumi/pulumi-random/sdk/v4/go/random.Provider",
+        "github.com/pulumi/pulumi-tls/sdk/v4/go/tls.Provider"
+      ]
+    }
+  }
+}
