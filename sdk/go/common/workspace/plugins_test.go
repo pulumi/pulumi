@@ -283,6 +283,7 @@ func newMockReadCloserString(data string) (io.ReadCloser, int64, error) {
 //nolint:paralleltest // mutates environment variables
 func TestPluginDownload(t *testing.T) {
 	expectedBytes := []byte{1, 2, 3}
+	token := "RaNd0m70K3n_"
 
 	t.Run("Test Downloading From Pulumi GitHub Releases", func(t *testing.T) {
 		version := semver.MustParse("4.32.0")
@@ -358,7 +359,6 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, expectedBytes, readBytes)
 	})
 	t.Run("Test Downloading From GitHub Private Releases", func(t *testing.T) {
-		token := "RaNd0m70K3n_"
 		os.Setenv("PULUMI_EXPERIMENTAL", "true")
 		os.Setenv("GITHUB_REPOSITORY_OWNER", "private")
 		os.Setenv("GITHUB_TOKEN", token)
@@ -408,7 +408,6 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, expectedBytes, readBytes)
 	})
 	t.Run("Test Downloading From Private Pulumi GitHub Releases", func(t *testing.T) {
-		token := "RaNd0m70K3n_"
 		os.Setenv("GITHUB_TOKEN", token)
 		version := semver.MustParse("4.32.0")
 		info := PluginInfo{
