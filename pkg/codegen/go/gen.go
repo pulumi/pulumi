@@ -3720,22 +3720,23 @@ func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) {
 }
 
 // parseInternalReference parses a string in the format `importpath.type` and returns the import path
-// and type, e.g. the result of parsing "github.com/pulumi/pulumi-random/sdk/v4/go/random.Provider"
-// is "github.com/pulumi/pulumi-random/sdk/v4/go/random" and "random.Provider".
+// and type, e.g. the result of parsing "github.com/pulumi/pulumi-foo/sdk/v4/go/foo.Provider"
+// is "github.com/pulumi/pulumi-foo/sdk/v4/go/foo" and "foo.Provider".
 func parseInternalReference(ref string) (string, string, error) {
-	slash := strings.LastIndex(ref, "/")
-	if slash == -1 {
+	// Example: "github.com/pulumi/pulumi-foo/sdk/v4/go/foo.Provider"
+	dot := strings.LastIndex(ref, ".")
+	if dot == -1 || len(ref) < 3 {
 		return "", "", fmt.Errorf("reference %q not in the expected format \"importpath.type\"", ref)
 	}
+	importPath := ref[:dot] // e.g. "github.com/pulumi/pulumi-foo/sdk/v4/go/foo"
+	typeName := ref[dot+1:] // e.g. "Provider"
 
-	importPath := ref[:slash]
-	typ := ref[slash+1:]
-
-	dot := strings.LastIndex(typ, ".")
-	if dot == -1 {
-		return "", "", fmt.Errorf("reference %q not in the expected format \"importpath.type\"", ref)
+	pkgName := importPath
+	slash := strings.LastIndex(importPath, "/")
+	if slash != -1 {
+		pkgName = importPath[slash+1:] // e.g. "foo"
 	}
-	importPath = path.Join(importPath, typ[:dot])
+	typ := fmt.Sprintf("%s.%s", pkgName, typeName) // e.g. "foo.Provider"
 
 	return importPath, typ, nil
 }
