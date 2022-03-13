@@ -286,6 +286,7 @@ func TestPluginDownload(t *testing.T) {
 	token := "RaNd0m70K3n_"
 
 	t.Run("Test Downloading From Pulumi GitHub Releases", func(t *testing.T) {
+		os.Setenv("GITHUB_TOKEN", "")
 		version := semver.MustParse("4.32.0")
 		info := PluginInfo{
 			PluginDownloadURL: "",
@@ -462,6 +463,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 	token := "RaNd0m70K3n_"
 
 	t.Run("Test GetLatestVersion From Pulumi GitHub Releases", func(t *testing.T) {
+		os.Setenv("GITHUB_TOKEN", "")
 		info := PluginInfo{
 			PluginDownloadURL: "",
 			Name:              "mock-latest",
