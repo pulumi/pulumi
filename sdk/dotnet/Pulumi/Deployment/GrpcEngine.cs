@@ -20,23 +20,25 @@ namespace Pulumi
 
         public GrpcEngine(string engineAddress)
         {
+            // Allow for insecure HTTP/2 transport (only needed for netcoreapp3.x)
+            // https://docs.microsoft.com/en-us/aspnet/core/grpc/troubleshoot?view=aspnetcore-6.0#call-insecure-grpc-services-with-net-core-client
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             // maxRpcMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
             const int maxRpcMessageSize = 400 * 1024 * 1024;
-            var engineChannel = _engineChannels.GetOrAdd(engineAddress, address => 
+            if (!_engineChannels.ContainsKey(engineAddress))
             {
-                // Allow for insecure HTTP/2 transport (only needed for netcoreapp3.x)
-                // https://docs.microsoft.com/en-us/aspnet/core/grpc/troubleshoot?view=aspnetcore-6.0#call-insecure-grpc-services-with-net-core-client
-                AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
                 // Inititialize the engine channel once for this address
-                return GrpcChannel.ForAddress(new Uri($"http://{address}"), new GrpcChannelOptions
+                var engineChannel = GrpcChannel.ForAddress(new Uri($"http://{engineAddress}"), new GrpcChannelOptions
                 {
                     MaxReceiveMessageSize = maxRpcMessageSize,
                     MaxSendMessageSize = maxRpcMessageSize,
                     Credentials = Grpc.Core.ChannelCredentials.Insecure,
                 });
-            });
 
-            this._engine = new Engine.EngineClient(engineChannel);
+                _engineChannels.TryAdd(engineAddress, engineChannel);
+            }
+
+            this._engine = new Engine.EngineClient(_engineChannels[engineAddress]);
         }
         
         public async Task LogAsync(LogRequest request)

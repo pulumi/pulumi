@@ -18,23 +18,25 @@ namespace Pulumi
         private static readonly ConcurrentDictionary<string, GrpcChannel> _monitorChannels = new ConcurrentDictionary<string, GrpcChannel>();
         public GrpcMonitor(string monitorAddress)
         {
+            // Allow for insecure HTTP/2 transport (only needed for netcoreapp3.x)
+            // https://docs.microsoft.com/en-us/aspnet/core/grpc/troubleshoot?view=aspnetcore-6.0#call-insecure-grpc-services-with-net-core-client
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             // maxRpcMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
             const int maxRpcMessageSize = 400 * 1024 * 1024;
-            var monitorChannel = _monitorChannels.GetOrAdd(monitorAddress, address =>
+            if (!_monitorChannels.ContainsKey(monitorAddress))
             {
-                // Allow for insecure HTTP/2 transport (only needed for netcoreapp3.x)
-                // https://docs.microsoft.com/en-us/aspnet/core/grpc/troubleshoot?view=aspnetcore-6.0#call-insecure-grpc-services-with-net-core-client
-                AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
                 // Inititialize the monitor channel once for this monitor address
-                return GrpcChannel.ForAddress(new Uri($"http://{address}"), new GrpcChannelOptions
+                var monitorChannel = GrpcChannel.ForAddress(new Uri($"http://{monitorAddress}"), new GrpcChannelOptions
                 {
                     MaxReceiveMessageSize = maxRpcMessageSize,
                     MaxSendMessageSize = maxRpcMessageSize,
                     Credentials = ChannelCredentials.Insecure
                 });
-            });
 
-            this._client = new ResourceMonitor.ResourceMonitorClient(monitorChannel);
+                _monitorChannels.TryAdd(monitorAddress, monitorChannel);
+            }
+
+            this._client = new ResourceMonitor.ResourceMonitorClient(_monitorChannels[monitorAddress]);
         }
         
         public async Task<SupportsFeatureResponse> SupportsFeatureAsync(SupportsFeatureRequest request)
