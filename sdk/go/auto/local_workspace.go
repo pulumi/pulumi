@@ -165,7 +165,7 @@ func (l *LocalWorkspace) SetConfig(ctx context.Context, stackName string, key st
 		pathArg = "--path"
 	}
 
-	args := []string{"config", "set", pathArg, secretArg, key, "--stack", stackName,
+	args := []string{"config", "set", secretArg, pathArg, key, "--stack", stackName,
 		"--non-interactive", "--", val.Value}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
