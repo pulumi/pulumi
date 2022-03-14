@@ -201,6 +201,15 @@ type githubSource struct {
 
 // Creates a new github source adding authentication data in the environment, if it exists
 func newGithubSource(organization, name string, kind PluginKind) *githubSource {
+
+	// 14-03-2022 we stopped looking at GITHUB_PERSONAL_ACCESS_TOKEN and sending basic auth for github and
+	// instead just look at GITHUB_TOKEN and send in a header. Given GITHUB_PERSONAL_ACCESS_TOKEN was an
+	// envvar we made up we check to see if it's set here and log a warning. This can be removed after a few
+	// releases.
+	if os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN") != "" {
+		logging.Warningf("GITHUB_PERSONAL_ACCESS_TOKEN is no longer used for Github authentication, set GITHUB_TOKEN instead")
+	}
+
 	return &githubSource{
 		organization: organization,
 		name:         name,
