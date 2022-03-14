@@ -21,7 +21,7 @@ namespace Pulumi
         public GrpcEngine(string engineAddress)
         {
             // maxRpcMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-            var maxRpcMessageSize = 400 * 1024 * 1024;
+            const int maxRpcMessageSize = 400 * 1024 * 1024;
             var engineChannel = _engineChannels.GetOrAdd(engineAddress, address => 
             {
                 // Allow for insecure HTTP/2 transport (only needed for netcoreapp3.x)
