@@ -113,6 +113,35 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 
+	t.Run("StackUnselect", func(t *testing.T) {
+		t.Parallel()
+
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		integration.CreateBasicPulumiRepo(e)
+		e.SetBackend(e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "one")
+		e.RunCommand("pulumi", "stack", "init", "two")
+
+		// Last one created is always selected.
+		stacks, current := integration.GetStacks(e)
+		if current == nil {
+			t.Fatalf("No stack was labeled as current among: %v", stacks)
+		}
+		assert.Equal(t, "two", *current)
+
+		e.RunCommand("pulumi", "stack", "unselect")
+		_, updatedCurrentStack := integration.GetStacks(e)
+		if updatedCurrentStack != nil {
+			t.Fatal("No stack should be selected after unselect was executed")
+		}
+	})
+
 	t.Run("StackRm", func(t *testing.T) {
 		t.Parallel()
 
