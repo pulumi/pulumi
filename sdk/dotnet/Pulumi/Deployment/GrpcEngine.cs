@@ -17,7 +17,7 @@ namespace Pulumi
         // Using a static dictionary to keep track of and re-use gRPC channels
         // According to the docs (https://docs.microsoft.com/en-us/aspnet/core/grpc/performance?view=aspnetcore-6.0#reuse-grpc-channels), creating GrpcChannels is expensive so we keep track of a bunch of them here
         private static readonly ConcurrentDictionary<string, GrpcChannel> _engineChannels = new ConcurrentDictionary<string, GrpcChannel>();
-
+        private static readonly object _channelsLock = new object();
         public GrpcEngine(string engineAddress)
         {
             // Allow for insecure HTTP/2 transport (only needed for netcoreapp3.x)
@@ -25,17 +25,20 @@ namespace Pulumi
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             // maxRpcMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
             const int maxRpcMessageSize = 400 * 1024 * 1024;
-            if (!_engineChannels.ContainsKey(engineAddress))
+            lock (_channelsLock)
             {
-                // Inititialize the engine channel once for this address
-                var engineChannel = GrpcChannel.ForAddress(new Uri($"http://{engineAddress}"), new GrpcChannelOptions
+                if (!_engineChannels.ContainsKey(engineAddress))
                 {
-                    MaxReceiveMessageSize = maxRpcMessageSize,
-                    MaxSendMessageSize = maxRpcMessageSize,
-                    Credentials = Grpc.Core.ChannelCredentials.Insecure,
-                });
+                    // Inititialize the engine channel once for this address
+                    var engineChannel = GrpcChannel.ForAddress(new Uri($"http://{engineAddress}"), new GrpcChannelOptions
+                    {
+                        MaxReceiveMessageSize = maxRpcMessageSize,
+                        MaxSendMessageSize = maxRpcMessageSize,
+                        Credentials = Grpc.Core.ChannelCredentials.Insecure,
+                    });
 
-                _engineChannels.TryAdd(engineAddress, engineChannel);
+                    _engineChannels.TryAdd(engineAddress, engineChannel);
+                }
             }
 
             this._engine = new Engine.EngineClient(_engineChannels[engineAddress]);

@@ -16,6 +16,7 @@ namespace Pulumi
         // Using a static dictionary to keep track of and re-use gRPC channels
         // According to the docs (https://docs.microsoft.com/en-us/aspnet/core/grpc/performance?view=aspnetcore-6.0#reuse-grpc-channels), creating GrpcChannels is expensive so we keep track of a bunch of them here
         private static readonly ConcurrentDictionary<string, GrpcChannel> _monitorChannels = new ConcurrentDictionary<string, GrpcChannel>();
+        private static readonly object _channelsLock = new object();
         public GrpcMonitor(string monitorAddress)
         {
             // Allow for insecure HTTP/2 transport (only needed for netcoreapp3.x)
@@ -23,17 +24,20 @@ namespace Pulumi
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             // maxRpcMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
             const int maxRpcMessageSize = 400 * 1024 * 1024;
-            if (!_monitorChannels.ContainsKey(monitorAddress))
+            lock (_channelsLock)
             {
-                // Inititialize the monitor channel once for this monitor address
-                var monitorChannel = GrpcChannel.ForAddress(new Uri($"http://{monitorAddress}"), new GrpcChannelOptions
+                if (!_monitorChannels.ContainsKey(monitorAddress))
                 {
-                    MaxReceiveMessageSize = maxRpcMessageSize,
-                    MaxSendMessageSize = maxRpcMessageSize,
-                    Credentials = ChannelCredentials.Insecure
-                });
+                    // Inititialize the monitor channel once for this monitor address
+                    var monitorChannel = GrpcChannel.ForAddress(new Uri($"http://{monitorAddress}"), new GrpcChannelOptions
+                    {
+                        MaxReceiveMessageSize = maxRpcMessageSize,
+                        MaxSendMessageSize = maxRpcMessageSize,
+                        Credentials = ChannelCredentials.Insecure
+                    });
 
-                _monitorChannels.TryAdd(monitorAddress, monitorChannel);
+                    _monitorChannels.TryAdd(monitorAddress, monitorChannel);
+                }
             }
 
             this._client = new ResourceMonitor.ResourceMonitorClient(_monitorChannels[monitorAddress]);
