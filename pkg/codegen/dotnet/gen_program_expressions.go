@@ -240,6 +240,7 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 var functionNamespaces = map[string][]string{
 	"readDir":          {"System.IO", "System.Linq"},
 	"readFile":         {"System.IO"},
+	"cwd":              {"System.IO"},
 	"filebase64":       {"System", "System.IO"},
 	"filebase64sha256": {"System", "System.IO", "System.Security.Cryptography", "System.Text"},
 	"toJSON":           {"System.Text.Json", "System.Collections.Generic"},
@@ -365,6 +366,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "sha1":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "ComputeSHA1(%v)", expr.Args[0])
+	case "stack":
+		g.Fgen(w, "Deployment.Instance.StackName")
+	case "project":
+		g.Fgen(w, "Deployment.Instance.ProjectName")
+	case "cwd":
+		g.Fgenf(w, "Directory.GetCurrentDirectory()")
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
