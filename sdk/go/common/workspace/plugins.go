@@ -138,8 +138,9 @@ func (err *MissingError) Error() string {
 			err.Info.Kind, err.Info.Name, err.Info.Version)
 	}
 
-	return fmt.Sprintf("no %s plugin '%s' found in the workspace or on your $PATH",
-		err.Info.Kind, err.Info.String())
+	return fmt.Sprintf("no %s plugin '%[1]s' found in the workspace or on your $PATH, "+
+		"install the plugin using `pulumi plugin install %[1]s %[2]s`",
+		err.Info.Kind, err.Info.Name)
 }
 
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
@@ -675,7 +676,16 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, -1, errors.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, req.URL)
+
+		errmsg := "%d HTTP error fetching plugin from %s"
+
+		if req.URL.Host == "api.github.com" && resp.StatusCode == 404 {
+			errmsg += ". If this is a private GitHub repository, try " +
+				"providing a token via the GITHUB_TOKEN environment variable. " +
+				"See: https://github.com/settings/tokens"
+		}
+
+		return nil, -1, errors.Errorf(errmsg, resp.StatusCode, req.URL)
 	}
 
 	return resp.Body, resp.ContentLength, nil
