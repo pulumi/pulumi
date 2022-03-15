@@ -1026,7 +1026,8 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	// binary. We also always allow these language plugins to be picked up from PATH even if
 	// PULUMI_IGNORE_AMBIENT_PLUGINS is set. New languages will not be specially treated and will behave like
 	// any other plugin.
-	isBundledLangauge := kind == LanguagePlugin && (name == "dotnet" || name == "go" || name == "nodejs" || name == "python")
+	isBundledLangauge := kind == LanguagePlugin &&
+		(name == "dotnet" || name == "go" || name == "nodejs" || name == "python")
 
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
