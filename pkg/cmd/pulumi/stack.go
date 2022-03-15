@@ -56,14 +56,15 @@ func newStackCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			snap, err := s.Snapshot(commandContext())
-			if err != nil {
-				return err
-			}
 
 			if showStackName {
 				fmt.Printf("%s\n", s.Ref().Name())
 				return nil
+			}
+
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return err
 			}
 
 			// First print general info about the current stack.
