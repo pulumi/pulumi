@@ -15,26 +15,44 @@ namespace Pulumi
         private readonly ResourceMonitor.ResourceMonitorClient _client;
         // Using a static dictionary to keep track of and re-use gRPC channels
         // According to the docs (https://docs.microsoft.com/en-us/aspnet/core/grpc/performance?view=aspnetcore-6.0#reuse-grpc-channels), creating GrpcChannels is expensive so we keep track of a bunch of them here
-        private static ConcurrentDictionary<string, GrpcChannel> _monitorChannels = new ConcurrentDictionary<string, GrpcChannel>();
+        private static readonly ConcurrentDictionary<string, GrpcChannel> _monitorChannels = new ConcurrentDictionary<string, GrpcChannel>();
+        private static readonly object _channelsLock = new object();
         public GrpcMonitor(string monitorAddress)
         {
+            // Allow for insecure HTTP/2 transport (only needed for netcoreapp3.x)
+            // https://docs.microsoft.com/en-us/aspnet/core/grpc/troubleshoot?view=aspnetcore-6.0#call-insecure-grpc-services-with-net-core-client
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             // maxRpcMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-            var maxRpcMessageSize = 400 * 1024 * 1024;
-            if (!_monitorChannels.ContainsKey(monitorAddress))
+            const int maxRpcMessageSize = 400 * 1024 * 1024;
+            if (_monitorChannels.TryGetValue(monitorAddress, out var monitorChannel))
             {
-                // Allow for insecure HTTP/2 transport (only needed for netcoreapp3.x)
-                // https://docs.microsoft.com/en-us/aspnet/core/grpc/troubleshoot?view=aspnetcore-6.0#call-insecure-grpc-services-with-net-core-client
-                AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-                // Inititialize the monitor channel once for this monitor address
-                _monitorChannels[monitorAddress] = GrpcChannel.ForAddress(new Uri($"http://{monitorAddress}"), new GrpcChannelOptions
-                {
-                    MaxReceiveMessageSize = maxRpcMessageSize,
-                    MaxSendMessageSize = maxRpcMessageSize,
-                    Credentials = ChannelCredentials.Insecure
-                });
+                // A channel already exists for this address
+                this._client = new ResourceMonitor.ResourceMonitorClient(monitorChannel);
             }
+            else 
+            {
+                lock (_channelsLock)
+                {
+                    if (_monitorChannels.TryGetValue(monitorAddress, out var existingChannel))
+                    {
+                        // A channel already exists for this address
+                        this._client = new ResourceMonitor.ResourceMonitorClient(monitorChannel);
+                    }
+                    else 
+                    {
+                        // Inititialize the monitor channel once for this monitor address
+                        var channel = GrpcChannel.ForAddress(new Uri($"http://{monitorAddress}"), new GrpcChannelOptions
+                        {
+                            MaxReceiveMessageSize = maxRpcMessageSize,
+                            MaxSendMessageSize = maxRpcMessageSize,
+                            Credentials = ChannelCredentials.Insecure
+                        });
 
-            this._client = new ResourceMonitor.ResourceMonitorClient(_monitorChannels[monitorAddress]);
+                        _monitorChannels[monitorAddress] = channel;
+                        this._client = new ResourceMonitor.ResourceMonitorClient(channel);
+                    }
+                }
+            }
         }
         
         public async Task<SupportsFeatureResponse> SupportsFeatureAsync(SupportsFeatureRequest request)
