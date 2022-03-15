@@ -156,12 +156,30 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 	return getStackPath(update.StackIdentifier, components...)
 }
 
+// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
+type userInfo struct {
+	Name        string `json:"name"`
+	GitHubLogin string `json:"githubLogin"`
+	AvatarURL   string `json:"avatarUrl"`
+	Email       string `json:"email,omitempty"`
+}
+
+// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L20-L34
+type user struct {
+	ID            string     `json:"id"`
+	GitHubLogin   string     `json:"githubLogin"`
+	Name          string     `json:"name"`
+	Email         string     `json:"email"`
+	AvatarURL     string     `json:"avatarUrl"`
+	Organizations []userInfo `json:"organizations"`
+	Identities    []string   `json:"identities"`
+	SiteAdmin     *bool      `json:"siteAdmin,omitempty"`
+}
+
 // GetPulumiAccountName returns the user implied by the API token associated with this client.
 func (pc *Client) GetPulumiAccountName(ctx context.Context) (string, error) {
 	if pc.apiUser == "" {
-		resp := struct {
-			GitHubLogin string `json:"githubLogin"`
-		}{}
+		resp := user{}
 		if err := pc.restCall(ctx, "GET", "/api/user", nil, nil, &resp); err != nil {
 			return "", err
 		}
