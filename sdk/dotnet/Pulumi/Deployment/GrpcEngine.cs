@@ -25,23 +25,27 @@ namespace Pulumi
             AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
             // maxRpcMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
             const int maxRpcMessageSize = 400 * 1024 * 1024;
-            lock (_channelsLock)
+            if (_engineChannels.TryGetValue(engineAddress, out var engineChannel))
             {
-                if (!_engineChannels.ContainsKey(engineAddress))
+                // A channel already exists for this address
+                this._engine = new Engine.EngineClient(engineChannel);
+            }
+            else 
+            {
+                lock (_channelsLock)
                 {
                     // Inititialize the engine channel once for this address
-                    var engineChannel = GrpcChannel.ForAddress(new Uri($"http://{engineAddress}"), new GrpcChannelOptions
+                    var channel = GrpcChannel.ForAddress(new Uri($"http://{engineAddress}"), new GrpcChannelOptions
                     {
                         MaxReceiveMessageSize = maxRpcMessageSize,
                         MaxSendMessageSize = maxRpcMessageSize,
                         Credentials = Grpc.Core.ChannelCredentials.Insecure,
                     });
 
-                    _engineChannels.TryAdd(engineAddress, engineChannel);
+                    _engineChannels.TryAdd(engineAddress, channel);
+                    this._engine = new Engine.EngineClient(channel);
                 }
             }
-
-            this._engine = new Engine.EngineClient(_engineChannels[engineAddress]);
         }
         
         public async Task LogAsync(LogRequest request)
