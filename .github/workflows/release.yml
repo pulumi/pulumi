@@ -79,6 +79,22 @@ jobs:
           pulumictl create choco-deploy $(pulumictl get version --language generic -o)
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
+  winget:
+    name: Winget Update
+    runs-on: ubuntu-latest
+    needs: publish-sdks
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        with:
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl winget-deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
   docs:
     name: Build Package Docs
     runs-on: ubuntu-latest
