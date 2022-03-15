@@ -33,16 +33,24 @@ namespace Pulumi
             {
                 lock (_channelsLock)
                 {
-                    // Inititialize the monitor channel once for this monitor address
-                    var channel = GrpcChannel.ForAddress(new Uri($"http://{monitorAddress}"), new GrpcChannelOptions
+                    if (_monitorChannels.TryGetValue(monitorAddress, out var existingChannel))
                     {
-                        MaxReceiveMessageSize = maxRpcMessageSize,
-                        MaxSendMessageSize = maxRpcMessageSize,
-                        Credentials = ChannelCredentials.Insecure
-                    });
+                        // A channel already exists for this address
+                        this._client = new ResourceMonitor.ResourceMonitorClient(monitorChannel);
+                    }
+                    else 
+                    {
+                        // Inititialize the monitor channel once for this monitor address
+                        var channel = GrpcChannel.ForAddress(new Uri($"http://{monitorAddress}"), new GrpcChannelOptions
+                        {
+                            MaxReceiveMessageSize = maxRpcMessageSize,
+                            MaxSendMessageSize = maxRpcMessageSize,
+                            Credentials = ChannelCredentials.Insecure
+                        });
 
-                    _monitorChannels.TryAdd(monitorAddress, channel);
-                    this._client = new ResourceMonitor.ResourceMonitorClient(channel);
+                        _monitorChannels[monitorAddress] = channel;
+                        this._client = new ResourceMonitor.ResourceMonitorClient(channel);
+                    }
                 }
             }
         }

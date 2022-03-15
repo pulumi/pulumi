@@ -34,16 +34,24 @@ namespace Pulumi
             {
                 lock (_channelsLock)
                 {
-                    // Inititialize the engine channel once for this address
-                    var channel = GrpcChannel.ForAddress(new Uri($"http://{engineAddress}"), new GrpcChannelOptions
+                    if (_engineChannels.TryGetValue(engineAddress, out var existingChannel))
                     {
-                        MaxReceiveMessageSize = maxRpcMessageSize,
-                        MaxSendMessageSize = maxRpcMessageSize,
-                        Credentials = Grpc.Core.ChannelCredentials.Insecure,
-                    });
+                        // A channel already exists for this address
+                        this._engine = new Engine.EngineClient(existingChannel);
+                    }
+                    else 
+                    {
+                        // Inititialize the engine channel once for this address
+                        var channel = GrpcChannel.ForAddress(new Uri($"http://{engineAddress}"), new GrpcChannelOptions
+                        {
+                            MaxReceiveMessageSize = maxRpcMessageSize,
+                            MaxSendMessageSize = maxRpcMessageSize,
+                            Credentials = Grpc.Core.ChannelCredentials.Insecure,
+                        });
 
-                    _engineChannels.TryAdd(engineAddress, channel);
-                    this._engine = new Engine.EngineClient(channel);
+                        _engineChannels[engineAddress] = channel;
+                        this._engine = new Engine.EngineClient(channel);
+                    }
                 }
             }
         }
