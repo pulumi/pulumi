@@ -805,12 +805,12 @@ func (b *localBackend) LogoutAll() error {
 	return workspace.DeleteAllAccounts()
 }
 
-func (b *localBackend) CurrentUser() (string, error) {
+func (b *localBackend) CurrentUser() (string, []string, error) {
 	user, err := user.Current()
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	return user.Username, nil
+	return user.Username, nil, nil
 }
 
 func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {

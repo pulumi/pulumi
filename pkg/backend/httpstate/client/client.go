@@ -46,6 +46,7 @@ type Client struct {
 	apiURL   string
 	apiToken apiAccessToken
 	apiUser  string
+	apiOrgs  []string
 	diag     diag.Sink
 }
 
@@ -156,24 +157,50 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 	return getStackPath(update.StackIdentifier, components...)
 }
 
+// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
+type userInfo struct {
+	Name        string `json:"name"`
+	GitHubLogin string `json:"githubLogin"`
+	AvatarURL   string `json:"avatarUrl"`
+	Email       string `json:"email,omitempty"`
+}
+
+// Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L20-L34
+type user struct {
+	ID            string     `json:"id"`
+	GitHubLogin   string     `json:"githubLogin"`
+	Name          string     `json:"name"`
+	Email         string     `json:"email"`
+	AvatarURL     string     `json:"avatarUrl"`
+	Organizations []userInfo `json:"organizations"`
+	Identities    []string   `json:"identities"`
+	SiteAdmin     *bool      `json:"siteAdmin,omitempty"`
+}
+
 // GetPulumiAccountName returns the user implied by the API token associated with this client.
-func (pc *Client) GetPulumiAccountName(ctx context.Context) (string, error) {
+func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, error) {
 	if pc.apiUser == "" {
-		resp := struct {
-			GitHubLogin string `json:"githubLogin"`
-		}{}
+		resp := user{}
 		if err := pc.restCall(ctx, "GET", "/api/user", nil, nil, &resp); err != nil {
-			return "", err
+			return "", nil, err
 		}
 
 		if resp.GitHubLogin == "" {
-			return "", errors.New("unexpected response from server")
+			return "", nil, errors.New("unexpected response from server")
 		}
 
 		pc.apiUser = resp.GitHubLogin
+		pc.apiOrgs = make([]string, len(resp.Organizations))
+		for i, org := range resp.Organizations {
+			if org.GitHubLogin == "" {
+				return "", nil, errors.New("unexpected response from server")
+			}
+
+			pc.apiOrgs[i] = org.GitHubLogin
+		}
 	}
 
-	return pc.apiUser, nil
+	return pc.apiUser, pc.apiOrgs, nil
 }
 
 // GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the
