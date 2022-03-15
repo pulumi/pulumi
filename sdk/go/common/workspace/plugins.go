@@ -1022,10 +1022,16 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, string, error) {
 	var filename string
 
+	// We currently bundle some language plugins with "pulumi" and thus expect them to be next to the pulumi
+	// binary. We also always allow these language plugins to be picked up from PATH even if
+	// PULUMI_IGNORE_AMBIENT_PLUGINS is set. New languages will not be specially treated and will behave like
+	// any other plugin.
+	isBundledLangauge := kind == LanguagePlugin && (name == "dotnet" || name == "go" || name == "nodejs" || name == "python")
+
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
 	optOut, isFound := os.LookupEnv("PULUMI_IGNORE_AMBIENT_PLUGINS")
-	if !(isFound && cmdutil.IsTruthy(optOut)) || kind == LanguagePlugin {
+	if !(isFound && cmdutil.IsTruthy(optOut)) || isBundledLangauge {
 		filename = (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
 		if path, err := exec.LookPath(filename); err == nil {
 			logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
@@ -1039,7 +1045,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	// the language plugin) it's possible someone is running `pulumi` with an explicit path on the command line or
 	// has done symlink magic such that `pulumi` is on the path, but the language plugins are not. So, if possible,
 	// look next to the instance of `pulumi` that is running to find this language plugin.
-	if kind == LanguagePlugin {
+	if isBundledLangauge {
 		exePath, exeErr := os.Executable()
 		if exeErr == nil {
 			fullPath, fullErr := filepath.EvalSymlinks(exePath)
