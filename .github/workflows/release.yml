@@ -16,6 +16,7 @@ env:
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
   TRAVIS_PUBLISH_PACKAGES: true
   PYTHON: python
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
 
 jobs:
   templates_smoke_test:
@@ -387,7 +388,11 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
       - run: mkdir -p ${{ runner.temp }}/opt/pulumi/nuget
-      - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
+      - name: Add NuGet packages as a local NuGet source
+        run: |
+          echo $(which dotnet)
+          echo $(dotnet --version)
+          dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
       - name: Set up Node ${{ matrix.node-version }}
         uses: actions/setup-node@v2
         with:

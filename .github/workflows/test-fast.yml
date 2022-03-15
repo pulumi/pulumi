@@ -45,6 +45,7 @@ env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.pulumi-access-token }}
   PYTHON: python
   TESTPARALLELISM: 4
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
 
 jobs:
   test:
@@ -257,6 +258,8 @@ jobs:
           path: ${{ github.workspace }}/nuget
       - name: Add NuGet packages as a local NuGet source
         run: |
+          echo $(which dotnet)
+          echo $(dotnet --version)
           echo "PULUMI_LOCAL_NUGET=$PULUMI_LOCAL_NUGET"
           SOURCE=$(./scripts/normpath $PULUMI_LOCAL_NUGET)
           echo "SOURCE=$SOURCE"
