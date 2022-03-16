@@ -332,12 +332,31 @@ jobs:
       enable-coverage: false
       goreleaser-config: '.goreleaser.prerelease.yml'
       goreleaser-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
-  test:
-    name: Test
+  test-linux:
+    name: Test Linux
     needs: build
     uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
     with:
       enable-coverage: false
+      platform: ubuntu-latest
+    secrets:
+      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  test-macos:
+    name: Test MacOS
+    needs: build
+    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+    with:
+      enable-coverage: false
+      platform: macos-latest
+    secrets:
+      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  test-windows:
+    name: Test Windows
+    needs: build
+    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+    with:
+      enable-coverage: false
+      platform: windows-latest
     secrets:
       pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   dispatch-docker-containers-ci-build:
