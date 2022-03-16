@@ -75,6 +75,7 @@ jobs:
               make test_auto
               make test_go
             test-parallelism: 2
+            test-parallelism-windows: 1
 
           - run: |
               cd sdk/go
@@ -84,16 +85,17 @@ jobs:
           - run: make test_pkg_nodejs
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
 
           - run: make test_pkg_python
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
 
           - run: make test_pkg_rest
             require-build: true
             test-parallelism: 2
+            test-parallelism-windows: 1
 
           - run: make test_integration_dotnet
             require-build: true
@@ -101,22 +103,23 @@ jobs:
           - run: make test_integration_go
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
           - run: make test_integration_nodejs
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
           - run: make test_integration_python
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
           - run: make test_integration_rest
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
           - run: make test_integration_subpkgs
             require-build: true
             test-parallelism: 4
+            test-parallelism-windows: 1
 
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
