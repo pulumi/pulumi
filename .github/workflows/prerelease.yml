@@ -99,7 +99,7 @@ jobs:
   publish-binaries:
     name: Publish Binaries
     runs-on: macos-latest
-    needs: [lint, build, test]
+    needs: [lint, build, test-linux, test-macos, test-windows]
     strategy:
       matrix:
         go-version: [1.17.x]
