@@ -170,12 +170,33 @@ jobs:
     with:
       enable-coverage: true
 
-  test:
-    name: Test
-    needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
-    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
-    with:
-      enable-coverage: true
-    secrets:
-      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  # test-linux:
+  #   name: Test Linux
+  #   needs: build
+  #   uses: ./.github/workflows/test-fast.yml
+  #   if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+  #   with:
+  #     enable-coverage: true
+  #     platform: ubuntu-latest
+  #   secrets:
+  #     pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  # test-macos:
+  #   name: Test MacOS
+  #   needs: build
+  #   uses: ./.github/workflows/test-fast.yml
+  #   if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+  #   with:
+  #     enable-coverage: true
+  #     platform: macos-latest
+  #   secrets:
+  #     pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  # test-windows:
+  #   name: Test Windows
+  #   needs: build
+  #   uses: ./.github/workflows/test-fast.yml
+  #   if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+  #   with:
+  #     enable-coverage: true
+  #     platform: windows-latest
+  #   secrets:
+  #     pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
