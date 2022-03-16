@@ -158,7 +158,7 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="resourcegroup_csharp">
-<a href="#resourcegroup_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroup_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Resources.<wbr>Resource<wbr>Group</span>
@@ -170,7 +170,7 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="resourcegroup_go">
-<a href="#resourcegroup_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroup_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource<wbr>Group</span>
@@ -182,7 +182,7 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="resourcegroup_nodejs">
-<a href="#resourcegroup_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroup_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativeresources<wbr>Resource<wbr>Group</span>
@@ -194,7 +194,7 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="resource_group_python">
-<a href="#resource_group_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource<wbr>Group</span>
@@ -213,7 +213,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="acrloginserverout_csharp">
-<a href="#acrloginserverout_csharp" style="color: inherit; text-decoration: inherit;">Acr<wbr>Login<wbr>Server<wbr>Out</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#acrloginserverout_csharp" style="color: inherit; text-decoration: inherit;">Acr<wbr>Login<wbr>Server<wbr>Out</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -221,7 +221,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -229,7 +229,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="registry_csharp">
-<a href="#registry_csharp" style="color: inherit; text-decoration: inherit;">Registry</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_csharp" style="color: inherit; text-decoration: inherit;">Registry</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Container<wbr>Registry.<wbr>Registry</span>
@@ -237,7 +237,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="replication_csharp">
-<a href="#replication_csharp" style="color: inherit; text-decoration: inherit;">Replication</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_csharp" style="color: inherit; text-decoration: inherit;">Replication</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Container<wbr>Registry.<wbr>Replication</span>
@@ -249,7 +249,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="acrloginserverout_go">
-<a href="#acrloginserverout_go" style="color: inherit; text-decoration: inherit;">Acr<wbr>Login<wbr>Server<wbr>Out</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#acrloginserverout_go" style="color: inherit; text-decoration: inherit;">Acr<wbr>Login<wbr>Server<wbr>Out</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -257,7 +257,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -265,7 +265,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="registry_go">
-<a href="#registry_go" style="color: inherit; text-decoration: inherit;">Registry</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_go" style="color: inherit; text-decoration: inherit;">Registry</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Registry</span>
@@ -273,7 +273,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="replication_go">
-<a href="#replication_go" style="color: inherit; text-decoration: inherit;">Replication</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_go" style="color: inherit; text-decoration: inherit;">Replication</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Replication</span>
@@ -285,7 +285,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="acrloginserverout_nodejs">
-<a href="#acrloginserverout_nodejs" style="color: inherit; text-decoration: inherit;">acr<wbr>Login<wbr>Server<wbr>Out</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#acrloginserverout_nodejs" style="color: inherit; text-decoration: inherit;">acr<wbr>Login<wbr>Server<wbr>Out</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -293,7 +293,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -301,7 +301,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="registry_nodejs">
-<a href="#registry_nodejs" style="color: inherit; text-decoration: inherit;">registry</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_nodejs" style="color: inherit; text-decoration: inherit;">registry</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativecontainerregistry<wbr>Registry</span>
@@ -309,7 +309,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="replication_nodejs">
-<a href="#replication_nodejs" style="color: inherit; text-decoration: inherit;">replication</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_nodejs" style="color: inherit; text-decoration: inherit;">replication</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativecontainerregistry<wbr>Replication</span>
@@ -321,7 +321,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="acr_login_server_out_python">
-<a href="#acr_login_server_out_python" style="color: inherit; text-decoration: inherit;">acr_<wbr>login_<wbr>server_<wbr>out</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#acr_login_server_out_python" style="color: inherit; text-decoration: inherit;">acr_<wbr>login_<wbr>server_<wbr>out</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -329,7 +329,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -337,7 +337,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="registry_python">
-<a href="#registry_python" style="color: inherit; text-decoration: inherit;">registry</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_python" style="color: inherit; text-decoration: inherit;">registry</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Registry</span>
@@ -345,7 +345,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="replication_python">
-<a href="#replication_python" style="color: inherit; text-decoration: inherit;">replication</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_python" style="color: inherit; text-decoration: inherit;">replication</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Replication</span>

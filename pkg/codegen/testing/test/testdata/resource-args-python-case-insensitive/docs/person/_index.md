@@ -159,7 +159,7 @@ The Person resource accepts the following [input]({{< relref "/docs/intro/concep
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
-<a href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -167,7 +167,7 @@ The Person resource accepts the following [input]({{< relref "/docs/intro/concep
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="pets_csharp">
-<a href="#pets_csharp" style="color: inherit; text-decoration: inherit;">Pets</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_csharp" style="color: inherit; text-decoration: inherit;">Pets</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pet">List&lt;Pet<wbr>Args&gt;</a></span>
@@ -179,7 +179,7 @@ The Person resource accepts the following [input]({{< relref "/docs/intro/concep
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_go">
-<a href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -187,7 +187,7 @@ The Person resource accepts the following [input]({{< relref "/docs/intro/concep
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="pets_go">
-<a href="#pets_go" style="color: inherit; text-decoration: inherit;">Pets</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_go" style="color: inherit; text-decoration: inherit;">Pets</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pet">[]Pet<wbr>Type<wbr>Args</a></span>
@@ -199,7 +199,7 @@ The Person resource accepts the following [input]({{< relref "/docs/intro/concep
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
-<a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -207,7 +207,7 @@ The Person resource accepts the following [input]({{< relref "/docs/intro/concep
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="pets_nodejs">
-<a href="#pets_nodejs" style="color: inherit; text-decoration: inherit;">pets</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_nodejs" style="color: inherit; text-decoration: inherit;">pets</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pet">Pet<wbr>Args[]</a></span>
@@ -219,7 +219,7 @@ The Person resource accepts the following [input]({{< relref "/docs/intro/concep
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_python">
-<a href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -227,7 +227,7 @@ The Person resource accepts the following [input]({{< relref "/docs/intro/concep
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="pets_python">
-<a href="#pets_python" style="color: inherit; text-decoration: inherit;">pets</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_python" style="color: inherit; text-decoration: inherit;">pets</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pet">Sequence[Pet<wbr>Args]</a></span>
@@ -246,7 +246,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -258,7 +258,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -270,7 +270,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -282,7 +282,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -306,7 +306,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
-<a href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -318,7 +318,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_go">
-<a href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -330,7 +330,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
-<a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -342,7 +342,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_python">
-<a href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
