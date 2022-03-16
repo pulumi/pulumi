@@ -322,7 +322,11 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 		return nil, err
 	}
 	if plug == nil {
-		return nil, fmt.Errorf("Could not find plugin for (%s, %s)", pkg.String(), version.String())
+		v := "nil"
+		if version != nil {
+			v = version.String()
+		}
+		return nil, fmt.Errorf("Could not find plugin for (%s, %s)", pkg.String(), v)
 	}
 	return plug.(plugin.Provider), nil
 }
