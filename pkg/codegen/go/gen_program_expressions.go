@@ -259,6 +259,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.IntRef(%.v)", expr.Args[0])
 	case "goOptionalString":
 		g.Fgenf(w, "pulumi.StringRef(%.v)", expr.Args[0])
+	case "stack":
+		g.Fgen(w, "ctx.Stack()")
+	case "project":
+		g.Fgen(w, "ctx.Project()")
+	case "cwd":
+		g.Fgen(w, "func(cwd string, err error) string { if err != nil { panic(err) }; return cwd }(os.Getwd())")
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
@@ -1021,6 +1027,7 @@ var functionPackages = map[string][]string{
 	"toJSON":           {"encoding/json"},
 	"sha1":             {"fmt", "crypto/sha1"},
 	"filebase64sha256": {"fmt", "io/ioutil", "crypto/sha256"},
+	"cwd":              {"os"},
 }
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {
