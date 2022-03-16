@@ -100,7 +100,7 @@ jobs:
   publish-binaries:
     name: Publish Binaries
     runs-on: macos-latest
-    needs: [lint, build, test]
+    needs: [lint, language-sdk-lint, build, test-linux, test-windows, test-macos]
     strategy:
       matrix:
         go-version: [1.17.x]
