@@ -23,11 +23,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName, configFile string) (secrets.Manager, error) {
+func newServiceSecretsManager(s httpstate.Stack, stackName tokens.Name, configFile string) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName)
+		f, err := workspace.DetectProjectStackPath(stackName.Q())
 		if err != nil {
 			return nil, err
 		}
@@ -51,7 +51,7 @@ func newServiceSecretsManager(s httpstate.Stack, stackName tokens.QName, configF
 	// reload the configuration file to be sorted or an empty {} when creating a stack
 	// this is not the desired behaviour.
 	if changeProjectStackSecretDetails(info) {
-		if err := workspace.SaveProjectStack(stackName, info); err != nil {
+		if err := workspace.SaveProjectStack(stackName.Q(), info); err != nil {
 			return nil, err
 		}
 	}
