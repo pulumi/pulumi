@@ -82,7 +82,7 @@ lint_sdk:
 lint_tests:
 	cd tests && golangci-lint run -c ../.golangci.yml --timeout 5m
 
-test_fast:: build
+test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
 
 test_build:: $(TEST_ALL_DEPS)
@@ -102,13 +102,13 @@ test_build:: $(TEST_ALL_DEPS)
 
 test_all:: test_build test_pkg test_integration
 
-test_pkg_nodejs:
+test_pkg_nodejs: get_schemas
 	@cd pkg && $(GO_TEST) ${PKG_CODEGEN_NODEJS}
 
-test_pkg_python:
+test_pkg_python: get_schemas
 	@cd pkg && $(GO_TEST) ${PKG_CODEGEN_PYTHON}
 
-test_pkg_rest:
+test_pkg_rest: get_schemas
 	@cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 
 test_pkg:: test_pkg_nodejs test_pkg_python test_pkg_rest
@@ -128,3 +128,21 @@ tidy::
 
 validate_codecov_yaml::
 	curl --data-binary @codecov.yml https://codecov.io/validate
+
+name=$(subst schema-,,$(word 1,$(subst !, ,$@)))
+version=$(word 2,$(subst !, ,$@))
+schema-%:
+	@echo "Ensuring $@ => ${name}, ${version}"
+	@[ -f pkg/pulumiyaml/testing/test/testdata/${name}.json ] || \
+		curl "https://raw.githubusercontent.com/pulumi/pulumi-${name}/v${version}/provider/cmd/pulumi-resource-${name}/schema.json" \
+	 	| jq '.version = "${version}"' >  pkg/pulumiyaml/testing/test/testdata/${name}.json
+	@FOUND="$$(jq -r '.version' pkg/pulumiyaml/testing/test/testdata/${name}.json)" &&     \
+		if ! [ "$$FOUND" = "${version}" ]; then									           \
+			echo "${name} required version ${version} but found existing version $$FOUND"; \
+			exit 1;																		   \
+		fi
+get_schemas: schema-aws!4.26.0			\
+			 schema-azure-native!1.29.0	\
+			 schema-azure!4.18.0		\
+			 schema-kubernetes!3.7.2	\
+			 schema-random!4.2.0
