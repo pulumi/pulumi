@@ -1145,7 +1145,11 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		return matchDir, matchPath, nil
 	}
 
-	return "", "", nil
+	return "", "", NewMissingError(PluginInfo{
+		Name:    name,
+		Kind:    kind,
+		Version: version,
+	}, includeAmbient)
 }
 
 // SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.
