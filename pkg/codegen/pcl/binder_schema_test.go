@@ -24,6 +24,7 @@ func BenchmarkLoadPackage(b *testing.B) {
 }
 
 func TestAliasResolution(t *testing.T) {
+	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	cache, err := NewPackageCache().loadPackageSchema(loader, "azure-native")
@@ -32,7 +33,7 @@ func TestAliasResolution(t *testing.T) {
 	assert.True(t, ok, "could not find token")
 	assert.Equal(t, "azure-native:web:AppServiceEnvironment", tk)
 
-	token := "azure-native:vmwarecloudsimple:VirtualMachine"
+	token := "azure-native:vmwarecloudsimple:VirtualMachine" //nolint:gosec
 	_, tk, ok = cache.LookupResource(token)
 	assert.True(t, ok, "could not find token")
 	assert.Equal(t, token, tk)

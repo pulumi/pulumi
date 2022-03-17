@@ -72,7 +72,6 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	var fn *schema.Function
 	if f, tk, ok := pkgSchema.LookupFunction(token); ok {
 		fn = f
-		token = tk
 		lit.Value = cty.StringVal(tk)
 	} else {
 		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
