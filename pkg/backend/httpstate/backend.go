@@ -543,7 +543,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	if qualifiedName.Project == "" {
 		currentProject, projectErr := workspace.DetectProject()
 		if projectErr != nil {
-			return nil, fmt.Errorf("If you're using the --stack flag,"+
+			return nil, fmt.Errorf("If you're using the --stack flag, "+
 				"pass the fully qualified name (org/project/stack): %w", projectErr)
 		}
 
