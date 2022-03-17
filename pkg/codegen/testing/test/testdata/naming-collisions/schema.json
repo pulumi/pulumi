@@ -1,0 +1,88 @@
+{
+  "name": "example",
+  "version": "0.0.1",
+  "types": {
+    "example::Object": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::ObjectInput": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::ExampleEnum": {
+      "type": "string",
+      "enum": [
+        {"value": "one"},
+        {"value": "two"}
+      ]
+    },
+    "example::ExampleEnumInput": {
+      "type": "string",
+      "enum": [
+        {"value": "one"},
+        {"value": "two"}
+      ]
+    },
+    "example::Resource": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "example::ResourceType": {
+      "type": "string",
+      "enum": [
+        {"value":  "haha"},
+        {"value":  "business"}
+      ]
+    }
+  },
+  "resources": {
+    "example::Resource": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      }
+    },
+    "example::ResourceInput": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "functions": {},
+  "language": {
+    "csharp": {
+      "projectReferences": [
+        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
+      ]
+    },
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/input-collision/go/example",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
+    "python": {}
+  }
+}

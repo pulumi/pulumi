@@ -33,8 +33,10 @@ const (
 	RenameUpdate UpdateKind = "rename"
 	// DestroyUpdate is an update which removes all resources.
 	DestroyUpdate UpdateKind = "destroy"
-	// ImportUpdate is an update that entails importing a raw checkpoint file.
-	ImportUpdate UpdateKind = "import"
+	// StackImportUpdate is an update that entails importing a raw checkpoint file.
+	StackImportUpdate UpdateKind = "import"
+	// ResourceImportUpdate is an update that entails importing one or more resources.
+	ResourceImportUpdate = "resource-import"
 )
 
 // UpdateResult is an enum for the result of the update.
@@ -75,6 +77,22 @@ const (
 	OpCreateReplacement OpType = "create-replacement"
 	// OpDeleteReplaced indicates an existing resource was deleted after replacement.
 	OpDeleteReplaced OpType = "delete-replaced"
+	// OpRead indicates reading an existing resource.
+	OpRead OpType = "read"
+	// OpReadReplacement indicates reading an existing resource for a replacement.
+	OpReadReplacement OpType = "read-replacement"
+	// OpRefresh indicates refreshing an existing resource.
+	OpRefresh OpType = "refresh" // refreshing an existing resource.
+	// OpReadDiscard indicates removing a resource that was read.
+	OpReadDiscard OpType = "discard"
+	// OpDiscardReplaced indicates discarding a read resource that was replaced.
+	OpDiscardReplaced OpType = "discard-replaced"
+	// OpRemovePendingReplace indicates removing a pending replace resource.
+	OpRemovePendingReplace OpType = "remove-pending-replace"
+	// OpImport indicates importing an existing resource.
+	OpImport OpType = "import"
+	// OpImportReplacement indicates replacement of an existing resource with an imported resource.
+	OpImportReplacement OpType = "import-replacement"
 )
 
 // UpdateInfo describes a previous update.

@@ -1,0 +1,12 @@
+config:
+  aws:region: us-west-2
+  nested_config:bar: 1234
+  nested_config:foo: aha
+  nested_config:myList:
+    - one
+    - two
+    - three
+  nested_config:outer:
+    inner:
+      secure: AAABADOd8UPayqGlunla+Lo6kSSYA4LffCNBe84ElLwv0kyz7oIcYAw=
+    other: something_else

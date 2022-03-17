@@ -16,15 +16,16 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // intentionally disabling here for cleaner err declaration/assignment.
@@ -32,8 +33,10 @@ import (
 func newWatchCmd() *cobra.Command {
 	var debug bool
 	var message string
+	var execKind string
 	var stack string
 	var configArray []string
+	var pathArray []string
 	var configPath bool
 
 	// Flags for engine.UpdateOptions.
@@ -52,9 +55,9 @@ func newWatchCmd() *cobra.Command {
 		Short:      "[PREVIEW] Continuously update the resources in a stack",
 		Long: "Continuously update the resources in a stack.\n" +
 			"\n" +
-			"This command watches the working directory for the current project and updates the active stack whenever\n" +
-			"the project changes.  In parallel, logs are collected for all resources in the stack and displayed along\n" +
-			"with update progress.\n" +
+			"This command watches the working directory or specified paths for the current project and updates\n" +
+			"the active stack whenever the project changes.  In parallel, logs are collected for all resources\n" +
+			"in the stack and displayed along with update progress.\n" +
 			"\n" +
 			"The program to watch is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
@@ -72,6 +75,7 @@ func newWatchCmd() *cobra.Command {
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
 				SuppressOutputs:      true,
+				SuppressPermalink:    true,
 				IsInteractive:        false,
 				Type:                 display.DisplayWatch,
 				Debug:                debug,
@@ -81,7 +85,7 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
+			s, err := requireStack(stack, true, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -96,27 +100,30 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root)
+			m, err := getUpdateMetadata(message, root, execKind, "" /* execAgent */)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
 			sm, err := getStackSecretsManager(s)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting secrets manager"))
+				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
 			cfg, err := getStackConfiguration(s, sm)
 			if err != nil {
-				return result.FromError(errors.Wrap(err, "getting stack configuration"))
+				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-				Parallel:         parallel,
-				Debug:            debug,
-				Refresh:          refresh,
-				UseLegacyDiff:    useLegacyDiff(),
+				LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+				Parallel:                  parallel,
+				Debug:                     debug,
+				Refresh:                   refresh,
+				UseLegacyDiff:             useLegacyDiff(),
+				DisableProviderPreview:    disableProviderPreview(),
+				DisableResourceReferences: disableResourceReferences(),
+				DisableOutputValues:       disableOutputValues(),
 			}
 
 			res := s.Watch(commandContext(), backend.UpdateOperation{
@@ -127,7 +134,8 @@ func newWatchCmd() *cobra.Command {
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
-			})
+			}, pathArray)
+
 			switch {
 			case res != nil && res.Error() == context.Canceled:
 				return result.FromError(errors.New("update cancelled"))
@@ -139,6 +147,10 @@ func newWatchCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().StringArrayVarP(
+		&pathArray, "path", "", []string{""},
+		"Specify one or more relative or absolute paths that need to be watched. "+
+			"A path can point to a folder or a file. Defaults to working directory")
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
@@ -185,6 +197,10 @@ func newWatchCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need be updated because they haven't changed, alongside those that do")
+
+	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
 
 	return cmd
 }

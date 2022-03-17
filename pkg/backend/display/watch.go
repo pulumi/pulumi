@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // We use RFC 5424 timestamps with millisecond precision for displaying time stamps on watch
@@ -49,6 +49,9 @@ func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.
 		// Events occurring early:
 		case engine.PreludeEvent, engine.SummaryEvent, engine.StdoutColorEvent:
 			// Ignore it
+			continue
+		case engine.PolicyViolationEvent:
+			// At this point in time, we don't handle policy events as part of pulumi watch
 			continue
 		case engine.DiagEvent:
 			// Skip any ephemeral or debug messages, and elide all colorization.

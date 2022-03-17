@@ -25,31 +25,34 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func await(out Output) (interface{}, bool, bool, error) {
-	return out.await(context.Background())
+func await(out Output) (interface{}, bool, bool, []Resource, error) {
+	return out.getState().await(context.Background())
 }
 
 func assertApplied(t *testing.T, out Output) {
-	_, known, _, err := await(out)
+	_, known, _, _, err := await(out)
 	assert.True(t, known)
 	assert.Nil(t, err)
 }
 
 func newIntOutput() IntOutput {
-	return IntOutput{newOutputState(reflect.TypeOf(42))}
+	return IntOutput{newOutputState(nil, reflect.TypeOf(42))}
 }
 
 func TestBasicOutputs(t *testing.T) {
+	t.Parallel()
+
 	// Just test basic resolve and reject functionality.
 	{
 		out, resolve, _ := NewOutput()
 		go func() {
 			resolve(42)
 		}()
-		v, known, secret, err := await(out)
+		v, known, secret, deps, err := await(out)
 		assert.Nil(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
+		assert.Nil(t, deps)
 		assert.NotNil(t, v)
 		assert.Equal(t, 42, v.(int))
 	}
@@ -58,16 +61,18 @@ func TestBasicOutputs(t *testing.T) {
 		go func() {
 			reject(errors.New("boom"))
 		}()
-		v, _, _, err := await(out)
+		v, _, _, _, err := await(out)
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
 	}
 }
 
 func TestArrayOutputs(t *testing.T) {
-	out := ArrayOutput{newOutputState(reflect.TypeOf([]interface{}{}))}
+	t.Parallel()
+
+	out := ArrayOutput{newOutputState(nil, reflect.TypeOf([]interface{}{}))}
 	go func() {
-		out.resolve([]interface{}{nil, 0, "x"}, true, false)
+		out.resolve([]interface{}{nil, 0, "x"}, true, false, nil)
 	}()
 	{
 		assertApplied(t, out.ApplyT(func(arr []interface{}) (interface{}, error) {
@@ -83,9 +88,11 @@ func TestArrayOutputs(t *testing.T) {
 }
 
 func TestBoolOutputs(t *testing.T) {
-	out := BoolOutput{newOutputState(reflect.TypeOf(false))}
+	t.Parallel()
+
+	out := BoolOutput{newOutputState(nil, reflect.TypeOf(false))}
 	go func() {
-		out.resolve(true, true, false)
+		out.resolve(true, true, false, nil)
 	}()
 	{
 		assertApplied(t, out.ApplyT(func(v bool) (interface{}, error) {
@@ -96,13 +103,15 @@ func TestBoolOutputs(t *testing.T) {
 }
 
 func TestMapOutputs(t *testing.T) {
-	out := MapOutput{newOutputState(reflect.TypeOf(map[string]interface{}{}))}
+	t.Parallel()
+
+	out := MapOutput{newOutputState(nil, reflect.TypeOf(map[string]interface{}{}))}
 	go func() {
 		out.resolve(map[string]interface{}{
 			"x": 1,
 			"y": false,
 			"z": "abc",
-		}, true, false)
+		}, true, false, nil)
 	}()
 	{
 		assertApplied(t, out.ApplyT(func(v map[string]interface{}) (interface{}, error) {
@@ -116,9 +125,11 @@ func TestMapOutputs(t *testing.T) {
 }
 
 func TestNumberOutputs(t *testing.T) {
-	out := Float64Output{newOutputState(reflect.TypeOf(float64(0)))}
+	t.Parallel()
+
+	out := Float64Output{newOutputState(nil, reflect.TypeOf(float64(0)))}
 	go func() {
-		out.resolve(42.345, true, false)
+		out.resolve(42.345, true, false, nil)
 	}()
 	{
 		assertApplied(t, out.ApplyT(func(v float64) (interface{}, error) {
@@ -129,9 +140,11 @@ func TestNumberOutputs(t *testing.T) {
 }
 
 func TestStringOutputs(t *testing.T) {
-	out := StringOutput{newOutputState(reflect.TypeOf(""))}
+	t.Parallel()
+
+	out := StringOutput{newOutputState(nil, reflect.TypeOf(""))}
 	go func() {
-		out.resolve("a stringy output", true, false)
+		out.resolve("a stringy output", true, false, nil)
 	}()
 	{
 		assertApplied(t, out.ApplyT(func(v string) (interface{}, error) {
@@ -142,6 +155,8 @@ func TestStringOutputs(t *testing.T) {
 }
 
 func TestResolveOutputToOutput(t *testing.T) {
+	t.Parallel()
+
 	// Test that resolving an output to an output yields the value, not the output.
 	{
 		out, resolve, _ := NewOutput()
@@ -163,7 +178,7 @@ func TestResolveOutputToOutput(t *testing.T) {
 			resolve(other)
 			go func() { rejectOther(errors.New("boom")) }()
 		}()
-		v, _, _, err := await(out)
+		v, _, _, _, err := await(out)
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
 	}
@@ -171,13 +186,16 @@ func TestResolveOutputToOutput(t *testing.T) {
 
 // Test that ToOutput works with a struct type.
 func TestToOutputStruct(t *testing.T) {
+	t.Parallel()
+
 	out := ToOutput(nestedTypeInputs{Foo: String("bar"), Bar: Int(42)})
 	_, ok := out.(nestedTypeOutput)
 	assert.True(t, ok)
 
-	v, known, secret, err := await(out)
+	v, known, secret, deps, err := await(out)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.NoError(t, err)
 	assert.Equal(t, nestedType{Foo: "bar", Bar: 42}, v)
 
@@ -185,9 +203,10 @@ func TestToOutputStruct(t *testing.T) {
 	_, ok = out.(nestedTypeOutput)
 	assert.True(t, ok)
 
-	v, known, secret, err = await(out)
+	v, known, secret, deps, err = await(out)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 
 	assert.NoError(t, err)
 	assert.Equal(t, nestedType{Foo: "bar", Bar: 42}, v)
@@ -196,9 +215,10 @@ func TestToOutputStruct(t *testing.T) {
 	_, ok = out.(nestedTypeOutput)
 	assert.True(t, ok)
 
-	v, known, secret, err = await(out)
+	v, known, secret, deps, err = await(out)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.NoError(t, err)
 	assert.Equal(t, nestedType{Foo: "bar", Bar: 42}, v)
 }
@@ -232,19 +252,24 @@ func (i arrayLenInput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutp
 
 // Test that ToOutput converts inputs appropriately.
 func TestToOutputConvert(t *testing.T) {
+	t.Parallel()
+
 	out := ToOutput(nestedTypeInputs{Foo: ID("bar"), Bar: arrayLenInput{Int(42)}})
 	_, ok := out.(nestedTypeOutput)
 	assert.True(t, ok)
 
-	v, known, secret, err := await(out)
+	v, known, secret, deps, err := await(out)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.NoError(t, err)
 	assert.Equal(t, nestedType{Foo: "bar", Bar: 1}, v)
 }
 
 // Test that ToOutput correctly handles nested inputs and outputs when the argument is an input or interface{}.
 func TestToOutputAny(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		S StringInput
 		I IntInput
@@ -259,9 +284,10 @@ func TestToOutputAny(t *testing.T) {
 	_, ok := out.(AnyOutput)
 	assert.True(t, ok)
 
-	v, known, secret, err := await(out)
+	v, known, secret, deps, err := await(out)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.NoError(t, err)
 
 	argsV := v.(*args)
@@ -284,6 +310,75 @@ func TestToOutputAny(t *testing.T) {
 	assert.Equal(t, true, bo.value)
 }
 
+func TestToOutputAnyDeps(t *testing.T) {
+	t.Parallel()
+
+	type args struct {
+		S StringInput
+		I IntInput
+		A Input
+		R Resource
+	}
+
+	stringDep1, stringDep2 := &ResourceState{}, &ResourceState{}
+	stringOut := StringOutput{newOutputState(nil, reflect.TypeOf(""), stringDep1)}
+	go func() {
+		stringOut.resolve("a stringy output", true, false, []Resource{stringDep2})
+	}()
+
+	intDep1, intDep2 := &ResourceState{}, &ResourceState{}
+	intOut := IntOutput{newOutputState(nil, reflect.TypeOf(0), intDep1)}
+	go func() {
+		intOut.resolve(42, true, false, []Resource{intDep2})
+	}()
+
+	boolDep1, boolDep2 := &ResourceState{}, &ResourceState{}
+	boolOut := BoolOutput{newOutputState(nil, reflect.TypeOf(true), boolDep1)}
+	go func() {
+		boolOut.resolve(true, true, false, []Resource{boolDep2})
+	}()
+
+	res := &ResourceState{}
+
+	out := ToOutput(&args{
+		S: stringOut,
+		I: intOut,
+		A: Map{"world": boolOut},
+		R: res,
+	})
+	_, ok := out.(AnyOutput)
+	assert.True(t, ok)
+
+	v, known, secret, deps, err := await(out)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.ElementsMatch(t, []Resource{stringDep1, stringDep2, intDep1, intDep2, boolDep1, boolDep2, res}, deps)
+	assert.NoError(t, err)
+
+	argsV := v.(*args)
+
+	so, ok := argsV.S.(StringOutput)
+	assert.True(t, ok)
+	assert.Equal(t, uint32(outputResolved), so.state)
+	assert.Equal(t, "a stringy output", so.value)
+	assert.ElementsMatch(t, []Resource{stringDep1, stringDep2}, so.deps)
+
+	io, ok := argsV.I.(IntOutput)
+	assert.True(t, ok)
+	assert.Equal(t, uint32(outputResolved), io.state)
+	assert.Equal(t, 42, io.value)
+	assert.ElementsMatch(t, []Resource{intDep1, intDep2}, io.deps)
+
+	ai, ok := argsV.A.(Map)
+	assert.True(t, ok)
+
+	bo, ok := ai["world"].(BoolOutput)
+	assert.True(t, ok)
+	assert.Equal(t, uint32(outputResolved), bo.getState().state)
+	assert.Equal(t, true, bo.value)
+	assert.ElementsMatch(t, []Resource{boolDep1, boolDep2}, bo.deps)
+}
+
 type args struct {
 	S string
 	I int
@@ -302,6 +397,8 @@ func (*argsInputs) ElementType() reflect.Type {
 
 // Test that ToOutput correctly handles nested inputs when the argument is an input with no corresponding output type.
 func TestToOutputInputAny(t *testing.T) {
+	t.Parallel()
+
 	out := ToOutput(&argsInputs{
 		S: ID("hello"),
 		I: Int(42),
@@ -310,9 +407,10 @@ func TestToOutputInputAny(t *testing.T) {
 	_, ok := out.(AnyOutput)
 	assert.True(t, ok)
 
-	v, known, secret, err := await(out)
+	v, known, secret, deps, err := await(out)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.NoError(t, err)
 
 	assert.Equal(t, &args{
@@ -322,11 +420,57 @@ func TestToOutputInputAny(t *testing.T) {
 	}, v)
 }
 
-// Test that SecretT sets appropriate internal state and that IsSecret appropriately reads it.
-func TestSecrets(t *testing.T) {
+// Test that Unsecret will return an Output that has an unwrapped secret
+func TestUnsecret(t *testing.T) {
+	t.Parallel()
+
 	s := ToSecret(String("foo"))
 	// assert that secret is immediately secret
-	assert.True(t, s.isSecret())
+	assert.True(t, IsSecret(s))
+
+	unS := Unsecret(s)
+	// assert that we do not have a secret
+	assert.False(t, IsSecret(unS))
+
+	errChan := make(chan error)
+	resultChan := make(chan string)
+	secretChan := make(chan bool)
+
+	unS.ApplyT(func(v interface{}) (string, error) {
+		// assert secretness after the output resolves
+		secretChan <- IsSecret(unS)
+		val := v.(string)
+		if val == "foo" {
+			// validate the value
+			resultChan <- val
+		} else {
+			errChan <- fmt.Errorf("Invalid result: %v", val)
+		}
+		return val, nil
+	})
+
+	for i := 0; i < 2; i++ {
+		select {
+		case err := <-errChan:
+			assert.Nil(t, err)
+			break
+		case r := <-resultChan:
+			assert.Equal(t, "foo", r)
+			break
+		case isSecret := <-secretChan:
+			assert.False(t, isSecret)
+			break
+		}
+	}
+}
+
+// Test that SecretT sets appropriate internal state and that IsSecret appropriately reads it.
+func TestSecrets(t *testing.T) {
+	t.Parallel()
+
+	s := ToSecret(String("foo"))
+	// assert that secret is immediately secret
+	assert.True(t, IsSecret(s))
 
 	errChan := make(chan error)
 	resultChan := make(chan string)
@@ -334,7 +478,7 @@ func TestSecrets(t *testing.T) {
 
 	s.ApplyT(func(v interface{}) (string, error) {
 		// assert secretness after the output resolves
-		secretChan <- s.isSecret()
+		secretChan <- IsSecret(s)
 		val := v.(string)
 		if val == "foo" {
 			// validate the value
@@ -363,9 +507,11 @@ func TestSecrets(t *testing.T) {
 
 // Test that secretness is properly bubbled up with all/apply.
 func TestSecretApply(t *testing.T) {
+	t.Parallel()
+
 	s1 := ToSecret(String("foo"))
 	// assert that secret is immediately secret
-	assert.True(t, s1.isSecret())
+	assert.True(t, IsSecret(s1))
 	s2 := StringInput(String("bar"))
 
 	errChan := make(chan error)
@@ -378,7 +524,7 @@ func TestSecretApply(t *testing.T) {
 	})
 	s.ApplyT(func(v interface{}) (string, error) {
 		// assert secretness after the output resolves
-		secretChan <- s.isSecret()
+		secretChan <- IsSecret(s)
 		val := v.(string)
 		if val == "foobar" {
 			// validate the value
@@ -406,42 +552,227 @@ func TestSecretApply(t *testing.T) {
 }
 
 func TestNil(t *testing.T) {
+	t.Parallel()
+
 	ao := Any(nil)
-	v, known, secret, err := await(ao)
+	v, known, secret, deps, err := await(ao)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, v)
 
 	o := ToOutput(nil)
-	v, known, secret, err = await(o)
+	v, known, secret, deps, err = await(o)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, v)
 
 	o = ToOutput(ao)
-	v, known, secret, err = await(o)
+	v, known, secret, deps, err = await(o)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, v)
 
 	ao = ToOutput("").ApplyT(func(v string) interface{} {
 		return nil
 	}).(AnyOutput)
-	v, known, secret, err = await(ao)
+	v, known, secret, deps, err = await(ao)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, v)
 
-	bo := ao.ApplyBool(func(x interface{}) bool {
+	bo := ao.ApplyT(func(x interface{}) bool {
 		return x == nil
 	})
-	v, known, secret, err = await(bo)
+	v, known, secret, deps, err = await(bo)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.NoError(t, err)
 	assert.Equal(t, true, v)
+}
+
+// Test that dependencies flow through all/apply.
+func TestDeps(t *testing.T) {
+	t.Parallel()
+
+	stringDep1, stringDep2 := &ResourceState{}, &ResourceState{}
+	stringOut := StringOutput{newOutputState(nil, reflect.TypeOf(""), stringDep1)}
+	assert.ElementsMatch(t, []Resource{stringDep1}, stringOut.deps)
+	go func() {
+		stringOut.resolve("hello", true, false, []Resource{stringDep2})
+	}()
+
+	boolDep1, boolDep2 := &ResourceState{}, &ResourceState{}
+	boolOut := BoolOutput{newOutputState(nil, reflect.TypeOf(true), boolDep1)}
+	assert.ElementsMatch(t, []Resource{boolDep1}, boolOut.deps)
+	go func() {
+		boolOut.resolve(true, true, false, []Resource{boolDep2})
+	}()
+
+	a := All(stringOut, boolOut).ApplyT(func(args []interface{}) (string, error) {
+		s := args[0].(string)
+		b := args[1].(bool)
+		return fmt.Sprintf("%s: %v", s, b), nil
+	})
+
+	v, known, secret, deps, err := await(a)
+	assert.Equal(t, "hello: true", v)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.ElementsMatch(t, []Resource{stringDep1, stringDep2, boolDep1, boolDep2}, deps)
+	assert.NoError(t, err)
+}
+
+func testMixedWaitGroups(t *testing.T, combine func(o1, o2 Output) Output) {
+	var wg1, wg2 workGroup
+
+	o1 := newOutput(&wg1, anyOutputType)
+	o2 := newOutput(&wg2, anyOutputType)
+
+	gate := make(chan chan bool)
+	combine(o1, o2).ApplyT(func(_ interface{}) interface{} {
+		<-gate <- true
+		return 0
+	})
+
+	wg1Done, wg2Done := false, false
+	go func() {
+		wg1.Wait()
+		wg1Done = true
+		wg2.Wait()
+		wg2Done = true
+	}()
+
+	o1.getState().resolve(0, true, true, nil)
+	o2.getState().resolve(0, true, true, nil)
+
+	c := make(chan bool)
+	gate <- c
+	assert.False(t, wg1Done)
+	assert.False(t, wg2Done)
+	<-c
+	wg1.Wait()
+	wg2.Wait()
+
+}
+
+func TestMixedWaitGroupsAll(t *testing.T) {
+	t.Parallel()
+
+	testMixedWaitGroups(t, func(o1, o2 Output) Output {
+		return All(o1, o2)
+	})
+}
+
+func TestMixedWaitGroupsAny(t *testing.T) {
+	t.Parallel()
+
+	testMixedWaitGroups(t, func(o1, o2 Output) Output {
+		return Any(struct{ O1, O2 Output }{o1, o2})
+	})
+}
+
+func TestMixedWaitGroupsApply(t *testing.T) {
+	t.Parallel()
+
+	testMixedWaitGroups(t, func(o1, o2 Output) Output {
+		return o1.ApplyT(func(_ interface{}) interface{} {
+			return o2
+		})
+	})
+}
+
+type Foo interface {
+}
+
+type FooInput interface {
+	Input
+
+	ToFooOutput() Output
+}
+type FooArgs struct {
+}
+
+func (FooArgs) ElementType() reflect.Type {
+	return nil
+}
+
+func TestRegisterInputType(t *testing.T) {
+	t.Parallel()
+
+	assert.PanicsWithError(t, "expected string to be an interface", func() {
+		RegisterInputType(reflect.TypeOf(""), FooArgs{})
+	})
+	assert.PanicsWithError(t, "expected pulumi.Foo to implement pulumi.Input", func() {
+		RegisterInputType(reflect.TypeOf((*Foo)(nil)).Elem(), FooArgs{})
+	})
+	assert.PanicsWithError(t, "expected pulumi.FooArgs to implement interface pulumi.FooInput", func() {
+		RegisterInputType(reflect.TypeOf((*FooInput)(nil)).Elem(), FooArgs{})
+	})
+}
+
+func TestAll(t *testing.T) {
+	t.Parallel()
+
+	aStringInput := String("Test")
+	aStringPtrInput := StringPtr("Hello World")
+	aStringOutput := String("Frob").ToStringOutput()
+
+	a := All(aStringInput).ApplyT(func(args []interface{}) (string, error) {
+		a := args[0].(string)
+		return a, nil
+	}).(StringOutput)
+
+	v, known, secret, deps, err := await(a)
+	assert.Equal(t, "Test", v)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.ElementsMatch(t, []Resource{}, deps)
+	assert.NoError(t, err)
+
+	a = All(aStringPtrInput).ApplyT(func(args []interface{}) (string, error) {
+		a := args[0].(*string)
+		return *a, nil
+	}).(StringOutput)
+
+	v, known, secret, deps, err = await(a)
+	assert.Equal(t, "Hello World", v)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.ElementsMatch(t, []Resource{}, deps)
+	assert.NoError(t, err)
+
+	a = All(aStringOutput).ApplyT(func(args []interface{}) (string, error) {
+		a := args[0].(string)
+		return a, nil
+	}).(StringOutput)
+
+	v, known, secret, deps, err = await(a)
+	assert.Equal(t, "Frob", v)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.ElementsMatch(t, []Resource{}, deps)
+	assert.NoError(t, err)
+
+	a = All(aStringInput, aStringPtrInput, aStringOutput).ApplyT(func(args []interface{}) (string, error) {
+		a := args[0].(string)
+		b := args[1].(*string)
+		c := args[2].(string)
+		return fmt.Sprintf("%s: %s: %s", a, *b, c), nil
+	}).(StringOutput)
+
+	v, known, secret, deps, err = await(a)
+	assert.Equal(t, "Test: Hello World: Frob", v)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.ElementsMatch(t, []Resource{}, deps)
+	assert.NoError(t, err)
 }

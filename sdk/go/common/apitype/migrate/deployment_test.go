@@ -17,12 +17,14 @@ package migrate
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDeploymentV1ToV2(t *testing.T) {
+	t.Parallel()
+
 	v1 := apitype.DeploymentV1{
 		Manifest: apitype.ManifestV1{},
 		Resources: []apitype.ResourceV1{

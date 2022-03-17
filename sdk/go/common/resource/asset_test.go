@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,16 +30,27 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const (
 	go19Version = "go1.9"
 )
 
+// TODO[pulumi/pulumi#8647]
+func skipWindows(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on Windows: TODO handle Windows local paths in URIs")
+	}
+}
+
 func TestAssetSerialize(t *testing.T) {
+	t.Parallel()
+
 	// Ensure that asset and archive serialization round trips.
-	{
+	t.Run("text asset", func(t *testing.T) {
+		t.Parallel()
+
 		text := "a test asset"
 		asset, err := NewTextAsset(text)
 		assert.Nil(t, err)
@@ -105,9 +116,13 @@ func TestAssetSerialize(t *testing.T) {
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
 			assert.Equal(t, "27ab4a14a617df10cff3e1cf4e30cf510302afe56bf4cc91f84041c9f7b62fd8", archDes.Hash)
 		}
-	}
-	{
-		file := "/dev/null"
+	})
+	t.Run("path asset", func(t *testing.T) {
+		t.Parallel()
+
+		f, err := ioutil.TempFile("", "")
+		assert.Nil(t, err)
+		file := f.Name()
 		asset, err := NewPathAsset(file)
 		assert.Nil(t, err)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", asset.Hash)
@@ -143,8 +158,11 @@ func TestAssetSerialize(t *testing.T) {
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
 			assert.Equal(t, "d2587a875f82cdf3d3e6cfe9f8c6e6032be5dde8c344466e664e628da15757b0", archDes.Hash)
 		}
-	}
-	{
+	})
+	t.Run("local uri asset", func(t *testing.T) {
+		t.Parallel()
+
+		skipWindows(t)
 		url := "file:///dev/null"
 		asset, err := NewURIAsset(url)
 		assert.Nil(t, err)
@@ -181,8 +199,10 @@ func TestAssetSerialize(t *testing.T) {
 			// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
 			assert.Equal(t, "d2587a875f82cdf3d3e6cfe9f8c6e6032be5dde8c344466e664e628da15757b0", archDes.Hash)
 		}
-	}
-	{
+	})
+	t.Run("path archive", func(t *testing.T) {
+		t.Parallel()
+
 		file, err := tempArchive("test", false)
 		assert.Nil(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file)) }()
@@ -196,8 +216,11 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, archDes.IsPath())
 		assert.Equal(t, file, archDes.Path)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", archDes.Hash)
-	}
-	{
+	})
+	t.Run("uri archive", func(t *testing.T) {
+		t.Parallel()
+
+		skipWindows(t)
 		file, err := tempArchive("test", false)
 		assert.Nil(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file)) }()
@@ -212,8 +235,11 @@ func TestAssetSerialize(t *testing.T) {
 		assert.True(t, archDes.IsURI())
 		assert.Equal(t, url, archDes.URI)
 		assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", archDes.Hash)
-	}
-	{
+	})
+	t.Run("local uri archive", func(t *testing.T) {
+		t.Parallel()
+
+		skipWindows(t)
 		file1, err := tempArchive("test", false)
 		assert.Nil(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file1)) }()
@@ -229,8 +255,11 @@ func TestAssetSerialize(t *testing.T) {
 		arch3, err := NewURIArchive(url)
 		assert.Nil(t, err)
 		assert.True(t, arch1.Equals(arch3))
-	}
-	{
+	})
+	t.Run("nested archives", func(t *testing.T) {
+		t.Parallel()
+
+		skipWindows(t)
 		file, err := tempArchive("test", true)
 		assert.Nil(t, err)
 		defer func() { contract.IgnoreError(os.Remove(file)) }()
@@ -251,12 +280,12 @@ func TestAssetSerialize(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Nil(t, arch4.EnsureHash())
 		assert.False(t, arch2.Equals(arch4))
-	}
+	})
 }
 
 func tempArchive(prefix string, fill bool) (string, error) {
 	for {
-		path := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%x.tar", prefix, rand.Uint32()))
+		path := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%x.tar", prefix, rand.Uint32())) //nolint:gosec
 		f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
 		switch {
 		case os.IsExist(err):
@@ -283,6 +312,8 @@ func tempArchive(prefix string, fill bool) (string, error) {
 }
 
 func TestDeserializeMissingHash(t *testing.T) {
+	t.Parallel()
+
 	assetSer := (&Asset{Text: "asset"}).Serialize()
 	assetDes, isasset, err := DeserializeAsset(assetSer)
 	assert.Nil(t, err)
@@ -291,6 +322,8 @@ func TestDeserializeMissingHash(t *testing.T) {
 }
 
 func TestAssetFile(t *testing.T) {
+	t.Parallel()
+
 	asset, err := NewPathAsset("../../../../pkg/resource/testdata/Fox.txt")
 	assert.Nil(t, err)
 	assert.Equal(t, "85e5f2698ac92d10d50e2f2802ed0d51a13e7c81d0d0a5998a75349469e774c5", asset.Hash)
@@ -303,6 +336,8 @@ asset jumps over the archive.
 }
 
 func TestArchiveDir(t *testing.T) {
+	t.Parallel()
+
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir")
 	assert.Nil(t, err)
 	switch runtime.Version() {
@@ -316,6 +351,8 @@ func TestArchiveDir(t *testing.T) {
 }
 
 func TestArchiveTar(t *testing.T) {
+	t.Parallel()
+
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.tar")
 	assert.Nil(t, err)
@@ -324,6 +361,8 @@ func TestArchiveTar(t *testing.T) {
 }
 
 func TestArchiveTgz(t *testing.T) {
+	t.Parallel()
+
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.tgz")
 	assert.Nil(t, err)
@@ -332,6 +371,8 @@ func TestArchiveTgz(t *testing.T) {
 }
 
 func TestArchiveZip(t *testing.T) {
+	t.Parallel()
+
 	// Note that test data was generated using the Go 1.9 headers
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.zip")
 	assert.Nil(t, err)
@@ -340,6 +381,8 @@ func TestArchiveZip(t *testing.T) {
 }
 
 func TestArchiveJar(t *testing.T) {
+	t.Parallel()
+
 	arch, err := NewPathArchive("../../../../pkg/resource/testdata/test_dir.jar")
 	assert.Nil(t, err)
 	assert.Equal(t, "dfb9eb69f433564b07df524068621c5ac65c08868e6094b8fa4ee388a5ee66e7", arch.Hash)
@@ -368,6 +411,11 @@ func findRepositoryRoot() (string, error) {
 }
 
 func TestArchiveTarFiles(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#7976] flaky
+	t.Skip("Disabled due to flakiness. See #7976.")
+
 	repoRoot, err := findRepositoryRoot()
 	assert.Nil(t, err)
 
@@ -379,6 +427,9 @@ func TestArchiveTarFiles(t *testing.T) {
 }
 
 func TestArchiveZipFiles(t *testing.T) {
+	t.Parallel()
+
+	t.Skip() // TODO[pulumi/pulumi#7147]
 	repoRoot, err := findRepositoryRoot()
 	assert.Nil(t, err)
 
@@ -391,6 +442,8 @@ func TestArchiveZipFiles(t *testing.T) {
 
 //nolint: gosec
 func TestNestedArchive(t *testing.T) {
+	t.Parallel()
+
 	// Create temp dir and place some files.
 	dirName, err := ioutil.TempDir("", "")
 	assert.Nil(t, err)
@@ -424,13 +477,16 @@ func TestNestedArchive(t *testing.T) {
 	assert.Nil(t, err)
 	files := zipReader.File
 	assert.Len(t, files, 3)
-	assert.Equal(t, "foo/a.txt", files[0].Name)
-	assert.Equal(t, "foo/bar/b.txt", files[1].Name)
-	assert.Equal(t, "fake.txt", files[2].Name)
+
+	assert.Equal(t, "foo/a.txt", filepath.ToSlash(files[0].Name))
+	assert.Equal(t, "foo/bar/b.txt", filepath.ToSlash(files[1].Name))
+	assert.Equal(t, "fake.txt", filepath.ToSlash(files[2].Name))
 }
 
 //nolint: gosec
 func TestFileReferencedThroughMultiplePaths(t *testing.T) {
+	t.Parallel()
+
 	// Create temp dir and place some files.
 	dirName, err := ioutil.TempDir("", "")
 	assert.Nil(t, err)
@@ -462,10 +518,12 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	assert.Nil(t, err)
 	files := zipReader.File
 	assert.Len(t, files, 1)
-	assert.Equal(t, "foo/bar/b.txt", files[0].Name)
+	assert.Equal(t, "foo/bar/b.txt", filepath.ToSlash(files[0].Name))
 }
 
 func TestFileExtentionSniffing(t *testing.T) {
+	t.Parallel()
+
 	assert.Equal(t, ArchiveFormat(ZIPArchive), detectArchiveFormat("./some/path/my.zip"))
 	assert.Equal(t, ArchiveFormat(TarArchive), detectArchiveFormat("./some/path/my.tar"))
 	assert.Equal(t, ArchiveFormat(TarGZIPArchive), detectArchiveFormat("./some/path/my.tar.gz"))
@@ -484,6 +542,8 @@ func TestFileExtentionSniffing(t *testing.T) {
 }
 
 func TestInvalidPathArchive(t *testing.T) {
+	t.Parallel()
+
 	// Create a temp file that is not an asset.
 	tmpFile, err := ioutil.TempFile("", "")
 	fileName := tmpFile.Name()
@@ -506,6 +566,7 @@ func validateTestDirArchive(t *testing.T, arch *Archive, expected int) {
 	subs := make(map[string]string)
 	for {
 		name, blob, err := r.Next()
+		name = filepath.ToSlash(name)
 		if err == io.EOF {
 			break
 		}

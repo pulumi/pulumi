@@ -29,14 +29,49 @@
 package apitype
 
 import (
+	_ "embed" // for embedded schemas
 	"encoding/json"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+//go:embed deployments.json
+var deploymentSchema string
+
+// DeploymentSchemaID is the $id for the deployment schema.
+const DeploymentSchemaID = "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/deployments.json"
+
+// DeploymentSchema returns a JSON schema that can be used to validate serialized deployments (i.e. `UntypedDeployment`
+// objects).
+func DeploymentSchema() string {
+	return deploymentSchema
+}
+
+//go:embed resources.json
+var resourceSchema string
+
+// ResourceSchemaID is the $id for the deployment schema.
+const ResourceSchemaID = "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/resources.json"
+
+// ResourceSchema returns a JSON schema that can be used to validate serialized resource values (e.g. `ResourceV3`).
+func ResourceSchema() string {
+	return resourceSchema
+}
+
+//go:embed property-values.json
+var propertyValueSchema string
+
+// PropertyValueSchemaID is the $id for the property value schema.
+const PropertyValueSchemaID = "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/property-values.json"
+
+// PropertyValueSchema returns a JSON schema that can be used to validate serialized property values.
+func PropertyValueSchema() string {
+	return propertyValueSchema
+}
 
 const (
 	// DeploymentSchemaVersionCurrent is the current version of the `Deployment` schema.
@@ -283,12 +318,16 @@ type ResourceV3 struct {
 	PendingReplacement bool `json:"pendingReplacement,omitempty" yaml:"pendingReplacement,omitempty"`
 	// AdditionalSecretOutputs is a list of outputs that were explicitly marked as secret when the resource was created.
 	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty" yaml:"additionalSecretOutputs,omitempty"`
-	// Aliases is a list of previous URNs that this resource may have had in previous deployments
+	// Aliases is a list of previous URNs that this resource may have had in previous deployments.
 	Aliases []resource.URN `json:"aliases,omitempty" yaml:"aliases,omitempty"`
-	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations
+	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations.
 	CustomTimeouts *resource.CustomTimeouts `json:"customTimeouts,omitempty" yaml:"customTimeouts,omitempty"`
 	// ImportID is the import input used for imported resources.
 	ImportID resource.ID `json:"importID,omitempty" yaml:"importID,omitempty"`
+	// An auto-incrementing sequence number for each time this resource gets created/replaced (0 means sequence numbers are unknown, -1 means the last replace didn't use a sequence number).
+	SequenceNumber int `json:"sequenceNumber,omitempty" yaml:"sequenceNumber,omitempty"`
+	// If set to True, the providers Delete method will not be called for this resource. Pulumi simply stops tracking the deleted resource.
+	RetainOnDelete bool `json:"retainOnDelete,omitempty" yaml:"retainOnDelete,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

@@ -15,6 +15,8 @@
 package operations
 
 import (
+	"errors"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -23,11 +25,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // TODO[pulumi/pulumi#54] This should be factored out behind an OperationsProvider RPC interface and versioned with the
@@ -140,7 +141,7 @@ func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, token string) (*sessio
 	if awsDefaultSession == nil {
 		sess, err := session.NewSession()
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create AWS session")
+			return nil, fmt.Errorf("failed to create AWS session: %w", err)
 		}
 
 		awsDefaultSession = sess

@@ -21,7 +21,7 @@ import { getRootResource, isDryRun, isQueryMode, setRootResource } from "./setti
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
  * resources allocated by a deployment.  This must be kept up to date with
- * `github.com/pulumi/pulumi/pkg/v2/resource/stack.RootPulumiStackTypeName`.
+ * `github.com/pulumi/pulumi/sdk/v3/go/common/resource/stack.RootStackType`.
  */
 export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 

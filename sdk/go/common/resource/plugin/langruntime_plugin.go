@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/blang/semver"
@@ -23,12 +24,13 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil/rpcerror"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // langhost reflects a language host plugin, loaded dynamically for a single language/runtime pair.
@@ -43,23 +45,19 @@ type langhost struct {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 	options map[string]interface{}) (LanguageRuntime, error) {
-	// Load the plugin's path by using the standard workspace logic.
+
 	_, path, err := workspace.GetPluginPath(
 		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
 		return nil, err
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind: workspace.LanguagePlugin,
-			Name: runtime,
-		})
 	}
 
-	var args []string
-	for k, v := range options {
-		args = append(args, fmt.Sprintf("-%s=%v", k, v))
+	contract.Assert(path != "")
+
+	args, err := buildArgsForNewPlugin(host, ctx, options)
+	if err != nil {
+		return nil, err
 	}
-	args = append(args, host.ServerAddr())
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, args, nil /*env*/)
 	if err != nil {
@@ -73,6 +71,37 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		plug:    plug,
 		client:  pulumirpc.NewLanguageRuntimeClient(plug.Conn),
 	}, nil
+}
+
+func buildArgsForNewPlugin(host Host, ctx *Context, options map[string]interface{}) ([]string, error) {
+	root, err := filepath.Abs(ctx.Root)
+	if err != nil {
+		return nil, err
+	}
+	var args []string
+
+	for k, v := range options {
+		args = append(args, fmt.Sprintf("-%s=%v", k, v))
+	}
+
+	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
+
+	if cmdutil.IsTracingEnabled() {
+		args = append(args, fmt.Sprintf("-tracing=%s", cmdutil.TracingEndpoint))
+	}
+
+	// NOTE: positional argument for the server addresss must come last
+	args = append(args, host.ServerAddr())
+
+	return args, nil
+}
+
+func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.LanguageRuntimeClient) LanguageRuntime {
+	return &langhost{
+		ctx:     ctx,
+		runtime: runtime,
+		client:  client,
+	}
 }
 
 func (h *langhost) Runtime() string { return h.runtime }
@@ -115,10 +144,10 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
 		}
 		results = append(results, workspace.PluginInfo{
-			Name:      info.GetName(),
-			Kind:      workspace.PluginKind(info.GetKind()),
-			Version:   version,
-			ServerURL: info.GetServer(),
+			Name:              info.GetName(),
+			Kind:              workspace.PluginKind(info.GetKind()),
+			Version:           version,
+			PluginDownloadURL: info.GetServer(),
 		})
 	}
 
@@ -135,21 +164,26 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
 		h.runtime, info.Pwd, info.Program, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
-	config := make(map[string]string)
+	config := make(map[string]string, len(info.Config))
 	for k, v := range info.Config {
 		config[k.String()] = v
 	}
+	configSecretKeys := make([]string, len(info.ConfigSecretKeys))
+	for i, k := range info.ConfigSecretKeys {
+		configSecretKeys[i] = k.String()
+	}
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
-		MonitorAddress: info.MonitorAddress,
-		Pwd:            info.Pwd,
-		Program:        info.Program,
-		Args:           info.Args,
-		Project:        info.Project,
-		Stack:          info.Stack,
-		Config:         config,
-		DryRun:         info.DryRun,
-		QueryMode:      info.QueryMode,
-		Parallel:       int32(info.Parallel),
+		MonitorAddress:   info.MonitorAddress,
+		Pwd:              info.Pwd,
+		Program:          info.Program,
+		Args:             info.Args,
+		Project:          info.Project,
+		Stack:            info.Stack,
+		Config:           config,
+		ConfigSecretKeys: configSecretKeys,
+		DryRun:           info.DryRun,
+		QueryMode:        info.QueryMode,
+		Parallel:         int32(info.Parallel),
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -168,31 +202,37 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 // GetPluginInfo returns this plugin's information.
 func (h *langhost) GetPluginInfo() (workspace.PluginInfo, error) {
 	logging.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
+
+	plugInfo := workspace.PluginInfo{
+		Name: h.runtime,
+		Kind: workspace.LanguagePlugin,
+	}
+
+	plugInfo.Path = h.plug.Bin
+
 	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
 		return workspace.PluginInfo{}, rpcError
 	}
+	vers := resp.Version
 
-	var version *semver.Version
-	if v := resp.Version; v != "" {
-		sv, err := semver.ParseTolerant(v)
+	if vers != "" {
+		sv, err := semver.ParseTolerant(vers)
 		if err != nil {
 			return workspace.PluginInfo{}, err
 		}
-		version = &sv
+		plugInfo.Version = &sv
 	}
 
-	return workspace.PluginInfo{
-		Name:    h.runtime,
-		Path:    h.plug.Bin,
-		Kind:    workspace.LanguagePlugin,
-		Version: version,
-	}, nil
+	return plugInfo, nil
 }
 
 // Close tears down the underlying plugin RPC connection and process.
 func (h *langhost) Close() error {
-	return h.plug.Close()
+	if h.plug != nil {
+		return h.plug.Close()
+	}
+	return nil
 }

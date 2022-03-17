@@ -16,15 +16,16 @@ package deploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
 
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 const (
@@ -85,16 +86,16 @@ type incomingChain struct {
 // resolved, we (the engine) can assume that any chain given to us by the step generator is already
 // ready to execute.
 type stepExecutor struct {
-	plan            *Plan    // The plan currently being executed.
-	opts            Options  // The options for this current plan.
-	preview         bool     // Whether or not we are doing a preview.
-	pendingNews     sync.Map // Resources that have been created but are pending a RegisterResourceOutputs.
-	continueOnError bool     // True if we want to continue the plan after a step error.
+	deployment      *Deployment // The deployment currently being executed.
+	opts            Options     // The options for this current deployment.
+	preview         bool        // Whether or not we are doing a preview.
+	pendingNews     sync.Map    // Resources that have been created but are pending a RegisterResourceOutputs.
+	continueOnError bool        // True if we want to continue the deployment after a step error.
 
 	workers        sync.WaitGroup     // WaitGroup tracking the worker goroutines that are owned by this step executor.
 	incomingChains chan incomingChain // Incoming chains that we are to execute
 
-	ctx      context.Context    // cancellation context for the current plan.
+	ctx      context.Context    // cancellation context for the current deployment.
 	cancel   context.CancelFunc // CancelFunc that cancels the above context.
 	sawError atomic.Value       // atomic boolean indicating whether or not the step excecutor saw that there was an error.
 }
@@ -147,7 +148,7 @@ func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
 }
 
 // ExecuteRegisterResourceOutputs services a RegisterResourceOutputsEvent synchronously on the calling goroutine.
-func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) {
+func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) result.Result {
 	// Look up the final state in the pending registration list.
 	urn := e.URN()
 	value, has := se.pendingNews.Load(urn)
@@ -160,7 +161,36 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	outs := e.Outputs()
 	se.log(synchronousWorkerID,
 		"registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
-	reg.New().Outputs = e.Outputs()
+	reg.New().Outputs = outs
+
+	old := se.deployment.Olds()[urn]
+	var oldOuts resource.PropertyMap
+	if old != nil {
+		oldOuts = old.Outputs
+	}
+
+	// If a plan is present check that these outputs match what we recorded before
+	if se.deployment.plan != nil {
+		resourcePlan, ok := se.deployment.plan.ResourcePlans[urn]
+		if !ok {
+			return result.FromError(fmt.Errorf("no plan for resource %v", urn))
+		}
+
+		if err := resourcePlan.checkOutputs(oldOuts, outs); err != nil {
+			return result.FromError(fmt.Errorf("resource violates plan: %w", err))
+		}
+	}
+
+	// If we're in experimental mode save these new outputs to the plan
+	if se.opts.ExperimentalPlans {
+		if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
+			resourcePlan.Goal.OutputDiff = NewPlanDiff(oldOuts.Diff(outs))
+			resourcePlan.Outputs = outs
+		} else {
+			return result.FromError(fmt.Errorf("this should already have a plan from when we called register resources"))
+		}
+	}
+
 	// If there is an event subscription for finishing the resource, execute them.
 	if e := se.opts.Events; e != nil {
 		if eventerr := e.OnResourceOutputs(reg); eventerr != nil {
@@ -172,14 +202,15 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			// clients of stepExecutor to do work on worker threads by e.g. scheduling arbitrary callbacks
 			// or 2) promote RRE to be step-like so that it can be scheduled as if it were a step. Neither
 			// of these are particularly appealing right now.
-			outErr := errors.Wrap(eventerr, "resource complete event returned an error")
+			outErr := fmt.Errorf("resource complete event returned an error: %w", eventerr)
 			diagMsg := diag.RawMessage(reg.URN(), outErr.Error())
-			se.plan.Diag().Errorf(diagMsg)
+			se.deployment.Diag().Errorf(diagMsg)
 			se.cancelDueToError()
-			return
+			return nil
 		}
 	}
 	e.Done()
+	return nil
 }
 
 // Errored returns whether or not this step executor saw a step whose execution ended in failure.
@@ -228,7 +259,7 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 				// The errStepApplyFailed sentinel signals that the error that failed this chain was a step apply
 				// error and that we shouldn't log it. Everything else should be logged to the diag system as usual.
 				diagMsg := diag.RawMessage(step.URN(), err.Error())
-				se.plan.Diag().Errorf(diagMsg)
+				se.deployment.Diag().Errorf(diagMsg)
 			}
 			return
 		}
@@ -263,7 +294,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		payload, err = events.OnResourceStepPre(step)
 		if err != nil {
 			se.log(workerID, "step %v on %v failed pre-resource step: %v", step.Op(), step.URN(), err)
-			return errors.Wrap(err, "pre-step event returned an error")
+			return fmt.Errorf("pre-step event returned an error: %w", err)
 		}
 	}
 
@@ -274,15 +305,15 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
 			if prior, has := se.pendingNews.Load(step.URN()); has {
-				return errors.Errorf(
-					"resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
+				return fmt.Errorf("resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
 			}
 
 			se.pendingNews.Store(step.URN(), step)
 		}
 	}
 
-	// Ensure that any secrets properties in the output are marked as such.
+	// Ensure that any secrets properties in the output are marked as such and that the resource is tracked in the set
+	// of registered resources.
 	if step.New() != nil {
 		newState := step.New()
 		for _, k := range newState.AdditionalSecretOutputs {
@@ -290,12 +321,24 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 				newState.Outputs[k] = resource.MakeSecret(v)
 			}
 		}
+
+		// If this is not a resource that is managed by Pulumi, then we can ignore it.
+		if _, hasGoal := se.deployment.goals.get(newState.URN); hasGoal {
+			se.deployment.news.set(newState.URN, newState)
+		}
+
+		// If we're in experimental mode update the resource's outputs in the generated plan.
+		if se.opts.ExperimentalPlans {
+			if resourcePlan, ok := se.deployment.newPlans.get(newState.URN); ok {
+				resourcePlan.Outputs = newState.Outputs
+			}
+		}
 	}
 
 	if events != nil {
 		if postErr := events.OnResourceStepPost(payload, step, status, err); postErr != nil {
 			se.log(workerID, "step %v on %v failed post-resource step: %v", step.Op(), step.URN(), postErr)
-			return errors.Wrap(postErr, "post-step event returned an error")
+			return fmt.Errorf("post-step event returned an error: %w", postErr)
 		}
 	}
 
@@ -331,7 +374,7 @@ func (se *stepExecutor) log(workerID int, msg string, args ...interface{}) {
 // There are two reasons why a worker would exit:
 //
 //  1. A worker exits if se.ctx is canceled. There are two ways that se.ctx gets canceled: first, if there is
-//     a step error in another worker, it will cancel the context. Second, if the plan executor experiences an
+//     a step error in another worker, it will cancel the context. Second, if the deployment executor experiences an
 //     error when generating steps or doing pre or post-step events, it will cancel the context.
 //  2. A worker exits if it experiences an error when running a step.
 //
@@ -380,10 +423,10 @@ func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 	}
 }
 
-func newStepExecutor(ctx context.Context, cancel context.CancelFunc, plan *Plan, opts Options,
+func newStepExecutor(ctx context.Context, cancel context.CancelFunc, deployment *Deployment, opts Options,
 	preview, continueOnError bool) *stepExecutor {
 	exec := &stepExecutor{
-		plan:            plan,
+		deployment:      deployment,
 		opts:            opts,
 		preview:         preview,
 		continueOnError: continueOnError,

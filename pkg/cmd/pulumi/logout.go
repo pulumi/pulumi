@@ -15,19 +15,22 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
+
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newLogoutCmd() *cobra.Command {
 	var cloudURL string
 	var localMode bool
+	var all bool
 
 	cmd := &cobra.Command{
 		Use:   "logout <url>",
@@ -38,13 +41,16 @@ func newLogoutCmd() *cobra.Command {
 			"\n" +
 			"Because you may be logged into multiple backends simultaneously, you can optionally pass\n" +
 			"a specific URL argument, formatted just as you logged in, to log out of a specific one.\n" +
-			"If no URL is provided, you will be logged out of the current backend.",
+			"If no URL is provided, you will be logged out of the current backend." +
+			"\n\n" +
+			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n" +
+			"    $ pulumi logout --all",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {
-				if cloudURL != "" {
-					return errors.New("only one of --cloud-url or argument URL may be specified, not both")
+				if cloudURL != "" || all {
+					return errors.New("only one of --all, --cloud-url or argument URL may be specified, not both")
 				}
 				cloudURL = args[0]
 			}
@@ -61,7 +67,7 @@ func newLogoutCmd() *cobra.Command {
 				var err error
 				cloudURL, err = workspace.GetCurrentCloudURL()
 				if err != nil {
-					return errors.Wrap(err, "could not determine current cloud")
+					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
 			}
 
@@ -75,10 +81,19 @@ func newLogoutCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return be.Logout()
+
+			var logoutErr error
+			if all {
+				logoutErr = be.LogoutAll()
+			} else {
+				logoutErr = be.Logout()
+			}
+			return logoutErr
 		}),
 	}
 
+	cmd.PersistentFlags().BoolVar(&all, "all", false,
+		"Logout of all backends")
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "",
 		"A cloud URL to log out of (defaults to current cloud)")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false,

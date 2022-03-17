@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type TestStruct struct {
@@ -32,6 +32,8 @@ type TestStruct struct {
 
 // TestConfig tests the basic config wrapper.
 func TestConfig(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 		Config: map[string]string{
 			"testpkg:sss":    "a string value",
@@ -153,6 +155,8 @@ func TestConfig(t *testing.T) {
 }
 
 func TestSecretConfig(t *testing.T) {
+	t.Parallel()
+
 	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 		Config: map[string]string{
 			"testpkg:sss":    "a string value",

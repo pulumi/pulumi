@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Threading.Tasks;
@@ -9,7 +9,7 @@ namespace Pulumi
     public partial class Deployment
     {
         private Task<string>? _rootResource;
-        private object _rootResourceLock = new object();
+        private readonly object _rootResourceLock = new object();
 
         /// <summary>
         /// Returns a root resource URN that will automatically become the default parent of all
@@ -38,13 +38,13 @@ namespace Pulumi
 
         private async Task<string> SetRootResourceWorkerAsync(Stack stack)
         {
-            var resUrn = await stack.Urn.GetValueAsync().ConfigureAwait(false);
+            var resUrn = await stack.Urn.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
             await this.Engine.SetRootResourceAsync(new SetRootResourceRequest
             {
                 Urn = resUrn,
-            });
+            }).ConfigureAwait(false);
 
-            var getResponse = await this.Engine.GetRootResourceAsync(new GetRootResourceRequest());
+            var getResponse = await this.Engine.GetRootResourceAsync(new GetRootResourceRequest()).ConfigureAwait(false);
             return getResponse.Urn;
         }
     }

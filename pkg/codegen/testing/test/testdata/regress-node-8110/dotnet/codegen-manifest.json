@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "Enums.cs",
+    "ExampleFunc.cs",
+    "Provider.cs",
+    "Pulumi.My8110.csproj",
+    "README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

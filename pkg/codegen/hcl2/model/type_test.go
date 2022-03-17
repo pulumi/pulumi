@@ -33,6 +33,8 @@ func testTraverse(t *testing.T, receiver Traversable, traverser hcl.Traverser, e
 }
 
 func TestDynamicType(t *testing.T) {
+	t.Parallel()
+
 	// Test that DynamicType is assignable to and from itself.
 	assert.True(t, DynamicType.AssignableFrom(DynamicType))
 
@@ -117,6 +119,8 @@ func TestDynamicType(t *testing.T) {
 }
 
 func TestOptionalType(t *testing.T) {
+	t.Parallel()
+
 	typ := NewOptionalType(DynamicType)
 
 	// Test that creating an optional type with the same element type does not create a new type.
@@ -151,6 +155,8 @@ func TestOptionalType(t *testing.T) {
 }
 
 func TestOutputType(t *testing.T) {
+	t.Parallel()
+
 	typ := NewOutputType(DynamicType)
 
 	// Test that creating an output type with the same element type does not create a new type.
@@ -226,6 +232,8 @@ func TestOutputType(t *testing.T) {
 }
 
 func TestPromiseType(t *testing.T) {
+	t.Parallel()
+
 	typ := NewPromiseType(DynamicType)
 
 	// Test that creating an promise type with the same element type does not create a new type.
@@ -295,6 +303,8 @@ func TestPromiseType(t *testing.T) {
 }
 
 func TestMapType(t *testing.T) {
+	t.Parallel()
+
 	typ := NewMapType(DynamicType)
 
 	// Test that creating an map type with the same element type does not create a new type.
@@ -332,6 +342,8 @@ func TestMapType(t *testing.T) {
 }
 
 func TestListType(t *testing.T) {
+	t.Parallel()
+
 	typ := NewListType(DynamicType)
 
 	// Test that creating an list type with the same element type does not create a new type.
@@ -362,6 +374,8 @@ func TestListType(t *testing.T) {
 }
 
 func TestSetType(t *testing.T) {
+	t.Parallel()
+
 	typ := NewSetType(DynamicType)
 
 	// Test that creating an set type with the same element type does not create a new type.
@@ -388,6 +402,8 @@ func TestSetType(t *testing.T) {
 }
 
 func TestUnionType(t *testing.T) {
+	t.Parallel()
+
 	typ := NewUnionType(BoolType, IntType, NumberType, StringType).(*UnionType)
 
 	// Test that creating a union with the same element types does not create a new type.
@@ -436,6 +452,8 @@ func TestUnionType(t *testing.T) {
 }
 
 func TestObjectType(t *testing.T) {
+	t.Parallel()
+
 	typ := NewObjectType(map[string]Type{
 		"foo": BoolType,
 		"bar": IntType,
@@ -505,6 +523,8 @@ func TestObjectType(t *testing.T) {
 }
 
 func TestOpaqueType(t *testing.T) {
+	t.Parallel()
+
 	foo, err := NewOpaqueType("foo")
 	assert.NotNil(t, foo)
 	assert.NoError(t, err)
@@ -529,6 +549,8 @@ func TestOpaqueType(t *testing.T) {
 }
 
 func TestInputType(t *testing.T) {
+	t.Parallel()
+
 	// Test that InputType(DynamicType) just returns DynamicType.
 	assert.Equal(t, DynamicType, InputType(DynamicType))
 
@@ -583,6 +605,8 @@ func assertUnified(t *testing.T, expectedSafe, expectedUnsafe Type, types ...Typ
 }
 
 func TestUnifyType(t *testing.T) {
+	t.Parallel()
+
 	// Number, int, and bool unify with string by preferring string.
 	assertUnified(t, StringType, StringType, NumberType, StringType)
 	assertUnified(t, StringType, StringType, IntType, StringType)
@@ -665,4 +689,52 @@ func TestUnifyType(t *testing.T) {
 	//	t1 = NewOutputType(NewUnionType(NumberType, IntType))
 	//	assert.Equal(t, t0, unifyTypes(t0, t1))
 	//	assert.Equal(t, t0, unifyTypes(t1, t0))
+}
+
+func TestRecursiveObjectType(t *testing.T) {
+	t.Parallel()
+
+	makeType := func(prop string) Type {
+		props := map[string]Type{
+			prop: NewOutputType(IntType),
+		}
+		objType := NewObjectType(props)
+		props["sibling"] = objType
+		listType := NewListType(objType)
+		linkedListType := NewOptionalType(listType)
+		props["next"] = linkedListType
+		return linkedListType
+	}
+
+	linkedListType := makeType("data")
+	linkedListTypeEqual := makeType("data")
+	linkedListTypeNonEqual := makeType("data1")
+
+	// Equals
+	assert.True(t, linkedListType.Equals(linkedListTypeEqual))
+	assert.False(t, linkedListType.Equals(linkedListTypeNonEqual))
+
+	// String conversion
+	// Note: 'next' property is not visible because the string value is memoized at the time of Optional creation.
+	assert.Equal(t, "union(list(object({data = output(int), sibling = ...})), none)", linkedListType.String())
+
+	// Convert from another type
+	assert.Equal(t, UnsafeConversion, linkedListType.ConversionFrom(linkedListTypeNonEqual))
+
+	// Contains eventuals
+	hasOutputs, hasPromises := ContainsEventuals(linkedListType)
+	assert.True(t, hasOutputs)
+	assert.False(t, hasPromises)
+
+	// Resolving eventuals
+	resolvedLinkedListType := ResolveOutputs(linkedListType)
+	data := resolvedLinkedListType.(*UnionType).ElementTypes[0].(*ListType).ElementType.(*ObjectType).Properties["data"]
+	assert.True(t, data.Equals(IntType))
+	hasOutputs, _ = ContainsEventuals(resolvedLinkedListType)
+	assert.False(t, hasOutputs)
+
+	// InputType conversion
+	inputLinkedListType := InputType(resolvedLinkedListType)
+	hasOutputs, _ = ContainsEventuals(inputLinkedListType)
+	assert.True(t, hasOutputs)
 }

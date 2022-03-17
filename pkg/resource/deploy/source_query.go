@@ -19,26 +19,25 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
+
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// QuerySource evaluates a query program, and provides the ability to synchronously wait for
-// completion.
+// QuerySource is used to synchronously wait for a query result.
 type QuerySource interface {
 	Wait() result.Result
 }
@@ -46,15 +45,15 @@ type QuerySource interface {
 // NewQuerySource creates a `QuerySource` for some target runtime environment specified by
 // `runinfo`, and supported by language plugins provided in `plugctx`.
 func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client BackendClient,
-	runinfo *EvalRunInfo, defaultProviderVersions map[tokens.Package]*semver.Version,
+	runinfo *EvalRunInfo, defaultProviderVersions map[tokens.Package]workspace.PluginInfo,
 	provs ProviderSource) (QuerySource, error) {
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
-	builtins := newBuiltinProvider(client)
+	builtins := newBuiltinProvider(client, nil)
 
 	reg, err := providers.NewRegistry(plugctx.Host, nil, false, builtins)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to start resource monitor")
+		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
 
 	// Allows queryResmon to communicate errors loading providers.
@@ -66,9 +65,9 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 	// NOTE: Using the queryResourceMonitor here is *VERY* important, as its job is to disallow
 	// resource operations in query mode!
 	mon, err := newQueryResourceMonitor(builtins, defaultProviderVersions, provs, reg, plugctx,
-		providerRegErrChan, opentracing.SpanFromContext(cancel))
+		providerRegErrChan, opentracing.SpanFromContext(cancel), runinfo)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to start resource monitor")
+		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
 
 	// Create a new iterator with appropriate channels, and gear up to go!
@@ -145,7 +144,7 @@ func runLangPlugin(src *querySource) result.Result {
 	rt := src.runinfo.Proj.Runtime.Name()
 	langhost, err := src.plugctx.Host.LanguageRuntime(rt)
 	if err != nil {
-		return result.FromError(errors.Wrapf(err, "failed to launch language host %s", rt))
+		return result.FromError(fmt.Errorf("failed to launch language host %s: %w", rt, err))
 	}
 	contract.Assertf(langhost != nil, "expected non-nil language host %s", rt)
 
@@ -188,7 +187,7 @@ func runLangPlugin(src *querySource) result.Result {
 
 	if err == nil && progerr != "" {
 		// If the program had an unhandled error; propagate it to the caller.
-		err = errors.Errorf("an unhandled error occurred: %v", progerr)
+		err = fmt.Errorf("an unhandled error occurred: %v", progerr)
 	}
 	return result.WrapIfNonNil(err)
 }
@@ -196,9 +195,9 @@ func runLangPlugin(src *querySource) result.Result {
 // newQueryResourceMonitor creates a new resource monitor RPC server intended to be used in Pulumi's
 // "query mode".
 func newQueryResourceMonitor(
-	builtins *builtinProvider, defaultProviderVersions map[tokens.Package]*semver.Version,
+	builtins *builtinProvider, defaultProviderInfo map[tokens.Package]workspace.PluginInfo,
 	provs ProviderSource, reg *providers.Registry, plugctx *plugin.Context,
-	providerRegErrChan chan<- result.Result, tracingSpan opentracing.Span) (*queryResmon, error) {
+	providerRegErrChan chan<- result.Result, tracingSpan opentracing.Span, runinfo *EvalRunInfo) (*queryResmon, error) {
 
 	// Create our cancellation channel.
 	cancel := make(chan bool)
@@ -207,26 +206,25 @@ func newQueryResourceMonitor(
 	providerRegChan := make(chan *registerResourceEvent)
 
 	// Create a new default provider manager.
-	var config *Target
 	d := &defaultProviders{
-		defaultVersions: defaultProviderVersions,
-		providers:       make(map[string]providers.Reference),
-		config:          config,
-		requests:        make(chan defaultProviderRequest),
-		providerRegChan: providerRegChan,
-		cancel:          cancel,
+		defaultProviderInfo: defaultProviderInfo,
+		providers:           make(map[string]providers.Reference),
+		config:              runinfo.Target,
+		requests:            make(chan defaultProviderRequest),
+		providerRegChan:     providerRegChan,
+		cancel:              cancel,
 	}
 
 	go func() {
 		for e := range providerRegChan {
 			urn := syntheticProviderURN(e.goal)
 
-			inputs, _, err := reg.Check(urn, resource.PropertyMap{}, e.goal.Properties, false)
+			inputs, _, err := reg.Check(urn, resource.PropertyMap{}, e.goal.Properties, false, 0)
 			if err != nil {
 				providerRegErrChan <- result.FromError(err)
 				return
 			}
-			_, _, _, err = reg.Create(urn, inputs, 9999)
+			_, _, _, err = reg.Create(urn, inputs, 9999, false)
 			if err != nil {
 				providerRegErrChan <- result.FromError(err)
 				return
@@ -259,7 +257,30 @@ func newQueryResourceMonitor(
 		return nil, err
 	}
 
-	queryResmon.addr = fmt.Sprintf("127.0.0.1:%d", port)
+	monitorAddress := fmt.Sprintf("127.0.0.1:%d", port)
+
+	var config map[config.Key]string
+	if runinfo.Target != nil {
+		config, err = runinfo.Target.Config.Decrypt(runinfo.Target.Decrypter)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var name string
+	if runinfo.Target != nil {
+		name = string(runinfo.Target.Name)
+	}
+
+	queryResmon.callInfo = plugin.CallInfo{
+		Project:        string(runinfo.Proj.Name),
+		Stack:          name,
+		Config:         config,
+		DryRun:         true,
+		Parallel:       math.MaxInt32,
+		MonitorAddress: monitorAddress,
+	}
+	queryResmon.addr = monitorAddress
 	queryResmon.done = done
 
 	go d.serve()
@@ -282,6 +303,7 @@ type queryResmon struct {
 	cancel           chan bool           // a channel that can cancel the server.
 	done             chan error          // a channel that resolves when the server completes.
 	reg              *providers.Registry // registry for resource providers.
+	callInfo         plugin.CallInfo     // information for call calls.
 }
 
 var _ SourceResourceMonitor = (*queryResmon)(nil)
@@ -303,30 +325,39 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("QueryResourceMonitor.Invoke(%s)", tok)
 
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, err
 	}
 
 	args, err := plugin.UnmarshalProperties(
-		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+		req.GetArgs(), plugin.MarshalOptions{
+			Label:         label,
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			KeepResources: true,
+		})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
+		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
 
 	// Do the invoke and then return the arguments.
-	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
+	logging.V(5).Infof("QueryResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	ret, failures, err := prov.Invoke(tok, args)
 	if err != nil {
-		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
+		return nil, fmt.Errorf("invocation of %v returned an error: %w", tok, err)
 	}
-	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
+		Label:         label,
+		KeepUnknowns:  true,
+		KeepResources: req.GetAcceptResources(),
+	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal return")
+		return nil, fmt.Errorf("failed to marshal return: %w", err)
 	}
 
 	var chkfails []*pulumirpc.CheckFailure
@@ -346,11 +377,11 @@ func (rm *queryResmon) StreamInvoke(
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("QueryResourceMonitor.StreamInvoke(%s)", tok)
 
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 	if err != nil {
 		return err
 	}
-	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return err
 	}
@@ -358,22 +389,22 @@ func (rm *queryResmon) StreamInvoke(
 	args, err := plugin.UnmarshalProperties(
 		req.GetArgs(), plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 	if err != nil {
-		return errors.Wrapf(err, "failed to unmarshal %v args", tok)
+		return fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
 
 	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
 	// streaming operation completes!
-	logging.V(5).Infof("ResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
+	logging.V(5).Infof("QueryResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
 	failures, err := prov.StreamInvoke(tok, args, func(event resource.PropertyMap) error {
 		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 		if err != nil {
-			return errors.Wrapf(err, "failed to marshal return")
+			return fmt.Errorf("failed to marshal return: %w", err)
 		}
 
 		return stream.Send(&pulumirpc.InvokeResponse{Return: mret})
 	})
 	if err != nil {
-		return errors.Wrapf(err, "streaming invocation of %v returned an error", tok)
+		return fmt.Errorf("streaming invocation of %v returned an error: %w", tok, err)
 	}
 
 	var chkfails []*pulumirpc.CheckFailure
@@ -388,6 +419,80 @@ func (rm *queryResmon) StreamInvoke(
 		return stream.Send(&pulumirpc.InvokeResponse{Failures: chkfails})
 	}
 	return nil
+}
+
+// Call dynamically executes a method in the provider associated with a component resource.
+func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	tok := tokens.ModuleMember(req.GetTok())
+	label := fmt.Sprintf("QueryResourceMonitor.Call(%s)", tok)
+
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
+	if err != nil {
+		return nil, err
+	}
+	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider(), tok)
+	if err != nil {
+		return nil, err
+	}
+
+	args, err := plugin.UnmarshalProperties(
+		req.GetArgs(), plugin.MarshalOptions{
+			Label:         label,
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			KeepResources: true,
+		})
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
+	}
+
+	argDependencies := map[resource.PropertyKey][]resource.URN{}
+	for name, deps := range req.GetArgDependencies() {
+		urns := make([]resource.URN, len(deps.Urns))
+		for i, urn := range deps.Urns {
+			urns[i] = resource.URN(urn)
+		}
+		argDependencies[resource.PropertyKey(name)] = urns
+	}
+	options := plugin.CallOptions{
+		ArgDependencies: argDependencies,
+	}
+
+	// Do the call and then return the arguments.
+	logging.V(5).Infof(
+		"QueryResourceMonitor.Call received: tok=%v #args=%v #info=%v #options=%v", tok, len(args), rm.callInfo, options)
+	ret, err := prov.Call(tok, args, rm.callInfo, options)
+	if err != nil {
+		return nil, fmt.Errorf("call of %v returned an error: %w", tok, err)
+	}
+	mret, err := plugin.MarshalProperties(ret.Return, plugin.MarshalOptions{
+		Label:         label,
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal return: %w", err)
+	}
+
+	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
+	for name, deps := range ret.ReturnDependencies {
+		urns := make([]string, len(deps))
+		for i, urn := range deps {
+			urns[i] = string(urn)
+		}
+		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
+	}
+
+	var chkfails []*pulumirpc.CheckFailure
+	for _, failure := range ret.Failures {
+		chkfails = append(chkfails, &pulumirpc.CheckFailure{
+			Property: string(failure.Property),
+			Reason:   failure.Reason,
+		})
+	}
+
+	return &pulumirpc.CallResponse{Return: mret, ReturnDependencies: returnDependencies, Failures: chkfails}, nil
 }
 
 // ReadResource reads the current state associated with a resource from its provider plugin.

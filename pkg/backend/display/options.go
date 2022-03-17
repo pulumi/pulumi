@@ -14,7 +14,11 @@
 
 package display
 
-import "github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+import (
+	"io"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+)
 
 // Type of output to display.
 type Type int
@@ -26,7 +30,7 @@ const (
 	DisplayDiff
 	// DisplayQuery displays query output.
 	DisplayQuery
-	// DisplayQuery displays query output.
+	// DisplayWatch displays watch output.
 	DisplayWatch
 )
 
@@ -38,10 +42,13 @@ type Options struct {
 	ShowSameResources    bool                // true to show the resources that aren't updated in addition to updates.
 	ShowReads            bool                // true to show resources that are being read in
 	SuppressOutputs      bool                // true to suppress output summarization, e.g. if contains sensitive info.
+	SuppressPermalink    bool                // true to suppress state permalink
 	SummaryDiff          bool                // true if diff display should be summarized.
 	IsInteractive        bool                // true if we should display things interactively.
 	Type                 Type                // type of display (rich diff, progress, or query).
 	JSONDisplay          bool                // true if we should emit the entire diff as JSON.
 	EventLogPath         string              // the path to the file to use for logging events, if any.
 	Debug                bool                // true to enable debug output.
+	Stdout               io.Writer           // the writer to use for stdout. Defaults to os.Stdout if unset.
+	Stderr               io.Writer           // the writer to use for stderr. Defaults to os.Stderr if unset.
 }

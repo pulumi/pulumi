@@ -1,0 +1,11 @@
+{
+  "emittedFiles": [
+    "mongodbatlas/doc.go",
+    "mongodbatlas/getCustomDbRoles.go",
+    "mongodbatlas/init.go",
+    "mongodbatlas/provider.go",
+    "mongodbatlas/pulumi-plugin.json",
+    "mongodbatlas/pulumiTypes.go",
+    "mongodbatlas/pulumiUtilities.go"
+  ]
+}

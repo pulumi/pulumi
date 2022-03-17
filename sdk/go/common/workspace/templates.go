@@ -28,15 +28,12 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 )
 
 const (
 	defaultProjectName = "project"
-
-	pulumiTemplateGitRepository       = "https://github.com/pulumi/templates.git"
-	pulumiPolicyTemplateGitRepository = "https://github.com/pulumi/templates-policy.git"
 
 	// This file will be ignored when copying from the template cache to
 	// a project directory.
@@ -49,6 +46,19 @@ const (
 	// pulumiLocalPolicyTemplatePathEnvVar is a path to the folder where policy templates are stored.
 	// It is used in sandboxed environments where the classic template folder may not be writable.
 	pulumiLocalPolicyTemplatePathEnvVar = "PULUMI_POLICY_TEMPLATE_PATH"
+)
+
+// These are variables instead of constants in order that they can be set using the `-X`
+// `ldflag` at build time, if necessary.
+var (
+	// The Git URL for Pulumi program templates
+	pulumiTemplateGitRepository = "https://github.com/pulumi/templates.git"
+	// The branch name for the template repository
+	pulumiTemplateBranch = "master"
+	// The Git URL for Pulumi Policy Pack templates
+	pulumiPolicyTemplateGitRepository = "https://github.com/pulumi/templates-policy.git"
+	// The branch name for the policy pack template repository
+	pulumiPolicyTemplateBranch = "master"
 )
 
 // TemplateKind describes the form of a template.
@@ -205,7 +215,8 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 	}
 
 	// See if the template directory is a Git repository.
-	if _, err = git.PlainOpen(templateDir); err != nil {
+	repo, err := git.PlainOpen(templateDir)
+	if err != nil {
 		// If the repository doesn't exist, it's a legacy directory.
 		// Delete the entire template directory and all children.
 		if err == git.ErrRepositoryNotExists {
@@ -213,6 +224,24 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 		}
 
 		return err
+	}
+
+	// The template directory is a Git repository. We want to make sure that it has the same remote as the one that
+	// we want to pull from. If it doesn't have the same remote, we'll delete it, so that the clone later succeeds.
+	// Select the appropriate remote
+	var url string
+	if templateKind == TemplateKindPolicyPack {
+		url = pulumiPolicyTemplateGitRepository
+	} else {
+		url = pulumiTemplateGitRepository
+	}
+	remotes, err := repo.Remotes()
+	if err != nil {
+		return fmt.Errorf("getting template repo remotes: %w", err)
+	}
+	// If the repo exists and it doesn't have exactly one remote that matches our URL, wipe the templates directory.
+	if len(remotes) != 1 || remotes[0] == nil || !strings.Contains(remotes[0].String(), url) {
+		return os.RemoveAll(templateDir)
 	}
 
 	return nil
@@ -232,7 +261,6 @@ func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
 // RetrieveTemplates retrieves a "template repository" based on the specified name, path, or URL.
 func RetrieveTemplates(templateNamePathOrURL string, offline bool,
 	templateKind TemplateKind) (TemplateRepository, error) {
-
 	if IsTemplateURL(templateNamePathOrURL) {
 		return retrieveURLTemplates(templateNamePathOrURL, offline, templateKind)
 	}
@@ -258,7 +286,7 @@ func retrieveURLTemplates(rawurl string, offline bool, templateKind TemplateKind
 
 	var fullPath string
 	if fullPath, err = RetrieveGitFolder(rawurl, temp); err != nil {
-		return TemplateRepository{}, err
+		return TemplateRepository{}, fmt.Errorf("Failed to retrieve git folder: %w", err)
 	}
 
 	return TemplateRepository{
@@ -302,12 +330,14 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 	if !offline {
 		// Clone or update the pulumi/templates repo.
 		repo := pulumiTemplateGitRepository
+		branch := plumbing.NewBranchReferenceName(pulumiTemplateBranch)
 		if templateKind == TemplateKindPolicyPack {
 			repo = pulumiPolicyTemplateGitRepository
+			branch = plumbing.NewBranchReferenceName(pulumiPolicyTemplateBranch)
 		}
-		err := gitutil.GitCloneOrPull(repo, plumbing.HEAD, templateDir, false /*shallow*/)
+		err := gitutil.GitCloneOrPull(repo, branch, templateDir, false /*shallow*/)
 		if err != nil {
-			return TemplateRepository{}, err
+			return TemplateRepository{}, fmt.Errorf("cloning templates repo: %w", err)
 		}
 	}
 
@@ -341,16 +371,35 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 
 	ref, commit, subDirectory, err := gitutil.GetGitReferenceNameOrHashAndSubDirectory(url, urlPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get git ref: %w", err)
 	}
-
 	if ref != "" {
-		if cloneErr := gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/); cloneErr != nil {
-			return "", cloneErr
+
+		// Different reference attempts to cycle through
+		// We default to master then main in that order. We need to order them to avoid breaking
+		// already existing processes for repos that already have a master and main branch.
+		refAttempts := []plumbing.ReferenceName{plumbing.Master, plumbing.NewBranchReferenceName("main")}
+
+		if ref != plumbing.HEAD {
+			// If we have a non-default reference, we just use it
+			refAttempts = []plumbing.ReferenceName{ref}
 		}
+
+		var cloneErr error
+		for _, ref := range refAttempts {
+			// Attempt the clone. If it succeeds, break
+			cloneErr := gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/)
+			if cloneErr == nil {
+				break
+			}
+		}
+		if cloneErr != nil {
+			return "", fmt.Errorf("failed to clone ref '%s': %w", refAttempts[len(refAttempts)-1], cloneErr)
+		}
+
 	} else {
 		if cloneErr := gitutil.GitCloneAndCheckoutCommit(url, commit, path); cloneErr != nil {
-			return "", cloneErr
+			return "", fmt.Errorf("failed to clone and checkout %s(%s): %w", url, commit, cloneErr)
 		}
 	}
 
@@ -446,8 +495,20 @@ func CopyTemplateFiles(
 				result = []byte(transformed)
 			}
 
+			// Originally we just wrote in 0600 mode, but
+			// this does not preserve the executable bit.
+			// With the new logic below, we try to be at
+			// least as permissive as 0600 and whathever
+			// permissions the source file or symlink had.
+			var mode os.FileMode
+			sourceStat, err := os.Lstat(source)
+			if err != nil {
+				return err
+			}
+			mode = sourceStat.Mode().Perm() | 0600
+
 			// Write to the destination file.
-			err = writeAllBytes(dest, result, force)
+			err = writeAllBytes(dest, result, force, mode)
 			if err != nil {
 				// An existing file has shown up in between the dry run and the actual copy operation.
 				if os.IsExist(err) {
@@ -514,6 +575,10 @@ var (
 // ValidateProjectName ensures a project name is valid, if it is not it returns an error with a message suitable
 // for display to an end user.
 func ValidateProjectName(s string) error {
+	if s == "" {
+		return errors.New("A project name may not be empty")
+	}
+
 	if len(s) > 100 {
 		return errors.New("A project name must be 100 characters or less")
 	}
@@ -710,7 +775,7 @@ func transform(content string, projectName string, projectDescription string) st
 }
 
 // writeAllBytes writes the bytes to the specified file, with an option to overwrite.
-func writeAllBytes(filename string, bytes []byte, overwrite bool) error {
+func writeAllBytes(filename string, bytes []byte, overwrite bool, mode os.FileMode) error {
 	flag := os.O_WRONLY | os.O_CREATE
 	if overwrite {
 		flag = flag | os.O_TRUNC
@@ -718,7 +783,7 @@ func writeAllBytes(filename string, bytes []byte, overwrite bool) error {
 		flag = flag | os.O_EXCL
 	}
 
-	f, err := os.OpenFile(filename, flag, 0600)
+	f, err := os.OpenFile(filename, flag, mode)
 	if err != nil {
 		return err
 	}

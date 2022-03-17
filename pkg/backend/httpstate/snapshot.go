@@ -16,13 +16,13 @@ package httpstate
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 )
 
 // cloudSnapshotPersister persists snapshots to the Pulumi service.
@@ -45,7 +45,7 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	}
 	deployment, err := stack.SerializeDeployment(snapshot, persister.sm, false /* showSecrets */)
 	if err != nil {
-		return errors.Wrap(err, "serializing deployment")
+		return fmt.Errorf("serializing deployment: %w", err)
 	}
 	return persister.backend.client.PatchUpdateCheckpoint(persister.context, persister.update, deployment, token)
 }

@@ -21,11 +21,29 @@ var pyNameTests = []struct {
 	{"podCIDRSet", "pod_cidr_set", "pod_cidr_set"},
 	{"Sha256Hash", "sha256_hash", "sha256_hash"},
 	{"SHA256Hash", "sha256_hash", "sha256_hash"},
+
+	// PyName should return the legacy name for these:
+	{"openXJsonSerDe", "open_x_json_ser_de", "open_x_json_ser_de"},
+	{"GetPublicIPs", "get_public_i_ps", "get_public_i_ps"},
+	{"GetUptimeCheckIPs", "get_uptime_check_i_ps", "get_uptime_check_i_ps"},
 }
 
 func TestPyName(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range pyNameTests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
+			// TODO[pulumi/pulumi#5201]: Once the assertion has been removed, we can remove this `if` block.
+			// Prevent this input from panic'ing.
+			if tt.input == "someTHINGsAREWeird" {
+				result := pyName(tt.input, false /*legacy*/)
+				assert.Equal(t, tt.expected, result)
+				return
+			}
+
 			result := PyName(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -33,8 +51,13 @@ func TestPyName(t *testing.T) {
 }
 
 func TestPyNameLegacy(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range pyNameTests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			result := PyNameLegacy(tt.input)
 			assert.Equal(t, tt.legacy, result)
 		})

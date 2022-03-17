@@ -1,14 +1,17 @@
-// Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+// Copyright 2016-2021, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-// pulumi-language-dotnet serves as the "language host" for Pulumi programs written in .NET.  It is ultimately
-// responsible for spawning the language runtime that executes the program.
-//
-// The program being executed is executed by a shim exe called `pulumi-language-dotnet-exec`. This script is
-// written in the hosted language (in this case, C#) and is responsible for initiating RPC links to the resource
-// monitor and engine.
-//
-// It's therefore the responsibility of this program to implement the LanguageHostServer endpoint by spawning
-// instances of `pulumi-language-dotnet-exec` and forwarding the RPC request arguments to the command-line.
 package main
 
 import (
@@ -21,17 +24,19 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 )
 
@@ -47,8 +52,10 @@ var (
 func main() {
 	var tracing string
 	var binary string
+	var root string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.StringVar(&binary, "binary", "", "A relative or an absolute path to a precompiled .NET assembly to execute")
+	flag.StringVar(&root, "root", "", "Project root path to use")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
@@ -61,7 +68,13 @@ func main() {
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-dotnet", "pulumi-language-dotnet", tracing)
 	var dotnetExec string
-	if givenExecutor == "" {
+	switch {
+	case givenExecutor != "":
+		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
+		dotnetExec = givenExecutor
+	case binary != "" && !strings.HasSuffix(binary, ".dll"):
+		logging.V(3).Info("language host requires no .NET SDK for a self-contained binary")
+	default:
 		pathExec, err := exec.LookPath("dotnet")
 		if err != nil {
 			err = errors.Wrap(err, "could not find `dotnet` on the $PATH")
@@ -70,9 +83,6 @@ func main() {
 
 		logging.V(3).Infof("language host identified executor from path: `%s`", pathExec)
 		dotnetExec = pathExec
-	} else {
-		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
-		dotnetExec = givenExecutor
 	}
 
 	// Optionally pluck out the engine so we can do logging, etc.
@@ -154,7 +164,7 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 	}
 
 	// now, introspect the user project to see which pulumi resource packages it references.
-	pulumiPackages, err := host.DeterminePulumiPackages(ctx, engineClient)
+	possiblePulumiPackages, err := host.DeterminePossiblePulumiPackages(ctx, engineClient)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +181,7 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 
 	plugins := []*pulumirpc.PluginDependency{}
 	packageToVersion := make(map[string]string)
-	for _, parts := range pulumiPackages {
+	for _, parts := range possiblePulumiPackages {
 		packageName := parts[0]
 		packageVersion := parts[1]
 
@@ -182,7 +192,7 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 
 		packageToVersion[packageName] = packageVersion
 
-		plugin, err := host.DeterminePluginDependency(ctx, packageDir, packageName, packageVersion)
+		plugin, err := DeterminePluginDependency(packageDir, packageName, packageVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +205,7 @@ func (host *dotnetLanguageHost) GetRequiredPlugins(
 	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
 }
 
-func (host *dotnetLanguageHost) DeterminePulumiPackages(
+func (host *dotnetLanguageHost) DeterminePossiblePulumiPackages(
 	ctx context.Context, engineClient pulumirpc.EngineClient) ([][]string, error) {
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
@@ -224,7 +234,7 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(
 	outputLines := strings.Split(strings.Replace(commandOutput, "\r\n", "\n", -1), "\n")
 
 	sawPulumi := false
-	pulumiPackages := [][]string{}
+	packages := [][]string{}
 	for _, line := range outputLines {
 		fields := strings.Fields(line)
 		if len(fields) < 3 {
@@ -245,23 +255,19 @@ func (host *dotnetLanguageHost) DeterminePulumiPackages(
 			continue
 		}
 
-		if !strings.HasPrefix(packageName, "Pulumi.") {
-			continue
-		}
-
 		version := fields[len(fields)-1]
-		pulumiPackages = append(pulumiPackages, []string{packageName, version})
+		packages = append(packages, []string{packageName, version})
 	}
 
-	if !sawPulumi && len(pulumiPackages) == 0 {
+	if !sawPulumi && len(packages) == 0 {
 		return nil, errors.Errorf(
-			"Unexpected output from 'dotnet %v'. Program does not appear to reference any 'Pulumi.*' packages.",
+			"unexpected output from 'dotnet %v'. Program does not appear to reference any 'Pulumi.*' packages",
 			commandStr)
 	}
 
-	logging.V(5).Infof("GetRequiredPlugins: Pulumi packages: %#v", pulumiPackages)
+	logging.V(5).Infof("GetRequiredPlugins: Pulumi packages: %#v", packages)
 
-	return pulumiPackages, nil
+	return packages, nil
 }
 
 func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(
@@ -293,48 +299,102 @@ func (host *dotnetLanguageHost) DetermineDotnetPackageDirectory(
 	return dir, nil
 }
 
-func (host *dotnetLanguageHost) DeterminePluginDependency(
-	ctx context.Context, packageDir, packageName, packageVersion string) (*pulumirpc.PluginDependency, error) {
+type versionFile struct {
+	name    string
+	version string
+}
 
-	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v, %v",
-		packageDir, packageName, packageVersion)
-
-	// Check for a `~/.nuget/packages/package_name/package_version/content/version.txt` file.
-
-	versionFilePath := path.Join(packageDir, strings.ToLower(packageName), packageVersion, "content", "version.txt")
-	logging.V(5).Infof("GetRequiredPlugins: version file path: %v", versionFilePath)
-
-	if _, err := os.Stat(versionFilePath); err != nil {
-		if os.IsNotExist(err) {
-			// Pulumi package doesn't contain a version.txt file.  This is not a resource-plugin.
-			// just ignore it.
-			logging.V(5).Infof("GetRequiredPlugins: No such file")
-			return nil, nil
-		}
-
-		// some other error.  report it as it means we can't read this important file.
-		logging.V(5).Infof("GetRequiredPlugins: err: %v", err)
-		return nil, err
+func newVersionFile(b []byte, packageName string) *versionFile {
+	var name string
+	version := strings.TrimSpace(string(b))
+	parts := strings.SplitN(version, "\n", 2)
+	if len(parts) == 2 {
+		// version.txt may contain two lines, in which case it's "plugin name\nversion"
+		name = strings.TrimSpace(parts[0])
+		version = strings.TrimSpace(parts[1])
 	}
 
-	b, err := ioutil.ReadFile(versionFilePath)
-	if err != nil {
-		logging.V(5).Infof("GetRequiredPlugins: err: %v", err)
-		return nil, err
-	}
-
-	// Given a package name like "Pulumi.Azure" lowercase the part after Pulumi. to get the plugin name "azure".
-	name := strings.ToLower(packageName[len("Pulumi."):])
-
-	version := strings.TrimSpace(bytes.NewBuffer(b).String())
 	if !strings.HasPrefix(version, "v") {
 		// Version file has stripped off the "v" that we need. So add it back here.
 		version = fmt.Sprintf("v%v", version)
 	}
 
+	return &versionFile{
+		name:    name,
+		version: version,
+	}
+}
+
+func DeterminePluginDependency(packageDir, packageName, packageVersion string) (*pulumirpc.PluginDependency, error) {
+
+	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v, %v",
+		packageDir, packageName, packageVersion)
+
+	// Check for a `~/.nuget/packages/package_name/package_version/content/{pulumi-plugin.json,version.txt}` file.
+
+	artifactPath := filepath.Join(packageDir, strings.ToLower(packageName), packageVersion, "content")
+	pulumiPluginFilePath := filepath.Join(artifactPath, "pulumi-plugin.json")
+	versionFilePath := filepath.Join(artifactPath, "version.txt")
+	logging.V(5).Infof("GetRequiredPlugins: plugin file path: %v", versionFilePath)
+	logging.V(5).Infof("GetRequiredPlugins: version file path: %v", versionFilePath)
+
+	pulumiPlugin, err := plugin.LoadPulumiPluginJSON(pulumiPluginFilePath)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	// Explicitly not a resource
+	if pulumiPlugin != nil && !pulumiPlugin.Resource {
+		return nil, nil
+	}
+
+	var vf *versionFile
+	b, err := ioutil.ReadFile(versionFilePath)
+
+	switch {
+	case err == nil:
+		vf = newVersionFile(b, packageName)
+		break
+	case os.IsNotExist(err):
+		break
+	case err != nil:
+		return nil, fmt.Errorf("Failed to read version file: %w", err)
+	}
+
+	defaultName := strings.ToLower(strings.TrimPrefix(packageName, "Pulumi."))
+
+	// No pulumi-plugin.json or version.txt
+	// That means this is not a resource.
+	if pulumiPlugin == nil && vf == nil {
+		return nil, nil
+	}
+	// Create stubs to avoid dereferencing a null
+	if pulumiPlugin == nil {
+		pulumiPlugin = &plugin.PulumiPluginJSON{}
+	} else if vf == nil {
+		vf = &versionFile{}
+	}
+
+	or := func(o ...string) string {
+		for _, s := range o {
+			if s != "" {
+				return s
+			}
+		}
+		return ""
+	}
+
+	name := or(pulumiPlugin.Name, vf.name, defaultName)
+	version := or(pulumiPlugin.Version, vf.version, packageVersion)
+
+	_, err = semver.ParseTolerant(version)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid package version: %w", err)
+	}
+
 	result := pulumirpc.PluginDependency{
 		Name:    name,
 		Version: version,
+		Server:  pulumiPlugin.Server,
 		Kind:    "resource",
 	}
 
@@ -373,7 +433,7 @@ func (host *dotnetLanguageHost) RunDotnetCommand(
 	// Buffer the writes we see from dotnet from its stdout and stderr streams. We will display
 	// these ephemerally as `dotnet build` runs.  If the build does fail though, we will dump
 	// messages back to our own stdout/stderr so they get picked up and displayed to the user.
-	streamID := rand.Int31()
+	streamID := rand.Int31() //nolint:gosec
 
 	infoBuffer := &bytes.Buffer{}
 	errorBuffer := &bytes.Buffer{}
@@ -476,12 +536,24 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		err = errors.Wrap(err, "failed to serialize configuration")
 		return nil, err
 	}
+	configSecretKeys, err := host.constructConfigSecretKeys(req)
+	if err != nil {
+		err = errors.Wrap(err, "failed to serialize configuration secret keys")
+		return nil, err
+	}
 
+	executable := host.exec
 	args := []string{}
 
-	if host.binary != "" {
+	switch {
+	case host.binary != "" && strings.HasSuffix(host.binary, ".dll"):
+		// Portable pre-compiled dll: run `dotnet <name>.dll`
 		args = append(args, host.binary)
-	} else {
+	case host.binary != "":
+		// Self-contained executable: run it directly.
+		executable = host.binary
+	default:
+		// Run from source.
 		args = append(args, "run")
 
 		if req.GetProgram() != "" {
@@ -496,10 +568,10 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	cmd := exec.Command(host.exec, args...) // nolint: gas // intentionally running dynamic program name.
+	cmd := exec.Command(executable, args...) // nolint: gas // intentionally running dynamic program name.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = host.constructEnv(req, config)
+	cmd.Env = host.constructEnv(req, config, configSecretKeys)
 	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
@@ -528,7 +600,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	return &pulumirpc.RunResponse{Error: errResult}, nil
 }
 
-func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config string) []string {
+func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config, configSecretKeys string) []string {
 	env := os.Environ()
 
 	maybeAppendEnv := func(k, v string) {
@@ -547,6 +619,7 @@ func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config s
 	maybeAppendEnv("parallel", fmt.Sprint(req.GetParallel()))
 	maybeAppendEnv("tracing", host.tracing)
 	maybeAppendEnv("config", config)
+	maybeAppendEnv("config_secret_keys", configSecretKeys)
 
 	return env
 }
@@ -564,6 +637,22 @@ func (host *dotnetLanguageHost) constructConfig(req *pulumirpc.RunRequest) (stri
 	}
 
 	return string(configJSON), nil
+}
+
+// constructConfigSecretKeys JSON-serializes the list of keys that contain secret values given as part of
+// a RunRequest.
+func (host *dotnetLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest) (string, error) {
+	configSecretKeys := req.GetConfigSecretKeys()
+	if configSecretKeys == nil {
+		return "[]", nil
+	}
+
+	configSecretKeysJSON, err := json.Marshal(configSecretKeys)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configSecretKeysJSON), nil
 }
 
 func (host *dotnetLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {

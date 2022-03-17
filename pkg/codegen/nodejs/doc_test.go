@@ -21,25 +21,28 @@ package nodejs
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
 var testPackageSpec = schema.PackageSpec{
 	Name:        "aws",
+	Version:     "0.0.1",
 	Description: "A fake provider package used for testing.",
 	Meta: &schema.MetadataSpec{
 		ModuleFormat: "(.*)(?:/[^/]*)",
 	},
-	Types: map[string]schema.ObjectTypeSpec{
+	Types: map[string]schema.ComplexTypeSpec{
 		"aws:s3/BucketCorsRule:BucketCorsRule": {
-			Description: "The resource options object.",
-			Type:        "object",
-			Properties: map[string]schema.PropertySpec{
-				"stringProp": {
-					Description: "A string prop.",
-					TypeSpec: schema.TypeSpec{
-						Type: "string",
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Description: "The resource options object.",
+				Type:        "object",
+				Properties: map[string]schema.PropertySpec{
+					"stringProp": {
+						Description: "A string prop.",
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
 					},
 				},
 			},
@@ -67,14 +70,20 @@ func getTestPackage(t *testing.T) *schema.Package {
 }
 
 func TestDocLinkGenerationForPulumiTypes(t *testing.T) {
+	t.Parallel()
+
 	pkg := getTestPackage(t)
 	d := DocLanguageHelper{}
 	t.Run("GenerateCustomResourceOptionsLink", func(t *testing.T) {
+		t.Parallel()
+
 		expected := "/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions"
 		link := d.GetDocLinkForPulumiType(pkg, "CustomResourceOptions")
 		assert.Equal(t, expected, link)
 	})
 	t.Run("GenerateInvokeOptionsLink", func(t *testing.T) {
+		t.Parallel()
+
 		expected := "/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions"
 		link := d.GetDocLinkForPulumiType(pkg, "InvokeOptions")
 		assert.Equal(t, expected, link)
@@ -82,6 +91,8 @@ func TestDocLinkGenerationForPulumiTypes(t *testing.T) {
 }
 
 func TestGetDocLinkForResourceType(t *testing.T) {
+	t.Parallel()
+
 	pkg := getTestPackage(t)
 	d := DocLanguageHelper{}
 	expected := "/docs/reference/pkg/nodejs/pulumi/aws/s3/#Bucket"
@@ -90,6 +101,8 @@ func TestGetDocLinkForResourceType(t *testing.T) {
 }
 
 func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
+	t.Parallel()
+
 	pkg := getTestPackage(t)
 	d := DocLanguageHelper{}
 	expected := "/docs/reference/pkg/nodejs/pulumi/aws/types/input/#BucketCorsRule"

@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+# Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
 
 # common.mk provides most of the scalfholding for our build system. It
 # provides default targets for each project we want to build.
@@ -95,11 +95,8 @@ SHELL       := /bin/bash
 
 STEP_MESSAGE = @echo -e "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):\033[0m"
 
-# Our install targets place items item into $PULUMI_ROOT, if it's
-# unset, default to /opt/pulumi.
-ifeq ($(PULUMI_ROOT),)
-	PULUMI_ROOT:=/opt/pulumi
-endif
+# Our install targets place items item into $PULUMI_ROOT.
+PULUMI_ROOT ?= $$HOME/.pulumi-dev
 
 # Use Python 3 explicitly vs expecting that `python` will resolve to a python 3
 # runtime.
@@ -109,9 +106,10 @@ PIP ?= pip3
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
+GO_TEST_OPTIONS     :=
 
-GO_TEST_FAST = PATH="$(PULUMI_BIN):$(PATH)" go test -short -count=1 -cover -timeout 1h -parallel ${TESTPARALLELISM}
-GO_TEST = PATH="$(PULUMI_BIN):$(PATH)" go test -count=1 -cover -timeout 1h -parallel ${TESTPARALLELISM}
+GO_TEST_FAST = $(PYTHON) ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM} ${GO_TEST_OPTIONS}
+GO_TEST = $(PYTHON) $(PROJECT_ROOT)/scripts/go-test.py -count=1 -cover -timeout 1h -tags=all -parallel ${TESTPARALLELISM} ${GO_TEST_OPTIONS}
 GOPROXY = 'https://proxy.golang.org'
 
 .PHONY: default all ensure only_build only_test build lint install test_all core
@@ -127,6 +125,8 @@ only_test:: $(SUB_PROJECTS:%=%_only_test)
 only_test_fast:: $(SUB_PROJECTS:%=%_only_test_fast)
 default:: $(SUB_PROJECTS:%=%_default)
 all:: $(SUB_PROJECTS:%=%_all)
+install_all:: $(SUB_PROJECTS:%=%_install_all)
+test_all:: $(SUB_PROJECTS:%=%_test_all)
 ensure:: $(SUB_PROJECTS:%=%_ensure)
 dist:: $(SUB_PROJECTS:%=%_dist)
 brew:: $(SUB_PROJECTS:%=%_brew)
@@ -154,6 +154,7 @@ all:: build install lint test_all
 ensure::
 	$(call STEP_MESSAGE)
 	@if [ -e 'package.json' ]; then echo "yarn install"; yarn install; fi
+
 build::
 	$(call STEP_MESSAGE)
 
@@ -165,6 +166,7 @@ test_fast::
 
 install::
 	$(call STEP_MESSAGE)
+	@# Implicitly creates PULUMI_ROOT.
 	@mkdir -p $(PULUMI_BIN)
 	@mkdir -p $(PULUMI_NODE_MODULES)
 	@mkdir -p $(PULUMI_NUGET)
@@ -197,7 +199,7 @@ only_test_fast:: lint test_fast
 
 # Generate targets for each sub project. This project's default and
 # all targets will depend on the sub project's targets, and the
-# individual targets for sub projects are added as a convience when
+# individual targets for sub projects are added as a convenience when
 # invoking make from the command line
 ifneq ($(SUB_PROJECTS),)
 $(SUB_PROJECTS:%=%_default):
@@ -208,10 +210,14 @@ $(SUB_PROJECTS:%=%_ensure):
 	@$(MAKE) -C ./$(@:%_ensure=%) ensure
 $(SUB_PROJECTS:%=%_build):
 	@$(MAKE) -C ./$(@:%_build=%) build
+$(SUB_PROJECTS:%=%_install_all):
+	@$(MAKE) -C ./$(@:%_install_all=%) install
 $(SUB_PROJECTS:%=%_lint):
 	@$(MAKE) -C ./$(@:%_lint=%) lint
 $(SUB_PROJECTS:%=%_test_fast):
 	@$(MAKE) -C ./$(@:%_test_fast=%) test_fast
+$(SUB_PROJECTS:%=%_test_all):
+	@$(MAKE) -C ./$(@:%_test_all=%) test_all
 $(SUB_PROJECTS:%=%_install):
 	@$(MAKE) -C ./$(@:%_install=%) install
 $(SUB_PROJECTS:%=%_only_build):
@@ -229,5 +235,10 @@ endif
 # As a convinece, we provide a format target that folks can build to
 # run go fmt over all the go code in their tree.
 .PHONY: format
-format:
-	find . -iname "*.go" -not -path "./vendor/*" | xargs gofmt -s -w
+format::
+	$(call STEP_MESSAGE)
+	find . -iname "*.go" -not \( \
+		-path "./vendor/*" -or \
+		-path "./*/compilation_error/*" -or \
+		-path "./*/testdata/*" \
+	\) | xargs gofmt -s -w

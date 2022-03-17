@@ -16,6 +16,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -26,27 +27,27 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/npm"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v2/python"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
@@ -82,7 +83,7 @@ func runNew(args newArgs) error {
 
 	// Validate name (if specified) before further prompts/operations.
 	if args.name != "" && workspace.ValidateProjectName(args.name) != nil {
-		return errors.Errorf("'%s' is not a valid project name. %s.", args.name, workspace.ValidateProjectName(args.name))
+		return fmt.Errorf("'%s' is not a valid project name. %w", args.name, workspace.ValidateProjectName(args.name))
 	}
 
 	// Validate secrets provider type
@@ -93,7 +94,7 @@ func runNew(args newArgs) error {
 	// Get the current working directory.
 	cwd, err := os.Getwd()
 	if err != nil {
-		return errors.Wrap(err, "getting the working directory")
+		return fmt.Errorf("getting the working directory: %w", err)
 	}
 	originalCwd := cwd
 
@@ -158,7 +159,7 @@ func runNew(args newArgs) error {
 	if !args.force {
 		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
 			if os.IsNotExist(err) {
-				return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
+				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 			}
 			return err
 		}
@@ -171,7 +172,11 @@ func runNew(args newArgs) error {
 	// created via the web app.
 	var s backend.Stack
 	if args.stack != "" && strings.Count(args.stack, "/") == 2 {
-		existingStack, existingName, existingDesc, err := getStack(args.stack, opts)
+		stackName, err := buildStackName(args.stack)
+		if err != nil {
+			return err
+		}
+		existingStack, existingName, existingDesc, err := getStack(stackName, opts)
 		if err != nil {
 			return err
 		}
@@ -203,6 +208,13 @@ func runNew(args newArgs) error {
 	if args.name == "" {
 		defaultValue := workspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
 		if err := validateProjectName(defaultValue, args.generateOnly, opts); err != nil {
+			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
+			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
+			// See https://github.com/pulumi/pulumi/issues/8747.
+			if args.yes {
+				return fmt.Errorf("'%s' is not a valid project name. %w", defaultValue, err)
+			}
+
 			// Do not suggest an invalid or existing name as the default project name.
 			defaultValue = ""
 		}
@@ -227,7 +239,7 @@ func runNew(args newArgs) error {
 	// Actually copy the files.
 	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
 		if os.IsNotExist(err) {
-			return errors.Wrapf(err, "template '%s' not found", args.templateNameOrURL)
+			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 		}
 		return err
 	}
@@ -244,7 +256,7 @@ func runNew(args newArgs) error {
 	proj.Description = &args.description
 	proj.Template = nil
 	if err = workspace.SaveProject(proj); err != nil {
-		return errors.Wrap(err, "saving project")
+		return fmt.Errorf("saving project: %w", err)
 	}
 
 	// Create the stack, if needed.
@@ -298,19 +310,19 @@ func runNew(args newArgs) error {
 func useSpecifiedDir(dir string) (string, error) {
 	// Ensure the directory exists.
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return "", errors.Wrap(err, "creating the directory")
+		return "", fmt.Errorf("creating the directory: %w", err)
 	}
 
 	// Change the working directory to the specified directory.
 	if err := os.Chdir(dir); err != nil {
-		return "", errors.Wrap(err, "changing the working directory")
+		return "", fmt.Errorf("changing the working directory: %w", err)
 	}
 
 	// Get the new working directory.
 	var cwd string
 	var err error
 	if cwd, err = os.Getwd(); err != nil {
-		return "", errors.Wrap(err, "getting the working directory")
+		return "", fmt.Errorf("getting the working directory: %w", err)
 	}
 	return cwd, nil
 }
@@ -347,7 +359,17 @@ func newNewCmd() *cobra.Command {
 			"* `pulumi new --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
 			"* `pulumi new --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
 			"* `pulumi new --secrets-provider=\"gcpkms://projects/p/locations/l/keyRings/r/cryptoKeys/k\"`\n" +
-			"* `pulumi new --secrets-provider=\"hashivault://mykey\"`",
+			"* `pulumi new --secrets-provider=\"hashivault://mykey\"`" +
+			"\n\n" +
+			"To create a project from a specific source control location, pass the url as follows e.g.\n" +
+			"* `pulumi new https://gitlab.com/<user>/<repo>`\n" +
+			"* `pulumi new https://bitbucket.org/<user>/<repo>`\n" +
+			"* `pulumi new https://github.com/<user>/<repo>`\n" +
+			"\n" +
+			"To create the project from a branch of a specific source control location, pass the url to the branch, e.g.\n" +
+			"* `pulumi new https://gitlab.com/<user>/<repo>/tree/<branch>`\n" +
+			"* `pulumi new https://bitbucket.org/<user>/<repo>/tree/<branch>`\n" +
+			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			if len(cliArgs) > 0 {
@@ -434,7 +456,7 @@ func errorIfNotEmptyDirectory(path string) error {
 	}
 
 	if len(infos) > 0 {
-		return errors.Errorf("%s is not empty; "+
+		return fmt.Errorf("%s is not empty; "+
 			"rerun in an empty directory, pass the path to an empty directory to --dir, or use --force", path)
 	}
 
@@ -507,7 +529,11 @@ func promptAndCreateStack(prompt promptForValueFunc,
 	}
 
 	if stack != "" {
-		s, err := stackInit(b, stack, setCurrent, secretsProvider)
+		stackName, err := buildStackName(stack)
+		if err != nil {
+			return nil, err
+		}
+		s, err := stackInit(b, stackName, setCurrent, secretsProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -525,7 +551,14 @@ func promptAndCreateStack(prompt promptForValueFunc,
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(b, stackName, setCurrent, secretsProvider)
+		formattedStackName, err := buildStackName(stackName)
+		if err != nil {
+			return nil, err
+		}
+		if err != nil {
+			return nil, err
+		}
+		s, err := stackInit(b, formattedStackName, setCurrent, secretsProvider)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
@@ -566,8 +599,9 @@ func installDependencies(proj *workspace.Project, root string) error {
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
 		if bin, err := nodeInstallDependencies(); err != nil {
-			return errors.Wrapf(err, "%s install failed; rerun manually to try again, "+
-				"then run 'pulumi up' to perform an initial deployment", bin)
+			return fmt.Errorf("%s install failed; rerun manually to try again, "+
+				"then run 'pulumi up' to perform an initial deployment"+": %w", bin, err)
+
 		}
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
 		return pythonInstallDependencies(proj, root)
@@ -575,8 +609,7 @@ func installDependencies(proj *workspace.Project, root string) error {
 		return dotnetInstallDependenciesAndBuild(proj, root)
 	} else if strings.EqualFold(proj.Runtime.Name(), "go") {
 		if err := goInstallDependencies(); err != nil {
-			return errors.Wrapf(err, "`go mod download` failed to install dependencies; rerun manually to try again, "+
-				"then run 'pulumi up' to perform an initial deployment")
+			return err
 		}
 	}
 
@@ -589,7 +622,7 @@ func nodeInstallDependencies() (string, error) {
 	fmt.Println("Installing dependencies...")
 	fmt.Println()
 
-	bin, err := npm.Install("", os.Stdout, os.Stderr)
+	bin, err := npm.Install("", false /*production*/, os.Stdout, os.Stderr)
 	if err != nil {
 		return bin, err
 	}
@@ -602,14 +635,17 @@ func nodeInstallDependencies() (string, error) {
 
 // pythonInstallDependencies will create a new virtual environment and install dependencies.
 func pythonInstallDependencies(proj *workspace.Project, root string) error {
-	return python.InstallDependencies(root, true /*showOutput*/, func(virtualenv string) error {
-		// Save project with venv info.
-		proj.Runtime.SetOption("virtualenv", virtualenv)
-		if err := workspace.SaveProject(proj); err != nil {
-			return errors.Wrap(err, "saving project")
-		}
-		return nil
-	})
+	const venvDir = "venv"
+	if err := python.InstallDependencies(root, venvDir, true /*showOutput*/); err != nil {
+		return err
+	}
+
+	// Save project with venv info.
+	proj.Runtime.SetOption("virtualenv", venvDir)
+	if err := workspace.SaveProject(proj); err != nil {
+		return fmt.Errorf("saving project: %w", err)
+	}
+	return nil
 }
 
 // dotnetInstallDependenciesAndBuild will install dependencies and build the project.
@@ -620,7 +656,7 @@ func dotnetInstallDependenciesAndBuild(proj *workspace.Project, root string) err
 	fmt.Println()
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, plugctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), nil)
+	pwd, main, plugctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
 	if err != nil {
 		return err
 	}
@@ -639,7 +675,7 @@ func dotnetInstallDependenciesAndBuild(proj *workspace.Project, root string) err
 	return nil
 }
 
-// goInstallDependencies will install dependencies for the project by running `go mod download`
+// goInstallDependencies will install dependencies for the project by running `go mod tidy`.
 func goInstallDependencies() error {
 	fmt.Println("Installing dependencies...")
 	fmt.Println()
@@ -649,12 +685,18 @@ func goInstallDependencies() error {
 		return err
 	}
 
-	cmd := exec.Command(gobin, "mod", "download")
+	if err = goversion.CheckMinimumGoVersion(gobin); err != nil {
+		return err
+	}
+
+	cmd := exec.Command(gobin, "mod", "tidy")
 	cmd.Env = os.Environ()
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return err
+		return fmt.Errorf("`go mod tidy` failed to install dependencies; rerun manually to try again, "+
+			"then run 'pulumi up' to perform an initial deployment"+": %w", err)
+
 	}
 
 	fmt.Println("Finished installing dependencies")
@@ -961,59 +1003,68 @@ func promptForValue(
 	yes bool, valueType string, defaultValue string, secret bool,
 	isValidFn func(value string) error, opts display.Options) (string, error) {
 
-	if yes {
-		return defaultValue, nil
-	}
-
+	var value string
 	for {
-		var prompt string
-
-		if defaultValue == "" {
-			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s:%s ", colors.SpecPrompt, valueType, colors.Reset))
+		// If we are auto-accepting the default (--yes), just set it and move on to validating.
+		// Otherwise, prompt the user interactively for a value.
+		if yes {
+			value = defaultValue
 		} else {
-			defaultValuePrompt := defaultValue
+			var prompt string
+			if defaultValue == "" {
+				prompt = opts.Color.Colorize(
+					fmt.Sprintf("%s%s:%s ", colors.SpecPrompt, valueType, colors.Reset))
+			} else {
+				defaultValuePrompt := defaultValue
+				if secret {
+					defaultValuePrompt = "[secret]"
+				}
+
+				prompt = opts.Color.Colorize(
+					fmt.Sprintf("%s%s:%s (%s) ", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
+			}
+			fmt.Print(prompt)
+
+			// Read the value.
+			var err error
 			if secret {
-				defaultValuePrompt = "[secret]"
+				value, err = cmdutil.ReadConsoleNoEcho("")
+				if err != nil {
+					return "", err
+				}
+			} else {
+				value, err = cmdutil.ReadConsole("")
+				if err != nil {
+					return "", err
+				}
 			}
+			value = strings.TrimSpace(value)
 
-			prompt = opts.Color.Colorize(
-				fmt.Sprintf("%s%s:%s (%s) ", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
-		}
-		fmt.Print(prompt)
-
-		// Read the value.
-		var err error
-		var value string
-		if secret {
-			value, err = cmdutil.ReadConsoleNoEcho("")
-			if err != nil {
-				return "", err
-			}
-		} else {
-			value, err = cmdutil.ReadConsole("")
-			if err != nil {
-				return "", err
+			// If the user simply hit ENTER, choose the default value.
+			if value == "" {
+				value = defaultValue
 			}
 		}
-		value = strings.TrimSpace(value)
 
-		if value != "" {
-			var validationError error
-			if isValidFn != nil {
-				validationError = isValidFn(value)
+		// Ensure the resulting value is valid; note that we even validate the default, since sometimes
+		// we will have invalid default values, like "" for the project name.
+		if isValidFn != nil {
+			if validationError := isValidFn(value); validationError != nil {
+				// If validation failed, let the user know. If interactive, we will print the error and
+				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
+				err := fmt.Errorf("Sorry, '%s' is not a valid %s. %w", value, valueType, validationError)
+				if yes {
+					return "", err
+				}
+				fmt.Printf("%s\n", err)
+				continue
 			}
-
-			if validationError == nil {
-				return value, nil
-			}
-
-			// The value is invalid, let the user know and try again
-			fmt.Printf("Sorry, '%s' is not a valid %s. %s.\n", value, valueType, validationError)
-			continue
 		}
-		return defaultValue, nil
+
+		break
 	}
+
+	return value, nil
 }
 
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.

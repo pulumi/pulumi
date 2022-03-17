@@ -55,6 +55,12 @@ func (diff *ObjectDiff) Same(k PropertyKey) bool {
 	return !diff.Changed(k)
 }
 
+// Returns true if there are no changes (adds, deletes, updates) in the diff. Also returns true if
+// diff is nil. Otherwise returns false.
+func (diff *ObjectDiff) AnyChanges() bool {
+	return diff != nil && len(diff.Adds)+len(diff.Deletes)+len(diff.Updates) > 0
+}
+
 // Keys returns a stable snapshot of all keys known to this object, across adds, deletes, sames, and updates.
 func (diff *ObjectDiff) Keys() []PropertyKey {
 	var ks []PropertyKey
@@ -71,6 +77,19 @@ func (diff *ObjectDiff) Keys() []PropertyKey {
 		ks = append(ks, k)
 	}
 	sort.Slice(ks, func(i, j int) bool { return ks[i] < ks[j] })
+	return ks
+}
+
+// All keys where Changed(k) = true.
+func (diff *ObjectDiff) ChangedKeys() []PropertyKey {
+	var ks []PropertyKey
+	if diff != nil {
+		for _, k := range diff.Keys() {
+			if diff.Changed(k) {
+				ks = append(ks, k)
+			}
+		}
+	}
 	return ks
 }
 
@@ -321,6 +340,316 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 		os := other.SecretValue()
 
 		return vs.Element.DeepEquals(os.Element)
+	}
+
+	// Resource references are equal if they refer to the same resource. The package version is ignored.
+	if v.IsResourceReference() {
+		if !other.IsResourceReference() {
+			return false
+		}
+		vr := v.ResourceReferenceValue()
+		or := other.ResourceReferenceValue()
+
+		if vr.URN != or.URN {
+			return false
+		}
+
+		vid, oid := vr.ID, or.ID
+		if vid.IsComputed() && oid.IsComputed() {
+			return true
+		}
+		return vid.DeepEquals(oid)
+	}
+
+	// Outputs are equal if each of their fields is deeply equal.
+	if v.IsOutput() {
+		if !other.IsOutput() {
+			return false
+		}
+		vo := v.OutputValue()
+		oo := other.OutputValue()
+
+		if vo.Known != oo.Known {
+			return false
+		}
+		if vo.Secret != oo.Secret {
+			return false
+		}
+
+		// Note that the dependencies are assumed to be sorted.
+		if len(vo.Dependencies) != len(oo.Dependencies) {
+			return false
+		}
+		for i, dep := range vo.Dependencies {
+			if dep != oo.Dependencies[i] {
+				return false
+			}
+		}
+
+		return vo.Element.DeepEquals(oo.Element)
+	}
+
+	// For all other cases, primitives are equal if their values are equal.
+	return v.V == other.V
+}
+
+// Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
+func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *ObjectDiff {
+	adds := make(PropertyMap)
+	deletes := make(PropertyMap)
+	sames := make(PropertyMap)
+	updates := make(map[PropertyKey]ValueDiff)
+
+	ignore := func(key PropertyKey) bool {
+		for _, ikf := range ignoreKeys {
+			if ikf(key) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// First find any updates or deletes.
+	for k, old := range props {
+		if ignore(k) {
+			continue
+		}
+
+		if new, has := other[k]; has {
+			// If a new exists, use it; for output properties, however, ignore differences.
+			if new.IsOutput() {
+				sames[k] = new
+			} else if diff := old.DiffIncludeUnknowns(new, ignoreKeys...); diff != nil {
+				if !old.HasValue() {
+					adds[k] = new
+				} else if !new.HasValue() {
+					deletes[k] = old
+				} else {
+					updates[k] = *diff
+				}
+			} else {
+				sames[k] = new
+			}
+		} else {
+			if old.IsComputed() {
+				// The old property was <computed> it probably resolved to undefined so this isn't a diff,
+				// but it isn't really a same either... just don't add to the diff
+			} else if old.HasValue() {
+				// If there was no new property, it has been deleted.
+				deletes[k] = old
+			}
+		}
+	}
+
+	// Next find any additions not in the old map.
+	for k, new := range other {
+		if ignore(k) {
+			continue
+		}
+
+		if _, has := props[k]; !has && new.HasValue() {
+			adds[k] = new
+		}
+	}
+
+	// If no diffs were found, return nil; else return a diff structure.
+	if len(adds) == 0 && len(deletes) == 0 && len(updates) == 0 {
+		return nil
+	}
+	return &ObjectDiff{
+		Adds:    adds,
+		Deletes: deletes,
+		Sames:   sames,
+		Updates: updates,
+	}
+}
+
+// Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
+func (v PropertyValue) DiffIncludeUnknowns(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *ValueDiff {
+	if v.IsArray() && other.IsArray() {
+		old := v.ArrayValue()
+		new := other.ArrayValue()
+		// If any elements exist in the new array but not the old, track them as adds.
+		adds := make(map[int]PropertyValue)
+		for i := len(old); i < len(new); i++ {
+			adds[i] = new[i]
+		}
+		// If any elements exist in the old array but not the new, track them as adds.
+		deletes := make(map[int]PropertyValue)
+		for i := len(new); i < len(old); i++ {
+			deletes[i] = old[i]
+		}
+		// Now if elements exist in both, track them as sames or updates.
+		sames := make(map[int]PropertyValue)
+		updates := make(map[int]ValueDiff)
+		for i := 0; i < len(old) && i < len(new); i++ {
+			if diff := old[i].DiffIncludeUnknowns(new[i]); diff != nil {
+				updates[i] = *diff
+			} else {
+				sames[i] = new[i]
+			}
+		}
+
+		if len(adds) == 0 && len(deletes) == 0 && len(updates) == 0 {
+			return nil
+		}
+		return &ValueDiff{
+			Old: v,
+			New: other,
+			Array: &ArrayDiff{
+				Adds:    adds,
+				Deletes: deletes,
+				Sames:   sames,
+				Updates: updates,
+			},
+		}
+	}
+	if v.IsObject() && other.IsObject() {
+		old := v.ObjectValue()
+		new := other.ObjectValue()
+		if diff := old.DiffIncludeUnknowns(new, ignoreKeys...); diff != nil {
+			return &ValueDiff{
+				Old:    v,
+				New:    other,
+				Object: diff,
+			}
+		}
+		return nil
+	}
+
+	// If we got here, either the values are primitives, or they weren't the same type; do a simple diff.
+	if v.DeepEqualsIncludeUnknowns(other) {
+		return nil
+	}
+	return &ValueDiff{Old: v, New: other}
+}
+
+func (props PropertyMap) DeepEqualsIncludeUnknowns(other PropertyMap) bool {
+	// If any in props either doesn't exist, or is of a different value, return false.
+	for _, k := range props.StableKeys() {
+		v := props[k]
+		if p, has := other[k]; has {
+			if !v.DeepEqualsIncludeUnknowns(p) {
+				return false
+			}
+		} else if v.HasValue() && !v.IsComputed() {
+			return false
+		}
+	}
+
+	// If the other map has properties that this map doesn't have, return false.
+	for _, k := range other.StableKeys() {
+		if _, has := props[k]; !has && other[k].HasValue() {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (v PropertyValue) DeepEqualsIncludeUnknowns(other PropertyValue) bool {
+	// Anything is equal to a computed
+	if v.IsComputed() || other.IsComputed() {
+		return true
+	}
+
+	// Arrays are equal if they are both of the same size and elements are deeply equal.
+	if v.IsArray() {
+		if !other.IsArray() {
+			return false
+		}
+		va := v.ArrayValue()
+		oa := other.ArrayValue()
+		if len(va) != len(oa) {
+			return false
+		}
+		for i, elem := range va {
+			if !elem.DeepEqualsIncludeUnknowns(oa[i]) {
+				return false
+			}
+		}
+		return true
+	}
+
+	// Assets and archives enjoy value equality.
+	if v.IsAsset() {
+		if !other.IsAsset() {
+			return false
+		}
+		return v.AssetValue().Equals(other.AssetValue())
+	} else if v.IsArchive() {
+		if !other.IsArchive() {
+			return false
+		}
+		return v.ArchiveValue().Equals(other.ArchiveValue())
+	}
+
+	// Object values are equal if their contents are deeply equal.
+	if v.IsObject() {
+		if !other.IsObject() {
+			return false
+		}
+		vo := v.ObjectValue()
+		oa := other.ObjectValue()
+		return vo.DeepEqualsIncludeUnknowns(oa)
+	}
+
+	// Secret are equal if the value they wrap are equal.
+	if v.IsSecret() {
+		if !other.IsSecret() {
+			return false
+		}
+		vs := v.SecretValue()
+		os := other.SecretValue()
+
+		return vs.Element.DeepEqualsIncludeUnknowns(os.Element)
+	}
+
+	// Resource references are equal if they refer to the same resource. The package version is ignored.
+	if v.IsResourceReference() {
+		if !other.IsResourceReference() {
+			return false
+		}
+		vr := v.ResourceReferenceValue()
+		or := other.ResourceReferenceValue()
+
+		if vr.URN != or.URN {
+			return false
+		}
+
+		vid, oid := vr.ID, or.ID
+		if vid.IsComputed() || oid.IsComputed() {
+			return true
+		}
+		return vid.DeepEqualsIncludeUnknowns(oid)
+	}
+
+	// Outputs are equal if each of their fields is deeply equal.
+	if v.IsOutput() {
+		if !other.IsOutput() {
+			return false
+		}
+		vo := v.OutputValue()
+		oo := other.OutputValue()
+
+		if vo.Known != oo.Known {
+			return false
+		}
+		if vo.Secret != oo.Secret {
+			return false
+		}
+
+		// Note that the dependencies are assumed to be sorted.
+		if len(vo.Dependencies) != len(oo.Dependencies) {
+			return false
+		}
+		for i, dep := range vo.Dependencies {
+			if dep != oo.Dependencies[i] {
+				return false
+			}
+		}
+
+		return vo.Element.DeepEqualsIncludeUnknowns(oo.Element)
 	}
 
 	// For all other cases, primitives are equal if their values are equal.

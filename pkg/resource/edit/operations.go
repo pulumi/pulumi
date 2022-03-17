@@ -15,14 +15,14 @@
 package edit
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v2/resource/graph"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // OperationFunc is the type of functions that edit resources within a snapshot. The edits are made in-place to the
@@ -41,7 +41,7 @@ func DeleteResource(snapshot *deploy.Snapshot, condemnedRes *resource.State) err
 	}
 
 	dg := graph.NewDependencyGraph(snapshot.Resources)
-	dependencies := dg.DependingOn(condemnedRes, nil)
+	dependencies := dg.DependingOn(condemnedRes, nil, false)
 	if len(dependencies) != 0 {
 		return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: dependencies}
 	}
@@ -79,9 +79,12 @@ func UnprotectResource(_ *deploy.Snapshot, res *resource.State) error {
 	return nil
 }
 
-// LocateResource returns all resources in the given shapshot that have the given URN.
+// LocateResource returns all resources in the given snapshot that have the given URN.
 func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
-	contract.Require(snap != nil, "snap")
+	// If there is no snapshot then return no resources
+	if snap == nil {
+		return nil
+	}
 
 	var resources []*resource.State
 	for _, res := range snap.Resources {
@@ -144,7 +147,7 @@ func RenameStack(snap *deploy.Snapshot, newName tokens.QName, newProject tokens.
 	}
 
 	if err := snap.VerifyIntegrity(); err != nil {
-		return errors.Wrap(err, "checkpoint is invalid")
+		return fmt.Errorf("checkpoint is invalid: %w", err)
 	}
 
 	for _, res := range snap.Resources {

@@ -3,12 +3,14 @@ package main
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestChangeProjectStackSecretDetails(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		TestName     string
 		ProjectStack workspace.ProjectStack
@@ -40,7 +42,9 @@ func TestChangeProjectStackSecretDetails(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
+		test := test
 		t.Run(test.TestName, func(t *testing.T) {
 			requiresProjectSave := changeProjectStackSecretDetails(&test.ProjectStack)
 			assert.Equal(t, test.Expected, requiresProjectSave)

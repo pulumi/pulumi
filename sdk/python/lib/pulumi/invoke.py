@@ -16,15 +16,17 @@ from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from .resource import Resource, ProviderResource
 
+
 class InvokeOptions:
     """
     InvokeOptions is a bag of options that control the behavior of a call to runtime.invoke.
     """
-    parent: Optional['Resource']
+
+    parent: Optional["Resource"]
     """
     An optional parent to use for default options for this invoke (e.g. the default provider to use).
     """
-    provider: Optional['ProviderResource']
+    provider: Optional["ProviderResource"]
     """
     An optional provider to use for this invocation. If no provider is supplied, the default provider for the
     invoked function's package will be used.
@@ -34,11 +36,19 @@ class InvokeOptions:
     An optional version. If provided, the provider plugin with exactly this version will be used to service
     the invocation.
     """
+    plugin_download_url: Optional[str]
+    """
+    An optional URL. If provided, the provider plugin with exactly this download URL will be used to service
+    the invocation. This will override the URL sourced from the host package, and should be rarely used.
+    """
 
-    def __init__(self,
-                 parent: Optional['Resource'] = None,
-                 provider: Optional['ProviderResource'] = None,
-                 version: Optional[str] = "") -> None:
+    def __init__(
+        self,
+        parent: Optional["Resource"] = None,
+        provider: Optional["ProviderResource"] = None,
+        version: Optional[str] = "",
+        plugin_download_url: Optional[str] = None,
+    ) -> None:
         """
         :param Optional[Resource] parent: An optional parent to use for default options for this invoke (e.g. the
                default provider to use).
@@ -46,7 +56,11 @@ class InvokeOptions:
                supplied, the default provider for the invoked function's package will be used.
         :param Optional[str] version: An optional version. If provided, the provider plugin with exactly this version
                will be used to service the invocation.
+        :param Optional[str] plugin_download_url: An optional URL. If provided, the provider plugin with this download
+               URL will be used to service the invocation. This will override the URL sourced from the host package, and
+               should be rarely used.
         """
         self.parent = parent
         self.provider = provider
         self.version = version
+        self.plugin_download_url = plugin_download_url

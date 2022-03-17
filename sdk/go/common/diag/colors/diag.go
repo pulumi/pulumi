@@ -15,7 +15,7 @@
 package colors
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type Colorization string
@@ -38,7 +38,7 @@ func (c Colorization) Colorize(v string) string {
 		// Don't touch the string.  Output control sequences as is.
 		return v
 	case Always:
-		// Convert the constrol sequences into appropriate console escapes for the platform we're on.
+		// Convert the control sequences into appropriate console escapes for the platform we're on.
 		return colorizeText(v, Always, -1)
 	case Never:
 		return colorizeText(v, Never, -1)
@@ -53,7 +53,7 @@ func (c Colorization) Colorize(v string) string {
 // than maxLength.  This is useful for scenarios where the string has to be printed in a a context
 // where there is a max allowed width.  In these scenarios, we can't just measure the length of the
 // string as the embedded color tags would count against it, even though they end up with no length
-// when actually interpretted by the console.
+// when actually interpreted by the console.
 func TrimColorizedString(v string, maxRuneLength int) string {
 	return colorizeText(v, Raw, maxRuneLength)
 }

@@ -19,15 +19,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newStackRenameCmd() *cobra.Command {
@@ -51,22 +50,24 @@ func newStackRenameCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts, true /*setCurrent*/)
+			// Look up the stack to be moved, and find the path to the project file's location.
+			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
-
 			oldConfigPath, err := workspace.DetectProjectStackPath(s.Ref().Name())
 			if err != nil {
 				return err
 			}
 
-			newConfigPath, err := workspace.DetectProjectStackPath(tokens.QName(args[0]))
+			// Now perform the rename and get ready to rename the existing configuration to the new project file.
+			newStackName := args[0]
+			newStackRef, err := s.Rename(commandContext(), tokens.QName(newStackName))
 			if err != nil {
 				return err
 			}
-
-			if err := s.Rename(commandContext(), tokens.QName(args[0])); err != nil {
+			newConfigPath, err := workspace.DetectProjectStackPath(newStackRef.Name())
+			if err != nil {
 				return err
 			}
 
@@ -77,18 +78,18 @@ func newStackRenameCmd() *cobra.Command {
 				// Stack doesn't have any configuration, ignore.
 			case configStatErr == nil:
 				if err := os.Rename(oldConfigPath, newConfigPath); err != nil {
-					return errors.Wrapf(err, "renaming configuration file to %s", filepath.Base(newConfigPath))
+					return fmt.Errorf("renaming configuration file to %s: %w", filepath.Base(newConfigPath), err)
 				}
 			default:
-				return errors.Wrapf(err, "checking current configuration file %v", oldConfigPath)
+				return fmt.Errorf("checking current configuration file %v: %w", oldConfigPath, err)
 			}
 
 			// Update the current workspace state to have selected the new stack.
-			if err := state.SetCurrentStack(args[0]); err != nil {
-				return errors.Wrap(err, "setting current stack")
+			if err := state.SetCurrentStack(newStackName); err != nil {
+				return fmt.Errorf("setting current stack: %w", err)
 			}
 
-			fmt.Printf("Renamed %s\n", s.Ref().String())
+			fmt.Printf("Renamed %s to %s\n", s.Ref().String(), newStackRef.String())
 			return nil
 		}),
 	}

@@ -20,8 +20,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type Key struct {
@@ -31,7 +31,7 @@ type Key struct {
 
 // MustMakeKey constructs a config.Key for a given namespace and name. The namespace may not contain a `:`
 func MustMakeKey(namespace string, name string) Key {
-	contract.Requiref(!strings.Contains(":", namespace), "namespace", "may not contain a colon")
+	contract.Requiref(!strings.Contains(namespace, ":"), "namespace", "may not contain a colon")
 	return Key{namespace: namespace, name: name}
 }
 

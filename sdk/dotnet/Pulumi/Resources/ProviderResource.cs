@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System.Threading.Tasks;
 using Pulumi.Serialization;
@@ -12,17 +12,34 @@ namespace Pulumi
     /// </summary>
     public class ProviderResource : CustomResource
     {
-        internal readonly string Package;
+        internal string Package { get; }
 
         private string? _registrationId;
 
         /// <summary>
         /// Creates and registers a new provider resource for a particular package.
         /// </summary>
-        public ProviderResource(
+        /// <param name="package">The package associated with this provider.</param>
+        /// <param name="name">The unique name of the provider.</param>
+        /// <param name="args">The configuration to use for this provider.</param>
+        /// <param name="options">A bag of options that control this provider's behavior.</param>
+        public ProviderResource(string package, string name, ResourceArgs args, CustomResourceOptions? options = null)
+            : this(package, name, args, options, dependency: false)
+        {
+        }
+
+        /// <summary>
+        /// Creates and registers a new provider resource for a particular package.
+        /// </summary>
+        /// <param name="package">The package associated with this provider.</param>
+        /// <param name="name">The unique name of the provider.</param>
+        /// <param name="args">The configuration to use for this provider.</param>
+        /// <param name="options">A bag of options that control this provider's behavior.</param>
+        /// <param name="dependency">True if this is a synthetic resource used internally for dependency tracking.</param>
+        private protected ProviderResource(
             string package, string name,
-            ResourceArgs args, CustomResourceOptions? options = null)
-            : base($"pulumi:providers:{package}", name, args, options)
+            ResourceArgs args, CustomResourceOptions? options = null, bool dependency = false)
+            : base($"pulumi:providers:{package}", name, args, options, dependency)
         {
             this.Package = package;
         }
@@ -36,14 +53,14 @@ namespace Pulumi
 
             if (provider._registrationId == null)
             {
-                var providerURN = await provider.Urn.GetValueAsync().ConfigureAwait(false);
-                var providerID = await provider.Id.GetValueAsync().ConfigureAwait(false);
-                if (string.IsNullOrEmpty(providerID))
+                var providerUrn = await provider.Urn.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
+                var providerId = await provider.Id.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(providerId))
                 {
-                    providerID = Constants.UnknownValue;
+                    providerId = Constants.UnknownValue;
                 }
 
-                provider._registrationId = $"{providerURN}::{providerID}";
+                provider._registrationId = $"{providerUrn}::{providerId}";
             }
 
             return provider._registrationId;

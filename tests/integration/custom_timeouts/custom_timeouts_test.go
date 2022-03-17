@@ -1,20 +1,25 @@
+//go:build python || all
+// +build python all
+
 package ints
 
 import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
 func TestCustomTimeouts(t *testing.T) {
+	t.Parallel()
+
 	opts := &integration.ProgramTestOptions{
 		Dir: filepath.Join(".", "python", "success"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick:      true,
-		NoParallel: true,
+		Quick:            true,
+		DestroyOnCleanup: true,
 	}
 	integration.ProgramTest(t, opts)
 
@@ -23,9 +28,9 @@ func TestCustomTimeouts(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick:         true,
-		NoParallel:    true,
-		ExpectFailure: true,
+		Quick:            true,
+		DestroyOnCleanup: true,
+		ExpectFailure:    true,
 	}
 	integration.ProgramTest(t, opts)
 }

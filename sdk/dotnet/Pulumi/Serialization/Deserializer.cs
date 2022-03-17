@@ -26,6 +26,10 @@ namespace Pulumi.Serialization
             {
                 return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)assetOrArchive, isKnown: true, isSecret);
             }
+            if (TryDeserializeResource(value, out var resource))
+            {
+                return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)resource, isKnown: true, isSecret);
+            }
 
             var innerData = func(value);
             return OutputData.Create(innerData.Resources, innerData.Value, innerData.IsKnown, isSecret || innerData.IsSecret);
@@ -96,7 +100,7 @@ namespace Pulumi.Serialization
                 });
 
         public static OutputData<object?> Deserialize(Value value)
-            => DeserializeCore(value, 
+            => DeserializeCore(value,
                 v => v.KindCase switch
                 {
                     Value.KindOneofCase.NumberValue => DeserializerDouble(v),
@@ -116,7 +120,7 @@ namespace Pulumi.Serialization
             while (IsSpecialStruct(value, out var sig) &&
                    sig == Constants.SpecialSecretSig)
             {
-                if (!value.StructValue.Fields.TryGetValue(Constants.SecretValueName, out var secretValue))
+                if (!value.StructValue.Fields.TryGetValue(Constants.ValueName, out var secretValue))
                     throw new InvalidOperationException("Secrets must have a field called 'value'");
 
                 isSecret = true;
@@ -151,7 +155,7 @@ namespace Pulumi.Serialization
                     assetOrArchive = DeserializeAsset(value);
                     return true;
                 }
-                else if (sig == Constants.SpecialArchiveSig)
+                if (sig == Constants.SpecialArchiveSig)
                 {
                     assetOrArchive = DeserializeArchive(value);
                     return true;
@@ -202,6 +206,39 @@ namespace Pulumi.Serialization
                 return new StringAsset(text);
 
             throw new InvalidOperationException("Value was marked as Asset, but did not conform to required shape.");
+        }
+
+        private static bool TryDeserializeResource(
+            Value value, [NotNullWhen(true)] out Resource? resource)
+        {
+            if (!IsSpecialStruct(value, out var sig) || sig != Constants.SpecialResourceSig)
+            {
+                resource = null;
+                return false;
+            }
+
+            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceUrnName, out var urn))
+            {
+                throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
+            }
+
+            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out var version))
+            {
+                version = "";
+            }
+
+            var urnParts = urn.Split("::");
+            var qualifiedType = urnParts[2];
+            var qualifiedTypeParts = qualifiedType.Split('$');
+            var type = qualifiedTypeParts[^1];
+
+            if (ResourcePackages.TryConstruct(type, version, urn, out resource))
+            {
+                return true;
+            }
+
+            resource = new DependencyResource(urn);
+            return true;
         }
 
         private static bool TryGetStringValue(

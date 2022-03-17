@@ -15,16 +15,17 @@
 package deploytest
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/blang/semver"
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type Provider struct {
@@ -44,19 +45,25 @@ type Provider struct {
 	ConfigureF func(news resource.PropertyMap) error
 
 	CheckF func(urn resource.URN,
-		olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+		olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error)
 	DiffF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
 		ignoreChanges []string) (plugin.DiffResult, error)
-	CreateF func(urn resource.URN,
-		inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error)
-	UpdateF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-		timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error)
+	CreateF func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+		preview bool) (resource.ID, resource.PropertyMap, resource.Status, error)
+	UpdateF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
 	DeleteF func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error)
-
-	ReadF func(urn resource.URN, id resource.ID,
+	ReadF   func(urn resource.URN, id resource.ID,
 		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
+
+	ConstructF func(monitor *ResourceMonitor, typ, name string, parent resource.URN, inputs resource.PropertyMap,
+		options plugin.ConstructOptions) (plugin.ConstructResult, error)
+
 	InvokeF func(tok tokens.ModuleMember,
 		inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+
+	CallF func(monitor *ResourceMonitor, tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+		options plugin.CallOptions) (plugin.CallResult, error)
 
 	CancelF func() error
 }
@@ -116,18 +123,25 @@ func (prov *Provider) Configure(inputs resource.PropertyMap) error {
 }
 
 func (prov *Provider) Check(urn resource.URN,
-	olds, news resource.PropertyMap, _ bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	olds, news resource.PropertyMap, _ bool, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	contract.Assert(sequenceNumber >= 0)
 	if prov.CheckF == nil {
 		return news, nil, nil
 	}
-	return prov.CheckF(urn, olds, news)
+	return prov.CheckF(urn, olds, news, sequenceNumber)
 }
-func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
-	resource.PropertyMap, resource.Status, error) {
+func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
+	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
 	if prov.CreateF == nil {
-		return resource.ID(uuid.NewV4().String()), resource.PropertyMap{}, resource.StatusOK, nil
+		// generate a new uuid
+		uuid, err := uuid.NewV4()
+		if err != nil {
+			return "", nil, resource.StatusOK, err
+		}
+		return resource.ID(uuid.String()), resource.PropertyMap{}, resource.StatusOK, nil
 	}
-	return prov.CreateF(urn, props, timeout)
+	return prov.CreateF(urn, props, timeout, preview)
 }
 func (prov *Provider) Diff(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, _ bool, ignoreChanges []string) (plugin.DiffResult, error) {
@@ -137,11 +151,11 @@ func (prov *Provider) Diff(urn resource.URN, id resource.ID,
 	return prov.DiffF(urn, id, olds, news, ignoreChanges)
 }
 func (prov *Provider) Update(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
-	timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+	timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 	if prov.UpdateF == nil {
 		return news, resource.StatusOK, nil
 	}
-	return prov.UpdateF(urn, id, olds, news, timeout, ignoreChanges)
+	return prov.UpdateF(urn, id, olds, news, timeout, ignoreChanges, preview)
 }
 func (prov *Provider) Delete(urn resource.URN,
 	id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {
@@ -161,6 +175,19 @@ func (prov *Provider) Read(urn resource.URN, id resource.ID,
 	}
 	return prov.ReadF(urn, id, inputs, state)
 }
+
+func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+	if prov.ConstructF == nil {
+		return plugin.ConstructResult{}, nil
+	}
+	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
+	if err != nil {
+		return plugin.ConstructResult{}, err
+	}
+	return prov.ConstructF(monitor, string(typ), string(name), parent, inputs, options)
+}
+
 func (prov *Provider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	if prov.InvokeF == nil {
@@ -174,4 +201,16 @@ func (prov *Provider) StreamInvoke(
 	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
 
 	return nil, fmt.Errorf("not implemented")
+}
+
+func (prov *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+	options plugin.CallOptions) (plugin.CallResult, error) {
+	if prov.CallF == nil {
+		return plugin.CallResult{}, nil
+	}
+	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
+	if err != nil {
+		return plugin.CallResult{}, err
+	}
+	return prov.CallF(monitor, tok, args, info, options)
 }

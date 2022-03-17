@@ -17,7 +17,7 @@ package edit
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // ResourceHasDependenciesError is returned by DeleteResource if a resource can't be deleted due to the presence of

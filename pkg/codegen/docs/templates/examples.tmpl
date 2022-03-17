@@ -1,19 +1,24 @@
 {{ define "examples" -}}
 {{ print "{{% examples %}}" }}
+
 ## Example Usage
 
 {{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
 
-{{- range . }}
+{{ range . }}
 {{ .Title }}
 
-{{- range $key, $val := .Snippets }}
-{{ print "{{% example " }}{{ $key }}{{ print " %}}" }}
+{{ range $key, $val := .Snippets }}
+{{ htmlSafe "{{< example " }}{{ $key }}{{ htmlSafe " >}}" }}
+
 {{ htmlSafe $val }}
-{{ print "{{% /example %}}" }}
+
+{{ htmlSafe "{{< /example >}}" }}
+
 {{ end }}
 
-{{- end }}
+{{ end }}
+
 {{ print "{{% /examples %}}" }}
 
-{{- end }}
+{{ end }}

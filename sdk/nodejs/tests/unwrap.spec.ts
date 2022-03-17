@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// tslint:disable
+/* eslint-disable */
 
 import * as assert from "assert";
-import { all, output, Output, Resource, unknown } from "../index";
+import { all, output, Output, unknown } from "../index";
 import { asyncTest } from "./util";
 
 function test(val: any, expected: any) {
@@ -51,7 +51,7 @@ function testResources(val: any, expected: any, resources: TestResource[], allRe
         assert.deepStrictEqual(asyncResources, new Set(allResources));
 
         for (const res of syncResources) {
-            if (!asyncResources.has(<Resource><any>res)) {
+            if (!asyncResources.has(<any>res)) {
                 assert.fail(`async resources did not contain: ${(<TestResource><any>res).name}`)
             }
         }

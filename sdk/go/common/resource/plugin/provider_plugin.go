@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,17 +25,20 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	_struct "github.com/golang/protobuf/ptypes/struct"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil/rpcerror"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // The `Type()` for the NodeJS dynamic provider.  Logically, this is the same as calling
@@ -53,32 +57,33 @@ const kubernetesProviderType = "pulumi:providers:kubernetes"
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
-	ctx           *Context                         // a plugin context for caching, etc.
-	pkg           tokens.Package                   // the Pulumi package containing this provider's resources.
-	plug          *plugin                          // the actual plugin process wrapper.
-	clientRaw     pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
-	cfgerr        error                            // non-nil if a configure call fails.
-	cfgknown      bool                             // true if all configuration values are known.
-	cfgdone       chan bool                        // closed when configuration has completed.
-	acceptSecrets bool                             // true if this provider plugin can consume strongly typed secret.
+	ctx                    *Context                         // a plugin context for caching, etc.
+	pkg                    tokens.Package                   // the Pulumi package containing this provider's resources.
+	plug                   *plugin                          // the actual plugin process wrapper.
+	clientRaw              pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
+	cfgerr                 error                            // non-nil if a configure call fails.
+	cfgknown               bool                             // true if all configuration values are known.
+	cfgdone                chan bool                        // closed when configuration has completed.
+	acceptSecrets          bool                             // true if this plugin accepts strongly-typed secrets.
+	acceptResources        bool                             // true if this plugin accepts strongly-typed resource refs.
+	acceptOutputs          bool                             // true if this plugin accepts output values.
+	supportsPreview        bool                             // true if this plugin supports previews for Create and Update.
+	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
+	legacyPreview          bool                             // enables legacy behavior for unconfigured provider previews.
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
-	options map[string]interface{}) (Provider, error) {
+	options map[string]interface{}, disableProviderPreview bool) (Provider, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	_, path, err := workspace.GetPluginPath(
 		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
 	if err != nil {
 		return nil, err
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind:    workspace.ResourcePlugin,
-			Name:    string(pkg),
-			Version: version,
-		})
 	}
+
+	contract.Assert(path != "")
 
 	// Runtime options are passed as environment variables to the provider.
 	env := os.Environ()
@@ -87,19 +92,35 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	}
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg),
-		[]string{host.ServerAddr()}, env)
+		[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
 	if err != nil {
 		return nil, err
 	}
 	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
+	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
+
 	return &provider{
-		ctx:       ctx,
-		pkg:       pkg,
-		plug:      plug,
-		clientRaw: pulumirpc.NewResourceProviderClient(plug.Conn),
-		cfgdone:   make(chan bool),
+		ctx:                    ctx,
+		pkg:                    pkg,
+		plug:                   plug,
+		clientRaw:              pulumirpc.NewResourceProviderClient(plug.Conn),
+		cfgdone:                make(chan bool),
+		disableProviderPreview: disableProviderPreview,
+		legacyPreview:          legacyPreview,
 	}, nil
+}
+
+func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
+	disableProviderPreview bool) Provider {
+
+	return &provider{
+		ctx:                    ctx,
+		pkg:                    pkg,
+		clientRaw:              client,
+		cfgdone:                make(chan bool),
+		disableProviderPreview: disableProviderPreview,
+	}
 }
 
 func (p *provider) Pkg() tokens.Package { return p.pkg }
@@ -107,6 +128,13 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 // label returns a base label for tracing functions.
 func (p *provider) label() string {
 	return fmt.Sprintf("Provider[%s, %p]", p.pkg, p)
+}
+
+func (p *provider) requestContext() context.Context {
+	if p.ctx == nil {
+		return context.Background()
+	}
+	return p.ctx.Request()
 }
 
 // isDiffCheckConfigLogicallyUnimplemented returns true when an rpcerror.Error should be treated as if it was an error
@@ -136,7 +164,7 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 
 // GetSchema fetches the schema for this resource provider, if any.
 func (p *provider) GetSchema(version int) ([]byte, error) {
-	resp, err := p.clientRaw.GetSchema(p.ctx.Request(), &pulumirpc.GetSchemaRequest{
+	resp, err := p.clientRaw.GetSchema(p.requestContext(), &pulumirpc.GetSchemaRequest{
 		Version: int32(version),
 	})
 	if err != nil {
@@ -152,22 +180,26 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:        fmt.Sprintf("%s.olds", label),
-		KeepUnknowns: allowUnknowns,
+		Label:         fmt.Sprintf("%s.olds", label),
+		KeepUnknowns:  allowUnknowns,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
-		KeepUnknowns: allowUnknowns,
+		Label:         fmt.Sprintf("%s.news", label),
+		KeepUnknowns:  allowUnknowns,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := p.clientRaw.CheckConfig(p.ctx.Request(), &pulumirpc.CheckRequest{
+	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:  string(urn),
 		Olds: molds,
 		News: mnews,
@@ -192,6 +224,8 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 			Label:          fmt.Sprintf("%s.inputs", label),
 			KeepUnknowns:   allowUnknowns,
 			RejectUnknowns: !allowUnknowns,
+			KeepSecrets:    true,
+			KeepResources:  true,
 		})
 		if err != nil {
 			return nil, nil, err
@@ -250,22 +284,26 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:        fmt.Sprintf("%s.olds", label),
-		KeepUnknowns: true,
+		Label:         fmt.Sprintf("%s.olds", label),
+		KeepUnknowns:  true,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
-		KeepUnknowns: true,
+		Label:         fmt.Sprintf("%s.news", label),
+		KeepUnknowns:  true,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
-	resp, err := p.clientRaw.DiffConfig(p.ctx.Request(), &pulumirpc.DiffRequest{
+	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
 		Urn:           string(urn),
 		Olds:          molds,
 		News:          mnews,
@@ -422,7 +460,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		}
 
 		if v.ContainsUnknowns() {
-			p.cfgknown, p.acceptSecrets = false, false
+			p.cfgknown, p.acceptSecrets, p.acceptResources = false, false, false
 			close(p.cfgdone)
 			return nil
 		}
@@ -444,8 +482,10 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	}
 
 	minputs, err := MarshalProperties(inputs, MarshalOptions{
-		Label:        fmt.Sprintf("%s.inputs", label),
-		KeepUnknowns: true,
+		Label:         fmt.Sprintf("%s.inputs", label),
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
 	})
 	if err != nil {
 		p.cfgerr = errors.Wrapf(err, "marshaling provider inputs")
@@ -456,10 +496,11 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
 	// want to make forward progress, even as the configure call is happening.
 	go func() {
-		resp, err := p.clientRaw.Configure(p.ctx.Request(), &pulumirpc.ConfigureRequest{
-			AcceptSecrets: true,
-			Variables:     config,
-			Args:          minputs,
+		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
+			AcceptSecrets:   true,
+			AcceptResources: true,
+			Variables:       config,
+			Args:            minputs,
 		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
@@ -467,7 +508,12 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 			err = createConfigureError(rpcError)
 		}
 		// Acquire the lock, publish the results, and notify any waiters.
-		p.cfgknown, p.acceptSecrets, p.cfgerr = true, resp.GetAcceptSecrets(), err
+		p.acceptSecrets = resp.GetAcceptSecrets()
+		p.acceptResources = resp.GetAcceptResources()
+		p.supportsPreview = resp.GetSupportsPreview()
+		p.acceptOutputs = resp.GetAcceptOutputs()
+
+		p.cfgknown, p.cfgerr = true, err
 		close(p.cfgdone)
 	}()
 
@@ -476,7 +522,8 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN,
-	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
+	olds, news resource.PropertyMap,
+	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
@@ -493,26 +540,29 @@ func (p *provider) Check(urn resource.URN,
 	}
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:        fmt.Sprintf("%s.olds", label),
-		KeepUnknowns: allowUnknowns,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.olds", label),
+		KeepUnknowns:  allowUnknowns,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
-		KeepUnknowns: allowUnknowns,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.news", label),
+		KeepUnknowns:  allowUnknowns,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := client.Check(p.ctx.Request(), &pulumirpc.CheckRequest{
-		Urn:  string(urn),
-		Olds: molds,
-		News: mnews,
+	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
+		Urn:            string(urn),
+		Olds:           molds,
+		News:           mnews,
+		SequenceNumber: int32(sequenceNumber),
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -528,6 +578,7 @@ func (p *provider) Check(urn resource.URN,
 			KeepUnknowns:   allowUnknowns,
 			RejectUnknowns: !allowUnknowns,
 			KeepSecrets:    true,
+			KeepResources:  true,
 		})
 		if err != nil {
 			return nil, nil, err
@@ -585,20 +636,22 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		ElideAssetContents: true,
 		KeepUnknowns:       allowUnknowns,
 		KeepSecrets:        p.acceptSecrets,
+		KeepResources:      p.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
-		KeepUnknowns: allowUnknowns,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.news", label),
+		KeepUnknowns:  allowUnknowns,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
-	resp, err := client.Diff(p.ctx.Request(), &pulumirpc.DiffRequest{
+	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
 		Id:            string(id),
 		Urn:           string(urn),
 		Olds:          molds,
@@ -640,7 +693,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 }
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
-func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
+func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64, preview bool) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
 	contract.Assert(urn != "")
 	contract.Assert(props != nil)
@@ -648,31 +701,57 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#props=%v)", label, len(props))
 
-	mprops, err := MarshalProperties(props, MarshalOptions{
-		Label:       fmt.Sprintf("%s.inputs", label),
-		KeepSecrets: p.acceptSecrets,
-	})
-	if err != nil {
-		return "", nil, resource.StatusOK, err
-	}
-
 	// Get the RPC client and ensure it's configured.
 	client, err := p.getClient()
 	if err != nil {
 		return "", nil, resource.StatusOK, err
 	}
 
+	// If this is a preview and the plugin does not support provider previews, or if the configuration for the provider
+	// is not fully known, hand back an empty property map. This will force the language SDK will to treat all properties
+	// as unknown, which is conservatively correct.
+	//
+	// If the provider does not support previews, return the inputs as the state. Note that this can cause problems for
+	// the language SDKs if there are input and state properties that share a name but expect differently-shaped values.
+	if preview {
+		// TODO: it would be great to swap the order of these if statements. This would prevent a behavioral change for
+		// providers that do not support provider previews, which will always return the inputs as state regardless of
+		// whether or not the config is known. Unfortunately, we can't, since the `supportsPreview` bit depends on the
+		// result of `Configure`, which we won't call if the `cfgknown` is false. It may be worth fixing this catch-22
+		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
+		if !p.cfgknown {
+			if p.legacyPreview {
+				return "", props, resource.StatusOK, nil
+			}
+			return "", resource.PropertyMap{}, resource.StatusOK, nil
+		}
+		if !p.supportsPreview || p.disableProviderPreview {
+			return "", props, resource.StatusOK, nil
+		}
+	}
+
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assert(p.cfgknown)
+
+	mprops, err := MarshalProperties(props, MarshalOptions{
+		Label:         fmt.Sprintf("%s.inputs", label),
+		KeepUnknowns:  preview,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
+	})
+	if err != nil {
+		return "", nil, resource.StatusOK, err
+	}
 
 	var id resource.ID
 	var liveObject *_struct.Struct
 	var resourceError error
 	var resourceStatus = resource.StatusOK
-	resp, err := client.Create(p.ctx.Request(), &pulumirpc.CreateRequest{
+	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: mprops,
 		Timeout:    timeout,
+		Preview:    preview,
 	})
 	if err != nil {
 		resourceStatus, id, liveObject, _, resourceError = parseError(err)
@@ -687,15 +766,17 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 		liveObject = resp.GetProperties()
 	}
 
-	if id == "" {
+	if id == "" && !preview {
 		return "", nil, resource.StatusUnknown,
 			errors.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, urn)
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label:          fmt.Sprintf("%s.outputs", label),
-		RejectUnknowns: true,
+		RejectUnknowns: !preview,
+		KeepUnknowns:   preview,
 		KeepSecrets:    true,
+		KeepResources:  true,
 	})
 	if err != nil {
 		return "", nil, resourceStatus, err
@@ -747,6 +828,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 			Label:              label,
 			ElideAssetContents: true,
 			KeepSecrets:        p.acceptSecrets,
+			KeepResources:      p.acceptResources,
 		})
 		if err != nil {
 			return ReadResult{}, resource.StatusUnknown, err
@@ -757,6 +839,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		Label:              label,
 		ElideAssetContents: true,
 		KeepSecrets:        p.acceptSecrets,
+		KeepResources:      p.acceptResources,
 	})
 	if err != nil {
 		return ReadResult{}, resource.StatusUnknown, err
@@ -768,7 +851,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	var liveInputs *_struct.Struct
 	var resourceError error
 	var resourceStatus = resource.StatusOK
-	resp, err := client.Read(p.ctx.Request(), &pulumirpc.ReadRequest{
+	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
 		Id:         string(id),
 		Urn:        string(urn),
 		Properties: mstate,
@@ -798,6 +881,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		Label:          fmt.Sprintf("%s.outputs", label),
 		RejectUnknowns: true,
 		KeepSecrets:    true,
+		KeepResources:  true,
 	})
 	if err != nil {
 		return ReadResult{}, resourceStatus, err
@@ -809,6 +893,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 			Label:          label + ".inputs",
 			RejectUnknowns: true,
 			KeepSecrets:    true,
+			KeepResources:  true,
 		})
 		if err != nil {
 			return ReadResult{}, resourceStatus, err
@@ -834,7 +919,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 // Update updates an existing resource with new values.
 func (p *provider) Update(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-	ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
@@ -844,41 +929,68 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), id, urn)
 	logging.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
 
-	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:              fmt.Sprintf("%s.olds", label),
-		ElideAssetContents: true,
-		KeepSecrets:        p.acceptSecrets,
-	})
-	if err != nil {
-		return nil, resource.StatusOK, err
-	}
-	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:       fmt.Sprintf("%s.news", label),
-		KeepSecrets: p.acceptSecrets,
-	})
-	if err != nil {
-		return nil, resource.StatusOK, err
-	}
-
 	// Get the RPC client and ensure it's configured.
 	client, err := p.getClient()
 	if err != nil {
-		return nil, resource.StatusOK, err
+		return news, resource.StatusOK, err
+	}
+
+	// If this is a preview and the plugin does not support provider previews, or if the configuration for the provider
+	// is not fully known, hand back an empty property map. This will force the language SDK to treat all properties
+	// as unknown, which is conservatively correct.
+	//
+	// If the provider does not support previews, return the inputs as the state. Note that this can cause problems for
+	// the language SDKs if there are input and state properties that share a name but expect differently-shaped values.
+	if preview {
+		// TODO: it would be great to swap the order of these if statements. This would prevent a behavioral change for
+		// providers that do not support provider previews, which will always return the inputs as state regardless of
+		// whether or not the config is known. Unfortunately, we can't, since the `supportsPreview` bit depends on the
+		// result of `Configure`, which we won't call if the `cfgknown` is false. It may be worth fixing this catch-22
+		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
+		if !p.cfgknown {
+			if p.legacyPreview {
+				return news, resource.StatusOK, nil
+			}
+			return resource.PropertyMap{}, resource.StatusOK, nil
+		}
+		if !p.supportsPreview || p.disableProviderPreview {
+			return news, resource.StatusOK, nil
+		}
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assert(p.cfgknown)
 
+	molds, err := MarshalProperties(olds, MarshalOptions{
+		Label:              fmt.Sprintf("%s.olds", label),
+		ElideAssetContents: true,
+		KeepSecrets:        p.acceptSecrets,
+		KeepResources:      p.acceptResources,
+	})
+	if err != nil {
+		return nil, resource.StatusOK, err
+	}
+	mnews, err := MarshalProperties(news, MarshalOptions{
+		Label:         fmt.Sprintf("%s.news", label),
+		KeepUnknowns:  preview,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
+	})
+	if err != nil {
+		return nil, resource.StatusOK, err
+	}
+
 	var liveObject *_struct.Struct
 	var resourceError error
 	var resourceStatus = resource.StatusOK
-	resp, err := client.Update(p.ctx.Request(), &pulumirpc.UpdateRequest{
+	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
 		Id:            string(id),
 		Urn:           string(urn),
 		Olds:          molds,
 		News:          mnews,
 		Timeout:       timeout,
 		IgnoreChanges: ignoreChanges,
+		Preview:       preview,
 	})
 	if err != nil {
 		resourceStatus, _, liveObject, _, resourceError = parseError(err)
@@ -894,8 +1006,10 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label:          fmt.Sprintf("%s.outputs", label),
-		RejectUnknowns: true,
+		RejectUnknowns: !preview,
+		KeepUnknowns:   preview,
 		KeepSecrets:    true,
+		KeepResources:  true,
 	})
 	if err != nil {
 		return nil, resourceStatus, err
@@ -928,6 +1042,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 		Label:              label,
 		ElideAssetContents: true,
 		KeepSecrets:        p.acceptSecrets,
+		KeepResources:      p.acceptResources,
 	})
 	if err != nil {
 		return resource.StatusOK, err
@@ -942,7 +1057,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assert(p.cfgknown)
 
-	if _, err := client.Delete(p.ctx.Request(), &pulumirpc.DeleteRequest{
+	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
 		Id:         string(id),
 		Urn:        string(urn),
 		Properties: mprops,
@@ -955,6 +1070,126 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 
 	logging.V(7).Infof("%s success", label)
 	return resource.StatusOK, nil
+}
+
+// Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
+// its URN and outputs.
+func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+	inputs resource.PropertyMap, options ConstructOptions) (ConstructResult, error) {
+
+	contract.Assert(typ != "")
+	contract.Assert(name != "")
+	contract.Assert(inputs != nil)
+
+	label := fmt.Sprintf("%s.Construct(%s, %s, %s)", p.label(), typ, name, parent)
+	logging.V(7).Infof("%s executing (#inputs=%v)", label, len(inputs))
+
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return ConstructResult{}, err
+	}
+
+	// We should only be calling Construct if the provider is fully configured.
+	contract.Assert(p.cfgknown)
+
+	if !p.acceptSecrets {
+		return ConstructResult{}, fmt.Errorf("plugins that can construct components must support secrets")
+	}
+
+	// Marshal the input properties.
+	minputs, err := MarshalProperties(inputs, MarshalOptions{
+		Label:         fmt.Sprintf("%s.inputs", label),
+		KeepUnknowns:  true,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
+		// To initially scope the use of this new feature, we only keep output values for
+		// Construct and Call (when the client accepts them).
+		KeepOutputValues: p.acceptOutputs,
+	})
+	if err != nil {
+		return ConstructResult{}, err
+	}
+
+	// Marshal the aliases.
+	aliases := make([]string, len(options.Aliases))
+	for i, alias := range options.Aliases {
+		aliases[i] = string(alias)
+	}
+
+	// Marshal the dependencies.
+	dependencies := make([]string, len(options.Dependencies))
+	for i, dep := range options.Dependencies {
+		dependencies[i] = string(dep)
+	}
+
+	// Marshal the property dependencies.
+	inputDependencies := map[string]*pulumirpc.ConstructRequest_PropertyDependencies{}
+	for name, dependencies := range options.PropertyDependencies {
+		urns := make([]string, len(dependencies))
+		for i, urn := range dependencies {
+			urns[i] = string(urn)
+		}
+		inputDependencies[string(name)] = &pulumirpc.ConstructRequest_PropertyDependencies{Urns: urns}
+	}
+
+	// Marshal the config.
+	config := map[string]string{}
+	for k, v := range info.Config {
+		config[k.String()] = v
+	}
+	configSecretKeys := []string{}
+	for _, k := range info.ConfigSecretKeys {
+		configSecretKeys = append(configSecretKeys, k.String())
+	}
+
+	resp, err := client.Construct(p.requestContext(), &pulumirpc.ConstructRequest{
+		Project:           info.Project,
+		Stack:             info.Stack,
+		Config:            config,
+		ConfigSecretKeys:  configSecretKeys,
+		DryRun:            info.DryRun,
+		Parallel:          int32(info.Parallel),
+		MonitorEndpoint:   info.MonitorAddress,
+		Type:              string(typ),
+		Name:              string(name),
+		Parent:            string(parent),
+		Inputs:            minputs,
+		Protect:           options.Protect,
+		Providers:         options.Providers,
+		InputDependencies: inputDependencies,
+		Aliases:           aliases,
+		Dependencies:      dependencies,
+	})
+	if err != nil {
+		return ConstructResult{}, err
+	}
+
+	outputs, err := UnmarshalProperties(resp.GetState(), MarshalOptions{
+		Label:         fmt.Sprintf("%s.outputs", label),
+		KeepUnknowns:  info.DryRun,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return ConstructResult{}, err
+	}
+
+	outputDependencies := map[resource.PropertyKey][]resource.URN{}
+	for k, rpcDeps := range resp.GetStateDependencies() {
+		urns := make([]resource.URN, len(rpcDeps.Urns))
+		for i, d := range rpcDeps.Urns {
+			urns[i] = resource.URN(d)
+		}
+		outputDependencies[resource.PropertyKey(k)] = urns
+	}
+
+	logging.V(7).Infof("%s success: #outputs=%d", label, len(outputs))
+	return ConstructResult{
+		URN:                resource.URN(resp.GetUrn()),
+		Outputs:            outputs,
+		OutputDependencies: outputDependencies,
+	}, nil
 }
 
 // Invoke dynamically executes a built-in function in the provider.
@@ -977,14 +1212,19 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	}
 
 	margs, err := MarshalProperties(args, MarshalOptions{
-		Label:       fmt.Sprintf("%s.args", label),
-		KeepSecrets: p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.args", label),
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	resp, err := client.Invoke(p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
+	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
+		Tok:             string(tok),
+		Args:            margs,
+		AcceptResources: p.acceptResources,
+	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
@@ -996,6 +1236,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		Label:          fmt.Sprintf("%s.returns", label),
 		RejectUnknowns: true,
 		KeepSecrets:    true,
+		KeepResources:  true,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -1035,15 +1276,20 @@ func (p *provider) StreamInvoke(
 	}
 
 	margs, err := MarshalProperties(args, MarshalOptions{
-		Label:       fmt.Sprintf("%s.args", label),
-		KeepSecrets: p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.args", label),
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	streamClient, err := client.StreamInvoke(
-		p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
+		p.requestContext(), &pulumirpc.InvokeRequest{
+			Tok:             string(tok),
+			Args:            margs,
+			AcceptResources: p.acceptResources,
+		})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
@@ -1064,6 +1310,7 @@ func (p *provider) StreamInvoke(
 			Label:          fmt.Sprintf("%s.returns", label),
 			RejectUnknowns: true,
 			KeepSecrets:    true,
+			KeepResources:  true,
 		})
 		if err != nil {
 			return nil, err
@@ -1086,6 +1333,101 @@ func (p *provider) StreamInvoke(
 	}
 }
 
+// Call dynamically executes a method in the provider associated with a component resource.
+func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info CallInfo,
+	options CallOptions) (CallResult, error) {
+	contract.Assert(tok != "")
+
+	label := fmt.Sprintf("%s.Call(%s)", p.label(), tok)
+	logging.V(7).Infof("%s executing (#args=%d)", label, len(args))
+
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return CallResult{}, err
+	}
+
+	// If the provider is not fully configured, return an empty property map.
+	if !p.cfgknown {
+		return CallResult{}, nil
+	}
+
+	margs, err := MarshalProperties(args, MarshalOptions{
+		Label:         fmt.Sprintf("%s.args", label),
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+		// To initially scope the use of this new feature, we only keep output values for
+		// Construct and Call (when the client accepts them).
+		KeepOutputValues: p.acceptOutputs,
+	})
+	if err != nil {
+		return CallResult{}, err
+	}
+
+	// Marshal the arg dependencies.
+	argDependencies := map[string]*pulumirpc.CallRequest_ArgumentDependencies{}
+	for name, dependencies := range options.ArgDependencies {
+		urns := make([]string, len(dependencies))
+		for i, urn := range dependencies {
+			urns[i] = string(urn)
+		}
+		argDependencies[string(name)] = &pulumirpc.CallRequest_ArgumentDependencies{Urns: urns}
+	}
+
+	// Marshal the config.
+	config := map[string]string{}
+	for k, v := range info.Config {
+		config[k.String()] = v
+	}
+
+	resp, err := client.Call(p.requestContext(), &pulumirpc.CallRequest{
+		Tok:             string(tok),
+		Args:            margs,
+		ArgDependencies: argDependencies,
+		Project:         info.Project,
+		Stack:           info.Stack,
+		Config:          config,
+		DryRun:          info.DryRun,
+		Parallel:        int32(info.Parallel),
+		MonitorEndpoint: info.MonitorAddress,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
+		return CallResult{}, rpcError
+	}
+
+	// Unmarshal any return values.
+	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
+		Label:         fmt.Sprintf("%s.returns", label),
+		KeepUnknowns:  info.DryRun,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return CallResult{}, err
+	}
+
+	returnDependencies := map[resource.PropertyKey][]resource.URN{}
+	for k, rpcDeps := range resp.GetReturnDependencies() {
+		urns := make([]resource.URN, len(rpcDeps.Urns))
+		for i, d := range rpcDeps.Urns {
+			urns[i] = resource.URN(d)
+		}
+		returnDependencies[resource.PropertyKey(k)] = urns
+	}
+
+	// And now any properties that failed verification.
+	var failures []CheckFailure
+	for _, failure := range resp.GetFailures() {
+		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+	}
+
+	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
+	return CallResult{Return: ret, ReturnDependencies: returnDependencies, Failures: failures}, nil
+}
+
 // GetPluginInfo returns this plugin's information.
 func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 	label := fmt.Sprintf("%s.GetPluginInfo()", p.label())
@@ -1093,7 +1435,7 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 
 	// Calling GetPluginInfo happens immediately after loading, and does not require configuration to proceed.
 	// Thus, we access the clientRaw property, rather than calling getClient.
-	resp, err := p.clientRaw.GetPluginInfo(p.ctx.Request(), &pbempty.Empty{})
+	resp, err := p.clientRaw.GetPluginInfo(p.requestContext(), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
@@ -1109,16 +1451,21 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 		version = &sv
 	}
 
+	path := ""
+	if p.plug != nil {
+		path = p.plug.Bin
+	}
+
 	return workspace.PluginInfo{
 		Name:    string(p.pkg),
-		Path:    p.plug.Bin,
+		Path:    path,
 		Kind:    workspace.ResourcePlugin,
 		Version: version,
 	}, nil
 }
 
 func (p *provider) SignalCancellation() error {
-	_, err := p.clientRaw.Cancel(p.ctx.Request(), &pbempty.Empty{})
+	_, err := p.clientRaw.Cancel(p.requestContext(), &pbempty.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(),
@@ -1135,6 +1482,9 @@ func (p *provider) SignalCancellation() error {
 
 // Close tears down the underlying plugin RPC connection and process.
 func (p *provider) Close() error {
+	if p.plug == nil {
+		return nil
+	}
 	return p.plug.Close()
 }
 
@@ -1233,4 +1583,31 @@ func (ie *InitError) Error() string {
 		err = multierror.Append(err, errors.New(reason))
 	}
 	return err.Error()
+}
+
+func decorateSpanWithType(span opentracing.Span, urn string) {
+	if urn := resource.URN(urn); urn.IsValid() {
+		span.SetTag("pulumi-decorator", urn.Type())
+	}
+}
+
+func decorateProviderSpans(span opentracing.Span, method string, req, resp interface{}, grpcError error) {
+	if req == nil {
+		return
+	}
+
+	switch method {
+	case "/pulumirpc.ResourceProvider/Check", "/pulumirpc.ResourceProvider/CheckConfig":
+		decorateSpanWithType(span, req.(*pulumirpc.CheckRequest).Urn)
+	case "/pulumirpc.ResourceProvider/Diff", "/pulumirpc.ResourceProvider/DiffConfig":
+		decorateSpanWithType(span, req.(*pulumirpc.DiffRequest).Urn)
+	case "/pulumirpc.ResourceProvider/Create":
+		decorateSpanWithType(span, req.(*pulumirpc.CreateRequest).Urn)
+	case "/pulumirpc.ResourceProvider/Update":
+		decorateSpanWithType(span, req.(*pulumirpc.UpdateRequest).Urn)
+	case "/pulumirpc.ResourceProvider/Delete":
+		decorateSpanWithType(span, req.(*pulumirpc.DeleteRequest).Urn)
+	case "/pulumirpc.ResourceProvider/Invoke":
+		span.SetTag("pulumi-decorator", req.(*pulumirpc.InvokeRequest).Tok)
+	}
 }

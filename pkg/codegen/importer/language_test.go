@@ -20,38 +20,42 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/internal/test"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGenerateLanguageDefinition(t *testing.T) {
-	loader := schema.NewPluginLoader(test.NewHost(testdataPath))
+	t.Parallel()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	cases, err := readTestCases("testdata/cases.json")
 	if !assert.NoError(t, err) {
 		t.Fatal()
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, s := range cases.Resources {
+		s := s
 		t.Run(string(s.URN), func(t *testing.T) {
+			t.Parallel()
 			state, err := stack.DeserializeResource(s, config.NopDecrypter, config.NopEncrypter)
 			if !assert.NoError(t, err) {
 				t.Fatal()
 			}
 
 			var actualState *resource.State
-			err = GenerateLanguageDefinitions(ioutil.Discard, loader, func(_ io.Writer, p *hcl2.Program) error {
+			err = GenerateLanguageDefinitions(ioutil.Discard, loader, func(_ io.Writer, p *pcl.Program) error {
 				if !assert.Len(t, p.Nodes, 1) {
 					t.Fatal()
 				}
 
-				res, isResource := p.Nodes[0].(*hcl2.Resource)
+				res, isResource := p.Nodes[0].(*pcl.Resource)
 				if !assert.True(t, isResource) {
 					t.Fatal()
 				}

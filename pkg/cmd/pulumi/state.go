@@ -16,21 +16,19 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/edit"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
@@ -49,6 +47,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 
 	cmd.AddCommand(newStateDeleteCommand())
 	cmd.AddCommand(newStateUnprotectCommand())
+	cmd.AddCommand(newStateRenameCommand())
 	return cmd
 }
 
@@ -59,7 +58,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	candidateResources := edit.LocateResource(snap, urn)
 	switch {
 	case len(candidateResources) == 0: // resource was not found
-		return nil, errors.Errorf("No such resource %q exists in the current state", urn)
+		return nil, fmt.Errorf("No such resource %q exists in the current state", urn)
 	case len(candidateResources) == 1: // resource was unambiguously found
 		return candidateResources[0], nil
 	}
@@ -132,7 +131,7 @@ func runTotalStateEdit(
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
-	s, err := requireStack(stackName, true, opts, true /*setCurrent*/)
+	s, err := requireStack(stackName, true, opts, false /*setCurrent*/)
 	if err != nil {
 		return result.FromError(err)
 	}
@@ -172,7 +171,7 @@ func runTotalStateEdit(
 
 	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrets */)
 	if err != nil {
-		return result.FromError(errors.Wrap(err, "serializing deployment"))
+		return result.FromError(fmt.Errorf("serializing deployment: %w", err))
 	}
 
 	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.

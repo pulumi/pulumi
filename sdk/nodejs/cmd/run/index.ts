@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as log from "../../log";
+
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
 // events cause us to exit with a non-zero code. It is critically important that we do this early:
 // if we do not, unhandled rejections in particular may cause us to exit with a 0 exit code, which
@@ -32,8 +34,10 @@ const loggedErrors = new Set<Error>();
 let programRunning = false;
 const uncaughtHandler = (err: Error) => {
     uncaughtErrors.add(err);
-    if (!programRunning) {
-        console.error(err.stack || err.message || ("" + err));
+    if (!programRunning && !loggedErrors.has(err)) {
+        log.error(err.stack || err.message || ("" + err));
+        // dedupe errors that we're reporting when the program is not running
+        loggedErrors.add(err);
     }
 };
 
@@ -52,7 +56,6 @@ process.on("uncaughtException", uncaughtHandler);
 // suppress the TS strictness here.
 process.on("unhandledRejection", uncaughtHandler);
 process.on("exit", (code: number) => {
-
     // If there were any uncaught errors at all, we always want to exit with an error code. If we
     // did not, it could be disastrous for the user.  i.e. not all resources may have been created,
     // but the 0 code would indicate we could proceed.  That could lead to many (or all) of the
@@ -110,7 +113,9 @@ function printErrorUsageAndExit(message: string): never {
 function main(args: string[]): void {
     // See usage above for the intended usage of this program, including flags and required args.
     const argv: minimist.ParsedArgs = minimist(args, {
+        // eslint-disable-next-line id-blacklist
         boolean: [ "dry-run", "query-mode" ],
+        // eslint-disable-next-line id-blacklist
         string: [ "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
         unknown: (arg: string) => {
             return true;
@@ -155,7 +160,8 @@ function main(args: string[]): void {
         const promise: Promise<void> = require("./run").run(
             argv,
             /*programStarted:   */ () => programRunning = true,
-            /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err));
+            /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err),
+            /*isErrorReported:  */ (err: Error) => loggedErrors.has(err));
 
         // when the user's program completes successfully, set programRunning back to false.  That way, if the Pulumi
         // scaffolding code ends up throwing an exception during teardown, it will get printed directly to the console.

@@ -18,10 +18,12 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func newPolicyGroupCmd() *cobra.Command {
@@ -60,17 +62,30 @@ func newPolicyGroupLsCmd() *cobra.Command {
 				}
 			}
 
-			// List the Policy Packs for the organization.
+			// Gather all Policy Groups for the organization.
 			ctx := context.Background()
-			policyGroups, err := b.ListPolicyGroups(ctx, orgName)
-			if err != nil {
-				return err
+			var (
+				allPolicyGroups []apitype.PolicyGroupSummary
+				inContToken     backend.ContinuationToken
+			)
+			for {
+				resp, outContToken, err := b.ListPolicyGroups(ctx, orgName, inContToken)
+				if err != nil {
+					return err
+				}
+
+				allPolicyGroups = append(allPolicyGroups, resp.PolicyGroups...)
+
+				if outContToken == nil {
+					break
+				}
+				inContToken = outContToken
 			}
 
 			if jsonOut {
-				return formatPolicyGroupsJSON(policyGroups)
+				return formatPolicyGroupsJSON(allPolicyGroups)
 			}
-			return formatPolicyGroupsConsole(policyGroups)
+			return formatPolicyGroupsConsole(allPolicyGroups)
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(
@@ -78,13 +93,13 @@ func newPolicyGroupLsCmd() *cobra.Command {
 	return cmd
 }
 
-func formatPolicyGroupsConsole(policyGroups apitype.ListPolicyGroupsResponse) error {
+func formatPolicyGroupsConsole(policyGroups []apitype.PolicyGroupSummary) error {
 	// Header string and formatting options to align columns.
 	headers := []string{"NAME", "DEFAULT", "ENABLED POLICY PACKS", "STACKS"}
 
 	rows := []cmdutil.TableRow{}
 
-	for _, group := range policyGroups.PolicyGroups {
+	for _, group := range policyGroups {
 		// Name column
 		name := group.Name
 
@@ -123,9 +138,9 @@ type policyGroupsJSON struct {
 	NumStacks      int    `json:"numStacks"`
 }
 
-func formatPolicyGroupsJSON(policyGroups apitype.ListPolicyGroupsResponse) error {
-	output := make([]policyGroupsJSON, len(policyGroups.PolicyGroups))
-	for i, group := range policyGroups.PolicyGroups {
+func formatPolicyGroupsJSON(policyGroups []apitype.PolicyGroupSummary) error {
+	output := make([]policyGroupsJSON, len(policyGroups))
+	for i, group := range policyGroups {
 		output[i] = policyGroupsJSON{
 			Name:           group.Name,
 			Default:        group.IsOrgDefault,

@@ -17,7 +17,7 @@ package cancel
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Context provides the ability to observe cancellation and termination requests from a Source. A termination request

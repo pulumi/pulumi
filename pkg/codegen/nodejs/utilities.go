@@ -15,9 +15,13 @@
 package nodejs
 
 import (
+	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 )
 
 // isReservedWord returns true if s is a reserved word as per ECMA-262.
@@ -97,4 +101,28 @@ func makeValidIdentifier(name string) string {
 		return "_" + name
 	}
 	return name
+}
+
+func makeSafeEnumName(name, typeName string) (string, error) {
+	// Replace common single character enum names.
+	safeName := codegen.ExpandShortEnumName(name)
+
+	// If the name is one illegal character, return an error.
+	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
+		return "", fmt.Errorf("enum name %s is not a valid identifier", safeName)
+	}
+
+	// Capitalize and make a valid identifier.
+	safeName = makeValidIdentifier(title(safeName))
+
+	// If there are multiple underscores in a row, replace with one.
+	regex := regexp.MustCompile(`_+`)
+	safeName = regex.ReplaceAllString(safeName, "_")
+
+	// If the enum name starts with an underscore, add the type name as a prefix.
+	if strings.HasPrefix(safeName, "_") {
+		safeName = typeName + safeName
+	}
+
+	return safeName, nil
 }

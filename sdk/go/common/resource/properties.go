@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,9 +20,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/mapper"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/mapper"
 )
 
 // PropertyKey is the name of a property.
@@ -84,7 +84,10 @@ type Computed struct {
 // encountered, it means the resource has not yet been created, and so the output value is unavailable.  Note that an
 // output property is a special case of computed, but carries additional semantic meaning.
 type Output struct {
-	Element PropertyValue // the eventual value (type) of the output property.
+	Element      PropertyValue // the value of this output if it is resolved.
+	Known        bool          `json:"-"` // true if this output's value is known.
+	Secret       bool          `json:"-"` // true if this output's value is secret.
+	Dependencies []URN         `json:"-"` // the dependencies associated with this output.
 }
 
 // Secret indicates that the underlying value should be persisted securely.
@@ -94,6 +97,33 @@ type Output struct {
 // copied, its value--not its address--should be copied.
 type Secret struct {
 	Element PropertyValue
+}
+
+// ResourceReference is a property value that represents a reference to a Resource. The reference captures the
+// resource's URN, ID, and the version of its containing package. Note that there are several cases to consider with
+// respect to the ID:
+//
+// - The reference may not contain an ID if the referenced resource is a component resource. In this case, the ID will
+//   be null.
+// - The ID may be unknown (in which case it will be the unknown property value)
+// - Otherwise, the ID must be a string.
+//
+//nolint: revive
+type ResourceReference struct {
+	URN            URN
+	ID             PropertyValue
+	PackageVersion string
+}
+
+func (ref ResourceReference) IDString() (value string, hasID bool) {
+	switch {
+	case ref.ID.IsComputed():
+		return "", true
+	case ref.ID.IsString():
+		return ref.ID.StringValue(), true
+	default:
+		return "", false
+	}
 }
 
 type ReqError struct {
@@ -178,17 +208,18 @@ func (m PropertyMap) StableKeys() []PropertyKey {
 	return sorted
 }
 
-func NewNullProperty() PropertyValue                   { return PropertyValue{nil} }
-func NewBoolProperty(v bool) PropertyValue             { return PropertyValue{v} }
-func NewNumberProperty(v float64) PropertyValue        { return PropertyValue{v} }
-func NewStringProperty(v string) PropertyValue         { return PropertyValue{v} }
-func NewArrayProperty(v []PropertyValue) PropertyValue { return PropertyValue{v} }
-func NewAssetProperty(v *Asset) PropertyValue          { return PropertyValue{v} }
-func NewArchiveProperty(v *Archive) PropertyValue      { return PropertyValue{v} }
-func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v} }
-func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
-func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
-func NewSecretProperty(v *Secret) PropertyValue        { return PropertyValue{v} }
+func NewNullProperty() PropertyValue                                 { return PropertyValue{nil} }
+func NewBoolProperty(v bool) PropertyValue                           { return PropertyValue{v} }
+func NewNumberProperty(v float64) PropertyValue                      { return PropertyValue{v} }
+func NewStringProperty(v string) PropertyValue                       { return PropertyValue{v} }
+func NewArrayProperty(v []PropertyValue) PropertyValue               { return PropertyValue{v} }
+func NewAssetProperty(v *Asset) PropertyValue                        { return PropertyValue{v} }
+func NewArchiveProperty(v *Archive) PropertyValue                    { return PropertyValue{v} }
+func NewObjectProperty(v PropertyMap) PropertyValue                  { return PropertyValue{v} }
+func NewComputedProperty(v Computed) PropertyValue                   { return PropertyValue{v} }
+func NewOutputProperty(v Output) PropertyValue                       { return PropertyValue{v} }
+func NewSecretProperty(v *Secret) PropertyValue                      { return PropertyValue{v} }
+func NewResourceReferenceProperty(v ResourceReference) PropertyValue { return PropertyValue{v} }
 
 func MakeComputed(v PropertyValue) PropertyValue {
 	return NewComputedProperty(Computed{Element: v})
@@ -200,6 +231,29 @@ func MakeOutput(v PropertyValue) PropertyValue {
 
 func MakeSecret(v PropertyValue) PropertyValue {
 	return NewSecretProperty(&Secret{Element: v})
+}
+
+// MakeComponentResourceReference creates a reference to a component resource.
+func MakeComponentResourceReference(urn URN, packageVersion string) PropertyValue {
+	return NewResourceReferenceProperty(ResourceReference{
+		URN:            urn,
+		PackageVersion: packageVersion,
+	})
+}
+
+// MakeCustomResourceReference creates a reference to a custom resource. If the resource's ID is the empty string, it
+// will be treated as unknown.
+func MakeCustomResourceReference(urn URN, id ID, packageVersion string) PropertyValue {
+	idProp := NewStringProperty(string(id))
+	if id == "" {
+		idProp = MakeComputed(NewStringProperty(""))
+	}
+
+	return NewResourceReferenceProperty(ResourceReference{
+		ID:             idProp,
+		URN:            urn,
+		PackageVersion: packageVersion,
+	})
 }
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
@@ -255,6 +309,8 @@ func NewPropertyValueRepl(v interface{},
 		return NewOutputProperty(t)
 	case *Secret:
 		return NewSecretProperty(t)
+	case ResourceReference:
+		return NewResourceReferenceProperty(t)
 	}
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
@@ -311,12 +367,15 @@ func NewPropertyValueRepl(v interface{},
 
 // HasValue returns true if a value is semantically meaningful.
 func (v PropertyValue) HasValue() bool {
-	return !v.IsNull() && !v.IsOutput()
+	if v.IsOutput() {
+		return v.OutputValue().Known
+	}
+	return !v.IsNull()
 }
 
 // ContainsUnknowns returns true if the property value contains at least one unknown (deeply).
 func (v PropertyValue) ContainsUnknowns() bool {
-	if v.IsComputed() || v.IsOutput() {
+	if v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known) {
 		return true
 	} else if v.IsArray() {
 		for _, e := range v.ArrayValue() {
@@ -339,7 +398,7 @@ func (v PropertyValue) ContainsSecrets() bool {
 	} else if v.IsComputed() {
 		return v.Input().Element.ContainsSecrets()
 	} else if v.IsOutput() {
-		return v.OutputValue().Element.ContainsSecrets()
+		return v.OutputValue().Secret || v.OutputValue().Element.ContainsSecrets()
 	} else if v.IsArray() {
 		for _, e := range v.ArrayValue() {
 			if e.ContainsSecrets() {
@@ -381,6 +440,9 @@ func (v PropertyValue) OutputValue() Output { return v.V.(Output) }
 
 // SecretValue fetches the underlying secret value (panicking if it isn't a secret).
 func (v PropertyValue) SecretValue() *Secret { return v.V.(*Secret) }
+
+// ResourceReferenceValue fetches the underlying resource reference value (panicking if it isn't a resource reference).
+func (v PropertyValue) ResourceReferenceValue() ResourceReference { return v.V.(ResourceReference) }
 
 // IsNull returns true if the underlying value is a null.
 func (v PropertyValue) IsNull() bool {
@@ -447,6 +509,12 @@ func (v PropertyValue) IsSecret() bool {
 	return is
 }
 
+// IsResourceReference returns true if the underlying value is a resource reference value.
+func (v PropertyValue) IsResourceReference() bool {
+	_, is := v.V.(ResourceReference)
+	return is
+}
+
 // TypeString returns a type representation of the property value's holder type.
 func (v PropertyValue) TypeString() string {
 	if v.IsNull() {
@@ -468,9 +536,17 @@ func (v PropertyValue) TypeString() string {
 	} else if v.IsComputed() {
 		return "output<" + v.Input().Element.TypeString() + ">"
 	} else if v.IsOutput() {
-		return "output<" + v.OutputValue().Element.TypeString() + ">"
+		if !v.OutputValue().Known {
+			return MakeComputed(v.OutputValue().Element).TypeString()
+		} else if v.OutputValue().Secret {
+			return MakeSecret(v.OutputValue().Element).TypeString()
+		}
+		return v.OutputValue().Element.TypeString()
 	} else if v.IsSecret() {
 		return "secret<" + v.SecretValue().Element.TypeString() + ">"
+	} else if v.IsResourceReference() {
+		ref := v.ResourceReferenceValue()
+		return fmt.Sprintf("resourceReference(%q, %q, %q)", ref.URN, ref.ID, ref.PackageVersion)
 	}
 	contract.Failf("Unrecognized PropertyValue type")
 	return ""
@@ -514,6 +590,8 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 		return v.OutputValue()
 	} else if v.IsSecret() {
 		return v.SecretValue()
+	} else if v.IsResourceReference() {
+		return v.ResourceReferenceValue()
 	}
 	contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
 	return v.ObjectValue().MapRepl(replk, replv)
@@ -521,9 +599,16 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 
 // String implements the fmt.Stringer interface to add slightly more information to the output.
 func (v PropertyValue) String() string {
-	if v.IsComputed() || v.IsOutput() {
-		// For computed and output properties, show their type followed by an empty object string.
+	if v.IsComputed() {
+		// For computed properties, show the type followed by an empty object string.
 		return fmt.Sprintf("%v{}", v.TypeString())
+	} else if v.IsOutput() {
+		if !v.OutputValue().Known {
+			return MakeComputed(v.OutputValue().Element).String()
+		} else if v.OutputValue().Secret {
+			return MakeSecret(v.OutputValue().Element).String()
+		}
+		return v.OutputValue().Element.String()
 	}
 	// For all others, just display the underlying property value.
 	return fmt.Sprintf("{%v}", v.V)
@@ -549,6 +634,12 @@ func HasSig(obj PropertyMap, match string) bool {
 
 // SecretSig is the unique secret signature.
 const SecretSig = "1b47061264138c4ac30d75fd1eb44270"
+
+// ResourceReferenceSig is the unique resource reference signature.
+const ResourceReferenceSig = "5cf8f73096256a8f31e491e813e4eb8e"
+
+// OutputValueSig is the unique output value signature.
+const OutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4"
 
 // IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
 // users.

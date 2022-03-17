@@ -34,6 +34,10 @@ func (f typeTransform) do(t Type) Type {
 }
 
 func resolveEventuals(t Type, resolveOutputs bool) (Type, typeTransform) {
+	return resolveEventualsImpl(t, resolveOutputs, map[Type]Type{})
+}
+
+func resolveEventualsImpl(t Type, resolveOutputs bool, seen map[Type]Type) (Type, typeTransform) {
 	switch t := t.(type) {
 	case *OutputType:
 		if resolveOutputs {
@@ -41,47 +45,52 @@ func resolveEventuals(t Type, resolveOutputs bool) (Type, typeTransform) {
 		}
 		return t, makeIdentity
 	case *PromiseType:
-		element, transform := resolveEventuals(t.ElementType, resolveOutputs)
+		element, transform := resolveEventualsImpl(t.ElementType, resolveOutputs, seen)
 		if makePromise > transform {
 			transform = makePromise
 		}
 		return element, transform
 	case *MapType:
-		resolved, transform := resolveEventuals(t.ElementType, resolveOutputs)
+		resolved, transform := resolveEventualsImpl(t.ElementType, resolveOutputs, seen)
 		return NewMapType(resolved), transform
 	case *ListType:
-		resolved, transform := resolveEventuals(t.ElementType, resolveOutputs)
+		resolved, transform := resolveEventualsImpl(t.ElementType, resolveOutputs, seen)
 		return NewListType(resolved), transform
 	case *SetType:
-		resolved, transform := resolveEventuals(t.ElementType, resolveOutputs)
+		resolved, transform := resolveEventualsImpl(t.ElementType, resolveOutputs, seen)
 		return NewSetType(resolved), transform
 	case *UnionType:
 		transform := makeIdentity
 		elementTypes := make([]Type, len(t.ElementTypes))
 		for i, t := range t.ElementTypes {
-			element, elementTransform := resolveEventuals(t, resolveOutputs)
+			element, elementTransform := resolveEventualsImpl(t, resolveOutputs, seen)
 			if elementTransform > transform {
 				transform = elementTransform
 			}
 			elementTypes[i] = element
 		}
-		return NewUnionType(elementTypes...), transform
+		return NewUnionTypeAnnotated(elementTypes, t.Annotations...), transform
 	case *ObjectType:
 		transform := makeIdentity
+		if already, ok := seen[t]; ok {
+			return already, transform
+		}
 		properties := map[string]Type{}
+		objType := NewObjectType(properties, t.Annotations...)
+		seen[t] = objType
 		for k, t := range t.Properties {
-			property, propertyTransform := resolveEventuals(t, resolveOutputs)
+			property, propertyTransform := resolveEventualsImpl(t, resolveOutputs, seen)
 			if propertyTransform > transform {
 				transform = propertyTransform
 			}
 			properties[k] = property
 		}
-		return NewObjectType(properties, t.Annotations...), transform
+		return objType, transform
 	case *TupleType:
 		transform := makeIdentity
 		elements := make([]Type, len(t.ElementTypes))
 		for i, t := range t.ElementTypes {
-			element, elementTransform := resolveEventuals(t, resolveOutputs)
+			element, elementTransform := resolveEventualsImpl(t, resolveOutputs, seen)
 			if elementTransform > transform {
 				transform = elementTransform
 			}
@@ -116,34 +125,43 @@ func ResolvePromises(t Type) Type {
 
 // ContainsEventuals returns true if the input type contains output or promise types.
 func ContainsEventuals(t Type) (containsOutputs, containsPromises bool) {
+	return containsEventualsImpl(t, map[Type]struct{}{})
+}
+
+func containsEventualsImpl(t Type, seen map[Type]struct{}) (containsOutputs, containsPromises bool) {
+	if _, ok := seen[t]; ok {
+		return false, false
+	}
+	seen[t] = struct{}{}
+
 	switch t := t.(type) {
 	case *OutputType:
 		return true, false
 	case *PromiseType:
 		return ContainsOutputs(t.ElementType), true
 	case *MapType:
-		return ContainsEventuals(t.ElementType)
+		return containsEventualsImpl(t.ElementType, seen)
 	case *ListType:
-		return ContainsEventuals(t.ElementType)
+		return containsEventualsImpl(t.ElementType, seen)
 	case *SetType:
-		return ContainsEventuals(t.ElementType)
+		return containsEventualsImpl(t.ElementType, seen)
 	case *UnionType:
 		for _, t := range t.ElementTypes {
-			outputs, promises := ContainsEventuals(t)
+			outputs, promises := containsEventualsImpl(t, seen)
 			containsOutputs = outputs || containsOutputs
 			containsPromises = promises || containsPromises
 		}
 		return
 	case *ObjectType:
 		for _, t := range t.Properties {
-			outputs, promises := ContainsEventuals(t)
+			outputs, promises := containsEventualsImpl(t, seen)
 			containsOutputs = outputs || containsOutputs
 			containsPromises = promises || containsPromises
 		}
 		return
 	case *TupleType:
 		for _, t := range t.ElementTypes {
-			outputs, promises := ContainsEventuals(t)
+			outputs, promises := containsEventualsImpl(t, seen)
 			containsOutputs = outputs || containsOutputs
 			containsPromises = promises || containsPromises
 		}
@@ -242,6 +260,9 @@ func liftOperationType(resultType Type, arguments ...Expression) Type {
 
 // InputType returns the result of replacing each type in T with union(T, output(T)).
 func InputType(t Type) Type {
+	return inputTypeImpl(t, map[Type]Type{})
+}
+func inputTypeImpl(t Type, seen map[Type]Type) Type {
 	if t == DynamicType || t == NoneType {
 		return t
 	}
@@ -251,23 +272,28 @@ func InputType(t Type) Type {
 	case *OutputType:
 		return t
 	case *PromiseType:
-		src = NewPromiseType(InputType(t.ElementType))
+		src = NewPromiseType(inputTypeImpl(t.ElementType, seen))
 	case *MapType:
-		src = NewMapType(InputType(t.ElementType))
+		src = NewMapType(inputTypeImpl(t.ElementType, seen))
 	case *ListType:
-		src = NewListType(InputType(t.ElementType))
+		src = NewListType(inputTypeImpl(t.ElementType, seen))
 	case *UnionType:
 		elementTypes := make([]Type, len(t.ElementTypes))
 		for i, t := range t.ElementTypes {
-			elementTypes[i] = InputType(t)
+			elementTypes[i] = inputTypeImpl(t, seen)
 		}
-		src = NewUnionType(elementTypes...)
+		src = NewUnionTypeAnnotated(elementTypes, t.Annotations...)
 	case *ObjectType:
-		properties := map[string]Type{}
-		for k, t := range t.Properties {
-			properties[k] = InputType(t)
+		if already, ok := seen[t]; ok {
+			return already
 		}
+
+		properties := map[string]Type{}
 		src = NewObjectType(properties, t.Annotations...)
+		seen[t] = src
+		for k, t := range t.Properties {
+			properties[k] = inputTypeImpl(t, seen)
+		}
 	default:
 		src = t
 	}

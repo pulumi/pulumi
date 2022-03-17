@@ -16,16 +16,16 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func newStackExportCmd() *cobra.Command {
@@ -51,7 +51,7 @@ func newStackExportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and export its deployment
-			s, err := requireStack(stackName, false, opts, true /*setCurrent*/)
+			s, err := requireStack(stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -69,8 +69,7 @@ func newStackExportCmd() *cobra.Command {
 				be := s.Backend()
 				specificExpBE, ok := be.(backend.SpecificDeploymentExporter)
 				if !ok {
-					return errors.Errorf(
-						"the current backend (%s) does not provide the ability to export previous deployments",
+					return fmt.Errorf("the current backend (%s) does not provide the ability to export previous deployments",
 						be.Name())
 				}
 
@@ -85,11 +84,12 @@ func newStackExportCmd() *cobra.Command {
 			if file != "" {
 				writer, err = os.Create(file)
 				if err != nil {
-					return errors.Wrap(err, "could not open file")
+					return fmt.Errorf("could not open file: %w", err)
 				}
 			}
 
 			if showSecrets {
+				// log show secrets event
 				snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
 				if err != nil {
 					return checkDeploymentVersionError(err, stackName)
@@ -109,6 +109,8 @@ func newStackExportCmd() *cobra.Command {
 					Version:    3,
 					Deployment: data,
 				}
+
+				log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack export")
 			}
 
 			// Write the deployment.
@@ -116,7 +118,7 @@ func newStackExportCmd() *cobra.Command {
 			enc.SetIndent("", "    ")
 
 			if err = enc.Encode(deployment); err != nil {
-				return errors.Wrap(err, "could not export deployment")
+				return fmt.Errorf("could not export deployment: %w", err)
 			}
 
 			return nil

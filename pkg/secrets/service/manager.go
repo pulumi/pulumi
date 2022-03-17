@@ -1,22 +1,38 @@
+// Copyright 2016-2021, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package service implements support for the Pulumi Service secret manager.
 package service
 
 import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 
-	"github.com/pkg/errors"
-
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const Type = "service"
+
+var _ config.BulkDecrypter = (*serviceCrypter)(nil)
 
 // serviceCrypter is an encrypter/decrypter that uses the Pulumi servce to encrypt/decrypt a stack's secrets.
 type serviceCrypter struct {
@@ -41,11 +57,35 @@ func (c *serviceCrypter) DecryptValue(cipherstring string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	plaintext, err := c.client.DecryptValue(context.Background(), c.stack, ciphertext)
 	if err != nil {
 		return "", err
 	}
 	return string(plaintext), nil
+}
+
+func (c *serviceCrypter) BulkDecrypt(secrets []string) (map[string]string, error) {
+	var secretsToDecrypt [][]byte
+	for _, val := range secrets {
+		ciphertext, err := base64.StdEncoding.DecodeString(val)
+		if err != nil {
+			return nil, err
+		}
+		secretsToDecrypt = append(secretsToDecrypt, ciphertext)
+	}
+
+	decryptedList, err := c.client.BulkDecryptValue(context.Background(), c.stack, secretsToDecrypt)
+	if err != nil {
+		return nil, err
+	}
+
+	decryptedSecrets := make(map[string]string)
+	for name, val := range decryptedList {
+		decryptedSecrets[name] = string(val)
+	}
+
+	return decryptedSecrets, nil
 }
 
 type serviceSecretsManagerState struct {
@@ -97,17 +137,17 @@ func NewServiceSecretsManager(c *client.Client, id client.StackIdentifier) (secr
 func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s serviceSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
-		return nil, errors.Wrap(err, "unmarshalling state")
+		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
 	account, err := workspace.GetAccount(s.URL)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting access token")
+		return nil, fmt.Errorf("getting access token: %w", err)
 	}
 	token := account.AccessToken
 
 	if token == "" {
-		return nil, errors.Errorf("could not find access token for %s, have you logged in?", s.URL)
+		return nil, fmt.Errorf("could not find access token for %s, have you logged in?", s.URL)
 	}
 
 	id := client.StackIdentifier{

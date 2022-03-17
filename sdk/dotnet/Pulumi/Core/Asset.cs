@@ -48,4 +48,10 @@ namespace Pulumi
         {
         }
     }
+
+    sealed class InvalidAsset : Asset
+    {
+        public InvalidAsset() : base(Constants.AssetTextName, "") {
+        }
+    }
 }

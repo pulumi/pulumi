@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,11 +21,10 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-
-	"github.com/pulumi/pulumi/sdk/v2/go/common/encoding"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Analyzers is a list of analyzers to run on this project.
@@ -59,6 +58,11 @@ type ProjectBackend struct {
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 }
 
+type ProjectOptions struct {
+	// Refresh is the ability to always run a refresh as part of a pulumi update / preview / destroy
+	Refresh string `json:"refresh,omitempty" yaml:"refresh,omitempty"`
+}
+
 // Project is a Pulumi project manifest.
 //
 // We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
@@ -83,14 +87,21 @@ type Project struct {
 	// License is the optional license governing this project's usage.
 	License *string `json:"license,omitempty" yaml:"license,omitempty"`
 
-	// Config indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder Pulumi.yaml is in.
-	Config string `json:"config,omitempty" yaml:"config,omitempty"`
+	// Config has been renamed to StackConfigDir.
+	Config interface{} `json:"config,omitempty" yaml:"config,omitempty"`
+
+	// StackConfigDir indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder
+	// Pulumi.yaml is in.
+	StackConfigDir string `json:"stackConfigDir,omitempty" yaml:"stackConfigDir,omitempty"`
 
 	// Template is an optional template manifest, if this project is a template.
 	Template *ProjectTemplate `json:"template,omitempty" yaml:"template,omitempty"`
 
 	// Backend is an optional backend configuration
 	Backend *ProjectBackend `json:"backend,omitempty" yaml:"backend,omitempty"`
+
+	// Options is an optional set of project options
+	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
 }
 
 func (proj *Project) Validate() error {
@@ -153,6 +164,19 @@ func (proj *PolicyPackProject) Save(path string) error {
 	contract.Require(proj != nil, "proj")
 	contract.Requiref(proj.Validate() == nil, "proj", "Validate()")
 	return save(path, proj, false /*mkDirAll*/)
+}
+
+type PluginProject struct {
+	// Runtime is a required runtime that executes code.
+	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
+}
+
+func (proj *PluginProject) Validate() error {
+	if proj.Runtime.Name() == "" {
+		return errors.New("project is missing a 'runtime' attribute")
+	}
+
+	return nil
 }
 
 // ProjectStack holds stack specific information about a project.
@@ -263,93 +287,6 @@ func (info *ProjectRuntimeInfo) UnmarshalYAML(unmarshal func(interface{}) error)
 	return errors.New("runtime section must be a string or an object with name and options attributes")
 }
 
-// LoadProject reads a project definition from a file.
-func LoadProject(path string) (*Project, error) {
-	contract.Require(path != "", "path")
-
-	m, err := marshallerForPath(path)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var proj Project
-	err = m.Unmarshal(b, &proj)
-	if err != nil {
-		return nil, err
-	}
-
-	err = proj.Validate()
-	if err != nil {
-		return nil, err
-	}
-
-	return &proj, err
-}
-
-// LoadPolicyPack reads a policy pack definition from a file.
-func LoadPolicyPack(path string) (*PolicyPackProject, error) {
-	contract.Require(path != "", "path")
-
-	m, err := marshallerForPath(path)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var proj PolicyPackProject
-	err = m.Unmarshal(b, &proj)
-	if err != nil {
-		return nil, err
-	}
-
-	err = proj.Validate()
-	if err != nil {
-		return nil, err
-	}
-
-	return &proj, err
-}
-
-// LoadProjectStack reads a stack definition from a file.
-func LoadProjectStack(path string) (*ProjectStack, error) {
-	contract.Require(path != "", "path")
-
-	m, err := marshallerForPath(path)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadFile(path)
-	if os.IsNotExist(err) {
-		return &ProjectStack{
-			Config: make(config.Map),
-		}, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	var ps ProjectStack
-	err = m.Unmarshal(b, &ps)
-	if err != nil {
-		return nil, err
-	}
-
-	if ps.Config == nil {
-		ps.Config = make(config.Map)
-	}
-
-	return &ps, err
-}
-
 func marshallerForPath(path string) (encoding.Marshaler, error) {
 	ext := filepath.Ext(path)
 	m, has := encoding.Marshalers[ext]
@@ -380,7 +317,6 @@ func save(path string, value interface{}, mkDirAll bool) error {
 		}
 	}
 
-	// Changing the permissions on these file is ~ a breaking change, so disable golint.
 	//nolint: gosec
 	return ioutil.WriteFile(path, b, 0644)
 }

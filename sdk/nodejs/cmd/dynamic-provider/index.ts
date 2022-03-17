@@ -57,9 +57,18 @@ process.on("exit", (code: number) => {
     }
 });
 
+const providerCache: { [key: string]: dynamic.ResourceProvider } = {};
+
 function getProvider(props: any): dynamic.ResourceProvider {
+    const providerString = props[providerKey];
+    let provider: any = providerCache[providerString];
+    if (!provider) {
+        provider = requireFromString(providerString).handler();
+        providerCache[providerString] = provider;
+    }
+
     // TODO[pulumi/pulumi#414]: investigate replacing requireFromString with eval
-    return requireFromString(props[providerKey]).handler();
+    return provider;
 }
 
 // Each of the *RPC functions below implements a single method of the resource provider gRPC interface. The CRUD
@@ -297,6 +306,13 @@ function getSchemaRPC(call: any, callback: any): void {
     }, undefined);
 }
 
+function constructRPC(call: any, callback: any): void {
+    callback({
+        code: grpc.status.UNIMPLEMENTED,
+        details: "Construct is not implemented by the dynamic provider",
+    }, undefined);
+}
+
 function resultIncludingProvider(result: any, props: any): any {
     return Object.assign(result || {}, {
         [providerKey]: props[providerKey],
@@ -308,7 +324,7 @@ function resultIncludingProvider(result: any, props: any): any {
 // rejected the resource, or an initialization error, where the API server has accepted the
 // resource, but it failed to initialize (e.g., the app code is continually crashing and the
 // resource has failed to become alive).
-function grpcResponseFromError(e: {id: string, properties: any, message: string, reasons?: string[]}) {
+function grpcResponseFromError(e: {id: string; properties: any; message: string; reasons?: string[]}) {
     // Create response object.
     const resp = new statusproto.Status();
     resp.setCode(grpc.status.UNKNOWN);
@@ -372,6 +388,7 @@ export async function main(args: string[]) {
         delete: deleteRPC,
         getPluginInfo: getPluginInfoRPC,
         getSchema: getSchemaRPC,
+        construct: constructRPC,
     });
     const port: number = await new Promise<number>((resolve, reject) => {
         server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {

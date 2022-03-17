@@ -17,13 +17,15 @@ package migrate
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCheckpointV1ToV2(t *testing.T) {
+	t.Parallel()
+
 	v1 := apitype.CheckpointV1{
 		Stack: tokens.QName("mystack"),
 		Config: config.Map{
@@ -44,6 +46,8 @@ func TestCheckpointV1ToV2(t *testing.T) {
 }
 
 func TestCheckpointV1ToV2NilLatest(t *testing.T) {
+	t.Parallel()
+
 	v1 := apitype.CheckpointV1{
 		Stack: tokens.QName("mystack"),
 		Config: config.Map{

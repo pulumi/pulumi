@@ -15,8 +15,12 @@
 package dotnet
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 )
 
 // isReservedWord returns true if s is a C# reserved word as per
@@ -61,9 +65,16 @@ func isLegalIdentifierPart(c rune) bool {
 func makeValidIdentifier(name string) string {
 	var builder strings.Builder
 	for i, c := range name {
-		if i == 0 && !isLegalIdentifierStart(c) || i > 0 && !isLegalIdentifierPart(c) {
+		if i == 0 && c == '@' {
+			builder.WriteRune(c)
+			continue
+		}
+		if !isLegalIdentifierPart(c) {
 			builder.WriteRune('_')
 		} else {
+			if i == 0 && !isLegalIdentifierStart(c) {
+				builder.WriteRune('_')
+			}
 			builder.WriteRune(c)
 		}
 	}
@@ -77,4 +88,59 @@ func makeValidIdentifier(name string) string {
 // propertyName returns a name as a valid identifier in title case.
 func propertyName(name string) string {
 	return makeValidIdentifier(Title(name))
+}
+
+func makeSafeEnumName(name, typeName string) (string, error) {
+	// Replace common single character enum names.
+	safeName := codegen.ExpandShortEnumName(name)
+
+	// If the name is one illegal character, return an error.
+	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
+		return "", fmt.Errorf("enum name %s is not a valid identifier", safeName)
+	}
+
+	// Capitalize and make a valid identifier.
+	safeName = strings.Title(makeValidIdentifier(safeName))
+
+	// If there are multiple underscores in a row, replace with one.
+	regex := regexp.MustCompile(`_+`)
+	safeName = regex.ReplaceAllString(safeName, "_")
+
+	// If the enum name starts with an underscore, add the type name as a prefix.
+	if strings.HasPrefix(safeName, "_") {
+		safeName = typeName + safeName
+	}
+
+	// "Equals" conflicts with a method on the EnumType struct, change it to EqualsValue.
+	if safeName == "Equals" {
+		safeName = "EqualsValue"
+	}
+
+	return safeName, nil
+}
+
+// Provides code for a method which will be placed in the program preamble if deemed
+// necessary. Because many Terraform functions are complex, it is much prettier to
+// encapsulate them as their own function in the preamble.
+func getHelperMethodIfNeeded(functionName string) (string, bool) {
+	switch functionName {
+	case "filebase64":
+		return `private static string ReadFileBase64(string path) {
+		return Convert.ToBase64String(Encoding.UTF8.GetBytes(File.ReadAllText(path)))
+	}`, true
+	case "filebase64sha256":
+		return `private static string ComputeFileBase64Sha256(string path) {
+		var fileData = Encoding.UTF8.GetBytes(File.ReadAllText(path));
+		var hashData = SHA256.Create().ComputeHash(fileData);
+		return Convert.ToBase64String(hashData);
+	}`, true
+	case "sha1":
+		return `private static string ComputeSHA1(string input) {
+		return BitConverter.ToString(
+			SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(input))
+		).Replace("-","").ToLowerInvariant());
+	}`, true
+	default:
+		return "", false
+	}
 }

@@ -17,8 +17,8 @@ package filestate
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	user "github.com/tweekmonster/luser"
 	"net/url"
 	"os"
 	"path"
@@ -28,7 +28,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/gofrs/uuid"
+
+	user "github.com/tweekmonster/luser"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
@@ -36,25 +38,24 @@ import (
 	_ "gocloud.dev/blob/s3blob"    // driver for s3://
 	"gocloud.dev/gcerrors"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/edit"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v2/util/validation"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/encoding"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/util/validation"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Backend extends the base backend interface with specific information about local backends.
@@ -74,6 +75,8 @@ type localBackend struct {
 
 	bucket Bucket
 	mutex  sync.Mutex
+
+	lockID string
 }
 
 type localBackendReference struct {
@@ -101,7 +104,7 @@ const FilePathPrefix = "file://"
 
 func New(d diag.Sink, originalURL string) (Backend, error) {
 	if !IsFileStateBackendURL(originalURL) {
-		return nil, errors.Errorf("local URL %s has an illegal prefix; expected one of: %s",
+		return nil, fmt.Errorf("local URL %s has an illegal prefix; expected one of: %s",
 			originalURL, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
 	}
 
@@ -128,7 +131,7 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 
 	bucket, err := blobmux.OpenBucket(context.TODO(), u)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to open bucket %s", u)
+		return nil, fmt.Errorf("unable to open bucket %s: %w", u, err)
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
@@ -142,11 +145,18 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		}
 	}
 
+	// Allocate a unique lock ID for this backend instance.
+	lockID, err := uuid.NewV4()
+	if err != nil {
+		return nil, err
+	}
+
 	return &localBackend{
 		d:           d,
 		originalURL: originalURL,
 		url:         u,
 		bucket:      &wrappedBucket{bucket: bucket},
+		lockID:      lockID.String(),
 	}, nil
 }
 
@@ -169,7 +179,7 @@ func massageBlobPath(path string) (string, error) {
 	if strings.HasPrefix(path, "~") {
 		usr, err := user.Current()
 		if err != nil {
-			return "", errors.Wrap(err, "Could not determine current user to resolve `file://~` path.")
+			return "", fmt.Errorf("Could not determine current user to resolve `file://~` path.: %w", err)
 		}
 
 		if path == "~" {
@@ -182,7 +192,7 @@ func massageBlobPath(path string) (string, error) {
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err := filepath.Abs(path)
 	if err != nil {
-		return "", errors.Wrap(err, "An IO error occurred while building the absolute path")
+		return "", fmt.Errorf("An IO error occurred while building the absolute path: %w", err)
 	}
 
 	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket
@@ -228,12 +238,14 @@ func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	return nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
-func (b *localBackend) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
-	return apitype.ListPolicyGroupsResponse{}, fmt.Errorf("File state backend does not support resource policy")
+func (b *localBackend) ListPolicyGroups(ctx context.Context, orgName string, _ backend.ContinuationToken) (
+	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error) {
+	return apitype.ListPolicyGroupsResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
-func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
-	return apitype.ListPolicyPacksResponse{}, fmt.Errorf("File state backend does not support resource policy")
+func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string, _ backend.ContinuationToken) (
+	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error) {
+	return apitype.ListPolicyPacksResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
 // SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
@@ -268,6 +280,12 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	opts interface{}) (backend.Stack, error) {
 
+	err := b.Lock(ctx, stackRef)
+	if err != nil {
+		return nil, err
+	}
+	defer b.Unlock(ctx, stackRef)
+
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
 	stackName := stackRef.Name()
@@ -281,10 +299,10 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 
 	tags, err := backend.GetEnvironmentTagsForCurrentStack()
 	if err != nil {
-		return nil, errors.Wrap(err, "getting stack tags")
+		return nil, fmt.Errorf("getting stack tags: %w", err)
 	}
 	if err = validation.ValidateStackProperties(string(stackName), tags); err != nil {
-		return nil, errors.Wrap(err, "validating stack properties")
+		return nil, fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	file, err := b.saveStack(stackName, nil, nil)
@@ -301,8 +319,9 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackName := stackRef.Name()
 	snapshot, path, err := b.getStack(stackName)
+
 	switch {
-	case gcerrors.Code(errors.Cause(err)) == gcerrors.NotFound:
+	case gcerrors.Code(err) == gcerrors.NotFound:
 		return nil, nil
 	case err != nil:
 		return nil, err
@@ -312,29 +331,39 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 }
 
 func (b *localBackend) ListStacks(
-	ctx context.Context, _ backend.ListStacksFilter) ([]backend.StackSummary, error) {
+	ctx context.Context, _ backend.ListStacksFilter, _ backend.ContinuationToken) (
+	[]backend.StackSummary, backend.ContinuationToken, error) {
 	stacks, err := b.getLocalStacks()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Note that the provided stack filter is not honored, since fields like
 	// organizations and tags aren't persisted in the local backend.
 	var results []backend.StackSummary
 	for _, stackName := range stacks {
-		stack, err := b.GetStack(ctx, localBackendReference{name: stackName})
+		chk, err := b.getCheckpoint(stackName)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		localStack, ok := stack.(*localStack)
-		contract.Assertf(ok, "localBackend GetStack returned non-localStack")
-		results = append(results, newLocalStackSummary(localStack))
+		stackRef, err := b.ParseStackReference(string(stackName))
+		if err != nil {
+			return nil, nil, err
+		}
+		results = append(results, newLocalStackSummary(stackRef, chk))
 	}
 
-	return results, nil
+	return results, nil, nil
 }
 
 func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return false, err
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	stackName := stack.Ref().Name()
 	snapshot, _, err := b.getStack(stackName)
 	if err != nil {
@@ -349,46 +378,64 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 	return false, b.removeStack(stackName)
 }
 
-func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack, newName tokens.QName) error {
+func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
+	newName tokens.QName) (backend.StackReference, error) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
+	// Get the current state from the stack to be renamed.
 	stackName := stack.Ref().Name()
 	snap, _, err := b.getStack(stackName)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	// Ensure the new stack name is valid.
+	newRef, err := b.ParseStackReference(string(newName))
+	if err != nil {
+		return nil, err
 	}
 
 	// Ensure the destination stack does not already exist.
 	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newName))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if hasExisting {
-		return errors.Errorf("a stack named %s already exists", newName)
+		return nil, fmt.Errorf("a stack named %s already exists", newName)
 	}
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
 	if snap != nil {
 		if err = edit.RenameStack(snap, newName, ""); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
 	if _, err = b.saveStack(newName, snap, nil); err != nil {
-		return err
+		return nil, err
 	}
 
 	// To remove the old stack, just make a backup of the file and don't write out anything new.
 	file := b.stackPath(stackName)
-	backupTarget(b.bucket, file)
+	backupTarget(b.bucket, file, false)
 
 	// And rename the histoy folder as well.
-	return b.renameHistory(stackName, newName)
+	if err = b.renameHistory(stackName, newName); err != nil {
+		return nil, err
+	}
+	return newRef, err
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack) (config.Map, error) {
 
-	hist, err := b.GetHistory(ctx, stack.Ref())
+	hist, err := b.GetHistory(ctx, stack.Ref(), 1 /*pageSize*/, 1 /*page*/)
 	if err != nil {
 		return nil, err
 	}
@@ -408,7 +455,8 @@ func (b *localBackend) PackPolicies(
 }
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -419,16 +467,50 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
+}
+
+func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
+	op.Imports = imports
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
@@ -438,15 +520,15 @@ func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) res
 }
 
 func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) result.Result {
-	return backend.Watch(ctx, b, stack, op, b.apply)
+	op backend.UpdateOperation, paths []string) result.Result {
+	return backend.Watch(ctx, b, stack, op, b.apply, paths)
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (engine.ResourceChanges, result.Result) {
+	events chan<- engine.Event) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
@@ -461,7 +543,7 @@ func (b *localBackend) apply(
 	// Start the update.
 	update, err := b.newUpdate(stackName, op)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 
 	// Spawn a display loop to show events on the CLI.
@@ -502,17 +584,20 @@ func (b *localBackend) apply(
 
 	// Perform the update
 	start := time.Now().Unix()
+	var plan *deploy.Plan
 	var changes engine.ResourceChanges
 	var updateRes result.Result
 	switch kind {
 	case apitype.PreviewUpdate:
-		changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, true)
+		plan, changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+	case apitype.ResourceImportUpdate:
+		_, changes, updateRes = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
 	case apitype.RefreshUpdate:
-		changes, updateRes = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateRes = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.DestroyUpdate:
-		changes, updateRes = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateRes = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
@@ -556,20 +641,20 @@ func (b *localBackend) apply(
 
 	if updateRes != nil {
 		// We swallow saveErr and backupErr as they are less important than the updateErr.
-		return changes, updateRes
+		return plan, changes, updateRes
 	}
 
 	if saveErr != nil {
 		// We swallow backupErr as it is less important than the saveErr.
-		return changes, result.FromError(errors.Wrap(saveErr, "saving update info"))
+		return plan, changes, result.FromError(fmt.Errorf("saving update info: %w", saveErr))
 	}
 
 	if backupErr != nil {
-		return changes, result.FromError(errors.Wrap(backupErr, "saving backup"))
+		return plan, changes, result.FromError(fmt.Errorf("saving backup: %w", backupErr))
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if opts.ShowLink && !op.Opts.Display.JSONDisplay {
+	if !op.Opts.Display.SuppressPermalink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
@@ -580,21 +665,28 @@ func (b *localBackend) apply(
 		} else {
 			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
 			if err != nil {
+				// set link to be empty to when there is an error to hide use of Permalinks
+				link = ""
+
 				// we log a warning here rather then returning an error to avoid exiting
 				// pulumi with an error code.
 				// printing a statefile perma link happens after all the providers have finished
 				// deploying the infrastructure, failing the pulumi update because there was a
 				// problem printing a statefile perma link can be missleading in automated CI environments.
-				cmdutil.Diag().Warningf(diag.Message("", "Could not get signed url for stack location: %v"), err)
+				cmdutil.Diag().Warningf(diag.Message("", "Unable to create signed url for current backend to "+
+					"create a Permalink. Please visit https://www.pulumi.com/docs/troubleshooting/ "+
+					"for more information\n"))
 			}
 		}
 
-		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline+"Permalink: "+
-				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
+		if link != "" {
+			fmt.Printf(op.Opts.Display.Color.Colorize(
+				colors.SpecHeadline+"Permalink: "+
+					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
+		}
 	}
 
-	return changes, nil
+	return plan, changes, nil
 }
 
 // query executes a query program against the resource outputs of a locally hosted stack.
@@ -604,9 +696,13 @@ func (b *localBackend) query(ctx context.Context, op backend.QueryOperation,
 	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
 
-func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
+func (b *localBackend) GetHistory(
+	ctx context.Context,
+	stackRef backend.StackReference,
+	pageSize int,
+	page int) ([]backend.UpdateInfo, error) {
 	stackName := stackRef.Name()
-	updates, err := b.getHistory(stackName)
+	updates, err := b.getHistory(stackName, pageSize, page)
 	if err != nil {
 		return nil, err
 	}
@@ -628,7 +724,11 @@ func (b *localBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg bac
 // GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
 func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]operations.LogEntry, error) {
 	contract.Assert(target != nil)
-	contract.Assert(target.Snapshot != nil)
+
+	if target.Snapshot == nil {
+		// If the stack has not been deployed yet, return no logs.
+		return nil, nil
+	}
 
 	config, err := target.Config.Decrypt(target.Decrypter)
 	if err != nil {
@@ -659,7 +759,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 
 	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager /* showSecrsts */, false)
 	if err != nil {
-		return nil, errors.Wrap(err, "serializing deployment")
+		return nil, fmt.Errorf("serializing deployment: %w", err)
 	}
 
 	data, err := json.Marshal(sdep)
@@ -676,8 +776,14 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	deployment *apitype.UntypedDeployment) error {
 
+	err := b.Lock(ctx, stk.Ref())
+	if err != nil {
+		return err
+	}
+	defer b.Unlock(ctx, stk.Ref())
+
 	stackName := stk.Ref().Name()
-	_, _, err := b.getStack(stackName)
+	_, _, err = b.getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -693,6 +799,10 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 
 func (b *localBackend) Logout() error {
 	return workspace.DeleteAccount(b.originalURL)
+}
+
+func (b *localBackend) LogoutAll() error {
+	return workspace.DeleteAllAccounts()
 }
 
 func (b *localBackend) CurrentUser() (string, error) {
@@ -711,7 +821,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 
 	files, err := listBucket(b.bucket, path)
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing stacks")
+		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
 
 	for _, file := range files {
@@ -729,11 +839,6 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 
 		// Read in this stack's information.
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
-		_, _, err := b.getStack(name)
-		if err != nil {
-			logging.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
-			continue // failure reading the stack information.
-		}
 
 		stacks = append(stacks, name)
 	}
@@ -755,4 +860,33 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 
 	// The local backend does not currently persist tags.
 	return errors.New("stack tags not supported in --local mode")
+}
+
+func (b *localBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
+	// Try to delete ALL the lock files
+	allFiles, err := listBucket(b.bucket, stackLockDir(stackRef.Name()))
+	if err != nil {
+		// Don't error if it just wasn't found
+		if gcerrors.Code(err) == gcerrors.NotFound {
+			return nil
+		}
+		return err
+	}
+
+	for _, file := range allFiles {
+		if file.IsDir {
+			continue
+		}
+
+		err := b.bucket.Delete(ctx, file.Key)
+		if err != nil {
+			// Race condition, don't error if the file was delete between us calling list and now
+			if gcerrors.Code(err) == gcerrors.NotFound {
+				return nil
+			}
+			return err
+		}
+	}
+
+	return nil
 }

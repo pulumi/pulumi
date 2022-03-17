@@ -17,7 +17,7 @@ package model
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
 type noneType int
@@ -30,7 +30,11 @@ func (noneType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics)
 	return NoneType, hcl.Diagnostics{unsupportedReceiverType(NoneType, traverser.SourceRange())}
 }
 
-func (noneType) Equals(other Type) bool {
+func (n noneType) Equals(other Type) bool {
+	return n.equals(other, nil)
+}
+
+func (noneType) equals(other Type, seen map[Type]struct{}) bool {
 	return other == NoneType
 }
 
@@ -41,16 +45,21 @@ func (noneType) AssignableFrom(src Type) bool {
 }
 
 func (noneType) ConversionFrom(src Type) ConversionKind {
-	return NoneType.conversionFrom(src, false)
+	kind, _ := NoneType.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (noneType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(NoneType, src, unifying, func() ConversionKind {
-		return NoConversion
+func (noneType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(NoneType, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+		return NoConversion, nil
 	})
 }
 
 func (noneType) String() string {
+	return "none"
+}
+
+func (noneType) string(_ map[Type]struct{}) string {
 	return "none"
 }
 

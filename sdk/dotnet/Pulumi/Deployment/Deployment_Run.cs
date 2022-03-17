@@ -12,7 +12,7 @@ namespace Pulumi
     public partial class Deployment
     {
         /// <summary>
-        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
+        /// <see cref="RunAsync(Func{Task{IDictionary{string,object}}}, StackOptions)"/> for more details.
         /// </summary>
         /// <param name="action">Callback that creates stack resources.</param>
         public static Task<int> RunAsync(Action action)
@@ -29,7 +29,7 @@ namespace Pulumi
         /// <returns>A dictionary of stack outputs.</returns>
         public static Task<int> RunAsync(Func<IDictionary<string, object?>> func)
             => RunAsync(() => Task.FromResult(func()));
-        
+
         /// <summary>
         /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
         /// </summary>
@@ -37,7 +37,7 @@ namespace Pulumi
         public static Task<int> RunAsync(Func<Task> func)
             => RunAsync(async () =>
             {
-                await func();
+                await func().ConfigureAwait(false);
                 return ImmutableDictionary<string, object?>.Empty;
             });
 
@@ -72,7 +72,7 @@ namespace Pulumi
         /// <param name="func">Callback that creates stack resources.</param>
         /// <param name="options">Stack options.</param>
         public static Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func, StackOptions? options = null)
-            => CreateRunner().RunAsync(func, options);
+            => CreateRunnerAndRunAsync(() => new Deployment(), runner => runner.RunAsync(func, options));
 
         /// <summary>
         /// <see cref="RunAsync{TStack}()"/> is an entry-point to a Pulumi
@@ -101,67 +101,118 @@ namespace Pulumi
         /// </para>
         /// </summary>
         public static Task<int> RunAsync<TStack>() where TStack : Stack, new()
-            => CreateRunner().RunAsync<TStack>();
+            => CreateRunnerAndRunAsync(() => new Deployment(), runner => runner.RunAsync<TStack>());
+
+        /// <summary>
+        /// <see cref="RunAsync{TStack}()"/> is an entry-point to a Pulumi
+        /// application. .NET applications should perform all startup logic they
+        /// need in their <c>Main</c> method and then end with:
+        /// <para>
+        /// <c>
+        /// static Task&lt;int&gt; Main(string[] args) {// program
+        /// initialization code ...
+        ///
+        ///     return Deployment.Run&lt;MyStack&gt;(serviceProvider);}
+        /// </c>
+        /// </para>
+        /// <para>
+        /// Deployment will instantiate a new stack instance based on the type
+        /// passed as TStack type parameter using the serviceProvider.
+        /// Importantly, cloud resources cannot be created outside of the
+        /// <see cref="Stack"/> component.
+        /// </para>
+        /// <para>
+        /// Because cloud Resource construction is inherently asynchronous, the
+        /// result of this function is a <see cref="Task{T}"/> which should then
+        /// be returned or awaited.  This will ensure that any problems that are
+        /// encountered during the running of the program are properly reported.
+        /// Failure to do this may lead to the program ending early before all
+        /// resources are properly registered.
+        /// </para>
+        /// </summary>
+        public static Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack
+            => CreateRunnerAndRunAsync(() => new Deployment(), runner => runner.RunAsync<TStack>(serviceProvider));
+
+        /// <summary>
+        /// Entry point to test a Pulumi application. Deployment will
+        /// instantiate a new stack instance based on the type passed as TStack
+        /// type parameter using the given service provider. This method creates
+        /// no real resources.
+        /// Note: Currently, unit tests that call
+        /// <see cref="TestWithServiceProviderAsync{TStack}(IMocks, IServiceProvider, TestOptions)"/>
+        /// must run serially; parallel execution is not supported.
+        /// </summary>
+        /// <param name="mocks">Hooks to mock the engine calls.</param>
+        /// <param name="serviceProvider"></param>
+        /// <param name="options">Optional settings for the test run.</param>
+        /// <typeparam name="TStack">The type of the stack to test.</typeparam>
+        /// <returns>Test result containing created resources and errors, if any.</returns>
+        public static Task<ImmutableArray<Resource>> TestWithServiceProviderAsync<TStack>(IMocks mocks, IServiceProvider serviceProvider, TestOptions? options = null)
+            where TStack : Stack
+            => TestAsync(mocks, runner => runner.RunAsync<TStack>(serviceProvider), options);
 
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
         /// instantiate a new stack instance based on the type passed as TStack
         /// type parameter. This method creates no real resources.
-        /// Note: Currently, unit tests that call <see cref="TestAsync{TStack}"/>
+        /// Note: Currently, unit tests that call <see cref="TestAsync{TStack}(IMocks, TestOptions)"/>
         /// must run serially; parallel execution is not supported.
         /// </summary>
         /// <param name="mocks">Hooks to mock the engine calls.</param>
         /// <param name="options">Optional settings for the test run.</param>
         /// <typeparam name="TStack">The type of the stack to test.</typeparam>
         /// <returns>Test result containing created resources and errors, if any.</returns>
-        public static async Task<ImmutableArray<Resource>> TestAsync<TStack>(IMocks mocks, TestOptions? options = null) where TStack : Stack, new()
+        public static Task<ImmutableArray<Resource>> TestAsync<TStack>(IMocks mocks, TestOptions? options = null)
+            where TStack : Stack, new()
+            => TestAsync(mocks, runner => runner.RunAsync<TStack>(), options);
+
+        private static async Task<ImmutableArray<Resource>> TestAsync(IMocks mocks, Func<IRunner, Task<int>> runAsync, TestOptions? options = null)
+        {
+            var result = await TryTestAsync(mocks, runAsync, options);
+            if (result.Exception != null)
+            {
+                throw result.Exception;
+            }
+            return result.Resources;
+        }
+
+        /// <summary>
+        /// Like `TestAsync`, but instead of throwing the errors
+        /// detected in the engine, returns them in the result tuple.
+        /// This enables tests to observe partially constructed
+        /// `Resources` vector in presence of deliberate errors.
+        /// </summary>
+        internal static async Task<(ImmutableArray<Resource> Resources, Exception? Exception)> TryTestAsync(
+            IMocks mocks, Func<IRunner, Task<int>> runAsync, TestOptions? options = null)
         {
             var engine = new MockEngine();
             var monitor = new MockMonitor(mocks);
-            Deployment deployment;
-            lock (_instanceLock)
+            await CreateRunnerAndRunAsync(() => new Deployment(engine, monitor, options), runAsync).ConfigureAwait(false);
+            Exception? err = engine.Errors.Count switch
             {
-                if (_instance != null)
-                    throw new NotSupportedException($"Multiple executions of {nameof(TestAsync)} must run serially. Please configure your unit test suite to run tests one-by-one.");
-
-                deployment = new Deployment(engine, monitor, options);
-                Instance = new DeploymentInstance(deployment);
-            }
-
-            try
-            {
-                await deployment._runner.RunAsync<TStack>();
-                return engine.Errors.Count switch
-                {
-                    1 => throw new RunException(engine.Errors.Single()),
-                    int v when v > 1 => throw new AggregateException(engine.Errors.Select(e => new RunException(e))),
-                    _ => monitor.Resources.ToImmutableArray()
-                };
-            }
-            finally
-            {
-                lock (_instanceLock)
-                {
-                    _instance = null;
-                }
-            }
+                1 => new RunException(engine.Errors.Single()),
+                var v when v > 1 => new AggregateException(engine.Errors.Select(e => new RunException(e))),
+                _ => null
+            };
+            return (Resources: monitor.Resources.ToImmutableArray(), Exception: err);
         }
 
-        private static IRunner CreateRunner()
+        internal static Task<(ImmutableArray<Resource> Resources, Exception? Exception)> TryTestAsync<TStack>(
+            IMocks mocks, TestOptions? options = null)
+            where TStack : Stack, new()
+            => TryTestAsync(mocks, runner => runner.RunAsync<TStack>(), options);
+
+        // this method *must* remain marked async
+        // in order to protect the scope of the AsyncLocal Deployment.Instance we cannot elide the task (return it early)
+        // if the task is returned early and not awaited, than it is possible for any code that runs before the eventual await
+        // to be executed synchronously and thus have multiple calls to one of the Run methods affecting each others Deployment.Instance
+        internal static async Task<int> CreateRunnerAndRunAsync(
+            Func<Deployment> deploymentFactory,
+            Func<IRunner, Task<int>> runAsync)
         {
-            // Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
-
-            Serilog.Log.Debug("Deployment.Run called.");
-            lock (_instanceLock)
-            {
-                if (_instance != null)
-                    throw new NotSupportedException("Deployment.Run can only be called a single time.");
-
-                Serilog.Log.Debug("Creating new Deployment.");
-                var deployment = new Deployment();
-                Instance = new DeploymentInstance(deployment);
-                return deployment._runner;
-            }
+            var deployment = deploymentFactory();
+            Instance = new DeploymentInstance(deployment);
+            return await runAsync(deployment._runner).ConfigureAwait(false);
         }
     }
 }

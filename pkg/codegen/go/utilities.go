@@ -15,8 +15,12 @@
 package gen
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 )
 
 // isReservedWord returns true if s is a Go reserved word as per
@@ -52,15 +56,18 @@ func isLegalIdentifierPart(c rune) bool {
 // prefixed with _. No attempt is made to ensure that the result is unique.
 func makeValidIdentifier(name string) string {
 	var builder strings.Builder
-	firstChar := 0
 	for i, c := range name {
 		// ptr dereference
 		if i == 0 && c == '&' {
-			firstChar++
+			builder.WriteRune(c)
+			continue
 		}
-		if i == firstChar && !isLegalIdentifierStart(c) || i > 0 && !isLegalIdentifierPart(c) {
+		if !isLegalIdentifierPart(c) {
 			builder.WriteRune('_')
 		} else {
+			if i == 0 && !isLegalIdentifierStart(c) {
+				builder.WriteRune('_')
+			}
 			builder.WriteRune(c)
 		}
 	}
@@ -69,4 +76,29 @@ func makeValidIdentifier(name string) string {
 		return "_" + name
 	}
 	return name
+}
+
+func makeSafeEnumName(name, typeName string) (string, error) {
+	safeName := codegen.ExpandShortEnumName(name)
+
+	// If the name is one illegal character, return an error.
+	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
+		return "", fmt.Errorf("enum name %s is not a valid identifier", safeName)
+	}
+
+	// Capitalize and make a valid identifier.
+	safeName = makeValidIdentifier(Title(safeName))
+
+	// If there are multiple underscores in a row, replace with one.
+	regex := regexp.MustCompile(`_+`)
+	safeName = regex.ReplaceAllString(safeName, "_")
+
+	// Add the type to the name to disambiguate constants used for enum values
+	if strings.Contains(safeName, "_") && !strings.HasPrefix(safeName, "_") {
+		safeName = fmt.Sprintf("_%s", safeName)
+	}
+
+	safeName = typeName + safeName
+
+	return safeName, nil
 }

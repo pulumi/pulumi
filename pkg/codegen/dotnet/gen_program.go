@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,19 +21,19 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
-	program *hcl2.Program
+	program *pcl.Program
 	// C# namespace map per package.
 	namespaces map[string]map[string]string
 	// C# codegen compatibility mode per package.
@@ -46,13 +46,16 @@ type generator struct {
 	asyncInit     bool
 	configCreated bool
 	diagnostics   hcl.Diagnostics
+	// Helper map to emit custom type name suffixes that match
+	// those emitted by codegen.
+	usedInFunctionOutputVersionInputs map[schema.Type]bool
 }
 
 const pulumiPackage = "pulumi"
 
-func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	// Linearize the nodes into an order appropriate for procedural code generation.
-	nodes := hcl2.Linearize(program)
+	nodes := pcl.Linearize(program)
 
 	// Import C#-specific schema info.
 	namespaces := make(map[string]map[string]string)
@@ -64,7 +67,10 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 			return make(map[string][]byte), nil, err
 		}
 
-		csharpInfo := p.Language["csharp"].(CSharpPackageInfo)
+		csharpInfo, hasInfo := p.Language["csharp"].(CSharpPackageInfo)
+		if !hasInfo {
+			csharpInfo = CSharpPackageInfo{}
+		}
 		packageNamespaces := csharpInfo.Namespaces
 		namespaces[p.Name] = packageNamespaces
 		compatibilities[p.Name] = csharpInfo.Compatibility
@@ -87,7 +93,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	g.Formatter = format.NewFormatter(g)
 
 	for _, n := range nodes {
-		if r, ok := n.(*hcl2.Resource); ok && requiresAsyncInit(r) {
+		if r, ok := n.(*pcl.Resource); ok && requiresAsyncInit(r) {
 			g.asyncInit = true
 			break
 		}
@@ -138,17 +144,24 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 }
 
 // genPreamble generates using statements, class definition and constructor.
-func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 	// Accumulate other using statements for the various providers and packages. Don't emit them yet, as we need
 	// to sort them later on.
 	systemUsings := codegen.NewStringSet()
 	pulumiUsings := codegen.NewStringSet()
+	preambleHelperMethods := codegen.NewStringSet()
 	for _, n := range program.Nodes {
-		if r, isResource := n.(*hcl2.Resource); isResource {
+		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
 			if pkg != pulumiPackage {
 				namespace := namespaceName(g.namespaces[pkg], pkg)
-				pulumiUsings.Add(fmt.Sprintf("%s = Pulumi.%[1]s", namespace))
+				var info CSharpPackageInfo
+				if r.Schema != nil && r.Schema.Package != nil {
+					if csharpinfo, ok := r.Schema.Package.Language["csharp"].(CSharpPackageInfo); ok {
+						info = csharpinfo
+					}
+				}
+				pulumiUsings.Add(fmt.Sprintf("%s = %[2]s.%[1]s", namespace, info.GetRootNamespace()))
 			}
 			if r.Options != nil && r.Options.Range != nil {
 				systemUsings.Add("System.Collections.Generic")
@@ -162,6 +175,11 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 					} else {
 						pulumiUsings.Add(i)
 					}
+				}
+
+				// Checking to see if this function call deserves its own dedicated helper method in the preamble
+				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name); ok {
+					preambleHelperMethods.Add(helperMethodBody)
 				}
 			}
 			if _, ok := n.(*model.SplatExpression); ok {
@@ -189,18 +207,24 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	// Emit Stack class signature
 	g.Fprint(w, "class MyStack : Stack\n")
 	g.Fprint(w, "{\n")
+
+	// If we collected any helper methods that should be added, write them just before the main func
+	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+		g.Fprintf(w, "\t%s\n\n", preambleHelperMethodBody)
+	}
+
 	g.Fprint(w, "    public MyStack()\n")
 	g.Fprint(w, "    {\n")
 }
 
 // genInitialize generates the declaration and the call to the async Initialize method, and also fills stack
 // outputs from the initialization result.
-func (g *generator) genInitialize(w io.Writer, nodes []hcl2.Node) {
+func (g *generator) genInitialize(w io.Writer, nodes []pcl.Node) {
 	g.Indented(func() {
 		g.Fgenf(w, "%svar dict = Output.Create(Initialize());\n", g.Indent)
 		for _, n := range nodes {
 			switch n := n.(type) {
-			case *hcl2.OutputVariable:
+			case *pcl.OutputVariable:
 				g.Fprintf(w, "%sthis.%s = dict.Apply(dict => dict[\"%s\"]);\n", g.Indent,
 					propertyName(n.Name()), makeValidIdentifier(n.Name()))
 			}
@@ -212,7 +236,7 @@ func (g *generator) genInitialize(w io.Writer, nodes []hcl2.Node) {
 }
 
 // genPostamble closes the method and the class and declares stack output statements.
-func (g *generator) genPostamble(w io.Writer, nodes []hcl2.Node) {
+func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 	g.Indented(func() {
 		// Return outputs from Initialize if needed
 		if g.asyncInit {
@@ -222,7 +246,7 @@ func (g *generator) genPostamble(w io.Writer, nodes []hcl2.Node) {
 				g.Indented(func() {
 					for _, n := range nodes {
 						switch n := n.(type) {
-						case *hcl2.OutputVariable:
+						case *pcl.OutputVariable:
 							g.Fgenf(w, "%s{ \"%s\", %[2]s },\n", g.Indent, n.Name())
 						}
 					}
@@ -237,7 +261,7 @@ func (g *generator) genPostamble(w io.Writer, nodes []hcl2.Node) {
 		// Emit stack output properties
 		for _, n := range nodes {
 			switch n := n.(type) {
-			case *hcl2.OutputVariable:
+			case *pcl.OutputVariable:
 				g.genOutputProperty(w, n)
 			}
 		}
@@ -245,22 +269,22 @@ func (g *generator) genPostamble(w io.Writer, nodes []hcl2.Node) {
 	g.Fprint(w, "}\n")
 }
 
-func (g *generator) genNode(w io.Writer, n hcl2.Node) {
+func (g *generator) genNode(w io.Writer, n pcl.Node) {
 	switch n := n.(type) {
-	case *hcl2.Resource:
+	case *pcl.Resource:
 		g.genResource(w, n)
-	case *hcl2.ConfigVariable:
+	case *pcl.ConfigVariable:
 		g.genConfigVariable(w, n)
-	case *hcl2.LocalVariable:
+	case *pcl.LocalVariable:
 		g.genLocalVariable(w, n)
-	case *hcl2.OutputVariable:
+	case *pcl.OutputVariable:
 		g.genOutputAssignment(w, n)
 	}
 }
 
 // requiresAsyncInit returns true if the program requires awaits in the code, and therefore an asynchronous
 // method must be declared.
-func requiresAsyncInit(r *hcl2.Resource) bool {
+func requiresAsyncInit(r *pcl.Resource) bool {
 	if r.Options == nil || r.Options.Range == nil {
 		return false
 	}
@@ -269,7 +293,7 @@ func requiresAsyncInit(r *hcl2.Resource) bool {
 }
 
 // resourceTypeName computes the C# class name for the given resource.
-func (g *generator) resourceTypeName(r *hcl2.Resource) string {
+func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assert(len(diags) == 0)
@@ -290,7 +314,7 @@ func (g *generator) resourceTypeName(r *hcl2.Resource) string {
 }
 
 // resourceArgsTypeName computes the C# arguments class name for the given resource.
-func (g *generator) resourceArgsTypeName(r *hcl2.Resource) string {
+func (g *generator) resourceArgsTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
 	contract.Assert(len(diags) == 0)
@@ -318,7 +342,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 	tokenRange := tokenArg.SyntaxNode().Range()
 
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
+	pkg, module, member, diags := pcl.DecomposeToken(token, tokenRange)
 	contract.Assert(len(diags) == 0)
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
@@ -331,9 +355,29 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 	return rootNamespace, fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
 }
 
+func (g *generator) toSchemaType(destType model.Type) (schema.Type, bool) {
+	schemaType, ok := pcl.GetSchemaForType(destType.(model.Type))
+	if !ok {
+		return nil, false
+	}
+	return codegen.UnwrapType(schemaType), true
+}
+
 // argumentTypeName computes the C# argument class name for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
-	schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type))
+	schemaType, ok := g.toSchemaType(destType)
+	if !ok {
+		return ""
+	}
+	suffix := "Args"
+	if g.usedInFunctionOutputVersionInputs[schemaType] {
+		suffix = "InputArgs"
+	}
+	return g.argumentTypeNameWithSuffix(expr, destType, suffix)
+}
+
+func (g *generator) argumentTypeNameWithSuffix(expr model.Expression, destType model.Type, suffix string) string {
+	schemaType, ok := g.toSchemaType(destType)
 	if !ok {
 		return ""
 	}
@@ -351,7 +395,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 		qualifier = ""
 	}
 
-	pkg, _, member, diags := hcl2.DecomposeToken(token, tokenRange)
+	pkg, _, member, diags := pcl.DecomposeToken(token, tokenRange)
 	contract.Assert(len(diags) == 0)
 	module := g.tokenToModules[pkg](token)
 	namespaces := g.namespaces[pkg]
@@ -368,7 +412,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	} else if qualifier != "" {
 		namespace = namespace + "." + qualifier
 	}
-	member = member + "Args"
+	member = member + suffix
 
 	return fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
 }
@@ -382,7 +426,7 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf("$\"%s-{%s}\"", baseName, count)
 }
 
-func (g *generator) genResourceOptions(opts *hcl2.ResourceOptions) string {
+func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts == nil {
 		return ""
 	}
@@ -424,7 +468,7 @@ func (g *generator) genResourceOptions(opts *hcl2.ResourceOptions) string {
 }
 
 // genResource handles the generation of instantiations of non-builtin resources.
-func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
+func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	qualifiedMemberName := g.resourceTypeName(r)
 	argsName := g.resourceArgsTypeName(r)
 
@@ -493,7 +537,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
 }
 
-func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
+func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if !g.configCreated {
 		g.Fprintf(w, "%svar config = new Config();\n", g.Indent)
 		g.configCreated = true
@@ -514,20 +558,28 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 		getOrRequire = "Require"
 	}
 
-	g.Fgenf(w, "%[1]svar %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
 	if v.DefaultValue != nil {
-		g.Fgenf(w, " ?? %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+		typ := v.DefaultValue.Type()
+		if _, ok := typ.(*model.PromiseType); ok {
+			g.Fgenf(w, "%[1]svar %[2]s = Output.Create(config.%[3]s%[4]s(\"%[2]s\"))", g.Indent, v.Name(), getOrRequire, getType)
+		} else {
+			g.Fgenf(w, "%[1]svar %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
+		}
+		expr := g.lowerExpression(v.DefaultValue, v.DefaultValue.Type())
+		g.Fgenf(w, " ?? %.v", expr)
+	} else {
+		g.Fgenf(w, "%[1]svar %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
 	}
 	g.Fgenf(w, ";\n")
 }
 
-func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
+func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	// TODO(pdg): trivia
 	expr := g.lowerExpression(v.Definition.Value, v.Type())
 	g.Fgenf(w, "%svar %s = %.3v;\n", g.Indent, makeValidIdentifier(v.Name()), expr)
 }
 
-func (g *generator) genOutputAssignment(w io.Writer, v *hcl2.OutputVariable) {
+func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	if g.asyncInit {
 		g.Fgenf(w, "%svar %s", g.Indent, makeValidIdentifier(v.Name()))
 	} else {
@@ -536,7 +588,7 @@ func (g *generator) genOutputAssignment(w io.Writer, v *hcl2.OutputVariable) {
 	g.Fgenf(w, " = %.3v;\n", g.lowerExpression(v.Value, v.Type()))
 }
 
-func (g *generator) genOutputProperty(w io.Writer, v *hcl2.OutputVariable) {
+func (g *generator) genOutputProperty(w io.Writer, v *pcl.OutputVariable) {
 	// TODO(pdg): trivia
 	g.Fgenf(w, "%s[Output(\"%s\")]\n", g.Indent, v.Name())
 	// TODO(msh): derive the element type of the Output from the type of its value.

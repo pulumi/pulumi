@@ -15,15 +15,18 @@
 package provider
 
 import (
+	"io/ioutil"
+	"os"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
-	lumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	lumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 )
 
 // HostClient is a client interface into the host's engine RPC interface.
@@ -34,6 +37,9 @@ type HostClient struct {
 
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
+	// Provider client is sensitive to GRPC info logging to stdout, so ensure they are dropped.
+	// See https://github.com/pulumi/pulumi/issues/7156
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
 	conn, err := grpc.Dial(
 		addr,
 		grpc.WithInsecure(),
@@ -52,6 +58,11 @@ func NewHostClient(addr string) (*HostClient, error) {
 // Close closes and renders the connection and client unusable.
 func (host *HostClient) Close() error {
 	return host.conn.Close()
+}
+
+// EngineConn provides the engine gRPC client connection.
+func (host *HostClient) EngineConn() *grpc.ClientConn {
+	return host.conn
 }
 
 func (host *HostClient) log(

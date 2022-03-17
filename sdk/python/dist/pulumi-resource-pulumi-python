@@ -35,6 +35,6 @@ if [ -n "${PULUMI_RUNTIME_VIRTUALENV:-}" ] ; then
         exit 1
     fi
 else
-    # Otherwise, just run python3.
-    python3 -u -m pulumi.dynamic $@
+    # Otherwise, run either PULUMI_PYTHON_CMD (if set) or python3.
+    "${PULUMI_PYTHON_CMD:-python3}" -u -m pulumi.dynamic $@
 fi

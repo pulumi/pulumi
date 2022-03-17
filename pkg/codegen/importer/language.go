@@ -21,15 +21,15 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // A LangaugeGenerator generates code for a given Pulumi program to an io.Writer.
-type LanguageGenerator func(w io.Writer, p *hcl2.Program) error
+type LanguageGenerator func(w io.Writer, p *pcl.Program) error
 
 // A NameTable maps URNs to language-specific variable names.
 type NameTable map[resource.URN]string
@@ -91,7 +91,7 @@ func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen Language
 		})
 	}
 
-	program, diags, err := hcl2.BindProgram(parser.Files, hcl2.Loader(loader), hcl2.AllowMissingVariables)
+	program, diags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
 	if err != nil {
 		return err
 	}

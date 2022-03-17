@@ -1,0 +1,9 @@
+{
+    "name": "config_secrets_node",
+    "devDependencies": {
+        "@types/node": "^10.0.0"
+    },
+    "peerDependencies": {
+        "pulumi": "latest"
+    }
+}

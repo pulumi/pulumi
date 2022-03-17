@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Pulumi.Serialization;
 using Pulumirpc;
 
 namespace Pulumi.Testing

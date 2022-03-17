@@ -15,8 +15,11 @@
 package model
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
+
+type lazyDiagnostics func() hcl.Diagnostics
 
 type ConversionKind int
 
@@ -40,7 +43,9 @@ type Type interface {
 	ConversionFrom(src Type) ConversionKind
 	String() string
 
-	conversionFrom(src Type, unifying bool) ConversionKind
+	equals(other Type, seen map[Type]struct{}) bool
+	conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics)
+	string(seen map[Type]struct{}) string
 	unify(other Type) (Type, ConversionKind)
 	isType()
 }
@@ -60,21 +65,33 @@ var (
 	DynamicType = MustNewOpaqueType("dynamic")
 )
 
-func assignableFrom(dest, src Type, assignableFrom func() bool) bool {
-	return dest.Equals(src) || dest == DynamicType || assignableFrom()
+func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
+	if dest.Equals(src) || dest == DynamicType {
+		return true
+	}
+	if cns, ok := src.(*ConstType); ok {
+		return assignableFrom(dest, cns.Type, assignableFromImpl)
+	}
+	return assignableFromImpl()
 }
 
-func conversionFrom(dest, src Type, unifying bool, conversionFrom func() ConversionKind) ConversionKind {
+func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
+	conversionFromImpl func() (ConversionKind, lazyDiagnostics)) (ConversionKind, lazyDiagnostics) {
+
 	if dest.Equals(src) || dest == DynamicType {
-		return SafeConversion
+		return SafeConversion, nil
 	}
-	if src, isUnion := src.(*UnionType); isUnion {
-		return src.conversionTo(dest, unifying)
+
+	switch src := src.(type) {
+	case *UnionType:
+		return src.conversionTo(dest, unifying, seen)
+	case *ConstType:
+		return conversionFrom(dest, src.Type, unifying, seen, conversionFromImpl)
 	}
 	if src == DynamicType {
-		return UnsafeConversion
+		return UnsafeConversion, nil
 	}
-	return conversionFrom()
+	return conversionFromImpl()
 }
 
 func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKind) {
@@ -92,7 +109,8 @@ func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKi
 		// The dynamic type unifies with any other type by selecting that other type.
 		return t0, UnsafeConversion
 	default:
-		conversionFrom, conversionTo := t0.conversionFrom(t1, true), t1.conversionFrom(t0, true)
+		conversionFrom, _ := t0.conversionFrom(t1, true, nil)
+		conversionTo, _ := t1.conversionFrom(t0, true, nil)
 		switch {
 		case conversionFrom < conversionTo:
 			return t1, conversionTo

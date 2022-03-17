@@ -19,12 +19,12 @@ import (
 	"io"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // A ProviderSource allows a Source to lookup provider plugins.
@@ -63,6 +63,7 @@ type SourceResourceMonitor interface {
 	Address() string
 	Cancel() error
 	Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error)
+	Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error)
 	ReadResource(ctx context.Context,
 		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
 	RegisterResource(ctx context.Context,
@@ -102,7 +103,7 @@ type RegisterResourceOutputsEvent interface {
 	Done()
 }
 
-// ReadResourceEvent is an event that asks the engine to read the state of a resource that already exists.
+// ReadResourceEvent is an event that asks the engine to read the state of an existing resource.
 type ReadResourceEvent interface {
 	SourceEvent
 

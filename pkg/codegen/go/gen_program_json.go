@@ -5,8 +5,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
 type jsonTemp struct {
@@ -56,13 +56,11 @@ func (js *jsonSpiller) spillExpression(x model.Expression) (model.Expression, hc
 	}, nil
 }
 
-func (g *generator) rewriteToJSON(
-	x model.Expression,
-	spiller *jsonSpiller,
-) (model.Expression, []*jsonTemp, hcl.Diagnostics) {
-	spiller.temps = nil
-	x, diags := model.VisitExpression(x, spiller.spillExpression, nil)
-
-	return x, spiller.temps, diags
-
+func (g *generator) rewriteToJSON(x model.Expression) (model.Expression, []*spillTemp, hcl.Diagnostics) {
+	return g.rewriteSpills(x, func(x model.Expression) (string, model.Expression, bool) {
+		if call, ok := x.(*model.FunctionCallExpression); ok && call.Name == "toJSON" {
+			return "json", x, true
+		}
+		return "", nil, false
+	})
 }

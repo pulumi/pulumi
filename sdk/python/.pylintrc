@@ -160,7 +160,8 @@ disable=print-statement,
         no-self-use,
         unused-import,
         unsubscriptable-object,
-        line-too-long
+        line-too-long,
+        too-many-lines
 
 
 # Enable the message, report, category or checker with the given id(s). You can
@@ -371,6 +372,9 @@ ignore-docstrings=yes
 
 # Ignore imports when computing similarities.
 ignore-imports=no
+
+# Ignore function signatures when computing similarities.
+ignore-signatures=yes
 
 # Minimum lines number of a similarity.
 min-similarity-lines=4

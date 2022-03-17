@@ -19,8 +19,8 @@ import (
 	"io"
 	"math"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // ExpressionGenerator is an interface that can be implemented in order to generate code for semantically-analyzed HCL2
@@ -176,7 +176,10 @@ func (e *Formatter) Fgenf(w io.Writer, format string, args ...interface{}) {
 	for i := range args {
 		if node, ok := args[i].(model.Expression); ok {
 			args[i] = Func(func(f fmt.State, c rune) {
-				parentPrecedence, _ := f.Precision()
+				parentPrecedence := 0
+				if pp, ok := f.Precision(); ok {
+					parentPrecedence = pp
+				}
 				rhs := c == 'o'
 				e.gen(f, parentPrecedence, rhs, node)
 			})

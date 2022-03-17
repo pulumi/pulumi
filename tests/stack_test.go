@@ -28,20 +28,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // mutates environment variables
 func TestStackCommands(t *testing.T) {
 	// stack init, stack ls, stack rm, stack ls
 	t.Run("SanityTest", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -50,7 +53,7 @@ func TestStackCommands(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "foo")
 
 		stacks, current := integration.GetStacks(e)
@@ -71,6 +74,8 @@ func TestStackCommands(t *testing.T) {
 	})
 
 	t.Run("StackSelect", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -79,7 +84,7 @@ func TestStackCommands(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "blighttown")
 		e.RunCommand("pulumi", "stack", "init", "majula")
 		e.RunCommand("pulumi", "stack", "init", "lothric")
@@ -108,7 +113,38 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 
+	t.Run("StackUnselect", func(t *testing.T) {
+		t.Parallel()
+
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		integration.CreateBasicPulumiRepo(e)
+		e.SetBackend(e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "one")
+		e.RunCommand("pulumi", "stack", "init", "two")
+
+		// Last one created is always selected.
+		stacks, current := integration.GetStacks(e)
+		if current == nil {
+			t.Fatalf("No stack was labeled as current among: %v", stacks)
+		}
+		assert.Equal(t, "two", *current)
+
+		e.RunCommand("pulumi", "stack", "unselect")
+		_, updatedCurrentStack := integration.GetStacks(e)
+		if updatedCurrentStack != nil {
+			t.Fatal("No stack should be selected after unselect was executed")
+		}
+	})
+
 	t.Run("StackRm", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -118,7 +154,7 @@ func TestStackCommands(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "blighttown")
 		e.RunCommand("pulumi", "stack", "init", "majula")
 		e.RunCommand("pulumi", "stack", "init", "lothric")
@@ -151,6 +187,8 @@ func TestStackCommands(t *testing.T) {
 	// Test that stack import fails if the version of the deployment we give it is not
 	// one that the CLI supports.
 	t.Run("CheckpointVersioning", func(t *testing.T) {
+		t.Parallel()
+
 		versions := []int{
 			apitype.DeploymentSchemaVersionCurrent + 1,
 			stack.DeploymentSchemaVersionOldestSupported - 1,
@@ -166,7 +204,7 @@ func TestStackCommands(t *testing.T) {
 				}()
 
 				integration.CreateBasicPulumiRepo(e)
-				e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+				e.SetBackend(e.LocalURL())
 				e.RunCommand("pulumi", "stack", "init", "the-abyss")
 				stacks, _ := integration.GetStacks(e)
 				assert.Equal(t, 1, len(stacks))
@@ -214,7 +252,7 @@ func TestStackCommands(t *testing.T) {
 		stackName := addRandomSuffix("invalid-resources")
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_dependencies")
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
@@ -232,6 +270,7 @@ func TestStackCommands(t *testing.T) {
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
+		os.Setenv("PULUMI_CONFIG_PASSPHRASE", "correct horse battery staple")
 		snap, err := stack.DeserializeUntypedDeployment(&deployment, stack.DefaultSecretsProvider)
 		if !assert.NoError(t, err) {
 			t.FailNow()
@@ -260,6 +299,7 @@ func TestStackCommands(t *testing.T) {
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
+		os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
 		_, stderr := e.RunCommand("pulumi", "stack", "import", "--file", "stack.json")
 		assert.Contains(t, stderr, fmt.Sprintf("removing pending operation 'deleting' on '%s'", res.URN))
 		// The engine should be happy now that there are no invalid resources.
@@ -268,8 +308,11 @@ func TestStackCommands(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestStackBackups(t *testing.T) {
 	t.Run("StackBackupCreatedSanityTest", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -298,7 +341,7 @@ func TestStackBackups(t *testing.T) {
 			}
 		}()
 
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// Build the project.
@@ -348,6 +391,8 @@ func TestStackBackups(t *testing.T) {
 }
 
 func TestStackRenameAfterCreate(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -356,11 +401,127 @@ func TestStackRenameAfterCreate(t *testing.T) {
 	}()
 	stackName := addRandomSuffix("stack-rename")
 	integration.CreateBasicPulumiRepo(e)
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 
 	newName := addRandomSuffix("renamed-stack")
 	e.RunCommand("pulumi", "stack", "rename", newName)
+}
+
+// TestStackRenameServiceAfterCreateBackend tests a few edge cases about renaming
+// stacks owned by organizations in the service backend.
+func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	// Use the current username as the "organization" in certain operations.
+	username, _ := e.RunCommand("pulumi", "whoami")
+	orgName := strings.TrimSpace(username)
+
+	// Create a basic project.
+	stackName := addRandomSuffix("stack-rename-svcbe")
+	stackRenameBase := addRandomSuffix("renamed-stack-svcbe")
+	integration.CreateBasicPulumiRepo(e)
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	// Create some configuration so that a per-project YAML file is generated.
+	e.RunCommand("pulumi", "config", "set", "xyz", "abc")
+
+	// Try to rename the stack to itself. This should fail.
+	e.RunCommandExpectError("pulumi", "stack", "rename", stackName)
+
+	// Try to rename this stack to a name outside of the current "organization".
+	// This should fail since it is not currently legal to do so.
+	e.RunCommandExpectError("pulumi", "stack", "rename", "fakeorg/"+stackRenameBase)
+
+	// Next perform a legal rename. This should work.
+	e.RunCommand("pulumi", "stack", "rename", stackRenameBase)
+	stdoutXyz1, _ := e.RunCommand("pulumi", "config", "get", "xyz")
+	assert.Equal(t, "abc", strings.Trim(stdoutXyz1, "\r\n"))
+
+	// Now perform another legal rename, this time explicitly specifying the
+	// "organization" for the stack (which should match the default).
+	e.RunCommand("pulumi", "stack", "rename", orgName+"/"+stackRenameBase+"2")
+	stdoutXyz2, _ := e.RunCommand("pulumi", "config", "get", "xyz")
+	assert.Equal(t, "abc", strings.Trim(stdoutXyz2, "\r\n"))
+}
+
+func TestLocalStateLocking(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#7269] flaky test
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	integration.CreateBasicPulumiRepo(e)
+	e.ImportDirectory("integration/single_resource")
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "foo")
+	e.RunCommand("yarn", "install")
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+
+	count := 10
+	stderrs := make(chan string, count)
+
+	// Run 10 concurrent updates
+	for i := 0; i < count; i++ {
+		go func() {
+			_, stderr, err := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+			if err == nil {
+				stderrs <- "" // success marker
+			} else {
+				stderrs <- stderr
+			}
+		}()
+	}
+
+	// Ensure that only one of the concurrent updates succeeded, and that failures
+	// were due to locking (and not state file corruption)
+	numsuccess := 0
+	numerrors := 0
+
+	for i := 0; i < count; i++ {
+		stderr := <-stderrs
+		if stderr == "" {
+			assert.Equal(t, 0, numsuccess, "more than one concurrent update succeeded")
+			numsuccess++
+		} else {
+			phrase := "the stack is currently locked by 1 lock(s)"
+			if !strings.Contains(stderr, phrase) {
+				numerrors++
+				t.Logf("unexplaiend stderr::\n%s", stderr)
+				assert.Lessf(t, numerrors, 2, "More than one unexplained error has occurred")
+			}
+		}
+	}
+
+	// Run 10 concurrent previews
+	for i := 0; i < count; i++ {
+		go func() {
+			_, stderr, err := e.GetCommandResults("pulumi", "preview", "--non-interactive")
+			if err == nil {
+				stderrs <- "" // success marker
+			} else {
+				stderrs <- stderr
+			}
+		}()
+	}
+
+	// Ensure that all of the concurrent previews succeed.
+	for i := 0; i < count; i++ {
+		stderr := <-stderrs
+		assert.Equal(t, "", stderr)
+	}
+
 }
 
 func getFileNames(infos []os.FileInfo) []string {

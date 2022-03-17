@@ -1,10 +1,10 @@
 package display
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // getProperty fetches the child property with the indicated key from the given property value. If the key does not
@@ -142,7 +142,9 @@ func translateDetailedDiff(step engine.StepEventMetadata) *resource.ObjectDiff {
 	var diff resource.ValueDiff
 	for path, pdiff := range step.DetailedDiff {
 		elements, err := resource.ParsePropertyPath(path)
-		contract.Assert(err == nil)
+		if err != nil {
+			elements = []interface{}{path}
+		}
 
 		olds := resource.NewObjectProperty(step.Old.Outputs)
 		if pdiff.InputDiff {

@@ -20,7 +20,12 @@ if defined PULUMI_RUNTIME_VIRTUALENV (
         exit 1
     )
 ) else (
-    REM Otherwise, just run python. We use `python` instead of `python3` because Windows
-    REM Python installers install only `python.exe` by default.
-    @python -u -m pulumi.dynamic %*
+    if defined PULUMI_PYTHON_CMD (
+        REM If PULUMI_PYTHON_CMD is defined, run it.
+        "%PULUMI_PYTHON_CMD%" -u -m pulumi.dynamic %*
+    ) else (
+        REM Otherwise, just run python. We use `python` instead of `python3` because Windows
+        REM Python installers install only `python.exe` by default.
+        @python -u -m pulumi.dynamic %*
+    )
 )

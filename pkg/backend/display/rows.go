@@ -22,11 +22,12 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 type Row interface {
@@ -276,7 +277,7 @@ func (data *resourceRowData) ColorizedSuffix() string {
 			suffixes := data.display.suffixesArray
 			ellipses := suffixes[(data.tick+data.display.currentTick)%len(suffixes)]
 
-			return op.Color() + ellipses + colors.Reset
+			return op.ColorProgress() + ellipses + colors.Reset
 		}
 	}
 
@@ -294,14 +295,16 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	name := string(urn.Name())
 	typ := simplifyTypeName(urn.Type())
 
+	done := data.IsDone()
+
 	columns := make([]string, 5)
-	columns[opColumn] = data.display.getStepOpLabel(step)
+	columns[opColumn] = data.display.getStepOpLabel(step, done)
 	columns[typeColumn] = typ
 	columns[nameColumn] = name
 
 	diagInfo := data.diagInfo
 
-	if data.IsDone() {
+	if done {
 		failed := data.failed || diagInfo.ErrorCount > 0
 		columns[statusColumn] = data.display.getStepDoneDescription(step, failed)
 	} else {
@@ -342,7 +345,7 @@ func (data *resourceRowData) getInfoColumn() string {
 		diagMsg += msg
 	}
 
-	changes := getDiffInfo(step)
+	changes := getDiffInfo(step, data.display.action)
 	if colors.Never.Colorize(changes) != "" {
 		appendDiagMessage("[" + changes + "]")
 	}
@@ -397,8 +400,8 @@ func (data *resourceRowData) getInfoColumn() string {
 	return diagMsg
 }
 
-func getDiffInfo(step engine.StepEventMetadata) string {
-	diffOutputs := step.Op == deploy.OpRefresh
+func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) string {
+	diffOutputs := action == apitype.RefreshUpdate
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
@@ -477,7 +480,7 @@ func getDiffInfo(step engine.StepEventMetadata) string {
 
 func writePropertyKeys(b io.StringWriter, keys []string, op deploy.StepOp) {
 	if len(keys) > 0 {
-		writeString(b, strings.Trim(op.Prefix(), " "))
+		writeString(b, strings.Trim(op.Prefix(true /*done*/), " "))
 
 		sort.Strings(keys)
 

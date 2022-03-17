@@ -17,8 +17,8 @@ package resource
 import (
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // URN is a friendly, but unique, URN for a resource, most often auto-assigned by Pulumi.  These are
@@ -109,4 +109,17 @@ func (urn URN) Type() tokens.Type {
 // Name returns the resource name part of a URN.
 func (urn URN) Name() tokens.QName {
 	return tokens.QName(strings.Split(urn.URNName(), URNNameDelimiter)[3])
+}
+
+// Returns a new URN with an updated name part
+func (urn URN) Rename(newName string) URN {
+	return NewURN(
+		urn.Stack(),
+		urn.Project(),
+		// parent type is empty because
+		// assuming the qualified type already includes it
+		"",
+		urn.QualifiedType(),
+		tokens.QName(newName),
+	)
 }

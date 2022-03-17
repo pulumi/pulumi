@@ -21,10 +21,11 @@
 package docs
 
 import (
+	"fmt"
 	"path"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 func isKubernetesPackage(pkg *schema.Package) bool {
@@ -52,14 +53,22 @@ func (mod *modContext) isComponentResource() bool {
 func getKubernetesOverlayPythonFormalParams(modName string) []formalParam {
 	var params []formalParam
 	switch modName {
-	case "helm/v2", "helm/v3":
+	case "helm.sh/v2", "helm.sh/v3":
+		// Chart options.
 		params = []formalParam{
 			{
-				Name: "config",
+				Name:    "release_name",
+				Type:    propertyType{Name: "str"},
+				Comment: "Name of the Chart (e.g., nginx-ingress).",
+			},
+			{
+				Name:    "config",
+				Comment: "Configuration options for the Chart.",
 			},
 			{
 				Name:         "opts",
 				DefaultValue: "=None",
+				Comment:      "A bag of options that control this resource's behavior.",
 			},
 		}
 	case "kustomize":
@@ -115,6 +124,8 @@ func getKubernetesOverlayPythonFormalParams(modName string) []formalParam {
 				DefaultValue: "=None",
 			},
 		}
+	default:
+		panic(fmt.Sprintf("Unknown kubernetes overlay module %q", modName))
 	}
 	return params
 }

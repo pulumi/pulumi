@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type promptToInputArrayHelper struct {
@@ -53,4 +53,45 @@ func (p *promptToInputArrayHelper) getPromptItemType() string {
 
 func (p *promptToInputArrayHelper) getInputItemType() string {
 	return strings.TrimSuffix(p.destType, "Array")
+}
+
+// Provides code for a method which will be placed in the program preamble if deemed
+// necessary. Because many tasks in Go such as reading a file require extensive error
+// handling, it is much prettier to encapsulate that error handling boilerplate as its
+// own function in the preamble.
+func getHelperMethodIfNeeded(functionName string) (string, bool) {
+	switch functionName {
+	case "readFile":
+		return `func readFileOrPanic(path string) pulumi.StringPtrInput {
+				data, err := ioutil.ReadFile(path)
+				if err != nil {
+					panic(err.Error())
+				}
+				return pulumi.String(string(data))
+			}`, true
+	case "filebase64":
+		return `func filebase64OrPanic(path string) pulumi.StringPtrInput {
+					if fileData, err := ioutil.ReadFile(path); err == nil {
+						return pulumi.String(base64.StdEncoding.EncodeToString(fileData[:]))
+					} else {
+						panic(err.Error())
+					}
+				}`, true
+	case "filebase64sha256":
+		return `func filebase64sha256OrPanic(path string) pulumi.StringPtrInput {
+					if fileData, err := ioutil.ReadFile(path); err == nil {
+						hashedData := sha256.Sum256([]byte(fileData))
+						return pulumi.String(base64.StdEncoding.EncodeToString(hashedData[:]))
+					} else {
+						panic(err.Error())
+					}
+				}`, true
+	case "sha1":
+		return `func sha1Hash(input string) string {
+				hash := sha1.Sum([]byte(input))
+				return hex.EncodeToString(hash[:])
+			}`, true
+	default:
+		return "", false
+	}
 }

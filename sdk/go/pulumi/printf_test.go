@@ -15,29 +15,37 @@ func testPrintf(t *testing.T, ins ...interface{}) {
 	// Fprintf
 	buf := &bytes.Buffer{}
 	out := Output(Fprintf(buf, f, ins...))
-	_, known, secret, err := await(out)
+	_, known, secret, deps, err := await(out)
 	assert.True(t, known)
 	assert.False(t, secret)
+	assert.Nil(t, deps)
 	assert.Nil(t, err)
 	assert.Equal(t, expected, buf.String())
 
 	// Sprintf
 	out = Sprintf(f, ins...)
-	v, known, secret, err := await(out)
+	v, known, secret, deps, err := await(out)
 	assert.False(t, secret)
 	assert.True(t, known)
+	assert.Nil(t, deps)
 	assert.Nil(t, err)
 	assert.Equal(t, expected, v)
 }
 
 func TestSprintfPrompt(t *testing.T) {
+	t.Parallel()
+
 	testPrintf(t, "foo", 42, true)
 }
 
 func TestSprintfInputs(t *testing.T) {
+	t.Parallel()
+
 	testPrintf(t, String("foo"), Int(42), Bool(true))
 }
 
 func TestSprintfOutputs(t *testing.T) {
+	t.Parallel()
+
 	testPrintf(t, ToOutput("foo"), ToOutput(42), ToOutput(true))
 }

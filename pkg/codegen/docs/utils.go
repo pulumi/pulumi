@@ -22,9 +22,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/dotnet"
-	go_gen "github.com/pulumi/pulumi/pkg/v2/codegen/go"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func isDotNetTypeNameBoundary(prev rune, next rune) bool {
@@ -71,4 +71,21 @@ func title(s, lang string) string {
 	default:
 		return strings.Title(s)
 	}
+}
+
+func modFilenameToDisplayName(name string) string {
+	parts := strings.Split(name, "/")
+	return parts[len(parts)-1]
+}
+
+func getModuleLink(name string) string {
+	return strings.ToLower(name) + "/"
+}
+
+func getResourceLink(name string) string {
+	return strings.ToLower(name)
+}
+
+func getFunctionLink(name string) string {
+	return strings.ToLower(name)
 }

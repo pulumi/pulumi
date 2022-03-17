@@ -15,16 +15,16 @@
 package cmdutil
 
 import (
-	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 
+	"github.com/rivo/uniseg"
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 )
 
 // Emoji controls whether emojis will by default be printed in the output.
@@ -69,13 +69,18 @@ func ReadConsole(prompt string) (string, error) {
 		fmt.Print(prompt + ": ")
 	}
 
-	reader := bufio.NewReader(os.Stdin)
-	raw, err := reader.ReadString('\n')
-	if err != nil {
-		return "", err
+	var raw strings.Builder
+	for {
+		var b [1]byte
+		if _, err := os.Stdin.Read(b[:]); err != nil {
+			return "", err
+		}
+		if b[0] == '\n' {
+			break
+		}
+		raw.WriteByte(b[0])
 	}
-
-	return RemoveTrailingNewline(raw), nil
+	return RemoveTrailingNewline(raw.String()), nil
 }
 
 // IsTruthy returns true if the given string represents a CLI input interpreted as "true".
@@ -122,12 +127,32 @@ type TableRow struct {
 // the max length of the items in each column.  A default gap of two spaces is printed between each
 // column.
 func PrintTable(table Table) {
-	PrintTableWithGap(table, "  ")
+	fmt.Print(table)
 }
 
 // PrintTableWithGap prints a grid of rows and columns.  Width of columns is automatically determined
 // by the max length of the items in each column.  A gap can be specified between the columns.
 func PrintTableWithGap(table Table, columnGap string) {
+	fmt.Print(table.ToStringWithGap(columnGap))
+}
+
+func (table Table) String() string {
+	return table.ToStringWithGap("  ")
+}
+
+// 7-bit C1 ANSI sequences
+var ansiEscape = regexp.MustCompile(`\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])`)
+
+// MeasureText returns the number of glyphs in a string.
+// Importantly this also ignores ANSI escape sequences, so can be used to calculate layout of colorized strings.
+func MeasureText(text string) int {
+	// Strip ansi escape sequences
+	clean := ansiEscape.ReplaceAllString(text, "")
+	// Need to count graphemes not runes or bytes
+	return uniseg.GraphemeClusterCount(clean)
+}
+
+func (table *Table) ToStringWithGap(columnGap string) string {
 	columnCount := len(table.Headers)
 
 	// Figure out the preferred column width for each column.  It will be set to the max length of
@@ -149,38 +174,39 @@ func PrintTableWithGap(table Table, columnGap string) {
 		}
 
 		for columnIndex, val := range columns {
-			preferredColumnWidths[columnIndex] = max(preferredColumnWidths[columnIndex], len(val))
+			preferredColumnWidths[columnIndex] = max(preferredColumnWidths[columnIndex], MeasureText(val))
 		}
 	}
 
-	format := ""
-	for i, maxWidth := range preferredColumnWidths {
-		if i < len(preferredColumnWidths)-1 {
-			format += "%-" + strconv.Itoa(maxWidth+len(columnGap)) + "s"
-		} else {
+	result := ""
+	for _, row := range allRows {
+		result += table.Prefix
+
+		for columnIndex, val := range row.Columns {
+			result += val
+
+			if columnIndex < columnCount-1 {
+				// Work out how much whitespace we need to add to this string to bring it up to the
+				// preferredColumnWidth for this column.
+
+				maxWidth := preferredColumnWidths[columnIndex]
+				padding := maxWidth - MeasureText(val)
+				result += strings.Repeat(" ", padding)
+
+				// Now, ensure we have the requested gap between columns as well.
+				result += columnGap
+			}
 			// do not want whitespace appended to the last column.  It would cause wrapping on lines
 			// that were not actually long if some other line was very long.
-			format += "%s"
-		}
-	}
-	format += "\n"
-
-	columns := make([]interface{}, columnCount)
-	for _, row := range allRows {
-		for columnIndex, value := range row.Columns {
-			// Now, ensure we have the requested gap between columns as well.
-			if columnIndex < columnCount-1 {
-				value += columnGap
-			}
-
-			columns[columnIndex] = value
 		}
 
-		fmt.Printf(table.Prefix+format, columns...)
+		result += "\n"
+
 		if row.AdditionalInfo != "" {
-			fmt.Print(row.AdditionalInfo)
+			result += row.AdditionalInfo
 		}
 	}
+	return result
 }
 
 func max(a, b int) int {

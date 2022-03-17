@@ -17,14 +17,13 @@ package main
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func newStackOutputCmd() *cobra.Command {
@@ -46,7 +45,7 @@ func newStackOutputCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and its output properties.
-			s, err := requireStack(stackName, false, opts, true /*setCurrent*/)
+			s, err := requireStack(stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -57,7 +56,7 @@ func newStackOutputCmd() *cobra.Command {
 
 			outputs, err := getStackOutputs(snap, showSecrets)
 			if err != nil {
-				return errors.Wrap(err, "getting outputs")
+				return fmt.Errorf("getting outputs: %w", err)
 			}
 			if outputs == nil {
 				outputs = make(map[string]interface{})
@@ -76,7 +75,7 @@ func newStackOutputCmd() *cobra.Command {
 						fmt.Printf("%v\n", stringifyOutput(v))
 					}
 				} else {
-					return errors.Errorf("current stack does not have output property '%v'", name)
+					return fmt.Errorf("current stack does not have output property '%v'", name)
 				}
 			} else if jsonOut {
 				if err := printJSON(outputs); err != nil {
@@ -85,6 +84,11 @@ func newStackOutputCmd() *cobra.Command {
 			} else {
 				printStackOutputs(outputs)
 			}
+
+			if showSecrets {
+				log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack output")
+			}
+
 			return nil
 		}),
 	}

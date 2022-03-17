@@ -1,0 +1,3 @@
+name: python_await
+runtime: python
+description: A python program to test if non-exported outputs are awaited

@@ -19,10 +19,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 func TestURNRoundTripping(t *testing.T) {
+	t.Parallel()
+
 	stack := tokens.QName("stck")
 	proj := tokens.PackageName("foo/bar/baz")
 	parentType := tokens.Type("")
@@ -37,6 +39,8 @@ func TestURNRoundTripping(t *testing.T) {
 }
 
 func TestURNRoundTripping2(t *testing.T) {
+	t.Parallel()
+
 	stack := tokens.QName("stck")
 	proj := tokens.PackageName("foo/bar/baz")
 	parentType := tokens.Type("parent$type")

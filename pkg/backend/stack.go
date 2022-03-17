@@ -19,41 +19,41 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/pkg/errors"
-
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/gitutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// Stack is a stack associated with a particular backend implementation.
+// Stack is used to manage stacks of resources against a pluggable backend.
 type Stack interface {
 	Ref() StackReference                                    // this stack's identity.
 	Snapshot(ctx context.Context) (*deploy.Snapshot, error) // the latest deployment snapshot.
 	Backend() Backend                                       // the backend this stack belongs to.
 
 	// Preview changes to this stack.
-	Preview(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Preview(ctx context.Context, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	// Update this stack.
 	Update(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	// Import resources into this stack.
+	Import(ctx context.Context, op UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result)
 	// Refresh this stack's state from the cloud provider.
 	Refresh(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Destroy this stack's resources.
 	Destroy(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Watch this stack.
-	Watch(ctx context.Context, op UpdateOperation) result.Result
+	Watch(ctx context.Context, op UpdateOperation, paths []string) result.Result
 
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
 	// rename this stack.
-	Rename(ctx context.Context, newName tokens.QName) error
+	Rename(ctx context.Context, newName tokens.QName) (StackReference, error)
 	// list log entries for this stack.
 	GetLogs(ctx context.Context, cfg StackConfiguration, query operations.LogQuery) ([]operations.LogEntry, error)
 	// export this stack's deployment.
@@ -68,18 +68,29 @@ func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
 }
 
 // RenameStack renames the stack, or returns an error if it cannot.
-func RenameStack(ctx context.Context, s Stack, newName tokens.QName) error {
+func RenameStack(ctx context.Context, s Stack, newName tokens.QName) (StackReference, error) {
 	return s.Backend().RenameStack(ctx, s, newName)
 }
 
 // PreviewStack previews changes to this stack.
-func PreviewStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
+func PreviewStack(
+	ctx context.Context,
+	s Stack,
+	op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+
 	return s.Backend().Preview(ctx, s, op)
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
 func UpdateStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return s.Backend().Update(ctx, s, op)
+}
+
+// ImportStack updates the target stack with the current workspace's contents (config and code).
+func ImportStack(ctx context.Context, s Stack, op UpdateOperation,
+	imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+
+	return s.Backend().Import(ctx, s, op, imports)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.
@@ -94,8 +105,8 @@ func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.Reso
 
 // WatchStack watches the projects working directory for changes and automatically updates the
 // active stack.
-func WatchStack(ctx context.Context, s Stack, op UpdateOperation) result.Result {
-	return s.Backend().Watch(ctx, s, op)
+func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string) result.Result {
+	return s.Backend().Watch(ctx, s, op, paths)
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
@@ -110,7 +121,10 @@ func GetStackLogs(ctx context.Context, s Stack, cfg StackConfiguration,
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
-func ExportStackDeployment(ctx context.Context, s Stack) (*apitype.UntypedDeployment, error) {
+func ExportStackDeployment(
+	ctx context.Context,
+	s Stack) (*apitype.UntypedDeployment, error) {
+
 	return s.Backend().ExportDeployment(ctx, s)
 }
 
@@ -169,7 +183,7 @@ func GetEnvironmentTagsForCurrentStack() (map[apitype.StackTagName]string, error
 	if projPath != "" {
 		proj, err := workspace.LoadProject(projPath)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error loading project %q", projPath)
+			return nil, fmt.Errorf("error loading project %q: %w", projPath, err)
 		}
 		tags[apitype.ProjectNameTag] = proj.Name.String()
 		tags[apitype.ProjectRuntimeTag] = proj.Runtime.Name()
@@ -210,7 +224,7 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 		tags[apitype.VCSRepositoryNameTag] = vcsInfo.Repo
 		tags[apitype.VCSRepositoryKindTag] = vcsInfo.Kind
 	} else {
-		return errors.Wrapf(err, "detecting VCS info for stack tags for remote %v", remoteURL)
+		return fmt.Errorf("detecting VCS info for stack tags for remote %v: %w", remoteURL, err)
 	}
 	// Set the old stack tags keys as GitHub so that the UI will continue to work,
 	// regardless of whether the remote URL is a GitHub URL or not.

@@ -1,0 +1,127 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/resources.json",
+    "title": "Pulumi Resource State",
+    "description": "Schemas for Pulumi resource states.",
+    "oneOf": [
+        { "$ref": "#v3" }
+    ],
+    "$defs": {
+        "urn": {
+            "$comment": "It would be wonderful to include a regex here for validation, but we generate _many_ invalid URNs in tests for readability + expediency",
+            "title": "Unique Resource Name (URN)",
+            "description": "The unique name for a resource in a Pulumi stack.",
+            "type": "string"
+        },
+        "resourceV3": {
+            "$anchor": "v3",
+            "title": "Resource V3",
+            "description": "Version 3 of a Pulumi resource state.",
+            "type": "object",
+            "properties": {
+                "urn": {
+                    "description": "The resource's unique name.",
+                    "$ref": "#/$defs/urn"
+                },
+                "custom": {
+                    "description": "True when the resource is managed by a plugin.",
+                    "type": "boolean"
+                },
+                "delete": {
+                    "description": "True when the resource should be deleted during the next update.",
+                    "type": "boolean"
+                },
+                "id": {
+                    "description": "The provider-assigned resource ID, if any, for custom resources.",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "The resource's full type token.",
+                    "type": "string"
+                },
+                "inputs": {
+                    "description": "The input properties supplied to the provider.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/property-values.json"
+                    }
+                },
+                "outputs": {
+                    "description": "The output properties returned by the provider after provisioning.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/property-values.json"
+                    }
+                },
+                "parent": {
+                    "description": "An optional parent URN if this resource is a child of it.",
+                    "$ref": "#/$defs/urn"
+                },
+                "protect": {
+                    "description": "True when this resource is \"protected\" and may not be deleted.",
+                    "type": "boolean"
+                },
+                "external": {
+                    "description": "True when the lifecycle of this resource is not managed by Pulumi.",
+                    "type": "boolean"
+                },
+                "dependencies": {
+                    "description": "The dependency edges to other resources that this depends on.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/urn"
+                    }
+                },
+                "initErrors": {
+                    "description": "The set of errors encountered in the process of initializing resource (i.e. during create or update).",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "provider": {
+                    "description": "A reference to the provider that is associated with this resource.",
+                    "type": "string"
+                },
+                "propertyDependencies": {
+                    "description": "A map from each input property name to the set of resources that property depends on.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/$defs/urn"
+                        }
+                    }
+                },
+                "pendingReplacement": {
+                    "description": "Tracks delete-before-replace resources that have been deleted but not yet recreated.",
+                    "type": "boolean"
+                },
+                "additionalSecretOutputs": {
+                    "description": "A list of outputs that were explicitly marked as secret when the resource was created.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "aliases": {
+                    "description": "A list of previous URNs that this resource may have had in previous deployments",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/urn"
+                    }
+                },
+                "customTimeouts": {
+                    "description": "A configuration block that can be used to control timeouts of CRUD operations",
+                    "type": "object"
+                },
+                "importID": {
+                    "description": "The import input used for imported resources.",
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false,
+            "required": ["urn"]
+        }
+    }
+}

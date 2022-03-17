@@ -15,20 +15,22 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/dustin/go-humanize"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newStackLsCmd() *cobra.Command {
@@ -51,71 +53,15 @@ func newStackLsCmd() *cobra.Command {
 			"the tag name as well as the tag value, separated by an equals sign. For example\n" +
 			"'environment=production' or just 'gcp:project'.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// Build up the stack filters. We do not support accepting empty strings as filters
-			// from command-line arguments, though the API technically supports it.
-			strPtrIfSet := func(s string) *string {
-				if s != "" {
-					return &s
-				}
-				return nil
+		Run: cmdutil.RunFunc(func(_ *cobra.Command, _ []string) error {
+			cmdArgs := stackLSArgs{
+				jsonOut:    jsonOut,
+				allStacks:  allStacks,
+				orgFilter:  orgFilter,
+				projFilter: projFilter,
+				tagFilter:  tagFilter,
 			}
-			filter := backend.ListStacksFilter{
-				Organization: strPtrIfSet(orgFilter),
-				Project:      strPtrIfSet(projFilter),
-			}
-			if tagFilter != "" {
-				tagName, tagValue := parseTagFilter(tagFilter)
-				filter.TagName = &tagName
-				filter.TagValue = tagValue
-			}
-
-			// If --all is not specified, default to filtering to just the current project.
-			if !allStacks && projFilter == "" {
-				// Ensure we are in a project; if not, we will fail.
-				projPath, err := workspace.DetectProjectPath()
-				if err != nil {
-					return errors.Wrapf(err, "could not detect current project")
-				} else if projPath == "" {
-					return errors.New("no Pulumi.yaml found; please run this command in a project directory")
-				}
-
-				proj, err := workspace.LoadProject(projPath)
-				if err != nil {
-					return errors.Wrap(err, "could not load current project")
-				}
-				projName := string(proj.Name)
-				filter.Project = &projName
-			}
-
-			// Get the current backend.
-			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
-			if err != nil {
-				return err
-			}
-
-			// Get the current stack so we can print a '*' next to it.
-			var current string
-			if s, _ := state.CurrentStack(commandContext(), b); s != nil {
-				// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
-				current = s.Ref().String()
-			}
-
-			// List all of the stacks available.
-			stackSummaries, err := b.ListStacks(commandContext(), filter)
-			if err != nil {
-				return err
-			}
-			// Sort by stack name.
-			sort.Slice(stackSummaries, func(i, j int) bool {
-				return stackSummaries[i].Name().String() < stackSummaries[j].Name().String()
-			})
-
-			if jsonOut {
-				return formatStackSummariesJSON(b, current, stackSummaries)
-			}
-
-			return formatStackSummariesConsole(b, current, stackSummaries)
+			return runStackLS(cmdArgs)
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(
@@ -132,6 +78,101 @@ func newStackLsCmd() *cobra.Command {
 		&tagFilter, "tag", "t", "", "Filter returned stacks to those in a specific tag (tag-name or tag-name=tag-value)")
 
 	return cmd
+}
+
+type stackLSArgs struct {
+	jsonOut    bool
+	allStacks  bool
+	orgFilter  string
+	projFilter string
+	tagFilter  string
+}
+
+func runStackLS(args stackLSArgs) error {
+	// Build up the stack filters. We do not support accepting empty strings as filters
+	// from command-line arguments, though the API technically supports it.
+	strPtrIfSet := func(s string) *string {
+		if s != "" {
+			return &s
+		}
+		return nil
+	}
+	filter := backend.ListStacksFilter{
+		Organization: strPtrIfSet(args.orgFilter),
+		Project:      strPtrIfSet(args.projFilter),
+	}
+	if args.tagFilter != "" {
+		tagName, tagValue := parseTagFilter(args.tagFilter)
+		filter.TagName = &tagName
+		filter.TagValue = tagValue
+	}
+
+	// If --all is not specified, default to filtering to just the current project.
+	if !args.allStacks && args.projFilter == "" {
+		// Ensure we are in a project; if not, we will fail.
+		projPath, err := workspace.DetectProjectPath()
+		if err != nil {
+			return fmt.Errorf("could not detect current project: %w", err)
+		} else if projPath == "" {
+			return errors.New("no Pulumi.yaml found; please run this command in a project directory")
+		}
+
+		proj, err := workspace.LoadProject(projPath)
+		if err != nil {
+			return fmt.Errorf("could not load current project: %w", err)
+		}
+		projName := string(proj.Name)
+		filter.Project = &projName
+	}
+
+	// Get the current backend.
+	b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
+	if err != nil {
+		return err
+	}
+
+	// Get the current stack so we can print a '*' next to it.
+	var current string
+	if s, _ := state.CurrentStack(commandContext(), b); s != nil {
+		// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
+		current = s.Ref().String()
+	}
+
+	// Gather all appropriate stacks based on the filter.
+	//
+	// NOTE: There might be _a lot_ of stacks in the results, such as 10,000+. Rather than
+	// building up the full list in-memory and then displaying, we should progressively
+	// show stacks as they get returned. (And resizing/redrawing the table as appropriate.)
+	//
+	// See display/jsonmessage.go for how we do this when rendering progressive updates.
+	var (
+		allStackSummaries []backend.StackSummary
+		inContToken       backend.ContinuationToken
+	)
+	for {
+		summaries, outContToken, err := b.ListStacks(commandContext(), filter, inContToken)
+		if err != nil {
+			return err
+		}
+
+		allStackSummaries = append(allStackSummaries, summaries...)
+
+		if outContToken == nil {
+			break
+		}
+		inContToken = outContToken
+	}
+
+	// Sort by stack name.
+	sort.Slice(allStackSummaries, func(i, j int) bool {
+		return allStackSummaries[i].Name().String() < allStackSummaries[j].Name().String()
+	})
+
+	if args.jsonOut {
+		return formatStackSummariesJSON(b, current, allStackSummaries)
+	}
+
+	return formatStackSummariesConsole(b, current, allStackSummaries)
 }
 
 // parseTagFilter parses a tag filter into its separate name and value parts, separatedby an equal sign.

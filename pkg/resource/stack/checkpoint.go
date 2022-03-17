@@ -12,22 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package stack contains the serialized and configurable state associated with an stack; or, in other
-// words, a deployment target.  It pertains to resources and deployment plans, but is a package unto itself.
 package stack
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"github.com/pkg/errors"
-
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype/migrate"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.CheckpointV3, error) {
@@ -75,7 +72,7 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(bytes []byte) (*apitype.Chec
 
 		return &v3checkpoint, nil
 	default:
-		return nil, errors.Errorf("unsupported checkpoint version %d", versionedCheckpoint.Version)
+		return nil, fmt.Errorf("unsupported checkpoint version %d", versionedCheckpoint.Version)
 	}
 }
 
@@ -87,7 +84,7 @@ func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 	if snap != nil {
 		dep, err := SerializeDeployment(snap, sm, showSecrets)
 		if err != nil {
-			return nil, errors.Wrap(err, "serializing deployment")
+			return nil, fmt.Errorf("serializing deployment: %w", err)
 		}
 		latest = dep
 	}
@@ -97,7 +94,7 @@ func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
 		Latest: latest,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "marshalling checkpoint")
+		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
 	}
 
 	return &apitype.VersionedCheckpoint{

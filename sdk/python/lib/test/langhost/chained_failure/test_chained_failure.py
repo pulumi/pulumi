@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,12 +30,12 @@ class ChainedFailureTest(LanghostTest):
             expected_error="Program exited with non-zero exit code: 1",
             expected_resource_count=1)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, res, _deps,
-                          _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         if ty == "test:index:ResourceA":
             self.assertEqual(name, "resourceA")
-            self.assertDictEqual(res, {"inprop": 777})
+            self.assertDictEqual(_resource, {"inprop": 777})
             return {
                 "urn": self.make_urn(ty, name),
                 "id": name,
@@ -45,5 +45,5 @@ class ChainedFailureTest(LanghostTest):
             }
 
         if ty == "test:index:ResourceB":
-            self.fail(f"we should never have gotten here! {res}")
+            self.fail(f"we should never have gotten here! {_resource}")
         self.fail(f"unknown resource type: {ty}")

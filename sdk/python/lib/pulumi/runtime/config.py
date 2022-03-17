@@ -15,13 +15,16 @@
 """
 Runtime support for the Pulumi configuration system.  Please use pulumi.Config instead.
 """
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional, Set
 
 import json
 import os
 
 # default to an empty map for config.
-CONFIG: Dict[str, Any] = dict()
+CONFIG: Dict[str, Any] = {}
+
+# default to an empty set for config secret keys.
+_SECRET_KEYS: Set[str] = set()
 
 
 def set_config(k: str, v: Any):
@@ -31,30 +34,57 @@ def set_config(k: str, v: Any):
     CONFIG[k] = v
 
 
+def set_all_config(
+    config: Dict[str, str], secret_keys: Optional[List[str]] = None
+) -> None:
+    """
+    Overwrites the config map and optional list of secret keys.
+    """
+    new_config = {}
+    for key, value in config.items():
+        new_config[key] = value
+    global CONFIG
+    CONFIG = new_config
+
+    if secret_keys is not None:
+        global _SECRET_KEYS
+        _SECRET_KEYS = set(secret_keys)
+
+
 def get_config_env() -> Dict[str, Any]:
     """
     Returns the environment map that will be used for config checking when variables aren't set.
     """
-    if 'PULUMI_CONFIG' in os.environ:
-        env_config = os.environ['PULUMI_CONFIG']
+    if "PULUMI_CONFIG" in os.environ:
+        env_config = os.environ["PULUMI_CONFIG"]
         return json.loads(env_config)
-    return dict()
+    return {}
 
 
 def get_config_env_key(k: str) -> str:
     """
     Returns a scrubbed environment variable key, PULUMI_CONFIG_<k>, that can be used for
-    setting explicit varaibles.  This is unlike PULUMI_CONFIG which is just a JSON-serialized bag.
+    setting explicit variables.  This is unlike PULUMI_CONFIG which is just a JSON-serialized bag.
     """
-    env_key = ''
+    env_key = ""
     for c in k:
-        if c == '_' or 'A' <= c <= 'Z' or '0' <= c <= '9':
+        if c == "_" or "A" <= c <= "Z" or "0" <= c <= "9":
             env_key += c
-        elif 'a' <= c <= 'z':
+        elif "a" <= c <= "z":
             env_key += c.upper()
         else:
-            env_key += '_'
-    return 'PULUMI_CONFIG_%s' % env_key
+            env_key += "_"
+    return f"PULUMI_CONFIG_{env_key}"
+
+
+def get_config_secret_keys_env() -> List[str]:
+    """
+    Returns the list of config keys that contain secrets.
+    """
+    if "PULUMI_CONFIG_SECRET_KEYS" in os.environ:
+        keys = os.environ["PULUMI_CONFIG_SECRET_KEYS"]
+        return json.loads(keys)
+    return []
 
 
 def get_config(k: str) -> Any:
@@ -62,7 +92,7 @@ def get_config(k: str) -> Any:
     Returns a configuration variable's value or None if it is unset.
     """
     # If the config has been set explicitly, use it.
-    if k in list(CONFIG.keys()):
+    if k in CONFIG:
         return CONFIG[k]
 
     # If there is a specific PULUMI_CONFIG_<k> environment variable, use it.
@@ -72,7 +102,14 @@ def get_config(k: str) -> Any:
 
     # If the config hasn't been set, but there is a process-wide PULUMI_CONFIG environment variable, use it.
     env_dict = get_config_env()
-    if env_dict is not None and k in list(env_dict.keys()):
+    if env_dict is not None and k in env_dict:
         return env_dict[k]
 
     return None
+
+
+def is_config_secret(k: str) -> bool:
+    """
+    Returns True if the configuration variable is a secret.
+    """
+    return k in _SECRET_KEYS

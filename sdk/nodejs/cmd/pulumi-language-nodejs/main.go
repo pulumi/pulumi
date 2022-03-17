@@ -37,24 +37,23 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
-
-	"github.com/hashicorp/go-multierror"
-
-	pbempty "github.com/golang/protobuf/ptypes/empty"
-	opentracing "github.com/opentracing/opentracing-go"
-
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
-	"google.golang.org/grpc"
 
 	"github.com/blang/semver"
+	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/google/shlex"
+	"github.com/hashicorp/go-multierror"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 const (
@@ -64,6 +63,10 @@ const (
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
+
+	// The runtime expects the array of secret config keys to be saved to this environment variable.
+	//nolint: gosec
+	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
 
 	// A exit-code we recognize when the nodejs process exits.  If we see this error, there's no
 	// need for us to print any additional error messages since the user already got a a good
@@ -77,10 +80,17 @@ const (
 func main() {
 	var tracing string
 	var typescript bool
+	var root string
+	var tsconfigpath string
+	var nodeargs string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.BoolVar(&typescript, "typescript", true,
 		"Use ts-node at runtime to support typescript source natively")
+	flag.StringVar(&root, "root", "", "Project root path to use")
+	flag.StringVar(&tsconfigpath, "tsconfig", "",
+		"Path to tsconfig.json to use")
+	flag.StringVar(&nodeargs, "nodeargs", "", "Arguments for the Node process")
 	flag.Parse()
 
 	args := flag.Args()
@@ -112,7 +122,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript)
+			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript, tsconfigpath, nodeargs)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -149,16 +159,20 @@ type nodeLanguageHost struct {
 	engineAddress string
 	tracing       string
 	typescript    bool
+	tsconfigpath  string
+	nodeargs      string
 }
 
 func newLanguageHost(nodePath, runPath, engineAddress,
-	tracing string, typescript bool) pulumirpc.LanguageRuntimeServer {
+	tracing string, typescript bool, tsconfigpath string, nodeargs string) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		nodeBin:       nodePath,
 		runPath:       runPath,
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		typescript:    typescript,
+		tsconfigpath:  tsconfigpath,
+		nodeargs:      nodeargs,
 	}
 }
 
@@ -263,8 +277,8 @@ func getPluginsFromDir(
 				curr, pulumiPackagePathToVersionMap, inNodeModules || filepath.Base(dir) == "node_modules")
 			if err != nil {
 				allErrors = multierror.Append(allErrors, err)
-				continue
 			}
+			// Even if there was an error, still append any plugins found in the dir.
 			plugins = append(plugins, more...)
 		} else if inNodeModules && name == "package.json" {
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
@@ -309,12 +323,9 @@ func getPluginsFromDir(
 
 // packageJSON is the minimal amount of package.json information we care about.
 type packageJSON struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-	Pulumi  struct {
-		Resource bool   `json:"resource"`
-		Server   string `json:"server"`
-	} `json:"pulumi"`
+	Name    string                  `json:"name"`
+	Version string                  `json:"version"`
+	Pulumi  plugin.PulumiPluginJSON `json:"pulumi"`
 }
 
 // getPackageInfo returns a bool indicating whether the given package.json package has an associated Pulumi
@@ -339,6 +350,12 @@ func getPackageInfo(info packageJSON) (bool, string, string, string, error) {
 
 // getPluginName takes a parsed package.json file and returns the corresponding Pulumi plugin name.
 func getPluginName(info packageJSON) (string, error) {
+	// If it's specified in the "pulumi" section, return it as-is.
+	if info.Pulumi.Name != "" {
+		return info.Pulumi.Name, nil
+	}
+
+	// Otherwise, derive it from the top-level package name.
 	name := info.Name
 	if name == "" {
 		return "", errors.New("missing expected \"name\" property")
@@ -357,9 +374,14 @@ func getPluginName(info packageJSON) (string, error) {
 
 // getPluginVersion takes a parsed package.json file and returns the semantic version of the Pulumi plugin.
 func getPluginVersion(info packageJSON) (string, error) {
-	version := info.Version
+	// See if it's specified in the "pulumi" section.
+	version := info.Pulumi.Version
 	if version == "" {
-		return "", errors.New("Missing expected \"version\" property")
+		// If not, use the top-level package version.
+		version = info.Version
+		if version == "" {
+			return "", errors.New("Missing expected \"version\" property")
+		}
 	}
 	if strings.IndexRune(version, 'v') != 0 {
 		return fmt.Sprintf("v%s", version), nil
@@ -477,23 +499,38 @@ func (host *nodeLanguageHost) execNodejs(
 			err = errors.Wrap(err, "failed to serialize configuration")
 			return &pulumirpc.RunResponse{Error: err.Error()}
 		}
+		configSecretKeys, err := host.constructConfigSecretKeys(req)
+		if err != nil {
+			err = errors.Wrap(err, "failed to serialize configuration secret keys")
+			return &pulumirpc.RunResponse{Error: err.Error()}
+		}
 
 		env := os.Environ()
 		env = append(env, pulumiConfigVar+"="+config)
+		env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
 
 		if host.typescript {
 			env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
 		}
+		if host.tsconfigpath != "" {
+			env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
+		}
+
+		nodeargs, err := shlex.Split(host.nodeargs)
+		if err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}
+		}
+		nodeargs = append(nodeargs, args...)
 
 		if logging.V(5) {
-			commandStr := strings.Join(args, " ")
+			commandStr := strings.Join(nodeargs, " ")
 			logging.V(5).Infoln("Language host launching process: ", host.nodeBin, commandStr)
 		}
 
 		// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 		var errResult string
 		// #nosec G204
-		cmd := exec.Command(host.nodeBin, args...)
+		cmd := exec.Command(host.nodeBin, nodeargs...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Env = env
@@ -512,17 +549,17 @@ func (host *nodeLanguageHost) execNodejs(
 				// If the program ran, but exited with a non-zero error code.  This will happen often,
 				// since user errors will trigger this.  So, the error message should look as nice as
 				// possible.
-				if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
+				switch code := exiterr.ExitCode(); code {
+				case 0:
+					// This really shouldn't happen, but if it does, we don't want to render "non-zero exit code"
+					err = errors.Wrapf(exiterr, "Program exited unexpectedly")
+				case nodeJSProcessExitedAfterShowingUserActionableMessage:
 					// Check if we got special exit code that means "we already gave the user an
 					// actionable message". In that case, we can simply bail out and terminate `pulumi`
 					// without showing any more messages.
-					if status.ExitStatus() == nodeJSProcessExitedAfterShowingUserActionableMessage {
-						return &pulumirpc.RunResponse{Error: "", Bail: true}
-					}
-
-					err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
-				} else {
-					err = errors.Wrapf(exiterr, "Program exited unexpectedly")
+					return &pulumirpc.RunResponse{Error: "", Bail: true}
+				default:
+					err = errors.Errorf("Program exited with non-zero exit code: %d", code)
 				}
 			} else {
 				// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
@@ -605,6 +642,22 @@ func (host *nodeLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string
 	}
 
 	return string(configJSON), nil
+}
+
+// constructConfigSecretKeys JSON-serializes the list of keys that contain secret values given as part of
+// a RunRequest.
+func (host *nodeLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest) (string, error) {
+	configSecretKeys := req.GetConfigSecretKeys()
+	if configSecretKeys == nil {
+		return "[]", nil
+	}
+
+	configSecretKeysJSON, err := json.Marshal(configSecretKeys)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configSecretKeysJSON), nil
 }
 
 func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {

@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -24,17 +25,17 @@ import (
 	"strings"
 
 	zxcvbn "github.com/nbutton23/zxcvbn-go"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newConfigCmd() *cobra.Command {
@@ -78,7 +79,9 @@ func newConfigCmd() *cobra.Command {
 
 	cmd.AddCommand(newConfigGetCmd(&stack))
 	cmd.AddCommand(newConfigRmCmd(&stack))
+	cmd.AddCommand(newConfigRmAllCmd(&stack))
 	cmd.AddCommand(newConfigSetCmd(&stack))
+	cmd.AddCommand(newConfigSetAllCmd(&stack))
 	cmd.AddCommand(newConfigRefreshCmd(&stack))
 	cmd.AddCommand(newConfigCopyCmd(&stack))
 
@@ -150,7 +153,7 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 	var decrypter config.Decrypter
 	key, err := parseConfigKey(configKey)
 	if err != nil {
-		return errors.Wrap(err, "invalid configuration key")
+		return fmt.Errorf("invalid configuration key: %w", err)
 	}
 
 	v, ok, err := currentProjectStack.Config.Get(key, path)
@@ -161,7 +164,7 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 		if v.Secure() {
 			var err error
 			if decrypter, err = getStackDecrypter(currentStack); err != nil {
-				return errors.Wrap(err, "could not create a decrypter")
+				return fmt.Errorf("could not create a decrypter: %w", err)
 			}
 		} else {
 			decrypter = config.NewPanicCrypter()
@@ -185,8 +188,7 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 		return saveProjectStack(destinationStack, destinationProjectStack)
 	}
 
-	return errors.Errorf(
-		"configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
+	return fmt.Errorf("configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
 }
 
 func copyEntireConfigMap(currentStack backend.Stack,
@@ -245,9 +247,9 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 		Short: "Get a single configuration value",
 		Long: "Get a single configuration value.\n\n" +
 			"The `--path` flag can be used to get a value inside a map or list:\n\n" +
-			"    - `pulumi config get --path outer.inner` will get the value of the `inner` key, " +
+			"  - `pulumi config get --path outer.inner` will get the value of the `inner` key, " +
 			"if the value of `outer` is a map `inner: value`.\n" +
-			"    - `pulumi config get --path names[0]` will get the value of the first item, " +
+			"  - `pulumi config get --path names[0]` will get the value of the first item, " +
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -262,7 +264,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
-				return errors.Wrap(err, "invalid configuration key")
+				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
 			return getConfig(s, key, path, jsonOut)
@@ -286,9 +288,9 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 		Short: "Remove configuration value",
 		Long: "Remove configuration value.\n\n" +
 			"The `--path` flag can be used to remove a value inside a map or list:\n\n" +
-			"    - `pulumi config rm --path outer.inner` will remove the `inner` key, " +
+			"  - `pulumi config rm --path outer.inner` will remove the `inner` key, " +
 			"if the value of `outer` is a map `inner: value`.\n" +
-			"    - `pulumi config rm --path names[0]` will remove the first item, " +
+			"  - `pulumi config rm --path names[0]` will remove the first item, " +
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -303,7 +305,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
-				return errors.Wrap(err, "invalid configuration key")
+				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
 			ps, err := loadProjectStack(s)
@@ -326,6 +328,56 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 	return rmCmd
 }
 
+func newConfigRmAllCmd(stack *string) *cobra.Command {
+	var path bool
+
+	rmAllCmd := &cobra.Command{
+		Use:   "rm-all <key1> <key2> <key3> ...",
+		Short: "Remove multiple configuration values",
+		Long: "Remove multiple configuration values.\n\n" +
+			"The `--path` flag indicates that keys should be parsed within maps or lists:\n\n" +
+			"  - `pulumi config rm-all --path  outer.inner foo[0] key1` will remove the \n" +
+			"    `inner` key of the `outer` map, the first key of the `foo` list and `key1`.\n" +
+			"  - `pulumi config rm-all outer.inner foo[0] key1` will remove the literal" +
+			"    `outer.inner`, `foo[0]` and `key1` keys",
+		Args: cmdutil.MinimumNArgs(1),
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			opts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			s, err := requireStack(*stack, true, opts, false /*setCurrent*/)
+			if err != nil {
+				return err
+			}
+
+			ps, err := loadProjectStack(s)
+			if err != nil {
+				return err
+			}
+
+			for _, arg := range args {
+				key, err := parseConfigKey(arg)
+				if err != nil {
+					return fmt.Errorf("invalid configuration key: %w", err)
+				}
+
+				err = ps.Config.Remove(key, path)
+				if err != nil {
+					return err
+				}
+			}
+
+			return saveProjectStack(s, ps)
+		}),
+	}
+	rmAllCmd.PersistentFlags().BoolVar(
+		&path, "path", false,
+		"Parse the keys as paths in a map or list rather than raw strings")
+
+	return rmAllCmd
+}
+
 func newConfigRefreshCmd(stack *string) *cobra.Command {
 	var force bool
 	refreshCmd := &cobra.Command{
@@ -338,7 +390,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(*stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -372,13 +424,13 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 				_, err = os.Stat(backupFile)
 				if os.IsNotExist(err) {
 					if err = os.Rename(configPath, backupFile); err != nil {
-						return errors.Wrap(err, "backing up existing configuration file")
+						return fmt.Errorf("backing up existing configuration file: %w", err)
 					}
 
 					fmt.Printf("backed up existing configuration file to %s\n", backupFile)
 					break
 				} else if err != nil {
-					return errors.Wrap(err, "backing up existing configuration file")
+					return fmt.Errorf("backing up existing configuration file: %w", err)
 				}
 
 				backupFile = backupFile + ".bak"
@@ -409,12 +461,12 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"If a value is not present on the command line, pulumi will prompt for the value. Multi-line values\n" +
 			"may be set by piping a file to standard in.\n\n" +
 			"The `--path` flag can be used to set a value inside a map or list:\n\n" +
-			"    - `pulumi config set --path names[0] a` " +
+			"  - `pulumi config set --path names[0] a` " +
 			"will set the value to a list with the first item `a`.\n" +
-			"    - `pulumi config set --path parent.nested value` " +
+			"  - `pulumi config set --path parent.nested value` " +
 			"will set the value of `parent` to a map `nested: value`.\n" +
-			"    - `pulumi config set --path '[\"parent.name\"].[\"nested.name\"]' value` will set the value of \n" +
-			"	`parent.name` to a map `nested.name: value`.",
+			"  - `pulumi config set --path '[\"parent.name\"].[\"nested.name\"]' value` will set the value of \n" +
+			"    `parent.name` to a map `nested.name: value`.",
 		Args: cmdutil.RangeArgs(1, 2),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
@@ -429,7 +481,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 
 			key, err := parseConfigKey(args[0])
 			if err != nil {
-				return errors.Wrap(err, "invalid configuration key")
+				return fmt.Errorf("invalid configuration key: %w", err)
 			}
 
 			var value string
@@ -473,10 +525,9 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 
 				// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
 				if !plaintext && looksLikeSecret(key, value) {
-					return errors.Errorf(
-						"config value '%s' looks like a secret; "+
-							"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
-						value)
+					return fmt.Errorf("config value for '%s' looks like a secret; "+
+						"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
+						key)
 				}
 			}
 
@@ -507,6 +558,116 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 	return setCmd
 }
 
+func newConfigSetAllCmd(stack *string) *cobra.Command {
+	var plaintextArgs []string
+	var secretArgs []string
+	var path bool
+
+	setCmd := &cobra.Command{
+		Use:   "set-all --plaintext key1=value1 --plaintext key2=value2 --secret key3=value3",
+		Short: "Set multiple configuration values",
+		Long: "pulumi set-all allows you to set multiple configuration values in one command.\n\n" +
+			"Each key-value pair must be preceded by either the `--secret` or the `--plaintext` flag to denote whether \n" +
+			"it should be encrypted:\n\n" +
+			"  - `pulumi config set-all --secret key1=value1 --plaintext key2=value --secret key3=value3`\n\n" +
+			"The `--path` flag can be used to set values inside a map or list:\n\n" +
+			"  - `pulumi config set-all --path --plaintext \"names[0]\"=a --plaintext \"names[1]\"=b` \n" +
+			"    will set the value to a list with the first item `a` and second item `b`.\n" +
+			"  - `pulumi config set-all --path --plaintext parent.nested=value --plaintext parent.other=value2` \n" +
+			"    will set the value of `parent` to a map `{nested: value, other: value2}`.\n" +
+			"  - `pulumi config set-all --path --plaintext '[\"parent.name\"].[\"nested.name\"]'=value` will set the \n" +
+			"    value of `parent.name` to a map `nested.name: value`.",
+		Args: cmdutil.NoArgs,
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			opts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			// Ensure the stack exists.
+			s, err := requireStack(*stack, true, opts, false /*setCurrent*/)
+			if err != nil {
+				return err
+			}
+
+			ps, err := loadProjectStack(s)
+			if err != nil {
+				return err
+			}
+
+			for _, ptArg := range plaintextArgs {
+				key, value, err := parseKeyValuePair(ptArg)
+				if err != nil {
+					return err
+				}
+				v := config.NewValue(value)
+
+				err = ps.Config.Set(key, v, path)
+				if err != nil {
+					return err
+				}
+			}
+
+			for _, sArg := range secretArgs {
+				key, value, err := parseKeyValuePair(sArg)
+				if err != nil {
+					return err
+				}
+				c, cerr := getStackEncrypter(s)
+				if cerr != nil {
+					return cerr
+				}
+				enc, eerr := c.EncryptValue(value)
+				if eerr != nil {
+					return eerr
+				}
+				v := config.NewSecureValue(enc)
+
+				err = ps.Config.Set(key, v, path)
+				if err != nil {
+					return err
+				}
+			}
+
+			return saveProjectStack(s, ps)
+		}),
+	}
+
+	setCmd.PersistentFlags().BoolVar(
+		&path, "path", false,
+		"Parse the keys as paths in a map or list rather than raw strings")
+	setCmd.PersistentFlags().StringArrayVar(
+		&plaintextArgs, "plaintext", []string{},
+		"Marks a value as plaintext (unencrypted)")
+	setCmd.PersistentFlags().StringArrayVar(
+		&secretArgs, "secret", []string{},
+		"Marks a value as secret to be encrypted")
+
+	return setCmd
+}
+
+func parseKeyValuePair(pair string) (config.Key, string, error) {
+	// Split the arg on the first '=' to separate key and value.
+	splitArg := strings.SplitN(pair, "=", 2)
+
+	// Check if the key is wrapped in quote marks and split on the '=' following the wrapping quote.
+	firstChar := string([]rune(pair)[0])
+	if firstChar == "\"" || firstChar == "'" {
+		pair = strings.TrimPrefix(pair, firstChar)
+		splitArg = strings.SplitN(pair, fmt.Sprintf("%s=", firstChar), 2)
+	}
+
+	if len(splitArg) < 2 {
+		return config.Key{}, "", errors.New("config value must be in the form [key]=[value]")
+	}
+	key, err := parseConfigKey(splitArg[0])
+	if err != nil {
+		return config.Key{}, "", fmt.Errorf("invalid configuration key: %w", err)
+	}
+
+	value := splitArg[1]
+	return key, value, nil
+}
+
 var stackConfigFile string
 
 func getProjectStackPath(stack backend.Stack) (string, error) {
@@ -531,7 +692,7 @@ func saveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
 }
 
 func parseConfigKey(key string) (config.Key, error) {
-	// As a convience, we'll treat any key with no delimiter as if:
+	// As a convenience, we'll treat any key with no delimiter as if:
 	// <program-name>:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
 		proj, err := workspace.DetectProject()
@@ -607,7 +768,7 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 
 			decrypted, err := cfg[key].Value(decrypter)
 			if err != nil {
-				return errors.Wrap(err, "could not decrypt configuration value")
+				return fmt.Errorf("could not decrypt configuration value: %w", err)
 			}
 			entry.Value = &decrypted
 
@@ -629,17 +790,16 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 
 			configValues[key.String()] = entry
 		}
-		out, err := json.MarshalIndent(configValues, "", "  ")
+		err := printJSON(configValues)
 		if err != nil {
 			return err
 		}
-		fmt.Println(string(out))
 	} else {
 		rows := []cmdutil.TableRow{}
 		for _, key := range keys {
 			decrypted, err := cfg[key].Value(decrypter)
 			if err != nil {
-				return errors.Wrap(err, "could not decrypt configuration value")
+				return fmt.Errorf("could not decrypt configuration value: %w", err)
 			}
 
 			rows = append(rows, cmdutil.TableRow{Columns: []string{prettyKey(key), decrypted}})
@@ -649,6 +809,10 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 			Headers: []string{"KEY", "VALUE"},
 			Rows:    rows,
 		})
+	}
+
+	if showSecrets {
+		log3rdPartySecretsProviderDecryptionEvent(commandContext(), stack, "", "pulumi config")
 	}
 
 	return nil
@@ -671,14 +835,14 @@ func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
 		if v.Secure() {
 			var err error
 			if d, err = getStackDecrypter(stack); err != nil {
-				return errors.Wrap(err, "could not create a decrypter")
+				return fmt.Errorf("could not create a decrypter: %w", err)
 			}
 		} else {
 			d = config.NewPanicCrypter()
 		}
 		raw, err := v.Value(d)
 		if err != nil {
-			return errors.Wrap(err, "could not decrypt configuration value")
+			return fmt.Errorf("could not decrypt configuration value: %w", err)
 		}
 
 		if jsonOut {
@@ -704,11 +868,12 @@ func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
 			fmt.Printf("%v\n", raw)
 		}
 
+		log3rdPartySecretsProviderDecryptionEvent(commandContext(), stack, key.Name(), "")
+
 		return nil
 	}
 
-	return errors.Errorf(
-		"configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Ref())
+	return fmt.Errorf("configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Ref())
 }
 
 var (
@@ -741,8 +906,8 @@ func looksLikeSecret(k config.Key, v string) bool {
 	// Compute the strength use the resulting entropy to flag whether this looks like a secret.
 	info := zxcvbn.PasswordStrength(v, nil)
 	entropyPerChar := info.Entropy / float64(len(v))
-	return (info.Entropy >= entropyThreshold ||
-		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold))
+	return info.Entropy >= entropyThreshold ||
+		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold)
 }
 
 // getStackConfiguration loads configuration information for a given stack. If stackConfigFile is non empty,
@@ -750,7 +915,7 @@ func looksLikeSecret(k config.Key, v string) bool {
 func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.StackConfiguration, error) {
 	workspaceStack, err := loadProjectStack(stack)
 	if err != nil {
-		return backend.StackConfiguration{}, errors.Wrap(err, "loading stack configuration")
+		return backend.StackConfiguration{}, fmt.Errorf("loading stack configuration: %w", err)
 	}
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
@@ -765,7 +930,7 @@ func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.Sta
 
 	crypter, err := sm.Decrypter()
 	if err != nil {
-		return backend.StackConfiguration{}, errors.Wrap(err, "getting configuration decrypter")
+		return backend.StackConfiguration{}, fmt.Errorf("getting configuration decrypter: %w", err)
 	}
 
 	return backend.StackConfiguration{

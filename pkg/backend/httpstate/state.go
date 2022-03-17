@@ -20,20 +20,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type tokenRequest chan<- tokenResponse
@@ -68,7 +67,12 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 			select {
 			case <-ticker.C:
 				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
+				// If we get an error from the backend, leave `err` set and surface it during
+				// the next request for a lease token.
 				if err != nil {
+					logging.V(3).Infof("error renewing lease: %v", err)
+					err = fmt.Errorf("renewing lease: %w", err)
+
 					ticker.Stop()
 				} else {
 					token = newToken
@@ -80,6 +84,7 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 					return
 				}
 
+				// err will be non-nil if the last call to RenewUpdateLease failed.
 				resp := tokenResponse{err: err}
 				if err == nil {
 					resp.token = token
@@ -165,7 +170,7 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 	for idx, event := range events {
 		apiEvent, convErr := display.ConvertEngineEvent(event)
 		if convErr != nil {
-			return errors.Wrap(convErr, "converting engine event")
+			return fmt.Errorf("converting engine event: %w", convErr)
 		}
 
 		// Each event within an update must have a unique sequence number. Any request to
@@ -288,7 +293,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
 				"Please update your version of the Pulumi CLI", stackRef.Name())
 		default:
-			return nil, errors.Wrap(err, "could not deserialize deployment")
+			return nil, fmt.Errorf("could not deserialize deployment: %w", err)
 		}
 	}
 

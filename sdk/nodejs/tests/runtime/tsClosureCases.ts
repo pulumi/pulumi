@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// tslint:disable
+/* eslint-disable */
 
 import * as assert from "assert";
-import { EOL } from "os";
 import { runtime } from "../../index";
 import * as pulumi from "../../index";
 import { output } from "../../output";
 import { assertAsyncThrows, asyncTest } from "../util";
+import { platformIndependentEOL } from "../constants";
 import * as typescript from "typescript";
 import * as semver from "semver";
+import { z } from "mockpackage";
+
 
 import * as deploymentOnlyModule from "./deploymentOnlyModule";
 
@@ -33,6 +35,7 @@ interface ClosureCase {
     expectText?: string;            // optionally also validate the serialization to JavaScript text.
     error?: string;                 // error message we expect to be thrown if we are unable to serialize closure.
     afters?: ClosureCase[];         // an optional list of test cases to run afterwards.
+    allowSecrets?: boolean;         // optionally allow secrets to be captured.
 }
 
 /** @internal */
@@ -1047,6 +1050,27 @@ return () => { try { }
 `,
     });
 
+    {
+        const defaultValue = 1;
+
+        cases.push({
+            title: "Capture default parameters",
+            func: (arg: any = defaultValue) => {},
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ defaultValue: 1 }) {
+
+return (arg = defaultValue) => { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
     // Recursive function serialization.
     {
         const fff = "fff!";
@@ -1216,7 +1240,7 @@ return function () { return mutable; };
 
 var __v = {};
 var __v_d_proto = {};
-__f1.prototype = __v_d_proto;
+Object.defineProperty(__f1, "prototype", { value: __v_d_proto });
 Object.defineProperty(__v_d_proto, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__v_d_proto, "apply", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__v_d_proto, "get", { configurable: true, writable: true, value: __f3 });
@@ -1287,7 +1311,7 @@ return function () { console.log(v); };
 
 var __v = {};
 var __v_d1_proto = {};
-__f1.prototype = __v_d1_proto;
+Object.defineProperty(__f1, "prototype", { value: __v_d1_proto });
 Object.defineProperty(__v_d1_proto, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__v_d1_proto, "apply", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__v_d1_proto, "get", { configurable: true, writable: true, value: __f3 });
@@ -1369,7 +1393,7 @@ return function () { console.log(v); };
 
 var __v = {};
 var __v_d1_proto = {};
-__f1.prototype = __v_d1_proto;
+Object.defineProperty(__f1, "prototype", { value: __v_d1_proto });
 Object.defineProperty(__v_d1_proto, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__v_d1_proto, "apply", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__v_d1_proto, "get", { configurable: true, writable: true, value: __f3 });
@@ -1467,7 +1491,7 @@ var __v = {};
 var __v_x = {a: 1, b: true};
 __v.x = __v_x;
 var __v_o1_proto = {};
-__f1.prototype = __v_o1_proto;
+Object.defineProperty(__f1, "prototype", { value: __v_o1_proto });
 Object.defineProperty(__v_o1_proto, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__v_o1_proto, "apply", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__v_o1_proto, "get", { configurable: true, writable: true, value: __f3 });
@@ -1790,7 +1814,7 @@ __outer_b[0] = __outer;
 __outer.b = __outer_b;
 __C_prototype.m = __f1;
 __C_prototype.n = __f2;
-__C.prototype = __C_prototype;
+Object.defineProperty(__C, "prototype", { writable: true, value: __C_prototype });
 __C.m = __f3;
 
 function __C() {
@@ -1869,8 +1893,8 @@ var __outer_b = [];
 __outer_b[0] = __outer;
 __outer.b = __outer_b;
 Object.defineProperty(__f1_prototype, "n", { configurable: true, writable: true, value: __f3 });
-__f1.prototype = __f1_prototype;
-__f1.s = __f4;
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
+Object.defineProperty(__f1, "s", { configurable: true, writable: true, value: __f4 });
 
 function __f1() {
   return (function() {
@@ -1944,8 +1968,8 @@ var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__f1_prototype, "m", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__f1_prototype, "n", { configurable: true, writable: true, value: __f3 });
-__f1.prototype = __f1_prototype;
-__f1.s = __f4;
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
+Object.defineProperty(__f1, "s", { configurable: true, writable: true, value: __f4 });
 
 function __f1() {
   return (function() {
@@ -2021,8 +2045,8 @@ var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__f1_prototype, "m", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__f1_prototype, "n", { configurable: true, writable: true, value: __f3 });
-__f1.prototype = __f1_prototype;
-__f1.s = __f4;
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
+Object.defineProperty(__f1, "s", { configurable: true, writable: true, value: __f4 });
 
 function __f1() {
   return (function() {
@@ -2594,7 +2618,7 @@ return () => { return 1; };
             expectText: `exports.handler = __f;
 
 var __f_prototype = Object.create(Object.getPrototypeOf((function*(){}).prototype));
-__f.prototype = __f_prototype;
+Object.defineProperty(__f, "prototype", { writable: true, value: __f_prototype });
 Object.setPrototypeOf(__f, Object.getPrototypeOf(function*(){}));
 
 function __f() {
@@ -2619,7 +2643,7 @@ return function* /*f*/() { yield 1; };
             expectText: `exports.handler = __f0;
 
 var __f0_prototype = Object.create(Object.getPrototypeOf((function*(){}).prototype));
-__f0.prototype = __f0_prototype;
+Object.defineProperty(__f0, "prototype", { writable: true, value: __f0_prototype });
 Object.setPrototypeOf(__f0, Object.getPrototypeOf(function*(){}));
 
 function __f0() {
@@ -2660,7 +2684,7 @@ return function* () { yield 1; };
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__f1_prototype, "foo", { configurable: true, get: __f2, set: __f3 });
-__f1.prototype = __f1_prototype;
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 
 function __f1() {
   return (function() {
@@ -2712,6 +2736,71 @@ return () => C;
     }
 
     {
+        class C {
+            static get foo() {
+                throw new Error("This getter function should not be evaluated while closure serialization.")
+            }
+
+            static set foo(v: number) {
+                throw new Error("This setter function should not be evaluated while closure serialization.")
+            }
+        }
+
+        cases.push({
+            title: "Test getter/setter #2",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+Object.defineProperty(__f1, "foo", { configurable: true, get: __f2, set: __f3 });
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*foo*/() {
+                throw new Error("This getter function should not be evaluated while closure serialization.");
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3(__0) {
+  return (function() {
+    with({  }) {
+
+return function /*foo*/(v) {
+                throw new Error("This setter function should not be evaluated while closure serialization.");
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         const methodName = "method name";
         class C {
             [methodName](a: number) {
@@ -2727,7 +2816,7 @@ return () => C;
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__f1_prototype, "method name", { configurable: true, writable: true, value: __f2 });
-__f1.prototype = __f1_prototype;
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 
 function __f1() {
   return (function() {
@@ -2784,7 +2873,7 @@ Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writa
 var __sym = Object.create(global.Symbol.prototype);
 Object.defineProperty(__f1_prototype, "getSym", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__f1_prototype, __sym, { configurable: true, writable: true, value: __f3 });
-__f1.prototype = __f1_prototype;
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 
 function __f1() {
   return (function() {
@@ -2846,7 +2935,7 @@ return () => C;
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__f1_prototype, Symbol.iterator, { configurable: true, writable: true, value: __f2 });
-__f1.prototype = __f1_prototype;
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 
 function __f1() {
   return (function() {
@@ -2916,12 +3005,12 @@ var __f2_prototype = {};
 Object.defineProperty(__f2_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__f2_prototype, "dMethod", { configurable: true, writable: true, value: __f3 });
 Object.defineProperty(__f2_prototype, "dVirtual", { configurable: true, writable: true, value: __f4 });
-__f2.prototype = __f2_prototype;
+Object.defineProperty(__f2, "prototype", { value: __f2_prototype });
 var __f1_prototype = Object.create(__f2_prototype);
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__f1_prototype, "cMethod", { configurable: true, writable: true, value: __f5 });
 Object.defineProperty(__f1_prototype, "dVirtual", { configurable: true, writable: true, value: __f6 });
-__f1.prototype = __f1_prototype;
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 Object.setPrototypeOf(__f1, __f2);
 
 function __f2(__0) {
@@ -3040,16 +3129,16 @@ return () => C;
 var __f3_prototype = {};
 Object.defineProperty(__f3_prototype, "constructor", { configurable: true, writable: true, value: __f3 });
 Object.defineProperty(__f3_prototype, "method", { configurable: true, writable: true, value: __f4 });
-__f3.prototype = __f3_prototype;
+Object.defineProperty(__f3, "prototype", { value: __f3_prototype });
 var __f2_prototype = Object.create(__f3_prototype);
 Object.defineProperty(__f2_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__f2_prototype, "method", { configurable: true, writable: true, value: __f5 });
-__f2.prototype = __f2_prototype;
+Object.defineProperty(__f2, "prototype", { value: __f2_prototype });
 Object.setPrototypeOf(__f2, __f3);
 var __f1_prototype = Object.create(__f2_prototype);
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__f1_prototype, "method", { configurable: true, writable: true, value: __f6 });
-__f1.prototype = __f1_prototype;
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 Object.setPrototypeOf(__f1, __f2);
 
 function __f3(__0) {
@@ -3170,16 +3259,16 @@ var __f3_prototype = {};
 Object.defineProperty(__f3_prototype, "constructor", { configurable: true, writable: true, value: __f3 });
 var __f3_prototype_sym = Object.create(global.Symbol.prototype);
 Object.defineProperty(__f3_prototype, __f3_prototype_sym, { configurable: true, writable: true, value: __f4 });
-__f3.prototype = __f3_prototype;
+Object.defineProperty(__f3, "prototype", { value: __f3_prototype });
 var __f2_prototype = Object.create(__f3_prototype);
 Object.defineProperty(__f2_prototype, "constructor", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__f2_prototype, __f3_prototype_sym, { configurable: true, writable: true, value: __f5 });
-__f2.prototype = __f2_prototype;
+Object.defineProperty(__f2, "prototype", { value: __f2_prototype });
 Object.setPrototypeOf(__f2, __f3);
 var __f1_prototype = Object.create(__f2_prototype);
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__f1_prototype, __f3_prototype_sym, { configurable: true, writable: true, value: __f6 });
-__f1.prototype = __f1_prototype;
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 Object.setPrototypeOf(__f1, __f2);
 
 function __f3(__0) {
@@ -3290,11 +3379,11 @@ return () => C;
             func: () => B,
             expectText: `exports.handler = __f0;
 
-__f2.method = __f3;
+Object.defineProperty(__f2, "method", { configurable: true, writable: true, value: __f3 });
 var __f2_sym = Object.create(global.Symbol.prototype);
-__f2[__f2_sym] = __f4;
-__f1.method = __f5;
-__f1[__f2_sym] = __f6;
+Object.defineProperty(__f2, __f2_sym, { configurable: true, writable: true, value: __f4 });
+Object.defineProperty(__f1, "method", { configurable: true, writable: true, value: __f5 });
+Object.defineProperty(__f1, __f2_sym, { configurable: true, writable: true, value: __f6 });
 Object.setPrototypeOf(__f1, __f2);
 
 function __f2(__0) {
@@ -4319,7 +4408,7 @@ return function /*f1*/() {
             expectText: `exports.handler = __f0;
 
 var __o_proto = {};
-__f1.prototype = __o_proto;
+Object.defineProperty(__f1, "prototype", { value: __o_proto });
 Object.defineProperty(__o_proto, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__o_proto, "m", { configurable: true, writable: true, value: __f2 });
 var __o = Object.create(__o_proto);
@@ -4382,7 +4471,7 @@ return function () { o.m(); };
             expectText: `exports.handler = __f0;
 
 var __o_proto = {};
-__f1.prototype = __o_proto;
+Object.defineProperty(__f1, "prototype", { value: __o_proto });
 Object.defineProperty(__o_proto, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__o_proto, "m", { configurable: true, writable: true, value: __f2 });
 var __o = Object.create(__o_proto);
@@ -4542,11 +4631,11 @@ return function () { o["m"](); };
             expectText: `exports.handler = __f0;
 
 var __o_proto_proto = {};
-__f1.prototype = __o_proto_proto;
+Object.defineProperty(__f1, "prototype", { value: __o_proto_proto });
 Object.defineProperty(__o_proto_proto, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__o_proto_proto, "m", { configurable: true, writable: true, value: __f2 });
 var __o_proto = Object.create(__o_proto_proto);
-__f3.prototype = __o_proto;
+Object.defineProperty(__f3, "prototype", { value: __o_proto });
 Object.setPrototypeOf(__f3, __f1);
 Object.defineProperty(__o_proto, "constructor", { configurable: true, writable: true, value: __f3 });
 Object.defineProperty(__o_proto, "n", { configurable: true, writable: true, value: __f4 });
@@ -4639,11 +4728,11 @@ return function () { o.m(); };
             expectText: `exports.handler = __f0;
 
 var __o_proto_proto = {};
-__f1.prototype = __o_proto_proto;
+Object.defineProperty(__f1, "prototype", { value: __o_proto_proto });
 Object.defineProperty(__o_proto_proto, "constructor", { configurable: true, writable: true, value: __f1 });
 Object.defineProperty(__o_proto_proto, "m", { configurable: true, writable: true, value: __f2 });
 var __o_proto = Object.create(__o_proto_proto);
-__f3.prototype = __o_proto;
+Object.defineProperty(__f3, "prototype", { value: __o_proto });
 Object.setPrototypeOf(__f3, __f1);
 Object.defineProperty(__o_proto, "constructor", { configurable: true, writable: true, value: __f3 });
 Object.defineProperty(__o_proto, "n", { configurable: true, writable: true, value: __f4 });
@@ -6021,7 +6110,7 @@ return function () { typescript.parseCommandLine([""]); };
            expectText: `exports.handler = __f0;
 
 var __testConfig_proto = {};
-__f1.prototype = __testConfig_proto;
+Object.defineProperty(__f1, "prototype", { value: __testConfig_proto });
 Object.defineProperty(__testConfig_proto, "constructor", { configurable: true, writable: true, value: __f1 });
 var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
 var __runtimeConfig_1 = {getConfig: __getConfig};
@@ -6112,7 +6201,7 @@ var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "Te
 var __runtimeConfig_1 = {getConfig: __getConfig};
 Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f3 });
-__f1.prototype = __f1_prototype;
+Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 var __deploymentOnlyModule = {Config: __f1};
 
 function __f1(__0) {
@@ -6516,12 +6605,95 @@ return function () { console.log(regex); foo(); };
         const s = pulumi.secret("can't capture me");
 
         cases.push({
-            title: "Can't capture secrets",
+            title: "Can't capture secrets without allowSecrets",
             func: function() {
                 console.log(s.get());
             },
             error: "Secret outputs cannot be captured by a closure.",
         });
+    }
+
+    {
+        const s = pulumi.secret("can't capture me");
+
+        cases.push({
+            title: "Can capture secrets with allowSecrets",
+            func: function() {
+                console.log(s.get());
+            },
+            allowSecrets: true,
+            expectText: `(...)`,
+        });
+    }
+    {
+        type LambdaInput = {
+            message: string,
+        }
+
+        // @ts-ignore
+        const getSchemaValidator = (): z.ZodSchema<LambdaInput> => z.object({
+            message: z.string(),
+        });
+
+        async function reproHandler(input: any) {
+            const payload = getSchemaValidator().parse(input);
+            console.log(payload.message);
+            return {
+            }
+        }
+
+        cases.push({
+          title: "Respects package.json exports",
+          func: reproHandler,
+          expectText: `exports.handler = __reproHandler;
+
+function __f0(__0, __1, __2, __3) {
+  return (function() {
+    with({  }) {
+
+return function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f1() {
+  return (function() {
+    with({ mockpackage_1: require("mockpackage") }) {
+
+return () => mockpackage_1.z.object({
+            message: mockpackage_1.z.string(),
+        });
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __reproHandler(__0) {
+  return (function() {
+    with({ __awaiter: __f0, getSchemaValidator: __f1, reproHandler: __reproHandler }) {
+
+return function /*reproHandler*/(input) {
+            return __awaiter(this, void 0, void 0, function* () {
+                const payload = getSchemaValidator().parse(input);
+                console.log(payload.message);
+                return {};
+            });
+        };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        })
     }
 
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
@@ -6585,10 +6757,15 @@ return function () { console.log(regex); foo(); };
 
     async function serializeFunction(test: ClosureCase) {
         if (test.func) {
-            return await runtime.serializeFunction(test.func);
+            return await runtime.serializeFunction(test.func, {
+              allowSecrets: test.allowSecrets,
+            });
         }
         else if (test.factoryFunc) {
-            return await runtime.serializeFunction(test.factoryFunc!, { isFactoryFunction: true });
+            return await runtime.serializeFunction(test.factoryFunc!, {
+              allowSecrets: test.allowSecrets,
+              isFactoryFunction: true,
+            });
         }
         else {
             throw new Error("Have to supply [func] or [factoryFunc]!");
@@ -6616,15 +6793,18 @@ return function () { console.log(regex); foo(); };
 function compareTextWithWildcards(expected: string, actual: string) {
     const wildcard = "(...)";
 
+    expected = expected.replace(platformIndependentEOL, '\n');
+    actual = actual.replace(platformIndependentEOL, '\n');
+
     if (!expected.includes(wildcard)) {
         // We get a nice diff view if we diff the entire string, so do that
         // if we didn't get a wildcard.
-        assert.equal(actual, expected);
+        assert.strictEqual(actual, expected);
         return;
     }
 
-    const expectedLines = expected.split(EOL);
-    const actualLines = actual.split(EOL);
+    const expectedLines = expected.split('\n');
+    const actualLines = actual.split('\n');
     let actualIndex = 0;
     for (let expectedIndex = 0; expectedIndex < expectedLines.length; expectedIndex++) {
         const expectedLine = expectedLines[expectedIndex].trim();
@@ -6648,7 +6828,7 @@ function compareTextWithWildcards(expected: string, actual: string) {
             const line = actualLines[actualIndex++].trim();
             const index = expectedLine.indexOf(wildcard);
             const indexAfter = index + wildcard.length;
-            assert.equal(line.substring(0, index), expectedLine.substring(0, index));
+            assert.strictEqual(line.substring(0, index), expectedLine.substring(0, index));
 
             if (indexAfter === expectedLine.length) {
                 continue;
@@ -6660,9 +6840,9 @@ function compareTextWithWildcards(expected: string, actual: string) {
                 }
             }
 
-            assert.equal(line.substring(repetitionIndex), expectedLine.substring(indexAfter));
+            assert.strictEqual(line.substring(repetitionIndex), expectedLine.substring(indexAfter));
         } else {
-            assert.equal(actualLines[actualIndex++].trim(), expectedLine);
+            assert.strictEqual(actualLines[actualIndex++].trim(), expectedLine);
         }
     }
 }

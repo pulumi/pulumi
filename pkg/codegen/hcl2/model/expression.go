@@ -22,8 +22,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 )
@@ -1034,7 +1034,13 @@ func (x *FunctionCallExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 	typecheckDiags := typecheckArgs(rng, x.Signature, x.Args...)
 	diagnostics = append(diagnostics, typecheckDiags...)
 
-	x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, x.Args...)
+	// Unless the function is already automatically using an
+	// Output-returning version, modify the signature to account
+	// for automatic lifting to Promise or Output.
+	_, isOutput := x.Signature.ReturnType.(*OutputType)
+	if !isOutput {
+		x.Signature.ReturnType = liftOperationType(x.Signature.ReturnType, x.Args...)
+	}
 	return diagnostics
 }
 
@@ -1311,7 +1317,8 @@ func (x *LiteralValueExpression) NodeTokens() syntax.NodeTokens {
 // Type returns the type of the literal value expression.
 func (x *LiteralValueExpression) Type() Type {
 	if x.exprType == nil {
-		x.exprType = ctyTypeToType(x.Value.Type(), false)
+		typ := ctyTypeToType(x.Value.Type(), false)
+		x.exprType = NewConstType(typ, x.Value)
 	}
 	return x.exprType
 }
@@ -1327,6 +1334,7 @@ func (x *LiteralValueExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 	switch {
 	case typ == NoneType || typ == StringType || typ == IntType || typ == NumberType || typ == BoolType:
 		// OK
+		typ = NewConstType(typ, x.Value)
 	default:
 		var rng hcl.Range
 		if x.Syntax != nil {
@@ -2211,7 +2219,7 @@ func (x *TemplateExpression) print(w io.Writer, p *printer) {
 
 	// Print the expressions.
 	for _, part := range x.Parts {
-		if lit, ok := part.(*LiteralValueExpression); ok && lit.Type() == StringType {
+		if lit, ok := part.(*LiteralValueExpression); ok && StringType.AssignableFrom(lit.Type()) {
 			lit.printLit(w, p, !isHeredoc)
 		} else {
 			p.fprintf(w, "%v", part)

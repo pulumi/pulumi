@@ -16,8 +16,8 @@ package tests
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
-	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,24 +33,39 @@ func deleteIfNotFailed(e *ptesting.Environment) {
 // ever been updated.
 func assertHasNoHistory(e *ptesting.Environment) {
 	// NOTE: pulumi returns with exit code 0 in this scenario.
-	out, err := e.RunCommand("pulumi", "history")
+	out, err := e.RunCommand("pulumi", "stack", "history")
 	assert.Equal(e.T, "", err)
 	assert.Equal(e.T, "Stack has never been updated\n", out)
 }
+
+// assertNoResultsOnPage runs `pulumi history` and confirms an error that the stack has no
+// updates in the given pagination window
+func assertNoResultsOnPage(e *ptesting.Environment) {
+	// NOTE: pulumi returns with exit code 0 in this scenario.
+	out, err := e.RunCommand("pulumi", "stack", "history", "--page-size", "1", "--page", "10000000")
+	assert.Equal(e.T, "", err)
+	assert.Equal(e.T, "No stack updates found on page '10000000'\n", out)
+}
 func TestHistoryCommand(t *testing.T) {
+	t.Parallel()
+
 	// We fail if no stack is selected.
 	t.Run("NoStackSelected", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-		out, err := e.RunCommandExpectError("pulumi", "history")
+		out, err := e.RunCommandExpectError("pulumi", "stack", "history")
 		assert.Equal(t, "", out)
 		assert.Contains(t, err, "error: no stack selected")
 	})
 
 	// We don't display any history for a stack that has never been updated.
 	t.Run("NoUpdates", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
@@ -61,6 +76,8 @@ func TestHistoryCommand(t *testing.T) {
 
 	// The "history" command uses the currently selected stack.
 	t.Run("CurrentlySelectedStack", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
@@ -74,15 +91,21 @@ func TestHistoryCommand(t *testing.T) {
 		// Update the history-test stack.
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview", "-m", "this is an updated stack")
 		// Confirm we see the update message in thie history output.
-		out, err := e.RunCommand("pulumi", "history")
+		out, err := e.RunCommand("pulumi", "stack", "history")
 		assert.Equal(t, "", err)
 		assert.Contains(t, out, "this is an updated stack")
+		// Confirm we see the update message in thie history output, with pagination.
+		out, err = e.RunCommand("pulumi", "stack", "history", "--page-size", "1")
+		assert.Equal(t, "", err)
+		assert.Contains(t, out, "this is an updated stack")
+		// Get an error message when we page too far
+		assertNoResultsOnPage(e)
 		// Change stack and confirm the history command honors the selected stack.
 		e.RunCommand("pulumi", "stack", "select", "stack-without-updates")
 		assertHasNoHistory(e)
 		// Change stack back, and confirm still has history.
 		e.RunCommand("pulumi", "stack", "select", "history-test")
-		out, err = e.RunCommand("pulumi", "history")
+		out, err = e.RunCommand("pulumi", "stack", "history")
 		assert.Equal(t, "", err)
 		assert.Contains(t, out, "this is an updated stack")
 	})

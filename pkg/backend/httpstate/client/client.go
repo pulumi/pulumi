@@ -17,29 +17,28 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"regexp"
 	"strconv"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/util/validation"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/util/validation"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
@@ -209,25 +208,27 @@ type ListStacksFilter struct {
 
 // ListStacks lists all stacks the current user has access to, optionally filtered by project.
 func (pc *Client) ListStacks(
-	ctx context.Context, filter ListStacksFilter) ([]apitype.StackSummary, error) {
+	ctx context.Context, filter ListStacksFilter, inContToken *string) ([]apitype.StackSummary, *string, error) {
 	queryFilter := struct {
-		Project      *string `url:"project,omitempty"`
-		Organization *string `url:"organization,omitempty"`
-		TagName      *string `url:"tagName,omitempty"`
-		TagValue     *string `url:"tagValue,omitempty"`
+		Project           *string `url:"project,omitempty"`
+		Organization      *string `url:"organization,omitempty"`
+		TagName           *string `url:"tagName,omitempty"`
+		TagValue          *string `url:"tagValue,omitempty"`
+		ContinuationToken *string `url:"continuationToken,omitempty"`
 	}{
-		Project:      filter.Project,
-		Organization: filter.Organization,
-		TagName:      filter.TagName,
-		TagValue:     filter.TagValue,
+		Project:           filter.Project,
+		Organization:      filter.Organization,
+		TagName:           filter.TagName,
+		TagValue:          filter.TagValue,
+		ContinuationToken: inContToken,
 	}
 
 	var resp apitype.ListStacksResponse
 	if err := pc.restCall(ctx, "GET", "/api/user/stacks", queryFilter, nil, &resp); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return resp.Stacks, nil
+	return resp.Stacks, resp.ContinuationToken, nil
 }
 
 var (
@@ -302,7 +303,7 @@ func (pc *Client) CreateStack(
 	ctx context.Context, stackID StackIdentifier, tags map[apitype.StackTagName]string) (apitype.Stack, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackProperties(stackID.Stack, tags); err != nil {
-		return apitype.Stack{}, errors.Wrap(err, "validating stack properties")
+		return apitype.Stack{}, fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	stack := apitype.Stack{
@@ -373,10 +374,53 @@ func (pc *Client) DecryptValue(ctx context.Context, stack StackIdentifier, ciphe
 	return resp.Plaintext, nil
 }
 
+func (pc *Client) Log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, stack StackIdentifier,
+	secretName string) error {
+	req := apitype.Log3rdPartyDecryptionEvent{SecretName: secretName}
+	if err := pc.restCall(ctx, "POST", path.Join(getStackPath(stack, "decrypt"), "log-decryption"),
+		nil, &req, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pc *Client) LogBulk3rdPartySecretsProviderDecryptionEvent(ctx context.Context, stack StackIdentifier,
+	command string) error {
+	req := apitype.Log3rdPartyDecryptionEvent{CommandName: command}
+	if err := pc.restCall(ctx, "POST", path.Join(getStackPath(stack, "decrypt"), "log-batch-decryption"), nil,
+		&req, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+// BulkDecryptValue decrypts a ciphertext value in the context of the indicated stack.
+func (pc *Client) BulkDecryptValue(ctx context.Context, stack StackIdentifier,
+	ciphertexts [][]byte) (map[string][]byte, error) {
+	req := apitype.BulkDecryptValueRequest{Ciphertexts: ciphertexts}
+	var resp apitype.BulkDecryptValueResponse
+	if err := pc.restCall(ctx, "POST", getStackPath(stack, "batch-decrypt"), nil, &req, &resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Plaintexts, nil
+}
+
 // GetStackUpdates returns all updates to the indicated stack.
-func (pc *Client) GetStackUpdates(ctx context.Context, stack StackIdentifier) ([]apitype.UpdateInfo, error) {
+func (pc *Client) GetStackUpdates(
+	ctx context.Context,
+	stack StackIdentifier,
+	pageSize int,
+	page int) ([]apitype.UpdateInfo, error) {
 	var response apitype.GetHistoryResponse
-	if err := pc.restCall(ctx, "GET", getStackPath(stack, "updates"), nil, nil, &response); err != nil {
+	path := getStackPath(stack, "updates")
+	if pageSize > 0 {
+		if page < 1 {
+			page = 1
+		}
+		path += fmt.Sprintf("?pageSize=%d&page=%d", pageSize, page)
+	}
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &response); err != nil {
 		return nil, err
 	}
 
@@ -466,7 +510,7 @@ func (pc *Client) CreateUpdate(
 	// Create the initial update object.
 	var endpoint string
 	switch kind {
-	case apitype.UpdateUpdate:
+	case apitype.UpdateUpdate, apitype.ResourceImportUpdate:
 		endpoint = "update"
 	case apitype.PreviewUpdate:
 		endpoint = "preview"
@@ -509,7 +553,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 
 	// Validate names and tags.
 	if err := validation.ValidateStackProperties(update.StackIdentifier.Stack, tags); err != nil {
-		return 0, "", errors.Wrap(err, "validating stack properties")
+		return 0, "", fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	req := apitype.StartUpdateRequest{
@@ -525,23 +569,27 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 }
 
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
-func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
+func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string, inContToken *string) (
+	apitype.ListPolicyGroupsResponse, *string, error) {
+	// NOTE: The ListPolicyGroups API on the Pulumi Service is not currently paginated.
 	var resp apitype.ListPolicyGroupsResponse
 	err := pc.restCall(ctx, "GET", listPolicyGroupsPath(orgName), nil, nil, &resp)
 	if err != nil {
-		return resp, errors.Wrapf(err, "List Policy Groups failed")
+		return resp, nil, fmt.Errorf("List Policy Groups failed: %w", err)
 	}
-	return resp, nil
+	return resp, nil, nil
 }
 
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
-func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
+func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContToken *string) (
+	apitype.ListPolicyPacksResponse, *string, error) {
+	// NOTE: The ListPolicyPacks API on the Pulumi Service is not currently paginated.
 	var resp apitype.ListPolicyPacksResponse
 	err := pc.restCall(ctx, "GET", listPolicyPacksPath(orgName), nil, nil, &resp)
 	if err != nil {
-		return resp, errors.Wrapf(err, "List Policy Packs failed")
+		return resp, nil, fmt.Errorf("List Policy Packs failed: %w", err)
 	}
-	return resp, nil
+	return resp, nil, nil
 }
 
 // PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes
@@ -593,22 +641,26 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
 	if err != nil {
-		return "", errors.Wrapf(err, "Publish policy pack failed")
+		return "", fmt.Errorf("Publish policy pack failed: %w", err)
 	}
 
 	//
-	// Step 2: Upload the compressed PolicyPack directory to the presigned S3 URL. The PolicyPack is
-	// now published.
+	// Step 2: Upload the compressed PolicyPack directory to the pre-signed object storage service URL.
+	// The PolicyPack is now published.
 	//
 
-	putS3Req, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
+	putReq, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
 	if err != nil {
-		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+		return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
 	}
 
-	_, err = http.DefaultClient.Do(putS3Req)
+	for k, v := range resp.RequiredHeaders {
+		putReq.Header.Add(k, v)
+	}
+
+	_, err = http.DefaultClient.Do(putReq)
 	if err != nil {
-		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
+		return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
 	}
 
 	//
@@ -625,7 +677,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	err = pc.restCall(ctx, "POST",
 		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, version), nil, nil, nil)
 	if err != nil {
-		return "", errors.Wrapf(err, "Request to signal completion of the publish operation failed")
+		return "", fmt.Errorf("Request to signal completion of the publish operation failed: %w", err)
 	}
 
 	return version, nil
@@ -688,7 +740,7 @@ func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName, policyGroup,
 
 	err := pc.restCall(ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup), nil, req, nil)
 	if err != nil {
-		return errors.Wrapf(err, "Enable policy pack failed")
+		return fmt.Errorf("Enable policy pack failed: %w", err)
 	}
 	return nil
 }
@@ -700,7 +752,7 @@ func (pc *Client) GetPolicyPackSchema(ctx context.Context, orgName,
 	err := pc.restCall(ctx, http.MethodGet,
 		getPolicyPackConfigSchemaPath(orgName, policyPackName, versionTag), nil, nil, &resp)
 	if err != nil {
-		return nil, errors.Wrap(err, "Retrieving policy pack config schema failed")
+		return nil, fmt.Errorf("Retrieving policy pack config schema failed: %w", err)
 	}
 	return &resp, nil
 }
@@ -724,7 +776,7 @@ func (pc *Client) DisablePolicyPack(ctx context.Context, orgName string, policyG
 
 	err := pc.restCall(ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup), nil, req, nil)
 	if err != nil {
-		return errors.Wrapf(err, "Request to disable policy pack failed")
+		return fmt.Errorf("Request to disable policy pack failed: %w", err)
 	}
 	return nil
 }
@@ -734,7 +786,7 @@ func (pc *Client) RemovePolicyPack(ctx context.Context, orgName string, policyPa
 	path := deletePolicyPackPath(orgName, policyPackName)
 	err := pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil)
 	if err != nil {
-		return errors.Wrapf(err, "Request to remove policy pack failed")
+		return fmt.Errorf("Request to remove policy pack failed: %w", err)
 	}
 	return nil
 }
@@ -747,30 +799,24 @@ func (pc *Client) RemovePolicyPackByVersion(ctx context.Context, orgName string,
 	path := deletePolicyPackVersionPath(orgName, policyPackName, versionTag)
 	err := pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil)
 	if err != nil {
-		return errors.Wrapf(err, "Request to remove policy pack failed")
+		return fmt.Errorf("Request to remove policy pack failed: %w", err)
 	}
 	return nil
 }
 
 // DownloadPolicyPack applies a `PolicyPack` to the Pulumi organization.
-func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) ([]byte, error) {
+func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCloser, error) {
 	getS3Req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
+		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
 	}
 
 	resp, err := http.DefaultClient.Do(getS3Req)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
-	}
-	defer resp.Body.Close()
-
-	tarball, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
+		return nil, fmt.Errorf("Failed to download compressed PolicyPack: %w", err)
 	}
 
-	return tarball, nil
+	return resp.Body, nil
 }
 
 // GetUpdateEvents returns all events, taking an optional continuation token from a previous call.

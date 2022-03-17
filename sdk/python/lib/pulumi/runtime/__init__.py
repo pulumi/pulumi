@@ -18,29 +18,82 @@ The runtime implementation of the Pulumi Python SDK.
 
 from .config import (
     set_config,
+    set_all_config,
     get_config,
     get_config_env,
     get_config_env_key,
+    get_config_secret_keys_env,
+    is_config_secret,
 )
 
 from .mocks import (
     Mocks,
     set_mocks,
     test,
+    MockResourceArgs,
+    MockCallArgs,
 )
 
 from .settings import (
     Settings,
     configure,
     is_dry_run,
+    reset_options,
+    get_root_resource,
 )
 
 from .stack import (
     run_in_stack,
-    get_root_resource,
     register_stack_transformation,
 )
 
 from .invoke import (
     invoke,
+    call,
 )
+
+from ._json import (
+    to_json,
+)
+
+from .rpc import (
+    ResourceModule,
+    ResourcePackage,
+    register_resource_module,
+    register_resource_package,
+)
+
+__all__ = [
+    # config
+    "set_config",
+    "set_all_config",
+    "get_config",
+    "get_config_env",
+    "get_config_env_key",
+    # mocks
+    "Mocks",
+    "set_mocks",
+    "test",
+    "MockCallArgs",
+    "MockResourceArgs",
+    # settings
+    "Settings",
+    "configure",
+    "is_dry_run",
+    "reset_options",
+    "get_root_resource",
+    # stack
+    "run_in_stack",
+    "register_stack_transformation",
+    # invoke
+    "invoke",
+    # _json
+    "to_json",
+    # rpc
+    "ResourceModule",
+    "ResourcePackage",
+    "register_resource_module",
+    "register_resource_package",
+    # submodules
+    "rpc",
+]

@@ -1,336 +1,594 @@
-// Copyright 2016-2018, Pulumi Corporation.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package deploy
 
 import (
-	"context"
-	"math"
+	"fmt"
+	"sort"
+	"strings"
+	"time"
 
-	"github.com/blang/semver"
-	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
+	"github.com/mitchellh/copystructure"
 
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
-	"github.com/pulumi/pulumi/pkg/v2/resource/graph"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// BackendClient provides an interface for retrieving information about other stacks.
-type BackendClient interface {
-	// GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
-	GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error)
-
-	// GetStackResourceOutputs returns the resource outputs for a stack, or an error if the stack
-	// cannot be found. Resources are retrieved from the latest stack snapshot, which may include
-	// ongoing updates. They are returned in a `PropertyMap` mapping resource URN to another
-	// `Propertymap` with members `type` (containing the Pulumi type ID for the resource) and
-	// `outputs` (containing the resource outputs themselves).
-	GetStackResourceOutputs(ctx context.Context, stackName string) (resource.PropertyMap, error)
-}
-
-// Options controls the planning and deployment process.
-type Options struct {
-	Events            Events         // an optional events callback interface.
-	Parallel          int            // the degree of parallelism for resource operations (<=1 for serial).
-	Refresh           bool           // whether or not to refresh before executing the plan.
-	RefreshOnly       bool           // whether or not to exit after refreshing.
-	RefreshTargets    []resource.URN // The specific resources to refresh during a refresh op.
-	ReplaceTargets    []resource.URN // Specific resources to replace.
-	DestroyTargets    []resource.URN // Specific resources to destroy.
-	UpdateTargets     []resource.URN // Specific resources to update.
-	TargetDependents  bool           // true if we're allowing things to proceed, even with unspecified targets
-	TrustDependencies bool           // whether or not to trust the resource dependency graph.
-	UseLegacyDiff     bool           // whether or not to use legacy diffing behavior.
-}
-
-// DegreeOfParallelism returns the degree of parallelism that should be used during the
-// planning and deployment process.
-func (o Options) DegreeOfParallelism() int {
-	if o.Parallel <= 1 {
-		return 1
-	}
-	return o.Parallel
-}
-
-// InfiniteParallelism returns whether or not the requested level of parallelism is unbounded.
-func (o Options) InfiniteParallelism() bool {
-	return o.Parallel == math.MaxInt32
-}
-
-// StepExecutorEvents is an interface that can be used to hook resource lifecycle events.
-type StepExecutorEvents interface {
-	OnResourceStepPre(step Step) (interface{}, error)
-	OnResourceStepPost(ctx interface{}, step Step, status resource.Status, err error) error
-	OnResourceOutputs(step Step) error
-}
-
-// PolicyEvents is an interface that can be used to hook policy violation events.
-type PolicyEvents interface {
-	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
-}
-
-// Events is an interface that can be used to hook interesting engine/planning events.
-type Events interface {
-	StepExecutorEvents
-	PolicyEvents
-}
-
-// PlanPendingOperationsError is an error returned from `NewPlan` if there exist pending operations in the
-// snapshot that we are preparing to operate upon. The engine does not allow any operations to be pending
-// when operating on a snapshot.
-type PlanPendingOperationsError struct {
-	Operations []resource.Operation
-}
-
-func (p PlanPendingOperationsError) Error() string {
-	return "one or more operations are currently pending"
-}
-
-// Plan is the output of analyzing resource graphs and contains the steps necessary to perform an infrastructure
-// deployment.  A plan can be generated out of whole cloth from a resource graph -- in the case of new deployments --
-// however, it can alternatively be generated by diffing two resource graphs -- in the case of updates to existing
-// stacks (presumably more common).  The plan contains step objects that can be used to drive a deployment.
+// A Plan is a mapping from URNs to ResourcePlans. The plan defines an expected set of resources and the expected
+// inputs and operations for each. The inputs and operations are treated as constraints, and may allow for inputs or
+// operations that do not exactly match those recorded in the plan. In the case of inputs, unknown values in the plan
+// accept any value (including no value) as valid. For operations, a same step is allowed in place of an update or
+// a replace step, and an update is allowed in place of a replace step. All resource options are required to match
+// exactly.
 type Plan struct {
-	ctx                  *plugin.Context                  // the plugin context (for provider operations).
-	target               *Target                          // the deployment target.
-	prev                 *Snapshot                        // the old resource snapshot for comparison.
-	olds                 map[resource.URN]*resource.State // a map of all old resources.
-	source               Source                           // the source of new resources.
-	localPolicyPackPaths []string                         // the policy packs to run during this plan's generation.
-	preview              bool                             // true if this plan is to be previewed rather than applied.
-	depGraph             *graph.DependencyGraph           // the dependency graph of the old snapshot
-	providers            *providers.Registry              // the provider registry for this plan.
+	ResourcePlans map[resource.URN]*ResourcePlan
+	Manifest      Manifest
+	// The configuration in use during the plan.
+	Config config.Map
 }
 
-// addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
-// information for these providers is sourced from the snapshot's manifest; inputs parameters are sourced from the
-// stack's configuration.
-func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
-	if prev == nil {
+func NewPlan(config config.Map) Plan {
+	manifest := Manifest{
+		Time:    time.Now(),
+		Version: version.Version,
+		// Plugins: sm.plugins, - Explicitly dropped, since we don't use the plugin list in the manifest anymore.
+	}
+	manifest.Magic = manifest.NewMagic()
+
+	return Plan{
+		ResourcePlans: make(map[resource.URN]*ResourcePlan),
+		Manifest:      manifest,
+		Config:        config,
+	}
+}
+
+// Clone makes a deep copy of the given plan and returns a pointer to the clone.
+func (plan *Plan) Clone() *Plan {
+	return copystructure.Must(copystructure.Copy(plan)).(*Plan)
+}
+
+// PlanDiff holds the results of diffing two object property maps.
+type PlanDiff struct {
+	Adds    resource.PropertyMap   // the resource's properties we expect to add.
+	Deletes []resource.PropertyKey // the resource's properties we expect to delete.
+	Updates resource.PropertyMap   // the resource's properties we expect to update.
+}
+
+// Returns true if the Deletes array contains the given key
+func (planDiff *PlanDiff) ContainsDelete(key resource.PropertyKey) bool {
+	found := false
+	for i := range planDiff.Deletes {
+		if planDiff.Deletes[i] == key {
+			found = true
+			break
+		}
+	}
+	return found
+}
+
+func (planDiff *PlanDiff) MakeError(
+	key resource.PropertyKey,
+	actualOperation string,
+	actualValue *resource.PropertyValue) string {
+
+	// diff wants to do 'actualOperation' (one of '+', '~', '-', '=') but plan differs. This function looks up what
+	// key wanted to do to print a more useful error message
+
+	// See if the plan was an add, remove, update, or nothing to give a better error message
+	var expectedOperation string
+	var expectedValue *resource.PropertyValue
+	if expected, has := planDiff.Adds[key]; has {
+		expectedValue = &expected
+		expectedOperation = "+"
+	} else if expected, has = planDiff.Updates[key]; has {
+		expectedValue = &expected
+		expectedOperation = "~"
+	} else if planDiff.ContainsDelete(key) {
+		expectedOperation = "-"
+	} else {
+		expectedOperation = "="
+	}
+	diff := ""
+	if actualValue != nil && expectedValue != nil {
+		diff = "[" + expectedValue.String() + "!=" + actualValue.String() + "]"
+	} else if actualValue != nil {
+		diff = "[" + actualValue.String() + "]"
+	} else if expectedValue != nil {
+		diff = "[" + expectedValue.String() + "]"
+	}
+	return expectedOperation + actualOperation + string(key) + diff
+}
+
+// Goal is a desired state for a resource object.  Normally it represents a subset of the resource's state expressed by
+// a program, however if Output is true, it represents a more complete, post-deployment view of the state.
+type GoalPlan struct {
+	// the type of resource.
+	Type tokens.Type
+	// the name for the resource's URN.
+	Name tokens.QName
+	// true if this resource is custom, managed by a plugin.
+	Custom bool
+	// the resource's checked input properties that we saw during preview.
+	// TODO(pdg-plan): Temporary for preview release, should be removed for GA
+	CheckedInputs resource.PropertyMap
+	// the resource's checked input properties we expect to change.
+	InputDiff PlanDiff
+	// the resource's output properties we expect to change (only set for RegisterResourceOutputs)
+	OutputDiff PlanDiff
+	// an optional parent URN for this resource.
+	Parent resource.URN
+	// true to protect this resource from deletion.
+	Protect bool
+	// dependencies of this resource object.
+	Dependencies []resource.URN
+	// the provider to use for this resource.
+	Provider string
+	// the set of dependencies that affect each property.
+	PropertyDependencies map[resource.PropertyKey][]resource.URN
+	// true if this resource should be deleted prior to replacement.
+	DeleteBeforeReplace *bool
+	// a list of property names to ignore during changes.
+	IgnoreChanges []string
+	// outputs that should always be treated as secrets.
+	AdditionalSecretOutputs []resource.PropertyKey
+	// additional URNs that should be aliased to this resource.
+	Aliases []resource.URN
+	// the expected ID of the resource, if any.
+	ID resource.ID
+	// an optional config object for resource options
+	CustomTimeouts resource.CustomTimeouts
+}
+
+func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
+	var adds resource.PropertyMap
+	var deletes []resource.PropertyKey
+	var updates resource.PropertyMap
+
+	var diff PlanDiff
+	if inputDiff != nil {
+		adds = inputDiff.Adds
+		updates = make(resource.PropertyMap)
+		for k := range inputDiff.Updates {
+			updates[k] = inputDiff.Updates[k].New
+		}
+		deletes = make([]resource.PropertyKey, len(inputDiff.Deletes))
+		i := 0
+		for k := range inputDiff.Deletes {
+			deletes[i] = k
+			i = i + 1
+		}
+
+		diff = PlanDiff{Adds: adds, Deletes: deletes, Updates: updates}
+	}
+
+	return diff
+}
+
+func NewGoalPlan(checkedInputs resource.PropertyMap, inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan {
+	if goal == nil {
 		return nil
 	}
 
-	// Pull the versions we'll use for default providers from the snapshot's manifest.
-	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
-	for _, p := range prev.Manifest.Plugins {
-		defaultProviderVersions[tokens.Package(p.Name)] = p.Version
+	var diff = NewPlanDiff(inputDiff)
+
+	return &GoalPlan{
+		Type:                    goal.Type,
+		Name:                    goal.Name,
+		Custom:                  goal.Custom,
+		CheckedInputs:           checkedInputs,
+		InputDiff:               diff,
+		OutputDiff:              PlanDiff{},
+		Parent:                  goal.Parent,
+		Protect:                 goal.Protect,
+		Dependencies:            goal.Dependencies,
+		Provider:                goal.Provider,
+		PropertyDependencies:    goal.PropertyDependencies,
+		DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+		IgnoreChanges:           goal.IgnoreChanges,
+		AdditionalSecretOutputs: goal.AdditionalSecretOutputs,
+		Aliases:                 goal.Aliases,
+		ID:                      goal.ID,
+		CustomTimeouts:          goal.CustomTimeouts,
+	}
+}
+
+// A ResourcePlan represents the planned goal state and resource operations for a single resource. The operations are
+// ordered.
+type ResourcePlan struct {
+	Goal    *GoalPlan
+	Ops     []StepOp
+	Outputs resource.PropertyMap
+}
+
+func (rp *ResourcePlan) diffURNs(a, b []resource.URN) (message string, changed bool) {
+	stringsA := make([]string, len(a))
+	for i, urn := range a {
+		stringsA[i] = string(urn)
+	}
+	stringsB := make([]string, len(b))
+	for i, urn := range b {
+		stringsB[i] = string(urn)
+	}
+	return rp.diffStringSets(stringsA, stringsB)
+}
+
+func (rp *ResourcePlan) diffPropertyKeys(a, b []resource.PropertyKey) (message string, changed bool) {
+	stringsA := make([]string, len(a))
+	for i, key := range a {
+		stringsA[i] = string(key)
+	}
+	stringsB := make([]string, len(a))
+	for i, key := range b {
+		stringsB[i] = string(key)
+	}
+	return rp.diffStringSets(stringsA, stringsB)
+}
+
+func (rp *ResourcePlan) diffStringSets(a, b []string) (message string, changed bool) {
+	setA := map[string]struct{}{}
+	for _, s := range a {
+		setA[s] = struct{}{}
 	}
 
-	// Determine the necessary set of default providers and inject references to default providers as appropriate.
-	//
-	// We do this by scraping the snapshot for custom resources that does not reference a provider and adding
-	// default providers for these resources' packages. Each of these resources is rewritten to reference the default
-	// provider for its package.
-	//
-	// The configuration for each default provider is pulled from the stack's configuration information.
-	var defaultProviders []*resource.State
-	defaultProviderRefs := make(map[tokens.Package]providers.Reference)
-	for _, res := range prev.Resources {
-		if providers.IsProviderType(res.URN.Type()) || !res.Custom || res.Provider != "" {
-			continue
-		}
-
-		pkg := res.URN.Type().Package()
-		ref, ok := defaultProviderRefs[pkg]
-		if !ok {
-			cfg, err := target.GetPackageConfig(pkg)
-			if err != nil {
-				return errors.Errorf("could not fetch configuration for default provider '%v'", pkg)
-			}
-
-			inputs := make(resource.PropertyMap)
-			for k, v := range cfg {
-				inputs[resource.PropertyKey(k.Name())] = resource.NewStringProperty(v)
-			}
-			if version, ok := defaultProviderVersions[pkg]; ok {
-				inputs["version"] = resource.NewStringProperty(version.String())
-			}
-
-			urn, id := defaultProviderURN(target, source, pkg), resource.ID(uuid.NewV4().String())
-			ref, err = providers.NewReference(urn, id)
-			contract.Assert(err == nil)
-
-			provider := &resource.State{
-				Type:    urn.Type(),
-				URN:     urn,
-				Custom:  true,
-				ID:      id,
-				Inputs:  inputs,
-				Outputs: inputs,
-			}
-			defaultProviders = append(defaultProviders, provider)
-			defaultProviderRefs[pkg] = ref
-		}
-		res.Provider = ref.String()
+	setB := map[string]struct{}{}
+	for _, s := range b {
+		setB[s] = struct{}{}
 	}
 
-	// If any default providers are necessary, prepend their definitions to the snapshot's resources. This trivially
-	// guarantees that all default provider references name providers that precede the referent in the snapshot.
-	if len(defaultProviders) != 0 {
-		prev.Resources = append(defaultProviders, prev.Resources...)
+	var adds, deletes []string
+	for s := range setA {
+		if _, has := setB[s]; !has {
+			deletes = append(deletes, s)
+		}
+	}
+	for s := range setB {
+		if _, has := setA[s]; !has {
+			adds = append(adds, s)
+		}
+	}
+
+	sort.Strings(adds)
+	sort.Strings(deletes)
+
+	if len(adds) == 0 && len(deletes) == 0 {
+		return "", false
+	}
+
+	if len(adds) != 0 {
+		message = fmt.Sprintf("added %v", strings.Join(adds, ", "))
+	}
+	if len(deletes) != 0 {
+		if len(adds) != 0 {
+			message += "; "
+		}
+		message += fmt.Sprintf("deleted %v", strings.Join(deletes, ", "))
+	}
+	return message, true
+}
+
+// This is similar to ResourcePlan.checkGoal but for the case we're we don't have a goal saved.
+// This simple checks that we're not changing anything.
+func checkMissingPlan(
+	oldState *resource.State,
+	newInputs resource.PropertyMap,
+	programGoal *resource.Goal) error {
+
+	// We new up a fake ResourcePlan that matches the old state and then simply call checkGoal on it.
+	goal := &GoalPlan{
+		Type:                    oldState.Type,
+		Name:                    oldState.URN.Name(),
+		Custom:                  oldState.Custom,
+		CheckedInputs:           nil,
+		InputDiff:               PlanDiff{},
+		OutputDiff:              PlanDiff{},
+		Parent:                  oldState.Parent,
+		Protect:                 oldState.Protect,
+		Dependencies:            oldState.Dependencies,
+		Provider:                oldState.Provider,
+		PropertyDependencies:    oldState.PropertyDependencies,
+		DeleteBeforeReplace:     nil,
+		IgnoreChanges:           nil,
+		AdditionalSecretOutputs: oldState.AdditionalSecretOutputs,
+		Aliases:                 oldState.Aliases,
+		ID:                      "",
+		CustomTimeouts:          oldState.CustomTimeouts,
+	}
+
+	rp := ResourcePlan{Goal: goal}
+	return rp.checkGoal(oldState.Inputs, newInputs, programGoal)
+}
+
+func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff) error {
+	changes := []string{}
+	var diff *resource.ObjectDiff
+	if diff = olds.DiffIncludeUnknowns(news); diff != nil {
+		// Check that any adds are in the goal for adds
+		for k := range diff.Adds {
+			actual := diff.Adds[k]
+			if expected, has := planDiff.Adds[k]; has {
+				if !expected.DeepEqualsIncludeUnknowns(actual) {
+					// diff wants to add this with value X but constraint wants to add with value Y
+					changes = append(changes, planDiff.MakeError(k, "+", &actual))
+				}
+			} else {
+				// diff wants to add this, but not listed as an add in the constraints
+				changes = append(changes, planDiff.MakeError(k, "+", &actual))
+			}
+		}
+
+		// Check that any removes are in the goal for removes
+		for k := range diff.Deletes {
+			if !planDiff.ContainsDelete(k) {
+				// diff wants to delete this, but not listed as a delete in the constraints
+
+				// Check if this was recorded as an Update with <computed>
+				if expected, has := planDiff.Updates[k]; has {
+					if expected.IsComputed() {
+						// This was planned as an Update to <computed> it probably resolved to undefined and so became
+						// a delete, this is not a plan violation
+					} else {
+						// diff wants to delete this, plan wants to update it
+						changes = append(changes, planDiff.MakeError(k, "-", nil))
+					}
+				} else {
+					// diff wants to delete this, but not listed as a delete in the constraints
+					changes = append(changes, planDiff.MakeError(k, "-", nil))
+				}
+			}
+		}
+
+		// Check that any changes are in the goal for changes or adds
+		// "or adds" is because if our constraint says to add K=V and someone has already
+		// added K=W we don't consider it a constraint violation to update K to V.
+		// This is similar to how if we have a Create resource constraint we don't consider it
+		// a violation to just update it instead of creating it.
+		for k := range diff.Updates {
+			actual := diff.Updates[k].New
+			if expected, has := planDiff.Updates[k]; has {
+				if !expected.DeepEqualsIncludeUnknowns(actual) {
+					// diff wants to change this with value X but constraint wants to change with value Y
+					changes = append(changes, planDiff.MakeError(k, "~", &actual))
+				}
+			} else if expected, has := planDiff.Adds[k]; has {
+				if !expected.DeepEqualsIncludeUnknowns(actual) {
+					// diff wants to change this with value X but constraint wants to add with value Y
+					changes = append(changes, planDiff.MakeError(k, "~", &actual))
+				}
+			} else {
+				// diff wants to update this, but not listed as an update in the constraints
+				changes = append(changes, planDiff.MakeError(k, "~", &actual))
+			}
+		}
+	} else {
+		// No diff, just new up an empty ObjectDiff for checks below
+		diff = &resource.ObjectDiff{}
+	}
+
+	// Symmetric check, check that the constraints didn't expect things to happen that aren't in the new inputs
+
+	for k := range planDiff.Adds {
+		// We expected an add, make sure the value is in the new inputs.
+		// That means it's either an add, update, or a same, both are ok for an add constraint.
+		expected := planDiff.Adds[k]
+
+		// If this is in diff.Adds or diff.Updates we'll of already checked it
+		_, inAdds := diff.Adds[k]
+		_, inUpdates := diff.Updates[k]
+
+		if !inAdds && !inUpdates {
+			// It wasn't in the diff as an add or update so check we have a same
+			if actual, has := news[k]; has {
+				if !expected.DeepEqualsIncludeUnknowns(actual) {
+					// diff wants to same this with value X but constraint wants to add with value Y
+					changes = append(changes, planDiff.MakeError(k, "=", &actual))
+				}
+			} else {
+				// Not a same, update or an add but constraint wants to add it
+
+				// Check if this was <computed> origionally because that could of resolved to undefined
+				// and thus it's ok to be missing, else this is a real missing property
+				if !expected.IsComputed() {
+					changes = append(changes, planDiff.MakeError(k, "-", nil))
+				}
+			}
+		}
+	}
+
+	for k := range planDiff.Updates {
+		// We expected an update, make sure the value is in the new inputs as an update (not an add)
+		expected := planDiff.Updates[k]
+
+		// If this is in diff.Updates we'll of already checked it
+		_, inUpdates := diff.Updates[k]
+
+		if !inUpdates {
+			// Check if this was in adds, it's not ok to have an update constraint but actually do an add
+			if actual, has := diff.Adds[k]; has {
+				// Constraint wants to update it, but diff wants to add it
+				changes = append(changes, planDiff.MakeError(k, "+", &actual))
+			} else if actual, has := news[k]; has {
+				// It wasn't in the diff as an add so check we have a same
+				if !expected.DeepEqualsIncludeUnknowns(actual) {
+					// diff wants to same this with value X but constraint wants to update with value Y
+					changes = append(changes, planDiff.MakeError(k, "=", &actual))
+				}
+			} else {
+				// Not a same or an update but constraint wants to update it
+
+				// Check if this was <computed> origionally because that could of resolved to undefined
+				// and thus it's ok to be missing, else this is a real missing property
+				if !expected.IsComputed() {
+					changes = append(changes, planDiff.MakeError(k, "-", nil))
+				}
+			}
+		}
+	}
+
+	for i := range planDiff.Deletes {
+		// We expected a delete, make sure its not present
+		k := planDiff.Deletes[i]
+
+		// If this is in diff.Deletes we'll of already checked it
+		_, inDeletes := diff.Deletes[k]
+		if !inDeletes {
+			// See if this is an add, update, or same
+			if actual, has := diff.Adds[k]; has {
+				// Constraint wants to delete this but diff wants to add it
+				changes = append(changes, planDiff.MakeError(k, "+", &actual))
+			} else if actual, has := diff.Updates[k]; has {
+				// Constraint wants to delete this but diff wants to update it
+				changes = append(changes, planDiff.MakeError(k, "~", &actual.New))
+			} else if actual, has := diff.Sames[k]; has {
+				// Constraint wants to delete this but diff wants to leave it same
+				changes = append(changes, planDiff.MakeError(k, "=", &actual))
+			}
+		}
+	}
+
+	if len(changes) > 0 {
+		// Sort changes, mostly so it's easy to write tests against determinstic strings
+		sort.Strings(changes)
+		return fmt.Errorf("properties changed: %v", strings.Join(changes, ", "))
 	}
 
 	return nil
 }
 
-// NewPlan creates a new deployment plan from a resource snapshot plus a package to evaluate.
-//
-// From the old and new states, it understands how to orchestrate an evaluation and analyze the resulting resources.
-// The plan may be used to simply inspect a series of operations, or actually perform them; these operations are
-// generated based on analysis of the old and new states.  If a resource exists in new, but not old, for example, it
-// results in a create; if it exists in both, but is different, it results in an update; and so on and so forth.
-//
-// Note that a plan uses internal concurrency and parallelism in various ways, so it must be closed if for some reason
-// a plan isn't carried out to its final conclusion.  This will result in cancelation and reclamation of OS resources.
-func NewPlan(ctx *plugin.Context, target *Target, prev *Snapshot, source Source,
-	localPolicyPackPaths []string, preview bool, backendClient BackendClient) (*Plan, error) {
+func (rp *ResourcePlan) checkOutputs(
+	oldOutputs resource.PropertyMap,
+	newOutputs resource.PropertyMap,
+) error {
+	contract.Assert(rp.Goal != nil)
 
-	contract.Assert(ctx != nil)
-	contract.Assert(target != nil)
-	contract.Assert(source != nil)
-
-	// Add any necessary default provider references to the previous snapshot in order to accommodate stacks that were
-	// created prior to the changes that added first-class providers. We do this here rather than in the migration
-	// package s.t. the inputs to any default providers (which we fetch from the stacks's configuration) are as
-	// accurate as possible.
-	if err := addDefaultProviders(target, source, prev); err != nil {
-		return nil, err
+	// Check that the property diffs meet the constraints set in the plan.
+	if err := checkDiff(oldOutputs, newOutputs, rp.Goal.OutputDiff); err != nil {
+		return err
 	}
 
-	// Migrate provider resources from the old, output-less format to the new format where all inputs are reflected as
-	// outputs.
-	if prev != nil {
-		for _, res := range prev.Resources {
-			// If we have no old outputs for a provider, use its old inputs as its old outputs. This handles the
-			// scenario where the CLI is being upgraded from a version that did not reflect provider inputs to
-			// provider outputs, and a provider is being upgraded from a version that did not implement DiffConfig to
-			// a version that does.
-			if providers.IsProviderType(res.URN.Type()) && len(res.Inputs) != 0 && len(res.Outputs) == 0 {
-				res.Outputs = res.Inputs
-			}
+	return nil
+}
+
+func (rp *ResourcePlan) checkGoal(
+	oldInputs resource.PropertyMap,
+	newInputs resource.PropertyMap,
+	programGoal *resource.Goal) error {
+
+	contract.Assert(programGoal != nil)
+	contract.Assert(newInputs != nil)
+	// rp.Goal may be nil, but if it isn't Type and Name should match
+	contract.Assert(rp.Goal == nil || rp.Goal.Type == programGoal.Type)
+	contract.Assert(rp.Goal == nil || rp.Goal.Name == programGoal.Name)
+
+	if rp.Goal == nil {
+		// If the plan goal is nil it expected a delete
+		return fmt.Errorf("resource unexpectedly not deleted")
+	}
+
+	// Check that either both resources are custom resources or both are component resources.
+	if programGoal.Custom != rp.Goal.Custom {
+		// TODO(pdg-plan): wording?
+		expected := "custom"
+		if !rp.Goal.Custom {
+			expected = "component"
+		}
+		return fmt.Errorf("resource kind changed (expected %v)", expected)
+	}
+
+	// Check that the provider is identical.
+	if rp.Goal.Provider != programGoal.Provider {
+		// Provider references are a combination of URN and ID, the latter of which may be unknown. Check for that
+		// case here.
+		expected, err := providers.ParseReference(rp.Goal.Provider)
+		if err != nil {
+			return fmt.Errorf("failed to parse provider reference %v: %w", rp.Goal.Provider, err)
+		}
+		actual, err := providers.ParseReference(programGoal.Provider)
+		if err != nil {
+			return fmt.Errorf("failed to parse provider reference %v: %w", programGoal.Provider, err)
+		}
+		if expected.URN() != actual.URN() || expected.ID() != providers.UnknownID {
+			return fmt.Errorf("provider changed (expected %v)", rp.Goal.Provider)
 		}
 	}
 
-	var depGraph *graph.DependencyGraph
-	var oldResources []*resource.State
+	// Check that the parent is identical.
+	if programGoal.Parent != rp.Goal.Parent {
+		return fmt.Errorf("parent changed (expected %v)", rp.Goal.Parent)
+	}
 
-	// Produce a map of all old resources for fast resources.
-	//
-	// NOTE: we can and do mutate prev.Resources, olds, and depGraph during execution after performing a refresh. See
-	// planExecutor.refresh for details.
-	olds := make(map[resource.URN]*resource.State)
-	if prev != nil {
-		if prev.PendingOperations != nil && !preview {
-			return nil, PlanPendingOperationsError{prev.PendingOperations}
+	// Check that the protect bit is identical.
+	if programGoal.Protect != rp.Goal.Protect {
+		return fmt.Errorf("protect changed (expected %v)", rp.Goal.Protect)
+	}
+
+	// Check that the DBR bit is identical.
+	switch {
+	case rp.Goal.DeleteBeforeReplace == nil && programGoal.DeleteBeforeReplace == nil:
+		// OK
+	case rp.Goal.DeleteBeforeReplace != nil && programGoal.DeleteBeforeReplace != nil:
+		if *rp.Goal.DeleteBeforeReplace != *programGoal.DeleteBeforeReplace {
+			return fmt.Errorf("deleteBeforeReplace changed (expected %v)", *rp.Goal.DeleteBeforeReplace)
 		}
-		oldResources = prev.Resources
-
-		for _, oldres := range oldResources {
-			// Ignore resources that are pending deletion; these should not be recorded in the LUT.
-			if oldres.Delete {
-				continue
-			}
-
-			urn := oldres.URN
-			if olds[urn] != nil {
-				return nil, errors.Errorf("unexpected duplicate resource '%s'", urn)
-			}
-			olds[urn] = oldres
-		}
-
-		depGraph = graph.NewDependencyGraph(oldResources)
-	}
-
-	// Create a new builtin provider. This provider implements features such as `getStack`.
-	builtins := newBuiltinProvider(backendClient)
-
-	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
-	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
-	// so we just pass all of the old resources.
-	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview, builtins)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Plan{
-		ctx:                  ctx,
-		target:               target,
-		prev:                 prev,
-		olds:                 olds,
-		source:               source,
-		localPolicyPackPaths: localPolicyPackPaths,
-		preview:              preview,
-		depGraph:             depGraph,
-		providers:            reg,
-	}, nil
-}
-
-func (p *Plan) Ctx() *plugin.Context                   { return p.ctx }
-func (p *Plan) Target() *Target                        { return p.target }
-func (p *Plan) Diag() diag.Sink                        { return p.ctx.Diag }
-func (p *Plan) Prev() *Snapshot                        { return p.prev }
-func (p *Plan) Olds() map[resource.URN]*resource.State { return p.olds }
-func (p *Plan) Source() Source                         { return p.source }
-
-func (p *Plan) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
-	return p.providers.GetProvider(ref)
-}
-
-// generateURN generates a resource's URN from its parent, type, and name under the scope of the plan's stack and
-// project.
-func (p *Plan) generateURN(parent resource.URN, ty tokens.Type, name tokens.QName) resource.URN {
-	// Use the resource goal state name to produce a globally unique URN.
-	parentType := tokens.Type("")
-	if parent != "" && parent.Type() != resource.RootStackType {
-		// Skip empty parents and don't use the root stack type; otherwise, use the full qualified type.
-		parentType = parent.QualifiedType()
-	}
-
-	return resource.NewURN(p.Target().Name, p.source.Project(), parentType, ty, name)
-}
-
-// defaultProviderURN generates the URN for the global provider given a package.
-func defaultProviderURN(target *Target, source Source, pkg tokens.Package) resource.URN {
-	return resource.NewURN(target.Name, source.Project(), "", providers.MakeProviderType(pkg), "default")
-}
-
-// generateEventURN generates a URN for the resource associated with the given event.
-func (p *Plan) generateEventURN(event SourceEvent) resource.URN {
-	contract.Require(event != nil, "event != nil")
-
-	switch e := event.(type) {
-	case RegisterResourceEvent:
-		goal := e.Goal()
-		return p.generateURN(goal.Parent, goal.Type, goal.Name)
-	case ReadResourceEvent:
-		return p.generateURN(e.Parent(), e.Type(), e.Name())
-	case RegisterResourceOutputsEvent:
-		return e.URN()
 	default:
-		return ""
+		expected := "no value"
+		if rp.Goal.DeleteBeforeReplace != nil {
+			expected = fmt.Sprintf("%v", *rp.Goal.DeleteBeforeReplace)
+		}
+		return fmt.Errorf("deleteBeforeReplace changed (expected %v)", expected)
 	}
-}
 
-// Execute executes a plan to completion, using the given cancellation context and running a preview
-// or update.
-func (p *Plan) Execute(ctx context.Context, opts Options, preview bool) result.Result {
-	planExec := &planExecutor{plan: p}
-	return planExec.Execute(ctx, opts, preview)
+	// Check that the import ID is identical.
+	if rp.Goal.ID != programGoal.ID {
+		return fmt.Errorf("importID changed (expected %v)", rp.Goal.ID)
+	}
+
+	// Check that the timeouts are identical.
+	switch {
+	case rp.Goal.CustomTimeouts.Create != programGoal.CustomTimeouts.Create:
+		return fmt.Errorf("create timeout changed (expected %v)", rp.Goal.CustomTimeouts.Create)
+	case rp.Goal.CustomTimeouts.Update != programGoal.CustomTimeouts.Update:
+		return fmt.Errorf("update timeout changed (expected %v)", rp.Goal.CustomTimeouts.Update)
+	case rp.Goal.CustomTimeouts.Delete != programGoal.CustomTimeouts.Delete:
+		return fmt.Errorf("delete timeout changed (expected %v)", rp.Goal.CustomTimeouts.Delete)
+	}
+
+	// Check that the ignoreChanges sets are identical.
+	if message, changed := rp.diffStringSets(rp.Goal.IgnoreChanges, programGoal.IgnoreChanges); changed {
+		return fmt.Errorf("ignoreChanges changed: %v", message)
+	}
+
+	// Check that the additionalSecretOutputs sets are identical.
+	if message, changed := rp.diffPropertyKeys(
+		rp.Goal.AdditionalSecretOutputs, programGoal.AdditionalSecretOutputs); changed {
+		return fmt.Errorf("additionalSecretOutputs changed: %v", message)
+	}
+
+	// Check that the alias sets are identical.
+	if message, changed := rp.diffURNs(rp.Goal.Aliases, programGoal.Aliases); changed {
+		return fmt.Errorf("aliases changed: %v", message)
+	}
+
+	// Check that the dependencies match.
+	if message, changed := rp.diffURNs(rp.Goal.Dependencies, programGoal.Dependencies); changed {
+		return fmt.Errorf("dependencies changed: %v", message)
+	}
+
+	// Check that the property diffs meet the constraints set in the plan
+	if err := checkDiff(oldInputs, newInputs, rp.Goal.InputDiff); err != nil {
+		return err
+	}
+
+	// Check that the property dependencies match. Note that because it is legal for a property that is unknown in the
+	// plan to be unset in the program, we allow the omission of a property from the program's dependency set.
+	for k, urns := range rp.Goal.PropertyDependencies {
+		if programDeps, ok := programGoal.PropertyDependencies[k]; ok {
+			if message, changed := rp.diffURNs(urns, programDeps); changed {
+				return fmt.Errorf("dependencies for %v changed: %v", k, message)
+			}
+		}
+	}
+
+	return nil
 }

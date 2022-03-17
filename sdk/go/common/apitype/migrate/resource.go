@@ -15,8 +15,8 @@
 package migrate
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // UpToResourceV2 migrates a resource from ResourceV1 to ResourceV2.

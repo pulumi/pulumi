@@ -20,9 +20,9 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Sink facilitates pluggable diagnostics messages.
@@ -196,9 +196,6 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (
 
 	buffer.WriteString(colors.Reset)
 	buffer.WriteRune('\n')
-
-	// TODO[pulumi/pulumi#15]: support Clang-style expressive diagnostics.  This would entail, for example, using
-	//     the buffer within the target document, to demonstrate the offending line/column range of code.
 
 	// Ensure that any sensitive data we know about is filtered out preemptively.
 	filtered := logging.FilterString(buffer.String())

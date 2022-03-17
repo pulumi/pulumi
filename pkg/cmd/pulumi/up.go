@@ -16,25 +16,26 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
 	"os"
 
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const (
@@ -47,33 +48,39 @@ func newUpCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
+	var execKind string
+	var execAgent string
 	var stack string
 	var configArray []string
 	var path bool
+	var client string
 
 	// Flags for engine.UpdateOptions.
+	var jsonDisplay bool
 	var policyPackPaths []string
 	var policyPackConfigPaths []string
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
-	var refresh bool
+	var refresh string
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
 	var showReads bool
 	var skipPreview bool
 	var suppressOutputs bool
+	var suppressPermalink string
 	var yes bool
 	var secretsProvider string
 	var targets []string
 	var replaces []string
 	var targetReplaces []string
 	var targetDependents bool
+	var planFilePath string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
-		s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
+		s, err := requireStack(stack, true, opts.Display, false /*setCurrent*/)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -83,51 +90,90 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(err)
 		}
 
-		proj, root, err := readProject()
+		proj, root, err := readProjectForUpdate(client)
 		if err != nil {
 			return result.FromError(err)
 		}
 
-		m, err := getUpdateMetadata(message, root)
+		m, err := getUpdateMetadata(message, root, execKind, execAgent)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}
 
 		sm, err := getStackSecretsManager(s)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 		}
 
 		cfg, err := getStackConfiguration(s, sm)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "getting stack configuration"))
+			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 		}
 
 		targetURNs := []resource.URN{}
+		snap, err := s.Snapshot(commandContext())
+		if err != nil {
+			return result.FromError(err)
+		}
 		for _, t := range targets {
-			targetURNs = append(targetURNs, resource.URN(t))
+			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(t))...)
 		}
 
 		replaceURNs := []resource.URN{}
 		for _, r := range replaces {
-			replaceURNs = append(replaceURNs, resource.URN(r))
+			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(r))...)
 		}
 
 		for _, tr := range targetReplaces {
-			targetURNs = append(targetURNs, resource.URN(tr))
-			replaceURNs = append(replaceURNs, resource.URN(tr))
+			targetURNs = append(targetURNs, snap.GlobUrn(resource.URN(tr))...)
+			replaceURNs = append(replaceURNs, snap.GlobUrn(resource.URN(tr))...)
 		}
 
+		if len(targetURNs) == 0 && len(targets)+len(targetReplaces) > 0 {
+			// Wildcards were used, but they all evaluated to empty. We don't
+			// want a targeted update to turn into a general update, so we
+			// should abort.
+			if !jsonDisplay {
+				fmt.Printf("There were no resources matching the wildcards provided.\n")
+				fmt.Printf("Wildcards can only be used to target resources that already exist.\n")
+			}
+			return nil
+		}
+
+		refreshOption, err := getRefreshOption(proj, refresh)
+		if err != nil {
+			return result.FromError(err)
+		}
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:         parallel,
-			Debug:            debug,
-			Refresh:          refresh,
-			RefreshTargets:   targetURNs,
-			ReplaceTargets:   replaceURNs,
-			UseLegacyDiff:    useLegacyDiff(),
-			UpdateTargets:    targetURNs,
-			TargetDependents: targetDependents,
+			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:                  parallel,
+			Debug:                     debug,
+			Refresh:                   refreshOption,
+			RefreshTargets:            targetURNs,
+			ReplaceTargets:            replaceURNs,
+			UseLegacyDiff:             useLegacyDiff(),
+			DisableProviderPreview:    disableProviderPreview(),
+			DisableResourceReferences: disableResourceReferences(),
+			DisableOutputValues:       disableOutputValues(),
+			UpdateTargets:             targetURNs,
+			TargetDependents:          targetDependents,
+			ExperimentalPlans:         hasExperimentalCommands() || planFilePath != "",
+		}
+
+		if planFilePath != "" {
+			dec, err := sm.Decrypter()
+			if err != nil {
+				return result.FromError(err)
+			}
+			enc, err := sm.Encrypter()
+			if err != nil {
+				return result.FromError(err)
+			}
+			plan, err := readPlan(planFilePath, dec, enc)
+			if err != nil {
+				return result.FromError(err)
+			}
+			opts.Engine.Plan = plan
 		}
 
 		changes, res := s.Update(commandContext(), backend.UpdateOperation{
@@ -195,7 +241,7 @@ func newUpCmd() *cobra.Command {
 
 		// Change the working directory to the "virtual workspace" directory.
 		if err = os.Chdir(temp); err != nil {
-			return result.FromError(errors.Wrap(err, "changing the working directory"))
+			return result.FromError(fmt.Errorf("changing the working directory: %w", err))
 		}
 
 		// If a stack was specified via --stack, see if it already exists.
@@ -243,7 +289,7 @@ func newUpCmd() *cobra.Command {
 		proj.Description = &description
 		proj.Template = nil
 		if err = workspace.SaveProject(proj); err != nil {
-			return result.FromError(errors.Wrap(err, "saving project"))
+			return result.FromError(fmt.Errorf("saving project: %w", err))
 		}
 
 		// Create the stack, if needed.
@@ -265,26 +311,32 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(err)
 		}
 
-		m, err := getUpdateMetadata(message, root)
+		m, err := getUpdateMetadata(message, root, execKind, execAgent)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "gathering environment metadata"))
+			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}
 
 		sm, err := getStackSecretsManager(s)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "getting secrets manager"))
+			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 		}
 
 		cfg, err := getStackConfiguration(s, sm)
 		if err != nil {
-			return result.FromError(errors.Wrap(err, "getting stack configuration"))
+			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+		}
+
+		refreshOption, err := getRefreshOption(proj, refresh)
+		if err != nil {
+			return result.FromError(err)
 		}
 
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:         parallel,
-			Debug:            debug,
-			Refresh:          refresh,
+			LocalPolicyPacks:  engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:          parallel,
+			Debug:             debug,
+			Refresh:           refreshOption,
+			ExperimentalPlans: hasExperimentalCommands() || planFilePath != "",
 		}
 
 		// TODO for the URL case:
@@ -363,6 +415,26 @@ func newUpCmd() *cobra.Command {
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
+				JSONDisplay:          jsonDisplay,
+			}
+
+			// we only suppress permalinks if the user passes true. the default is an empty string
+			// which we pass as 'false'
+			if suppressPermalink == "true" {
+				opts.Display.SuppressPermalink = true
+			} else {
+				opts.Display.SuppressPermalink = false
+			}
+
+			filestateBackend, err := isFilestateBackend(opts.Display)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			// by default, we are going to suppress the permalink when using self-managed backends
+			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
+			if suppressPermalink != "false" && filestateBackend {
+				opts.Display.SuppressPermalink = true
 			}
 
 			if len(args) > 0 {
@@ -396,6 +468,10 @@ func newUpCmd() *cobra.Command {
 			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only"+
 			"used when creating a new stack from an existing template")
 
+	cmd.PersistentFlags().StringVar(
+		&client, "client", "", "The address of an existing language runtime host to connect to")
+	_ = cmd.PersistentFlags().MarkHidden("client")
+
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
 		"Optional message to associate with the update operation")
@@ -403,10 +479,12 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&targets, "target", "t", []string{},
 		"Specify a single resource URN to update. Other resources will not be updated."+
-			" Multiple resources can be specified using --target urn1 --target urn2")
+			" Multiple resources can be specified using --target urn1 --target urn2."+
+			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().StringArrayVar(
 		&replaces, "replace", []string{},
-		"Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2")
+		"Specify resources to replace. Multiple resources can be specified using --replace urn1 --replace urn2."+
+			" Wildcards (*, **) are also supported")
 	cmd.PersistentFlags().StringArrayVar(
 		&targetReplaces, "target-replace", []string{},
 		"Specify a single resource URN to replace. Other resources will not be updated."+
@@ -425,12 +503,16 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.Flags().BoolVarP(
+		&jsonDisplay, "json", "j", false,
+		"Serialize the update diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
-	cmd.PersistentFlags().BoolVarP(
-		&refresh, "refresh", "r", false,
+	cmd.PersistentFlags().StringVarP(
+		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
+	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -445,21 +527,43 @@ func newUpCmd() *cobra.Command {
 		&showReads, "show-reads", false,
 		"Show resources that are being read in, alongside those being managed directly in the stack")
 
-	cmd.PersistentFlags().BoolVar(
-		&skipPreview, "skip-preview", false,
+	cmd.PersistentFlags().BoolVarP(
+		&skipPreview, "skip-preview", "f", false,
 		"Do not perform a preview before performing the update")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().StringVar(
+		&suppressPermalink, "suppress-permalink", "",
+		"Suppress display of the state permalink")
+	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
+
+	cmd.PersistentFlags().StringVar(
+		&planFilePath, "plan", "",
+		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
+			"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
+			"of sames).")
+	if !hasExperimentalCommands() {
+		contract.AssertNoError(cmd.PersistentFlags().MarkHidden("plan"))
+	}
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(
 			&eventLogPath, "event-log", "",
 			"Log events to a file at this path")
 	}
+
+	// internal flags
+	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
+	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+
 	return cmd
 }
 
@@ -529,7 +633,7 @@ func handleConfig(
 	// Save the config.
 	if len(c) > 0 {
 		if err = saveConfig(s, c); err != nil {
-			return errors.Wrap(err, "saving config")
+			return fmt.Errorf("saving config: %w", err)
 		}
 
 		fmt.Println("Saved config")

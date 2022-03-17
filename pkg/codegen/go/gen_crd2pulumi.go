@@ -2,9 +2,9 @@ package gen
 
 import (
 	"bytes"
+	"fmt"
 
-	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // CRDTypes returns a map from each module name to a buffer containing the
@@ -32,18 +32,20 @@ func CRDTypes(tool string, pkg *schema.Package) (map[string]*bytes.Buffer, error
 		buffer := &bytes.Buffer{}
 
 		for _, r := range pkg.resources {
-			imports := stringSet{}
-			pkg.getImports(r, imports)
-			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
+			importsAndAliases := map[string]string{}
+			pkg.getImports(r, importsAndAliases)
+			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
 
-			if err := pkg.genResource(buffer, r); err != nil {
-				return nil, errors.Wrapf(err, "generating resource %s", mod)
+			if err := pkg.genResource(buffer, r, goPkgInfo.GenerateResourceContainerTypes); err != nil {
+				return nil, fmt.Errorf("generating resource %s: %w", mod, err)
 			}
 		}
 
 		if len(pkg.types) > 0 {
 			for _, t := range pkg.types {
-				pkg.genType(buffer, t)
+				if err := pkg.genType(buffer, t); err != nil {
+					return nil, err
+				}
 			}
 			pkg.genTypeRegistrations(buffer, pkg.types)
 		}

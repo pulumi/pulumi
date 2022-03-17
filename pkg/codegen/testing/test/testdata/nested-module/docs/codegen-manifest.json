@@ -1,0 +1,9 @@
+{
+  "emittedFiles": [
+    "_index.md",
+    "nested/_index.md",
+    "nested/module/_index.md",
+    "nested/module/resource/_index.md",
+    "provider/_index.md"
+  ]
+}

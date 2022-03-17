@@ -17,8 +17,8 @@ package state
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // CurrentStack reads the current stack and returns an instance connected to its backend provider.

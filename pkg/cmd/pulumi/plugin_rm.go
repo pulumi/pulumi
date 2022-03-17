@@ -17,15 +17,17 @@ package main
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newPluginRmCmd() *cobra.Command {
@@ -57,11 +59,11 @@ func newPluginRmCmd() *cobra.Command {
 			var version *semver.Range
 			if len(args) > 0 {
 				if !workspace.IsPluginKind(args[0]) {
-					return errors.Errorf("unrecognized plugin kind: %s", kind)
+					return fmt.Errorf("unrecognized plugin kind: %s", kind)
 				}
 				kind = workspace.PluginKind(args[0])
 			} else if !all {
-				return errors.Errorf("please pass --all if you'd like to remove all plugins")
+				return fmt.Errorf("please pass --all if you'd like to remove all plugins")
 			}
 			if len(args) > 1 {
 				name = args[1]
@@ -69,7 +71,7 @@ func newPluginRmCmd() *cobra.Command {
 			if len(args) > 2 {
 				r, err := semver.ParseRange(args[2])
 				if err != nil {
-					return errors.Wrap(err, "invalid plugin semver")
+					return fmt.Errorf("invalid plugin semver: %w", err)
 				}
 				version = &r
 			}
@@ -78,7 +80,7 @@ func newPluginRmCmd() *cobra.Command {
 			var deletes []workspace.PluginInfo
 			plugins, err := workspace.GetPlugins()
 			if err != nil {
-				return errors.Wrap(err, "loading plugins")
+				return fmt.Errorf("loading plugins: %w", err)
 			}
 			for _, plugin := range plugins {
 				if (kind == "" || plugin.Kind == kind) &&
@@ -89,7 +91,9 @@ func newPluginRmCmd() *cobra.Command {
 			}
 
 			if len(deletes) == 0 {
-				return errors.New("no plugins found")
+				cmdutil.Diag().Infof(
+					diag.Message("", "no plugins found to uninstall"))
+				return nil
 			}
 
 			// Confirm that the user wants to do this (unless --yes was passed), and do the deletes.
@@ -109,7 +113,7 @@ func newPluginRmCmd() *cobra.Command {
 				for _, plugin := range deletes {
 					if err := plugin.Delete(); err != nil {
 						result = multierror.Append(
-							result, errors.Wrapf(err, "failed to delete %s plugin %s", plugin.Kind, plugin))
+							result, fmt.Errorf("failed to delete %s plugin %s: %w", plugin.Kind, plugin, err))
 					}
 				}
 				if result != nil {

@@ -21,13 +21,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // ShowEvents reads events from the `events` channel until it is closed, displaying each event as
@@ -38,13 +40,17 @@ func ShowEvents(
 	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
 
 	if opts.EventLogPath != "" {
-		events, done = startEventLogger(events, done, opts.EventLogPath)
+		events, done = startEventLogger(events, done, opts)
 	}
 
+	streamPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_STREAMING_JSON_PREVIEW"))
+
 	if opts.JSONDisplay {
-		// TODO[pulumi/pulumi#2390]: enable JSON display for real deployments.
-		contract.Assertf(isPreview, "JSON display only available in preview mode")
-		ShowJSONEvents(op, action, events, done, opts)
+		if isPreview && !streamPreview {
+			ShowPreviewDigest(events, done, opts)
+		} else {
+			ShowJSONEvents(events, done, opts)
+		}
 		return
 	}
 
@@ -63,9 +69,37 @@ func ShowEvents(
 	}
 }
 
-func startEventLogger(events <-chan engine.Event, done chan<- bool, path string) (<-chan engine.Event, chan<- bool) {
+func logJSONEvent(encoder *json.Encoder, event engine.Event, opts Options, seq int) error {
+	apiEvent, err := ConvertEngineEvent(event)
+	if err != nil {
+		return err
+	}
+
+	apiEvent.Sequence = seq
+	apiEvent.Timestamp = int(time.Now().Unix())
+	// If opts.Color == "never" (i.e. NO_COLOR is specified or --color=never), clean up the color directives
+	// from the emitted events.
+	if opts.Color == colors.Never {
+		switch {
+		case apiEvent.DiagnosticEvent != nil:
+			apiEvent.DiagnosticEvent.Message = colors.Never.Colorize(apiEvent.DiagnosticEvent.Message)
+			apiEvent.DiagnosticEvent.Prefix = colors.Never.Colorize(apiEvent.DiagnosticEvent.Prefix)
+			apiEvent.DiagnosticEvent.Color = string(colors.Never)
+		case apiEvent.StdoutEvent != nil:
+			apiEvent.StdoutEvent.Message = colors.Never.Colorize(apiEvent.StdoutEvent.Message)
+			apiEvent.StdoutEvent.Color = string(colors.Never)
+		case apiEvent.PolicyEvent != nil:
+			apiEvent.PolicyEvent.Message = colors.Never.Colorize(apiEvent.PolicyEvent.Message)
+			apiEvent.PolicyEvent.Color = string(colors.Never)
+		}
+	}
+
+	return encoder.Encode(apiEvent)
+}
+
+func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options) (<-chan engine.Event, chan<- bool) {
 	// Before moving further, attempt to open the log file.
-	logFile, err := os.Create(path)
+	logFile, err := os.Create(opts.EventLogPath)
 	if err != nil {
 		logging.V(7).Infof("could not create event log: %v", err)
 		return events, done
@@ -80,20 +114,12 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, path string)
 
 		sequence := 0
 		encoder := json.NewEncoder(logFile)
-		logEvent := func(e engine.Event) error {
-			apiEvent, err := ConvertEngineEvent(e)
-			if err != nil {
-				return err
-			}
-			apiEvent.Sequence, sequence = sequence, sequence+1
-			apiEvent.Timestamp = int(time.Now().Unix())
-			return encoder.Encode(apiEvent)
-		}
-
+		encoder.SetEscapeHTML(false)
 		for e := range events {
-			if err = logEvent(e); err != nil {
+			if err = logJSONEvent(encoder, e, opts, sequence); err != nil {
 				logging.V(7).Infof("failed to log event: %v", err)
 			}
+			sequence++
 
 			outEvents <- e
 

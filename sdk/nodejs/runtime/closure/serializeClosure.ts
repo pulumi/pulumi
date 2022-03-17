@@ -30,7 +30,6 @@ export interface SerializeFunctionArgs {
      * prevent potential cycles.
      */
     serialize?: (o: any) => boolean;
-
     /**
      * If this is a function which, when invoked, will produce the actual entrypoint function.
      * Useful for when serializing a function that has high startup cost that only wants to be
@@ -42,11 +41,17 @@ export interface SerializeFunctionArgs {
      * be what is exported.
      */
     isFactoryFunction?: boolean;
-
     /**
      * The resource to log any errors we encounter against.
      */
     logResource?: Resource;
+    /**
+     * If true, allow secrets to be serialized into the function. This should only be set to true if the calling
+     * code will handle this and propoerly wrap the resulting text in a Secret before passing it into any Resources
+     * or serializing it to any other output format. If set, the `containsSecrets` property on the returned
+     * SerializedFunction object will indicate whether secrets were serialized into the function text.
+     */
+    allowSecrets?: boolean;
 }
 
 /**
@@ -63,6 +68,10 @@ export interface SerializedFunction {
      * The name of the exported module member.
      */
     exportName: string;
+    /**
+     * True if the serialized function text includes serialization of secret
+     */
+    containsSecrets: boolean;
 }
 
 /**
@@ -83,28 +92,34 @@ export interface SerializedFunction {
  * @param args Arguments to use to control the serialization of the JavaScript function.
  */
 export async function serializeFunction(
-        func: Function,
-        args: SerializeFunctionArgs = {}): Promise<SerializedFunction> {
+    func: Function,
+    args: SerializeFunctionArgs = {}): Promise<SerializedFunction> {
 
     const exportName = args.exportName || "handler";
     const serialize = args.serialize || (_ => true);
     const isFactoryFunction = args.isFactoryFunction === undefined ? false : args.isFactoryFunction;
 
-    const functionInfo = await closure.createFunctionInfoAsync(func, serialize, args.logResource);
-    return serializeJavaScriptText(functionInfo, exportName, isFactoryFunction);
+    const closureInfo = await closure.createClosureInfoAsync(func, serialize, args.logResource);
+    if (!args.allowSecrets && closureInfo.containsSecrets) {
+        throw new Error("Secret outputs cannot be captured by a closure.");
+    }
+    return serializeJavaScriptText(closureInfo, exportName, isFactoryFunction);
 }
 
 /**
  * @deprecated Please use 'serializeFunction' instead.
  */
 export async function serializeFunctionAsync(
-        func: Function,
-        serialize?: (o: any) => boolean): Promise<string> {
+    func: Function,
+    serialize?: (o: any) => boolean): Promise<string> {
     log.warn("'function serializeFunctionAsync' is deprecated.  Please use 'serializeFunction' instead.");
 
     serialize = serialize || (_ => true);
-    const functionInfo = await closure.createFunctionInfoAsync(func, serialize, /*logResource:*/ undefined);
-    return serializeJavaScriptText(functionInfo, "handler", /*isFactoryFunction*/ false).text;
+    const closureInfo = await closure.createClosureInfoAsync(func, serialize, /*logResource:*/ undefined);
+    if (closureInfo.containsSecrets) {
+        throw new Error("Secret outputs cannot be captured by a closure.");
+    }
+    return serializeJavaScriptText(closureInfo, "handler", /*isFactoryFunction*/ false).text;
 }
 
 /**
@@ -114,9 +129,9 @@ export async function serializeFunctionAsync(
  * @param c The FunctionInfo to be serialized into a module string.
  */
 function serializeJavaScriptText(
-        outerFunction: closure.FunctionInfo,
-        exportName: string,
-        isFactoryFunction: boolean): SerializedFunction {
+    outerClosure: closure.ClosureInfo,
+    exportName: string,
+    isFactoryFunction: boolean): SerializedFunction {
 
     // Now produce a textual representation of the closure and its serialized captured environment.
 
@@ -137,7 +152,7 @@ function serializeJavaScriptText(
     let environmentText = "";
     let functionText = "";
 
-    const outerFunctionName = emitFunctionAndGetName(outerFunction);
+    const outerFunctionName = emitFunctionAndGetName(outerClosure.func);
 
     if (environmentText) {
         environmentText = "\n" + environmentText;
@@ -157,7 +172,7 @@ function serializeJavaScriptText(
         text = exportText + "\n" + environmentText + functionText;
     }
 
-    return { text, exportName };
+    return { text, exportName, containsSecrets: outerClosure.containsSecrets };
 
     function emitFunctionAndGetName(functionInfo: closure.FunctionInfo): string {
         // If this is the first time seeing this function, then actually emit the function code for
@@ -242,7 +257,7 @@ function serializeJavaScriptText(
     }
 
     function simpleEnvEntryToString(
-            envEntry: closure.Entry, varName: string): string {
+        envEntry: closure.Entry, varName: string): string {
 
         if (envEntry.hasOwnProperty("json")) {
             return JSON.stringify(envEntry.json);
@@ -270,7 +285,7 @@ function serializeJavaScriptText(
     }
 
     function complexEnvEntryToString(
-            envEntry: closure.Entry, varName: string): string {
+        envEntry: closure.Entry, varName: string): string {
         // Call all environment variables __e<num> to make them unique.  But suffix
         // them with the original name of the property to help provide context when
         // looking at the source.
@@ -386,7 +401,7 @@ function serializeJavaScriptText(
     }
 
     function emitComplexObjectProperties(
-            envVar: string, varName: string, objEntry: closure.ObjectInfo): void {
+        envVar: string, varName: string, objEntry: closure.ObjectInfo): void {
 
         for (const [keyEntry, { info, entry: valEntry }] of objEntry.env) {
             const subName = typeof keyEntry.json === "string" ? keyEntry.json : "sym";
@@ -436,7 +451,7 @@ function serializeJavaScriptText(
     }
 
     function emitArray(
-            envVar: string, arr: closure.Entry[], varName: string): void {
+        envVar: string, arr: closure.Entry[], varName: string): void {
         if (arr.some(deepContainsObjOrArrayOrRegExp) || isSparse(arr) || hasNonNumericIndices(arr)) {
             // we have a complex child.  Because of the possibility of recursion in the object
             // graph, we have to spit out this variable initialized (but empty) first. Then we can

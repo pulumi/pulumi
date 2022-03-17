@@ -1,16 +1,18 @@
 <a href="https://www.pulumi.com?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=top-logo" title="Pulumi - Modern Infrastructure as Code - AWS Azure Kubernetes Containers Serverless">
-    <img src="https://www.pulumi.com/images/logo/logo.svg" width="350">
+    <img src="https://www.pulumi.com/images/logo/logo-on-white-box.svg?" width="350">
 </a>
 
 [![Slack](http://www.pulumi.com/images/docs/badges/slack.svg)](https://slack.pulumi.com?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=slack-badge)
+![GitHub Discussions](https://img.shields.io/github/discussions/pulumi/pulumi)
 [![NPM version](https://badge.fury.io/js/%40pulumi%2Fpulumi.svg)](https://npmjs.com/package/@pulumi/pulumi)
 [![Python version](https://badge.fury.io/py/pulumi.svg)](https://pypi.org/project/pulumi)
 [![NuGet version](https://badge.fury.io/nu/pulumi.svg)](https://badge.fury.io/nu/pulumi)
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi?status.svg)](https://godoc.org/github.com/pulumi/pulumi)
-[![License](https://img.shields.io/npm/l/%40pulumi%2Fpulumi.svg)](https://github.com/pulumi/pulumi/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/pulumi/pulumi)](LICENSE)
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/pulumi/pulumi)
 
 <a href="https://www.pulumi.com/docs/get-started/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=get-started-button" title="Get Started">
-    <img src="https://www.pulumi.com/images/get-started.svg" align="right" width="120">
+    <img src="https://www.pulumi.com/images/get-started.svg?" align="right" width="120">
 </a>
 
 **Pulumi's Infrastructure as Code SDK** is the easiest way to create and deploy cloud software that use
@@ -90,6 +92,7 @@ repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and indiv
 
 * **[Community Slack](https://slack.pulumi.com/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=welcome-slack)**: join us over at our community Slack channel.  Any and all
   discussion or questions are welcome.
+* **[GitHub Discussions](https://github.com/pulumi/pulumi/discussions)**: Ask your questions or share what you're building with Pulumi.
 
 * **[Roadmap](https://github.com/pulumi/pulumi/wiki/Roadmap)**: check out what's on the roadmap for the Pulumi
   project over the coming months.
@@ -170,18 +173,18 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 | Architecture | Build Status |
 | ------------ | ------------ |
-| Linux/macOS x64 | [![Linux x64 Build Status](https://travis-ci.com/pulumi/pulumi.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi)                |
-| Windows x64     | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true&branch=master)](https://ci.appveyor.com/project/pulumi/pulumi) |
+| Linux/macOS x64 | [![Linux x64 Build Status](https://github.com/pulumi/pulumi/actions/workflows/master.yml/badge.svg)](https://github.com/pulumi/pulumi/actions/workflows/master.yml) |
+| Windows x64     | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true&branch=master)](https://ci.appveyor.com/project/pulumi/pulumi)   |
 
 ### Languages
 
 |    | Language | Status | Runtime |
 | -- | -------- | ------ | ------- |
-| <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](./sdk/nodejs) | Stable  | Node.js 10+  |
-| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](./sdk/nodejs) | Stable  | Node.js 10+  |
+| <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](./sdk/nodejs) | Stable  | Node.js 12+  |
+| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](./sdk/nodejs) | Stable  | Node.js 12+  |
 | <img src="https://www.pulumi.com/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python)     | Stable  | Python 3.6+ |
-| <img src="https://www.pulumi.com/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go)             | Stable  | Go 1.13.x   |
-| <img src="https://www.pulumi.com/logos/tech/dotnet.png" height=38 />      | [.NET (C#/F#/VB.NET)](./sdk/dotnet)     | Stable  | .NET Core 3.1  |
+| <img src="https://www.pulumi.com/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go)             | Stable  | Go 1.14+   |
+| <img src="https://www.pulumi.com/logos/tech/dotnet.png" height=38 />      | [.NET (C#/F#/VB.NET)](./sdk/dotnet)     | Stable  | .NET Core 3.1+  |
 
 ### Clouds
 

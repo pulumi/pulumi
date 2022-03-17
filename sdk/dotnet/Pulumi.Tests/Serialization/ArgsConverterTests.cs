@@ -36,7 +36,7 @@ namespace Pulumi.Tests.Serialization
         private async Task Test(object args, string expected)
         {
             var serialized = await SerializeToValueAsync(args);
-            var converted = Converter.ConvertValue<JsonElement>("", serialized);
+            var converted = Converter.ConvertValue<JsonElement>(NoWarn, "", serialized);
             var value = converted.Value.GetProperty("v").GetProperty("s").GetString();
             Assert.Equal(expected, value);
         }

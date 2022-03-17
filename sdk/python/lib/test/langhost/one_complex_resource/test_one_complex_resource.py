@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,16 +22,16 @@ class OneComplexResourceTest(LanghostTest):
             program=path.join(self.base_path(), "one_complex_resource"),
             expected_resource_count=1)
 
-    def register_resource(self, _ctx, _dry_run, ty, name, resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         self.assertEqual(ty, "test:index:MyResource")
         self.assertEqual(name, "testres")
-        self.assertEqual(resource["falseprop"], False)
-        self.assertEqual(resource["trueprop"], True)
-        self.assertEqual(resource["intprop"], 42)
-        self.assertListEqual(resource["listprop"], [1, 2, "string", False])
-        self.assertDictEqual(resource["mapprop"], {
+        self.assertEqual(_resource["falseprop"], False)
+        self.assertEqual(_resource["trueprop"], True)
+        self.assertEqual(_resource["intprop"], 42)
+        self.assertListEqual(_resource["listprop"], [1, 2, "string", False])
+        self.assertDictEqual(_resource["mapprop"], {
             "foo": ["bar", "baz"]
         })
 

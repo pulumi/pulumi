@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation
+// Copyright 2016-2021, Pulumi Corporation
 
 using System.Collections.Generic;
 
@@ -9,6 +9,10 @@ namespace Pulumi
     /// </summary>
     public abstract partial class ResourceOptions
     {
+
+        // NOTE: When you add a field to ResourceOptions, make sure to update
+        // ResourceOptions_Merge.cs and ResourceOptions_Copy.cs.
+
         /// <summary>
         /// An optional existing ID to load, rather than create.
         /// </summary>
@@ -26,7 +30,7 @@ namespace Pulumi
         /// </summary>
         public InputList<Resource> DependsOn
         {
-            get => _dependsOn ?? (_dependsOn = new InputList<Resource>());
+            get => _dependsOn ??= new InputList<Resource>();
             set => _dependsOn = value;
         }
 
@@ -42,7 +46,7 @@ namespace Pulumi
         /// </summary>
         public List<string> IgnoreChanges
         {
-            get => _ignoreChanges ?? (_ignoreChanges = new List<string>());
+            get => _ignoreChanges ??= new List<string>();
             set => _ignoreChanges = value;
         }
 
@@ -78,7 +82,7 @@ namespace Pulumi
         /// </summary>
         public List<ResourceTransformation> ResourceTransformations
         {
-            get => _resourceTransformations ?? (_resourceTransformations = new List<ResourceTransformation>());
+            get => _resourceTransformations ??= new List<ResourceTransformation>();
             set => _resourceTransformations = value;
         }
 
@@ -87,6 +91,37 @@ namespace Pulumi
         /// </summary>
         public List<Input<Alias>> Aliases { get; set; } = new List<Input<Alias>>();
 
+        /// <summary>
+        /// The URN of a previously-registered resource of this type to read from the engine.
+        /// </summary>
+        public string? Urn { get; set; }
+
+        private List<string>? _replaceOnChanges;
+
+        /// <summary>
+        /// Changes to any of these property paths will force a replacement.  If this list
+        /// includes `"*"`, changes to any properties will force a replacement.  Initialization
+        /// errors from previous deployments will require replacement instead of update only if
+        /// `"*"` is passed.
+        /// </summary>
+        public List<string> ReplaceOnChanges
+        {
+            get => _replaceOnChanges ??= new List<string>();
+            set => _replaceOnChanges = value;
+        }
+
         internal abstract ResourceOptions Clone();
+
+        /// <summary>
+        /// An optional URL, corresponding to the url from which the provider plugin that should be
+        /// used when operating on this resource is downloaded from. This URL overrides the download URL
+        /// inferred from the current package and should rarely be used.
+        /// </summary>
+        public string? PluginDownloadURL { get; set; }
+
+        /// <summary>
+        /// If set to True, the providers Delete method will not be called for this resource.
+        /// </summary>
+        public bool? RetainOnDelete { get; set; }
     }
 }

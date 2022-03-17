@@ -15,36 +15,44 @@
 package engine
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, result.Result) {
+func Refresh(
+	u UpdateInfo,
+	ctx *Context,
+	opts UpdateOptions,
+	dryRun bool) (*deploy.Plan, ResourceChanges, result.Result) {
+
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u, "refresh", ctx.ParentSpan)
+	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer info.Close()
 
 	emitter, err := makeEventEmitter(ctx.Events, u)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer emitter.Close()
 
 	// Force opts.Refresh to true.
 	opts.Refresh = true
 
-	return update(ctx, info, planOptions{
+	logging.V(7).Infof("*** Starting Refresh(preview=%v) ***", dryRun)
+	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
+
+	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newRefreshSource,
 		Events:        emitter,
@@ -54,7 +62,7 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	}, dryRun)
 }
 
-func newRefreshSource(client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
+func newRefreshSource(client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
 	// Like Update, we need to gather the set of plugins necessary to refresh everything in the snapshot.

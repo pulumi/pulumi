@@ -1,0 +1,3 @@
+name: enum_output_ts
+runtime: nodejs
+description: Enum outputs in TS

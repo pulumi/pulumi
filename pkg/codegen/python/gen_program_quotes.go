@@ -6,12 +6,11 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -53,19 +52,8 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 		keyVal, objectKey := key.AsString(), false
 
 		receiver := parts[i]
-		if schemaType, ok := hcl2.GetSchemaForType(model.GetTraversableType(receiver)); ok {
-			obj := schemaType.(*schema.ObjectType)
-
-			info, ok := obj.Language["python"].(objectTypeInfo)
-			if ok {
-				objectKey = !info.isDictionary
-				if mapped, ok := info.camelCaseToSnakeCase[keyVal]; ok {
-					keyVal = mapped
-				}
-			} else {
-				objectKey, keyVal = true, PyName(keyVal)
-			}
-
+		if _, ok := pcl.GetSchemaForType(model.GetTraversableType(receiver)); ok {
+			objectKey, keyVal = true, PyName(keyVal)
 			switch t := traverser.(type) {
 			case hcl.TraverseAttr:
 				t.Name = keyVal
@@ -196,7 +184,7 @@ func (qa *quoteAllocator) allocateExpression(x model.Expression) (model.Expressi
 	var longString bool
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
-		if x.Type() != model.StringType || qa.inTemplate() {
+		if !model.StringType.AssignableFrom(x.Type()) || qa.inTemplate() {
 			return x, nil
 		}
 		v := x.Value.AsString()
@@ -210,7 +198,7 @@ func (qa *quoteAllocator) allocateExpression(x model.Expression) (model.Expressi
 		}
 	case *model.TemplateExpression:
 		for i, part := range x.Parts {
-			if lit, ok := part.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+			if lit, ok := part.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 				v := lit.Value.AsString()
 				switch strings.Count(v, "\n") {
 				case 0:
@@ -257,7 +245,7 @@ func (qa *quoteAllocator) freeExpression(x model.Expression) (model.Expression, 
 
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
-		if x.Type() != model.StringType || qa.inTemplate() {
+		if !model.StringType.AssignableFrom(x.Type()) || qa.inTemplate() {
 			return x, nil
 		}
 		// OK

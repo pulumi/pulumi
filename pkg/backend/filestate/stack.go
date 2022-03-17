@@ -18,14 +18,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // Stack is a local stack.  This simply adds some local-specific properties atop the standard backend stack interface.
@@ -60,16 +60,24 @@ func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
 }
 
-func (s *localStack) Rename(ctx context.Context, newName tokens.QName) error {
+func (s *localStack) Rename(ctx context.Context, newName tokens.QName) (backend.StackReference, error) {
 	return backend.RenameStack(ctx, s, newName)
 }
 
-func (s *localStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (s *localStack) Preview(
+	ctx context.Context,
+	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+
 	return backend.PreviewStack(ctx, s, op)
 }
 
 func (s *localStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.UpdateStack(ctx, s, op)
+}
+
+func (s *localStack) Import(ctx context.Context, op backend.UpdateOperation,
+	imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	return backend.ImportStack(ctx, s, op, imports)
 }
 
 func (s *localStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
@@ -80,8 +88,8 @@ func (s *localStack) Destroy(ctx context.Context, op backend.UpdateOperation) (e
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation) result.Result {
-	return backend.WatchStack(ctx, s, op)
+func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) result.Result {
+	return backend.WatchStack(ctx, s, op, paths)
 }
 
 func (s *localStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
@@ -98,21 +106,21 @@ func (s *localStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 }
 
 type localStackSummary struct {
-	s *localStack
+	name backend.StackReference
+	chk  *apitype.CheckpointV3
 }
 
-func newLocalStackSummary(s *localStack) localStackSummary {
-	return localStackSummary{s}
+func newLocalStackSummary(name backend.StackReference, chk *apitype.CheckpointV3) localStackSummary {
+	return localStackSummary{name: name, chk: chk}
 }
 
 func (lss localStackSummary) Name() backend.StackReference {
-	return lss.s.Ref()
+	return lss.name
 }
 
 func (lss localStackSummary) LastUpdate() *time.Time {
-	snap := lss.s.snapshot
-	if snap != nil {
-		if t := snap.Manifest.Time; !t.IsZero() {
+	if lss.chk != nil && lss.chk.Latest != nil {
+		if t := lss.chk.Latest.Manifest.Time; !t.IsZero() {
 			return &t
 		}
 	}
@@ -120,9 +128,8 @@ func (lss localStackSummary) LastUpdate() *time.Time {
 }
 
 func (lss localStackSummary) ResourceCount() *int {
-	snap := lss.s.snapshot
-	if snap != nil {
-		count := len(snap.Resources)
+	if lss.chk != nil && lss.chk.Latest != nil {
+		count := len(lss.chk.Latest.Resources)
 		return &count
 	}
 	return nil

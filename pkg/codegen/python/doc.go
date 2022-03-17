@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // DocLanguageHelper is the Python-specific implementation of the DocLanguageHelper.
@@ -72,28 +72,15 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return ""
 }
 
-// GetDocLinkForBuiltInType returns the Python URL for a built-in type.
-// Currently not using the typeName parameter because the returned link takes to a general
-// top-level page containing info for all built in types.
-func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
-	return "https://docs.python.org/3/library/stdtypes.html"
-}
-
 // GetLanguageTypeString returns the Python-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
-	// TODO[pulumi/pulumi#5145]: Delete this if check once all providers have UsesIOClasses set to true in their
-	// schema.
-	if pythonPkgInfo, ok := pkg.Language["python"].(PackageInfo); !ok || !pythonPkgInfo.UsesIOClasses {
-		return d.GetLanguageTypeStringLegacy(pkg, moduleName, t, input, optional)
-	}
-
+func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
 	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
 		pkg:         pkg,
 		mod:         moduleName,
 		typeDetails: typeDetails,
 	}
-	typeName := mod.typeString(t, input, false /*wrapInput*/, optional /*optional*/, false /*acceptMapping*/)
+	typeName := mod.typeString(t, input, false /*acceptMapping*/)
 
 	// Remove any package qualifiers from the type name.
 	if !input {
@@ -106,48 +93,6 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	return typeName
 }
 
-// TODO[pulumi/pulumi#5145]: Delete this function once all providers have UsesIOClasses set to true in their schema.
-// GetLanguageTypeStringLegacy returns the legacy type strings.
-func (d DocLanguageHelper) GetLanguageTypeStringLegacy(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
-	name := pyType(t)
-
-	// The Python SDK generator will simply return "list" or "dict" for enumerables.
-	// So we examine the underlying types to provide some more information on
-	// the elements inside the enumerable.
-	switch name {
-	case "list":
-		arrTy := t.(*schema.ArrayType)
-		elType := arrTy.ElementType.String()
-		return getListWithTypeName(elementTypeToName(elType))
-	case "dict":
-		switch dTy := t.(type) {
-		case *schema.UnionType:
-			types := make([]string, 0, len(dTy.ElementTypes))
-			for _, e := range dTy.ElementTypes {
-				if schema.IsPrimitiveType(e) {
-					types = append(types, e.String())
-					continue
-				}
-				t := d.GetLanguageTypeStringLegacy(pkg, moduleName, e, input, optional)
-				types = append(types, t)
-			}
-			return strings.Join(types, " | ")
-		case *schema.MapType:
-			if uTy, ok := dTy.ElementType.(*schema.UnionType); ok {
-				return d.GetLanguageTypeStringLegacy(pkg, moduleName, uTy, input, optional)
-			}
-
-			elType := dTy.ElementType.String()
-			return getMapWithTypeName(elementTypeToName(elType))
-		case *schema.ObjectType:
-			return getDictWithTypeName(tokenToName(dTy.Token))
-		default:
-			return "Dict[str, Any]"
-		}
-	}
-	return name
-}
-
 func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
 	return PyName(tokenToName(f.Token))
 }
@@ -158,14 +103,25 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *sche
 	return title(tokenToName(f.Token)) + "Result"
 }
 
-// GenPropertyCaseMap generates the case maps for a property.
-func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool string, prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string, seenTypes codegen.Set) {
-	if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
-		fmt.Printf("error building case map for %q in module %q", prop.Name, modName)
-		return
-	}
+func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
+	return PyName(m.Name)
+}
 
-	recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
+func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
+	m *schema.Method) string {
+
+	if info, ok := pkg.Language["python"].(PackageInfo); ok {
+		if info.LiftSingleValueMethodReturns && m.Function.Outputs != nil && len(m.Function.Outputs.Properties) == 1 {
+			typeDetails := map[*schema.ObjectType]*typeDetails{}
+			mod := &modContext{
+				pkg:         pkg,
+				mod:         modName,
+				typeDetails: typeDetails,
+			}
+			return mod.typeString(m.Function.Outputs.Properties[0].Type, false, false)
+		}
+	}
+	return fmt.Sprintf("%s.%sResult", resourceName(r), title(d.GetMethodName(m)))
 }
 
 // GetPropertyName returns the property name specific to Python.
@@ -173,45 +129,13 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return PyName(p.Name), nil
 }
 
-// elementTypeToName returns the type name from an element type of the form
-// package:module:_type, with its leading "_" stripped.
-func elementTypeToName(el string) string {
-	parts := strings.Split(el, ":")
-	if len(parts) == 3 {
-		el = parts[2]
+// GetEnumName returns the enum name specific to Python.
+func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string, error) {
+	name := fmt.Sprintf("%v", e.Value)
+	if e.Name != "" {
+		name = e.Name
 	}
-	el = strings.TrimPrefix(el, "_")
-
-	return el
-}
-
-// getListWithTypeName returns a Python representation of a list containing
-// items of `t`.
-func getListWithTypeName(t string) string {
-	if t == "string" {
-		return "List[str]"
-	}
-
-	return fmt.Sprintf("List[%s]", strings.Title(t))
-}
-
-// getDictWithTypeName returns the Python representation of a dictionary
-// where each item is of type `t`.
-func getDictWithTypeName(t string) string {
-	return fmt.Sprintf("Dict[%s]", strings.Title(t))
-}
-
-// getMapWithTypeName returns the Python representation of a dictionary
-// with a string keu and a value of type `t`.
-func getMapWithTypeName(t string) string {
-	switch t {
-	case "string":
-		return "Dict[str, str]"
-	case "any":
-		return "Dict[str, Any]"
-	default:
-		return fmt.Sprintf("Dict[str, %s]", strings.Title(t))
-	}
+	return makeSafeEnumName(name, typeName)
 }
 
 // GetModuleDocLink returns the display name and the link for a module.
@@ -219,9 +143,9 @@ func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string)
 	var displayName string
 	var link string
 	if modName == "" {
-		displayName = fmt.Sprintf("pulumi_%s", pkg.Name)
+		displayName = pyPack(pkg.Name)
 	} else {
-		displayName = fmt.Sprintf("pulumi_%s/%s", pkg.Name, strings.ToLower(modName))
+		displayName = fmt.Sprintf("%s/%s", pyPack(pkg.Name), strings.ToLower(modName))
 	}
 	link = fmt.Sprintf("/docs/reference/pkg/python/%s", displayName)
 	return displayName, link

@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type StringSet map[string]struct{}
@@ -38,6 +38,10 @@ func (ss StringSet) Add(s string) {
 	ss[s] = struct{}{}
 }
 
+func (ss StringSet) Any() bool {
+	return len(ss) > 0
+}
+
 func (ss StringSet) Delete(s string) {
 	delete(ss, s)
 }
@@ -45,6 +49,11 @@ func (ss StringSet) Delete(s string) {
 func (ss StringSet) Has(s string) bool {
 	_, ok := ss[s]
 	return ok
+}
+
+// StringSet.Except returns the string set setminus s.
+func (ss StringSet) Except(s string) StringSet {
+	return ss.Subtract(NewStringSet(s))
 }
 
 func (ss StringSet) SortedValues() []string {
@@ -56,10 +65,36 @@ func (ss StringSet) SortedValues() []string {
 	return values
 }
 
+// Contains returns true if all elements of the subset are also present in the current set. It also returns true
+// if subset is empty.
+func (ss StringSet) Contains(subset StringSet) bool {
+	for v := range subset {
+		if !ss.Has(v) {
+			return false
+		}
+	}
+	return true
+}
+
+// Subtract returns a new string set with all elements of the current set that are not present in the other set.
+func (ss StringSet) Subtract(other StringSet) StringSet {
+	result := NewStringSet()
+	for v := range ss {
+		if !other.Has(v) {
+			result.Add(v)
+		}
+	}
+	return result
+}
+
 type Set map[interface{}]struct{}
 
 func (s Set) Add(v interface{}) {
 	s[v] = struct{}{}
+}
+
+func (s Set) Delete(v interface{}) {
+	delete(s, v)
 }
 
 func (s Set) Has(v interface{}) bool {
@@ -105,4 +140,25 @@ func CleanDir(dirPath string, exclusions StringSet) error {
 	}
 
 	return nil
+}
+
+var commonEnumNameReplacements = map[string]string{
+	"*": "Asterisk",
+	"0": "Zero",
+	"1": "One",
+	"2": "Two",
+	"3": "Three",
+	"4": "Four",
+	"5": "Five",
+	"6": "Six",
+	"7": "Seven",
+	"8": "Eight",
+	"9": "Nine",
+}
+
+func ExpandShortEnumName(name string) string {
+	if replacement, ok := commonEnumNameReplacements[name]; ok {
+		return replacement
+	}
+	return name
 }

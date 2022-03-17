@@ -19,13 +19,14 @@
 package docs
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pgavlin/goldmark/ast"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const defaultMissingExampleSnippetPlaceholder = "Coming soon!"
@@ -37,16 +38,17 @@ type exampleSection struct {
 }
 
 type docInfo struct {
-	description string
-	examples    []exampleSection
+	description   string
+	examples      []exampleSection
+	importDetails string
 }
 
-func decomposeDocstring(docstring string) docInfo {
+func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 	if docstring == "" {
 		return docInfo{}
 	}
 
-	languages := codegen.NewStringSet(snippetLanguages...)
+	languages := codegen.NewStringSet(dctx.snippetLanguages...)
 
 	source := []byte(docstring)
 	parsed := schema.ParseDocs(source)
@@ -68,7 +70,7 @@ func decomposeDocstring(docstring string) docInfo {
 				if exampleShortcode == nil {
 					exampleShortcode, title, snippets = shortcode, "", map[string]string{}
 				} else if !enter && shortcode == exampleShortcode {
-					for _, l := range snippetLanguages {
+					for _, l := range dctx.snippetLanguages {
 						if _, ok := snippets[l]; !ok {
 							snippets[l] = defaultMissingExampleSnippetPlaceholder
 						}
@@ -116,9 +118,19 @@ func decomposeDocstring(docstring string) docInfo {
 	}
 
 	description := schema.RenderDocsToString(source, parsed)
+	importDetails := ""
+	parts := strings.Split(description, "\n\n## Import")
+	if len(parts) > 1 { // we only care about the Import section details here!!
+		importDetails = parts[1]
+	}
+
+	// When we split the description above, the main part of the description is always part[0]
+	// the description must have a blank line after it to render the examples correctly
+	description = fmt.Sprintf("%s\n", parts[0])
 
 	return docInfo{
-		description: description,
-		examples:    examples,
+		description:   description,
+		examples:      examples,
+		importDetails: importDetails,
 	}
 }

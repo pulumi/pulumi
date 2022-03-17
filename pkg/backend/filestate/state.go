@@ -17,32 +17,34 @@ package filestate
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 
-	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+
+	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/encoding"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const DisableCheckpointBackupsEnvVar = "PULUMI_DISABLE_CHECKPOINT_BACKUPS"
@@ -131,7 +133,7 @@ func (b *localBackend) getStack(name tokens.QName) (*deploy.Snapshot, string, er
 
 	chk, err := b.getCheckpoint(name)
 	if err != nil {
-		return nil, file, errors.Wrap(err, "failed to load checkpoint")
+		return nil, file, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
 
 	// Materialize an actual snapshot object.
@@ -143,8 +145,7 @@ func (b *localBackend) getStack(name tokens.QName) (*deploy.Snapshot, string, er
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
 	if !DisableIntegrityChecking {
 		if verifyerr := snapshot.VerifyIntegrity(); verifyerr != nil {
-			return nil, file,
-				errors.Wrapf(verifyerr, "%s: snapshot integrity failure; refusing to use it", file)
+			return nil, file, fmt.Errorf("%s: snapshot integrity failure; refusing to use it: %w", file, verifyerr)
 		}
 	}
 
@@ -167,22 +168,25 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 	file := b.stackPath(name)
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		return "", errors.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
+		return "", fmt.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
 	}
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
 	chk, err := stack.SerializeCheckpoint(name, snap, sm, false /* showSecrets */)
 	if err != nil {
-		return "", errors.Wrap(err, "serializaing checkpoint")
+		return "", fmt.Errorf("serializaing checkpoint: %w", err)
 	}
 	byts, err := m.Marshal(chk)
 	if err != nil {
-		return "", errors.Wrap(err, "An IO error occurred while marshalling the checkpoint")
+		return "", fmt.Errorf("An IO error occurred while marshalling the checkpoint: %w", err)
 	}
 
-	// Back up the existing file if it already exists.
-	bck := backupTarget(b.bucket, file)
+	// Back up the existing file if it already exists. Don't delete the original, the following WriteAll will
+	// atomically replace it anyway and various other bits of the system depend on being able to find the
+	// .json file to know the stack currently exists (see https://github.com/pulumi/pulumi/issues/9033 for
+	// context).
+	bck := backupTarget(b.bucket, file, true)
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = b.bucket.WriteAll(context.TODO(), file, byts, nil); err != nil {
@@ -206,7 +210,7 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 				if err != nil {
 					logging.V(7).Infof("Error while writing snapshot to: %s (attempt=%d, error=%s)", file, try, err)
 					if try > 10 {
-						return false, nil, errors.Wrap(err, "An IO error occurred while writing the new snapshot file")
+						return false, nil, fmt.Errorf("An IO error occurred while writing the new snapshot file: %w", err)
 					}
 					return false, nil, nil
 				}
@@ -223,7 +227,7 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 	// And if we are retaining historical checkpoint information, write it out again
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
 		if err = b.bucket.WriteAll(context.TODO(), fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, nil); err != nil {
-			return "", errors.Wrap(err, "An IO error occurred while writing the new snapshot file")
+			return "", fmt.Errorf("An IO error occurred while writing the new snapshot file: %w", err)
 		}
 	}
 
@@ -232,9 +236,10 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 		// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
 		// file is already written and might be bad.
 		if verifyerr := snap.VerifyIntegrity(); verifyerr != nil {
-			return "", errors.Wrapf(verifyerr,
-				"%s: snapshot integrity failure; it was already written, but is invalid (backup available at %s)",
-				file, bck)
+			return "", fmt.Errorf(
+				"%s: snapshot integrity failure; it was already written, but is invalid (backup available at %s): %w",
+				file, bck, verifyerr)
+
 		}
 	}
 
@@ -247,19 +252,29 @@ func (b *localBackend) removeStack(name tokens.QName) error {
 
 	// Just make a backup of the file and don't write out anything new.
 	file := b.stackPath(name)
-	backupTarget(b.bucket, file)
+	backupTarget(b.bucket, file, false)
 
 	historyDir := b.historyDirectory(name)
 	return removeAllByPrefix(b.bucket, historyDir)
 }
 
-// backupTarget makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
-// simply renames the file, which is simpler, more efficient, etc.
-func backupTarget(bucket Bucket, file string) string {
+// backupTarget makes a backup of an existing file, in preparation for writing a new one.
+func backupTarget(bucket Bucket, file string, keepOriginal bool) string {
 	contract.Require(file != "", "file")
 	bck := file + ".bak"
-	err := renameObject(bucket, file, bck)
-	contract.IgnoreError(err) // ignore errors.
+
+	err := bucket.Copy(context.TODO(), file, bck, nil)
+	if err != nil {
+		logging.V(5).Infof("error copying %s to %s: %s", file, bck, err)
+	}
+
+	if !keepOriginal {
+		err = bucket.Delete(context.TODO(), file)
+		if err != nil {
+			logging.V(5).Infof("error deleting source object after rename: %v (%v) skipping", file, err)
+		}
+	}
+
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 	return bck
 }
@@ -312,40 +327,65 @@ func (b *localBackend) backupDirectory(stack tokens.QName) string {
 
 // getHistory returns locally stored update history. The first element of the result will be
 // the most recent update record.
-func (b *localBackend) getHistory(name tokens.QName) ([]backend.UpdateInfo, error) {
+func (b *localBackend) getHistory(name tokens.QName, pageSize int, page int) ([]backend.UpdateInfo, error) {
 	contract.Require(name != "", "name")
 
 	dir := b.historyDirectory(name)
+	// TODO: we could consider optimizing the list operation using `page` and `pageSize`.
+	// Unfortunately, this is mildly invasive given the gocloud List API.
 	allFiles, err := listBucket(b.bucket, dir)
 	if err != nil {
 		// History doesn't exist until a stack has been updated.
-		if gcerrors.Code(errors.Cause(err)) == gcerrors.NotFound {
+		if gcerrors.Code(err) == gcerrors.NotFound {
 			return nil, nil
 		}
 		return nil, err
 	}
 
-	var updates []backend.UpdateInfo
+	var historyEntries []*blob.ListObject
 
+	// filter down to just history entries, reversing list to be in most recent order.
 	// listBucket returns the array sorted by file name, but because of how we name files, older updates come before
-	// newer ones. Loop backwards so we added the newest updates to the array we will return first.
+	// newer ones.
 	for i := len(allFiles) - 1; i >= 0; i-- {
 		file := allFiles[i]
 		filepath := file.Key
 
-		// Open all of the history files, ignoring the checkpoints.
+		// ignore checkpoints
 		if !strings.HasSuffix(filepath, ".history.json") {
 			continue
 		}
 
+		historyEntries = append(historyEntries, file)
+	}
+
+	start := 0
+	end := len(historyEntries) - 1
+	if pageSize > 0 {
+		if page < 1 {
+			page = 1
+		}
+		start = (page - 1) * pageSize
+		end = start + pageSize - 1
+		if end > len(historyEntries)-1 {
+			end = len(historyEntries) - 1
+		}
+	}
+
+	var updates []backend.UpdateInfo
+
+	for i := start; i <= end; i++ {
+		file := historyEntries[i]
+		filepath := file.Key
+
 		var update backend.UpdateInfo
 		b, err := b.bucket.ReadAll(context.TODO(), filepath)
 		if err != nil {
-			return nil, errors.Wrapf(err, "reading history file %s", filepath)
+			return nil, fmt.Errorf("reading history file %s: %w", filepath, err)
 		}
 		err = json.Unmarshal(b, &update)
 		if err != nil {
-			return nil, errors.Wrapf(err, "reading history file %s", filepath)
+			return nil, fmt.Errorf("reading history file %s: %w", filepath, err)
 		}
 
 		updates = append(updates, update)
@@ -364,7 +404,7 @@ func (b *localBackend) renameHistory(oldName tokens.QName, newName tokens.QName)
 	allFiles, err := listBucket(b.bucket, oldHistory)
 	if err != nil {
 		// if there's nothing there, we don't really need to do a rename.
-		if gcerrors.Code(errors.Cause(err)) == gcerrors.NotFound {
+		if gcerrors.Code(err) == gcerrors.NotFound {
 			return nil
 		}
 		return err
@@ -380,10 +420,10 @@ func (b *localBackend) renameHistory(oldName tokens.QName, newName tokens.QName)
 		newBlob := path.Join(newHistory, newFileName)
 
 		if err := b.bucket.Copy(context.TODO(), newBlob, oldBlob, nil); err != nil {
-			return errors.Wrap(err, "copying history file")
+			return fmt.Errorf("copying history file: %w", err)
 		}
 		if err := b.bucket.Delete(context.TODO(), oldBlob); err != nil {
-			return errors.Wrap(err, "deleting existing history file")
+			return fmt.Errorf("deleting existing history file: %w", err)
 		}
 	}
 

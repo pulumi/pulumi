@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2022, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
 
 from setuptools import setup, find_packages
 
+
 def readme():
     with open('README.md', encoding='utf-8') as f:
         return f.read()
+
 
 setup(name='pulumi',
       version='${VERSION}',
@@ -33,9 +35,13 @@ setup(name='pulumi',
               'py.typed'
           ]
       },
+      # Keep this list in sync with Pipfile
       install_requires=[
           'protobuf>=3.6.0',
           'dill>=0.3.0',
-          'grpcio>=1.9.1,!=1.30.0'
+          'grpcio>=1.33.2,<1.44.0',
+          'six>=1.12.0',
+          'semver>=2.8.1',
+          'pyyaml>=5.3.1'
       ],
       zip_safe=False)

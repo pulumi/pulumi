@@ -1,0 +1,217 @@
+# This is an example goreleaser.yaml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+dist: goreleaser
+project_name: pulumi
+before:
+  hooks:
+    - ./scripts/prep-for-goreleaser.sh
+blobs:
+- bucket: get.pulumi.com
+  folder: releases/sdk/
+  ids:
+    - pulumi-unix
+    - pulumi-windows
+  provider: s3
+  region: us-west-2
+builds:
+# Windows builds
+- id: pulumi-windows
+  binary: pulumi
+  gobinary: ../scripts/go-wrapper.sh
+  dir: pkg
+  goarch:
+    - amd64
+  goos:
+    - windows
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./cmd/pulumi
+- id: pulumi-language-nodejs-windows
+  binary: pulumi-language-nodejs
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+  goos:
+    - windows
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./nodejs/cmd/pulumi-language-nodejs
+- id: pulumi-language-python-windows
+  binary: pulumi-language-python
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+  goos:
+    - windows
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./python/cmd/pulumi-language-python
+- id: pulumi-language-dotnet-windows
+  binary: pulumi-language-dotnet
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+  goos:
+    - windows
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./dotnet/cmd/pulumi-language-dotnet
+- id: pulumi-language-go-windows
+  binary: pulumi-language-go
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+  goos:
+    - windows
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./go/pulumi-language-go
+# UNIX builds
+- id: pulumi-unix
+  binary: pulumi
+  gobinary: ../scripts/go-wrapper.sh
+  dir: pkg
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - linux
+    - darwin
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./cmd/pulumi
+- id: pulumi-language-nodejs-unix
+  binary: pulumi-language-nodejs
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - linux
+    - darwin
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./nodejs/cmd/pulumi-language-nodejs
+- id: pulumi-language-python-unix
+  binary: pulumi-language-python
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - linux
+    - darwin
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./python/cmd/pulumi-language-python
+- id: pulumi-language-dotnet-unix
+  binary: pulumi-language-dotnet
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - linux
+    - darwin
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./dotnet/cmd/pulumi-language-dotnet
+- id: pulumi-language-go-unix
+  binary: pulumi-language-go
+  gobinary: ../scripts/go-wrapper.sh
+  dir: sdk
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - linux
+    - darwin
+  ldflags:
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
+  mod_timestamp: '{{ .CommitTimestamp }}'
+  main: ./go/pulumi-language-go
+
+archives:
+- id: pulumi-unix
+  wrap_in_directory: pulumi
+  builds:
+    - pulumi-language-dotnet-unix
+    - pulumi-language-go-unix
+    - pulumi-language-python-unix
+    - pulumi-language-nodejs-unix
+    - pulumi-unix
+  replacements:
+    amd64: x64
+  files:
+    - pulumi-resource-pulumi-nodejs
+    - pulumi-resource-pulumi-python
+    - pulumi-analyzer-policy
+    - pulumi-analyzer-policy-python
+    - pulumi-language-python-exec
+  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+- id: pulumi-windows
+  wrap_in_directory: pulumi/bin
+  builds:
+    - pulumi-language-dotnet-windows
+    - pulumi-language-go-windows
+    - pulumi-language-python-windows
+    - pulumi-language-nodejs-windows
+    - pulumi-windows
+  replacements:
+    amd64: x64
+  format: zip
+  files:
+    - pulumi-resource-pulumi-nodejs.cmd
+    - pulumi-resource-pulumi-python.cmd
+    - pulumi-python3-shim.cmd
+    - pulumi-python-shim.cmd
+    - pulumi-analyzer-policy.cmd
+    - pulumi-analyzer-policy-python.cmd
+    - pulumi-language-python-exec
+  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+snapshot:
+  name_template: "{{ .Version }}-SNAPSHOT"
+checksum:
+  name_template: "{{ .ProjectName }}-{{ .Version }}-checksums.txt"
+brews:
+  -
+    name: pulumi
+    tap:
+      owner: pulumi
+      name: homebrew-tap
+    commit_author:
+      name: pulumi-bot
+      email: bot@pulumi.com
+    homepage: "https://pulumi.com"
+    description: "Pulumi - Modern Infrastructure as Code. Any cloud, any language "
+    folder: Formula
+    license: Apache-2.0
+    test: |
+      system "#{bin}/pulumi version"
+    conflicts:
+      - pulumi
+    install: |-
+      bin.install Dir["*"]
+
+      # Install shell completions
+      (bash_completion/"pulumi.bash").write Utils.safe_popen_read("#{bin}/pulumi gen-completion bash")
+      (zsh_completion/"_pulumi").write Utils.safe_popen_read("#{bin}/pulumi gen-completion zsh")
+      (fish_completion/"pulumi.fish").write Utils.safe_popen_read("#{bin}/pulumi gen-completion fish")
+release:
+  discussion_category_name: Releases

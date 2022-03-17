@@ -17,15 +17,15 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
-
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 )
 
 func newStackChangeSecretsProviderCmd() *cobra.Command {
@@ -91,66 +91,33 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 				decrypter = config.NewPanicCrypter()
 			}
 
+			secretsProvider := args[0]
+			rotatePassphraseProvider := secretsProvider == "passphrase"
 			// Create the new secrets provider and set to the currentStack
-			if err := createSecretsManager(b, currentStack.Ref(), args[0]); err != nil {
-				return err
-			}
-
-			// Change the config to use the new secrets provider
-			err = migrateConfigToNewSecretsProvider(currentStack, currentConfig, decrypter)
-			if err != nil {
+			if err := createSecretsManager(b, currentStack.Ref(), secretsProvider, rotatePassphraseProvider); err != nil {
 				return err
 			}
 
 			// Fixup the checkpoint
-			return migrateCheckpointToNewSecretsProvider(commandContext(), currentStack)
+			fmt.Printf("Migrating old configuration and state to new secrets provider\n")
+			return migrateOldConfigAndCheckpointToNewSecretsProvider(commandContext(), currentStack, currentConfig, decrypter)
 		}),
 	}
 
 	return cmd
 }
 
-func migrateCheckpointToNewSecretsProvider(ctx context.Context, currentStack backend.Stack) error {
-	// Load the current checkpoint so those secrets can also be decrypted
-	checkpoint, err := currentStack.ExportDeployment(ctx)
-	if err != nil {
-		return err
-	}
-	snap, err := stack.DeserializeUntypedDeployment(checkpoint, stack.DefaultSecretsProvider)
-	if err != nil {
-		return checkDeploymentVersionError(err, currentStack.Ref().Name().String())
-	}
-
+func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, currentStack backend.Stack,
+	currentConfig config.Map, decrypter config.Decrypter) error {
+	// The order of operations here should be to load the secrets manager current stack
 	// Get the newly created secrets manager for the stack
 	newSecretsManager, err := getStackSecretsManager(currentStack)
 	if err != nil {
 		return err
 	}
 
-	// Reserialize the Snapshopshot with the NewSecrets Manager
-	reserializedDeployment, err := stack.SerializeDeployment(snap, newSecretsManager, false /*showSecrets*/)
-	if err != nil {
-		return err
-	}
-
-	bytes, err := json.Marshal(reserializedDeployment)
-	if err != nil {
-		return err
-	}
-
-	dep := apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
-	}
-
-	// Import the newly changes Deployment
-	return currentStack.ImportDeployment(ctx, &dep)
-}
-
-func migrateConfigToNewSecretsProvider(currentStack backend.Stack, currentConfig config.Map,
-	decrypter config.Decrypter) error {
-	// Get the new encrypter for the current stack
-	newEncrypter, err := getStackEncrypter(currentStack)
+	// get the encrypter for the new secrets manager
+	newEncrypter, err := newSecretsManager.Encrypter()
 	if err != nil {
 		return err
 	}
@@ -173,5 +140,36 @@ func migrateConfigToNewSecretsProvider(currentStack backend.Stack, currentConfig
 		}
 	}
 
-	return saveProjectStack(currentStack, reloadedProjectStack)
+	if err := saveProjectStack(currentStack, reloadedProjectStack); err != nil {
+		return err
+	}
+
+	// Load the current checkpoint so those secrets can also be decrypted
+	checkpoint, err := currentStack.ExportDeployment(ctx)
+	if err != nil {
+		return err
+	}
+	snap, err := stack.DeserializeUntypedDeployment(checkpoint, stack.DefaultSecretsProvider)
+	if err != nil {
+		return checkDeploymentVersionError(err, currentStack.Ref().Name().String())
+	}
+
+	// Reserialize the Snapshopshot with the NewSecrets Manager
+	reserializedDeployment, err := stack.SerializeDeployment(snap, newSecretsManager, false /*showSecrets*/)
+	if err != nil {
+		return err
+	}
+
+	bytes, err := json.Marshal(reserializedDeployment)
+	if err != nil {
+		return err
+	}
+
+	dep := apitype.UntypedDeployment{
+		Version:    apitype.DeploymentSchemaVersionCurrent,
+		Deployment: bytes,
+	}
+
+	// Import the newly changes Deployment
+	return currentStack.ImportDeployment(ctx, &dep)
 }

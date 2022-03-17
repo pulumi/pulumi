@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
@@ -31,20 +31,7 @@ import (
 func RunCommand(t *testing.T, name string, args []string, wd string, opts *ProgramTestOptions) error {
 	path := args[0]
 	command := strings.Join(args, " ")
-	fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
-
-	// Spawn a goroutine to print out "still running..." messages.
-	finished := false
-	defer func() { finished = true }()
-
-	go func() {
-		for !finished {
-			time.Sleep(120 * time.Second)
-			if !finished {
-				fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
-			}
-		}
-	}()
+	t.Logf("**** Invoke '%v' in '%v'", command, wd)
 
 	env := os.Environ()
 	if opts.Env != nil {
@@ -93,25 +80,30 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	}
 
 	if runerr != nil {
-		fprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
+		t.Logf("Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
 
 		if !opts.Verbose {
-			// We've seen long fprintf's fail on Travis, so avoid panicing.
-			if _, err := fmt.Fprintf(opts.Stderr, "%s\n", string(runout)); err != nil {
-				fprintf(opts.Stderr, "\n\nOutput truncated: %v\n", err)
+			stderr := opts.Stderr
+
+			if stderr == nil {
+				stderr = os.Stderr
 			}
+
+			// Make sure we write the output in case of a failure to stderr so
+			// tests can assert the shape of the error message.
+			_, _ = fmt.Fprintf(stderr, "%s\n", string(runout))
 		}
 	}
 
 	// If we collected any program output, write it to a log file -- success or failure.
 	if len(runout) > 0 {
 		if logFile, err := writeCommandOutput(name, wd, runout); err != nil {
-			fprintf(opts.Stderr, "Failed to write output: %v\n", err)
+			t.Logf("Failed to write output: %v", err)
 		} else {
-			fprintf(opts.Stderr, "Wrote output to %s\n", logFile)
+			t.Logf("Wrote output to %s", logFile)
 		}
 	} else {
-		fprintf(opts.Stderr, "Command completed without output\n")
+		t.Log("Command completed without output")
 	}
 
 	return runerr

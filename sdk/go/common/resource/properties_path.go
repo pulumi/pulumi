@@ -1,6 +1,8 @@
 package resource
 
 import (
+	"bytes"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -41,6 +43,8 @@ type PropertyPath []interface{}
 // - root["key with a ."]
 // - ["root key with \"escaped\" quotes"].nested
 // - ["root key with a ."][100]
+// - root.array[*].field
+// - root.array["*"].field
 func ParsePropertyPath(path string) (PropertyPath, error) {
 	// We interpret the grammar above a little loosely in order to keep things simple. Specifically, we will accept
 	// something close to the following:
@@ -82,11 +86,16 @@ func ParsePropertyPath(path string) (PropertyPath, error) {
 					return nil, errors.New("missing closing bracket in array index")
 				}
 
-				index, err := strconv.ParseInt(path[1:rbracket], 10, 0)
-				if err != nil {
-					return nil, errors.Wrap(err, "invalid array index")
+				segment := path[1:rbracket]
+				if segment == "*" {
+					pathElement, path = "*", path[rbracket:]
+				} else {
+					index, err := strconv.ParseInt(segment, 10, 0)
+					if err != nil {
+						return nil, errors.Wrap(err, "invalid array index")
+					}
+					pathElement, path = int(index), path[rbracket:]
 				}
-				pathElement, path = int(index), path[rbracket:]
 			}
 			elements, path = append(elements, pathElement), path[1:]
 		default:
@@ -187,10 +196,9 @@ func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
 			case dest.IsArray():
 				// If the destination array does exist, ensure that it is large enough to accommodate the requested
 				// index.
-				arr := dest.ArrayValue()
-				if key >= len(arr) {
-					arr = append(make([]PropertyValue, key+1-len(arr)), arr...)
-					v.V = arr
+				if arr := dest.ArrayValue(); key >= len(arr) {
+					dest = NewArrayProperty(append(make([]PropertyValue, key+1-len(arr)), arr...))
+					set(dest)
 				}
 			default:
 				return PropertyValue{}, false
@@ -257,4 +265,74 @@ func (p PropertyPath) Delete(dest PropertyValue) bool {
 	}
 	return true
 
+}
+
+// Contains returns true if the receiver property path contains the other property path.
+// For example, the path `foo["bar"][1]` contains the path `foo.bar[1].baz`.  The key `"*"`
+// is a wildcard which matches any string or int index at that same nesting level.  So for example,
+// the path `foo.*.baz` contains `foo.bar.baz.bam`, and the path `*` contains any path.
+func (p PropertyPath) Contains(other PropertyPath) bool {
+	if len(other) < len(p) {
+		return false
+	}
+
+	for i := range p {
+		pp := p[i]
+		otherp := other[i]
+
+		switch pp := pp.(type) {
+		case int:
+			if otherpi, ok := otherp.(int); !ok || otherpi != pp {
+				return false
+			}
+		case string:
+			if pp == "*" {
+				continue
+			}
+			if otherps, ok := otherp.(string); !ok || otherps != pp {
+				return false
+			}
+		default:
+			// Invalid path, return false
+			return false
+		}
+	}
+
+	return true
+}
+
+func requiresQuote(c rune) bool {
+	return !(c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_')
+}
+
+func (p PropertyPath) String() string {
+	var buf bytes.Buffer
+	for i, k := range p {
+		switch k := k.(type) {
+		case string:
+			var keyBuf bytes.Buffer
+			quoted := false
+			for _, c := range k {
+				if requiresQuote(c) {
+					quoted = true
+					if c == '"' {
+						keyBuf.WriteByte('\\')
+					}
+				}
+				keyBuf.WriteRune(c)
+			}
+			if !quoted {
+				if i == 0 {
+					fmt.Fprintf(&buf, "%s", keyBuf.String())
+				} else {
+					fmt.Fprintf(&buf, ".%s", keyBuf.String())
+				}
+			} else {
+				fmt.Fprintf(&buf, `["%s"]`, keyBuf.String())
+			}
+		case int:
+			fmt.Fprintf(&buf, "[%d]", k)
+		}
+	}
+	return buf.String()
 }

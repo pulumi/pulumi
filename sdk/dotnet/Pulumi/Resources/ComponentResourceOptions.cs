@@ -1,7 +1,8 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-using System;
 using System.Collections.Generic;
+using System;
+using System.Linq;
 
 namespace Pulumi
 {
@@ -20,7 +21,7 @@ namespace Pulumi
         /// </summary>
         public List<ProviderResource> Providers
         {
-            get => _providers ?? (_providers = new List<ProviderResource>());
+            get => _providers ??= new List<ProviderResource>();
             set => _providers = value;
         }
 
@@ -37,18 +38,23 @@ namespace Pulumi
         /// <para/>
         /// Conceptually property merging follows these basic rules:
         /// <list type="number">
-        /// <item>
+        /// <item><description>
         /// If the property is a collection, the final value will be a collection containing the
         /// values from each options object.
-        /// </item>
-        /// <item>
+        /// </description></item>
+        /// <item><description>
         /// Simple scalar values from <paramref name="options2"/> (i.e. <see cref="string"/>s,
         /// <see cref="int"/>s, <see cref="bool"/>s) will replace the values of <paramref
         /// name="options1"/>.
-        /// </item>
-        /// <item>
+        /// </description></item>
+        /// <item><description>
         /// <see langword="null"/> values in <paramref name="options2"/> will be ignored.
-        /// </item>
+        /// </description></item>
+        /// <item><description>
+        /// Providers is a special case. Only one value per package will be in the resulting list.
+        /// Priority is given to values in <paramref name="options2"/>. If multiple providers for
+        /// the same package are present, later providers take priority.
+        /// </description></item>
         /// </list>
         /// </summary>
         public static ComponentResourceOptions Merge(ComponentResourceOptions? options1, ComponentResourceOptions? options2)
@@ -56,30 +62,36 @@ namespace Pulumi
             options1 = options1 != null ? CreateComponentResourceOptionsCopy(options1) : new ComponentResourceOptions();
             options2 = options2 != null ? CreateComponentResourceOptionsCopy(options2) : new ComponentResourceOptions();
 
-            ExpandProviders(options1);
-            ExpandProviders(options2);
-
             // first, merge all the normal option values over
             MergeNormalOptions(options1, options2);
 
-            options1.Providers.AddRange(options2.Providers);
-
-            if (options1.Providers.Count == 1)
-            {
-                options1.Provider = options1.Providers[0];
-                options1.Providers.Clear();
-            }
+            options1.Providers = MergeProviders(options1.Providers, options2.Providers);
 
             return options1;
-            
-            static void ExpandProviders(ComponentResourceOptions options)
-            {
-                if (options.Provider != null)
+        }
+
+        private static List<ProviderResource> MergeProviders(List<ProviderResource> prov1, List<ProviderResource> prov2 )
+        {
+            var l = new List<ProviderResource>();
+            var taken = new HashSet<string>();
+            Action<List<ProviderResource>> add = (list) => {
+                for(var i = list.Count-1; i >= 0; i--)
                 {
-                    options.Providers = new List<ProviderResource> { options.Provider };
-                    options.Provider = null;
+                    var p = list[i];
+                    if (!taken.Contains(p.Package))
+                    {
+                        l.Add(p);
+                        taken.Add(p.Package);
+                    }
                 }
-            }
+            };
+            add(prov2);
+            add(prov1);
+
+            // This lets us keep the order as much as possible. Importantly, it
+            // keeps Merge(opts, null) closer to a no-op.
+            l.Reverse();
+            return l;
         }
     }
 }
