@@ -745,7 +745,8 @@ func TestMissingErrorText(t *testing.T) {
 				Version: &v1,
 			},
 			IncludeAmbient: true,
-			ExpectedError:  "no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v0.1.0 or on your $PATH, install the plugin using `pulumi plugin install resource myplugin v0.1.0`",
+			ExpectedError: "no resource plugin 'pulumi-resource-myplugin' found in the workspace " +
+				"at version v0.1.0 or on your $PATH, install the plugin using `pulumi plugin install resource myplugin v0.1.0`",
 		},
 		{
 			Name: "ResourceWithVersion_ExcludeAmbient",
@@ -755,7 +756,8 @@ func TestMissingErrorText(t *testing.T) {
 				Version: &v1,
 			},
 			IncludeAmbient: false,
-			ExpectedError:  "no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v0.1.0, install the plugin using `pulumi plugin install resource myplugin v0.1.0`",
+			ExpectedError: "no resource plugin 'pulumi-resource-myplugin' found in the workspace " +
+				"at version v0.1.0, install the plugin using `pulumi plugin install resource myplugin v0.1.0`",
 		},
 		{
 			Name: "ResourceWithoutVersion",
@@ -765,7 +767,8 @@ func TestMissingErrorText(t *testing.T) {
 				Version: nil,
 			},
 			IncludeAmbient: true,
-			ExpectedError:  "no resource plugin 'pulumi-resource-myplugin' found in the workspace or on your $PATH, install the plugin using `pulumi plugin install resource myplugin`",
+			ExpectedError: "no resource plugin 'pulumi-resource-myplugin' found in the workspace " +
+				"or on your $PATH, install the plugin using `pulumi plugin install resource myplugin`",
 		},
 		{
 			Name: "ResourceWithoutVersion_ExcludeAmbient",
@@ -775,7 +778,8 @@ func TestMissingErrorText(t *testing.T) {
 				Version: nil,
 			},
 			IncludeAmbient: false,
-			ExpectedError:  "no resource plugin 'pulumi-resource-myplugin' found in the workspace, install the plugin using `pulumi plugin install resource myplugin`",
+			ExpectedError: "no resource plugin 'pulumi-resource-myplugin' found in the workspace" +
+				", install the plugin using `pulumi plugin install resource myplugin`",
 		},
 		{
 			Name: "LanguageWithoutVersion",
@@ -785,11 +789,13 @@ func TestMissingErrorText(t *testing.T) {
 				Version: nil,
 			},
 			IncludeAmbient: true,
-			ExpectedError:  "no language plugin 'pulumi-language-dotnet' found in the workspace or on your $PATH, install the plugin using `pulumi plugin install language dotnet`",
+			ExpectedError: "no language plugin 'pulumi-language-dotnet' found in the workspace " +
+				"or on your $PATH, install the plugin using `pulumi plugin install language dotnet`",
 		},
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.Name, func(t *testing.T) {
 			t.Parallel()
 			err := NewMissingError(tt.Plugin, tt.IncludeAmbient)
