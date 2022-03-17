@@ -133,10 +133,10 @@ name=$(subst schema-,,$(word 1,$(subst !, ,$@)))
 version=$(word 2,$(subst !, ,$@))
 schema-%:
 	@echo "Ensuring $@ => ${name}, ${version}"
-	@[ -f pkg/pulumiyaml/testing/test/testdata/${name}.json ] || \
+	@[ -f pkg/codegen/testing/test/testdata/${name}.json ] || \
 		curl "https://raw.githubusercontent.com/pulumi/pulumi-${name}/v${version}/provider/cmd/pulumi-resource-${name}/schema.json" \
-	 	| jq '.version = "${version}"' >  pkg/pulumiyaml/testing/test/testdata/${name}.json
-	@FOUND="$$(jq -r '.version' pkg/pulumiyaml/testing/test/testdata/${name}.json)" &&     \
+	 	| jq '.version = "${version}"' >  pkg/codegen/testing/test/testdata/${name}.json
+	@FOUND="$$(jq -r '.version' pkg/codegen/testing/test/testdata/${name}.json)" &&        \
 		if ! [ "$$FOUND" = "${version}" ]; then									           \
 			echo "${name} required version ${version} but found existing version $$FOUND"; \
 			exit 1;																		   \
