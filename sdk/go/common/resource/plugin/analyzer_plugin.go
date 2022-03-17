@@ -58,12 +58,8 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 		workspace.AnalyzerPlugin, strings.Replace(string(name), tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
 		return nil, rpcerror.Convert(err)
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind: workspace.AnalyzerPlugin,
-			Name: string(name),
-		})
 	}
+	contract.Assert(path != "")
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
 		[]string{host.ServerAddr(), ctx.Pwd}, nil /*env*/)

@@ -81,13 +81,9 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
 	if err != nil {
 		return nil, err
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind:    workspace.ResourcePlugin,
-			Name:    string(pkg),
-			Version: version,
-		})
 	}
+
+	contract.Assert(path != "")
 
 	// Runtime options are passed as environment variables to the provider.
 	env := os.Environ()

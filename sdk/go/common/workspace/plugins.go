@@ -122,25 +122,33 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 type MissingError struct {
 	// Info contains information about the plugin that was not found.
 	Info PluginInfo
+	// includeAmbient is true if we search $PATH for this plugin
+	includeAmbient bool
 }
 
 // NewMissingError allocates a new error indicating the given plugin info was not found.
-func NewMissingError(info PluginInfo) error {
+func NewMissingError(info PluginInfo, includeAmbient bool) error {
 	return &MissingError{
-		Info: info,
+		Info:           info,
+		includeAmbient: includeAmbient,
 	}
 }
 
 func (err *MissingError) Error() string {
-	if err.Info.Version != nil {
-		return fmt.Sprintf("no %[1]s plugin '%[2]s-v%[3]s' found in the workspace or on your $PATH, "+
-			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
-			err.Info.Kind, err.Info.Name, err.Info.Version)
+	includePath := ""
+	if err.includeAmbient {
+		includePath = " or on your $PATH"
 	}
 
-	return fmt.Sprintf("no %s plugin '%[1]s' found in the workspace or on your $PATH, "+
+	if err.Info.Version != nil {
+		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace at version v%[3]s%[4]s, "+
+			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
+			err.Info.Kind, err.Info.Name, err.Info.Version, includePath)
+	}
+
+	return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace%[3]s, "+
 		"install the plugin using `pulumi plugin install %[1]s %[2]s`",
-		err.Info.Kind, err.Info.Name)
+		err.Info.Kind, err.Info.Name, includePath)
 }
 
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
@@ -1042,7 +1050,8 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
 	optOut, isFound := os.LookupEnv("PULUMI_IGNORE_AMBIENT_PLUGINS")
-	if !(isFound && cmdutil.IsTruthy(optOut)) || isBundledLangauge {
+	includeAmbient := !(isFound && cmdutil.IsTruthy(optOut)) || isBundledLangauge
+	if includeAmbient {
 		filename = (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
 		if path, err := exec.LookPath(filename); err == nil {
 			logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
@@ -1092,7 +1101,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 				Name:    name,
 				Kind:    kind,
 				Version: version,
-			})
+			}, includeAmbient)
 		}
 		match = &candidate
 	} else {
@@ -1136,7 +1145,11 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		return matchDir, matchPath, nil
 	}
 
-	return "", "", nil
+	return "", "", NewMissingError(PluginInfo{
+		Name:    name,
+		Kind:    kind,
+		Version: version,
+	}, includeAmbient)
 }
 
 // SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.
