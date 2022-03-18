@@ -909,10 +909,12 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
+	resourceA.ID = "some-a"
 	resourceA.External = true
 	resourceA.Custom = true
 	resourceA.Inputs["key"] = resource.NewStringProperty("old")
 	resourceANew := NewResource("a")
+	resourceANew.ID = "some-new-a"
 	resourceANew.External = true
 	resourceANew.Custom = true
 	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
