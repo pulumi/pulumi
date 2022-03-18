@@ -16,10 +16,13 @@ package workspace
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -202,18 +205,24 @@ func (ps *ProjectStack) Save(path string) error {
 
 type ProjectRuntimeInfo struct {
 	name    string
+	version *semver.Version
 	options map[string]interface{}
 }
 
-func NewProjectRuntimeInfo(name string, options map[string]interface{}) ProjectRuntimeInfo {
+func NewProjectRuntimeInfo(name string, version *semver.Version, options map[string]interface{}) ProjectRuntimeInfo {
 	return ProjectRuntimeInfo{
 		name:    name,
+		version: version,
 		options: options,
 	}
 }
 
 func (info *ProjectRuntimeInfo) Name() string {
 	return info.name
+}
+
+func (info *ProjectRuntimeInfo) Version() *semver.Version {
+	return info.version
 }
 
 func (info *ProjectRuntimeInfo) Options() map[string]interface{} {
@@ -227,64 +236,139 @@ func (info *ProjectRuntimeInfo) SetOption(key string, value interface{}) {
 	info.options[key] = value
 }
 
+// We have overloads of [Un]marshalXXX because there are three ways of saving the runtime field.
+// 1) Just a name. e.g. "dotnet"
+// 2) A versioned name. e.g. "dotnet@v1.0.0"
+// 3) An object with name, version, and options fields.
+
 func (info ProjectRuntimeInfo) MarshalYAML() (interface{}, error) {
-	if info.options == nil || len(info.options) == 0 {
+	nilOptions := info.options == nil || len(info.options) == 0
+
+	if nilOptions && info.version == nil {
 		return info.name, nil
 	}
 
-	return map[string]interface{}{
-		"name":    info.name,
-		"options": info.options,
-	}, nil
+	if nilOptions && info.version != nil {
+		return fmt.Sprintf("%s@%s", info.name, *info.version), nil
+	}
+
+	if info.version == nil {
+		return map[string]interface{}{
+			"name":    info.name,
+			"options": info.options,
+		}, nil
+	} else {
+		return map[string]interface{}{
+			"name":    info.name,
+			"version": info.version.String(),
+			"options": info.options,
+		}, nil
+	}
 }
 
 func (info ProjectRuntimeInfo) MarshalJSON() ([]byte, error) {
-	if info.options == nil || len(info.options) == 0 {
+	nilOptions := info.options == nil || len(info.options) == 0
+
+	if nilOptions && info.version == nil {
 		return json.Marshal(info.name)
 	}
 
-	return json.Marshal(map[string]interface{}{
-		"name":    info.name,
-		"options": info.options,
-	})
+	if nilOptions && info.version != nil {
+		return json.Marshal(fmt.Sprintf("%s@%s", info.name, *info.version))
+	}
+
+	if info.version == nil {
+		return json.Marshal(map[string]interface{}{
+			"name":    info.name,
+			"options": info.options,
+		})
+	} else {
+		return json.Marshal(map[string]interface{}{
+			"name":    info.name,
+			"version": info.version.String(),
+			"options": info.options,
+		})
+	}
 }
 
 func (info *ProjectRuntimeInfo) UnmarshalJSON(data []byte) error {
-	if err := json.Unmarshal(data, &info.name); err == nil {
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		split := strings.SplitN(text, "@", 2)
+		if len(split) == 1 {
+			info.name = text
+		} else {
+			info.name = split[0]
+			ver, err := semver.Parse(split[1])
+			if err != nil {
+				return err
+			}
+			info.version = &ver
+		}
+
 		return nil
 	}
 
 	var payload struct {
 		Name    string                 `json:"name"`
+		Version string                 `json:"version"`
 		Options map[string]interface{} `json:"options"`
 	}
 
 	if err := json.Unmarshal(data, &payload); err == nil {
 		info.name = payload.Name
 		info.options = payload.Options
+		if payload.Version != "" {
+			ver, err := semver.Parse(payload.Version)
+			if err != nil {
+				return err
+			}
+			info.version = &ver
+		}
 		return nil
 	}
 
-	return errors.New("runtime section must be a string or an object with name and options attributes")
+	return errors.New("runtime section must be a string or an object with name, version, and options attributes")
 }
 
 func (info *ProjectRuntimeInfo) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	if err := unmarshal(&info.name); err == nil {
+	var text string
+	if err := unmarshal(&text); err == nil {
+		split := strings.SplitN(text, "@", 2)
+		if len(split) == 1 {
+			info.name = text
+		} else {
+			info.name = split[0]
+			ver, err := semver.Parse(split[1])
+			if err != nil {
+				return err
+			}
+			info.version = &ver
+		}
+
 		return nil
 	}
 
 	var payload struct {
 		Name    string                 `yaml:"name"`
+		Version string                 `yaml:"version"`
 		Options map[string]interface{} `yaml:"options"`
 	}
 
 	if err := unmarshal(&payload); err == nil {
 		info.name = payload.Name
 		info.options = payload.Options
+		if payload.Version != "" {
+			ver, err := semver.Parse(payload.Version)
+			if err != nil {
+				return err
+			}
+			info.version = &ver
+		}
 		return nil
 	}
 
-	return errors.New("runtime section must be a string or an object with name and options attributes")
+	return errors.New("runtime section must be a string or an object with name, version, and options attributes")
 }
 
 func marshallerForPath(path string) (encoding.Marshaler, error) {

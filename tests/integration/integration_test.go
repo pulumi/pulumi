@@ -162,7 +162,7 @@ func TestConfigSave(t *testing.T) {
 	path := filepath.Join(e.RootPath, "Pulumi.yaml")
 	err := (&workspace.Project{
 		Name:    "testing-config",
-		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil, nil),
 	}).Save(path)
 	assert.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
@@ -238,7 +238,7 @@ func TestConfigPaths(t *testing.T) {
 	path := filepath.Join(e.RootPath, "Pulumi.yaml")
 	err := (&workspace.Project{
 		Name:    "testing-config",
-		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil, nil),
 	}).Save(path)
 	assert.NoError(t, err)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
