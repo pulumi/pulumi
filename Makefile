@@ -129,13 +129,21 @@ tidy::
 validate_codecov_yaml::
 	curl --data-binary @codecov.yml https://codecov.io/validate
 
+# We replace the '!' with a space, then take the first word
+# schema-pkg!x.y.z => schema-pkg
+# We then replace 'schema-' with nothing, giving only the package name.
+# schema-pkg => pkg
+# Recall that `$@` is the target make is trying to build, in our case schema-pkg!x.y.z
 name=$(subst schema-,,$(word 1,$(subst !, ,$@)))
+# Here we take the second word, just the version
 version=$(word 2,$(subst !, ,$@))
 schema-%:
 	@echo "Ensuring $@ => ${name}, ${version}"
+	@# Download the package from github, then stamp in the correct version.
 	@[ -f pkg/codegen/testing/test/testdata/${name}.json ] || \
 		curl "https://raw.githubusercontent.com/pulumi/pulumi-${name}/v${version}/provider/cmd/pulumi-resource-${name}/schema.json" \
 	 	| jq '.version = "${version}"' >  pkg/codegen/testing/test/testdata/${name}.json
+	@# Confirm that the correct version is present. If not, error out.
 	@FOUND="$$(jq -r '.version' pkg/codegen/testing/test/testdata/${name}.json)" &&        \
 		if ! [ "$$FOUND" = "${version}" ]; then									           \
 			echo "${name} required version ${version} but found existing version $$FOUND"; \
