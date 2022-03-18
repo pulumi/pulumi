@@ -192,7 +192,6 @@ func TestProgramCodegen(
 	}
 
 	assert.NotNil(t, testcase.TestCases, "Caller must provide test cases")
-	ensureValidSchemaVersions(t)
 	pulumiAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 	for _, tt := range testcase.TestCases {
 		tt := tt // avoid capturing loop variable
