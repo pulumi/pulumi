@@ -257,13 +257,12 @@ func (info ProjectRuntimeInfo) MarshalYAML() (interface{}, error) {
 			"name":    info.name,
 			"options": info.options,
 		}, nil
-	} else {
-		return map[string]interface{}{
-			"name":    info.name,
-			"version": info.version.String(),
-			"options": info.options,
-		}, nil
 	}
+	return map[string]interface{}{
+		"name":    info.name,
+		"version": info.version.String(),
+		"options": info.options,
+	}, nil
 }
 
 func (info ProjectRuntimeInfo) MarshalJSON() ([]byte, error) {
@@ -282,13 +281,12 @@ func (info ProjectRuntimeInfo) MarshalJSON() ([]byte, error) {
 			"name":    info.name,
 			"options": info.options,
 		})
-	} else {
-		return json.Marshal(map[string]interface{}{
-			"name":    info.name,
-			"version": info.version.String(),
-			"options": info.options,
-		})
 	}
+	return json.Marshal(map[string]interface{}{
+		"name":    info.name,
+		"version": info.version.String(),
+		"options": info.options,
+	})
 }
 
 func (info *ProjectRuntimeInfo) UnmarshalJSON(data []byte) error {
