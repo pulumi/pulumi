@@ -800,8 +800,8 @@ func TestRecordingDeleteFailure(t *testing.T) {
 func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 	t.Parallel()
 
-	resourceA := NewResource("a")
-	resourceA.ID = "some-a"
+	resourceA := NewResource("b")
+	resourceA.ID = "some-b"
 	resourceA.External = true
 	resourceA.Custom = true
 	snap := NewSnapshot(nil)
@@ -833,13 +833,13 @@ func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	t.Parallel()
 
-	resourceA := NewResource("a")
-	resourceA.ID = "some-a"
+	resourceA := NewResource("c")
+	resourceA.ID = "some-c"
 	resourceA.External = true
 	resourceA.Custom = true
 	resourceA.Inputs["key"] = resource.NewStringProperty("old")
-	resourceANew := NewResource("a")
-	resourceANew.ID = "some-other-a"
+	resourceANew := NewResource("c")
+	resourceANew.ID = "some-other-c"
 	resourceANew.External = true
 	resourceANew.Custom = true
 	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
@@ -880,8 +880,8 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
 	t.Parallel()
 
-	resourceA := NewResource("a")
-	resourceA.ID = "some-a"
+	resourceA := NewResource("d")
+	resourceA.ID = "some-d"
 	resourceA.External = true
 	resourceA.Custom = true
 	snap := NewSnapshot(nil)
@@ -912,13 +912,13 @@ func TestRecordingReadFailureNoPreviousResource(t *testing.T) {
 func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	t.Parallel()
 
-	resourceA := NewResource("a")
-	resourceA.ID = "some-a"
+	resourceA := NewResource("e")
+	resourceA.ID = "some-e"
 	resourceA.External = true
 	resourceA.Custom = true
 	resourceA.Inputs["key"] = resource.NewStringProperty("old")
-	resourceANew := NewResource("a")
-	resourceANew.ID = "some-new-a"
+	resourceANew := NewResource("e")
+	resourceANew.ID = "some-new-e"
 	resourceANew.External = true
 	resourceANew.Custom = true
 	resourceANew.Inputs["key"] = resource.NewStringProperty("new")
