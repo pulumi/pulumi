@@ -801,6 +801,7 @@ func TestRecordingReadSuccessNoPreviousResource(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
+	resourceA.ID = "some-a"
 	resourceA.External = true
 	resourceA.Custom = true
 	snap := NewSnapshot(nil)
