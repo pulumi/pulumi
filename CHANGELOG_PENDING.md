@@ -25,3 +25,6 @@
 
 - [sdk/go] - Fix a panic in `pulumi.All` when using pointer inputs.
   [#9197](https://github.com/pulumi/pulumi/issues/9197)
+
+- [cli] - Stack names correctly take `org set-default` into account when printing.
+  [#9240](https://github.com/pulumi/pulumi/pull/9240)
