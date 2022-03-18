@@ -15,9 +15,11 @@
 - [cli] - Speed up `pulumi stack --show-name` by skipping unneeded snapshot loading.
   [#9199](https://github.com/pulumi/pulumi/pull/9199)
 
-- Improved error message for missing plugins.
+- [cli/plugins] - Improved error message for missing plugins.
   [#5208](https://github.com/pulumi/pulumi/pull/5208)
 
+- [cli/projects] - "runtime" in Pulumi.yaml can now specify a version. This is currently unused but will be used for language plugins distributed unbundled from the main pulumi binary.
+  [#9244](https://github.com/pulumi/pulumi/pull/9244)
 ### Bug Fixes
 
 - [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack up.
