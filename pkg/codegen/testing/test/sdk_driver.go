@@ -265,8 +265,8 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("python/any"),
 	},
 	{
-		Directory:   "internal-references-go",
-		Description: "Emit Go internal references",
+		Directory:   "internal-dependencies-go",
+		Description: "Emit Go internal dependencies",
 		Skip:        allLanguages.Except("go/any"),
 	},
 }

@@ -2751,18 +2751,11 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		}
 	}
 
-	// If there are any internal references, add the appropriate imports and build up a set of references
-	// to emit as variable declarations in the generated `init()`.
-	internalRefs := make(codegen.StringSet)
+	// If there are any internal dependencies, include them as blank imports.
 	if topLevelModule {
 		if goInfo, ok := pkg.pkg.Language["go"].(GoPackageInfo); ok {
-			for _, ref := range goInfo.InternalReferences {
-				importPath, typ, err := parseInternalReference(ref)
-				if err != nil {
-					panic(err) // Should never be hit as these are validated during schema import.
-				}
-				imports[importPath] = ""
-				internalRefs.Add(typ)
+			for _, dep := range goInfo.InternalDependencies {
+				imports[dep] = "_"
 			}
 		}
 	}
@@ -2828,14 +2821,6 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 
 	fmt.Fprintf(w, "func init() {\n")
 	if topLevelModule {
-		// Emit internal reference variable declarations.
-		if len(internalRefs) > 0 {
-			for _, decl := range internalRefs.SortedValues() {
-				fmt.Fprintf(w, "\tvar _ %s\n", decl)
-			}
-			fmt.Fprintf(w, "\n")
-		}
-
 		fmt.Fprintf(w, "\tversion, _ := PkgVersion()\n")
 	} else {
 		// Some package names contain '-' characters, so grab the name from the base path, unless there is an alias
@@ -3717,26 +3702,4 @@ func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) {
 	}
 	_, err := fmt.Fprintf(w, "\topts = pkg%sDefaultOpts(opts)\n", typ)
 	contract.AssertNoError(err)
-}
-
-// parseInternalReference parses a string in the format `importpath.type` and returns the import path
-// and type, e.g. the result of parsing "github.com/pulumi/pulumi-foo/sdk/v4/go/foo.Provider"
-// is "github.com/pulumi/pulumi-foo/sdk/v4/go/foo" and "foo.Provider".
-func parseInternalReference(ref string) (string, string, error) {
-	// Example: "github.com/pulumi/pulumi-foo/sdk/v4/go/foo.Provider"
-	dot := strings.LastIndex(ref, ".")
-	if dot == -1 || len(ref) < 3 {
-		return "", "", fmt.Errorf("reference %q not in the expected format \"importpath.type\"", ref)
-	}
-	importPath := ref[:dot] // e.g. "github.com/pulumi/pulumi-foo/sdk/v4/go/foo"
-	typeName := ref[dot+1:] // e.g. "Provider"
-
-	pkgName := importPath
-	slash := strings.LastIndex(importPath, "/")
-	if slash != -1 {
-		pkgName = importPath[slash+1:] // e.g. "foo"
-	}
-	typ := fmt.Sprintf("%s.%s", pkgName, typeName) // e.g. "foo.Provider"
-
-	return importPath, typ, nil
 }

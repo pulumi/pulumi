@@ -360,39 +360,3 @@ func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
 	assert.NoError(t, err)
 	return importedPkg
 }
-
-func TestParseInternalReference(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		input         string
-		expectedPath  string
-		expectedType  string
-		expectedError bool
-	}{
-		{input: "", expectedError: true},
-		{input: "foo", expectedError: true},
-		{input: "foo/bar", expectedError: true},
-
-		{input: "foo.Bar", expectedPath: "foo", expectedType: "foo.Bar"},
-		{input: "a/b.C", expectedPath: "a/b", expectedType: "b.C"},
-		{
-			input:        "github.com/pulumi/pulumi-foo/sdk/v4/go/foo.Provider",
-			expectedPath: "github.com/pulumi/pulumi-foo/sdk/v4/go/foo",
-			expectedType: "foo.Provider",
-		},
-	}
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.input, func(t *testing.T) {
-			t.Parallel()
-			path, typ, err := parseInternalReference(tc.input)
-			if tc.expectedError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tc.expectedPath, path)
-				assert.Equal(t, tc.expectedType, typ)
-			}
-		})
-	}
-}
