@@ -457,7 +457,7 @@ func readProjectForUpdate(clientAddress string) (*workspace.Project, string, err
 		return nil, "", err
 	}
 	if clientAddress != "" {
-		proj.Runtime = workspace.NewProjectRuntimeInfo("client", nil, map[string]interface{}{
+		proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]interface{}{
 			"address": clientAddress,
 		})
 	}

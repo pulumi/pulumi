@@ -194,7 +194,7 @@ func (p *TestPlan) GetProject() workspace.Project {
 
 	return workspace.Project{
 		Name:    projectName,
-		Runtime: workspace.NewProjectRuntimeInfo(runtime, nil, p.RuntimeOptions),
+		Runtime: workspace.NewProjectRuntimeInfo(runtime, p.RuntimeOptions),
 	}
 }
 

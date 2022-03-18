@@ -662,7 +662,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	}
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil, map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
 			"binary": binName,
 		}),
 	}
@@ -772,7 +772,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	}
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil, map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
 			"binary": binName,
 		}),
 	}

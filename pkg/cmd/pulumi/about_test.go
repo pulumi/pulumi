@@ -48,7 +48,7 @@ func TestProjectRuntime(t *testing.T) {
 	var runtime projectRuntimeAbout
 	runtime, err = getProjectRuntimeAbout(&workspace.Project{
 		Name:    "TestProject",
-		Runtime: workspace.NewProjectRuntimeInfo("python", nil, make(map[string]interface{})),
+		Runtime: workspace.NewProjectRuntimeInfo("python", make(map[string]interface{})),
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, runtime.Language, "python")

@@ -195,7 +195,7 @@ func ExampleGitRepo() {
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil, map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
 			"binary": binName,
 		}),
 	}
@@ -378,7 +378,7 @@ func ExampleNewLocalWorkspace() {
 	// Project provides ProjectSettings to set once the workspace is created.
 	proj := Project(workspace.Project{
 		Name:    tokens.PackageName("myproject"),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil, nil),
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		Backend: &workspace.ProjectBackend{
 			URL: "https://url.to.custom.saas.backend.com",
 		},
@@ -396,7 +396,7 @@ func ExampleLocalWorkspace_secretsProvider() {
 	// Project provides ProjectSettings to set once the workspace is created.
 	proj := Project(workspace.Project{
 		Name:    tokens.PackageName("myproject"),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil, nil),
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		Backend: &workspace.ProjectBackend{
 			URL: "https://url.to.custom.saas.backend.com",
 		},
@@ -439,7 +439,7 @@ func ExampleLocalWorkspace_ProjectSettings() {
 		// no Pulumi.yaml was found, so create a default
 		ps = &workspace.Project{
 			Name:    tokens.PackageName("myproject"),
-			Runtime: workspace.NewProjectRuntimeInfo("go", nil, nil),
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		}
 	}
 	// make some changes
@@ -459,7 +459,7 @@ func ExampleLocalWorkspace_SaveProjectSettings() {
 		// no Pulumi.yaml was found, so create a default
 		ps = &workspace.Project{
 			Name:    tokens.PackageName("myproject"),
-			Runtime: workspace.NewProjectRuntimeInfo("go", nil, nil),
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
 		}
 	}
 	// make some changes
@@ -865,7 +865,7 @@ func ExampleNewStackRemoteSource() {
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil, map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
 			"binary": binName,
 		}),
 	}
@@ -896,7 +896,7 @@ func ExampleUpsertStackRemoteSource() {
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil, map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
 			"binary": binName,
 		}),
 	}
@@ -927,7 +927,7 @@ func ExampleSelectStackRemoteSource() {
 	// an override to the project file in the git repo, specifying our pre-built executable
 	project := workspace.Project{
 		Name: tokens.PackageName(pName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil, map[string]interface{}{
+		Runtime: workspace.NewProjectRuntimeInfo("go", map[string]interface{}{
 			"binary": binName,
 		}),
 	}
