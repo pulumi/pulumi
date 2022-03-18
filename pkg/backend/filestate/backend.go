@@ -80,14 +80,14 @@ type localBackend struct {
 }
 
 type localBackendReference struct {
-	name tokens.QName
+	name tokens.Name
 }
 
 func (r localBackendReference) String() string {
 	return string(r.name)
 }
 
-func (r localBackendReference) Name() tokens.QName {
+func (r localBackendReference) Name() tokens.Name {
 	return r.name
 }
 
@@ -254,7 +254,7 @@ func (b *localBackend) SupportsOrganizations() bool {
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
-	return localBackendReference{name: tokens.QName(stackRefName)}, nil
+	return localBackendReference{name: tokens.Name(stackRefName)}, nil
 }
 
 // ValidateStackName verifies the stack name is valid for the local backend. We use the same rules as the
@@ -400,8 +400,10 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 		return nil, err
 	}
 
+	newStackName := newRef.Name()
+
 	// Ensure the destination stack does not already exist.
-	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newName))
+	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newStackName))
 	if err != nil {
 		return nil, err
 	}
@@ -411,13 +413,13 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
 	if snap != nil {
-		if err = edit.RenameStack(snap, newName, ""); err != nil {
+		if err = edit.RenameStack(snap, newStackName, ""); err != nil {
 			return nil, err
 		}
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
-	if _, err = b.saveStack(newName, snap, nil); err != nil {
+	if _, err = b.saveStack(newStackName, snap, nil); err != nil {
 		return nil, err
 	}
 
@@ -426,7 +428,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	backupTarget(b.bucket, file, false)
 
 	// And rename the histoy folder as well.
-	if err = b.renameHistory(stackName, newName); err != nil {
+	if err = b.renameHistory(stackName, newStackName); err != nil {
 		return nil, err
 	}
 	return newRef, err
@@ -813,8 +815,8 @@ func (b *localBackend) CurrentUser() (string, error) {
 	return user.Username, nil
 }
 
-func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
-	var stacks []tokens.QName
+func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
+	var stacks []tokens.Name
 
 	// Read the stack directory.
 	path := b.stackPath("")
@@ -838,7 +840,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 		}
 
 		// Read in this stack's information.
-		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
+		name := tokens.Name(stackfn[:len(stackfn)-len(ext)])
 
 		stacks = append(stacks, name)
 	}

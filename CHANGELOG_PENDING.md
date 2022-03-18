@@ -1,6 +1,6 @@
 ### Improvements
 
-- [area/cli] - Implement `pulumi stack unselect`.
+- [cli] - Implement `pulumi stack unselect`.
   [#9179](https://github.com/pulumi/pulumi/pull/9179)
 
 - [language/dotnet] - Updated Pulumi dotnet packages to use grpc-dotnet instead of grpc.
@@ -15,7 +15,7 @@
 - [cli] - Speed up `pulumi stack --show-name` by skipping unneeded snapshot loading.
   [#9199](https://github.com/pulumi/pulumi/pull/9199)
 
-- Improved error message for missing plugins.
+- [cli/plugins] - Improved error message for missing plugins.
   [#5208](https://github.com/pulumi/pulumi/pull/5208)
 
 ### Bug Fixes
@@ -26,5 +26,8 @@
 - [sdk/go] - Fix a panic in `pulumi.All` when using pointer inputs.
   [#9197](https://github.com/pulumi/pulumi/issues/9197)
 
+- [cli/engine] - Fix a panic due to passing `""` as the ID for a resource read.
+  [#9243](https://github.com/pulumi/pulumi/pull/9243)
+  
 - [cli] - Stack names correctly take `org set-default` into account when printing.
   [#9240](https://github.com/pulumi/pulumi/pull/9240)
