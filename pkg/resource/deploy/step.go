@@ -570,6 +570,8 @@ type ReadStep struct {
 // NewReadStep creates a new Read step.
 func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *resource.State) Step {
 	contract.Assert(new != nil)
+	contract.Assertf(new.URN != "", "Read URN was empty")
+	contract.Assertf(new.ID != "", "Read ID was empty")
 	contract.Assertf(new.External, "target of Read step must be marked External")
 	contract.Assertf(new.Custom, "target of Read step must be Custom")
 
@@ -592,6 +594,8 @@ func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *reso
 // it will pend deletion of the "old" resource, which must not be an external resource.
 func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old, new *resource.State) Step {
 	contract.Assert(new != nil)
+	contract.Assertf(new.URN != "", "Read URN was empty")
+	contract.Assertf(new.ID != "", "Read ID was empty")
 	contract.Assertf(new.External, "target of ReadReplacement step must be marked External")
 	contract.Assertf(new.Custom, "target of ReadReplacement step must be Custom")
 	contract.Assert(old != nil)
