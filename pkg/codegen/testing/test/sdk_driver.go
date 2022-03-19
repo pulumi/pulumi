@@ -264,6 +264,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Ensure referencing external types/resources with the same module name are referenced correctly",
 		Skip:        allLanguages.Except("python/any"),
 	},
+	{
+		Directory:   "internal-dependencies-go",
+		Description: "Emit Go internal dependencies",
+		Skip:        allLanguages.Except("go/any"),
+	},
 }
 
 var genSDKOnly bool
