@@ -323,12 +323,7 @@ ${defaultMessage}`);
 
             // Check compatible engines before running the program:
             const npmRc = npmRcFromProjectRoot(projectRoot);
-            // Reads a boolean key from the npm rc file. Can be true or "true" (quoted string)
-            const readBool = (key: string) : boolean => npmRc[key] && new Boolean(npmRc[key]);
-
-            const engineStrict = readBool("engine-strict");
-
-            if (engineStrict && packageObject.engines && packageObject.engines.node) {
+            if (npmRc["engine-strict"] && packageObject.engines && packageObject.engines.node) {
                 // found:
                 //   - { engines: { node: "<version>" } } in package.json
                 //   - engine-strict=true in .npmrc
