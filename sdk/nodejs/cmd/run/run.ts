@@ -63,7 +63,7 @@ function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> 
 
 // Reads and parses the contents of .npmrc file if it exists under the project root
 // This assumes that .npmrc is a sibling to package.json
-function npmRcFromProjectRoot(projectRoot: string) : Record<string, any>  {
+function npmRcFromProjectRoot(projectRoot: string): Record<string, any>  {
     const emptyConfig = {};
     try {
         const npmRcPath = path.join(projectRoot, ".npmrc");
@@ -327,7 +327,7 @@ ${defaultMessage}`);
                 // found:
                 //   - { engines: { node: "<version>" } } in package.json
                 //   - engine-strict=true in .npmrc
-                // 
+                //
                 // Check that current node version satistfies the required version
                 const requiredNodeVersion = packageObject.engines.node;
                 const currentNodeVersion = process.versions.node;
@@ -336,8 +336,8 @@ ${defaultMessage}`);
                         `Your current Node version is incompatible to run ${projectRoot}`,
                         `Expected version: ${requiredNodeVersion} as found in package.json > engines > node`,
                         `Actual Node version: ${currentNodeVersion}`,
-                        `To fix issue, install a Node version that is compatible with ${requiredNodeVersion}`
-                    ]
+                        `To fix issue, install a Node version that is compatible with ${requiredNodeVersion}`,
+                    ];
 
                     throw new Error(errorMessage.join("\n"));
                 }
