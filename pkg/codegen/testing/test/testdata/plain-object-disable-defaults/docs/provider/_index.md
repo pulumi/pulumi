@@ -160,7 +160,7 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="helmreleasesettings_csharp">
-<a href="#helmreleasesettings_csharp" style="color: inherit; text-decoration: inherit;">Helm<wbr>Release<wbr>Settings</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_csharp" style="color: inherit; text-decoration: inherit;">Helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
@@ -172,7 +172,7 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="helmreleasesettings_go">
-<a href="#helmreleasesettings_go" style="color: inherit; text-decoration: inherit;">Helm<wbr>Release<wbr>Settings</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_go" style="color: inherit; text-decoration: inherit;">Helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
@@ -184,7 +184,7 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="helmreleasesettings_nodejs">
-<a href="#helmreleasesettings_nodejs" style="color: inherit; text-decoration: inherit;">helm<wbr>Release<wbr>Settings</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_nodejs" style="color: inherit; text-decoration: inherit;">helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
@@ -196,7 +196,7 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="helm_release_settings_python">
-<a href="#helm_release_settings_python" style="color: inherit; text-decoration: inherit;">helm_<wbr>release_<wbr>settings</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helm_release_settings_python" style="color: inherit; text-decoration: inherit;">helm_<wbr>release_<wbr>settings</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
@@ -215,7 +215,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -227,7 +227,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -239,7 +239,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -251,7 +251,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -275,7 +275,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_csharp">
-<a href="#requiredarg_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Arg</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredarg_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Arg</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -283,7 +283,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_csharp">
-<a href="#driver_csharp" style="color: inherit; text-decoration: inherit;">Driver</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_csharp" style="color: inherit; text-decoration: inherit;">Driver</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -291,7 +291,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_csharp">
-<a href="#pluginspath_csharp" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_csharp" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -303,7 +303,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_go">
-<a href="#requiredarg_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Arg</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredarg_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Arg</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -311,7 +311,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_go">
-<a href="#driver_go" style="color: inherit; text-decoration: inherit;">Driver</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_go" style="color: inherit; text-decoration: inherit;">Driver</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -319,7 +319,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_go">
-<a href="#pluginspath_go" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_go" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -331,7 +331,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_nodejs">
-<a href="#requiredarg_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Arg</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredarg_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Arg</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -339,7 +339,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_nodejs">
-<a href="#driver_nodejs" style="color: inherit; text-decoration: inherit;">driver</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_nodejs" style="color: inherit; text-decoration: inherit;">driver</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -347,7 +347,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_nodejs">
-<a href="#pluginspath_nodejs" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_nodejs" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -359,7 +359,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="required_arg_python">
-<a href="#required_arg_python" style="color: inherit; text-decoration: inherit;">required_<wbr>arg</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_arg_python" style="color: inherit; text-decoration: inherit;">required_<wbr>arg</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -367,7 +367,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_python">
-<a href="#driver_python" style="color: inherit; text-decoration: inherit;">driver</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_python" style="color: inherit; text-decoration: inherit;">driver</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -375,7 +375,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="plugins_path_python">
-<a href="#plugins_path_python" style="color: inherit; text-decoration: inherit;">plugins_<wbr>path</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plugins_path_python" style="color: inherit; text-decoration: inherit;">plugins_<wbr>path</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>

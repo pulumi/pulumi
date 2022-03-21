@@ -159,7 +159,7 @@ The StaticPage resource accepts the following [input]({{< relref "/docs/intro/co
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="indexcontent_csharp">
-<a href="#indexcontent_csharp" style="color: inherit; text-decoration: inherit;">Index<wbr>Content</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#indexcontent_csharp" style="color: inherit; text-decoration: inherit;">Index<wbr>Content</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -167,7 +167,7 @@ The StaticPage resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}The HTML content for index.html.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_csharp">
-<a href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
@@ -179,7 +179,7 @@ The StaticPage resource accepts the following [input]({{< relref "/docs/intro/co
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="indexcontent_go">
-<a href="#indexcontent_go" style="color: inherit; text-decoration: inherit;">Index<wbr>Content</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#indexcontent_go" style="color: inherit; text-decoration: inherit;">Index<wbr>Content</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -187,7 +187,7 @@ The StaticPage resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}The HTML content for index.html.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_go">
-<a href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
@@ -199,7 +199,7 @@ The StaticPage resource accepts the following [input]({{< relref "/docs/intro/co
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="indexcontent_nodejs">
-<a href="#indexcontent_nodejs" style="color: inherit; text-decoration: inherit;">index<wbr>Content</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#indexcontent_nodejs" style="color: inherit; text-decoration: inherit;">index<wbr>Content</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -207,7 +207,7 @@ The StaticPage resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}The HTML content for index.html.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_nodejs">
-<a href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
@@ -219,7 +219,7 @@ The StaticPage resource accepts the following [input]({{< relref "/docs/intro/co
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="index_content_python">
-<a href="#index_content_python" style="color: inherit; text-decoration: inherit;">index_<wbr>content</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#index_content_python" style="color: inherit; text-decoration: inherit;">index_<wbr>content</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -227,7 +227,7 @@ The StaticPage resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}The HTML content for index.html.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="foo_python">
-<a href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
@@ -246,7 +246,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="bucket_csharp">
-<a href="#bucket_csharp" style="color: inherit; text-decoration: inherit;">Bucket</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bucket_csharp" style="color: inherit; text-decoration: inherit;">Bucket</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Aws.<wbr>S3.<wbr>Bucket</span>
@@ -254,7 +254,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The bucket resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -262,7 +262,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="websiteurl_csharp">
-<a href="#websiteurl_csharp" style="color: inherit; text-decoration: inherit;">Website<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_csharp" style="color: inherit; text-decoration: inherit;">Website<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -274,7 +274,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="bucket_go">
-<a href="#bucket_go" style="color: inherit; text-decoration: inherit;">Bucket</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bucket_go" style="color: inherit; text-decoration: inherit;">Bucket</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Bucket</span>
@@ -282,7 +282,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The bucket resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -290,7 +290,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="websiteurl_go">
-<a href="#websiteurl_go" style="color: inherit; text-decoration: inherit;">Website<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_go" style="color: inherit; text-decoration: inherit;">Website<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -302,7 +302,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="bucket_nodejs">
-<a href="#bucket_nodejs" style="color: inherit; text-decoration: inherit;">bucket</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bucket_nodejs" style="color: inherit; text-decoration: inherit;">bucket</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Awss3Bucket</span>
@@ -310,7 +310,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The bucket resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -318,7 +318,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="websiteurl_nodejs">
-<a href="#websiteurl_nodejs" style="color: inherit; text-decoration: inherit;">website<wbr>Url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#websiteurl_nodejs" style="color: inherit; text-decoration: inherit;">website<wbr>Url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -330,7 +330,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="bucket_python">
-<a href="#bucket_python" style="color: inherit; text-decoration: inherit;">bucket</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bucket_python" style="color: inherit; text-decoration: inherit;">bucket</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Bucket</span>
@@ -338,7 +338,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The bucket resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -346,7 +346,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="website_url_python">
-<a href="#website_url_python" style="color: inherit; text-decoration: inherit;">website_<wbr>url</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#website_url_python" style="color: inherit; text-decoration: inherit;">website_<wbr>url</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -370,7 +370,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_csharp">
-<a href="#a_csharp" style="color: inherit; text-decoration: inherit;">A</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_csharp" style="color: inherit; text-decoration: inherit;">A</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
@@ -382,7 +382,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_go">
-<a href="#a_go" style="color: inherit; text-decoration: inherit;">A</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_go" style="color: inherit; text-decoration: inherit;">A</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
@@ -394,7 +394,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_nodejs">
-<a href="#a_nodejs" style="color: inherit; text-decoration: inherit;">a</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_nodejs" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
@@ -406,7 +406,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_python">
-<a href="#a_python" style="color: inherit; text-decoration: inherit;">a</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_python" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>

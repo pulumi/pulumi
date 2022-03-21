@@ -82,7 +82,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="accountname_csharp">
-<a href="#accountname_csharp" style="color: inherit; text-decoration: inherit;">Account<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#accountname_csharp" style="color: inherit; text-decoration: inherit;">Account<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -90,7 +90,7 @@ The following arguments are supported:
     <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_csharp">
-<a href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -98,7 +98,7 @@ The following arguments are supported:
     <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_csharp">
-<a href="#expand_csharp" style="color: inherit; text-decoration: inherit;">Expand</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_csharp" style="color: inherit; text-decoration: inherit;">Expand</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -110,7 +110,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="accountname_go">
-<a href="#accountname_go" style="color: inherit; text-decoration: inherit;">Account<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#accountname_go" style="color: inherit; text-decoration: inherit;">Account<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -118,7 +118,7 @@ The following arguments are supported:
     <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_go">
-<a href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -126,7 +126,7 @@ The following arguments are supported:
     <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_go">
-<a href="#expand_go" style="color: inherit; text-decoration: inherit;">Expand</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_go" style="color: inherit; text-decoration: inherit;">Expand</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -138,7 +138,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="accountname_nodejs">
-<a href="#accountname_nodejs" style="color: inherit; text-decoration: inherit;">account<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#accountname_nodejs" style="color: inherit; text-decoration: inherit;">account<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -146,7 +146,7 @@ The following arguments are supported:
     <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_nodejs">
-<a href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -154,7 +154,7 @@ The following arguments are supported:
     <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_nodejs">
-<a href="#expand_nodejs" style="color: inherit; text-decoration: inherit;">expand</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_nodejs" style="color: inherit; text-decoration: inherit;">expand</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -166,7 +166,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="account_name_python">
-<a href="#account_name_python" style="color: inherit; text-decoration: inherit;">account_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#account_name_python" style="color: inherit; text-decoration: inherit;">account_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -174,7 +174,7 @@ The following arguments are supported:
     <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="resource_group_name_python">
-<a href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -182,7 +182,7 @@ The following arguments are supported:
     <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_python">
-<a href="#expand_python" style="color: inherit; text-decoration: inherit;">expand</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_python" style="color: inherit; text-decoration: inherit;">expand</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -203,7 +203,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="keys_csharp">
-<a href="#keys_csharp" style="color: inherit; text-decoration: inherit;">Keys</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keys_csharp" style="color: inherit; text-decoration: inherit;">Keys</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">List&lt;Storage<wbr>Account<wbr>Key<wbr>Response&gt;</a></span>
@@ -215,7 +215,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="keys_go">
-<a href="#keys_go" style="color: inherit; text-decoration: inherit;">Keys</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keys_go" style="color: inherit; text-decoration: inherit;">Keys</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">[]Storage<wbr>Account<wbr>Key<wbr>Response</a></span>
@@ -227,7 +227,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="keys_nodejs">
-<a href="#keys_nodejs" style="color: inherit; text-decoration: inherit;">keys</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keys_nodejs" style="color: inherit; text-decoration: inherit;">keys</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">Storage<wbr>Account<wbr>Key<wbr>Response[]</a></span>
@@ -239,7 +239,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="keys_python">
-<a href="#keys_python" style="color: inherit; text-decoration: inherit;">keys</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keys_python" style="color: inherit; text-decoration: inherit;">keys</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">Sequence[Storage<wbr>Account<wbr>Key<wbr>Response]</a></span>
@@ -261,7 +261,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="creationtime_csharp">
-<a href="#creationtime_csharp" style="color: inherit; text-decoration: inherit;">Creation<wbr>Time</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#creationtime_csharp" style="color: inherit; text-decoration: inherit;">Creation<wbr>Time</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -269,7 +269,7 @@ The following output properties are available:
     <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="keyname_csharp">
-<a href="#keyname_csharp" style="color: inherit; text-decoration: inherit;">Key<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_csharp" style="color: inherit; text-decoration: inherit;">Key<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -277,7 +277,7 @@ The following output properties are available:
     <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="permissions_csharp">
-<a href="#permissions_csharp" style="color: inherit; text-decoration: inherit;">Permissions</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_csharp" style="color: inherit; text-decoration: inherit;">Permissions</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -285,7 +285,7 @@ The following output properties are available:
     <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="value_csharp">
-<a href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -297,7 +297,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="creationtime_go">
-<a href="#creationtime_go" style="color: inherit; text-decoration: inherit;">Creation<wbr>Time</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#creationtime_go" style="color: inherit; text-decoration: inherit;">Creation<wbr>Time</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -305,7 +305,7 @@ The following output properties are available:
     <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="keyname_go">
-<a href="#keyname_go" style="color: inherit; text-decoration: inherit;">Key<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_go" style="color: inherit; text-decoration: inherit;">Key<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -313,7 +313,7 @@ The following output properties are available:
     <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="permissions_go">
-<a href="#permissions_go" style="color: inherit; text-decoration: inherit;">Permissions</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_go" style="color: inherit; text-decoration: inherit;">Permissions</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -321,7 +321,7 @@ The following output properties are available:
     <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="value_go">
-<a href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -333,7 +333,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="creationtime_nodejs">
-<a href="#creationtime_nodejs" style="color: inherit; text-decoration: inherit;">creation<wbr>Time</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#creationtime_nodejs" style="color: inherit; text-decoration: inherit;">creation<wbr>Time</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -341,7 +341,7 @@ The following output properties are available:
     <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="keyname_nodejs">
-<a href="#keyname_nodejs" style="color: inherit; text-decoration: inherit;">key<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_nodejs" style="color: inherit; text-decoration: inherit;">key<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -349,7 +349,7 @@ The following output properties are available:
     <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="permissions_nodejs">
-<a href="#permissions_nodejs" style="color: inherit; text-decoration: inherit;">permissions</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_nodejs" style="color: inherit; text-decoration: inherit;">permissions</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -357,7 +357,7 @@ The following output properties are available:
     <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="value_nodejs">
-<a href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -369,7 +369,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="creation_time_python">
-<a href="#creation_time_python" style="color: inherit; text-decoration: inherit;">creation_<wbr>time</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#creation_time_python" style="color: inherit; text-decoration: inherit;">creation_<wbr>time</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -377,7 +377,7 @@ The following output properties are available:
     <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="key_name_python">
-<a href="#key_name_python" style="color: inherit; text-decoration: inherit;">key_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#key_name_python" style="color: inherit; text-decoration: inherit;">key_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -385,7 +385,7 @@ The following output properties are available:
     <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="permissions_python">
-<a href="#permissions_python" style="color: inherit; text-decoration: inherit;">permissions</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_python" style="color: inherit; text-decoration: inherit;">permissions</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -393,7 +393,7 @@ The following output properties are available:
     <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="value_python">
-<a href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
