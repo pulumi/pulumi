@@ -28,3 +28,6 @@
 
 - [cli/engine] - Fix a panic due to passing `""` as the ID for a resource read.
   [#9243](https://github.com/pulumi/pulumi/pull/9243)
+
+- [cli/engine] - Fix a panic due to `Check` failing while using update plans.
+  [#9254](https://github.com/pulumi/pulumi/pull/9254)
