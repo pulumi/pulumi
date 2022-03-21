@@ -20,6 +20,7 @@ ensure::
 	$(PYTHON) -m venv venv
 	. venv/*/activate && python -m pip install wheel
 	. venv/*/activate && python -m pip install -r requirements.txt
+	. venv/*/activate && mypy --install-types --non-interactive
 	mkdir -p $(PYENVSRC)
 
 build_package:: ensure
