@@ -20,7 +20,6 @@ ensure::
 	$(PYTHON) -m venv venv
 	. venv/*/activate && python -m pip install wheel
 	. venv/*/activate && python -m pip install -r requirements.txt
-	. venv/*/activate && mypy --install-types --non-interactive
 	mkdir -p $(PYENVSRC)
 
 build_package:: ensure
@@ -40,7 +39,7 @@ lint:: ensure
 	. venv/*/activate && \
 		python -m black ./lib/pulumi --check
 	. venv/*/activate && \
-		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
+		MYPYPATH=./stubs python -m mypy ./lib/pulumi --install-types --config-file=mypy.ini
 	. venv/*/activate && \
 		python -m pylint ./lib/pulumi --rcfile=.pylintrc
 
