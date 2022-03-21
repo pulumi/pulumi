@@ -4,10 +4,7 @@ PULUMI_TEST_COVERAGE_PATH=$PULUMI_TEST_COVERAGE_PATH
 
 set -euo pipefail
 
-SKIP="../../scripts/skipped.py"
-
-python "$SKIP" auto-python ||
-    coverage run -m pytest lib/test/automation
+coverage run -m pytest lib/test/automation
 
 if [[ "$PULUMI_TEST_COVERAGE_PATH" ]]; then
     if [ -e .coverage ]; then

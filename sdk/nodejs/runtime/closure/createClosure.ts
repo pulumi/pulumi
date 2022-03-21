@@ -749,7 +749,7 @@ function getFunctionName(loc: FunctionLocation): string {
         // the entire lambda if it's lots of statements.
         const semicolonIndex = funcString.indexOf(";");
         if (semicolonIndex >= 0) {
-            funcString = funcString.substr(0, semicolonIndex + 1) + " ...";
+            funcString = funcString.slice(0, semicolonIndex + 1) + " ...";
         }
 
         // squash all whitespace to single spaces.

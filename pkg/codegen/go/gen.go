@@ -2751,6 +2751,15 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		}
 	}
 
+	// If there are any internal dependencies, include them as blank imports.
+	if topLevelModule {
+		if goInfo, ok := pkg.pkg.Language["go"].(GoPackageInfo); ok {
+			for _, dep := range goInfo.InternalDependencies {
+				imports[dep] = "_"
+			}
+		}
+	}
+
 	pkg.genHeader(w, []string{"fmt"}, imports)
 
 	var provider *schema.Resource

@@ -10,7 +10,11 @@ import (
 )
 
 func TestValidateStackTag(t *testing.T) {
+	t.Parallel()
+
 	t.Run("valid tags", func(t *testing.T) {
+		t.Parallel()
+
 		names := []string{
 			"tag-name",
 			"-",
@@ -21,6 +25,7 @@ func TestValidateStackTag(t *testing.T) {
 		}
 
 		for _, name := range names {
+			name := name
 			t.Run(name, func(t *testing.T) {
 				tags := map[apitype.StackTagName]string{
 					name: "tag-value",
@@ -33,6 +38,8 @@ func TestValidateStackTag(t *testing.T) {
 	})
 
 	t.Run("invalid stack tag names", func(t *testing.T) {
+		t.Parallel()
+
 		var names = []string{
 			"tag!",
 			"something with spaces",
@@ -42,7 +49,10 @@ func TestValidateStackTag(t *testing.T) {
 		}
 
 		for _, name := range names {
+			name := name
 			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+
 				tags := map[apitype.StackTagName]string{
 					name: "tag-value",
 				}
@@ -56,6 +66,8 @@ func TestValidateStackTag(t *testing.T) {
 	})
 
 	t.Run("too long tag name", func(t *testing.T) {
+		t.Parallel()
+
 		tags := map[apitype.StackTagName]string{
 			strings.Repeat("v", 41): "tag-value",
 		}
@@ -67,6 +79,8 @@ func TestValidateStackTag(t *testing.T) {
 	})
 
 	t.Run("too long tag value", func(t *testing.T) {
+		t.Parallel()
+
 		tags := map[apitype.StackTagName]string{
 			"tag-name": strings.Repeat("v", 257),
 		}

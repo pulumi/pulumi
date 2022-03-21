@@ -32,6 +32,8 @@ func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOpt
 }
 
 func TestMakeSafeEnumName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input    string
 		expected string
@@ -55,7 +57,10 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"ZeroPointOne", "ZERO_POINT_ONE", false},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := makeSafeEnumName(tt.input, "TypeName")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("makeSafeEnumName() error = %v, wantErr %v", err, tt.wantErr)
@@ -69,6 +74,8 @@ func TestMakeSafeEnumName(t *testing.T) {
 }
 
 func TestMakePyPiVersion(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input    string
 		expected string
@@ -82,7 +89,10 @@ func TestMakePyPiVersion(t *testing.T) {
 		{"1.2.3-posttt456", "1.2.3+posttt456"},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			v := semver.MustParse(tt.input)
 			actual := pypiVersion(v)
 			if tt.expected != actual {

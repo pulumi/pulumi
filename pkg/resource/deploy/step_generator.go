@@ -144,6 +144,10 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		newState.SequenceNumber = old.SequenceNumber
 	}
 
+	if newState.ID == "" {
+		return nil, result.Errorf("Expected an ID for %v", urn)
+	}
+
 	// If the snapshot has an old resource for this URN and it's not external, we're going
 	// to have to delete the old resource and conceptually replace it with the resource we
 	// are about to read.
@@ -1346,8 +1350,14 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	return diff, nil
 }
 
-// issueCheckErrors prints any check errors to the diagnostics sink.
+// issueCheckErrors prints any check errors to the diagnostics error sink.
 func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.URN,
+	failures []plugin.CheckFailure) bool {
+	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures)
+}
+
+// issueCheckErrors prints any check errors to the given printer function.
+func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.State, urn resource.URN,
 	failures []plugin.CheckFailure) bool {
 
 	if len(failures) == 0 {
@@ -1356,10 +1366,10 @@ func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
-			deployment.Diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn),
+			printf(diag.GetResourcePropertyInvalidValueError(urn),
 				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
-			deployment.Diag().Errorf(
+			printf(
 				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
 		}
 	}
@@ -1718,7 +1728,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 				}
 			}
 			if urn == "" {
-				urn = resource.DefaultRootStackURN(sg.deployment.Target().Name, sg.deployment.source.Project())
+				urn = resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project())
 			}
 			sg.opts.Events.OnPolicyViolation(urn, d)
 		}

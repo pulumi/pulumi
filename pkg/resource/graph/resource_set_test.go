@@ -21,6 +21,8 @@ import (
 )
 
 func TestIntersect(t *testing.T) {
+	t.Parallel()
+
 	a := NewResource("a", nil)
 	b := NewResource("b", nil)
 	c := NewResource("c", nil)
@@ -39,6 +41,8 @@ func TestIntersect(t *testing.T) {
 }
 
 func TestUnion(t *testing.T) {
+	t.Parallel()
+
 	a := NewResource("a", nil)
 	b := NewResource("b", nil)
 	c := NewResource("c", nil)
@@ -57,6 +61,8 @@ func TestUnion(t *testing.T) {
 }
 
 func TestSetMinus(t *testing.T) {
+	t.Parallel()
+
 	a := NewResource("a", nil)
 	b := NewResource("b", nil)
 	c := NewResource("c", nil)

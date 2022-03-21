@@ -96,6 +96,8 @@ class LanguageServer(LanguageRuntimeServicer):
             # logged to stdout. To avoid this, we collect all the unresolved tasks in the loop and cancel them before
             # closing the loop.
             pending = (
+                # lint safety: we use the python version here to track deprecations
+                # pylint: disable=no-member
                 asyncio.Task.all_tasks(loop)
                 if _py_version_less_than_3_7
                 else asyncio.all_tasks(loop)

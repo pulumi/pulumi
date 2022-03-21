@@ -18,6 +18,8 @@ func (nameInfo) Format(name string) string {
 
 //nolint: lll
 func TestApplyRewriter(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		input, output string
 		skipPromises  bool
@@ -167,7 +169,10 @@ func TestApplyRewriter(t *testing.T) {
 	}))
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.input, func(t *testing.T) {
+			t.Parallel()
+
 			expr, diags := model.BindExpressionText(c.input, scope, hcl.Pos{})
 			assert.Len(t, diags, 0)
 

@@ -23,12 +23,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	var args = newPolicyArgs{
 		interactive:       false,
@@ -43,12 +44,13 @@ func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	assert.FileExists(t, filepath.Join(tempdir, "index.ts"))
 }
 
+//nolint:paralleltest // changes directory for process
 func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	tempdir, _ := ioutil.TempDir("", "test-env")
 	defer os.RemoveAll(tempdir)
-	assert.NoError(t, os.Chdir(tempdir))
+	chdir(t, tempdir)
 
 	var args = newPolicyArgs{
 		interactive:       true,
@@ -62,6 +64,7 @@ func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 	assert.FileExists(t, filepath.Join(tempdir, "index.js"))
 }
 
+//nolint:paralleltest // changes directory for process
 func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
@@ -69,11 +72,10 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	const nonExistantTemplate = "this-is-not-the-template-youre-looking-for"
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
-		t.Parallel()
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.DirExists(t, tempdir)
-		assert.NoError(t, os.Chdir(tempdir))
+		chdir(t, tempdir)
 
 		var args = newPolicyArgs{
 			interactive:       false,
@@ -87,11 +89,9 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
-		t.Parallel()
-
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
-		assert.NoError(t, os.Chdir(tempdir))
+		chdir(t, tempdir)
 
 		var args = newPolicyArgs{
 			generateOnly:      true,

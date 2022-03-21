@@ -233,15 +233,14 @@ Event: ${line}\n${e.toString()}`);
 
         const upPromise = this.runPulumiCmd(args, opts?.onOutput);
         let upResult: CommandResult;
-        let logResult: ReadlineResult | undefined;
         try {
-            [upResult, logResult] = await Promise.all([upPromise, logPromise]);
+            upResult = await upPromise;
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, logResult);
+            await cleanUp(logFile, await logPromise);
         }
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050

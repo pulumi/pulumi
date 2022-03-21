@@ -15,6 +15,7 @@ import (
 
 // TestPolicyWithConfig runs integration tests against the policy pack in the policy_pack_w_config
 // directory using version 0.4.1-dev of the pulumi/policy sdk.
+//nolint:paralleltest // mutates environment variables
 func TestPolicyWithConfig(t *testing.T) {
 	t.Skip("Skip test that is causing unrelated tests to fail - pulumi/pulumi#4149")
 
@@ -90,6 +91,7 @@ func TestPolicyWithConfig(t *testing.T) {
 
 // TestPolicyWithoutConfig runs integration tests against the policy pack in the policy_pack_w_config
 // directory. This tests against version 0.4.0 of the pulumi/policy sdk, prior to policy config being supported.
+//nolint:paralleltest // mutates environment variables
 func TestPolicyWithoutConfig(t *testing.T) {
 	t.Skip("Skip test that is causing unrelated tests to fail - pulumi/pulumi#4149")
 

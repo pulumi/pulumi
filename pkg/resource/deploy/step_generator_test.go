@@ -24,6 +24,8 @@ import (
 )
 
 func TestIgnoreChanges(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name          string
 		oldInputs     map[string]interface{}
@@ -111,7 +113,10 @@ func TestIgnoreChanges(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
 			olds, news := resource.NewPropertyMapFromMap(c.oldInputs), resource.NewPropertyMapFromMap(c.newInputs)
 
 			expected := olds
@@ -131,6 +136,8 @@ func TestIgnoreChanges(t *testing.T) {
 }
 
 func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name             string
 		diff             plugin.DiffResult
@@ -201,7 +208,10 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
 			newdiff, err := applyReplaceOnChanges(c.diff, c.replaceOnChanges, c.hasInitErrors)
 			assert.NoError(t, err)
 			assert.Equal(t, c.expected, newdiff)
@@ -211,6 +221,8 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 }
 
 func TestEngineDiff(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name                 string
 		oldInputs, newInputs resource.PropertyMap
@@ -288,7 +300,10 @@ func TestEngineDiff(t *testing.T) {
 	allowUnknowns := false
 	provider := deploytest.Provider{}
 	for _, c := range cases {
+		c := c
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
 			diff, err := diffResource(urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, c.ignoreChanges)
 			t.Logf("diff.ChangedKeys = %v", diff.ChangedKeys)
 			t.Logf("diff.StableKeys = %v", diff.StableKeys)

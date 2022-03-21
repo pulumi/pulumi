@@ -44,6 +44,8 @@ func readSchemaFile(file string) (pkgSpec PackageSpec) {
 }
 
 func TestImportSpec(t *testing.T) {
+	t.Parallel()
+
 	// Read in, decode, and import the schema.
 	pkgSpec := readSchemaFile("kubernetes.json")
 
@@ -108,8 +110,13 @@ var enumTests = []struct {
 }
 
 func TestEnums(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range enumTests {
+		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
+			t.Parallel()
+
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
 			pkg, err := ImportSpec(pkgSpec, nil)
@@ -128,6 +135,8 @@ func TestEnums(t *testing.T) {
 }
 
 func TestImportResourceRef(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		schemaFile string
@@ -188,7 +197,10 @@ func TestImportResourceRef(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			// Read in, decode, and import the schema.
 			schemaBytes, err := ioutil.ReadFile(
 				filepath.Join("..", "testing", "test", "testdata", tt.schemaFile))
@@ -209,6 +221,8 @@ func TestImportResourceRef(t *testing.T) {
 }
 
 func Test_parseTypeSpecRef(t *testing.T) {
+	t.Parallel()
+
 	toVersionPtr := func(version string) *semver.Version { v := semver.MustParse(version); return &v }
 	toURL := func(rawurl string) *url.URL {
 		parsed, err := url.Parse(rawurl)
@@ -325,7 +339,10 @@ func Test_parseTypeSpecRef(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, diags := typs.parseTypeSpecRef("ref", tt.ref)
 			if diags.HasErrors() != tt.wantErr {
 				t.Errorf("parseTypeSpecRef() diags = %v, wantErr %v", diags, tt.wantErr)
@@ -339,6 +356,8 @@ func Test_parseTypeSpecRef(t *testing.T) {
 }
 
 func TestMethods(t *testing.T) {
+	t.Parallel()
+
 	var tests = []struct {
 		filename      string
 		validator     func(pkg *Package)
@@ -396,7 +415,10 @@ func TestMethods(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.filename, func(t *testing.T) {
+			t.Parallel()
+
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
 			pkg, err := ImportSpec(pkgSpec, nil)
@@ -416,7 +438,11 @@ func TestMethods(t *testing.T) {
 // TestIsOverlay tests that the IsOverlay field is set correctly for resources, types, and functions. Does not test
 // codegen.
 func TestIsOverlay(t *testing.T) {
+	t.Parallel()
+
 	t.Run("overlay", func(t *testing.T) {
+		t.Parallel()
+
 		pkgSpec := readSchemaFile(filepath.Join("schema", "overlay.json"))
 
 		pkg, err := ImportSpec(pkgSpec, nil)
@@ -453,6 +479,8 @@ func TestIsOverlay(t *testing.T) {
 // Tests that the method ReplaceOnChanges works as expected. Does not test
 // codegen.
 func TestReplaceOnChanges(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range []struct {
 		name     string
 		filePath string
@@ -505,7 +533,10 @@ func TestReplaceOnChanges(t *testing.T) {
 			errors:   []string{},
 		},
 	} {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			// We sort each result before comparison. We don't enforce that the
 			// results have the same order, just the same content.
 			sort.Strings(tt.result)
@@ -537,6 +568,8 @@ func TestReplaceOnChanges(t *testing.T) {
 }
 
 func TestValidateTypeToken(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name          string
 		input         string
@@ -568,7 +601,10 @@ func TestValidateTypeToken(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
+		c := c
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
 			spec := &PackageSpec{Name: "example"}
 			allowed := map[string]bool{"example": true}
 			for _, e := range c.allowedExtras {

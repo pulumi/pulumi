@@ -41,7 +41,7 @@ type Stack interface {
 }
 
 type cloudBackendReference struct {
-	name    tokens.QName
+	name    tokens.Name
 	project string
 	owner   string
 	b       *cloudBackend
@@ -64,7 +64,7 @@ func (c cloudBackendReference) String() string {
 	return fmt.Sprintf("%s/%s/%s", c.owner, c.project, c.name)
 }
 
-func (c cloudBackendReference) Name() tokens.QName {
+func (c cloudBackendReference) Name() tokens.Name {
 	return c.name
 }
 
@@ -92,7 +92,7 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		ref: cloudBackendReference{
 			owner:   apistack.OrgName,
 			project: apistack.ProjectName,
-			name:    apistack.StackName,
+			name:    tokens.Name(apistack.StackName.String()),
 			b:       b,
 		},
 		cloudURL:         b.CloudURL(),
@@ -197,7 +197,7 @@ func (css cloudStackSummary) Name() backend.StackReference {
 	return cloudBackendReference{
 		owner:   css.summary.OrgName,
 		project: css.summary.ProjectName,
-		name:    tokens.QName(css.summary.StackName),
+		name:    tokens.Name(css.summary.StackName),
 		b:       css.b,
 	}
 }

@@ -370,6 +370,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "JSON.stringify(%v)", expr.Args[0])
 	case "sha1":
 		g.Fgenf(w, "crypto.createHash('sha1').update(%v).digest('hex')", expr.Args[0])
+	case "stack":
+		g.Fgenf(w, "pulumi.getStack()")
+	case "project":
+		g.Fgenf(w, "pulumi.getProject()")
+	case "cwd":
+		g.Fgen(w, "process.cwd()")
 
 	default:
 		var rng hcl.Range

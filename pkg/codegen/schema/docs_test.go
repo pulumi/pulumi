@@ -105,17 +105,23 @@ func getDocsForPackage(pkg *Package) []doc {
 }
 
 func TestParseAndRenderDocs(t *testing.T) {
+	t.Parallel()
+
 	files, err := ioutil.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, f := range files {
+		f := f
 		if filepath.Ext(f.Name()) != ".json" {
 			continue
 		}
 
 		t.Run(f.Name(), func(t *testing.T) {
+			t.Parallel()
+
 			path := filepath.Join(testdataPath, f.Name())
 			contents, err := ioutil.ReadFile(path)
 			if err != nil {
@@ -131,7 +137,9 @@ func TestParseAndRenderDocs(t *testing.T) {
 				t.Fatalf("could not import package: %v", err)
 			}
 
+			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
 			for _, doc := range getDocsForPackage(pkg) {
+				doc := doc
 				t.Run(doc.entity, func(t *testing.T) {
 					original := []byte(doc.content)
 					expected := ParseDocs(original)
@@ -148,17 +156,23 @@ func TestParseAndRenderDocs(t *testing.T) {
 }
 
 func TestReferenceRenderer(t *testing.T) {
+	t.Parallel()
+
 	files, err := ioutil.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, f := range files {
+		f := f
 		if filepath.Ext(f.Name()) != ".json" {
 			continue
 		}
 
 		t.Run(f.Name(), func(t *testing.T) {
+			t.Parallel()
+
 			path := filepath.Join(testdataPath, f.Name())
 			contents, err := ioutil.ReadFile(path)
 			if err != nil {
@@ -174,7 +188,9 @@ func TestReferenceRenderer(t *testing.T) {
 				t.Fatalf("could not import package: %v", err)
 			}
 
+			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
 			for _, doc := range getDocsForPackage(pkg) {
+				doc := doc
 				t.Run(doc.entity, func(t *testing.T) {
 					text := []byte(fmt.Sprintf("[entity](%s)", doc.entity))
 					expected := strings.Replace(doc.entity, "/", "_", -1) + "\n"

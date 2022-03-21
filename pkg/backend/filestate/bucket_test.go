@@ -22,6 +22,8 @@ func mustNotHaveError(t *testing.T, context string, err error) {
 // view of file paths. Since it will assume that backslashes (file separators on Windows) are part of
 // file names, and this causes "problems".
 func TestWrappedBucket(t *testing.T) {
+	t.Parallel()
+
 	// wrappedBucket will only massage file paths IFF it is needed, as filepath.ToSlash is a noop.
 	if filepath.Separator == '/' {
 		assert.Equal(t, `foo\bar\baz`, filepath.ToSlash(`foo\bar\baz`))
@@ -49,6 +51,7 @@ func TestWrappedBucket(t *testing.T) {
 	// successfully handle both "/" and "\" as file separators. (And probably fail in
 	// exciting ways if you try to give it a file on a system that supports "\" or "/" as
 	// a valid character in a filename.)
+	//nolint:paralleltest // uses shared state with parent
 	t.Run("SanityCheck", func(t *testing.T) {
 		randomData := []byte("Just some random data")
 
@@ -69,6 +72,7 @@ func TestWrappedBucket(t *testing.T) {
 	})
 
 	// Verify ListObjects / listBucket works with regard to differeing file separators too.
+	//nolint:paralleltest // uses shared state with parent
 	t.Run("ListObjects", func(t *testing.T) {
 		randomData := []byte("Just some random data")
 		filenames := []string{"a.json", "b.json", "c.json"}

@@ -50,12 +50,9 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
 		return nil, err
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind: workspace.LanguagePlugin,
-			Name: runtime,
-		})
 	}
+
+	contract.Assert(path != "")
 
 	args, err := buildArgsForNewPlugin(host, ctx, options)
 	if err != nil {

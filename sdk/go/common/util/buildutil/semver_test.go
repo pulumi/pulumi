@@ -21,6 +21,8 @@ import (
 )
 
 func TestVersions(t *testing.T) {
+	t.Parallel()
+
 	cases := map[string]string{
 		"v0.12.0":                                "0.12.0",
 		"v0.12.0+dirty":                          "0.12.0+dirty",
@@ -38,6 +40,8 @@ func TestVersions(t *testing.T) {
 }
 
 func TestPseduoVersion(t *testing.T) {
+	t.Parallel()
+
 	pseudoVersion := "v1.29.1-0.20200403140640-efb5e2a48a86"
 	assert.True(t, IsPseudoVersion(pseudoVersion))
 
