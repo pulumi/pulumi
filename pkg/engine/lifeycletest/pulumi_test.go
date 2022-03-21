@@ -3646,7 +3646,7 @@ func TestExpectedUnneededDelete(t *testing.T) {
 func TestResoucesWithSames(t *testing.T) {
 	t.Parallel()
 
-	// This test checks that if between generating a constriant and running the update that if new resources have been
+	// This test checks that if between generating a constraint and running the update that if new resources have been
 	// added to the stack that the update doesn't change those resources in any way that they don't cause constraint
 	// errors.
 
@@ -4499,4 +4499,85 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 	assert.NotNil(t, res)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 1)
+}
+
+func TestPlannedUpdateWithCheckFailure(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/9247
+
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+				CheckF: func(urn resource.URN, olds, news resource.PropertyMap,
+					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					if news["foo"].StringValue() == "bad" {
+						return nil, []plugin.CheckFailure{
+							{Property: resource.PropertyKey("foo"), Reason: "Bad foo"},
+						}, nil
+					}
+					return news, nil, nil
+				},
+			}, nil
+		}),
+	}
+
+	var ins resource.PropertyMap
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
+	}
+
+	project := p.GetProject()
+
+	// Generate a plan with bad inputs
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bad",
+	})
+	validate := ExpectDiagMessage(t,
+		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>\n")
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate)
+	assert.Nil(t, plan)
+	assert.Nil(t, res)
+
+	// Generate a plan with good inputs
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "good",
+	})
+	plan, res = TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	assert.NotNil(t, plan)
+	assert.Contains(t, plan.ResourcePlans, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+	assert.Nil(t, res)
+
+	// Try and run against the plan with inputs that will fail Check
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bad",
+	})
+	p.Options.Plan = plan.Clone()
+	validate = ExpectDiagMessage(t,
+		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>\n")
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+
+	// Check the resource's state.
+	if !assert.Len(t, snap.Resources, 1) {
+		return
+	}
 }
