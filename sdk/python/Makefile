@@ -39,7 +39,7 @@ lint:: ensure
 	. venv/*/activate && \
 		python -m black ./lib/pulumi --check
 	. venv/*/activate && \
-		MYPYPATH=./stubs python -m mypy ./lib/pulumi --namespace-packages --config-file=mypy.ini
+		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
 	. venv/*/activate && \
 		python -m pylint ./lib/pulumi --rcfile=.pylintrc
 
