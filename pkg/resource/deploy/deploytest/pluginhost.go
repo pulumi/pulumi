@@ -412,3 +412,10 @@ func (host *pluginHost) ListAnalyzers() []plugin.Analyzer {
 
 	return host.analyzers
 }
+
+func (host *pluginHost) ListProviders() []plugin.Provider {
+	host.m.Lock()
+	defer host.m.Unlock()
+
+	return host.providers
+}

@@ -62,6 +62,9 @@ func (host *testPluginHost) PolicyAnalyzer(name tokens.QName, path string,
 func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
 	return nil
 }
+func (host *testPluginHost) ListProviders() []plugin.Provider {
+	return nil
+}
 func (host *testPluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 	return host.provider(pkg, version)
 }

@@ -62,6 +62,10 @@ type Host interface {
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
 	Provider(pkg tokens.Package, version *semver.Version) (Provider, error)
+
+	// ListAnalyzers returns a list of all resource plugins known to the plugin host.
+	ListProviders() []Provider
+
 	// CloseProvider closes the given provider plugin and deregisters it from this host.
 	CloseProvider(provider Provider) error
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
@@ -302,6 +306,14 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 		return nil, err
 	}
 	return plugin.(Provider), nil
+}
+
+func (host *defaultHost) ListProviders() []Provider {
+	providers := []Provider{}
+	for _, provider := range host.resourcePlugins {
+		providers = append(providers, provider.Plugin)
+	}
+	return providers
 }
 
 func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
