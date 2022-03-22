@@ -21,6 +21,9 @@
 - [sdk/nodejs] - Take engines property into account when engine-strict appear in npmrc file 
   [#9249](https://github.com/pulumi/pulumi/pull/9249)
 
+- [cli] Implement `pulumi state clear-pending-operations`
+  [#9270](https://github.com/pulumi/pulumi/pull/9270)
+
 ### Bug Fixes
 
 - [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack up.
