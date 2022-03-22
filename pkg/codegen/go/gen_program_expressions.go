@@ -198,6 +198,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			module = pkg
 		}
 		isOut, outArgs, outArgsType := pcl.RecognizeOutputVersionedInvoke(expr)
+		if g.rewrittenInvokes[expr] && !isOut {
+			isOut = true
+			outArgsType = expr.Signature.ReturnType
+			outArgs = expr.Args[1].(*model.ObjectConsExpression)
+		}
+		fmt.Printf("Calculated isOut = %t\n", isOut)
 		if isOut {
 			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType)
 			if err != nil {

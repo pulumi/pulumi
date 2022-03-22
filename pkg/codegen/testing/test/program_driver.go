@@ -152,6 +152,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Regress invalid Go",
 		Skip:        codegen.NewStringSet("python", "nodejs", "dotnet"),
 	},
+	{
+		Directory:   "inline-invoke",
+		Description: "Call an invoke without assigning to a variable",
+		Skip:        codegen.NewStringSet("python", "dotnet"),
+	},
 }
 
 // Checks that a generated program is correct

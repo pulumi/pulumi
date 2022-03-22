@@ -37,6 +37,7 @@ type generator struct {
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
 	configCreated       bool
+	rewrittenInvokes    map[*model.FunctionCallExpression]bool
 
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
@@ -93,6 +94,11 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		g.collectScopeRoots(n)
 	}
 
+	// Rewrite to use Output invokes when inline
+	for _, n := range nodes {
+		g.rewriteInlineInvokes(n)
+	}
+
 	for _, n := range nodes {
 		g.genNode(&progPostamble, n)
 	}
@@ -117,6 +123,71 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		"main.go": formattedSource,
 	}
 	return files, g.diagnostics, nil
+}
+
+func (g *generator) rewriteInlineInvokes(node pcl.Node) {
+	g.rewrittenInvokes = map[*model.FunctionCallExpression]bool{}
+	g.diagnostics = append(g.diagnostics, node.VisitExpressions(func(n model.Expression) (model.Expression, hcl.Diagnostics) {
+		if n, ok := n.(*model.RelativeTraversalExpression); ok {
+			if fn, ok := n.Source.(*model.FunctionCallExpression); ok &&
+				fn.Name == pcl.Invoke && len(n.Traversal) > 0 {
+				g.rewrittenInvokes[fn] = true
+			}
+		}
+		return n, nil
+	}, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
+		if fn, ok := n.(*model.FunctionCallExpression); ok && g.rewrittenInvokes[fn] {
+			return rewriteInlineInvoke(g, fn)
+		}
+		return n, nil
+	})...)
+}
+
+// rewriteInlineInvoke an individual invoke so it is inline, either with a
+// lambda or with an Output.
+func rewriteInlineInvoke(g *generator, fn *model.FunctionCallExpression) (model.Expression, hcl.Diagnostics) {
+	t, ok := pcl.GetSchemaForType(fn.Type())
+	errWithMsg := func(msg string, args ...interface{}) (model.Expression, hcl.Diagnostics) {
+		return fn, hcl.Diagnostics{&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  fmt.Sprintf(msg, args...),
+			Subject:  fn.Syntax.Range().Ptr(),
+		}}
+
+	}
+	if !ok {
+		return errWithMsg("Could not find schema for %v", fn.Type())
+	}
+
+	var convertOutput bool
+	switch t := t.(type) {
+	case *schema.ObjectType:
+		var goInfo GoPackageInfo
+		fPkg := t.Package
+		contract.AssertNoError(fPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
+		if info, ok := fPkg.Language["go"].(GoPackageInfo); ok {
+			goInfo = info
+		}
+		convertOutput = !goInfo.DisableFunctionOutputVersions
+
+	}
+	if convertOutput {
+		return rewriteAsOutput(g, fn)
+	}
+	return errWithMsg("Attempted to generate a statement in place of an expression")
+}
+
+func rewriteAsOutput(g *generator, fn *model.FunctionCallExpression) (*model.FunctionCallExpression, hcl.Diagnostics) {
+	f := *fn // Copy to avoid mutating the original
+	contract.Assert(f.Name == pcl.Invoke)
+	f.Signature.ReturnType = model.NewOutputType(f.Signature.ReturnType)
+	for i := range f.Signature.Parameters {
+		fmt.Printf("Processing parameter %[2]s: (%[1]T): %[1]v\n", f.Signature.Parameters[i].Type, f.Signature.Parameters[i].Name)
+		f.Signature.Parameters[i].Type = model.InputType(f.Signature.Parameters[i].Type)
+	}
+	ref := &f
+	g.rewrittenInvokes[ref] = true
+	return ref, nil
 }
 
 var packageContexts sync.Map
