@@ -14,7 +14,7 @@
         "@pulumi/query": "^0.3.0",
         "google-protobuf": "^3.5.0",
         "js-yaml": "^3.14.0",
-        "minimist": "^1.2.0",
+        "minimist": "^1.2.6",
         "normalize-package-data": "^2.4.0",
         "protobufjs": "^6.8.6",
         "read-package-tree": "^5.3.1",
