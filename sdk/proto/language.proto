@@ -28,6 +28,9 @@ service LanguageRuntime {
     rpc Run(RunRequest) returns (RunResponse) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
+
+    // InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
+    rpc  InstallDependencies(InstallDependenciesRequest) returns (stream  InstallDependenciesResponse) {}
 }
 
 message GetRequiredPluginsRequest {
@@ -64,4 +67,14 @@ message RunResponse {
     // with nothing further to print to the user.  This corresponds to a "result.Bail()"
     // value in the 'go' layer.
     bool bail = 2;
+}
+
+message InstallDependenciesRequest {
+    string directory = 1; // the program's working directory.
+    bool is_terminal = 2; // if we are running in a terminal and should use ANSI codes
+}
+
+message InstallDependenciesResponse {
+    bytes stdout = 1; // a line of stdout text.
+    bytes stderr = 2; // a line of stderr text.
 }

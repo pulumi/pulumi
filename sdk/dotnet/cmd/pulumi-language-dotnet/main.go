@@ -33,6 +33,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -659,4 +660,39 @@ func (host *dotnetLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
+}
+
+func (host *dotnetLanguageHost) InstallDependencies(
+	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+
+	stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer stdout.Close()
+
+	stdout.Write([]byte("Installing dependencies...\n\n"))
+
+	dotnetbin, err := executable.FindExecutable("dotnet")
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command(dotnetbin, "build")
+	cmd.Dir = req.Directory
+	cmd.Env = os.Environ()
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("`dotnet build` failed to install dependencies: %w", err)
+
+	}
+	stdout.Write([]byte("Finished installing dependencies\n\n"))
+
+	if err := stdout.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }

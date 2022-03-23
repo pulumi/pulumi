@@ -800,3 +800,28 @@ func validateVersion(virtualEnvPath string) {
 			parsed.Minor, eolPythonVersionIssue)
 	}
 }
+
+func (host *pythonLanguageHost) InstallDependencies(
+	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+
+	stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer stdout.Close()
+
+	stdout.Write([]byte("Installing dependencies...\n\n"))
+
+	if err := python.InstallDependenciesWithWriters(req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr); err != nil {
+		return err
+	}
+
+	stdout.Write([]byte("Finished installing dependencies\n\n"))
+
+	if err := stdout.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}

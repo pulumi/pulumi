@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/spf13/cobra"
 	survey "gopkg.in/AlecAivazis/survey.v1"
@@ -189,9 +190,16 @@ func runNewPolicyPack(args newPolicyArgs) error {
 func installPolicyPackDependencies(proj *workspace.PolicyPackProject, projPath, root string) error {
 	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		if bin, err := nodeInstallDependencies(); err != nil {
+		fmt.Println("Installing dependencies...")
+		fmt.Println()
+
+		bin, err := npm.Install("", false /*production*/, os.Stdout, os.Stderr)
+		if err != nil {
 			return fmt.Errorf("`%s install` failed; rerun manually to try again.: %w", bin, err)
 		}
+
+		fmt.Println("Finished installing dependencies")
+		fmt.Println()
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
 		const venvDir = "venv"
 		if err := python.InstallDependencies(root, venvDir, true /*showOutput*/); err != nil {

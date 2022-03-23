@@ -41,6 +41,7 @@ require (
 	github.com/apparentlymart/go-textseg v1.0.0 // indirect
 	github.com/aws/aws-sdk-go v1.38.35 // indirect
 	github.com/cheggaaa/pb v1.0.18 // indirect
+	github.com/creack/pty v1.1.9 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/djherbis/times v1.2.0 // indirect
