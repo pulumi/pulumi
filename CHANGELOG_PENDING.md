@@ -34,3 +34,6 @@
 
 - [cli/engine] - Fix a panic due to `Check` failing while using update plans.
   [#9254](https://github.com/pulumi/pulumi/pull/9254)
+
+- [codegen/go] - Fix Go SDK function output to check for errors
+  [pulumi-aws#1872](https://github.com/pulumi/pulumi-aws/issues/1872)
