@@ -601,7 +601,7 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 
 	op := TestOp(Update)
 	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
-	project, target := p.GetProject(), p.GetTarget(old)
+	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// Without refreshing, an update should fail.
 	_, res := op.Run(project, target, options, false, nil, nil)
@@ -620,7 +620,7 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Len(t, new.PendingOperations, 0)
 
-	_, res = op.Run(project, p.GetTarget(new), options, false, nil, nil)
+	_, res = op.Run(project, p.GetTarget(t, new), options, false, nil, nil)
 	assert.Nil(t, res)
 }
 
