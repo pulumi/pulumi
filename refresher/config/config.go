@@ -35,7 +35,6 @@ type Config struct {
 	StackId                    string
 	ResourceCount              int
 	LastUpdate                 int
-	FireflyEngineLambdaArn     string
 	ClientAWSIntegrationId     string
 	FireflyAWSRoleARN          string
 	FireflyAWSWebIdentityToken string
@@ -113,10 +112,6 @@ func LoadConfig() (*Config, error) {
 
 	if cfg.FireflyAWSWebIdentityToken = os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE"); cfg.FireflyAWSWebIdentityToken == "" {
 		merr = multierror.Append(merr, errors.New("failed, environment variable AWS_WEB_IDENTITY_TOKEN_FILE must be provided"))
-	}
-
-	if cfg.FireflyEngineLambdaArn = os.Getenv("ENGINE_PRODUCER_LAMBDA_ARN"); cfg.FireflyEngineLambdaArn == "" {
-		merr = multierror.Append(merr, errors.New("failed, environment variable ENGINE_PRODUCER_LAMBDA_ARN must be provided"))
 	}
 
 	cfg.ResourceCount, err = strconv.Atoi(os.Getenv("RESOURCE_COUNT"))
