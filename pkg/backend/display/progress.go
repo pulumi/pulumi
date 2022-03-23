@@ -914,7 +914,7 @@ func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
 		return
 	}
 
-	msg := renderSummaryEvent(display.action, *display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
 	display.writeSimpleMessage(msg)
 }
 
