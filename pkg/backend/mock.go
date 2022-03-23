@@ -35,6 +35,7 @@ type MockBackend struct {
 	NameF                  func() string
 	URLF                   func() string
 	GetPolicyPackF         func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
+	SupportsTagsF          func() bool
 	SupportsOrganizationsF func() bool
 	ParseStackReferenceF   func(s string) (StackReference, error)
 	ValidateStackNameF     func(s string) error
@@ -104,6 +105,13 @@ func (be *MockBackend) GetPolicyPack(
 
 	if be.GetPolicyPackF != nil {
 		return be.GetPolicyPackF(ctx, policyPack, d)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) SupportsTags() bool {
+	if be.SupportsTagsF != nil {
+		return be.SupportsTagsF()
 	}
 	panic("not implemented")
 }

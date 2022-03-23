@@ -471,7 +471,10 @@ func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inCo
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
 }
 
-// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *cloudBackend) SupportsTags() bool {
+	return true
+}
+
 func (b *cloudBackend) SupportsOrganizations() bool {
 	return true
 }

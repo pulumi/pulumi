@@ -248,7 +248,10 @@ func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string, _ ba
 	return apitype.ListPolicyPacksResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
-// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *localBackend) SupportsTags() bool {
+	return false
+}
+
 func (b *localBackend) SupportsOrganizations() bool {
 	return false
 }
