@@ -559,6 +559,8 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 
 // Tests that a refresh works for a stack with pending operations.
 func TestRefreshWithPendingOperations(t *testing.T) {
+	t.Parallel()
+
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
