@@ -68,11 +68,12 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			tags, err := backend.GetStackTags(commandContext(), s)
-			if err != nil {
-				return err
+			b := s.Backend()
+			if !b.SupportsTags() {
+				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
 
+			tags := s.Tags()
 			if value, ok := tags[name]; ok {
 				fmt.Printf("%v\n", value)
 				return nil
@@ -93,15 +94,18 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
+
 			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
 
-			tags, err := backend.GetStackTags(commandContext(), s)
-			if err != nil {
-				return err
+			b := s.Backend()
+			if !b.SupportsTags() {
+				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
+
+			tags := s.Tags()
 
 			if jsonOut {
 				return printJSON(tags)
@@ -152,16 +156,15 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ctx := commandContext()
-
-			tags, err := backend.GetStackTags(ctx, s)
-			if err != nil {
-				return err
+			b := s.Backend()
+			if !b.SupportsTags() {
+				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
 
+			tags := s.Tags()
 			delete(tags, name)
 
-			return backend.UpdateStackTags(ctx, s, tags)
+			return backend.UpdateStackTags(commandContext(), s, tags)
 		}),
 	}
 }
@@ -183,19 +186,18 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			ctx := commandContext()
-
-			tags, err := backend.GetStackTags(ctx, s)
-			if err != nil {
-				return err
+			b := s.Backend()
+			if !b.SupportsTags() {
+				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
 
+			tags := s.Tags()
 			if tags == nil {
 				tags = make(map[apitype.StackTagName]string)
 			}
 			tags[name] = value
 
-			return backend.UpdateStackTags(ctx, s, tags)
+			return backend.UpdateStackTags(commandContext(), s, tags)
 		}),
 	}
 }

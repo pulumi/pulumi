@@ -132,8 +132,11 @@ type Backend interface {
 	ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
 		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 
+	// SupportsTags tells whether a stack can have associated tags stored with it in this backend.
+	SupportsTags() bool
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
+
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
 	ParseStackReference(s string) (StackReference, error)
@@ -186,8 +189,6 @@ type Backend interface {
 	// Get the configuration from the most recent deployment of the stack.
 	GetLatestConfiguration(ctx context.Context, stack Stack) (config.Map, error)
 
-	// GetStackTags fetches the stack's existing tags.
-	GetStackTags(ctx context.Context, stack Stack) (map[apitype.StackTagName]string, error)
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
 

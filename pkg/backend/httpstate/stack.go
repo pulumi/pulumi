@@ -37,7 +37,6 @@ type Stack interface {
 	OrgName() string                            // the organization that owns this stack.
 	ConsoleURL() (string, error)                // the URL to view the stack's information on Pulumi.com.
 	CurrentOperation() *apitype.OperationStatus // in progress operation, if applicable.
-	Tags() map[apitype.StackTagName]string      // the stack's tags.
 	StackIdentifier() client.StackIdentifier
 }
 
