@@ -40,9 +40,10 @@ jobs:
       fail-fast: false
     steps:
       - name: Install Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: 1.17.x
+          check-latest: true
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
@@ -54,7 +55,7 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Check out source code

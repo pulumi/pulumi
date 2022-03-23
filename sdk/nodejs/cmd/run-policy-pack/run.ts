@@ -190,7 +190,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     }
 
     let program: string = opts.argv._[0];
-    if (program.indexOf("/") !== 0) {
+    if (!path.isAbsolute(program)) {
         // If this isn't an absolute path, make it relative to the working directory.
         program = path.join(process.cwd(), program);
     }

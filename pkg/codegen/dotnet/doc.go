@@ -73,14 +73,19 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 
 // GetLanguageTypeString returns the DotNet-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
+	info, ok := pkg.Language["csharp"].(CSharpPackageInfo)
+	if !ok {
+		info = CSharpPackageInfo{}
+	}
 	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
-		pkg:         pkg,
-		mod:         moduleName,
-		typeDetails: typeDetails,
-		namespaces:  d.Namespaces,
+		pkg:           pkg,
+		mod:           moduleName,
+		typeDetails:   typeDetails,
+		namespaces:    d.Namespaces,
+		rootNamespace: info.GetRootNamespace(),
 	}
-	qualifier := "Inputs"
+	qualifier := "Inputs" // nolint: goconst
 	if !input {
 		qualifier = "Outputs"
 	}
@@ -109,10 +114,11 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 		if info.LiftSingleValueMethodReturns && m.Function.Outputs != nil && len(m.Function.Outputs.Properties) == 1 {
 			typeDetails := map[*schema.ObjectType]*typeDetails{}
 			mod := &modContext{
-				pkg:         pkg,
-				mod:         modName,
-				typeDetails: typeDetails,
-				namespaces:  d.Namespaces,
+				pkg:           pkg,
+				mod:           modName,
+				typeDetails:   typeDetails,
+				namespaces:    d.Namespaces,
+				rootNamespace: info.GetRootNamespace(),
 			}
 			return mod.typeString(m.Function.Outputs.Properties[0].Type, "", false, false, false)
 		}

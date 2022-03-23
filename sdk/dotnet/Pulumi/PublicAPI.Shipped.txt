@@ -31,6 +31,8 @@ Pulumi.CallOptions.Provider.get -> Pulumi.ProviderResource
 Pulumi.CallOptions.Provider.set -> void
 Pulumi.CallOptions.Version.get -> string
 Pulumi.CallOptions.Version.set -> void
+Pulumi.CallOptions.PluginDownloadURL.get -> string
+Pulumi.CallOptions.PluginDownloadURL.set -> void
 Pulumi.ComponentResource
 Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ComponentResourceOptions options = null) -> void
 Pulumi.ComponentResource.ComponentResource(string type, string name, Pulumi.ResourceArgs args, Pulumi.ComponentResourceOptions options = null, bool remote = false) -> void
@@ -108,11 +110,15 @@ Pulumi.InputJson
 Pulumi.InputJson.InputJson() -> void
 Pulumi.InputList<T>
 Pulumi.InputList<T>.Add(params Pulumi.Input<T>[] inputs) -> void
+Pulumi.InputList<T>.Add(Pulumi.InputList<T> inputs) -> void
+Pulumi.InputList<T>.AddRange(Pulumi.InputList<T> inputs) -> void
 Pulumi.InputList<T>.Concat(Pulumi.InputList<T> other) -> Pulumi.InputList<T>
 Pulumi.InputList<T>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<T>>
 Pulumi.InputList<T>.InputList() -> void
 Pulumi.InputMap<V>
+Pulumi.InputMap<V>.Add(Pulumi.InputMap<V> values) -> void
 Pulumi.InputMap<V>.Add(string key, Pulumi.Input<V> value) -> void
+Pulumi.InputMap<V>.AddRange(Pulumi.InputMap<V> values) -> void
 Pulumi.InputMap<V>.GetAsyncEnumerator(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerator<Pulumi.Input<System.Collections.Generic.KeyValuePair<string, V>>>
 Pulumi.InputMap<V>.InputMap() -> void
 Pulumi.InputMap<V>.this[string key].set -> void
@@ -128,6 +134,8 @@ Pulumi.InvokeOptions.Provider.get -> Pulumi.ProviderResource
 Pulumi.InvokeOptions.Provider.set -> void
 Pulumi.InvokeOptions.Version.get -> string
 Pulumi.InvokeOptions.Version.set -> void
+Pulumi.InvokeOptions.PluginDownloadURL.get -> string
+Pulumi.InvokeOptions.PluginDownloadURL.set -> void
 Pulumi.Log
 Pulumi.Output
 Pulumi.Output<T>
@@ -135,6 +143,7 @@ Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Input<U>> func) -> Pulumi.Output
 Pulumi.Output<T>.Apply<U>(System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 Pulumi.Output<T>.Apply<U>(System.Func<T, U> func) -> Pulumi.Output<U>
+override Pulumi.Output<T>.ToString() -> string
 Pulumi.OutputAttribute
 Pulumi.OutputAttribute.Name.get -> string
 Pulumi.OutputAttribute.OutputAttribute(string name = null) -> void
@@ -178,6 +187,8 @@ Pulumi.ResourceOptions.Protect.get -> bool?
 Pulumi.ResourceOptions.Protect.set -> void
 Pulumi.ResourceOptions.Provider.get -> Pulumi.ProviderResource
 Pulumi.ResourceOptions.Provider.set -> void
+Pulumi.ResourceOptions.ReplaceOnChanges.get -> System.Collections.Generic.List<string>
+Pulumi.ResourceOptions.ReplaceOnChanges.set -> void
 Pulumi.ResourceOptions.ResourceOptions() -> void
 Pulumi.ResourceOptions.ResourceTransformations.get -> System.Collections.Generic.List<Pulumi.ResourceTransformation>
 Pulumi.ResourceOptions.ResourceTransformations.set -> void
@@ -185,6 +196,10 @@ Pulumi.ResourceOptions.Urn.get -> string
 Pulumi.ResourceOptions.Urn.set -> void
 Pulumi.ResourceOptions.Version.get -> string
 Pulumi.ResourceOptions.Version.set -> void
+Pulumi.ResourceOptions.PluginDownloadURL.get -> string
+Pulumi.ResourceOptions.PluginDownloadURL.set -> void
+Pulumi.ResourceOptions.RetainOnDelete.get -> bool?
+Pulumi.ResourceOptions.RetainOnDelete.set -> void
 Pulumi.ResourceTransformation
 Pulumi.ResourceTransformationArgs
 Pulumi.ResourceTransformationArgs.Args.get -> Pulumi.ResourceArgs
@@ -255,6 +270,7 @@ Pulumi.Union<T0, T1>.IsT0.get -> bool
 Pulumi.Union<T0, T1>.IsT1.get -> bool
 Pulumi.Union<T0, T1>.MapT0<TResult>(System.Func<T0, TResult> mapFunc) -> Pulumi.Union<TResult, T1>
 Pulumi.Union<T0, T1>.MapT1<TResult>(System.Func<T1, TResult> mapFunc) -> Pulumi.Union<T0, TResult>
+Pulumi.Union<T0, T1>.Bimap<TResult0, TResult1>(System.Func<T0, TResult0> mapFunc0, System.Func<T1, TResult1> mapFunc1) -> Pulumi.Union<TResult0, TResult1>
 Pulumi.Union<T0, T1>.Match<TResult>(System.Func<T0, TResult> f0, System.Func<T1, TResult> f1) -> TResult
 Pulumi.Union<T0, T1>.Switch(System.Action<T0> f0, System.Action<T1> f1) -> void
 Pulumi.Union<T0, T1>.TryPickT0(out T0 value, out T1 remainder) -> bool
@@ -316,8 +332,10 @@ static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(Pulumi.Output<Sys
 static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(Pulumi.Output<System.Collections.Immutable.ImmutableDictionary<string, V>> values) -> Pulumi.InputMap<V>
 static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(System.Collections.Generic.Dictionary<string, V> values) -> Pulumi.InputMap<V>
 static Pulumi.InputMap<V>.implicit operator Pulumi.InputMap<V>(System.Collections.Immutable.ImmutableDictionary<string, V> values) -> Pulumi.InputMap<V>
+static Pulumi.InputUnion<T0, T1>.implicit operator Pulumi.InputUnion<T0, T1>(Pulumi.Output<Pulumi.Union<T0, T1>> value) -> Pulumi.InputUnion<T0, T1>
 static Pulumi.InputUnion<T0, T1>.implicit operator Pulumi.InputUnion<T0, T1>(Pulumi.Output<T0> value) -> Pulumi.InputUnion<T0, T1>
 static Pulumi.InputUnion<T0, T1>.implicit operator Pulumi.InputUnion<T0, T1>(Pulumi.Output<T1> value) -> Pulumi.InputUnion<T0, T1>
+static Pulumi.InputUnion<T0, T1>.implicit operator Pulumi.InputUnion<T0, T1>(Pulumi.Union<T0, T1> value) -> Pulumi.InputUnion<T0, T1>
 static Pulumi.InputUnion<T0, T1>.implicit operator Pulumi.InputUnion<T0, T1>(T0 value) -> Pulumi.InputUnion<T0, T1>
 static Pulumi.InputUnion<T0, T1>.implicit operator Pulumi.InputUnion<T0, T1>(T1 value) -> Pulumi.InputUnion<T0, T1>
 static Pulumi.Log.Debug(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void

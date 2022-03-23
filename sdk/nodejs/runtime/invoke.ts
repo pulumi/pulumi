@@ -248,11 +248,13 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
             // Construct a provider reference from the given provider, if one is available on the resource.
             let provider: string | undefined = undefined;
             let version: string | undefined = undefined;
+            let pluginDownloadURL: string | undefined = undefined;
             if (res) {
                 if (res.__prov) {
                     provider = await ProviderResource.register(res.__prov);
                 }
                 version = res.__version;
+                pluginDownloadURL = res.__pluginDownloadURL;
             }
 
             // We keep output values when serializing inputs for call.
@@ -261,7 +263,7 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
             });
             log.debug(`Call RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
 
-            const req = await createCallRequest(tok, serialized, propertyDepsResources, provider, version);
+            const req = await createCallRequest(tok, serialized, propertyDepsResources, provider, version, pluginDownloadURL);
 
             const monitor: any = getMonitor();
             const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
@@ -387,7 +389,8 @@ function createOutput<T>(label: string):
 }
 
 async function createCallRequest(tok: string, serialized: Record<string, any>,
-                                 serializedDeps: Map<string, Set<Resource>>, provider?: string, version?: string) {
+                                 serializedDeps: Map<string, Set<Resource>>, provider?: string,
+                                 version?: string, pluginDownloadURL?: string) {
     if (provider !== undefined && typeof provider !== "string") {
         throw new Error("Incorrect provider type.");
     }
@@ -399,6 +402,7 @@ async function createCallRequest(tok: string, serialized: Record<string, any>,
     req.setArgs(obj);
     req.setProvider(provider);
     req.setVersion(version || "");
+    req.setPlugindownloadurl(pluginDownloadURL || "");
 
     const argDependencies = req.getArgdependenciesMap();
     for (const [key, propertyDeps] of serializedDeps) {

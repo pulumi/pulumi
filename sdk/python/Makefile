@@ -8,32 +8,44 @@ PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
 PROJECT_PKGS    := $(shell go list ./cmd/...)
-TESTPARALLELISM := 10
+TESTPARALLELISM ?= 10
 
 include ../../build/common.mk
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
-TEST_ALL_DEPS = build
+TEST_ALL_DEPS ?= build
 
 ensure::
-	pipenv install --dev
+	$(PYTHON) -m venv venv
+	. venv/*/activate && python -m pip install wheel
+	. venv/*/activate && python -m pip install -r requirements.txt
 	mkdir -p $(PYENVSRC)
 
-build_package::
+build_package:: ensure
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
 	sed -i.bak "s/\$${VERSION}/$(PYPI_VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
 	cp ../../README.md $(PYENVSRC)
-	cd $(PYENVSRC) && pipenv run python setup.py build bdist_wheel --universal
+	. venv/*/activate && cd $(PYENVSRC) && \
+		python setup.py build bdist_wheel --universal
+	. venv/*/activate && python -m pip install -e $(PYENVSRC)
 
 build_plugin::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 build:: build_package build_plugin
 
-lint::
-	MYPYPATH=./stubs pipenv run mypy ./lib/pulumi --config-file=mypy.ini
-	pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
+lint:: ensure
+	. venv/*/activate && \
+		python -m black ./lib/pulumi --check
+	. venv/*/activate && \
+		MYPYPATH=./stubs python -m mypy ./lib/pulumi --config-file=mypy.ini
+	. venv/*/activate && \
+		python -m pylint ./lib/pulumi --rcfile=.pylintrc
+
+format:: ensure
+	. venv/*/activate && \
+		python -m black ./lib/pulumi
 
 install_package:: build_package
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
@@ -46,20 +58,16 @@ install_plugin:: build_plugin
 
 install:: install_package install_plugin
 
+test_go:: $(TEST_ALL_DEPS)
+	@$(GO_TEST) ${PROJECT_PKGS}
+
 test_fast:: $(TEST_ALL_DEPS)
-	$(GO_TEST) ${PROJECT_PKGS}
-	pipenv install -e ./env/src
-	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
-	$(RUN_TESTSUITE) python/lib/test pipenv run pytest lib/test --ignore lib/test/automation --ignore lib/test/langhost/resource_thens/test_resource_thens.py
-	$(RUN_TESTSUITE) python/lib/test/langhost/resource_thens pipenv run python -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
-	# Using python -m also adds lib/test_with_mocks to sys.path which avoids package resolution issues.
-	pushd lib/test_with_mocks; $(RUN_TESTSUITE) python/lib/test_with_mocks pipenv run python -m pytest; popd
+	. venv/*/activate && ./scripts/test_fast.sh
 
-test_auto:: test_fast $(TEST_ALL_DEPS)
-	# Note that this target depends on test-fast for the call to `pipenv run pip install`
-	$(RUN_TESTSUITE) auto-python pipenv run pytest lib/test/automation
+test_auto:: $(TEST_ALL_DEPS)
+	. venv/*/activate && ./scripts/test_auto.sh
 
-test_all:: test_fast test_auto
+test_all:: test_fast test_auto test_go
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}

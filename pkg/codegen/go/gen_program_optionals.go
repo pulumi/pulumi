@@ -1,8 +1,6 @@
 package gen
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -30,46 +28,48 @@ func (ot *optionalTemp) SyntaxNode() hclsyntax.Node {
 }
 
 type optionalSpiller struct {
-	temps []*optionalTemp
-	count int
+	invocation         *model.FunctionCallExpression
+	intrinsicConvertTo *model.Type
 }
 
-func (os *optionalSpiller) spillExpressionHelper(
-	x model.Expression,
-	destType model.Type,
-	isInvoke bool,
-) (model.Expression, hcl.Diagnostics) {
-	var temp *optionalTemp
+func (os *optionalSpiller) preVisitor(x model.Expression) (model.Expression, hcl.Diagnostics) {
 	switch x := x.(type) {
 	case *model.FunctionCallExpression:
 		if x.Name == "invoke" {
 			// recurse into invoke args
-			isInvoke = true
-			_, diags := os.spillExpressionHelper(x.Args[1], x.Args[1].Type(), isInvoke)
-			return x, diags
+			isOutputInvoke, _, _ := pcl.RecognizeOutputVersionedInvoke(x)
+			// ignore output-versioned invokes as they do not need converting
+			if !isOutputInvoke {
+				os.invocation = x
+			}
+			os.intrinsicConvertTo = nil
+			return x, nil
 		}
 		if x.Name == pcl.IntrinsicConvert {
-			// propagate convert type
-			_, diags := os.spillExpressionHelper(x.Args[0], x.Signature.ReturnType, isInvoke)
-			return x, diags
+			if os.invocation != nil {
+				os.intrinsicConvertTo = &x.Signature.ReturnType
+			}
+			return x, nil
 		}
 	case *model.ObjectConsExpression:
-		// only rewrite invoke args (required to be prompt values in Go)
-		// pulumi.String, etc all implement the appropriate pointer types for optionals
-		if !isInvoke {
+		if os.invocation == nil {
 			return x, nil
+		}
+		destType := x.Type()
+		if os.intrinsicConvertTo != nil {
+			destType = *os.intrinsicConvertTo
 		}
 		if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 			if schemaType, ok := schemaType.(*schema.ObjectType); ok {
-				var optionalPrimitives []string
+				// map of item name to optional type wrapper fn
+				optionalPrimitives := make(map[string]schema.Type)
 				for _, v := range schemaType.Properties {
-					isPrimitive := false
-					switch codegen.UnwrapType(v.Type) {
-					case schema.NumberType, schema.BoolType, schema.IntType, schema.StringType:
-						isPrimitive = true
-					}
-					if isPrimitive && !v.IsRequired() {
-						optionalPrimitives = append(optionalPrimitives, v.Name)
+					if !v.IsRequired() {
+						ty := codegen.UnwrapType(v.Type)
+						switch ty {
+						case schema.NumberType, schema.BoolType, schema.IntType, schema.StringType:
+							optionalPrimitives[v.Name] = ty
+						}
 					}
 				}
 				for i, item := range x.Items {
@@ -77,19 +77,20 @@ func (os *optionalSpiller) spillExpressionHelper(
 					if key, ok := item.Key.(*model.LiteralValueExpression); ok {
 						if model.StringType.AssignableFrom(key.Type()) {
 							strKey := key.Value.AsString()
-							for _, op := range optionalPrimitives {
-								if strKey == op {
-									temp = &optionalTemp{
-										Name:  fmt.Sprintf("opt%d", os.count),
-										Value: item.Value,
-									}
-									os.temps = append(os.temps, temp)
-									os.count++
-									x.Items[i].Value = &model.ScopeTraversalExpression{
-										RootName:  fmt.Sprintf("&%s", temp.Name),
-										Traversal: hcl.Traversal{hcl.TraverseRoot{Name: ""}},
-										Parts:     []model.Traversable{temp},
-									}
+							if schemaType, isOptional := optionalPrimitives[strKey]; isOptional {
+								functionName := os.getOptionalConversion(schemaType)
+								expectedModelType := os.getExpectedModelType(schemaType)
+
+								x.Items[i].Value = &model.FunctionCallExpression{
+									Name: functionName,
+									Signature: model.StaticFunctionSignature{
+										Parameters: []model.Parameter{{
+											Name: "val",
+											Type: expectedModelType,
+										}},
+										ReturnType: model.NewOptionalType(expectedModelType),
+									},
+									Args: []model.Expression{item.Value},
 								}
 							}
 						}
@@ -97,22 +98,67 @@ func (os *optionalSpiller) spillExpressionHelper(
 				}
 			}
 		}
+		// Clear before visiting children, require another __convert call to set again
+		os.intrinsicConvertTo = nil
+		return x, nil
+	default:
+		// Ditto
+		os.intrinsicConvertTo = nil
+		return x, nil
 	}
 	return x, nil
 }
 
-func (os *optionalSpiller) spillExpression(x model.Expression) (model.Expression, hcl.Diagnostics) {
-	isInvoke := false
-	return os.spillExpressionHelper(x, x.Type(), isInvoke)
+func (os *optionalSpiller) postVisitor(x model.Expression) (model.Expression, hcl.Diagnostics) {
+	switch x := x.(type) {
+	case *model.FunctionCallExpression:
+		if x.Name == "invoke" {
+			if x == os.invocation {
+				// Clear invocation flag once we're done traversing children.
+				os.invocation = nil
+			}
+		}
+	}
+	return x, nil
+}
+
+func (*optionalSpiller) getOptionalConversion(ty schema.Type) string {
+	switch ty {
+	case schema.NumberType:
+		return "goOptionalFloat64"
+	case schema.BoolType:
+		return "goOptionalBool"
+	case schema.IntType:
+		return "goOptionalInt"
+	case schema.StringType:
+		return "goOptionalString"
+	default:
+		return ""
+	}
+}
+
+func (*optionalSpiller) getExpectedModelType(ty schema.Type) model.Type {
+	switch ty {
+	case schema.NumberType:
+		return model.NumberType
+	case schema.BoolType:
+		return model.BoolType
+	case schema.IntType:
+		return model.IntType
+	case schema.StringType:
+		return model.StringType
+	default:
+		return nil
+	}
 }
 
 func (g *generator) rewriteOptionals(
 	x model.Expression,
 	spiller *optionalSpiller,
 ) (model.Expression, []*optionalTemp, hcl.Diagnostics) {
-	spiller.temps = nil
-	x, diags := model.VisitExpression(x, spiller.spillExpression, nil)
+	// We want to recurse but we only want to use the previsitor, if post visitor is nil we don't
+	// recurse.
+	x, diags := model.VisitExpression(x, spiller.preVisitor, spiller.postVisitor)
 
-	return x, spiller.temps, diags
-
+	return x, nil, diags
 }

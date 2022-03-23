@@ -13,6 +13,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -117,7 +118,7 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 		if err != nil {
 			return fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
 		}
-		if err := pkgPlugin.Install(reader); err != nil {
+		if err := pkgPlugin.Install(reader, false); err != nil {
 			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
 		}
 	}
@@ -143,6 +144,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 	if err != nil {
 		return nil, err
 	}
+	contract.Assert(provider != nil)
 
 	schemaFormatVersion := 0
 	schemaBytes, err := provider.GetSchema(schemaFormatVersion)
@@ -155,7 +157,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return nil, err
 	}
 
-	p, diags, err := bindSpec(spec, nil, l)
+	p, diags, err := bindSpec(spec, nil, l, false)
 	if err != nil {
 		return nil, err
 	}

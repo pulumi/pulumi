@@ -527,7 +527,7 @@ namespace Pulumi.Automation
         public override async Task SetConfigAsync(string stackName, string key, ConfigValue value, CancellationToken cancellationToken = default)
         {
             var secretArg = value.IsSecret ? "--secret" : "--plaintext";
-            await this.RunCommandAsync(new[] { "config", "set", key, value.Value, secretArg, "--stack", stackName }, cancellationToken).ConfigureAwait(false);
+            await this.RunCommandAsync(new[] { "config", "set", key, secretArg, "--stack", stackName, "--non-interactive", "--", value.Value }, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>

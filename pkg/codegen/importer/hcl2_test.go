@@ -26,9 +26,9 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -40,7 +40,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 const parentName = "parent"
 const providerName = "provider"
@@ -229,6 +229,8 @@ func readTestCases(path string) (testCases, error) {
 }
 
 func TestGenerateHCL2Definition(t *testing.T) {
+	t.Parallel()
+
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	cases, err := readTestCases("testdata/cases.json")
@@ -236,7 +238,9 @@ func TestGenerateHCL2Definition(t *testing.T) {
 		t.Fatal()
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, s := range cases.Resources {
+		s := s
 		t.Run(string(s.URN), func(t *testing.T) {
 			state, err := stack.DeserializeResource(s, config.NopDecrypter, config.NopEncrypter)
 			if !assert.NoError(t, err) {
@@ -295,6 +299,8 @@ func TestGenerateHCL2Definition(t *testing.T) {
 }
 
 func TestSimplerType(t *testing.T) {
+	t.Parallel()
+
 	types := []schema.Type{
 		schema.BoolType,
 		schema.IntType,

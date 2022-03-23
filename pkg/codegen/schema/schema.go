@@ -1524,6 +1524,9 @@ type PackageSpec struct {
 	// Meta contains information for the importer about this package.
 	Meta *MetadataSpec `json:"meta,omitempty" yaml:"meta,omitempty"`
 
+	// A list of allowed package name in addition to the Name property.
+	AllowedPackageNames []string `json:"allowedPackageNames,omitempty" yaml:"allowedPackageNames,omitempty"`
+
 	// Config describes the set of configuration variables defined by this package.
 	Config ConfigSpec `json:"config" yaml:"config"`
 	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
@@ -1609,15 +1612,18 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 //   are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
 //   diagnostic error that is appropriately tagged with a JSON pointer.
 //
-func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*Package, hcl.Diagnostics, error) {
+func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
+	validate bool) (*Package, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Validate the package against the metaschema.
-	validationDiags, err := validateSpec(spec)
-	if err != nil {
-		return nil, nil, fmt.Errorf("validating spec: %w", err)
+	if validate {
+		validationDiags, err := validateSpec(spec)
+		if err != nil {
+			return nil, nil, fmt.Errorf("validating spec: %w", err)
+		}
+		diags = diags.Extend(validationDiags)
 	}
-	diags = diags.Extend(validationDiags)
 
 	// Validate that there is a name
 	if spec.Name == "" {
@@ -1644,6 +1650,8 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*
 	if err != nil {
 		diags = diags.Append(errorf("#/meta/moduleFormat", "failed to compile regex: %v", err))
 	}
+
+	diags = diags.Extend(spec.validateTypeTokens())
 
 	pkg := &Package{}
 
@@ -1762,13 +1770,16 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*
 // BindSpec converts a serializable PackageSpec into a Package. Any semantic errors encountered during binding are
 // contained in the returned diagnostics. The returned error is only non-nil if a fatal error was encountered.
 func BindSpec(spec PackageSpec, languages map[string]Language) (*Package, hcl.Diagnostics, error) {
-	return bindSpec(spec, languages, nil)
+	return bindSpec(spec, languages, nil, true)
 }
 
-// ImportSpec converts a serializable PackageSpec into a Package.
+// ImportSpec converts a serializable PackageSpec into a Package. Unlike BindSpec, ImportSpec does not validate its
+// input against the Pulumi package metaschema. ImportSpec should only be used to load packages that are assumed to be
+// well-formed (e.g. packages referenced for program code generation or by a root package being used for SDK
+// generation). BindSpec should be used to load and validate a package spec prior to generating its SDKs.
 func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, error) {
 	// Call the internal implementation that includes a loader parameter.
-	pkg, diags, err := bindSpec(spec, languages, nil)
+	pkg, diags, err := bindSpec(spec, languages, nil, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1827,6 +1838,42 @@ const (
 	typesRef     = "types"
 	providerRef  = "provider"
 )
+
+// Validate an individual name token.
+func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, section, token string) hcl.Diagnostics {
+	diags := hcl.Diagnostics{}
+
+	path := memberPath(section, token)
+	var packageName string
+	if i := strings.Index(token, ":"); i != -1 {
+		packageName = token[:i]
+	}
+	if !allowedPackageNames[packageName] {
+		error := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
+		diags = diags.Append(error)
+	}
+
+	return diags
+}
+
+// This is for validating non-reference type tokens.
+func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
+	diags := hcl.Diagnostics{}
+	allowedPackageNames := map[string]bool{spec.Name: true}
+	for _, prefix := range spec.AllowedPackageNames {
+		allowedPackageNames[prefix] = true
+	}
+	for t := range spec.Resources {
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "resources", t))
+	}
+	for t := range spec.Types {
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "types", t))
+	}
+	for t := range spec.Functions {
+		diags = diags.Extend(spec.validateTypeToken(allowedPackageNames, "functions", t))
+	}
+	return diags
+}
 
 // Regex used to parse external schema paths. This is declared at the package scope to avoid repeated recompilation.
 var refPathRegex = regexp.MustCompile(`^/?(?P<package>[-\w]+)/(?P<version>v[^/]*)/schema\.json$`)

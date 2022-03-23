@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,19 +30,45 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// GetProviderVersion fetches and parses a provider version from the given property map. If the version property is not
-// present, this function returns nil.
+const versionKey resource.PropertyKey = "version"
+const pluginDownloadKey resource.PropertyKey = "pluginDownloadURL"
+
+// SetProviderURL sets the provider plugin download server URL in the given property map.
+func SetProviderURL(inputs resource.PropertyMap, value string) {
+	inputs[pluginDownloadKey] = resource.NewStringProperty(value)
+}
+
+// GetProviderDownloadURL fetches a provider plugin download server URL from the given property map.
+// If the server URL is not set, this function returns "".
+func GetProviderDownloadURL(inputs resource.PropertyMap) (string, error) {
+	url, ok := inputs[pluginDownloadKey]
+	if !ok {
+		return "", nil
+	}
+	if !url.IsString() {
+		return "", fmt.Errorf("'%s' must be a string", pluginDownloadKey)
+	}
+	return url.StringValue(), nil
+}
+
+// Sets the provider version in the given property map.
+func SetProviderVersion(inputs resource.PropertyMap, value *semver.Version) {
+	inputs[versionKey] = resource.NewStringProperty(value.String())
+}
+
+// GetProviderVersion fetches and parses a provider version from the given property map. If the
+// version property is not present, this function returns nil.
 func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
-	versionProp, ok := inputs["version"]
+	version, ok := inputs[versionKey]
 	if !ok {
 		return nil, nil
 	}
 
-	if !versionProp.IsString() {
-		return nil, errors.New("'version' must be a string")
+	if !version.IsString() {
+		return nil, fmt.Errorf("'%s' must be a string", versionKey)
 	}
 
-	sv, err := semver.ParseTolerant(versionProp.StringValue())
+	sv, err := semver.ParseTolerant(version.StringValue())
 	if err != nil {
 		return nil, fmt.Errorf("could not parse provider version: %v", err)
 	}
@@ -226,7 +252,7 @@ func (r *Registry) Configure(props resource.PropertyMap) error {
 // - if we are running a preview, we need to configure the provider, as its corresponding CRUD operations will not run
 //   (we would normally configure the provider in Create or Update).
 func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	contract.Require(IsProviderType(urn.Type()), "urn")
 

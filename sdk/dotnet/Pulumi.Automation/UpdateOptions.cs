@@ -32,5 +32,10 @@ namespace Pulumi.Automation
         /// Optional callback which is invoked with the engine events
         /// </summary>
         public Action<EngineEvent>? OnEvent { get; set; }
+
+        /// <summary>
+        /// Colorize output. Choices are: always, never, raw, auto (default "auto")
+        /// </summary>
+        public string? Color { get; set; }
     }
 }

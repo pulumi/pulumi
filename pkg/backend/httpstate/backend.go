@@ -107,7 +107,6 @@ type Backend interface {
 
 	CloudURL() string
 
-	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 	Client() *client.Client
 }
@@ -228,10 +227,6 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 	WelcomeUser(opts)
 
 	return New(d, cloudURL)
-}
-
-func SetDefaultOrg(url string, orgName string) error {
-	return workspace.SetBackendConfigDefaultOrg(url, orgName)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
@@ -527,26 +522,42 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	// If the provided stack name didn't include the Owner or Project, infer them from the
 	// local environment.
 	if qualifiedName.Owner == "" {
-		currentUser, userErr := b.CurrentUser()
-		if userErr != nil {
-			return nil, userErr
+		// if the qualifiedName doesn't include an owner then let's check to see if there is a default org which *will*
+		// be the stack owner. If there is no defaultOrg, then we revert to checking the CurrentUser
+		defaultOrg, err := workspace.GetBackendConfigDefaultOrg()
+		if err != nil {
+			return nil, err
 		}
-		qualifiedName.Owner = currentUser
+
+		if defaultOrg != "" {
+			qualifiedName.Owner = defaultOrg
+		} else {
+			currentUser, userErr := b.CurrentUser()
+			if userErr != nil {
+				return nil, userErr
+			}
+			qualifiedName.Owner = currentUser
+		}
 	}
 
 	if qualifiedName.Project == "" {
 		currentProject, projectErr := workspace.DetectProject()
 		if projectErr != nil {
-			return nil, projectErr
+			return nil, fmt.Errorf("If you're using the --stack flag, "+
+				"pass the fully qualified name (org/project/stack): %w", projectErr)
 		}
 
 		qualifiedName.Project = currentProject.Name.String()
 	}
 
+	if !tokens.IsName(qualifiedName.Name) {
+		return nil, errors.New("stack names may only contain alphanumeric, hyphens, underscores, and periods")
+	}
+
 	return cloudBackendReference{
 		owner:   qualifiedName.Owner,
 		project: qualifiedName.Project,
-		name:    tokens.QName(qualifiedName.Name),
+		name:    tokens.Name(qualifiedName.Name),
 		b:       b,
 	}, nil
 }
@@ -828,7 +839,7 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -931,7 +942,7 @@ func (b *cloudBackend) createAndStartUpdate(
 func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (engine.ResourceChanges, result.Result) {
+	events chan<- engine.Event) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
@@ -945,7 +956,7 @@ func (b *cloudBackend) apply(
 	update, version, token, err :=
 		b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 
 	if !op.Opts.Display.SuppressPermalink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
@@ -985,12 +996,12 @@ func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, result.Result) {
+	callerEventsOpt chan<- engine.Event, dryRun bool) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 
 	// displayEvents renders the event to the console and Pulumi service. The processor for the
@@ -1039,19 +1050,20 @@ func (b *cloudBackend) runEngineAction(
 		engineCtx.ParentSpan = parentSpan.Context()
 	}
 
+	var plan *deploy.Plan
 	var changes engine.ResourceChanges
 	var res result.Result
 	switch kind {
 	case apitype.PreviewUpdate:
-		changes, res = engine.Update(u, engineCtx, op.Opts.Engine, true)
+		plan, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
+		_, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.ResourceImportUpdate:
-		changes, res = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
+		_, changes, res = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
 	case apitype.RefreshUpdate:
-		changes, res = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
+		_, changes, res = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.DestroyUpdate:
-		changes, res = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
+		_, changes, res = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
@@ -1077,7 +1089,7 @@ func (b *cloudBackend) runEngineAction(
 		res = result.Merge(res, result.FromError(fmt.Errorf("failed to complete update: %w", completeErr)))
 	}
 
-	return changes, res
+	return plan, changes, res
 }
 
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
@@ -1355,7 +1367,7 @@ func (b *cloudBackend) waitForUpdate(ctx context.Context, actionLabel string, up
 
 func displayEvents(action string, events <-chan displayEvent, done chan<- bool, opts display.Options) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
-	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/)
 
 	defer func() {
 		spinner.Reset()

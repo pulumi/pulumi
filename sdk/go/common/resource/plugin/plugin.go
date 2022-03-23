@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,9 +44,10 @@ import (
 )
 
 // PulumiPluginJSON represents additional information about a package's associated Pulumi plugin.
-// For Python, the content is inside a pulumiplugin.json file inside the package.
+// For Python, the content is inside a pulumi-plugin.json file inside the package.
 // For Node.js, the content is within the package.json file, under the "pulumi" node.
-// This is not currently used for .NET or Go, but we could consider adopting it for those languages.
+// For .NET, the content is inside a pulumi-plugin.json file inside the NuGet package.
+// For Go, the content is inside a pulumi-plugin.json file inside the module.
 type PulumiPluginJSON struct {
 	// Indicates whether the package has an associated resource plugin. Set to false to indicate no plugin.
 	Resource bool `json:"resource"`
@@ -63,7 +64,7 @@ func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json, nil
+	return append(json, '\n'), nil
 }
 
 func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
@@ -74,7 +75,7 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 		return nil, err
 	}
 
-	var plugin *PulumiPluginJSON
+	plugin := &PulumiPluginJSON{}
 	if err := json.Unmarshal(b, plugin); err != nil {
 		return nil, err
 	}
@@ -149,25 +150,29 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 
 		for {
 			msg, readerr := reader.ReadString('\n')
-			if readerr != nil {
-				break
-			}
 
-			// We may be trying to run a plugin that isn't present in the SDK installed with the Policy Pack.
-			// e.g. the stack's package.json does not contain a recent enough @pulumi/pulumi.
-			//
-			// Rather than fail with an opaque error because we didn't get the gRPC port, inspect if it
-			// is a well-known problem and return a better error as appropriate.
-			if strings.Contains(msg, "Cannot find module '@pulumi/pulumi/cmd/run-policy-pack'") {
-				sawPolicyModuleNotFoundErr = true
-			}
-
+			// Even if we've hit the end of the stream, we want to check for non-empty content.
+			// The reason is that if the last line is missing a \n, we still want to include it.
 			if strings.TrimSpace(msg) != "" {
+				// We may be trying to run a plugin that isn't present in the SDK installed with the Policy Pack.
+				// e.g. the stack's package.json does not contain a recent enough @pulumi/pulumi.
+				//
+				// Rather than fail with an opaque error because we didn't get the gRPC port, inspect if it
+				// is a well-known problem and return a better error as appropriate.
+				if strings.Contains(msg, "Cannot find module '@pulumi/pulumi/cmd/run-policy-pack'") {
+					sawPolicyModuleNotFoundErr = true
+				}
+
 				if stderr {
 					ctx.Diag.Infoerrf(diag.StreamMessage("" /*urn*/, msg, errStreamID))
 				} else {
 					ctx.Diag.Infof(diag.StreamMessage("" /*urn*/, msg, outStreamID))
 				}
+			}
+
+			// If we've hit the end of the stream, break out and close the channel.
+			if readerr != nil {
+				break
 			}
 		}
 

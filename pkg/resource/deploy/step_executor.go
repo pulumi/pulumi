@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 const (
@@ -147,7 +148,7 @@ func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
 }
 
 // ExecuteRegisterResourceOutputs services a RegisterResourceOutputsEvent synchronously on the calling goroutine.
-func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) {
+func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) result.Result {
 	// Look up the final state in the pending registration list.
 	urn := e.URN()
 	value, has := se.pendingNews.Load(urn)
@@ -160,7 +161,36 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 	outs := e.Outputs()
 	se.log(synchronousWorkerID,
 		"registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
-	reg.New().Outputs = e.Outputs()
+	reg.New().Outputs = outs
+
+	old := se.deployment.Olds()[urn]
+	var oldOuts resource.PropertyMap
+	if old != nil {
+		oldOuts = old.Outputs
+	}
+
+	// If a plan is present check that these outputs match what we recorded before
+	if se.deployment.plan != nil {
+		resourcePlan, ok := se.deployment.plan.ResourcePlans[urn]
+		if !ok {
+			return result.FromError(fmt.Errorf("no plan for resource %v", urn))
+		}
+
+		if err := resourcePlan.checkOutputs(oldOuts, outs); err != nil {
+			return result.FromError(fmt.Errorf("resource violates plan: %w", err))
+		}
+	}
+
+	// If we're in experimental mode save these new outputs to the plan
+	if se.opts.ExperimentalPlans {
+		if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
+			resourcePlan.Goal.OutputDiff = NewPlanDiff(oldOuts.Diff(outs))
+			resourcePlan.Outputs = outs
+		} else {
+			return result.FromError(fmt.Errorf("this should already have a plan from when we called register resources"))
+		}
+	}
+
 	// If there is an event subscription for finishing the resource, execute them.
 	if e := se.opts.Events; e != nil {
 		if eventerr := e.OnResourceOutputs(reg); eventerr != nil {
@@ -176,10 +206,11 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			diagMsg := diag.RawMessage(reg.URN(), outErr.Error())
 			se.deployment.Diag().Errorf(diagMsg)
 			se.cancelDueToError()
-			return
+			return nil
 		}
 	}
 	e.Done()
+	return nil
 }
 
 // Errored returns whether or not this step executor saw a step whose execution ended in failure.
@@ -294,6 +325,13 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		// If this is not a resource that is managed by Pulumi, then we can ignore it.
 		if _, hasGoal := se.deployment.goals.get(newState.URN); hasGoal {
 			se.deployment.news.set(newState.URN, newState)
+		}
+
+		// If we're in experimental mode update the resource's outputs in the generated plan.
+		if se.opts.ExperimentalPlans {
+			if resourcePlan, ok := se.deployment.newPlans.get(newState.URN); ok {
+				resourcePlan.Outputs = newState.Outputs
+			}
 		}
 	}
 

@@ -21,7 +21,7 @@ import (
 )
 
 func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Import,
-	dryRun bool) (ResourceChanges, result.Result) {
+	dryRun bool) (*deploy.Plan, ResourceChanges, result.Result) {
 
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
@@ -30,13 +30,13 @@ func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Imp
 
 	info, err := newDeploymentContext(u, "import", ctx.ParentSpan)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer info.Close()
 
 	emitter, err := makeEventEmitter(ctx.Events, u)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer emitter.Close()
 

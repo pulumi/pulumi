@@ -25,10 +25,10 @@ Learn more from here: https://curtisvermeeren.github.io/2017/09/14/Golang-Templa
 
 ## Modifying templates and updating tests
 
-We run tests that validate our template-rendering output. If you need to make change that produces a set of Markdown files that differs from the set that we use in our tests (see `codegen/internal/test/testdata/**/*.md`), your pull-request checks will fail, and to get them to pass, you'll need to modify the test data to match the output produced by your change.
+We run tests that validate our template-rendering output. If you need to make change that produces a set of Markdown files that differs from the set that we use in our tests (see `codegen/testing/test/testdata/**/*.md`), your pull-request checks will fail, and to get them to pass, you'll need to modify the test data to match the output produced by your change.
 
 For minor diffs, you can just update the test files manually and include those updates with your PR. But for large diffs, you may want to regenerate the full set. To do that, from the root of the repo, run:
 
 ```
-PULUMI_ACCEPT=true pushd pkg/codegen/docs && go test . && popd
+cd pkg/codegen/docs && PULUMI_ACCEPT=true go test . && cd -
 ```

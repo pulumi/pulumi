@@ -31,6 +31,8 @@ func newSnapshot(resources []*resource.State, ops []resource.Operation) *Snapsho
 }
 
 func TestPendingOperationsDeployment(t *testing.T) {
+	t.Parallel()
+
 	resourceA := newResource("a")
 	resourceB := newResource("b")
 	snap := newSnapshot([]*resource.State{
@@ -42,6 +44,6 @@ func TestPendingOperationsDeployment(t *testing.T) {
 		},
 	})
 
-	_, err := NewDeployment(&plugin.Context{}, &Target{}, snap, &fixedSource{}, nil, false, nil)
+	_, err := NewDeployment(&plugin.Context{}, &Target{}, snap, nil, &fixedSource{}, nil, false, nil)
 	assert.NoError(t, err)
 }

@@ -27,8 +27,13 @@ import grpc.aio
 
 from google.protobuf import struct_pb2
 from pulumi.provider.provider import Provider, CallResult, ConstructResult
-from pulumi.resource import ProviderResource, Resource, DependencyResource, DependencyProviderResource, \
-    _parse_resource_reference
+from pulumi.resource import (
+    ProviderResource,
+    Resource,
+    DependencyResource,
+    DependencyProviderResource,
+    _parse_resource_reference,
+)
 from pulumi.runtime import known_types, proto, rpc
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.runtime.stack import wait_for_rpcs
@@ -40,7 +45,7 @@ import pulumi.runtime.settings
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
+_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 class ProviderServicer(ResourceProviderServicer):
@@ -58,8 +63,9 @@ class ProviderServicer(ResourceProviderServicer):
     args: List[str]
     lock: asyncio.Lock
 
-
-    async def Construct(self, request: proto.ConstructRequest, context) -> proto.ConstructResponse:  # pylint: disable=invalid-overridden-method
+    async def Construct(  # pylint: disable=invalid-overridden-method
+        self, request: proto.ConstructRequest, context
+    ) -> proto.ConstructResponse:
         # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
         # avoid modifying globals, we can remove the locking.
         await self.lock.acquire()
@@ -68,10 +74,13 @@ class ProviderServicer(ResourceProviderServicer):
         finally:
             self.lock.release()
 
-    async def _construct(self, request: proto.ConstructRequest, context) -> proto.ConstructResponse:
+    async def _construct(
+        self, request: proto.ConstructRequest, context
+    ) -> proto.ConstructResponse:
         # pylint: disable=unused-argument
-        assert isinstance(request, proto.ConstructRequest), \
-            f'request is not ConstructRequest but is {type(request)} instead'
+        assert isinstance(
+            request, proto.ConstructRequest
+        ), f"request is not ConstructRequest but is {type(request)} instead"
 
         pulumi.runtime.settings.reset_options(
             project=_empty_as_none(request.project),
@@ -79,15 +88,20 @@ class ProviderServicer(ResourceProviderServicer):
             parallel=_zero_as_none(request.parallel),
             engine_address=self.engine_address,
             monitor_address=_empty_as_none(request.monitorEndpoint),
-            preview=request.dryRun)
+            preview=request.dryRun,
+        )
 
-        pulumi.runtime.config.set_all_config(dict(request.config), request.configSecretKeys)
+        pulumi.runtime.config.set_all_config(
+            dict(request.config), request.configSecretKeys
+        )
         inputs = await self._construct_inputs(request.inputs, request.inputDependencies)
 
-        result = self.provider.construct(name=request.name,
-                                         resource_type=request.type,
-                                         inputs=inputs,
-                                         options=self._construct_options(request))
+        result = self.provider.construct(
+            name=request.name,
+            resource_type=request.type,
+            inputs=inputs,
+            options=self._construct_options(request),
+        )
 
         response = await self._construct_response(result)
 
@@ -102,19 +116,22 @@ class ProviderServicer(ResourceProviderServicer):
         return response
 
     @staticmethod
-    async def _construct_inputs(inputs: struct_pb2.Struct, input_dependencies: Any) -> Dict[str, pulumi.Input[Any]]:
-
+    async def _construct_inputs(
+        inputs: struct_pb2.Struct, input_dependencies: Any
+    ) -> Dict[str, pulumi.Input[Any]]:
         def deps(key: str) -> Set[str]:
-            return set(urn for urn in
-                       input_dependencies.get(
-                           key,
-                           proto.ConstructRequest.PropertyDependencies()
-                       ).urns)
+            return set(
+                urn
+                for urn in input_dependencies.get(
+                    key, proto.ConstructRequest.PropertyDependencies()
+                ).urns
+            )
 
         return {
             k: await ProviderServicer._select_value(the_input, deps=deps(k))
-            for k, the_input in
-            rpc.deserialize_properties(inputs, keep_unknowns=True).items()
+            for k, the_input in rpc.deserialize_properties(
+                inputs, keep_unknowns=True
+            ).items()
         }
 
     @staticmethod
@@ -125,9 +142,10 @@ class ProviderServicer(ResourceProviderServicer):
         # deserialized output values), or is a resource reference, then return it directly without wrapping it
         # as an output.
         if not is_secret and (
-                len(deps) == 0 or
-                _contains_outputs(the_input) or
-                await _is_resource_reference(the_input, deps)):
+            len(deps) == 0
+            or _contains_outputs(the_input)
+            or await _is_resource_reference(the_input, deps)
+        ):
             return the_input
 
         # Otherwise, wrap it as an output so we can handle secrets
@@ -138,7 +156,8 @@ class ProviderServicer(ResourceProviderServicer):
             resources=set(DependencyResource(urn) for urn in deps),
             future=_as_future(rpc.unwrap_rpc_secret(the_input)),
             is_known=_as_future(True),
-            is_secret=_as_future(is_secret))
+            is_secret=_as_future(is_secret),
+        )
 
     @staticmethod
     def _construct_options(request: proto.ConstructRequest) -> pulumi.ResourceOptions:
@@ -147,33 +166,37 @@ class ProviderServicer(ResourceProviderServicer):
             parent = DependencyResource(request.parent)
         return pulumi.ResourceOptions(
             aliases=list(request.aliases),
-            depends_on=[DependencyResource(urn)
-                        for urn in request.dependencies],
+            depends_on=[DependencyResource(urn) for urn in request.dependencies],
             protect=request.protect,
-            providers={pkg: _create_provider_resource(ref)
-                       for pkg, ref in request.providers.items()},
-            parent=parent)
+            providers={
+                pkg: _create_provider_resource(ref)
+                for pkg, ref in request.providers.items()
+            },
+            parent=parent,
+        )
 
-    async def _construct_response(self, result: ConstructResult) -> proto.ConstructResponse:
+    async def _construct_response(
+        self, result: ConstructResult
+    ) -> proto.ConstructResponse:
         urn = await pulumi.Output.from_input(result.urn).future()
 
         # Note: property_deps is populated by rpc.serialize_properties.
         property_deps: Dict[str, List[pulumi.resource.Resource]] = {}
         state = await rpc.serialize_properties(
-            inputs={k: v for k, v in result.state.items() if k not in ['id', 'urn']},
-            property_deps=property_deps)
+            inputs={k: v for k, v in result.state.items() if k not in ["id", "urn"]},
+            property_deps=property_deps,
+        )
 
         deps: Dict[str, proto.ConstructResponse.PropertyDependencies] = {}
         for k, resources in property_deps.items():
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
             deps[k] = proto.ConstructResponse.PropertyDependencies(urns=urns)
 
-        return proto.ConstructResponse(urn=urn,
-                                       state=state,
-                                       stateDependencies=deps)
+        return proto.ConstructResponse(urn=urn, state=state, stateDependencies=deps)
 
-
-    async def Call(self, request: proto.CallRequest, context):  # pylint: disable=invalid-overridden-method
+    async def Call(
+        self, request: proto.CallRequest, context
+    ):  # pylint: disable=invalid-overridden-method
         # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
         # avoid modifying globals, we can remove the locking.
         await self.lock.acquire()
@@ -184,8 +207,9 @@ class ProviderServicer(ResourceProviderServicer):
 
     async def _call(self, request: proto.CallRequest, context):
         # pylint: disable=unused-argument
-        assert isinstance(request, proto.CallRequest), \
-            f'request is not CallRequest but is {type(request)} instead'
+        assert isinstance(
+            request, proto.CallRequest
+        ), f"request is not CallRequest but is {type(request)} instead"
 
         pulumi.runtime.settings.reset_options(
             project=_empty_as_none(request.project),
@@ -193,9 +217,12 @@ class ProviderServicer(ResourceProviderServicer):
             parallel=_zero_as_none(request.parallel),
             engine_address=self.engine_address,
             monitor_address=_empty_as_none(request.monitorEndpoint),
-            preview=request.dryRun)
+            preview=request.dryRun,
+        )
 
-        pulumi.runtime.config.set_all_config(dict(request.config), request.configSecretKeys)
+        pulumi.runtime.config.set_all_config(
+            dict(request.config), request.configSecretKeys
+        )
 
         args = await self._call_args(request)
 
@@ -215,28 +242,30 @@ class ProviderServicer(ResourceProviderServicer):
 
     @staticmethod
     async def _call_args(request: proto.CallRequest) -> Dict[str, pulumi.Input[Any]]:
-
         def deps(key: str) -> Set[str]:
-            return set(urn for urn in
-                       request.argDependencies.get(
-                           key,
-                           proto.CallRequest.ArgumentDependencies()
-                       ).urns)
+            return set(
+                urn
+                for urn in request.argDependencies.get(
+                    key, proto.CallRequest.ArgumentDependencies()
+                ).urns
+            )
 
         return {
             k: await ProviderServicer._select_value(the_input, deps=deps(k))
             for k, the_input in
             # We need to keep_internal, to keep the `__self__` that would normally be filtered because
             # it starts with "__".
-            rpc.deserialize_properties(request.args, keep_unknowns=True, keep_internal=True).items()
+            rpc.deserialize_properties(
+                request.args, keep_unknowns=True, keep_internal=True
+            ).items()
         }
 
     async def _call_response(self, result: CallResult):
         # Note: ret_deps is populated by rpc.serialize_properties.
         ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
         ret = await rpc.serialize_properties(
-            inputs=result.outputs,
-            property_deps=ret_deps)
+            inputs=result.outputs, property_deps=ret_deps
+        )
 
         deps: Dict[str, proto.CallResponse.ReturnDependencies] = {}
         for k, resources in ret_deps.items():
@@ -245,26 +274,39 @@ class ProviderServicer(ResourceProviderServicer):
 
         # Since `return` is a keyword, we need to pass the args to `CallResponse` using a dictionary.
         resp = {
-            'return': ret,
-            'returnDependencies': deps,
+            "return": ret,
+            "returnDependencies": deps,
         }
         if result.failures:
-            resp['failures'] = [proto.CheckFailure(property=f.property, reason=f.reason) for f in result.failures]
+            resp["failures"] = [
+                proto.CheckFailure(property=f.property, reason=f.reason)
+                for f in result.failures
+            ]
         return proto.CallResponse(**resp)
 
-    async def Configure(self, request, context) -> proto.ConfigureResponse:  # pylint: disable=invalid-overridden-method
-        return proto.ConfigureResponse(acceptSecrets=True, acceptResources=True, acceptOutputs=True)
+    async def Configure(  # pylint: disable=invalid-overridden-method
+        self, request, context
+    ) -> proto.ConfigureResponse:
+        return proto.ConfigureResponse(
+            acceptSecrets=True, acceptResources=True, acceptOutputs=True
+        )
 
-    async def GetPluginInfo(self, request, context) -> proto.PluginInfo:  # pylint: disable=invalid-overridden-method
+    async def GetPluginInfo(  # pylint: disable=invalid-overridden-method
+        self, request, context
+    ) -> proto.PluginInfo:
         return proto.PluginInfo(version=self.provider.version)
 
-    async def GetSchema(self, request: proto.GetSchemaRequest, context) -> proto.GetSchemaResponse:  # pylint: disable=invalid-overridden-method
+    async def GetSchema(  # pylint: disable=invalid-overridden-method
+        self, request: proto.GetSchemaRequest, context
+    ) -> proto.GetSchemaResponse:
         if request.version != 0:
-            raise Exception(f'unsupported schema version {request.version}')
-        schema = self.provider.schema if self.provider.schema else '{}'
+            raise Exception(f"unsupported schema version {request.version}")
+        schema = self.provider.schema if self.provider.schema else "{}"
         return proto.GetSchemaResponse(schema=schema)
 
-    def __init__(self, provider: Provider, args: List[str], engine_address: str) -> None:
+    def __init__(
+        self, provider: Provider, args: List[str], engine_address: str
+    ) -> None:
         super().__init__()
         self.provider = provider
         self.args = args
@@ -282,10 +324,10 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
 
     """
 
-    argp = argparse.ArgumentParser(description='Pulumi provider plugin (gRPC server)')
-    argp.add_argument('engine', help='Pulumi engine address')
-    argp.add_argument('--logflow', action='store_true', help='Currently ignored')
-    argp.add_argument('--logtostderr', action='store_true', help='Currently ignored')
+    argp = argparse.ArgumentParser(description="Pulumi provider plugin (gRPC server)")
+    argp.add_argument("engine", help="Pulumi engine address")
+    argp.add_argument("--logflow", action="store_true", help="Currently ignored")
+    argp.add_argument("--logtostderr", action="store_true", help="Currently ignored")
 
     engine_address: str = argp.parse_args().engine
 
@@ -293,9 +335,9 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
         server = grpc.aio.server(options=_GRPC_CHANNEL_OPTIONS)
         servicer = ProviderServicer(provider, args, engine_address=engine_address)
         provider_pb2_grpc.add_ResourceProviderServicer_to_server(servicer, server)
-        port = server.add_insecure_port(address='0.0.0.0:0')
+        port = server.add_insecure_port(address="0.0.0.0:0")
         await server.start()
-        sys.stdout.buffer.write(f'{port}\n'.encode())
+        sys.stdout.buffer.write(f"{port}\n".encode())
         sys.stdout.buffer.flush()
         await server.wait_for_termination()
 
@@ -309,17 +351,17 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
         pass
 
 
-T = TypeVar('T')  # pylint: disable=invalid-name
+T = TypeVar("T")  # pylint: disable=invalid-name
 
 
-def _as_future(value: T) -> 'asyncio.Future[T]':
-    fut: 'asyncio.Future[T]' = asyncio.Future()
+def _as_future(value: T) -> "asyncio.Future[T]":
+    fut: "asyncio.Future[T]" = asyncio.Future()
     fut.set_result(value)
     return fut
 
 
 def _empty_as_none(text: str) -> Optional[str]:
-    return None if text == '' else text
+    return None if text == "" else text
 
 
 def _zero_as_none(value: int) -> Optional[int]:
@@ -330,9 +372,11 @@ async def _is_resource_reference(the_input: Any, deps: Set[str]) -> bool:
     """
     Returns True if `the_input` is a Resource and only depends on itself.
     """
-    return (known_types.is_resource(the_input)
+    return (
+        known_types.is_resource(the_input)
         and len(deps) == 1
-        and next(iter(deps)) == await cast(Resource, the_input).urn.future())
+        and next(iter(deps)) == await cast(Resource, the_input).urn.future()
+    )
 
 
 def _contains_outputs(the_input: Any) -> bool:
@@ -363,7 +407,9 @@ def _create_provider_resource(ref: str) -> ProviderResource:
     urn_parts = pulumi.urn._parse_urn(urn)
     resource_package = rpc.get_resource_package(urn_parts.typ_name, version="")
     if resource_package is not None:
-        return cast(ProviderResource, resource_package.construct_provider(
-            urn_parts.urn_name, urn_parts.typ, urn))
+        return cast(
+            ProviderResource,
+            resource_package.construct_provider(urn_parts.urn_name, urn_parts.typ, urn),
+        )
 
     return DependencyProviderResource(ref)

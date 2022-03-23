@@ -8,6 +8,8 @@ import (
 )
 
 func Test_checkMinimumGoVersion(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name            string
 		goVersionOutput string
@@ -22,6 +24,10 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 			goVersionOutput: "go version go1.15.1 darwin/amd64",
 		},
 		{
+			name:            "BetaVersion",
+			goVersionOutput: "go version go1.18beta2 darwin/amd64",
+		},
+		{
 			name:            "OlderGoVersion",
 			goVersionOutput: "go version go1.13.8 linux/amd64",
 			err:             errors.New("go version must be 1.14.0 or higher (1.13.8 detected)"),
@@ -29,7 +35,7 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 		{
 			name:            "MalformedVersion",
 			goVersionOutput: "go version xyz",
-			err:             errors.New("parsing go version: Invalid character(s) found in major number \"xyz\""),
+			err:             errors.New("parsing go version: Malformed version: xyz"),
 		},
 		{
 			name:            "GarbageVersionOutput",
@@ -38,7 +44,10 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := checkMinimumGoVersion(tt.goVersionOutput)
 			if err != nil {
 				require.Error(t, err)

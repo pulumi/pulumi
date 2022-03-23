@@ -23,7 +23,14 @@ import yaml
 from ._config import ConfigMap, ConfigValue, _SECRET_SENTINEL
 from ._project_settings import ProjectSettings
 from ._stack_settings import StackSettings
-from ._workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn, Deployment
+from ._workspace import (
+    Workspace,
+    PluginInfo,
+    StackSummary,
+    WhoAmIResult,
+    PulumiFn,
+    Deployment,
+)
 from ._stack import _DATETIME_FORMAT, Stack
 from ._output import OutputMap, OutputValue
 from ._cmd import _run_pulumi_cmd, CommandResult, OnOutput
@@ -44,14 +51,16 @@ class LocalWorkspaceOptions:
     project_settings: Optional[ProjectSettings] = None
     stack_settings: Optional[Mapping[str, StackSettings]] = None
 
-    def __init__(self,
-                 work_dir: Optional[str] = None,
-                 pulumi_home: Optional[str] = None,
-                 program: Optional[PulumiFn] = None,
-                 env_vars: Optional[Mapping[str, str]] = None,
-                 secrets_provider: Optional[str] = None,
-                 project_settings: Optional[ProjectSettings] = None,
-                 stack_settings: Optional[Mapping[str, StackSettings]] = None):
+    def __init__(
+        self,
+        work_dir: Optional[str] = None,
+        pulumi_home: Optional[str] = None,
+        program: Optional[PulumiFn] = None,
+        env_vars: Optional[Mapping[str, str]] = None,
+        secrets_provider: Optional[str] = None,
+        project_settings: Optional[ProjectSettings] = None,
+        stack_settings: Optional[Mapping[str, StackSettings]] = None,
+    ):
         self.work_dir = work_dir
         self.pulumi_home = pulumi_home
         self.program = program
@@ -73,25 +82,32 @@ class LocalWorkspace(Workspace):
     alter the Workspace Pulumi.yaml file, and setting config on a Stack will modify the Pulumi.[stack].yaml file.
     This is identical to the behavior of Pulumi CLI driven workspaces.
     """
-    def __init__(self,
-                 work_dir: Optional[str] = None,
-                 pulumi_home: Optional[str] = None,
-                 program: Optional[PulumiFn] = None,
-                 env_vars: Optional[Mapping[str, str]] = None,
-                 secrets_provider: Optional[str] = None,
-                 project_settings: Optional[ProjectSettings] = None,
-                 stack_settings: Optional[Mapping[str, StackSettings]] = None):
+
+    def __init__(
+        self,
+        work_dir: Optional[str] = None,
+        pulumi_home: Optional[str] = None,
+        program: Optional[PulumiFn] = None,
+        env_vars: Optional[Mapping[str, str]] = None,
+        secrets_provider: Optional[str] = None,
+        project_settings: Optional[ProjectSettings] = None,
+        stack_settings: Optional[Mapping[str, StackSettings]] = None,
+    ):
         self.pulumi_home = pulumi_home
         self.program = program
         self.secrets_provider = secrets_provider
         self.env_vars = env_vars or {}
-        self.work_dir = work_dir or tempfile.mkdtemp(dir=tempfile.gettempdir(), prefix="automation-")
+        self.work_dir = work_dir or tempfile.mkdtemp(
+            dir=tempfile.gettempdir(), prefix="automation-"
+        )
 
         pulumi_version = self._get_pulumi_version()
         opt_out = os.getenv(_SKIP_VERSION_CHECK_VAR) is not None
         if env_vars:
             opt_out = opt_out or env_vars.get(_SKIP_VERSION_CHECK_VAR) is not None
-        version = _parse_and_validate_pulumi_version(_MINIMUM_VERSION, pulumi_version, opt_out)
+        version = _parse_and_validate_pulumi_version(
+            _MINIMUM_VERSION, pulumi_version, opt_out
+        )
         self.__pulumi_version = str(version) if version else None
 
         if project_settings:
@@ -101,21 +117,23 @@ class LocalWorkspace(Workspace):
                 self.save_stack_settings(key, stack_settings[key])
 
     # mypy does not support properties: https://github.com/python/mypy/issues/1362
-    @property # type: ignore
-    def pulumi_version(self) -> str: # type: ignore
+    @property  # type: ignore
+    def pulumi_version(self) -> str:  # type: ignore
         if self.__pulumi_version:
             return self.__pulumi_version
         raise InvalidVersionError("Could not get Pulumi CLI version")
 
-    @pulumi_version.setter # type: ignore
+    @pulumi_version.setter  # type: ignore
     def pulumi_version(self, v: str):
         self.__pulumi_version = v
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(work_dir={self.work_dir!r}, " \
-               f"program={self.program.__name__ if self.program else None}, " \
-               f"pulumi_home={self.pulumi_home!r}, env_vars={self.env_vars!r}, " \
-               f"secrets_provider={self.secrets_provider})"
+        return (
+            f"{self.__class__.__name__}(work_dir={self.work_dir!r}, "
+            f"program={self.program.__name__ if self.program else None}, "
+            f"pulumi_home={self.pulumi_home!r}, env_vars={self.env_vars!r}, "
+            f"secrets_provider={self.secrets_provider})"
+        )
 
     def project_settings(self) -> ProjectSettings:
         return _load_project_settings(self.work_dir)
@@ -128,7 +146,11 @@ class LocalWorkspace(Workspace):
                 found_ext = ext
                 break
         path = os.path.join(self.work_dir, f"Pulumi{found_ext}")
-        writable_settings = {key: settings.__dict__[key] for key in settings.__dict__ if settings.__dict__[key] is not None}
+        writable_settings = {
+            key: settings.__dict__[key]
+            for key in settings.__dict__
+            if settings.__dict__[key] is not None
+        }
         with open(path, "w", encoding="utf-8") as file:
             if found_ext == ".json":
                 json.dump(writable_settings, file, indent=4)
@@ -144,13 +166,17 @@ class LocalWorkspace(Workspace):
             with open(path, "r", encoding="utf-8") as file:
                 settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
                 return StackSettings._deserialize(settings)
-        raise FileNotFoundError(f"failed to find stack settings file in workdir: {self.work_dir}")
+        raise FileNotFoundError(
+            f"failed to find stack settings file in workdir: {self.work_dir}"
+        )
 
     def save_stack_settings(self, stack_name: str, settings: StackSettings) -> None:
         stack_settings_name = get_stack_settings_name(stack_name)
         found_ext = ".yaml"
         for ext in _setting_extensions:
-            test_path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{ext}")
+            test_path = os.path.join(
+                self.work_dir, f"Pulumi.{stack_settings_name}{ext}"
+            )
             if os.path.exists(test_path):
                 found_ext = ext
                 break
@@ -170,22 +196,40 @@ class LocalWorkspace(Workspace):
         return
 
     def get_config(self, stack_name: str, key: str) -> ConfigValue:
-        result = self._run_pulumi_cmd_sync(["config", "get", key, "--json", "--stack", stack_name])
+        result = self._run_pulumi_cmd_sync(
+            ["config", "get", key, "--json", "--stack", stack_name]
+        )
         val = json.loads(result.stdout)
         return ConfigValue(value=val["value"], secret=val["secret"])
 
     def get_all_config(self, stack_name: str) -> ConfigMap:
-        result = self._run_pulumi_cmd_sync(["config", "--show-secrets", "--json", "--stack", stack_name])
+        result = self._run_pulumi_cmd_sync(
+            ["config", "--show-secrets", "--json", "--stack", stack_name]
+        )
         config_json = json.loads(result.stdout)
         config_map: ConfigMap = {}
         for key in config_json:
             config_val_json = config_json[key]
-            config_map[key] = ConfigValue(value=config_val_json["value"], secret=config_val_json["secret"])
+            config_map[key] = ConfigValue(
+                value=config_val_json["value"], secret=config_val_json["secret"]
+            )
         return config_map
 
     def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
         secret_arg = "--secret" if value.secret else "--plaintext"
-        self._run_pulumi_cmd_sync(["config", "set", key, value.value, secret_arg, "--stack", stack_name])
+        self._run_pulumi_cmd_sync(
+            [
+                "config",
+                "set",
+                key,
+                secret_arg,
+                "--stack",
+                stack_name,
+                "--non-interactive",
+                "--",
+                value.value,
+            ]
+        )
 
     def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
         args = ["config", "set-all", "--stack", stack_name]
@@ -205,7 +249,9 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(args)
 
     def refresh_config(self, stack_name: str) -> None:
-        self._run_pulumi_cmd_sync(["config", "refresh", "--force", "--stack", stack_name])
+        self._run_pulumi_cmd_sync(
+            ["config", "refresh", "--force", "--stack", stack_name]
+        )
         self.get_all_config(stack_name)
 
     def who_am_i(self) -> WhoAmIResult:
@@ -240,19 +286,28 @@ class LocalWorkspace(Workspace):
                 name=stack_json["name"],
                 current=stack_json["current"],
                 update_in_progress=stack_json["updateInProgress"],
-                last_update=datetime.strptime(stack_json["lastUpdate"], _DATETIME_FORMAT) if "lastUpdate" in stack_json else None,
-                resource_count=stack_json["resourceCount"] if "resourceCount" in stack_json else None,
-                url=stack_json["url"] if "url" in stack_json else None)
+                last_update=datetime.strptime(
+                    stack_json["lastUpdate"], _DATETIME_FORMAT
+                )
+                if "lastUpdate" in stack_json
+                else None,
+                resource_count=stack_json["resourceCount"]
+                if "resourceCount" in stack_json
+                else None,
+                url=stack_json["url"] if "url" in stack_json else None,
+            )
             stack_list.append(stack)
         return stack_list
 
     def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
         self._run_pulumi_cmd_sync(["plugin", "install", kind, name, version])
 
-    def remove_plugin(self,
-                      name: Optional[str] = None,
-                      version_range: Optional[str] = None,
-                      kind: str = "resource") -> None:
+    def remove_plugin(
+        self,
+        name: Optional[str] = None,
+        version_range: Optional[str] = None,
+        kind: str = "resource",
+    ) -> None:
         args = ["plugin", "rm", kind]
         if name:
             args.append(name)
@@ -270,27 +325,41 @@ class LocalWorkspace(Workspace):
                 name=plugin_json["name"],
                 kind=plugin_json["kind"],
                 size=plugin_json["size"],
-                last_used_time=datetime.strptime(plugin_json["lastUsedTime"], _DATETIME_FORMAT),
-                install_time=datetime.strptime(plugin_json["installTime"], _DATETIME_FORMAT) if "installTime" in plugin_json else None,
-                version=plugin_json["version"] if "version" in plugin_json else None
+                last_used_time=datetime.strptime(
+                    plugin_json["lastUsedTime"], _DATETIME_FORMAT
+                ),
+                install_time=datetime.strptime(
+                    plugin_json["installTime"], _DATETIME_FORMAT
+                )
+                if "installTime" in plugin_json
+                else None,
+                version=plugin_json["version"] if "version" in plugin_json else None,
             )
             plugin_list.append(plugin)
         return plugin_list
 
     def export_stack(self, stack_name: str) -> Deployment:
-        result = self._run_pulumi_cmd_sync(["stack", "export", "--show-secrets", "--stack", stack_name])
+        result = self._run_pulumi_cmd_sync(
+            ["stack", "export", "--show-secrets", "--stack", stack_name]
+        )
         state_json = json.loads(result.stdout)
         return Deployment(**state_json)
 
     def import_stack(self, stack_name: str, state: Deployment) -> None:
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as file:
             json.dump(state.__dict__, file, indent=4)
-        self._run_pulumi_cmd_sync(["stack", "import", "--file", file.name, "--stack", stack_name])
+        self._run_pulumi_cmd_sync(
+            ["stack", "import", "--file", file.name, "--stack", stack_name]
+        )
         os.remove(file.name)
 
     def stack_outputs(self, stack_name: str) -> OutputMap:
-        masked_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--stack", stack_name])
-        plaintext_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--show-secrets", "--stack", stack_name])
+        masked_result = self._run_pulumi_cmd_sync(
+            ["stack", "output", "--json", "--stack", stack_name]
+        )
+        plaintext_result = self._run_pulumi_cmd_sync(
+            ["stack", "output", "--json", "--show-secrets", "--stack", stack_name]
+        )
         masked_outputs = json.loads(masked_result.stdout)
         plaintext_outputs = json.loads(plaintext_result.stdout)
         outputs: OutputMap = {}
@@ -306,7 +375,9 @@ class LocalWorkspace(Workspace):
             version_string = version_string[1:]
         return version_string
 
-    def _run_pulumi_cmd_sync(self, args: List[str], on_output: Optional[OnOutput] = None) -> CommandResult:
+    def _run_pulumi_cmd_sync(
+        self, args: List[str], on_output: Optional[OnOutput] = None
+    ) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}
         envs = {**envs, **self.env_vars}
         return _run_pulumi_cmd(args, self.work_dir, envs, on_output)
@@ -322,11 +393,13 @@ def _is_inline_program(**kwargs) -> bool:
 StackInitializer = Callable[[str, Workspace], Stack]
 
 
-def create_stack(stack_name: str,
-                 project_name: Optional[str] = None,
-                 program: Optional[PulumiFn] = None,
-                 work_dir: Optional[str] = None,
-                 opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+def create_stack(
+    stack_name: str,
+    project_name: Optional[str] = None,
+    program: Optional[PulumiFn] = None,
+    work_dir: Optional[str] = None,
+    opts: Optional[LocalWorkspaceOptions] = None,
+) -> Stack:
     """
     Creates a Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi program or the local
     Pulumi CLI program from the specified workdir.
@@ -361,11 +434,13 @@ def create_stack(stack_name: str,
     raise ValueError(f"unexpected args: {' '.join(args)}")
 
 
-def select_stack(stack_name: str,
-                 project_name: Optional[str] = None,
-                 program: Optional[PulumiFn] = None,
-                 work_dir: Optional[str] = None,
-                 opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+def select_stack(
+    stack_name: str,
+    project_name: Optional[str] = None,
+    program: Optional[PulumiFn] = None,
+    work_dir: Optional[str] = None,
+    opts: Optional[LocalWorkspaceOptions] = None,
+) -> Stack:
     """
     Selects a Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi program or the local
     Pulumi CLI program from the specified workdir.
@@ -399,11 +474,13 @@ def select_stack(stack_name: str,
     raise ValueError(f"unexpected args: {' '.join(args)}")
 
 
-def create_or_select_stack(stack_name: str,
-                           project_name: Optional[str] = None,
-                           program: Optional[PulumiFn] = None,
-                           work_dir: Optional[str] = None,
-                           opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+def create_or_select_stack(
+    stack_name: str,
+    project_name: Optional[str] = None,
+    program: Optional[PulumiFn] = None,
+    work_dir: Optional[str] = None,
+    opts: Optional[LocalWorkspaceOptions] = None,
+) -> Stack:
     """
     Creates or selects an existing Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi
     program or the local Pulumi CLI program from the specified workdir.
@@ -437,11 +514,13 @@ def create_or_select_stack(stack_name: str,
     raise ValueError(f"unexpected args: {' '.join(args)}")
 
 
-def _inline_source_stack_helper(stack_name: str,
-                                program: PulumiFn,
-                                project_name: str,
-                                init_fn: StackInitializer,
-                                opts: Optional[LocalWorkspaceOptions] = None):
+def _inline_source_stack_helper(
+    stack_name: str,
+    program: PulumiFn,
+    project_name: str,
+    init_fn: StackInitializer,
+    opts: Optional[LocalWorkspaceOptions] = None,
+):
     workspace_options = opts or LocalWorkspaceOptions()
     workspace_options.program = program
 
@@ -463,10 +542,12 @@ def _is_local_program(**kwargs) -> bool:
     return "work_dir" in kwargs and kwargs["work_dir"] is not None
 
 
-def _local_source_stack_helper(stack_name: str,
-                               work_dir: str,
-                               init_fn: StackInitializer,
-                               opts: Optional[LocalWorkspaceOptions] = None):
+def _local_source_stack_helper(
+    stack_name: str,
+    work_dir: str,
+    init_fn: StackInitializer,
+    opts: Optional[LocalWorkspaceOptions] = None,
+):
     workspace_options = opts or LocalWorkspaceOptions()
     workspace_options.work_dir = work_dir
 
@@ -485,9 +566,9 @@ def get_stack_settings_name(name: str) -> str:
     return parts[-1]
 
 
-def _parse_and_validate_pulumi_version(min_version: VersionInfo,
-                             current_version: str,
-                             opt_out: bool) -> Optional[VersionInfo]:
+def _parse_and_validate_pulumi_version(
+    min_version: VersionInfo, current_version: str, opt_out: bool
+) -> Optional[VersionInfo]:
     """
     Parse and return a version. An error is raised if the version is not
     valid. If *current_version* is not a valid version but *opt_out* is true,
@@ -500,15 +581,21 @@ def _parse_and_validate_pulumi_version(min_version: VersionInfo,
     if opt_out:
         return version
     if version is None:
-        raise InvalidVersionError(f"Could not parse the Pulumi CLI version. This is probably an internal error. "
-                                  f"If you are sure you have the correct version, set {_SKIP_VERSION_CHECK_VAR}=true.")
+        raise InvalidVersionError(
+            f"Could not parse the Pulumi CLI version. This is probably an internal error. "
+            f"If you are sure you have the correct version, set {_SKIP_VERSION_CHECK_VAR}=true."
+        )
     if min_version.major < version.major:
-        raise InvalidVersionError(f"Major version mismatch. You are using Pulumi CLI version {version} with "
-                                  f"Automation SDK v{min_version.major}. Please update the SDK.")
+        raise InvalidVersionError(
+            f"Major version mismatch. You are using Pulumi CLI version {version} with "
+            f"Automation SDK v{min_version.major}. Please update the SDK."
+        )
     if min_version.compare(version) == 1:
-        raise InvalidVersionError(f"Minimum version requirement failed. The minimum CLI version requirement is "
-                                  f"{min_version}, your current CLI version is {version}. "
-                                  f"Please update the Pulumi CLI.")
+        raise InvalidVersionError(
+            f"Minimum version requirement failed. The minimum CLI version requirement is "
+            f"{min_version}, your current CLI version is {version}. "
+            f"Please update the Pulumi CLI."
+        )
     return version
 
 
@@ -520,4 +607,6 @@ def _load_project_settings(work_dir: str) -> ProjectSettings:
         with open(project_path, "r", encoding="utf-8") as file:
             settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
             return ProjectSettings(**settings)
-    raise FileNotFoundError(f"failed to find project settings file in workdir: {work_dir}")
+    raise FileNotFoundError(
+        f"failed to find project settings file in workdir: {work_dir}"
+    )

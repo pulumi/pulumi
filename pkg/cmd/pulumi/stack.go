@@ -56,14 +56,15 @@ func newStackCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			snap, err := s.Snapshot(commandContext())
-			if err != nil {
-				return err
-			}
 
 			if showStackName {
 				fmt.Printf("%s\n", s.Ref().Name())
 				return nil
+			}
+
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return err
 			}
 
 			// First print general info about the current stack.
@@ -140,6 +141,10 @@ func newStackCmd() *cobra.Command {
 					fmt.Printf("\n")
 					printStackOutputs(outputs)
 				}
+
+				if showSecrets {
+					log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack")
+				}
 			}
 
 			// Add a link to the pulumi.com console page for this stack, if it has one.
@@ -181,6 +186,7 @@ func newStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackRenameCmd())
 	cmd.AddCommand(newStackChangeSecretsProviderCmd())
 	cmd.AddCommand(newStackHistoryCmd())
+	cmd.AddCommand(newStackUnselectCmd())
 
 	return cmd
 }

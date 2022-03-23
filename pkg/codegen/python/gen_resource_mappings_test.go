@@ -15,6 +15,8 @@ import (
 // The schema is taken from `pulumi-aws` and minified to the smallest
 // example that still reproduced the issue.
 func TestGenResourceMappingsIsDeterministic(t *testing.T) {
+	t.Parallel()
+
 	minimalSchema := `
         {
             "name": "aws",

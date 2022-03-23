@@ -1,4 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+//go:build dotnet || all
 // +build dotnet all
 
 package ints
@@ -23,6 +24,16 @@ func TestEmptyDotNet(t *testing.T) {
 		Dir:          filepath.Join("empty", "dotnet"),
 		Dependencies: []string{"Pulumi"},
 		Quick:        true,
+	})
+}
+
+// TestPrintfDotNet tests that we capture stdout and stderr streams properly, even when the last line lacks an \n.
+func TestPrintfDotNet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("printf", "dotnet"),
+		Dependencies:           []string{"Pulumi"},
+		Quick:                  true,
+		ExtraRuntimeValidation: printfTestValidation,
 	})
 }
 
@@ -322,6 +333,8 @@ func TestLargeResourceDotNet(t *testing.T) {
 // Test remote component construction in .NET.
 func TestConstructDotnet(t *testing.T) {
 	t.Skip() // TODO[pulumi/pulumi#7355] flaky test
+	t.Parallel()
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -341,7 +354,6 @@ func TestConstructDotnet(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -350,8 +362,11 @@ func TestConstructDotnet(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -366,8 +381,7 @@ func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...stri
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",
 		},
-		Quick:      true,
-		NoParallel: true, // avoid contention for Dir
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -439,6 +453,8 @@ func TestConstructSlowDotnet(t *testing.T) {
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainDotnet(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -458,7 +474,6 @@ func TestConstructPlainDotnet(t *testing.T) {
 		{
 			componentDir:          "testcomponent-python",
 			expectedResourceCount: 9,
-			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir:          "testcomponent-go",
@@ -467,8 +482,11 @@ func TestConstructPlainDotnet(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -481,7 +499,6 @@ func optsForConstructPlainDotnet(t *testing.T, expectedResourceCount int,
 		Env:          env,
 		Dir:          filepath.Join("construct_component_plain", "dotnet"),
 		Dependencies: []string{"Pulumi"},
-		NoParallel:   true, // avoid contention for Dir
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
@@ -497,30 +514,30 @@ func TestConstructUnknownDotnet(t *testing.T) {
 
 // Test methods on remote components.
 func TestConstructMethodsDotnet(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          append(test.env, pathEnv),
+				Env:          []string{pathEnv},
 				Dir:          filepath.Join("construct_component_methods", "dotnet"),
 				Dependencies: []string{"Pulumi"},
 				Quick:        true,
-				NoParallel:   true, // avoid contention for Dir
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
 				},
@@ -538,31 +555,31 @@ func TestConstructMethodsErrorsDotnet(t *testing.T) {
 }
 
 func TestConstructProviderDotnet(t *testing.T) {
+	t.Parallel()
+
 	const testDir = "construct_component_provider"
 	tests := []struct {
 		componentDir string
-		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
 		},
 		{
 			componentDir: "testcomponent-python",
-			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          append(test.env, pathEnv),
+				Env:          []string{pathEnv},
 				Dir:          filepath.Join(testDir, "dotnet"),
 				Dependencies: []string{"Pulumi"},
 				Quick:        true,
-				NoParallel:   true, // avoid contention for Dir
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
@@ -583,6 +600,8 @@ func TestGetResourceDotnet(t *testing.T) {
 // results of each runtime independently, we have an integration test in each
 // language.
 func TestAboutDotnet(t *testing.T) {
+	t.Parallel()
+
 	dir := filepath.Join("about", "dotnet")
 
 	e := ptesting.NewEnvironment(t)

@@ -1,9 +1,0 @@
-{
-  "emittedFiles": [
-    "registrygeoreplication/doc.go",
-    "registrygeoreplication/init.go",
-    "registrygeoreplication/provider.go",
-    "registrygeoreplication/pulumiUtilities.go",
-    "registrygeoreplication/registryGeoReplication.go"
-  ]
-}

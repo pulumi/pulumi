@@ -96,7 +96,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 			op.Opts.Display.Color.Colorize(colors.SpecImportant+"Updating..."+colors.Reset+"\n"))
 
 		// Perform the update operation
-		_, res := apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
+		_, _, res := apply(ctx, apitype.UpdateUpdate, stack, op, opts, nil)
 		if res != nil {
 			logging.V(5).Infof("watch update failed: %v", res.Error())
 			if res.Error() == context.Canceled {

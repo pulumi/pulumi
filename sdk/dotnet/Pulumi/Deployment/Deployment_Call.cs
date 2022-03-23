@@ -63,15 +63,18 @@ namespace Pulumi
             // Determine the provider and version to use.
             ProviderResource? provider;
             string? version;
+            string? pluginDownloadURL;
             if (self != null)
             {
                 provider = self._provider;
                 version = self._version;
+                pluginDownloadURL = self._pluginDownloadURL;
             }
             else
             {
                 provider = GetProvider(token, options);
                 version = options?.Version;
+                pluginDownloadURL = options?.PluginDownloadURL;
             }
             var providerReference = await ProviderResource.RegisterAsync(provider).ConfigureAwait(false);
 
@@ -81,6 +84,7 @@ namespace Pulumi
                 Tok = token,
                 Provider = providerReference ?? "",
                 Version = version ?? "",
+                PluginDownloadURL = pluginDownloadURL ?? "",
                 Args = serialized,
             };
 

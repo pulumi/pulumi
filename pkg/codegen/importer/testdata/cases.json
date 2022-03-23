@@ -483,7 +483,8 @@
 				"enableDnsSupport": true,
 				"instanceTenancy": "foobar",
 				"tags": {
-					"Name": "foobar"
+					"Name": "foobar",
+					"pulumi:Project": "tag-check"
 				}
 			}
 		},

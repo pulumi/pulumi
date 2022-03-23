@@ -112,6 +112,7 @@ namespace Pulumi
                 Version = options?.Version ?? "",
                 Args = serialized,
                 AcceptResources = !_disableResourceReferences,
+                PluginDownloadURL = options?.PluginDownloadURL ?? "",
             }).ConfigureAwait(false);
 
             if (result.Failures.Count > 0)

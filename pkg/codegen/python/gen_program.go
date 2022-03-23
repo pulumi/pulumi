@@ -50,8 +50,11 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
+	// Creating a list to store and later print helper methods if they turn out to be needed
+	preambleHelperMethods := codegen.NewStringSet()
+
 	var main bytes.Buffer
-	g.genPreamble(&main, program)
+	g.genPreamble(&main, program, preambleHelperMethods)
 	for _, n := range nodes {
 		g.genNode(&main, n)
 	}
@@ -112,21 +115,45 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 	}
 }
 
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
 	// Print the pulumi import at the top.
 	g.Fprintln(w, "import pulumi")
 
 	// Accumulate other imports for the various providers. Don't emit them yet, as we need to sort them later on.
-	importSet := codegen.NewStringSet("pulumi")
+	type Import struct {
+		// Use an "import ${KEY} as ${.Pkg}"
+		ImportAs bool
+		// Only relevant for when ImportAs=true
+		Pkg string
+	}
+	importSet := map[string]Import{}
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
-			importSet.Add("pulumi_" + makeValidIdentifier(pkg))
+			packageName := "pulumi_" + makeValidIdentifier(pkg)
+			if r.Schema != nil && r.Schema.Package != nil {
+				if info, ok := r.Schema.Package.Language["python"].(PackageInfo); ok && info.PackageName != "" {
+					packageName = info.PackageName
+				}
+			}
+			importSet[packageName] = Import{ImportAs: true, Pkg: makeValidIdentifier(pkg)}
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
-				if i := g.getFunctionImports(call); i != "" {
-					importSet.Add(i)
+				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {
+					for _, importPackage := range i {
+						importAs := strings.HasPrefix(importPackage, "pulumi_")
+						var maybePkg string
+						if importAs {
+							maybePkg = importPackage[len("pulumi_"):]
+						}
+						importSet[importPackage] = Import{
+							ImportAs: importAs,
+							Pkg:      maybePkg}
+					}
+				}
+				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name); ok {
+					preambleHelperMethods.Add(helperMethodBody)
 				}
 			}
 			return n, nil
@@ -135,12 +162,17 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 	}
 
 	var imports []string
-	for _, pkg := range importSet.SortedValues() {
+	importSetNames := codegen.NewStringSet()
+	for k := range importSet {
+		importSetNames.Add(k)
+	}
+	for _, pkg := range importSetNames.SortedValues() {
 		if pkg == "pulumi" {
 			continue
 		}
-		if strings.HasPrefix(pkg, "pulumi_") {
-			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, pkg[len("pulumi_"):]))
+		control := importSet[pkg]
+		if control.ImportAs {
+			imports = append(imports, fmt.Sprintf("import %s as %s", pkg, control.Pkg))
 		} else {
 			imports = append(imports, fmt.Sprintf("import %s", pkg))
 		}
@@ -152,6 +184,11 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 		g.Fprintln(w, i)
 	}
 	g.Fprint(w, "\n")
+
+	// If we collected any helper methods that should be added, write them just before the main func
+	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
+	}
 }
 
 func (g *generator) genNode(w io.Writer, n pcl.Node) {

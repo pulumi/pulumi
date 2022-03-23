@@ -1760,7 +1760,8 @@ proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
     args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     provider: jspb.Message.getFieldWithDefault(msg, 3, ""),
     version: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 5, false)
+    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 6, "")
   };
 
   if (includeInstance) {
@@ -1817,6 +1818,10 @@ proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader = function(msg, reader
     case 5:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptresources(value);
+      break;
+    case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPlugindownloadurl(value);
       break;
     default:
       reader.skipField();
@@ -1880,6 +1885,13 @@ proto.pulumirpc.InvokeRequest.serializeBinaryToWriter = function(message, writer
   if (f) {
     writer.writeBool(
       5,
+      f
+    );
+  }
+  f = message.getPlugindownloadurl();
+  if (f.length > 0) {
+    writer.writeString(
+      6,
       f
     );
   }
@@ -1992,6 +2004,24 @@ proto.pulumirpc.InvokeRequest.prototype.getAcceptresources = function() {
  */
 proto.pulumirpc.InvokeRequest.prototype.setAcceptresources = function(value) {
   return jspb.Message.setProto3BooleanField(this, 5, value);
+};
+
+
+/**
+ * optional string pluginDownloadURL = 6;
+ * @return {string}
+ */
+proto.pulumirpc.InvokeRequest.prototype.getPlugindownloadurl = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.InvokeRequest} returns this
+ */
+proto.pulumirpc.InvokeRequest.prototype.setPlugindownloadurl = function(value) {
+  return jspb.Message.setProto3StringField(this, 6, value);
 };
 
 
@@ -2250,6 +2280,7 @@ proto.pulumirpc.CallRequest.toObject = function(includeInstance, msg) {
     argdependenciesMap: (f = msg.getArgdependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.CallRequest.ArgumentDependencies.toObject) : [],
     provider: jspb.Message.getFieldWithDefault(msg, 4, ""),
     version: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
     project: jspb.Message.getFieldWithDefault(msg, 6, ""),
     stack: jspb.Message.getFieldWithDefault(msg, 7, ""),
     configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
@@ -2315,6 +2346,10 @@ proto.pulumirpc.CallRequest.deserializeBinaryFromReader = function(msg, reader) 
     case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.setVersion(value);
+      break;
+    case 13:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPlugindownloadurl(value);
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
@@ -2405,6 +2440,13 @@ proto.pulumirpc.CallRequest.serializeBinaryToWriter = function(message, writer) 
   if (f.length > 0) {
     writer.writeString(
       5,
+      f
+    );
+  }
+  f = message.getPlugindownloadurl();
+  if (f.length > 0) {
+    writer.writeString(
+      13,
       f
     );
   }
@@ -2723,6 +2765,24 @@ proto.pulumirpc.CallRequest.prototype.getVersion = function() {
  */
 proto.pulumirpc.CallRequest.prototype.setVersion = function(value) {
   return jspb.Message.setProto3StringField(this, 5, value);
+};
+
+
+/**
+ * optional string pluginDownloadURL = 13;
+ * @return {string}
+ */
+proto.pulumirpc.CallRequest.prototype.getPlugindownloadurl = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 13, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.CallRequest} returns this
+ */
+proto.pulumirpc.CallRequest.prototype.setPlugindownloadurl = function(value) {
+  return jspb.Message.setProto3StringField(this, 13, value);
 };
 
 
@@ -3309,7 +3369,8 @@ proto.pulumirpc.CheckRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+    sequencenumber: jspb.Message.getFieldWithDefault(msg, 4, 0)
   };
 
   if (includeInstance) {
@@ -3359,6 +3420,10 @@ proto.pulumirpc.CheckRequest.deserializeBinaryFromReader = function(msg, reader)
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setNews(value);
+      break;
+    case 4:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setSequencenumber(value);
       break;
     default:
       reader.skipField();
@@ -3410,6 +3475,13 @@ proto.pulumirpc.CheckRequest.serializeBinaryToWriter = function(message, writer)
       3,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getSequencenumber();
+  if (f !== 0) {
+    writer.writeInt32(
+      4,
+      f
     );
   }
 };
@@ -3504,6 +3576,24 @@ proto.pulumirpc.CheckRequest.prototype.clearNews = function() {
  */
 proto.pulumirpc.CheckRequest.prototype.hasNews = function() {
   return jspb.Message.getField(this, 3) != null;
+};
+
+
+/**
+ * optional int32 sequenceNumber = 4;
+ * @return {number}
+ */
+proto.pulumirpc.CheckRequest.prototype.getSequencenumber = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.pulumirpc.CheckRequest} returns this
+ */
+proto.pulumirpc.CheckRequest.prototype.setSequencenumber = function(value) {
+  return jspb.Message.setProto3IntField(this, 4, value);
 };
 
 

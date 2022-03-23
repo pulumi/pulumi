@@ -318,12 +318,16 @@ type ResourceV3 struct {
 	PendingReplacement bool `json:"pendingReplacement,omitempty" yaml:"pendingReplacement,omitempty"`
 	// AdditionalSecretOutputs is a list of outputs that were explicitly marked as secret when the resource was created.
 	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty" yaml:"additionalSecretOutputs,omitempty"`
-	// Aliases is a list of previous URNs that this resource may have had in previous deployments
+	// Aliases is a list of previous URNs that this resource may have had in previous deployments.
 	Aliases []resource.URN `json:"aliases,omitempty" yaml:"aliases,omitempty"`
-	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations
+	// CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations.
 	CustomTimeouts *resource.CustomTimeouts `json:"customTimeouts,omitempty" yaml:"customTimeouts,omitempty"`
 	// ImportID is the import input used for imported resources.
 	ImportID resource.ID `json:"importID,omitempty" yaml:"importID,omitempty"`
+	// An auto-incrementing sequence number for each time this resource gets created/replaced (0 means sequence numbers are unknown, -1 means the last replace didn't use a sequence number).
+	SequenceNumber int `json:"sequenceNumber,omitempty" yaml:"sequenceNumber,omitempty"`
+	// If set to True, the providers Delete method will not be called for this resource. Pulumi simply stops tracking the deleted resource.
+	RetainOnDelete bool `json:"retainOnDelete,omitempty" yaml:"retainOnDelete,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,18 +71,20 @@ namespace {{.Namespace}}
 
         public static double? GetEnvDouble(params string[] names) => double.TryParse(GetEnv(names), out double v) ? (double?)v : null;
 
+        [Obsolete("Please use WithDefaults instead")]
         public static InvokeOptions WithVersion(this InvokeOptions? options)
         {
-            if (options?.Version != null)
-            {
-                return options;
-            }
-            return new InvokeOptions
-            {
-                Parent = options?.Parent,
-                Provider = options?.Provider,
-                Version = Version,
-            };
+            InvokeOptions dst = options ?? new InvokeOptions{};
+            dst.Version = options?.Version ?? Version;
+            return dst;
+        }
+
+        public static InvokeOptions WithDefaults(this InvokeOptions? src)
+        {
+            InvokeOptions dst = src ?? new InvokeOptions{};
+            dst.Version = src?.Version ?? Version;{{if ne .PluginDownloadURL "" }}
+            dst.PluginDownloadURL = src?.PluginDownloadURL ?? "{{.PluginDownloadURL}}";{{end}}
+            return dst;
         }
 
         private readonly static string version;
@@ -115,10 +117,11 @@ namespace {{.Namespace}}
 var csharpUtilitiesTemplate = template.Must(template.New("CSharpUtilities").Parse(csharpUtilitiesTemplateText))
 
 type csharpUtilitiesTemplateContext struct {
-	Name      string
-	Namespace string
-	ClassName string
-	Tool      string
+	Name              string
+	Namespace         string
+	ClassName         string
+	Tool              string
+	PluginDownloadURL string
 }
 
 // TODO(pdg): parameterize package name
@@ -126,8 +129,8 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Authors>Pulumi Corp.</Authors>
-    <Company>Pulumi Corp.</Company>
+    <Authors>{{or .Package.Publisher "Pulumi Corp."}}</Authors>
+    <Company>{{or .Package.Publisher "Pulumi Corp."}}</Company>
     <Description>{{.Package.Description}}</Description>
     <PackageLicenseExpression>{{.Package.License}}</PackageLicenseExpression>
     <PackageProjectUrl>{{.Package.Homepage}}</PackageProjectUrl>
@@ -161,6 +164,11 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <EmbeddedResource Include="version.txt" />
     <None Include="version.txt" Pack="True" PackagePath="content" />
+  </ItemGroup>
+
+   <ItemGroup>
+    <EmbeddedResource Include="pulumi-plugin.json" />
+    <None Include="pulumi-plugin.json" Pack="True" PackagePath="content" />
   </ItemGroup>
 
   <ItemGroup>

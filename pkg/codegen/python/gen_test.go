@@ -18,6 +18,7 @@ import (
 	"fmt"
 	filesystem "io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -25,8 +26,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
@@ -45,8 +46,13 @@ var pathTests = []struct {
 }
 
 func TestRelPathToRelImport(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range pathTests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			result := relPathToRelImport(tt.input)
 			if result != tt.expected {
 				t.Errorf("expected \"%s\"; got \"%s\"", tt.expected, result)
@@ -56,6 +62,8 @@ func TestRelPathToRelImport(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
+	t.Parallel()
+
 	if !test.NoSDKCodegenChecks() {
 		// To speed up these tests, we will generate one common
 		// virtual environment for all of them to run in, rather than
@@ -74,6 +82,7 @@ func TestGeneratePackage(t *testing.T) {
 			"python/py_compile": pyCompileCheck,
 			"python/test":       pyTestCheck,
 		},
+		TestCases: test.PulumiPulumiSDKTests,
 	})
 }
 
@@ -193,12 +202,19 @@ func pyTestCheck(t *testing.T, codeDir string) {
 	}
 
 	if err = cmd("pytest", "."); err != nil {
-		t.Error(err)
+		exitError, isExitError := err.(*exec.ExitError)
+		if isExitError && exitError.ExitCode() == 5 {
+			t.Logf("Could not find any pytest tests in %s", codeDir)
+		} else {
+			t.Error(err)
+		}
 		return
 	}
 }
 
 func TestGenerateTypeNames(t *testing.T) {
+	t.Parallel()
+
 	test.TestTypeNameCodegen(t, "python", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
 		// Decode python-specific info
 		err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer})

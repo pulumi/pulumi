@@ -193,6 +193,12 @@ type ProgramTestOptions struct {
 	// SkipStackRemoval indicates that the stack should not be removed. (And so the test's results could be inspected
 	// in the Pulumi Service after the test has completed.)
 	SkipStackRemoval bool
+	// Destroy on cleanup defers stack destruction until the test cleanup step, rather than after
+	// program test execution. This is useful for more realistic stack reference testing, allowing one
+	// project and stack to be stood up and a second to be run before the first is destroyed.
+	//
+	// Implies NoParallel because we expect that another caller to ProgramTest will set that
+	DestroyOnCleanup bool
 	// Quick implies SkipPreview, SkipExportImport and SkipEmptyPreviewUpdate
 	Quick bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
@@ -227,6 +233,12 @@ type ProgramTestOptions struct {
 	// CLI invocations that can inadvertently overwrite the trace
 	// file.
 	Tracing string
+
+	// If non-empty, specifies the value of the `--test.coverprofile` flag to pass to the Pulumi CLI. As with the
+	// Tracing field, the `{command}` template will expand to the current command name.
+	//
+	// If PULUMI_TEST_COVERAGE_PATH is set, this defaults to $PULUMI_TEST_COVERAGE_PATH/{command}-[random suffix].out
+	CoverProfile string
 
 	// NoParallel will opt the test out of being ran in parallel.
 	NoParallel bool
@@ -281,6 +293,16 @@ type ProgramTestOptions struct {
 	// JSONOutput indicates that the `--json` flag should be passed to `up`, `preview`,
 	// `refresh` and `destroy` commands.
 	JSONOutput bool
+
+	// If set, this hook is called after `pulumi stack export` on the exported file. If `SkipExportImport` is set, this
+	// hook is ignored.
+	ExportStateValidator func(t *testing.T, stack []byte)
+
+	// If not nil, specifies the logic of preparing a project by
+	// ensuring dependencies. If left as nil, runs default
+	// preparation logic by dispatching on whether the project
+	// uses Node, Python, .NET or Go.
+	PrepareProject func(*engine.Projinfo) error
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -417,6 +439,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.SkipStackRemoval {
 		opts.SkipStackRemoval = overrides.SkipStackRemoval
 	}
+	if overrides.DestroyOnCleanup {
+		opts.DestroyOnCleanup = overrides.DestroyOnCleanup
+	}
 	if overrides.Quick {
 		opts.Quick = overrides.Quick
 	}
@@ -446,6 +471,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Tracing != "" {
 		opts.Tracing = overrides.Tracing
+	}
+	if overrides.CoverProfile != "" {
+		opts.CoverProfile = overrides.CoverProfile
 	}
 	if overrides.NoParallel {
 		opts.NoParallel = overrides.NoParallel
@@ -488,6 +516,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.UsePipenv {
 		opts.UsePipenv = overrides.UsePipenv
+	}
+	if overrides.PrepareProject != nil {
+		opts.PrepareProject = overrides.PrepareProject
 	}
 	return opts
 }
@@ -573,7 +604,7 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 	}
 
 	// We want tests to default into being ran in parallel, hence the odd double negative.
-	if !opts.NoParallel {
+	if !opts.NoParallel && !opts.DestroyOnCleanup {
 		t.Parallel()
 	}
 
@@ -605,6 +636,16 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 
 	if opts.Tracing == "" {
 		opts.Tracing = os.Getenv("PULUMI_TEST_TRACE_ENDPOINT")
+	}
+
+	if opts.CoverProfile == "" {
+		if cov := os.Getenv("PULUMI_TEST_COVERAGE_PATH"); cov != "" {
+			var b [4]byte
+			if _, err := cryptorand.Read(b[:]); err != nil {
+				t.Errorf("could not read random bytes: %v", err)
+			}
+			opts.CoverProfile = filepath.Join(cov, "{command}-"+hex.EncodeToString(b[:])+".cov")
+		}
 	}
 }
 
@@ -745,6 +786,9 @@ func (pt *ProgramTester) pulumiCmd(name string, args []string) ([]string, error)
 	cmd = append(cmd, args...)
 	if tracing := pt.opts.Tracing; tracing != "" {
 		cmd = append(cmd, "--tracing", strings.ReplaceAll(tracing, "{command}", name))
+	}
+	if cov := pt.opts.CoverProfile; cov != "" {
+		cmd = append(cmd, "--test.coverprofile", strings.ReplaceAll(cov, "{command}", name))
 	}
 	return cmd, nil
 }
@@ -1011,18 +1055,28 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 	}
 
 	pt.TestFinished = false
-	defer pt.TestCleanUp()
+	if pt.opts.DestroyOnCleanup {
+		pt.t.Cleanup(pt.TestCleanUp)
+	} else {
+		defer pt.TestCleanUp()
+	}
 
 	err = pt.TestLifeCycleInitialize()
 	if err != nil {
 		return fmt.Errorf("initializing test project: %w", err)
 	}
 
-	// Ensure that before we exit, we attempt to destroy and remove the stack.
-	defer func() {
+	destroyStack := func() {
 		destroyErr := pt.TestLifeCycleDestroy()
 		assert.NoError(pt.t, destroyErr)
-	}()
+	}
+	if pt.opts.DestroyOnCleanup {
+		// Allow other tests to refer to this stack until the test is complete.
+		pt.t.Cleanup(destroyStack)
+	} else {
+		// Ensure that before we exit, we attempt to destroy and remove the stack.
+		defer destroyStack()
+	}
 
 	if err = pt.TestPreviewUpdateAndEdits(); err != nil {
 		return fmt.Errorf("running test preview, update, and edits: %w", err)
@@ -1246,6 +1300,16 @@ func (pt *ProgramTester) exportImport(dir string) error {
 
 	if err := pt.runPulumiCommand("pulumi-stack-export", exportCmd, dir, false); err != nil {
 		return err
+	}
+
+	if f := pt.opts.ExportStateValidator; f != nil {
+		bytes, err := ioutil.ReadFile(filepath.Join(dir, "stack.json"))
+		if err != nil {
+			pt.t.Logf("Failed to read stack.json: %s", err.Error())
+			return err
+		}
+		pt.t.Logf("Calling ExportStateValidator")
+		f(pt.t, bytes)
 	}
 
 	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
@@ -1649,19 +1713,10 @@ func (pt *ProgramTester) getProjinfo(projectDir string) (*engine.Projinfo, error
 
 // prepareProject runs setup necessary to get the project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareProject(projinfo *engine.Projinfo) error {
-	// Based on the language, invoke the right routine to prepare the target directory.
-	switch rt := projinfo.Proj.Runtime.Name(); rt {
-	case NodeJSRuntime:
-		return pt.prepareNodeJSProject(projinfo)
-	case PythonRuntime:
-		return pt.preparePythonProject(projinfo)
-	case GoRuntime:
-		return pt.prepareGoProject(projinfo)
-	case DotNetRuntime:
-		return pt.prepareDotNetProject(projinfo)
-	default:
-		return fmt.Errorf("unrecognized project runtime: %s", rt)
+	if pt.opts.PrepareProject != nil {
+		return pt.opts.PrepareProject(projinfo)
 	}
+	return pt.defaultPrepareProject(projinfo)
 }
 
 // prepareProjectDir runs setup necessary to get the project ready for `pulumi` commands.
@@ -1923,6 +1978,19 @@ func getRewritePath(pkg string, gopath string, depRoot string) string {
 
 }
 
+// Fetchs the GOPATH
+func GoPath() (string, error) {
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		usr, userErr := user.Current()
+		if userErr != nil {
+			return "", userErr
+		}
+		gopath = filepath.Join(usr.HomeDir, "go")
+	}
+	return gopath, nil
+}
+
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Go programs are compiled, so we will compile the project first.
@@ -1931,17 +1999,11 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		return fmt.Errorf("locating `go` binary: %w", err)
 	}
 
-	// Ensure GOPATH is known.
-	gopath := os.Getenv("GOPATH")
-	if gopath == "" {
-		usr, userErr := user.Current()
-		if userErr != nil {
-			return userErr
-		}
-		gopath = filepath.Join(usr.HomeDir, "go")
-	}
-
 	depRoot := os.Getenv("PULUMI_GO_DEP_ROOT")
+	gopath, userError := GoPath()
+	if userError != nil {
+		return userError
+	}
 
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
@@ -2009,29 +2071,57 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
 	if localNuget == "" {
 		home := os.Getenv("HOME")
-		localNuget = filepath.Join(home, ".pulumi", "nuget")
+		localNuget = filepath.Join(home, ".pulumi-dev", "nuget")
 	}
 
 	for _, dep := range pt.opts.Dependencies {
 
 		// dotnet add package requires a specific version in case of a pre-release, so we have to look it up.
-		matches, err := filepath.Glob(filepath.Join(localNuget, dep+".?.*.nupkg"))
+		globPattern := filepath.Join(localNuget, dep+".?.*.nupkg")
+		matches, err := filepath.Glob(globPattern)
 		if err != nil {
 			return fmt.Errorf("failed to find a local Pulumi NuGet package: %w", err)
 		}
 		if len(matches) != 1 {
-			return fmt.Errorf("attempting to find a local Pulumi NuGet package yielded %v results", matches)
+			return fmt.Errorf("attempting to find a local NuGet package %s by searching %s yielded %d results: %v",
+				dep,
+				globPattern,
+				len(matches),
+				matches)
 		}
 		file := filepath.Base(matches[0])
 		r := strings.NewReplacer(dep+".", "", ".nupkg", "")
 		version := r.Replace(file)
 
+		// We don't restore because the program might depend on external
+		// packages which cannot be found in our local nuget source. A restore
+		// will happen automatically as part of the `pulumi up`.
 		err = pt.runCommand("dotnet-add-package",
-			[]string{dotNetBin, "add", "package", dep, "-v", version}, cwd)
+			[]string{dotNetBin, "add", "package", dep,
+				"-v", version,
+				"-s", localNuget,
+				"--no-restore"},
+			cwd)
 		if err != nil {
 			return fmt.Errorf("failed to add dependency on %s: %w", dep, err)
 		}
 	}
 
 	return nil
+}
+
+func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error {
+	// Based on the language, invoke the right routine to prepare the target directory.
+	switch rt := projinfo.Proj.Runtime.Name(); rt {
+	case NodeJSRuntime:
+		return pt.prepareNodeJSProject(projinfo)
+	case PythonRuntime:
+		return pt.preparePythonProject(projinfo)
+	case GoRuntime:
+		return pt.prepareGoProject(projinfo)
+	case DotNetRuntime:
+		return pt.prepareDotNetProject(projinfo)
+	default:
+		return fmt.Errorf("unrecognized project runtime: %s", rt)
+	}
 }

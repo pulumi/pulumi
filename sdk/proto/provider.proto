@@ -106,9 +106,10 @@ message ConfigureErrorMissingKeys {
 message InvokeRequest {
     string tok = 1;                  // the function token to invoke.
     google.protobuf.Struct args = 2; // the arguments for the function invocation.
-    string provider = 3;             // an optional reference to the provider to use for this invoke.
+    string provider = 3;             // an optional reference to the provider version to use for this invoke.
     string version = 4;              // the version of the provider to use when servicing this request.
     bool acceptResources = 5;        // when true operations should return resource references as strongly typed.
+    string pluginDownloadURL = 6;    // an optional reference to the provider url to use for this invoke.
 }
 
 message InvokeResponse {
@@ -127,6 +128,7 @@ message CallRequest {
     map<string, ArgumentDependencies> argDependencies = 3; // a map from argument keys to the dependencies of the argument.
     string provider = 4;                                   // an optional reference to the provider to use for this invoke.
     string version = 5;                                    // the version of the provider to use when servicing this request.
+    string pluginDownloadURL = 13;                         // the pluginDownloadURL of the provider to use when servicing this request.
 
     string project = 6;             // the project name.
     string stack = 7;               // the name of the stack being deployed into.
@@ -152,6 +154,7 @@ message CheckRequest {
     string urn = 1;                  // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 2; // the old Pulumi inputs for this resource, if any.
     google.protobuf.Struct news = 3; // the new Pulumi inputs for this resource.
+    int32 sequenceNumber = 4;        // the sequence number for this resource, or 0 if sequence is unknown.
 }
 
 message CheckResponse {

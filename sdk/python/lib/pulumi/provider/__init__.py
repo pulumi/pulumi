@@ -15,10 +15,4 @@
 from pulumi.provider.provider import Provider, CallResult, CheckFailure, ConstructResult
 from pulumi.provider.server import main
 
-__all__ = [
-    'Provider',
-    'CallResult',
-    'CheckFailure',
-    'ConstructResult',
-    'main'
-]
+__all__ = ["Provider", "CallResult", "CheckFailure", "ConstructResult", "main"]

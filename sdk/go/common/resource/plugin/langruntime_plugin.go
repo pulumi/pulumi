@@ -50,12 +50,9 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil)
 	if err != nil {
 		return nil, err
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind: workspace.LanguagePlugin,
-			Name: runtime,
-		})
 	}
+
+	contract.Assert(path != "")
 
 	args, err := buildArgsForNewPlugin(host, ctx, options)
 	if err != nil {
@@ -147,10 +144,10 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
 		}
 		results = append(results, workspace.PluginInfo{
-			Name:      info.GetName(),
-			Kind:      workspace.PluginKind(info.GetKind()),
-			Version:   version,
-			ServerURL: info.GetServer(),
+			Name:              info.GetName(),
+			Kind:              workspace.PluginKind(info.GetKind()),
+			Version:           version,
+			PluginDownloadURL: info.GetServer(),
 		})
 	}
 

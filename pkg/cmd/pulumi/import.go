@@ -63,13 +63,18 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 	return name, resource.URN(urn), nil
 }
 
-func makeImportFile(typ, name, id, parentSpec, providerSpec, version string) (importFile, error) {
+func makeImportFile(
+	typ, name, id string,
+	properties []string,
+	parentSpec, providerSpec, version string) (importFile, error) {
+
 	nameTable := map[string]resource.URN{}
 	resource := importSpec{
-		Type:    tokens.Type(typ),
-		Name:    tokens.QName(name),
-		ID:      resource.ID(id),
-		Version: version,
+		Type:       tokens.Type(typ),
+		Name:       tokens.QName(name),
+		ID:         resource.ID(id),
+		Version:    version,
+		Properties: properties,
 	}
 
 	if parentSpec != "" {
@@ -97,12 +102,13 @@ func makeImportFile(typ, name, id, parentSpec, providerSpec, version string) (im
 }
 
 type importSpec struct {
-	Type     tokens.Type  `json:"type"`
-	Name     tokens.QName `json:"name"`
-	ID       resource.ID  `json:"id"`
-	Parent   string       `json:"parent"`
-	Provider string       `json:"provider"`
-	Version  string       `json:"version"`
+	Type       tokens.Type  `json:"type"`
+	Name       tokens.QName `json:"name"`
+	ID         resource.ID  `json:"id"`
+	Parent     string       `json:"parent"`
+	Provider   string       `json:"provider"`
+	Version    string       `json:"version"`
+	Properties []string     `json:"properties"`
 }
 
 type importFile struct {
@@ -134,10 +140,11 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 	imports := make([]deploy.Import, len(f.Resources))
 	for i, spec := range f.Resources {
 		imp := deploy.Import{
-			Type:    spec.Type,
-			Name:    spec.Name,
-			ID:      spec.ID,
-			Protect: protectResources,
+			Type:       spec.Type,
+			Name:       spec.Name,
+			ID:         spec.ID,
+			Protect:    protectResources,
+			Properties: spec.Properties,
 		}
 
 		if spec.Parent != "" {
@@ -195,7 +202,7 @@ func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
 
 type programGeneratorFunc func(p *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
-func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectName tokens.PackageName,
+func generateImportedDefinitions(out io.Writer, stackName tokens.Name, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
 	imports []deploy.Import, protectResources bool) (bool, error) {
 
@@ -226,7 +233,7 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectN
 		if i.Parent != "" {
 			parentType = i.Parent.QualifiedType()
 		}
-		urn := resource.NewURN(stackName, projectName, parentType, i.Type, i.Name)
+		urn := resource.NewURN(stackName.Q(), projectName, parentType, i.Type, i.Name)
 		if state, ok := resourceTable[urn]; ok {
 			// Copy the state and override the protect bit.
 			s := *state
@@ -272,6 +279,7 @@ func newImportCmd() *cobra.Command {
 	var providerSpec string
 	var importFilePath string
 	var outputFilePath string
+	var generateCode bool
 
 	var debug bool
 	var message string
@@ -289,6 +297,7 @@ func newImportCmd() *cobra.Command {
 	var suppressPermalink string
 	var yes bool
 	var protectResources bool
+	var properties []string
 
 	cmd := &cobra.Command{
 		Use:   "import [type] [name] [id]",
@@ -324,6 +333,7 @@ func newImportCmd() *cobra.Command {
 			"                \"parent\": \"optional-parent-name\",\n" +
 			"                \"provider\": \"optional-provider-name\",\n" +
 			"                \"version\": \"optional-provider-version\",\n" +
+			"                \"properties\": [\"optional-property-names\"],\n" +
 			"            },\n" +
 			"            ...\n" +
 			"            {\n" +
@@ -343,11 +353,14 @@ func newImportCmd() *cobra.Command {
 			"these names must correspond to entries in the name table. If a resource does not\n" +
 			"specify a provider, it will be imported using the default provider for its type. A\n" +
 			"resource that does specify a provider may specify the version of the provider\n" +
-			"that will be used for its import.\n",
+			"that will be used for its import.\n" +
+			"Each resource may specify which input properties to import with;\n" +
+			"If a resource does not specify any properties the default behaviour is to\n" +
+			"import using all required properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			var importFile importFile
 			if importFilePath != "" {
-				if len(args) != 0 || parentSpec != "" || providerSpec != "" {
+				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
 					return result.Errorf("an inline resource may not be specified in conjunction with an import file")
 				}
 				f, err := readImportFile(importFilePath)
@@ -356,14 +369,18 @@ func newImportCmd() *cobra.Command {
 				}
 				importFile = f
 			} else {
-				if len(args) != 3 {
+				if len(args) < 3 {
 					return result.Errorf("an inline resource must be specified if no import file is used")
 				}
-				f, err := makeImportFile(args[0], args[1], args[2], parentSpec, providerSpec, "")
+				f, err := makeImportFile(args[0], args[1], args[2], properties, parentSpec, providerSpec, "")
 				if err != nil {
 					return result.FromError(err)
 				}
 				importFile = f
+			}
+
+			if !generateCode && outputFilePath != "" {
+				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
 			}
 
 			var outputResult bytes.Buffer
@@ -484,49 +501,41 @@ func newImportCmd() *cobra.Command {
 				Scopes:             cancellationScopes,
 			}, imports)
 
-			deployment, err := getCurrentDeploymentForStack(s)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			validImports, err := generateImportedDefinitions(
-				output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
-				protectResources)
-			if err != nil {
-				if _, ok := err.(*importer.DiagnosticsError); ok {
-					err = fmt.Errorf("internal error: %w", err)
+			if generateCode {
+				deployment, err := getCurrentDeploymentForStack(s)
+				if err != nil {
+					return result.FromError(err)
 				}
-				return result.FromError(err)
-			}
 
-			if validImports {
-				// we only want to output the helper string if there is a set of valid imports to convert into code
-				// this protects against invalid package types or import errors that will not actually result in
-				// in a codegen call
-				// It's a little bit more memory but is a better experience that writing to stdout and then an error
-				// occurring
-				var helperOutputResult bytes.Buffer
-				helperWriter := io.Writer(&helperOutputResult)
-				if outputFilePath == "" {
-					_, err := helperWriter.Write([]byte("Please copy the following code into your Pulumi application. Not doing so\n" +
-						"will cause Pulumi to report that an update will happen on the next update command.\n\n"))
-					if err != nil {
-						return result.FromError(err)
+				validImports, err := generateImportedDefinitions(
+					output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+					protectResources)
+				if err != nil {
+					if _, ok := err.(*importer.DiagnosticsError); ok {
+						err = fmt.Errorf("internal error: %w", err)
 					}
-					if protectResources {
-						_, err := helperWriter.Write([]byte("Please note that the imported resources are marked as protected. " +
-							"To destroy them\n" +
-							"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
-							"the destroy will take effect.\n\n"))
-						if err != nil {
-							return result.FromError(err)
+					return result.FromError(err)
+				}
+
+				if validImports {
+					// we only want to output the helper string if there is a set of valid imports to convert into code
+					// this protects against invalid package types or import errors that will not actually result in
+					// in a codegen call
+					// It's a little bit more memory but is a better experience that writing to stdout and then an error
+					// occurring
+					if outputFilePath == "" {
+						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
+							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
+						if protectResources {
+							fmt.Print(("Please note that the imported resources are marked as protected. " +
+								"To destroy them\n" +
+								"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
+								"the destroy will take effect.\n\n"))
 						}
+						fmt.Print(outputResult.String())
 					}
-					fmt.Printf(helperOutputResult.String())
 				}
 			}
-
-			fmt.Printf(outputResult.String())
 
 			if res != nil {
 				if res.Error() == context.Canceled {
@@ -544,10 +553,15 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
 		&providerSpec, "provider", "", "The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource")
+	cmd.PersistentFlags().StringSliceVar(
+		//nolint:lll
+		&properties, "properties", nil, "The property names to use for the import in the format name1,name2")
 	cmd.PersistentFlags().StringVarP(
 		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")
 	cmd.PersistentFlags().StringVarP(
 		&outputFilePath, "out", "o", "", "The path to the file that will contain the generated resource declarations")
+	cmd.PersistentFlags().BoolVar(
+		&generateCode, "generate-code", true, "Generate resource declaration code for the imported resources")
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,

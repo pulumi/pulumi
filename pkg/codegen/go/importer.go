@@ -60,6 +60,21 @@ type GoPackageInfo struct {
 	// Feature flag to disable generating input type registration. This is a
 	// space saving measure.
 	DisableInputTypeRegistrations bool `json:"disableInputTypeRegistrations,omitempty"`
+
+	// Feature flag to disable generating Pulumi object default functions. This is a
+	// space saving measure.
+	DisableObjectDefaults bool `json:"disableObjectDefaults,omitempty"`
+
+	// GenerateExtraInputTypes determines whether or not the code generator generates input (and output) types for
+	// all plain types, instead of for only types that are used as input/output types.
+	GenerateExtraInputTypes bool `json:"generateExtraInputTypes,omitempty"`
+
+	// Respect the Pkg.Version field for emitted code.
+	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
+
+	// InternalDependencies are blank imports that are emitted in the SDK so that `go mod tidy` does not remove the
+	// associated module dependencies from the SDK's go.mod.
+	InternalDependencies []string `json:"internalDependencies,omitempty"`
 }
 
 // Importer implements schema.Language for Go.

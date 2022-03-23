@@ -40,13 +40,14 @@ type ResourceState struct {
 
 	urn URNOutput `pulumi:"urn"`
 
-	children        resourceSet
-	providers       map[string]ProviderResource
-	provider        ProviderResource
-	version         string
-	aliases         []URNOutput
-	name            string
-	transformations []ResourceTransformation
+	children          resourceSet
+	providers         map[string]ProviderResource
+	provider          ProviderResource
+	version           string
+	pluginDownloadURL string
+	aliases           []URNOutput
+	name              string
+	transformations   []ResourceTransformation
 
 	remoteComponent bool
 }
@@ -93,6 +94,10 @@ func (s *ResourceState) getProvider() ProviderResource {
 
 func (s *ResourceState) getVersion() string {
 	return s.version
+}
+
+func (s *ResourceState) getPluginDownloadURL() string {
+	return s.pluginDownloadURL
 }
 
 func (s *ResourceState) getAliases() []URNOutput {
@@ -192,6 +197,9 @@ type Resource interface {
 	// getVersion returns the version for the resource.
 	getVersion() string
 
+	// getPluginDownloadURL returns the provider plugin download url
+	getPluginDownloadURL() string
+
 	// getAliases returns the list of aliases for this resource
 	getAliases() []URNOutput
 
@@ -287,6 +295,12 @@ type resourceOptions struct {
 	// operating on this resource. This version overrides the version information inferred from the current package and
 	// should rarely be used.
 	Version string
+	// PluginDownloadURL is an optional url, corresponding to the download url of the provider
+	// plugin that should be used when operating on this resource. This url overrides the url
+	// information inferred from the current package and should rarely be used.
+	PluginDownloadURL string
+	// If set to True, the providers Delete method will not be called for this resource.
+	RetainOnDelete bool
 }
 
 type invokeOptions struct {
@@ -296,6 +310,10 @@ type invokeOptions struct {
 	Provider ProviderResource
 	// Version is an optional version of the provider plugin to use for the invoke.
 	Version string
+	// PluginDownloadURL is an optional url, corresponding to the download url of the provider
+	// plugin that should be used when operating on this resource. This url overrides the url
+	// information inferred from the current package and should rarely be used.
+	PluginDownloadURL string
 }
 
 type ResourceOption interface {
@@ -515,5 +533,26 @@ func Version(o string) ResourceOrInvokeOption {
 		case io != nil:
 			io.Version = o
 		}
+	})
+}
+
+// PluginDownloadURL is an optional url, corresponding to the download url of the provider plugin
+// that should be used when operating on this resource. This url overrides the url information
+// inferred from the current package and should rarely be used.
+func PluginDownloadURL(o string) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+		switch {
+		case ro != nil:
+			ro.PluginDownloadURL = o
+		case io != nil:
+			io.PluginDownloadURL = o
+		}
+	})
+}
+
+// If set to True, the providers Delete method will not be called for this resource.
+func RetainOnDelete(b bool) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.RetainOnDelete = b
 	})
 }

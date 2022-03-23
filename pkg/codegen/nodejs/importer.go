@@ -66,6 +66,9 @@ type NodePackageInfo struct {
 	ExtraTypeScriptFiles []string `json:"extraTypeScriptFiles,omitempty"`
 	// Determines whether to make single-return-value methods return an output object or the single value.
 	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
+
+	// Respect the Pkg.Version field in the schema
+	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
 }
 
 // NodeObjectInfo contains NodeJS-specific information for an object.

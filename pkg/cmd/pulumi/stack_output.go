@@ -84,6 +84,11 @@ func newStackOutputCmd() *cobra.Command {
 			} else {
 				printStackOutputs(outputs)
 			}
+
+			if showSecrets {
+				log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack output")
+			}
+
 			return nil
 		}),
 	}

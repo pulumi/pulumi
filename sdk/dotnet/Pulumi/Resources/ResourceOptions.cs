@@ -9,6 +9,10 @@ namespace Pulumi
     /// </summary>
     public abstract partial class ResourceOptions
     {
+
+        // NOTE: When you add a field to ResourceOptions, make sure to update
+        // ResourceOptions_Merge.cs and ResourceOptions_Copy.cs.
+
         /// <summary>
         /// An optional existing ID to load, rather than create.
         /// </summary>
@@ -107,5 +111,17 @@ namespace Pulumi
         }
 
         internal abstract ResourceOptions Clone();
+
+        /// <summary>
+        /// An optional URL, corresponding to the url from which the provider plugin that should be
+        /// used when operating on this resource is downloaded from. This URL overrides the download URL
+        /// inferred from the current package and should rarely be used.
+        /// </summary>
+        public string? PluginDownloadURL { get; set; }
+
+        /// <summary>
+        /// If set to True, the providers Delete method will not be called for this resource.
+        /// </summary>
+        public bool? RetainOnDelete { get; set; }
     }
 }

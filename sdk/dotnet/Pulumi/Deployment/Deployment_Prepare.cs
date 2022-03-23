@@ -14,8 +14,6 @@ namespace Pulumi
             string label, Resource res, bool custom, bool remote,
             ResourceArgs args, ResourceOptions options)
         {
-            /* IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
-
             // Before we can proceed, all our dependencies must be finished.
             var type = res.GetResourceType();
             var name = res.GetResourceName();
@@ -50,16 +48,43 @@ namespace Pulumi
             {
                 var customOpts = options as CustomResourceOptions;
                 providerRef = await ProviderResource.RegisterAsync(customOpts?.Provider).ConfigureAwait(false);
+
+                // Note: because of the hard distinction between custom and
+                // component resources, we don't fully mirror the behavior found
+                // in other SDKs. Because custom resources are passed with
+                // CustomResourceOptions, there is no Providers list. This makes
+                // it nonsensical to find a candidate for Provider in Providers.
+
+                if (providerRef == null)
+                {
+                    var t = res.GetResourceType();
+                    var parentRef = customOpts?.Parent?.GetProvider(t);
+                    providerRef = await ProviderResource.RegisterAsync(parentRef).ConfigureAwait(false);
+                }
             }
 
             var providerRefs = new Dictionary<string, string>();
             if (remote && options is ComponentResourceOptions componentOpts)
             {
-                // If only the Provider opt is set, move it to the Providers list for further processing.
-                if (componentOpts.Provider != null && componentOpts.Providers.Count == 0)
+                if (componentOpts.Provider != null)
                 {
-                    componentOpts.Providers.Add(componentOpts.Provider);
-                    componentOpts.Provider = null;
+                    var duplicate = false;
+                    foreach (var p in componentOpts.Providers)
+                    {
+                        if (p.Package == componentOpts.Provider.Package)
+                        {
+                            duplicate = true;
+                            await _logger.WarnAsync(
+                                $"Conflict between provider and providers field for package '{p.Package}'. "+
+                                "This behavior is depreciated, and will turn into an error July 2022. "+
+                                "For more information, see https://github.com/pulumi/pulumi/issues/8799.", res)
+                                .ConfigureAwait(false);
+                        }
+                    }
+                    if (!duplicate)
+                    {
+                        componentOpts.Providers.Add(componentOpts.Provider);
+                    }
                 }
 
                 foreach (var provider in componentOpts.Providers)

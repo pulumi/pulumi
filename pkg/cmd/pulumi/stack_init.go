@@ -107,15 +107,11 @@ func newStackInitCmd() *cobra.Command {
 				return errors.New("missing stack name")
 			}
 
-			formattedStackName, err := buildStackName(stackName)
-			if err != nil {
-				return err
-			}
-			if err := b.ValidateStackName(formattedStackName); err != nil {
+			if err := b.ValidateStackName(stackName); err != nil {
 				return err
 			}
 
-			stackRef, err := b.ParseStackReference(formattedStackName)
+			stackRef, err := b.ParseStackReference(stackName)
 			if err != nil {
 				return err
 			}

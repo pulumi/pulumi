@@ -19,8 +19,6 @@ import (
 	"os"
 	"sort"
 
-	"github.com/blang/semver"
-
 	"golang.org/x/sync/errgroup"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -89,7 +87,7 @@ func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pl
 
 		logging.V(preparePluginLog).Infof(
 			"gatherPluginsFromProgram(): plugin %s %s (%s) is required by language host",
-			plug.Name, plug.Version, plug.ServerURL)
+			plug.Name, plug.Version, plug.PluginDownloadURL)
 		set.Add(plug)
 	}
 	return set, nil
@@ -116,12 +114,17 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 		if err != nil {
 			return set, err
 		}
+		downloadURL, err := providers.GetProviderDownloadURL(res.Inputs)
+		if err != nil {
+			return set, err
+		}
 		logging.V(preparePluginLog).Infof(
 			"gatherPluginsFromSnapshot(): plugin %s %s is required by first-class provider %q", pkg, version, urn)
 		set.Add(workspace.PluginInfo{
-			Name:    pkg.String(),
-			Kind:    workspace.ResourcePlugin,
-			Version: version,
+			Name:              pkg.String(),
+			Kind:              workspace.ResourcePlugin,
+			Version:           version,
+			PluginDownloadURL: downloadURL,
 		})
 	}
 	return set, nil
@@ -182,7 +185,7 @@ func installPlugin(plugin workspace.PluginInfo) error {
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
-	if err := plugin.Install(stream); err != nil {
+	if err := plugin.Install(stream, false); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",
 			plugin.Kind, plugin.Name, plugin.Version, err)
 
@@ -200,16 +203,16 @@ func installPlugin(plugin workspace.PluginInfo) error {
 //
 // The justification for favoring language plugins over all else is that, ultimately, it is the language plugin that
 // produces resource registrations and therefore it is the language plugin that should dictate exactly what plugins to
-// use to satisfy a resource registration. Since we do not today request a particular version of a plugin via
-// RegisterResource (pulumi/pulumi#2389), this is the best we can do to infer the version that the language plugin
-// actually wants.
+// use to satisfy a resource registration. SDKs have the opportunity to specify what plugin (pluginDownloadURL and
+// version) they want to use in RegisterResource. If the plugin is left unspecified, we make a best guess effort to
+// infer the version and url that the language plugin actually wants.
 //
 // Whenever a resource arrives via RegisterResource and does not explicitly specify which provider to use, the engine
 // injects a "default" provider resource that will serve as that resource's provider. This function computes the map
 // that the engine uses to determine which version of a particular provider to load.
 //
 // it is critical that this function be 100% deterministic.
-func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]*semver.Version {
+func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]workspace.PluginInfo {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
@@ -283,10 +286,10 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 		}
 	}
 
-	defaultProviderVersions := make(map[tokens.Package]*semver.Version)
+	defaultProviderInfo := make(map[tokens.Package]workspace.PluginInfo)
 	for name, plugin := range defaultProviderPlugins {
-		defaultProviderVersions[name] = plugin.Version
+		defaultProviderInfo[name] = plugin
 	}
 
-	return defaultProviderVersions
+	return defaultProviderInfo
 }

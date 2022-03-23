@@ -51,6 +51,11 @@ func (ss StringSet) Has(s string) bool {
 	return ok
 }
 
+// StringSet.Except returns the string set setminus s.
+func (ss StringSet) Except(s string) StringSet {
+	return ss.Subtract(NewStringSet(s))
+}
+
 func (ss StringSet) SortedValues() []string {
 	values := make([]string, 0, len(ss))
 	for v := range ss {

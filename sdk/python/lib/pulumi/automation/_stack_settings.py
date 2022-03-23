@@ -16,7 +16,8 @@ from typing import Optional, Any, Dict
 
 
 class StackSettingsSecureConfigValue:
-    """ A secret Stack config entry."""
+    """A secret Stack config entry."""
+
     secure: str
 
     def __init__(self, secure: str):
@@ -25,16 +26,19 @@ class StackSettingsSecureConfigValue:
 
 class StackSettings:
     """A description of the Stack's configuration and encryption metadata."""
+
     secrets_provider: Optional[str]
     encrypted_key: Optional[str]
     encryption_salt: Optional[str]
     config: Optional[Dict[str, Any]]
 
-    def __init__(self,
-                 secrets_provider: Optional[str] = None,
-                 encrypted_key: Optional[str] = None,
-                 encryption_salt: Optional[str] = None,
-                 config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        secrets_provider: Optional[str] = None,
+        encrypted_key: Optional[str] = None,
+        encryption_salt: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ):
         self.secrets_provider = secrets_provider
         self.encrypted_key = encrypted_key
         self.encryption_salt = encryption_salt
@@ -51,10 +55,12 @@ class StackSettings:
                 elif "secure" in val:
                     stack_config[key] = StackSettingsSecureConfigValue(**val)
             config = stack_config
-        return cls(secrets_provider=data.get("secretsprovider"),
-                   encrypted_key=data.get("encryptedkey"),
-                   encryption_salt=data.get("encryptionsalt"),
-                   config=config)
+        return cls(
+            secrets_provider=data.get("secretsprovider"),
+            encrypted_key=data.get("encryptedkey"),
+            encryption_salt=data.get("encryptionsalt"),
+            config=config,
+        )
 
     def _serialize(self):
         serializable = {}

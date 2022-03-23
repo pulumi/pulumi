@@ -23,8 +23,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/blang/semver"
-
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -32,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -105,23 +102,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 	contract.Require(snap != nil, "snap")
 
 	// Capture the version information into a manifest.
-	manifest := apitype.ManifestV1{
-		Time:    snap.Manifest.Time,
-		Magic:   snap.Manifest.Magic,
-		Version: snap.Manifest.Version,
-	}
-	for _, plug := range snap.Manifest.Plugins {
-		var version string
-		if plug.Version != nil {
-			version = plug.Version.String()
-		}
-		manifest.Plugins = append(manifest.Plugins, apitype.PluginInfoV1{
-			Name:    plug.Name,
-			Path:    plug.Path,
-			Type:    plug.Kind,
-			Version: version,
-		})
-	}
+	manifest := snap.Manifest.Serialize()
 
 	// If a specific secrets manager was not provided, use the one in the snapshot, if present.
 	if sm == nil {
@@ -223,25 +204,9 @@ func DeserializeUntypedDeployment(
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
 func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv SecretsProvider) (*deploy.Snapshot, error) {
 	// Unpack the versions.
-	manifest := deploy.Manifest{
-		Time:    deployment.Manifest.Time,
-		Magic:   deployment.Manifest.Magic,
-		Version: deployment.Manifest.Version,
-	}
-	for _, plug := range deployment.Manifest.Plugins {
-		var version *semver.Version
-		if v := plug.Version; v != "" {
-			sv, err := semver.ParseTolerant(v)
-			if err != nil {
-				return nil, err
-			}
-			version = &sv
-		}
-		manifest.Plugins = append(manifest.Plugins, workspace.PluginInfo{
-			Name:    plug.Name,
-			Kind:    plug.Type,
-			Version: version,
-		})
+	manifest, err := deploy.DeserializeManifest(deployment.Manifest)
+	if err != nil {
+		return nil, err
 	}
 
 	var secretsManager secrets.Manager
@@ -267,7 +232,23 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv Secret
 		if err != nil {
 			return nil, err
 		}
-		dec = d
+
+		// Do a first pass through state and collect all of the secrets that need decrypting.
+		// We will collect all secrets and decrypt them all at once, rather than just-in-time.
+		// We do this to avoid serial calls to the decryption endpoint which can result in long
+		// wait times in stacks with a large number of secrets.
+		var ciphertexts []string
+		for _, res := range deployment.Resources {
+			collectCiphertexts(&ciphertexts, res.Inputs)
+			collectCiphertexts(&ciphertexts, res.Outputs)
+		}
+
+		// Decrypt the collected secrets and create a decrypter that will use the result as a cache.
+		cache, err := config.BulkDecrypt(d, ciphertexts)
+		if err != nil {
+			return nil, err
+		}
+		dec = newMapDecrypter(d, cache)
 
 		e, err := secretsManager.Encrypter()
 		if err != nil {
@@ -295,7 +276,7 @@ func DeserializeDeploymentV3(deployment apitype.DeploymentV3, secretsProv Secret
 		ops = append(ops, desop)
 	}
 
-	return deploy.NewSnapshot(manifest, secretsManager, resources, ops), nil
+	return deploy.NewSnapshot(*manifest, secretsManager, resources, ops), nil
 }
 
 // SerializeResource turns a resource into a structure suitable for serialization.
@@ -340,6 +321,8 @@ func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bo
 		AdditionalSecretOutputs: res.AdditionalSecretOutputs,
 		Aliases:                 res.Aliases,
 		ImportID:                res.ImportID,
+		SequenceNumber:          res.SequenceNumber,
+		RetainOnDelete:          res.RetainOnDelete,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -431,7 +414,7 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 
 	if prop.IsSecret() {
 		// Since we are going to encrypt property value, we can elide encrypting sub-elements. We'll mark them as
-		// "secret" so we retain that information when deserializaing the overall structure, but there is no
+		// "secret" so we retain that information when deserializing the overall structure, but there is no
 		// need to double encrypt everything.
 		value, err := SerializePropertyValue(prop.SecretValue().Element, config.NopEncrypter, showSecrets)
 		if err != nil {
@@ -473,6 +456,26 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 	return prop.V, nil
 }
 
+// collectCiphertexts collects encrypted secrets from resource properties.
+func collectCiphertexts(ciphertexts *[]string, prop interface{}) {
+	switch prop := prop.(type) {
+	case []interface{}:
+		for _, v := range prop {
+			collectCiphertexts(ciphertexts, v)
+		}
+	case map[string]interface{}:
+		if prop[resource.SigKey] == resource.SecretSig {
+			if ciphertext, cipherOk := prop["ciphertext"].(string); cipherOk {
+				*ciphertexts = append(*ciphertexts, ciphertext)
+			}
+		} else {
+			for _, v := range prop {
+				collectCiphertexts(ciphertexts, v)
+			}
+		}
+	}
+}
+
 // DeserializeResource turns a serialized resource back into its usual form.
 func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc config.Encrypter) (*resource.State, error) {
 	// Deserialize the resource properties, if they exist.
@@ -501,7 +504,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
 		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
 		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases, res.CustomTimeouts,
-		res.ImportID), nil
+		res.ImportID, res.SequenceNumber, res.RetainOnDelete), nil
 }
 
 func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter,
@@ -593,7 +596,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					} else {
 						unencryptedText, err := dec.DecryptValue(ciphertext)
 						if err != nil {
-							return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
+							return resource.PropertyValue{}, fmt.Errorf("error decrypting secret value: %s", err.Error())
 						}
 						plaintext = unencryptedText
 					}

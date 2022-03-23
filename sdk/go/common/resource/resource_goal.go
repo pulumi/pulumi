@@ -32,12 +32,14 @@ type Goal struct {
 	InitErrors              []string              // errors encountered as we attempted to initialize the resource.
 	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
 	DeleteBeforeReplace     *bool                 // true if this resource should be deleted prior to replacement.
-	IgnoreChanges           []string              // a list of property names to ignore during changes.
+	IgnoreChanges           []string              // a list of property paths to ignore when diffing.
 	AdditionalSecretOutputs []PropertyKey         // outputs that should always be treated as secrets.
 	Aliases                 []URN                 // additional URNs that should be aliased to this resource.
 	ID                      ID                    // the expected ID of the resource, if any.
 	CustomTimeouts          CustomTimeouts        // an optional config object for resource options
 	ReplaceOnChanges        []string              // a list of property paths that if changed should force a replacement.
+	// if set to True, the providers Delete method will not be called for this resource.
+	RetainOnDelete bool
 }
 
 // NewGoal allocates a new resource goal state.
@@ -45,7 +47,7 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 	parent URN, protect bool, dependencies []URN, provider string, initErrors []string,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []URN, id ID, customTimeouts *CustomTimeouts,
-	replaceOnChanges []string) *Goal {
+	replaceOnChanges []string, retainOnDelete bool) *Goal {
 
 	g := &Goal{
 		Type:                    t,
@@ -64,6 +66,7 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 		Aliases:                 aliases,
 		ID:                      id,
 		ReplaceOnChanges:        replaceOnChanges,
+		RetainOnDelete:          retainOnDelete,
 	}
 
 	if customTimeouts != nil {

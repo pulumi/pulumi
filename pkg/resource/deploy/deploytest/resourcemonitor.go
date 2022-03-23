@@ -93,11 +93,13 @@ type ResourceOptions struct {
 	PropertyDeps          map[resource.PropertyKey][]resource.URN
 	DeleteBeforeReplace   *bool
 	Version               string
+	PluginDownloadURL     string
 	IgnoreChanges         []string
 	ReplaceOnChanges      []string
 	Aliases               []resource.URN
 	ImportID              resource.ID
 	CustomTimeouts        *resource.CustomTimeouts
+	RetainOnDelete        bool
 	SupportsPartialValues *bool
 	Remote                bool
 	Providers             map[string]string
@@ -188,6 +190,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Remote:                     opts.Remote,
 		ReplaceOnChanges:           opts.ReplaceOnChanges,
 		Providers:                  opts.Providers,
+		PluginDownloadURL:          opts.PluginDownloadURL,
+		RetainOnDelete:             opts.RetainOnDelete,
 	}
 
 	// submit request

@@ -81,13 +81,9 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
 	if err != nil {
 		return nil, err
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind:    workspace.ResourcePlugin,
-			Name:    string(pkg),
-			Version: version,
-		})
 	}
+
+	contract.Assert(path != "")
 
 	// Runtime options are passed as environment variables to the provider.
 	env := os.Environ()
@@ -526,7 +522,8 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN,
-	olds, news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
+	olds, news resource.PropertyMap,
+	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
@@ -562,9 +559,10 @@ func (p *provider) Check(urn resource.URN,
 	}
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
-		Urn:  string(urn),
-		Olds: molds,
-		News: mnews,
+		Urn:            string(urn),
+		Olds:           molds,
+		News:           mnews,
+		SequenceNumber: int32(sequenceNumber),
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -803,8 +801,8 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 func (p *provider) Read(urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (ReadResult, resource.Status, error) {
 
-	contract.Assert(urn != "")
-	contract.Assert(id != "")
+	contract.Assertf(urn != "", "Read URN was empty")
+	contract.Assertf(id != "", "Read ID was empty")
 
 	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), id, urn)
 	logging.V(7).Infof("%s executing (#inputs=%v, #state=%v)", label, len(inputs), len(state))

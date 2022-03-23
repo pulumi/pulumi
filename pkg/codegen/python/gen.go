@@ -165,9 +165,6 @@ func (mod *modContext) modNameAndName(pkg *schema.Package, t schema.Type, input 
 	}
 
 	modName = tokenToModule(token, pkg, info.ModuleNameOverrides)
-	if modName == mod.mod {
-		modName = ""
-	}
 	if modName != "" {
 		modName = strings.ReplaceAll(modName, "/", ".") + "."
 	}
@@ -393,10 +390,17 @@ func (fs fs) add(path string, contents []byte) {
 	fs[path] = contents
 }
 
-func genUtilitiesFile(tool string) []byte {
+func (mod *modContext) genUtilitiesFile() []byte {
 	buffer := &bytes.Buffer{}
-	genStandardHeader(buffer, tool)
-	fmt.Fprintf(buffer, "%s", utilitiesFile)
+	genStandardHeader(buffer, mod.tool)
+	fmt.Fprintf(buffer, utilitiesFile)
+	if url := mod.pkg.PluginDownloadURL; url != "" {
+		_, err := fmt.Fprintf(buffer, `
+def get_plugin_download_url():
+	return %q
+`, url)
+		contract.AssertNoError(err)
+	}
 	return buffer.Bytes()
 }
 
@@ -425,7 +429,7 @@ func (mod *modContext) gen(fs fs) error {
 	// Utilities, config, readme
 	switch mod.mod {
 	case "":
-		fs.add(filepath.Join(dir, "_utilities.py"), genUtilitiesFile(mod.tool))
+		fs.add(filepath.Join(dir, "_utilities.py"), mod.genUtilitiesFile())
 		fs.add(filepath.Join(dir, "py.typed"), []byte{})
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
@@ -1218,6 +1222,11 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
 	fmt.Fprintf(w, "        if opts.version is None:\n")
 	fmt.Fprintf(w, "            opts.version = _utilities.get_version()\n")
+	if mod.pkg.PluginDownloadURL != "" {
+		fmt.Fprintf(w, "        if opts.plugin_download_url is None:\n")
+		fmt.Fprintf(w, "            opts.plugin_download_url = _utilities.get_plugin_download_url()\n")
+	}
+
 	if res.IsComponent {
 		fmt.Fprintf(w, "        if opts.id is not None:\n")
 		fmt.Fprintf(w, "            raise ValueError('ComponentResource classes do not support opts.id')\n")
@@ -1696,6 +1705,10 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	fmt.Fprintf(w, "        opts = pulumi.InvokeOptions()\n")
 	fmt.Fprintf(w, "    if opts.version is None:\n")
 	fmt.Fprintf(w, "        opts.version = _utilities.get_version()\n")
+	if mod.pkg.PluginDownloadURL != "" {
+		fmt.Fprintf(w, "        if opts.plugin_download_url is None:\n")
+		fmt.Fprintf(w, "            opts.plugin_download_url = _utilities.get_plugin_download_url()\n")
+	}
 
 	// Now simply invoke the runtime function with the arguments.
 	var typ string
@@ -1941,15 +1954,19 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 	plugin := &plugin.PulumiPluginJSON{
 		Resource: true,
 		Name:     pkg.Name,
-		Version:  "${PLUGIN_VERSION}",
 		Server:   pkg.PluginDownloadURL,
 	}
+
+	if info, ok := pkg.Language["python"].(PackageInfo); pkg.Version != nil && ok && info.RespectSchemaVersion {
+		plugin.Version = pkg.Version.String()
+	}
+
 	return plugin.JSON()
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func genPackageMetadata(
-	tool string, pkg *schema.Package, pyPkgName string, emitPulumiPluginFile bool, requires map[string]string, pythonRequires string) (string, error) {
+	tool string, pkg *schema.Package, pyPkgName string, requires map[string]string, pythonRequires string) (string, error) {
 
 	w := &bytes.Buffer{}
 	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil)
@@ -1962,8 +1979,15 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "\n\n")
 
 	// Create a constant for the version number to replace during build
-	fmt.Fprintf(w, "VERSION = \"0.0.0\"\n")
-	fmt.Fprintf(w, "PLUGIN_VERSION = \"0.0.0\"\n\n")
+	version := "0.0.0"
+	pluginVersion := version
+	info, ok := pkg.Language["python"].(PackageInfo)
+	if pkg.Version != nil && ok && info.RespectSchemaVersion {
+		version = pypiVersion(*pkg.Version)
+		pluginVersion = pkg.Version.String()
+	}
+	fmt.Fprintf(w, "VERSION = \"%s\"\n", version)
+	fmt.Fprintf(w, "PLUGIN_VERSION = \"%s\"\n\n", pluginVersion)
 
 	// Create a command that will install the Pulumi plugin for this resource provider.
 	fmt.Fprintf(w, "class InstallPluginCommand(install):\n")
@@ -2039,9 +2063,7 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "      package_data={\n")
 	fmt.Fprintf(w, "          '%s': [\n", pyPkgName)
 	fmt.Fprintf(w, "              'py.typed',\n")
-	if emitPulumiPluginFile {
-		fmt.Fprintf(w, "              'pulumiplugin.json',\n")
-	}
+	fmt.Fprintf(w, "              'pulumi-plugin.json',\n")
 
 	fmt.Fprintf(w, "          ]\n")
 	fmt.Fprintf(w, "      },\n")
@@ -2823,17 +2845,15 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		}
 	}
 
-	// Generate pulumiplugin.json, if requested.
-	if info.EmitPulumiPluginFile {
-		plugin, err := genPulumiPluginFile(pkg)
-		if err != nil {
-			return nil, err
-		}
-		files.add(filepath.Join(pkgName, "pulumiplugin.json"), plugin)
+	// Generate pulumi-plugin.json
+	plugin, err := genPulumiPluginFile(pkg)
+	if err != nil {
+		return nil, err
 	}
+	files.add(filepath.Join(pkgName, "pulumi-plugin.json"), plugin)
 
 	// Finally emit the package metadata (setup.py).
-	setup, err := genPackageMetadata(tool, pkg, pkgName, info.EmitPulumiPluginFile, info.Requires, info.PythonRequires)
+	setup, err := genPackageMetadata(tool, pkg, pkgName, info.Requires, info.PythonRequires)
 	if err != nil {
 		return nil, err
 	}

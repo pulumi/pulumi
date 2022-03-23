@@ -5,9 +5,6 @@ RUN version=1.42.1 \
     && curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /go/bin v$version \
     && golangci-lint version
 
-# Install pipenv
-RUN pip install pipenv
-
 # Install pulumictl
 RUN version=0.0.25 \
     && curl -fsSLO https://github.com/pulumi/pulumictl/releases/download/v$version/pulumictl-v$version-linux-amd64.tar.gz \

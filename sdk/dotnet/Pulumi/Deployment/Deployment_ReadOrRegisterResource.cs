@@ -22,17 +22,9 @@ namespace Pulumi
             // finished.  Otherwise, we might actually read and get the result back *prior* to the
             // object finishing initializing.  Note: this is not a speculative concern. This is
             // something that does happen and has to be accounted for.
-            //
-            // IMPORTANT! We have to make sure we run 'OutputCompletionSource.InitializeOutputs'
-            // synchronously directly when `resource`'s constructor runs since this will set all of
-            // the `[Output(...)] Output<T>` properties.  We need those properties assigned by the
-            // time the base 'Resource' constructor finishes so that both derived classes and
-            // external consumers can use the Output properties of `resource`.
-            var completionSources = OutputCompletionSource.InitializeOutputs(resource);
-
             _runner.RegisterTask(
                 $"{nameof(IDeploymentInternal.ReadOrRegisterResource)}: {resource.GetResourceType()}-{resource.GetResourceName()}",
-                CompleteResourceAsync(resource, remote, newDependency, args, options, completionSources));
+                CompleteResourceAsync(resource, remote, newDependency, args, options, resource.CompletionSources));
         }
 
         private async Task<(string urn, string id, Struct data, ImmutableDictionary<string, ImmutableHashSet<Resource>> dependencies)> ReadOrRegisterResourceAsync(

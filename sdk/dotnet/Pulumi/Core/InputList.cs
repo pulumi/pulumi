@@ -57,9 +57,20 @@ namespace Pulumi
 
         public void Add(params Input<T>[] inputs)
         {
-            // Make an Output from the values passed in, mix in with our own Output, and combine
-            // both to produce the final array that we will now point at.
-            _outputValue = Output.Concat(_outputValue, Output.All(inputs));
+            _outputValue = Concat(inputs);
+        }
+
+        /// <summary>
+        /// Note: this is non-standard convenience for use with collection initializers.
+        /// </summary>
+        public void Add(InputList<T> inputs)
+        {
+            AddRange(inputs);
+        }
+
+        public void AddRange(InputList<T> inputs)
+        {
+            _outputValue = Concat(inputs);
         }
 
         /// <summary>

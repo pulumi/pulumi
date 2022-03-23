@@ -238,12 +238,14 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 }
 
 var functionNamespaces = map[string][]string{
-	"readDir":    {"System.IO", "System.Linq"},
-	"readFile":   {"System.IO"},
-	"filebase64": {"System", "System.IO"},
-	"toJSON":     {"System.Text.Json", "System.Collections.Generic"},
-	"toBase64":   {"System"},
-	"sha1":       {"System.Security.Cryptography", "System.Text"},
+	"readDir":          {"System.IO", "System.Linq"},
+	"readFile":         {"System.IO"},
+	"cwd":              {"System.IO"},
+	"filebase64":       {"System", "System.IO"},
+	"filebase64sha256": {"System", "System.IO", "System.Security.Cryptography", "System.Text"},
+	"toJSON":           {"System.Text.Json", "System.Collections.Generic"},
+	"toBase64":         {"System"},
+	"sha1":             {"System.Security.Cryptography", "System.Text"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
@@ -253,6 +255,28 @@ func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string 
 
 	pkg, _ := g.functionName(x.Args[0])
 	return []string{fmt.Sprintf("%s = Pulumi.%[1]s", pkg)}
+}
+
+func (g *generator) markTypeAsUsedInFunctionOutputVersionInputs(t model.Type) {
+	if g.usedInFunctionOutputVersionInputs == nil {
+		g.usedInFunctionOutputVersionInputs = make(map[schema.Type]bool)
+	}
+	schemaType, ok := g.toSchemaType(t)
+	if !ok {
+		return
+	}
+	g.usedInFunctionOutputVersionInputs[schemaType] = true
+}
+
+func (g *generator) visitToMarkTypesUsedInFunctionOutputVersionInputs(expr model.Expression) {
+	visitor := func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+		isCons, _, t := pcl.RecognizeTypedObjectCons(expr)
+		if isCons {
+			g.markTypeAsUsedInFunctionOutputVersionInputs(t)
+		}
+		return expr, nil
+	}
+	model.VisitExpression(expr, nil, visitor) // nolint:errcheck
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
@@ -291,13 +315,25 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "filebase64":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "ReadFileBase64(%v)", expr.Args[0])
+	case "filebase64sha256":
+		// Assuming the existence of the following helper method located earlier in the preamble
+		g.Fgenf(w, "ComputeFileBase64Sha256(%v)", expr.Args[0])
 	case pcl.Invoke:
 		_, name := g.functionName(expr.Args[0])
 
-		g.Fprintf(w, "%s.InvokeAsync(", name)
-		if len(expr.Args) >= 2 {
-			g.Fgenf(w, "%.v", expr.Args[1])
+		isOut, outArgs, outArgsTy := pcl.RecognizeOutputVersionedInvoke(expr)
+		if isOut {
+			g.visitToMarkTypesUsedInFunctionOutputVersionInputs(outArgs)
+			g.Fprintf(w, "%s.Invoke(", name)
+			typeName := g.argumentTypeNameWithSuffix(expr, outArgsTy, "InvokeArgs")
+			g.genObjectConsExpressionWithTypeName(w, outArgs, typeName)
+		} else {
+			g.Fprintf(w, "%s.InvokeAsync(", name)
+			if len(expr.Args) >= 2 {
+				g.Fgenf(w, "%.v", expr.Args[1])
+			}
 		}
+
 		if len(expr.Args) == 3 {
 			g.Fgenf(w, ", %.v", expr.Args[2])
 		}
@@ -330,6 +366,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "sha1":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "ComputeSHA1(%v)", expr.Args[0])
+	case "stack":
+		g.Fgen(w, "Deployment.Instance.StackName")
+	case "project":
+		g.Fgen(w, "Deployment.Instance.ProjectName")
+	case "cwd":
+		g.Fgenf(w, "Directory.GetCurrentDirectory()")
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
@@ -446,7 +488,18 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 		return
 	}
 
-	typeName := g.argumentTypeName(expr, destType)
+	destTypeName := g.argumentTypeName(expr, destType)
+	g.genObjectConsExpressionWithTypeName(w, expr, destTypeName)
+}
+
+func (g *generator) genObjectConsExpressionWithTypeName(
+	w io.Writer, expr *model.ObjectConsExpression, destTypeName string) {
+
+	if len(expr.Items) == 0 {
+		return
+	}
+
+	typeName := destTypeName
 	if typeName != "" {
 		g.Fgenf(w, "new %s", typeName)
 		g.Fgenf(w, "\n%s{\n", g.Indent)

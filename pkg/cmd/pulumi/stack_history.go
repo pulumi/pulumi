@@ -58,6 +58,10 @@ This command displays data about previous updates for a stack.`,
 				decrypter = crypter
 			}
 
+			if showSecrets {
+				log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack history")
+			}
+
 			if jsonOut {
 				return displayUpdatesJSON(updates, decrypter)
 			}

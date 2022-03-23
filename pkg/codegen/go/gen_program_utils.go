@@ -77,6 +77,15 @@ func getHelperMethodIfNeeded(functionName string) (string, bool) {
 						panic(err.Error())
 					}
 				}`, true
+	case "filebase64sha256":
+		return `func filebase64sha256OrPanic(path string) pulumi.StringPtrInput {
+					if fileData, err := ioutil.ReadFile(path); err == nil {
+						hashedData := sha256.Sum256([]byte(fileData))
+						return pulumi.String(base64.StdEncoding.EncodeToString(hashedData[:]))
+					} else {
+						panic(err.Error())
+					}
+				}`, true
 	case "sha1":
 		return `func sha1Hash(input string) string {
 				hash := sha1.Sum([]byte(input))

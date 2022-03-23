@@ -41,7 +41,7 @@ type cloudSecretsManagerState struct {
 
 // NewCloudSecretsManagerFromState deserialize configuration from state and returns a secrets
 // manager that uses the target cloud key management service to encrypt/decrypt a data key used for
-// envelope encyrtion of secrets values.
+// envelope encryption of secrets values.
 func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s cloudSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
@@ -52,7 +52,7 @@ func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, er
 }
 
 // GenerateNewDataKey generates a new DataKey seeded by a fresh random 32-byte key and encrypted
-// using the target coud key management service.
+// using the target cloud key management service.
 func GenerateNewDataKey(url string) ([]byte, error) {
 	plaintextDataKey := make([]byte, 32)
 	_, err := rand.Read(plaintextDataKey)

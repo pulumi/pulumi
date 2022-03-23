@@ -26,6 +26,162 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
+type BoolEnumInput interface {
+	Input
+
+	ToBoolEnumOutput() BoolEnumOutput
+	ToBoolEnumOutputWithContext(context.Context) BoolEnumOutput
+}
+
+type BoolEnumOutput struct{ *OutputState }
+
+func (BoolEnumOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BoolEnum)(nil)).Elem()
+}
+
+func (o BoolEnumOutput) ToBoolEnumOutput() BoolEnumOutput {
+	return o
+}
+
+func (o BoolEnumOutput) ToBoolEnumOutputWithContext(ctx context.Context) BoolEnumOutput {
+	return o
+}
+
+type BoolEnum bool
+
+func (BoolEnum) ElementType() reflect.Type {
+	return reflect.TypeOf((*BoolEnum)(nil)).Elem()
+}
+
+func (e BoolEnum) ToBoolEnumOutput() BoolEnumOutput {
+	return e.ToBoolEnumOutputWithContext(context.Background())
+}
+
+func (e BoolEnum) ToBoolEnumOutputWithContext(ctx context.Context) BoolEnumOutput {
+	return ToOutputWithContext(ctx, e).(BoolEnumOutput)
+}
+
+type BoolEnumInputArgs struct {
+	Value BoolEnumInput `pulumi:"value"`
+}
+
+type IntEnumInput interface {
+	Input
+
+	ToIntEnumOutput() IntEnumOutput
+	ToIntEnumOutputWithContext(context.Context) IntEnumOutput
+}
+
+type IntEnumOutput struct{ *OutputState }
+
+func (IntEnumOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*IntEnum)(nil)).Elem()
+}
+
+func (o IntEnumOutput) ToIntEnumOutput() IntEnumOutput {
+	return o
+}
+
+func (o IntEnumOutput) ToIntEnumOutputWithContext(ctx context.Context) IntEnumOutput {
+	return o
+}
+
+type IntEnum int
+
+func (IntEnum) ElementType() reflect.Type {
+	return reflect.TypeOf((*IntEnum)(nil)).Elem()
+}
+
+func (e IntEnum) ToIntEnumOutput() IntEnumOutput {
+	return e.ToIntEnumOutputWithContext(context.Background())
+}
+
+func (e IntEnum) ToIntEnumOutputWithContext(ctx context.Context) IntEnumOutput {
+	return ToOutputWithContext(ctx, e).(IntEnumOutput)
+}
+
+type IntEnumInputArgs struct {
+	Value IntEnumInput `pulumi:"value"`
+}
+
+type FloatEnumInput interface {
+	Input
+
+	ToFloatEnumOutput() FloatEnumOutput
+	ToFloatEnumOutputWithContext(context.Context) FloatEnumOutput
+}
+
+type FloatEnumOutput struct{ *OutputState }
+
+func (FloatEnumOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*FloatEnum)(nil)).Elem()
+}
+
+func (o FloatEnumOutput) ToFloatEnumOutput() FloatEnumOutput {
+	return o
+}
+
+func (o FloatEnumOutput) ToFloatEnumOutputWithContext(ctx context.Context) FloatEnumOutput {
+	return o
+}
+
+type FloatEnum float64
+
+func (FloatEnum) ElementType() reflect.Type {
+	return reflect.TypeOf((*FloatEnum)(nil)).Elem()
+}
+
+func (e FloatEnum) ToFloatEnumOutput() FloatEnumOutput {
+	return e.ToFloatEnumOutputWithContext(context.Background())
+}
+
+func (e FloatEnum) ToFloatEnumOutputWithContext(ctx context.Context) FloatEnumOutput {
+	return ToOutputWithContext(ctx, e).(FloatEnumOutput)
+}
+
+type FloatEnumInputArgs struct {
+	Value FloatEnumInput `pulumi:"value"`
+}
+
+type StringEnumInput interface {
+	Input
+
+	ToStringEnumOutput() StringEnumOutput
+	ToStringEnumOutputWithContext(context.Context) StringEnumOutput
+}
+
+type StringEnumOutput struct{ *OutputState }
+
+func (StringEnumOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*StringEnum)(nil)).Elem()
+}
+
+func (o StringEnumOutput) ToStringEnumOutput() StringEnumOutput {
+	return o
+}
+
+func (o StringEnumOutput) ToStringEnumOutputWithContext(ctx context.Context) StringEnumOutput {
+	return o
+}
+
+type StringEnum string
+
+func (StringEnum) ElementType() reflect.Type {
+	return reflect.TypeOf((*StringEnum)(nil)).Elem()
+}
+
+func (e StringEnum) ToStringEnumOutput() StringEnumOutput {
+	return e.ToStringEnumOutputWithContext(context.Background())
+}
+
+func (e StringEnum) ToStringEnumOutputWithContext(ctx context.Context) StringEnumOutput {
+	return ToOutputWithContext(ctx, e).(StringEnumOutput)
+}
+
+type StringEnumInputArgs struct {
+	Value StringEnumInput `pulumi:"value"`
+}
+
 type StringInputArgs struct {
 	Value StringInput `pulumi:"value"`
 }
@@ -391,6 +547,13 @@ type LaunchTemplateArgs struct {
 	Value LaunchTemplateOptionsPtrInput `pulumi:"value"`
 }
 
+func init() {
+	RegisterInputType(reflect.TypeOf((*BoolEnumInput)(nil)).Elem(), BoolEnum(false))
+	RegisterInputType(reflect.TypeOf((*IntEnumInput)(nil)).Elem(), IntEnum(0))
+	RegisterInputType(reflect.TypeOf((*FloatEnumInput)(nil)).Elem(), FloatEnum(0))
+	RegisterInputType(reflect.TypeOf((*StringEnumInput)(nil)).Elem(), StringEnum(""))
+}
+
 func assertOutputEqual(t *testing.T, value interface{}, known bool, secret bool, deps urnSet, output interface{}) {
 	actualValue, actualKnown, actualSecret, actualDeps, err := await(output.(Output))
 	assert.NoError(t, err)
@@ -410,6 +573,8 @@ func assertOutputEqual(t *testing.T, value interface{}, known bool, secret bool,
 }
 
 func TestConstructInputsCopyTo(t *testing.T) {
+	t.Parallel()
+
 	stringPtr := func(v string) *string {
 		return &v
 	}
@@ -660,6 +825,43 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			input:         resource.NewStringProperty("foo"),
 			args:          &IntArgs{},
 			expectedError: "unmarshaling value: expected an int, got a string",
+		},
+
+		// BoolEnumInputArgs
+		{
+			name:  "BoolEnumInput no deps",
+			input: resource.NewBoolProperty(true),
+			args:  &BoolEnumInputArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				assert.Equal(t, BoolEnum(true), actual)
+			},
+		},
+		// IntEnumInputArgs
+		{
+			name:  "IntEnumInput no deps",
+			input: resource.NewNumberProperty(42),
+			args:  &IntEnumInputArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				assert.Equal(t, IntEnum(42), actual)
+			},
+		},
+		// FloatEnumInputArgs
+		{
+			name:  "FloatEnumInput no deps",
+			input: resource.NewNumberProperty(42),
+			args:  &FloatEnumInputArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				assert.Equal(t, FloatEnum(42), actual)
+			},
+		},
+		// StringEnumInputArgs
+		{
+			name:  "StringEnumInput no deps",
+			input: resource.NewStringProperty("hello"),
+			args:  &StringEnumInputArgs{},
+			assert: func(t *testing.T, actual interface{}) {
+				assert.Equal(t, StringEnum("hello"), actual)
+			},
 		},
 
 		// StringArrayArgs
@@ -1459,7 +1661,10 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx, err := NewContext(context.Background(), RunInfo{})
 			require.NoError(t, err)
 
@@ -1488,6 +1693,8 @@ type MyComponent struct {
 }
 
 func TestConstructResult(t *testing.T) {
+	t.Parallel()
+
 	someOutput := String("something").ToStringOutput()
 
 	component := &MyComponent{

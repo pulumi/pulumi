@@ -15,6 +15,8 @@ env:
   NUGET_PUBLISH_KEY: ${{ secrets.NUGET_PUBLISH_KEY }}
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
   TRAVIS_PUBLISH_PACKAGES: true
+  PYTHON: python
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
 
 jobs:
   templates_smoke_test:
@@ -25,7 +27,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -41,7 +43,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install Pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -54,7 +56,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -70,7 +72,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -78,6 +80,22 @@ jobs:
           pulumictl create choco-deploy $(pulumictl get version --language generic -o)
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
+  winget:
+    name: Winget Update
+    runs-on: ubuntu-latest
+    needs: publish-sdks
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
+        with:
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl winget-deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
   docs:
     name: Build Package Docs
     runs-on: ubuntu-latest
@@ -86,7 +104,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -102,7 +120,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -122,33 +140,51 @@ jobs:
         node-version: [14.x]
         language: ["nodejs", "python", "dotnet"]
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
       - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
+          check-latest: true
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+      - name: Go Cache
+        uses: actions/cache@v2
+        id: go-cache
+        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
+        with:
+          path: |
+              ${{ steps.go-cache-paths.outputs.go-build }}
+              ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
       - name: Set up DotNet ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
       - name: Set up Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/package.json
           registry-url: https://registry.npmjs.org
           always-auth: true
-      - name: Install pipenv
+      - name: Install Python deps
         run: |
-          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
-      - name: Install Twine
-        run: python -m pip install pip twine
-      - name: Checkout Repo
-        uses: actions/checkout@v2
+          python -m pip install --upgrade pip requests wheel urllib3 chardet twine
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Fetch Tags
@@ -171,24 +207,78 @@ jobs:
   publish-binaries:
     name: Publish Binaries
     runs-on: macos-latest
-    needs: [lint, build-and-test, windows-build]
+    needs: [lint, build, test-linux, test-macos, test-windows]
     strategy:
       matrix:
         go-version: [1.17.x]
     steps:
       - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
+          check-latest: true
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+      - name: Go Cache
+        uses: actions/cache@v2
+        id: go-cache
+        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
+        with:
+          path: |
+              ${{ steps.go-cache-paths.outputs.go-build }}
+              ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
+      - name: Install goreleaser-filter
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: t0yv0/goreleaser-filter
+      - name: Download pulumi-linux-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-x64
+          path: goreleaser-downloads
+      - name: Download pulumi-linux-arm64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-arm64
+          path: goreleaser-downloads
+      - name: Download pulumi-darwin-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-x64
+          path: goreleaser-downloads
+      - name: Download pulumi-darwin-arm64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-arm64
+          path: goreleaser-downloads
+      - name: Download pulumi-windows-x64
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-x64
+          path: goreleaser-downloads
+      - name: Inspect goreleaser-downloads
+        run: |
+          find goreleaser-downloads
+      - name: Unpack goreleaser-downloads
+        run: |
+          ./scripts/unpack.sh
+      - name: Inspect goreleaser-prebuilt
+        run: |
+          find goreleaser-prebuilt
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -202,11 +292,52 @@ jobs:
       - name: Set Release Version
         run: |
           echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
-      - name: Run GoReleaser
+      - name: Download pulumi-windows-checksums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-checksums
+          path: artifacts/checksums/windows
+      - name: Download pulumi-linux-checksums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-linux-checksums
+          path: artifacts/checksums/linux
+      - name: Download pulumi-darwin-checksums
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-darwin-checksums
+          path: artifacts/checksums/darwin
+      - name: Filter goreleaser config for pre-release check
+        run: |
+          cat .goreleaser.yml | goreleaser-filter -no-blobs > /tmp/.goreleaser.current.yml
+      - name: Run GoReleaser to verify tarball checksums
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: -p 3 -f /tmp/.goreleaser.current.yml --skip-publish --skip-announce --skip-validate --rm-dist --release-notes=CHANGELOG_PENDING.md
+      - name: Verify checksums
+        run: |
+          C=artifacts/checksums/pulumi-tested-checksums.txt
+          echo "Tested tarballs with the following checksums:"
+          cat artifacts/checksums/*/* | sort | tee $C
+          echo "Planning to release tarballs with the following checksums:"
+          sort goreleaser/*-checksums.txt
+          echo "Checking that tested and release checksums are identical:"
+          diff <(sort goreleaser/*-checksums.txt) $C
+      - name: Run GoReleaser to actually release
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
           args: -p 3 -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md
+      - name: Verify checksums again
+        run: |
+          C=artifacts/checksums/pulumi-tested-checksums-2.txt
+          echo "Tested tarballs with the following checksums:"
+          cat artifacts/checksums/*/* | sort | tee $C
+          echo "Released tarballs with the following checksums:"
+          sort goreleaser/*-checksums.txt
+          echo "Checking that tested and released checksums are identical:"
+          diff <(sort goreleaser/*-checksums.txt) $C
   lint:
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
@@ -224,27 +355,53 @@ jobs:
     name: Lint Language SDKs
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
       - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
+          check-latest: true
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+      - name: Go Cache
+        uses: actions/cache@v2
+        id: go-cache
+        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
+        with:
+          path: |
+              ${{ steps.go-cache-paths.outputs.go-build }}
+              ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
       - name: Set up DotNet ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
       - run: mkdir -p ${{ runner.temp }}/opt/pulumi/nuget
-      - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
+      - name: Add NuGet packages as a local NuGet source
+        run: |
+          echo $(which dotnet)
+          echo $(dotnet --version)
+          dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
       - name: Set up Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Install pipenv
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/package.json
+      - name: Install Python deps
         run: |
-          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
+          python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -252,8 +409,6 @@ jobs:
       - name: Update path
         run: |
           echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
-      - name: Checkout Repo
-        uses: actions/checkout@v2
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
@@ -261,7 +416,7 @@ jobs:
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Ensure
@@ -276,191 +431,50 @@ jobs:
       - name: Lint .NET
         run: |
           cd sdk/dotnet && make lint
-  build-and-test:
-    name: Build & Test
-    strategy:
-      matrix:
-        platform: [ubuntu-latest, macos-latest]
-        go-version: [1.17.x]
-        python-version: [3.9.x]
-        dotnet-version: [3.1.x]
-        node-version: [14.x]
-
-        # See scripts/tests_subsets.py when editing
-        test-subset: [integration, integration-and-codegen, auto, etc]
-
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - name: Set PULUMI_TEST_SUBSET env var
-        run: |
-          echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV
-      - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Set up DotNet ${{ matrix.dotnet-version }}
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: ${{ matrix.dotnet-version }}
-      - run: mkdir -p ${{ runner.temp }}/opt/pulumi/nuget
-      - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
-      - name: Set up Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-      - name: Install pipenv
-        run: |
-          python -m pip install --upgrade pipenv pip requests wheel urllib3 chardet
-      - name: Setup git
-        run: |
-          git config --global user.email "you@example.com"
-          git config --global user.name "Your Name"
-      - name: Update path
-        run: |
-          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-      - name: Checkout Scripts Repo
-        uses: actions/checkout@v2
-        with:
-          path: ci-scripts
-          repository: pulumi/scripts
-      - name: Fetch Tags
-        run: |
-          git fetch --quiet --prune --unshallow --tags
-      - name: Set Go Dep path
-        run: |
-          echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
-        with:
-          repo: pulumi/pulumictl
-      - name: Ensure
-        run: |
-          make ensure
-      - name: Dist
-        run: |
-          make dist
-        env:
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: Check worktree is clean
-        run: ./ci-scripts/ci/check-worktree-is-clean
-      - name: Install
-        run: |
-          make install_all
-          # Install Pulumi Python SDK globally (on CI only) to workaround a
-          # problem a sub-process in a test failing to find it.
-          python -m pip install -e sdk/python/env/src
-        env:
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: Test
-        run: |
-          make TEST_ALL_DEPS= test_all
-        env:
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-  windows-build:
-    name: Windows Build
-    strategy:
-      matrix:
-        go-version: [1.17.x]
-        node-version: [14.x]
-        python-version: [3.9.x]
-        dotnet: [3.1.x]
-    runs-on: windows-latest
-    env:
-      GOPATH: ${{ github.workspace }}
-      PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_LEGACY }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_LEGACY }}
-      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-    steps:
-      - name: Install DotNet ${{ matrix.dotnet }}
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: ${{ matrix.dotnet }}
-      - name: Create Local Nuget
-        run: mkdir -p "${{ env.PULUMI_LOCAL_NUGET }}"
-        shell: bash
-      - run: dotnet nuget add source ${{ env.PULUMI_LOCAL_NUGET }}
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-      - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Clean
-        run: dotnet nuget locals all --clear
-      - name: Create Local Nuget
-        run: mkdir -p "D:\\Pulumi\\nuget"
-        shell: bash
-      - name: Install Python Deps
-        run: |
-          pip3 install pyenv-win
-          pip3 install pipenv
-      - name: Set Build Env Vars
-        shell: bash
-        run: |
-          echo "D:\\Pulumi\\bin" >> $GITHUB_PATH
-      - name: Install AWS CLI Tools
-        uses: chrislennon/action-aws-cli@v1.1
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
-        with:
-          repo: pulumi/pulumictl
-      - name: Check out scripts repo into the Go module directory
-        uses: actions/checkout@v2
-        with:
-          repository: pulumi/scripts
-          path: ./src/github.com/pulumi/scripts
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-        with:
-          path: ./src/github.com/${{ github.repository }}
-      - name: Fetch Tags
-        run: |
-          cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow --tags
-      - name: Get dependencies
-        run: |
-          cd src\github.com\${{ github.repository }}
-          pushd .
-          cd sdk
-          go mod download
-          popd
-          pushd .
-          cd pkg
-          go mod download
-          popd
-          pushd .
-          cd tests
-          go mod download
-          popd
-      - name: Build Binary
-        run: |
-          cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:PythonVersion="${{ matrix.python-version }}"
+  build:
+    name: Build
+    uses: pulumi/pulumi/.github/workflows/build.yml@master
+    with:
+      # Cross-compiling from ubuntu-latest is faster but the artifact
+      # checksums will not match what publish-binaries expects.
+      default-build-platform: macos-latest
+      enable-coverage: false
+      goreleaser-config: '.goreleaser.yml'
+      goreleaser-flags: '-p 3 --release-notes=CHANGELOG_PENDING.md --skip-publish --skip-announce --skip-validate'
+  test-linux:
+    name: Test Linux
+    needs: build
+    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+    with:
+      enable-coverage: false
+      platform: ubuntu-latest
+    secrets:
+      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  test-macos:
+    name: Test MacOS
+    needs: build
+    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+    with:
+      enable-coverage: false
+      platform: macos-latest
+    secrets:
+      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  test-windows:
+    name: Test Windows
+    needs: build
+    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+    with:
+      enable-coverage: false
+      platform: windows-latest
+    secrets:
+      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   dispatch-docker-containers-release-build:
     name: Dispatch Docker containers release build
     needs: [publish-binaries, publish-sdks]
     runs-on: ubuntu-latest
     steps:
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        uses: jaxxstorm/action-install-gh-release@v1.3.1
         with:
           repo: pulumi/pulumictl
       - name: Checkout Repo

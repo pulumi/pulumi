@@ -243,7 +243,11 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	defer ctx.endRPC(err)
 
 	var providerRef string
-	if provider := mergeProviders(tok, options.Parent, options.Provider, nil)[getPackage(tok)]; provider != nil {
+	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
+	if err != nil {
+		return err
+	}
+	if provider := providers[getPackage(tok)]; provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
 			return err
@@ -279,11 +283,12 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	// Now, invoke the RPC to the provider synchronously.
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
-		Tok:             tok,
-		Args:            rpcArgs,
-		Provider:        providerRef,
-		Version:         options.Version,
-		AcceptResources: !disableResourceReferences,
+		Tok:               tok,
+		Args:              rpcArgs,
+		Provider:          providerRef,
+		Version:           options.Version,
+		PluginDownloadURL: options.PluginDownloadURL,
+		AcceptResources:   !disableResourceReferences,
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
@@ -348,15 +353,22 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 	}
 
 	prepareCallRequest := func() (*pulumirpc.CallRequest, error) {
-		// Determine the provider and version to use.
+		// Determine the provider, version and url to use.
 		var provider ProviderResource
 		var version string
+		var pluginURL string
 		if self != nil {
 			provider = self.getProvider()
 			version = self.getVersion()
+			pluginURL = self.getPluginDownloadURL()
 		} else {
-			provider = mergeProviders(tok, options.Parent, options.Provider, nil)[getPackage(tok)]
+			providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
+			if err != nil {
+				return nil, err
+			}
+			provider = providers[getPackage(tok)]
 			version = options.Version
+			pluginURL = options.PluginDownloadURL
 		}
 		var providerRef string
 		if provider != nil {
@@ -422,11 +434,12 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		}
 
 		return &pulumirpc.CallRequest{
-			Tok:             tok,
-			Args:            rpcArgs,
-			ArgDependencies: rpcArgDeps,
-			Provider:        providerRef,
-			Version:         version,
+			Tok:               tok,
+			Args:              rpcArgs,
+			ArgDependencies:   rpcArgDeps,
+			Provider:          providerRef,
+			Version:           version,
+			PluginDownloadURL: pluginURL,
 		}, nil
 	}
 
@@ -575,13 +588,17 @@ func (ctx *Context) ReadResource(
 	}
 
 	// Merge providers.
-	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
+	providers, err := ctx.mergeProviders(t, options.Parent, options.Provider, options.Providers)
+	if err != nil {
+		return err
+	}
 
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
 
 	// Create resolvers for the resource's outputs.
-	res := ctx.makeResourceState(t, name, resource, providers, provider, options.Version, aliasURNs, transformations)
+	res := ctx.makeResourceState(t, name, resource, providers, provider,
+		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -761,14 +778,17 @@ func (ctx *Context) registerResource(
 	}
 
 	// Merge providers.
-	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
+	providers, err := ctx.mergeProviders(t, options.Parent, options.Provider, options.Providers)
+	if err != nil {
+		return err
+	}
 
 	// Get the provider for the resource.
 	provider := getProvider(t, options.Provider, providers)
 
 	// Create resolvers for the resource's outputs.
-	resState := ctx.makeResourceState(t, name, resource, providers, provider, options.Version, aliasURNs,
-		transformations)
+	resState := ctx.makeResourceState(t, name, resource, providers, provider,
+		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -820,8 +840,10 @@ func (ctx *Context) registerResource(
 				AcceptResources:         !disableResourceReferences,
 				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 				Version:                 inputs.version,
+				PluginDownloadURL:       inputs.pluginDownloadURL,
 				Remote:                  remote,
 				ReplaceOnChanges:        inputs.replaceOnChanges,
+				RetainOnDelete:          inputs.retainOnDelete,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -860,13 +882,14 @@ func (ctx *Context) RegisterRemoteComponentResource(
 
 // resourceState contains the results of a resource registration operation.
 type resourceState struct {
-	outputs         map[string]Output
-	providers       map[string]ProviderResource
-	provider        ProviderResource
-	version         string
-	aliases         []URNOutput
-	name            string
-	transformations []ResourceTransformation
+	outputs           map[string]Output
+	providers         map[string]ProviderResource
+	provider          ProviderResource
+	version           string
+	pluginDownloadURL string
+	aliases           []URNOutput
+	name              string
+	transformations   []ResourceTransformation
 }
 
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.
@@ -903,8 +926,8 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 }
 
 // checks all possible sources of providers and merges them with preference given to the most specific
-func mergeProviders(t string, parent Resource, provider ProviderResource,
-	providers map[string]ProviderResource) map[string]ProviderResource {
+func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderResource,
+	providerMap map[string]ProviderResource) (map[string]ProviderResource, error) {
 
 	// copy parent providers
 	result := make(map[string]ProviderResource)
@@ -915,17 +938,27 @@ func mergeProviders(t string, parent Resource, provider ProviderResource,
 	}
 
 	// copy provider map
-	for k, v := range providers {
+	for k, v := range providerMap {
 		result[k] = v
 	}
 
 	// copy specific provider, if any
 	if provider != nil {
-		pkg := getPackage(t)
-		result[pkg] = provider
+		pkg := provider.getPackage()
+		if _, alreadyExists := providerMap[pkg]; alreadyExists {
+			err := ctx.Log.Warn(fmt.Sprintf("Provider for %s conflicts with providers map. %s %s", pkg,
+				"This will become an error in july 2022.",
+				"See https://github.com/pulumi/pulumi/issues/8799 for more details.",
+			), nil)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			result[pkg] = provider
+		}
 	}
 
-	return result
+	return result, nil
 }
 
 // getProvider gets the provider for the resource.
@@ -946,17 +979,13 @@ func getPackage(t string) string {
 	return components[0]
 }
 
-// collapseAliases collapses a list of Aliases into alist of URNs.
+// collapseAliases collapses a list of Aliases into a list of URNs. Parent aliases
+// are also included. If there are N child aliases, and M parent aliases, there will
+// be (M+1)*(N+1)-1 total aliases, or, as calculated in the logic below, N+(M*(1+N)).
 func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Resource) ([]URNOutput, error) {
 	project, stack := ctx.Project(), ctx.Stack()
 
 	var aliasURNs []URNOutput
-	if parent != nil {
-		for _, alias := range parent.getAliases() {
-			urn := inheritedChildAlias(name, parent.getName(), t, project, stack, alias)
-			aliasURNs = append(aliasURNs, urn)
-		}
-	}
 
 	for _, alias := range aliases {
 		urn, err := alias.collapseToURN(name, t, parent, project, stack)
@@ -964,6 +993,30 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 			return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
 		}
 		aliasURNs = append(aliasURNs, urn)
+	}
+
+	if parent != nil {
+		parentAliases := parent.getAliases()
+		for i := range parentAliases {
+			parentAlias := parentAliases[i]
+			urn := inheritedChildAlias(name, parent.getName(), t, project, stack, parentAlias)
+			aliasURNs = append(aliasURNs, urn)
+			for j := range aliases {
+				childAlias := aliases[j]
+				urn, err := childAlias.collapseToURN(name, t, parent, project, stack)
+				if err != nil {
+					return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
+				}
+				inheritedAlias := urn.ApplyT(func(urn URN) URNOutput {
+					aliasedChildName := string(resource.URN(urn).Name())
+					aliasedChildType := string(resource.URN(urn).Type())
+					return inheritedChildAlias(aliasedChildName, parent.getName(), aliasedChildType, project, stack, parentAlias)
+				}).ApplyT(func(urn interface{}) URN {
+					return urn.(URN)
+				}).(URNOutput)
+				aliasURNs = append(aliasURNs, inheritedAlias)
+			}
+		}
 	}
 
 	return aliasURNs, nil
@@ -974,7 +1027,7 @@ var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	provider ProviderResource, version string, aliases []URNOutput,
+	provider ProviderResource, version, pluginDownloadURL string, aliases []URNOutput,
 	transformations []ResourceTransformation) *resourceState {
 
 	// Ensure that the input resource is a pointer to a struct. Note that we don't fail if it is not, and we probably
@@ -1057,6 +1110,8 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		rs.provider = provider
 		state.version = version
 		rs.version = version
+		state.pluginDownloadURL = pluginDownloadURL
+		rs.pluginDownloadURL = pluginDownloadURL
 		rs.urn = URNOutput{ctx.newOutputState(urnType, resourceV)}
 		state.outputs["urn"] = rs.urn
 		state.name = name
@@ -1164,7 +1219,9 @@ type resourceInputs struct {
 	aliases                 []string
 	additionalSecretOutputs []string
 	version                 string
+	pluginDownloadURL       string
 	replaceOnChanges        []string
+	retainOnDelete          bool
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
@@ -1249,7 +1306,9 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
+		pluginDownloadURL:       state.pluginDownloadURL,
 		replaceOnChanges:        resOpts.replaceOnChanges,
+		retainOnDelete:          opts.RetainOnDelete,
 	}, nil
 }
 

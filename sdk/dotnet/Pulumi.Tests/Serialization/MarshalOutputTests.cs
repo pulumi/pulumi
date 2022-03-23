@@ -116,7 +116,26 @@ namespace Pulumi.Tests.Serialization
                 ImmutableDictionary<string, object>.Empty.Add("foo",
                     ImmutableDictionary<string, object>.Empty.Add("foo", "hello"))
             },
+            // Repro #8474
+            UnknownDefaultValue<ImmutableArray<bool>>(),
+            UnknownDefaultValue<ImmutableArray<object>>(),
+            UnknownDefaultValue<ImmutableDictionary<string,bool>>(),
         };
+
+        // Ensure that we can safely serialize unknown values. This causes issues with values whose
+        // defaults are not safe to interact with (ImmutableArray<T> for example).
+        private static object[] UnknownDefaultValue<T>()
+            where T : notnull
+        {
+            T inner = default;
+            var outputdata = OutputData.Create(ImmutableHashSet<Resource>.Empty, inner!, isKnown: false, isSecret: false);
+            var output = new Output<T>(Task.FromResult(outputdata));
+            return new object[]
+                {
+                    output,
+                 ImmutableDictionary<string, object>.Empty.Add(Constants.SpecialSigKey, Constants.SpecialOutputValueSig),
+                };
+        }
 
         [Theory]
         [MemberData(nameof(SerializeData))]

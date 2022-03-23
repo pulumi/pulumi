@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/iancoleman/strcase"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -36,12 +37,22 @@ type generator struct {
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
 	configCreated       bool
+
+	// User-configurable options
+	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
+}
+
+// GenerateProgramOptions are used to configure optional generator behavior.
+type GenerateProgramOptions struct {
+	AssignResourcesToVariables bool // Assign resource to a new variable instead of _.
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-	// Linearize the nodes into an order appropriate for procedural code generation.
-	nodes := pcl.Linearize(program)
+	return GenerateProgramWithOptions(program, GenerateProgramOptions{})
+}
 
+func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOptions) (
+	map[string][]byte, hcl.Diagnostics, error) {
 	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
 	for _, pkg := range program.Packages() {
 		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
@@ -61,15 +72,21 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 	}
 
+	// Apply any generate options.
+	g.assignResourcesToVariables = opts.AssignResourcesToVariables
+
 	g.Formatter = format.NewFormatter(g)
 
-	// we must collect imports once before lowering, and once after.
-	// this allows us to avoid complexity of traversing apply expressions for things like JSON
+	// We must collect imports once before lowering, and once after.
+	// This allows us to avoid complexity of traversing apply expressions for things like JSON
 	// but still have access to types provided by __convert intrinsics after lowering.
 	pulumiImports := codegen.NewStringSet()
 	stdImports := codegen.NewStringSet()
 	preambleHelperMethods := codegen.NewStringSet()
 	g.collectImports(program, stdImports, pulumiImports, preambleHelperMethods)
+
+	// Linearize the nodes into an order appropriate for procedural code generation.
+	nodes := pcl.Linearize(program)
 
 	var progPostamble bytes.Buffer
 	for _, n := range nodes {
@@ -244,9 +261,7 @@ func (g *generator) collectImports(
 					}
 					pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
 				} else if call.Name == pcl.IntrinsicConvert {
-					if schemaType, ok := pcl.GetSchemaForType(call.Type()); ok {
-						g.collectTypeImports(program, schemaType, pulumiImports)
-					}
+					g.collectConvertImports(program, call, pulumiImports)
 				}
 
 				// Checking to see if this function call deserves its own dedicated helper method in the preamble
@@ -275,6 +290,30 @@ func (g *generator) collectImports(
 	}
 
 	return stdImports, pulumiImports, preambleHelperMethods
+}
+
+func (g *generator) collectConvertImports(
+	program *pcl.Program,
+	call *model.FunctionCallExpression,
+	pulumiImports codegen.StringSet) {
+	if schemaType, ok := pcl.GetSchemaForType(call.Type()); ok {
+		// Sometimes code for a `__convert` call does not
+		// really use the import of the result type. In such
+		// cases it is important not to generate a
+		// non-compiling unused import. Detect some of these
+		// cases here.
+		//
+		// Fully solving this is deferred for later:
+		// TODO[pulumi/pulumi#8324].
+		if expr, ok := call.Args[0].(*model.TemplateExpression); ok {
+			if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok &&
+				model.StringType.AssignableFrom(lit.Type()) &&
+				call.Type().AssignableFrom(lit.Type()) {
+				return
+			}
+		}
+		g.collectTypeImports(program, schemaType, pulumiImports)
+	}
 }
 
 func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, error) {
@@ -323,8 +362,12 @@ func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
 
 	// All providers don't follow the sdk/go/<package> scheme. Allow ImportBasePath as
 	// a means to override this assumption.
-	if info.ImportBasePath != "" && mod != "" {
-		imp = fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
+	if info.ImportBasePath != "" {
+		if mod != "" {
+			imp = fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
+		} else {
+			imp = info.ImportBasePath
+		}
 	}
 
 	if alias, ok := info.PackageImportAliases[imp]; ok {
@@ -337,7 +380,7 @@ func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
 		if modSplit[0] == "" || modSplit[0] == "index" {
 			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
 		} else {
-			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, strings.Split(mod, "/")[0])
+			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, modSplit[0])
 		}
 	}
 	return fmt.Sprintf("%q", imp)
@@ -460,7 +503,12 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			if g.isErrAssigned {
 				assignment = "="
 			}
-			g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, modOrAlias, typ, resourceName)
+			if g.assignResourcesToVariables {
+				g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ",
+					strcase.ToLowerCamel(resourceName), modOrAlias, typ, resourceName)
+			} else {
+				g.Fgenf(w, "_, err %s %s.New%s(ctx, %s, ", assignment, modOrAlias, typ, resourceName)
+			}
 		}
 		g.isErrAssigned = true
 
@@ -614,11 +662,17 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	case *model.FunctionCallExpression:
 		switch expr.Name {
 		case pcl.Invoke:
-			g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr)
-			g.isErrAssigned = true
-			g.Fgenf(w, "if err != nil {\n")
-			g.Fgenf(w, "return err\n")
-			g.Fgenf(w, "}\n")
+			// OutputVersionedInvoke does not return an error
+			noError, _, _ := pcl.RecognizeOutputVersionedInvoke(expr)
+			if noError {
+				g.Fgenf(w, "%s %s %.3v;\n", name, assignment, expr)
+			} else {
+				g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr)
+				g.isErrAssigned = true
+				g.Fgenf(w, "if err != nil {\n")
+				g.Fgenf(w, "return err\n")
+				g.Fgenf(w, "}\n")
+			}
 		case "join", "toBase64", "mimeType", "fileAsset":
 			g.Fgenf(w, "%s := %.3v;\n", name, expr)
 		}

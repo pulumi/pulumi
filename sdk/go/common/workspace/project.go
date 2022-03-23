@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -87,8 +87,12 @@ type Project struct {
 	// License is the optional license governing this project's usage.
 	License *string `json:"license,omitempty" yaml:"license,omitempty"`
 
-	// Config indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder Pulumi.yaml is in.
-	Config string `json:"config,omitempty" yaml:"config,omitempty"`
+	// Config has been renamed to StackConfigDir.
+	Config interface{} `json:"config,omitempty" yaml:"config,omitempty"`
+
+	// StackConfigDir indicates where to store the Pulumi.<stack-name>.yaml files, combined with the folder
+	// Pulumi.yaml is in.
+	StackConfigDir string `json:"stackConfigDir,omitempty" yaml:"stackConfigDir,omitempty"`
 
 	// Template is an optional template manifest, if this project is a template.
 	Template *ProjectTemplate `json:"template,omitempty" yaml:"template,omitempty"`

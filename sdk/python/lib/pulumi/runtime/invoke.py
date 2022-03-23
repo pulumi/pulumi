@@ -44,7 +44,10 @@ if TYPE_CHECKING:
 # released but the corresponding dist wheel has not been. So, we wrap the import in a try/except to avoid breaking all
 # python programs using a new version.
 try:
-    from google.protobuf.pyext._message import SetAllowOversizeProtos  # pylint: disable-msg=E0611
+    from google.protobuf.pyext._message import (
+        SetAllowOversizeProtos,
+    )  # pylint: disable-msg=E0611
+
     SetAllowOversizeProtos(True)
 except ImportError:
     pass
@@ -54,6 +57,7 @@ class InvokeResult:
     """
     InvokeResult is a helper type that wraps a prompt value in an Awaitable.
     """
+
     def __init__(self, value):
         self.value = value
 
@@ -68,7 +72,12 @@ class InvokeResult:
     __iter__ = __await__
 
 
-def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ: Optional[type] = None) -> InvokeResult:
+def invoke(
+    tok: str,
+    props: "Inputs",
+    opts: Optional[InvokeOptions] = None,
+    typ: Optional[type] = None,
+) -> InvokeResult:
     """
     invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s), and the result is a Awaitable[Any] that
@@ -97,7 +106,10 @@ def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ:
         monitor = get_monitor()
         inputs = await rpc.serialize_properties(props, {})
         version = opts.version or ""
-        accept_resources = not (os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"})
+        plugin_download_url = opts.plugin_download_url or ""
+        accept_resources = not (
+            os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"}
+        )
         log.debug(f"Invoking function prepared: tok={tok}")
         req = provider_pb2.InvokeRequest(
             tok=tok,
@@ -105,6 +117,7 @@ def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ:
             provider=provider_ref,
             version=version,
             acceptResources=accept_resources,
+            pluginDownloadURL=plugin_download_url,
         )
 
         def do_invoke():
@@ -120,14 +133,21 @@ def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ:
         if error is not None:
             return None, Exception(f"invoke of {tok} failed: {error}")
         if resp.failures:
-            return None, Exception(f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})")
+            return None, Exception(
+                f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})"
+            )
 
         # Otherwise, return the output properties.
-        ret_obj = getattr(resp, 'return')
+        ret_obj = getattr(resp, "return")
         if ret_obj:
             deserialized = rpc.deserialize_properties(ret_obj)
             # If typ is not None, call translate_output_properties to instantiate any output types.
-            return rpc.translate_output_properties(deserialized, lambda prop: prop, typ) if typ else deserialized, None
+            return (
+                rpc.translate_output_properties(deserialized, lambda prop: prop, typ)
+                if typ
+                else deserialized,
+                None,
+            )
         return None, None
 
     async def do_rpc():
@@ -147,7 +167,12 @@ def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ:
     return InvokeResult(invoke_result)
 
 
-def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optional[type] = None) -> 'Output[Any]':
+def call(
+    tok: str,
+    props: "Inputs",
+    res: Optional["Resource"] = None,
+    typ: Optional[type] = None,
+) -> "Output[Any]":
     """
     call dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s).
@@ -158,18 +183,19 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
         raise TypeError("Expected typ to be decorated with @output_type")
 
     # Setup the futures for the output.
-    resolve_value: 'asyncio.Future' = asyncio.Future()
-    resolve_is_known: 'asyncio.Future[bool]' = asyncio.Future()
-    resolve_is_secret: 'asyncio.Future[bool]' = asyncio.Future()
-    resolve_deps: 'asyncio.Future[Set[Resource]]' = asyncio.Future()
+    resolve_value: "asyncio.Future" = asyncio.Future()
+    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
+    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
+    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
 
     from .. import Output  # pylint: disable=import-outside-toplevel
+
     out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
 
     async def do_call():
         try:
             # Construct a provider reference from the given provider, if one is available on the resource.
-            provider_ref, version = None, ""
+            provider_ref, version, plugin_download_url = None, "", ""
             if res is not None:
                 if res._provider is not None:
                     provider_urn = await res._provider.urn.future()
@@ -177,14 +203,17 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
                     provider_ref = f"{provider_urn}::{provider_id}"
                     log.debug(f"Call using provider {provider_ref}")
                 version = res._version or ""
+                plugin_download_url = res._plugin_download_url or ""
 
             monitor = get_monitor()
 
             # Serialize out all props to their final values. In doing so, we'll also collect all the Resources pointed to
             # by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
-            property_dependencies_resources: Dict[str, List['Resource']] = {}
+            property_dependencies_resources: Dict[str, List["Resource"]] = {}
             # We keep output values when serializing inputs for call.
-            inputs = await rpc.serialize_properties(props, property_dependencies_resources, keep_output_values=True)
+            inputs = await rpc.serialize_properties(
+                props, property_dependencies_resources, keep_output_values=True
+            )
 
             property_dependencies = {}
             for key, property_deps in property_dependencies_resources.items():
@@ -192,7 +221,9 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
                 for dep in property_deps:
                     urn = await dep.urn.future()
                     urns.add(urn)
-                property_dependencies[key] = provider_pb2.CallRequest.ArgumentDependencies(urns=list(urns))
+                property_dependencies[
+                    key
+                ] = provider_pb2.CallRequest.ArgumentDependencies(urns=list(urns))
 
             req = provider_pb2.CallRequest(
                 tok=tok,
@@ -200,6 +231,7 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
                 argDependencies=property_dependencies,
                 provider=provider_ref,
                 version=version,
+                pluginDownloadURL=plugin_download_url,
             )
 
             def do_rpc_call():
@@ -214,14 +246,16 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
                 return
 
             if resp.failures:
-                raise Exception(f"call of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})")
+                raise Exception(
+                    f"call of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})"
+                )
 
             log.debug(f"Call successful: tok={tok}")
 
             value = None
             is_known = True
             is_secret = False
-            deps: Set['Resource'] = set()
+            deps: Set["Resource"] = set()
             ret_obj = getattr(resp, "return")
             if ret_obj:
                 deserialized = rpc.deserialize_properties(ret_obj)
@@ -236,13 +270,24 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
 
                 # Combine the individual dependencies into a single set of dependency resources.
                 rpc_deps = resp.returnDependencies
-                deps_urns: Set[str] = {urn for v in rpc_deps.values() for urn in v.urns} if rpc_deps else set()
-                from ..resource import DependencyResource  # pylint: disable=import-outside-toplevel
+                deps_urns: Set[str] = (
+                    {urn for v in rpc_deps.values() for urn in v.urns}
+                    if rpc_deps
+                    else set()
+                )
+                from ..resource import (  # pylint: disable=import-outside-toplevel
+                    DependencyResource,
+                )
+
                 deps = set(map(DependencyResource, deps_urns))
 
                 if is_known:
                     # If typ is not None, call translate_output_properties to instantiate any output types.
-                    value = rpc.translate_output_properties(deserialized, lambda p: p, typ) if typ else deserialized
+                    value = (
+                        rpc.translate_output_properties(deserialized, lambda p: p, typ)
+                        if typ
+                        else deserialized
+                    )
 
             resolve_value.set_result(value)
             resolve_is_known.set_result(is_known)
@@ -250,7 +295,9 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
             resolve_deps.set_result(deps)
 
         except Exception as exn:
-            log.debug(f"exception when preparing or executing rpc: {traceback.format_exc()}")
+            log.debug(
+                f"exception when preparing or executing rpc: {traceback.format_exc()}"
+            )
             resolve_value.set_exception(exn)
             resolve_is_known.set_exception(exn)
             resolve_is_secret.set_exception(exn)

@@ -16,8 +16,10 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -29,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -55,21 +58,21 @@ type EvalRunInfo struct {
 // a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
 func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo,
-	defaultProviderVersions map[tokens.Package]*semver.Version, dryRun bool) Source {
+	defaultProviderInfo map[tokens.Package]workspace.PluginInfo, dryRun bool) Source {
 
 	return &evalSource{
-		plugctx:                 plugctx,
-		runinfo:                 runinfo,
-		defaultProviderVersions: defaultProviderVersions,
-		dryRun:                  dryRun,
+		plugctx:             plugctx,
+		runinfo:             runinfo,
+		defaultProviderInfo: defaultProviderInfo,
+		dryRun:              dryRun,
 	}
 }
 
 type evalSource struct {
-	plugctx                 *plugin.Context                    // the plugin context.
-	runinfo                 *EvalRunInfo                       // the directives to use when running the program.
-	defaultProviderVersions map[tokens.Package]*semver.Version // the default provider versions for this source.
-	dryRun                  bool                               // true if this is a dry-run operation only.
+	plugctx             *plugin.Context                         // the plugin context.
+	runinfo             *EvalRunInfo                            // the directives to use when running the program.
+	defaultProviderInfo map[tokens.Package]workspace.PluginInfo // the default provider versions for this source.
+	dryRun              bool                                    // true if this is a dry-run operation only.
 }
 
 func (src *evalSource) Close() error {
@@ -82,7 +85,7 @@ func (src *evalSource) Project() tokens.PackageName {
 }
 
 // Stack is the name of the stack being targeted by this evaluation source.
-func (src *evalSource) Stack() tokens.QName {
+func (src *evalSource) Stack() tokens.Name {
 	return src.runinfo.Target.Name
 }
 
@@ -243,7 +246,7 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 type defaultProviders struct {
 	// A map of package identifiers to versions, used to disambiguate which plugin to load if no version is provided
 	// by the language host.
-	defaultVersions map[tokens.Package]*semver.Version
+	defaultProviderInfo map[tokens.Package]workspace.PluginInfo
 
 	// A map of ProviderRequest strings to provider references, used to keep track of the set of default providers that
 	// have already been loaded.
@@ -288,16 +291,34 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	// problematic for a lot of reasons.
 	if req.Version() != nil {
 		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using version %s from request", req, req.Version())
-		inputs["version"] = resource.NewStringProperty(req.Version().String())
+		providers.SetProviderVersion(inputs, req.Version())
 	} else {
 		logging.V(5).Infof(
 			"newRegisterDefaultProviderEvent(%s): no version specified, falling back to default version", req)
-		if version := d.defaultVersions[req.Package()]; version != nil {
+		if version := d.defaultProviderInfo[req.Package()].Version; version != nil {
 			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default version hit on version %s", req, version)
-			inputs["version"] = resource.NewStringProperty(version.String())
+			providers.SetProviderVersion(inputs, version)
 		} else {
 			logging.V(5).Infof(
 				"newRegisterDefaultProviderEvent(%s): default provider miss, sending nil version to engine", req)
+		}
+	}
+
+	if req.PluginDownloadURL() != "" {
+		logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): using pluginDownloadURL %s from request",
+			req, req.PluginDownloadURL())
+		providers.SetProviderURL(inputs, req.PluginDownloadURL())
+	} else {
+		logging.V(5).Infof(
+			"newRegisterDefaultProviderEvent(%s): no pluginDownloadURL specified, falling back to default pluginDownloadURL",
+			req)
+		if pluginDownloadURL := d.defaultProviderInfo[req.Package()].PluginDownloadURL; pluginDownloadURL != "" {
+			logging.V(5).Infof("newRegisterDefaultProviderEvent(%s): default pluginDownloadURL hit on %s",
+				req, pluginDownloadURL)
+			providers.SetProviderURL(inputs, pluginDownloadURL)
+		} else {
+			logging.V(5).Infof(
+				"newRegisterDefaultProviderEvent(%s): default pluginDownloadURL miss, sending empty string to engine", req)
 		}
 	}
 
@@ -306,7 +327,8 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil, nil, nil, nil, "", nil, nil),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil,
+			nil, nil, nil, "", nil, nil, false),
 		done: done,
 	}
 	return event, done, nil
@@ -321,6 +343,15 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 // to ensure this.
 func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (providers.Reference, error) {
 	logging.V(5).Infof("handling default provider request for package %s", req)
+
+	denyCreation, err := d.shouldDenyRequest(req)
+	if err != nil {
+		return providers.Reference{}, err
+	}
+	if denyCreation {
+		logging.V(5).Infof("denied default provider request for package %s", req)
+		return providers.NewDenyDefaultProvider(tokens.AsQName(string(req.Package().Name()))), nil
+	}
 
 	// Have we loaded this provider before? Use the existing reference, if so.
 	//
@@ -365,6 +396,48 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	d.providers[req.String()] = ref
 
 	return ref, nil
+}
+
+// If req should be allowed, or if we should prevent the request.
+func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (bool, error) {
+	logging.V(9).Infof("checking if %s should be denied", req)
+	pConfig, err := d.config.GetPackageConfig("pulumi")
+	if err != nil {
+		return true, err
+	}
+
+	denyCreation := false
+	if value, ok := pConfig["disable-default-providers"]; ok {
+		array := []interface{}{}
+		if !value.IsString() {
+			return true, fmt.Errorf("Unexpected encoding of pulumi:disable-default-providers")
+		}
+		if value.StringValue() == "" {
+			// If the list is provided but empty, we don't encode a empty json
+			// list, we just encode the empty string. Check to ensure we don't
+			// get parse errors.
+			return false, nil
+		}
+		if err := json.Unmarshal([]byte(value.StringValue()), &array); err != nil {
+			return true, fmt.Errorf("Failed to parse %s: %w", value.StringValue(), err)
+		}
+		for i, v := range array {
+			s, ok := v.(string)
+			if !ok {
+				return true, fmt.Errorf("pulumi:disable-default-providers[%d] must be a string", i)
+			}
+			barred := strings.TrimSpace(s)
+			if barred == "*" || barred == req.Package().Name().String() {
+				logging.V(7).Infof("denying %s (star=%t)", req, barred == "*")
+				denyCreation = true
+				break
+			}
+		}
+	} else {
+		logging.V(9).Infof("Did not find a config for 'pulumi'")
+	}
+
+	return denyCreation, nil
 }
 
 // serve is the primary loop responsible for handling default provider requests.
@@ -421,12 +494,12 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// Create a new default provider manager.
 	d := &defaultProviders{
-		defaultVersions: src.defaultProviderVersions,
-		providers:       make(map[string]providers.Reference),
-		config:          src.runinfo.Target,
-		requests:        make(chan defaultProviderRequest),
-		providerRegChan: regChan,
-		cancel:          cancel,
+		defaultProviderInfo: src.defaultProviderInfo,
+		providers:           make(map[string]providers.Reference),
+		config:              src.runinfo.Target,
+		requests:            make(chan defaultProviderRequest),
+		providerRegChan:     regChan,
+		cancel:              cancel,
 	}
 
 	// New up an engine RPC server.
@@ -503,24 +576,29 @@ func getProviderReference(defaultProviders *defaultProviders, req providers.Prov
 // package with the given unparsed provider reference. If the unparsed provider reference is empty,
 // this function returns the plugin for the indicated package's default provider.
 func getProviderFromSource(
-	providers ProviderSource, defaultProviders *defaultProviders,
-	req providers.ProviderRequest, rawProviderRef string) (plugin.Provider, error) {
+	providerSource ProviderSource, defaultProviders *defaultProviders,
+	req providers.ProviderRequest, rawProviderRef string,
+	token tokens.ModuleMember) (plugin.Provider, error) {
 
 	providerRef, err := getProviderReference(defaultProviders, req, rawProviderRef)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getProviderFromSource: %w", err)
+	} else if providers.IsDenyDefaultsProvider(providerRef) {
+		msg := diag.GetDefaultProviderDenied("Invoke").Message
+		return nil, fmt.Errorf(msg, req.Package(), token)
 	}
-	provider, ok := providers.GetProvider(providerRef)
+
+	provider, ok := providerSource.GetProvider(providerRef)
 	if !ok {
-		return nil, fmt.Errorf("unknown provider '%v'", rawProviderRef)
+		return nil, fmt.Errorf("unknown provider '%v' -> '%v'", rawProviderRef, providerRef)
 	}
 	return provider, nil
 }
 
-func parseProviderRequest(pkg tokens.Package, version string) (providers.ProviderRequest, error) {
+func parseProviderRequest(pkg tokens.Package, version, pluginDownloadURL string) (providers.ProviderRequest, error) {
 	if version == "" {
 		logging.V(5).Infof("parseProviderRequest(%s): semver version is the empty string", pkg)
-		return providers.NewProviderRequest(nil, pkg), nil
+		return providers.NewProviderRequest(nil, pkg, pluginDownloadURL), nil
 	}
 
 	parsedVersion, err := semver.Parse(version)
@@ -529,7 +607,9 @@ func parseProviderRequest(pkg tokens.Package, version string) (providers.Provide
 		return providers.ProviderRequest{}, err
 	}
 
-	return providers.NewProviderRequest(&parsedVersion, pkg), nil
+	url := strings.TrimSuffix(pluginDownloadURL, "/")
+
+	return providers.NewProviderRequest(&parsedVersion, pkg, url), nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,
@@ -557,13 +637,13 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Invoke: %w", err)
 	}
 
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
@@ -607,11 +687,11 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, err
 	}
@@ -695,11 +775,11 @@ func (rm *resmon) StreamInvoke(
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
 
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 	if err != nil {
 		return err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return err
 	}
@@ -762,13 +842,16 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	provider := req.GetProvider()
 	if !providers.IsProviderType(t) && provider == "" {
-		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion())
+		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 		if err != nil {
 			return nil, err
 		}
 		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
 		if provErr != nil {
 			return nil, provErr
+		} else if providers.IsDenyDefaultsProvider(ref) {
+			msg := diag.GetDefaultProviderDenied("Read").Message
+			return nil, fmt.Errorf(msg, req.GetType(), t)
 		}
 		provider = ref.String()
 	}
@@ -854,6 +937,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	replaceOnChanges := req.GetReplaceOnChanges()
 	id := resource.ID(req.GetImportId())
 	customTimeouts := req.GetCustomTimeouts()
+	retainOnDelete := req.GetRetainOnDelete()
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
 	// provider responsible for managing a particular resource (based on the type's Package).
@@ -875,7 +959,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	var providerRefs map[string]string
 
 	if custom && !providers.IsProviderType(t) || remote {
-		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion())
+		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 		if err != nil {
 			return nil, err
 		}
@@ -919,8 +1003,17 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	if providers.IsProviderType(t) && req.GetVersion() != "" {
-		props["version"] = resource.NewStringProperty(req.GetVersion())
+	if providers.IsProviderType(t) {
+		if req.GetVersion() != "" {
+			version, err := semver.Parse(req.GetVersion())
+			if err != nil {
+				return nil, fmt.Errorf("%s: passed invalid version: %w", label, err)
+			}
+			providers.SetProviderVersion(props, &version)
+		}
+		if req.GetPluginDownloadURL() != "" {
+			providers.SetProviderURL(props, req.GetPluginDownloadURL())
+		}
 	}
 
 	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
@@ -979,9 +1072,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v, replaceOnChanges=%v",
+			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v",
 		t, name, custom, len(props), parent, protect, providerRef, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliases, timeouts, providerRefs, replaceOnChanges)
+		aliases, timeouts, providerRefs, replaceOnChanges, retainOnDelete)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -1019,7 +1112,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		step := &registerResourceEvent{
 			goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 				providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-				additionalSecretOutputs, aliases, id, &timeouts, replaceOnChanges),
+				additionalSecretOutputs, aliases, id, &timeouts, replaceOnChanges, retainOnDelete),
 			done: make(chan *RegisterResult),
 		}
 

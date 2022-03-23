@@ -548,7 +548,8 @@ proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
     acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 9, false),
     additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
     aliasesList: (f = jspb.Message.getRepeatedField(msg, 11)) == null ? undefined : f,
-    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 12, false)
+    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, "")
   };
 
   if (includeInstance) {
@@ -633,6 +634,10 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
     case 12:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptresources(value);
+      break;
+    case 13:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPlugindownloadurl(value);
       break;
     default:
       reader.skipField();
@@ -745,6 +750,13 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
   if (f) {
     writer.writeBool(
       12,
+      f
+    );
+  }
+  f = message.getPlugindownloadurl();
+  if (f.length > 0) {
+    writer.writeString(
+      13,
       f
     );
   }
@@ -1043,6 +1055,24 @@ proto.pulumirpc.ReadResourceRequest.prototype.setAcceptresources = function(valu
 };
 
 
+/**
+ * optional string pluginDownloadURL = 13;
+ * @return {string}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getPlugindownloadurl = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 13, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ReadResourceRequest} returns this
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.setPlugindownloadurl = function(value) {
+  return jspb.Message.setProto3StringField(this, 13, value);
+};
+
+
 
 
 
@@ -1285,7 +1315,9 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     remote: jspb.Message.getBooleanFieldWithDefault(msg, 20, false),
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
     providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
-    replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f
+    replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f,
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 24, ""),
+    retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 25, false)
   };
 
   if (includeInstance) {
@@ -1419,6 +1451,14 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 23:
       var value = /** @type {string} */ (reader.readString());
       msg.addReplaceonchanges(value);
+      break;
+    case 24:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setPlugindownloadurl(value);
+      break;
+    case 25:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setRetainondelete(value);
       break;
     default:
       reader.skipField();
@@ -1603,6 +1643,20 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeRepeatedString(
       23,
+      f
+    );
+  }
+  f = message.getPlugindownloadurl();
+  if (f.length > 0) {
+    writer.writeString(
+      24,
+      f
+    );
+  }
+  f = message.getRetainondelete();
+  if (f) {
+    writer.writeBool(
+      25,
       f
     );
   }
@@ -2507,6 +2561,42 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addReplaceonchanges = function
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearReplaceonchangesList = function() {
   return this.setReplaceonchangesList([]);
+};
+
+
+/**
+ * optional string pluginDownloadURL = 24;
+ * @return {string}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getPlugindownloadurl = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 24, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setPlugindownloadurl = function(value) {
+  return jspb.Message.setProto3StringField(this, 24, value);
+};
+
+
+/**
+ * optional bool retainOnDelete = 25;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getRetainondelete = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 25, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setRetainondelete = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 25, value);
 };
 
 

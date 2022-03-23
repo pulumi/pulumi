@@ -49,10 +49,11 @@ type PackageInfo struct {
 	Compatibility string `json:"compatibility,omitempty"`
 	// Deprecated: This bool is no longer needed since all providers now use input/output classes.
 	UsesIOClasses bool `json:"usesIOClasses,omitempty"`
-	// Indicates whether the pulumiplugin.json file should be generated.
-	EmitPulumiPluginFile bool `json:"emitPulumiPluginFile,omitempty"`
 	// Determines whether to make single-return-value methods return an output object or the single value.
 	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
+
+	// Respect the Pkg.Version field for emitted code.
+	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
 }
 
 // Importer implements schema.Language for Python.

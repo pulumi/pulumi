@@ -266,24 +266,25 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 	genSuffix()
 }
 
-var functionImports = map[string]string{
-	intrinsicInterpolate: "@pulumi/pulumi",
-	"fileArchive":        "@pulumi/pulumi",
-	"fileAsset":          "@pulumi/pulumi",
-	"filebase64":         "fs",
-	"readFile":           "fs",
-	"readDir":            "fs",
-	"sha1":               "crypto",
+var functionImports = map[string][]string{
+	intrinsicInterpolate: {"@pulumi/pulumi"},
+	"fileArchive":        {"@pulumi/pulumi"},
+	"fileAsset":          {"@pulumi/pulumi"},
+	"filebase64":         {"fs"},
+	"filebase64sha256":   {"fs", "crypto"},
+	"readFile":           {"fs"},
+	"readDir":            {"fs"},
+	"sha1":               {"crypto"},
 }
 
-func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
+func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
 	if x.Name != pcl.Invoke {
 		return functionImports[x.Name]
 	}
 
 	pkg, _, _, diags := functionName(x.Args[0])
 	contract.Assert(len(diags) == 0)
-	return "@pulumi/" + pkg
+	return []string{"@pulumi/" + pkg}
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
@@ -322,6 +323,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "new pulumi.asset.FileAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		g.Fgenf(w, "Buffer.from(fs.readFileSync(%v), 'binary').toString('base64')", expr.Args[0])
+	case "filebase64sha256":
+		// Assuming the existence of the following helper method
+		g.Fgenf(w, "computeFilebase64sha256(%v)", expr.Args[0])
 	case pcl.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
@@ -366,6 +370,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "JSON.stringify(%v)", expr.Args[0])
 	case "sha1":
 		g.Fgenf(w, "crypto.createHash('sha1').update(%v).digest('hex')", expr.Args[0])
+	case "stack":
+		g.Fgenf(w, "pulumi.getStack()")
+	case "project":
+		g.Fgenf(w, "pulumi.getProject()")
+	case "cwd":
+		g.Fgen(w, "process.cwd()")
 
 	default:
 		var rng hcl.Range

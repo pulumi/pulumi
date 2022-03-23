@@ -25,7 +25,9 @@ import (
 )
 
 func TestParseGitRepoURL(t *testing.T) {
-	test := func(expectedURL string, expectedURLPath string, rawurl string) {
+	t.Parallel()
+
+	test := func(expectedURL, expectedURLPath string, rawurl string) {
 		actualURL, actualURLPath, err := ParseGitRepoURL(rawurl)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedURL, actualURL)
@@ -74,6 +76,8 @@ func TestParseGitRepoURL(t *testing.T) {
 }
 
 func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -186,7 +190,9 @@ func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 }
 
 func createTestRepo(e *ptesting.Environment) {
-	e.RunCommand("git", "init")
+	e.RunCommand("git", "init", "-b", "master")
+	e.RunCommand("git", "config", "user.name", "test")
+	e.RunCommand("git", "config", "user.email", "test@test.org")
 
 	e.WriteTestFile("README.md", "test repo")
 	e.RunCommand("git", "add", "*")
@@ -205,6 +211,8 @@ func createTestRepo(e *ptesting.Environment) {
 }
 
 func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
+	t.Parallel()
+
 	gitTests := []struct {
 		Remote      string
 		WantVCSInfo *VCSInfo

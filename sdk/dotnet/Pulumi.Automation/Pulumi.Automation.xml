@@ -899,6 +899,11 @@
             Optional callback which is invoked with the engine events
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.Color">
+            <summary>
+            Colorize output. Choices are: always, never, raw, auto (default "auto")
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.UpOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/> operation.
@@ -1370,34 +1375,12 @@
             <param name="force">A boolean indicating whether the deletion should be forced.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAsync(System.String)">
-            <summary>
-            Unprotect a resource in a stack's state.
-            This command clears the ‘protect’ bit on the provided resource <paramref name="urn"/>, allowing the resource to be deleted.
-            </summary>
-            <param name="urn">The Pulumi URN to be unprotected.</param>
-        </member>
         <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAsync(System.String,System.Threading.CancellationToken)">
             <summary>
             Unprotect a resource in a stack's state.
             This command clears the ‘protect’ bit on the provided resource <paramref name="urn"/>, allowing the resource to be deleted.
             </summary>
             <param name="urn">The Pulumi URN to be unprotected.</param>
-            <param name="cancellationToken">A cancellation token.</param>
-        </member>
-        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAsync(System.Collections.Generic.IEnumerable{System.String})">
-            <summary>
-            Unprotect resources in a stack's state.
-            This command clears the ‘protect’ bit on the provided resource <paramref name="urns"/>, allowing those resources to be deleted.
-            </summary>
-            <param name="urns">The Pulumi URNs to be unprotected.</param>
-        </member>
-        <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAsync(System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
-            <summary>
-            Unprotect resources in a stack's state.
-            This command clears the ‘protect’ bit on the provided resource <paramref name="urns"/>, allowing those resources to be deleted.
-            </summary>
-            <param name="urns">The Pulumi URNs to be unprotected.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
         <member name="M:Pulumi.Automation.WorkspaceStackState.UnprotectAllAsync(System.Threading.CancellationToken)">

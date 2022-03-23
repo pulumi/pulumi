@@ -32,9 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// PulumiFilestateLockingEnvVar is an env var that must be truthy to enable locking when using a filestate backend.
-const PulumiFilestateLockingEnvVar = "PULUMI_SELF_MANAGED_STATE_LOCKING"
-
 type lockContent struct {
 	Pid       int       `json:"pid"`
 	Username  string    `json:"username"`
@@ -145,12 +142,12 @@ func lockDir() string {
 	return path.Join(workspace.BookkeepingDir, workspace.LockDir)
 }
 
-func stackLockDir(stack tokens.QName) string {
+func stackLockDir(stack tokens.Name) string {
 	contract.Require(stack != "", "stack")
-	return path.Join(lockDir(), fsutil.QnamePath(stack))
+	return path.Join(lockDir(), fsutil.NamePath(stack))
 }
 
-func (b *localBackend) lockPath(stack tokens.QName) string {
+func (b *localBackend) lockPath(stack tokens.Name) string {
 	contract.Require(stack != "", "stack")
 	return path.Join(stackLockDir(stack), b.lockID+".json")
 }

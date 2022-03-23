@@ -184,6 +184,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.color) {
+                args.push("--color", opts.color);
+            }
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -230,15 +233,14 @@ Event: ${line}\n${e.toString()}`);
 
         const upPromise = this.runPulumiCmd(args, opts?.onOutput);
         let upResult: CommandResult;
-        let logResult: ReadlineResult | undefined;
         try {
-            [upResult, logResult] = await Promise.all([upPromise, logPromise]);
+            upResult = await upPromise;
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, logResult);
+            await cleanUp(logFile, await logPromise);
         }
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
@@ -294,6 +296,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
+            }
+            if (opts.color) {
+                args.push("--color", opts.color);
             }
         }
 
@@ -390,6 +395,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.color) {
+                args.push("--color", opts.color);
+            }
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
@@ -444,6 +452,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
+            }
+            if (opts.color) {
+                args.push("--color", opts.color);
             }
         }
 
@@ -738,6 +749,7 @@ export interface UpOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 /**
@@ -755,6 +767,7 @@ export interface PreviewOptions {
     program?: PulumiFn;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 /**
@@ -768,6 +781,7 @@ export interface RefreshOptions {
     userAgent?: string;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 /**
@@ -781,6 +795,7 @@ export interface DestroyOptions {
     userAgent?: string;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
+    color?: "always" | "never" | "raw" | "auto";
 }
 
 const execKind = {
@@ -809,6 +824,12 @@ const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
     }
     if (logFile) {
         // remove the logfile
-        fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+        if(fs.rm) {
+            // remove with Node JS 15.X+
+            fs.rm(path.dirname(logFile), { recursive: true }, () => { return; });
+        } else {
+            // remove with Node JS 14.X
+            fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+        }
     }
 };

@@ -182,20 +182,33 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// }
 		// g.Fgenf(w, " => new { Key = k, Value = v })")
 	case "fileArchive":
-		g.genNYI(w, "call %v", expr.Name)
-		// g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
+		g.Fgenf(w, "pulumi.NewFileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.NewFileAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "filebase64OrPanic(%v)", expr.Args[0])
+	case "filebase64sha256":
+		// Assuming the existence of the following helper method
+		g.Fgenf(w, "filebase64sha256OrPanic(%v)", expr.Args[0])
 	case pcl.Invoke:
 		pkg, module, fn, diags := g.functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module == "" {
 			module = pkg
 		}
-		name := fmt.Sprintf("%s.%s", module, fn)
+		isOut, outArgs, outArgsType := pcl.RecognizeOutputVersionedInvoke(expr)
+		if isOut {
+			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType)
+			if err != nil {
+				panic(fmt.Errorf("Error when generating an output-versioned Invoke: %w", err))
+			}
+			g.Fgenf(w, "%s.%sOutput(ctx, ", module, fn)
+			g.genObjectConsExpressionWithTypeName(w, outArgs, outArgsType, outTypeName)
+		} else {
+			g.Fgenf(w, "%s.%s(ctx, ", module, fn)
+			g.Fgenf(w, "%.v", expr.Args[1])
+		}
 
 		optionsBag := ""
 		var buf bytes.Buffer
@@ -205,9 +218,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.Fgenf(&buf, ", nil")
 		}
 		optionsBag = buf.String()
-
-		g.Fgenf(w, "%s(ctx, ", name)
-		g.Fgenf(w, "%.v", expr.Args[1])
 		g.Fgenf(w, "%v)", optionsBag)
 	case "join":
 		g.Fgenf(w, "strings.Join(%v, %v)", expr.Args[1], expr.Args[0])
@@ -241,9 +251,49 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "mime.TypeByExtension(path.Ext(%.v))", expr.Args[0])
 	case "sha1":
 		g.Fgenf(w, "sha1Hash(%v)", expr.Args[0])
+	case "goOptionalFloat64":
+		g.Fgenf(w, "pulumi.Float64Ref(%.v)", expr.Args[0])
+	case "goOptionalBool":
+		g.Fgenf(w, "pulumi.BoolRef(%.v)", expr.Args[0])
+	case "goOptionalInt":
+		g.Fgenf(w, "pulumi.IntRef(%.v)", expr.Args[0])
+	case "goOptionalString":
+		g.Fgenf(w, "pulumi.StringRef(%.v)", expr.Args[0])
+	case "stack":
+		g.Fgen(w, "ctx.Stack()")
+	case "project":
+		g.Fgen(w, "ctx.Project()")
+	case "cwd":
+		g.Fgen(w, "func(cwd string, err error) string { if err != nil { panic(err) }; return cwd }(os.Getwd())")
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
+}
+
+// Currently args type for output-versioned invokes are named
+// `FOutputArgs`, but this is not yet understood by `tokenToType`. Use
+// this function to compensate.
+func outputVersionFunctionArgTypeName(t model.Type) (string, error) {
+	schemaType, ok := pcl.GetSchemaForType(t)
+	if !ok {
+		return "", fmt.Errorf("No schema.Type type found for the given model.Type")
+	}
+
+	objType, ok := schemaType.(*schema.ObjectType)
+	if !ok {
+		return "", fmt.Errorf("Expected a schema.ObjectType, got %s", schemaType.String())
+	}
+
+	pkg := &pkgContext{pkg: &schema.Package{Name: "main"}}
+
+	var ty string
+	if pkg.isExternalReference(objType) {
+		ty = pkg.contextForExternalReference(objType).tokenToType(objType.Token)
+	} else {
+		ty = pkg.tokenToType(objType.Token)
+	}
+
+	return fmt.Sprintf("%sOutputArgs", strings.TrimSuffix(ty, "Args")), nil
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
@@ -316,15 +366,10 @@ func (g *generator) genObjectConsExpression(
 	w io.Writer,
 	expr *model.ObjectConsExpression,
 	destType model.Type,
-	isInput bool,
-) {
-	if len(expr.Items) == 0 {
-		g.Fgenf(w, "nil")
-		return
-	}
+	isInput bool) {
 
-	var temps []interface{}
 	isInput = isInput || isInputty(destType)
+
 	typeName := g.argumentTypeName(expr, destType, isInput)
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok {
@@ -334,6 +379,21 @@ func (g *generator) genObjectConsExpression(
 		}
 	}
 
+	g.genObjectConsExpressionWithTypeName(w, expr, destType, typeName)
+}
+
+func (g *generator) genObjectConsExpressionWithTypeName(
+	w io.Writer,
+	expr *model.ObjectConsExpression,
+	destType model.Type,
+	typeName string) {
+
+	if len(expr.Items) == 0 {
+		g.Fgenf(w, "nil")
+		return
+	}
+
+	var temps []interface{}
 	// TODO: @pgavlin --- ineffectual assignment, was there some work in flight here?
 	// if strings.HasSuffix(typeName, "Args") {
 	// 	isInput = true
@@ -360,7 +420,7 @@ func (g *generator) genObjectConsExpression(
 	}
 	g.genTemps(w, temps)
 
-	if isMap || !strings.HasSuffix(typeName, "Args") {
+	if isMap || !strings.HasSuffix(typeName, "Args") || strings.HasSuffix(typeName, "OutputArgs") {
 		g.Fgenf(w, "%s", typeName)
 	} else {
 		g.Fgenf(w, "&%s", typeName)
@@ -814,9 +874,15 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	isInput := false
 	retType := g.argumentTypeName(nil, then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
-	typeAssertion := fmt.Sprintf(".(%sOutput)", retType)
-	if !strings.HasPrefix(retType, "pulumi.") {
-		typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+	// TODO[pulumi/pulumi#8453] incomplete pattern code below.
+	var typeAssertion string
+	if retType == "[]string" {
+		typeAssertion = ".(pulumi.StringArrayOutput)"
+	} else {
+		typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
+		if !strings.HasPrefix(retType, "pulumi.") {
+			typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+		}
 	}
 
 	if len(applyArgs) == 1 {
@@ -926,9 +992,7 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 				break
 			}
 		}
-		var buf bytes.Buffer
-		g.GenTemplateExpression(&buf, x)
-		return buf.String(), true
+		return "", false
 	default:
 		return "", false
 	}
@@ -954,14 +1018,16 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 }
 
 var functionPackages = map[string][]string{
-	"join":       {"strings"},
-	"mimeType":   {"mime", "path"},
-	"readDir":    {"io/ioutil"},
-	"readFile":   {"io/ioutil"},
-	"filebase64": {"io/ioutil", "encoding/base64"},
-	"toBase64":   {"encoding/base64"},
-	"toJSON":     {"encoding/json"},
-	"sha1":       {"fmt", "crypto/sha1"},
+	"join":             {"strings"},
+	"mimeType":         {"mime", "path"},
+	"readDir":          {"io/ioutil"},
+	"readFile":         {"io/ioutil"},
+	"filebase64":       {"io/ioutil", "encoding/base64"},
+	"toBase64":         {"encoding/base64"},
+	"toJSON":           {"encoding/json"},
+	"sha1":             {"fmt", "crypto/sha1"},
+	"filebase64sha256": {"fmt", "io/ioutil", "crypto/sha256"},
+	"cwd":              {"os"},
 }
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {

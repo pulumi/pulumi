@@ -120,7 +120,7 @@ func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
 	return nil
 }
 func (prov *testProvider) Check(urn resource.URN,
-	olds, news resource.PropertyMap, _ bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	olds, news resource.PropertyMap, _ bool, _ int) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
 }
 func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
@@ -261,6 +261,8 @@ func newProviderState(pkg, name, id string, delete bool, inputs resource.Propert
 }
 
 func TestNewRegistryNoOldState(t *testing.T) {
+	t.Parallel()
+
 	r, err := NewRegistry(&testPluginHost{}, nil, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, r)
@@ -271,6 +273,8 @@ func TestNewRegistryNoOldState(t *testing.T) {
 }
 
 func TestNewRegistryOldState(t *testing.T) {
+	t.Parallel()
+
 	olds := []*resource.State{
 		// Two providers from package A, each with a unique name and ID
 		newProviderState("pkgA", "a", "id1", false, nil),
@@ -323,6 +327,8 @@ func TestNewRegistryOldState(t *testing.T) {
 }
 
 func TestNewRegistryOldStateNoProviders(t *testing.T) {
+	t.Parallel()
+
 	olds := []*resource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
 	}
@@ -334,6 +340,8 @@ func TestNewRegistryOldStateNoProviders(t *testing.T) {
 }
 
 func TestNewRegistryOldStateWrongPackage(t *testing.T) {
+	t.Parallel()
+
 	olds := []*resource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
 	}
@@ -348,6 +356,8 @@ func TestNewRegistryOldStateWrongPackage(t *testing.T) {
 }
 
 func TestNewRegistryOldStateWrongVersion(t *testing.T) {
+	t.Parallel()
+
 	olds := []*resource.State{
 		newProviderState("pkgA", "a", "id1", false, resource.PropertyMap{
 			"version": resource.NewStringProperty("1.0.0"),
@@ -364,6 +374,8 @@ func TestNewRegistryOldStateWrongVersion(t *testing.T) {
 }
 
 func TestNewRegistryOldStateNoID(t *testing.T) {
+	t.Parallel()
+
 	olds := []*resource.State{
 		newProviderState("pkgA", "a", "", false, nil),
 	}
@@ -378,6 +390,8 @@ func TestNewRegistryOldStateNoID(t *testing.T) {
 }
 
 func TestNewRegistryOldStateUnknownID(t *testing.T) {
+	t.Parallel()
+
 	olds := []*resource.State{
 		newProviderState("pkgA", "a", UnknownID, false, nil),
 	}
@@ -392,6 +406,8 @@ func TestNewRegistryOldStateUnknownID(t *testing.T) {
 }
 
 func TestNewRegistryOldStateDuplicates(t *testing.T) {
+	t.Parallel()
+
 	olds := []*resource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgA", "a", "id1", false, nil),
@@ -407,6 +423,8 @@ func TestNewRegistryOldStateDuplicates(t *testing.T) {
 }
 
 func TestCRUD(t *testing.T) {
+	t.Parallel()
+
 	olds := []*resource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgB", "a", "id1", false, nil),
@@ -444,7 +462,7 @@ func TestCRUD(t *testing.T) {
 		timeout := float64(120)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false)
+		inputs, failures, err := r.Check(urn, olds, news, false, 0)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -479,7 +497,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false)
+		inputs, failures, err := r.Check(urn, olds, news, false, 0)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -532,6 +550,8 @@ func TestCRUD(t *testing.T) {
 }
 
 func TestCRUDPreview(t *testing.T) {
+	t.Parallel()
+
 	olds := []*resource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
 		newProviderState("pkgB", "a", "id1", false, nil),
@@ -587,7 +607,7 @@ func TestCRUDPreview(t *testing.T) {
 		olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false)
+		inputs, failures, err := r.Check(urn, olds, news, false, 0)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -608,7 +628,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false)
+		inputs, failures, err := r.Check(urn, olds, news, false, 0)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -641,7 +661,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false)
+		inputs, failures, err := r.Check(urn, olds, news, false, 0)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -666,6 +686,8 @@ func TestCRUDPreview(t *testing.T) {
 }
 
 func TestCRUDNoProviders(t *testing.T) {
+	t.Parallel()
+
 	host := newPluginHost(t, []*providerLoader{})
 
 	r, err := NewRegistry(host, []*resource.State{}, false, nil)
@@ -677,13 +699,15 @@ func TestCRUDNoProviders(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false)
+	inputs, failures, err := r.Check(urn, olds, news, false, 0)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
 }
 
 func TestCRUDWrongPackage(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*providerLoader{
 		newSimpleLoader(t, "pkgB", "", nil),
 	}
@@ -698,13 +722,15 @@ func TestCRUDWrongPackage(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false)
+	inputs, failures, err := r.Check(urn, olds, news, false, 0)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
 }
 
 func TestCRUDWrongVersion(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*providerLoader{
 		newSimpleLoader(t, "pkgA", "0.5.0", nil),
 	}
@@ -719,13 +745,15 @@ func TestCRUDWrongVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("1.0.0")}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false)
+	inputs, failures, err := r.Check(urn, olds, news, false, 0)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
 }
 
 func TestCRUDBadVersionNotString(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*providerLoader{
 		newSimpleLoader(t, "pkgA", "1.0.0", nil),
 	}
@@ -740,7 +768,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewBoolProperty(true)}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false)
+	inputs, failures, err := r.Check(urn, olds, news, false, 0)
 	assert.NoError(t, err)
 	assert.Len(t, failures, 1)
 	assert.Equal(t, "version", string(failures[0].Property))
@@ -748,6 +776,8 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 }
 
 func TestCRUDBadVersion(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*providerLoader{
 		newSimpleLoader(t, "pkgA", "1.0.0", nil),
 	}
@@ -762,7 +792,7 @@ func TestCRUDBadVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("foo")}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false)
+	inputs, failures, err := r.Check(urn, olds, news, false, 0)
 	assert.NoError(t, err)
 	assert.Len(t, failures, 1)
 	assert.Equal(t, "version", string(failures[0].Property))

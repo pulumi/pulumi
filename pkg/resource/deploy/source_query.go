@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	opentracing "github.com/opentracing/opentracing-go"
 
@@ -34,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -45,7 +45,7 @@ type QuerySource interface {
 // NewQuerySource creates a `QuerySource` for some target runtime environment specified by
 // `runinfo`, and supported by language plugins provided in `plugctx`.
 func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client BackendClient,
-	runinfo *EvalRunInfo, defaultProviderVersions map[tokens.Package]*semver.Version,
+	runinfo *EvalRunInfo, defaultProviderVersions map[tokens.Package]workspace.PluginInfo,
 	provs ProviderSource) (QuerySource, error) {
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
@@ -195,7 +195,7 @@ func runLangPlugin(src *querySource) result.Result {
 // newQueryResourceMonitor creates a new resource monitor RPC server intended to be used in Pulumi's
 // "query mode".
 func newQueryResourceMonitor(
-	builtins *builtinProvider, defaultProviderVersions map[tokens.Package]*semver.Version,
+	builtins *builtinProvider, defaultProviderInfo map[tokens.Package]workspace.PluginInfo,
 	provs ProviderSource, reg *providers.Registry, plugctx *plugin.Context,
 	providerRegErrChan chan<- result.Result, tracingSpan opentracing.Span, runinfo *EvalRunInfo) (*queryResmon, error) {
 
@@ -207,19 +207,19 @@ func newQueryResourceMonitor(
 
 	// Create a new default provider manager.
 	d := &defaultProviders{
-		defaultVersions: defaultProviderVersions,
-		providers:       make(map[string]providers.Reference),
-		config:          runinfo.Target,
-		requests:        make(chan defaultProviderRequest),
-		providerRegChan: providerRegChan,
-		cancel:          cancel,
+		defaultProviderInfo: defaultProviderInfo,
+		providers:           make(map[string]providers.Reference),
+		config:              runinfo.Target,
+		requests:            make(chan defaultProviderRequest),
+		providerRegChan:     providerRegChan,
+		cancel:              cancel,
 	}
 
 	go func() {
 		for e := range providerRegChan {
 			urn := syntheticProviderURN(e.goal)
 
-			inputs, _, err := reg.Check(urn, resource.PropertyMap{}, e.goal.Properties, false)
+			inputs, _, err := reg.Check(urn, resource.PropertyMap{}, e.goal.Properties, false, 0)
 			if err != nil {
 				providerRegErrChan <- result.FromError(err)
 				return
@@ -325,11 +325,11 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("QueryResourceMonitor.Invoke(%s)", tok)
 
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, err
 	}
@@ -377,11 +377,11 @@ func (rm *queryResmon) StreamInvoke(
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("QueryResourceMonitor.StreamInvoke(%s)", tok)
 
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 	if err != nil {
 		return err
 	}
-	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return err
 	}
@@ -426,11 +426,11 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("QueryResourceMonitor.Call(%s)", tok)
 
-	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, err
 	}

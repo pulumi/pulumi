@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -373,6 +373,8 @@ func getFunctionFromModule(function string, mod *modContext) *schema.Function {
 }
 
 func TestFunctionHeaders(t *testing.T) {
+	t.Parallel()
+
 	dctx := newDocGenContext()
 	initTestPackageSpec(t)
 
@@ -402,7 +404,10 @@ func TestFunctionHeaders(t *testing.T) {
 
 	modules := dctx.generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
 	for _, test := range tests {
+		test := test
 		t.Run(test.FunctionName, func(t *testing.T) {
+			t.Parallel()
+
 			mod, ok := modules[test.ModuleName]
 			if !ok {
 				t.Fatalf("could not find the module %s in modules map", test.ModuleName)
@@ -420,6 +425,8 @@ func TestFunctionHeaders(t *testing.T) {
 }
 
 func TestResourceDocHeader(t *testing.T) {
+	t.Parallel()
+
 	dctx := newDocGenContext()
 	initTestPackageSpec(t)
 
@@ -452,7 +459,10 @@ func TestResourceDocHeader(t *testing.T) {
 
 	modules := dctx.generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
 	for _, test := range tests {
+		test := test
 		t.Run(test.Name, func(t *testing.T) {
+			t.Parallel()
+
 			mod, ok := modules[test.ModuleName]
 			if !ok {
 				t.Fatalf("could not find the module %s in modules map", test.ModuleName)
@@ -470,6 +480,8 @@ func TestResourceDocHeader(t *testing.T) {
 }
 
 func TestExamplesProcessing(t *testing.T) {
+	t.Parallel()
+
 	initTestPackageSpec(t)
 	dctx := newDocGenContext()
 
@@ -506,12 +518,11 @@ func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 }
 
 func TestGeneratePackage(t *testing.T) {
-	// When running this test locally, be sure to run
-	// `make generate` first. That will regenerate the
-	// compiled templates file packaged.go. See README.md
-	// in this package for more info.
+	t.Parallel()
+
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "docs",
 		GenPackage: generatePackage,
+		TestCases:  test.PulumiPulumiSDKTests,
 	})
 }

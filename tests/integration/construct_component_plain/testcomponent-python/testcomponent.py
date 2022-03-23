@@ -12,29 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional
+from typing import Optional
 import sys
 
-from pulumi import Input, Inputs, ComponentResource, ResourceOptions
-import pulumi
-import pulumi.dynamic as dynamic
+from pulumi import Inputs, ComponentResource, ResourceOptions
 import pulumi.provider as provider
 
-
-_ID = 0
-
-
-class MyDynamicProvider(dynamic.ResourceProvider):
-
-    def create(self, props: Any) -> dynamic.CreateResult:
-        global _ID
-        _ID = _ID + 1
-        return dynamic.CreateResult(id_=str(_ID))
-
-
-class Resource(dynamic.Resource):
-    def __init__(self, name: str, options: Optional[ResourceOptions]=None):
-        super().__init__(MyDynamicProvider(), name, {}, options)
+from echo import Echo
 
 
 class Component(ComponentResource):
@@ -42,7 +26,7 @@ class Component(ComponentResource):
         super().__init__('testcomponent:index:Component', name, {}, options)
 
         for i in range(0, children):
-            Resource(f'child-{name}-{i+1}', options=ResourceOptions(parent=self))
+            Echo(f'child-{name}-{i+1}', i+1, ResourceOptions(parent=self))
 
 
 class Provider(provider.Provider):

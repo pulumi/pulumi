@@ -22,7 +22,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -61,12 +60,6 @@ func newCancelCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			// Ensure that we are targeting the Pulumi cloud.
-			backend, ok := s.Backend().(httpstate.Backend)
-			if !ok {
-				return result.Error("the `cancel` command is not supported for local stacks")
-			}
-
 			// Ensure the user really wants to do this.
 			stackName := string(s.Ref().Name())
 			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
@@ -76,7 +69,7 @@ func newCancelCmd() *cobra.Command {
 			}
 
 			// Cancel the update.
-			if err := backend.CancelCurrentUpdate(commandContext(), s.Ref()); err != nil {
+			if err := s.Backend().CancelCurrentUpdate(commandContext(), s.Ref()); err != nil {
 				return result.FromError(err)
 			}
 

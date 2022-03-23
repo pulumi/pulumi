@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 PROVIDER_KEY = "__provider"
 
+
 class CheckResult:
     """
     CheckResult represents the results of a call to `ResourceProvider.check`.
@@ -35,14 +36,15 @@ class CheckResult:
     The inputs to use, if any.
     """
 
-    failures: List['CheckFailure']
+    failures: List["CheckFailure"]
     """
     Any validation failures that occurred.
     """
 
-    def __init__(self, inputs: Any, failures: List['CheckFailure']) -> None:
+    def __init__(self, inputs: Any, failures: List["CheckFailure"]) -> None:
         self.inputs = inputs
         self.failures = failures
+
 
 class CheckFailure:
     """
@@ -62,6 +64,7 @@ class CheckFailure:
     def __init__(self, property_: str, reason: str) -> None:
         self.property = property_
         self.reason = reason
+
 
 class DiffResult:
     """
@@ -89,15 +92,18 @@ class DiffResult:
     This is to void potential side-by-side issues with the default create before delete behavior.
     """
 
-    def __init__(self,
-                 changes: Optional[bool] = None,
-                 replaces: Optional[List[str]] = None,
-                 stables: Optional[List[str]] = None,
-                 delete_before_replace: Optional[bool] = None) -> None:
+    def __init__(
+        self,
+        changes: Optional[bool] = None,
+        replaces: Optional[List[str]] = None,
+        stables: Optional[List[str]] = None,
+        delete_before_replace: Optional[bool] = None,
+    ) -> None:
         self.changes = changes
         self.replaces = replaces
         self.stables = stables
         self.delete_before_replace = delete_before_replace
+
 
 class CreateResult:
     """
@@ -118,6 +124,7 @@ class CreateResult:
         self.id = id_
         self.outs = outs
 
+
 class ReadResult:
     """
     The ID of the resource ready back (or blank if missing).
@@ -133,11 +140,10 @@ class ReadResult:
     The current property state read from the live environment.
     """
 
-    def __init__(self,
-                 id_: Optional[str] = None,
-                 outs: Optional[Any] = None) -> None:
+    def __init__(self, id_: Optional[str] = None, outs: Optional[Any] = None) -> None:
         self.id = id_
         self.outs = outs
+
 
 class UpdateResult:
     """
@@ -149,9 +155,9 @@ class UpdateResult:
     Any properties that were computed during updating.
     """
 
-    def __init__(self,
-                 outs: Optional[Any] = None) -> None:
+    def __init__(self, outs: Optional[Any] = None) -> None:
         self.outs = outs
+
 
 class ResourceProvider:
     """
@@ -202,32 +208,36 @@ class ResourceProvider:
     def __init__(self) -> None:
         pass
 
+
 # TODO[python/mypy#1102]: mypy doesn't currently support multiline comments
 # multiple errors related to the type assignment we're doing in this method eg 'Picker = _Pickler'
 @no_type_check
 def serialize_provider(provider: ResourceProvider) -> str:
-        # We need to customize our Pickler to ensure we sort dictionaries before serializing to try to
+    # We need to customize our Pickler to ensure we sort dictionaries before serializing to try to
     # ensure we get a deterministic result.  Without this we would see changes to our serialized
     # provider even when there are no actual changes.
     old_pickler = pickle.Pickler
-    pickle.Pickler = pickle._Pickler # pylint: disable=protected-access
+    pickle.Pickler = pickle._Pickler  # pylint: disable=protected-access
+
     def save_dict_sorted(self, obj):
         if self.bin:
             self.write(pickle.EMPTY_DICT)
-        else:   # proto 0 -- can't use EMPTY_DICT
+        else:  # proto 0 -- can't use EMPTY_DICT
             self.write(pickle.MARK + pickle.DICT)
 
         self.memoize(obj)
-        self._batch_setitems(sorted(obj.items())) # pylint: disable=protected-access
+        self._batch_setitems(sorted(obj.items()))  # pylint: disable=protected-access
+
     pickle.Pickler.save_dict = save_dict_sorted
 
     # Use dill to recursively pickle the provider and store base64 encoded form
     try:
         byts = dill.dumps(provider, protocol=pickle.DEFAULT_PROTOCOL, recurse=True)
-        return base64.b64encode(byts).decode('utf-8')
+        return base64.b64encode(byts).decode("utf-8")
     finally:
         # Restore the original pickler
         pickle.Pickler = old_pickler
+
 
 class Resource(CustomResource):
     """
@@ -236,16 +246,18 @@ class Resource(CustomResource):
 
     _resource_type_name: ClassVar[str]
 
-    def __init_subclass__(cls, module: str = '', name: str = 'Resource'):
+    def __init_subclass__(cls, module: str = "", name: str = "Resource"):
         if module:
-            module = f'/{module}'
-        cls._resource_type_name = f'dynamic{module}:{name}'
+            module = f"/{module}"
+        cls._resource_type_name = f"dynamic{module}:{name}"
 
-    def __init__(self,
-                 provider: ResourceProvider,
-                 name: str,
-                 props: 'Inputs',
-                 opts: Optional[ResourceOptions] = None) -> None:
+    def __init__(
+        self,
+        provider: ResourceProvider,
+        name: str,
+        props: "Inputs",
+        opts: Optional[ResourceOptions] = None,
+    ) -> None:
         """
         :param str provider: The implementation of the resource's CRUD operations.
         :param str name: The name of this resource.
@@ -255,7 +267,7 @@ class Resource(CustomResource):
         """
 
         if PROVIDER_KEY in props:
-            raise  Exception("A dynamic resource must not define the __provider key")
+            raise Exception("A dynamic resource must not define the __provider key")
 
         props = cast(dict, props)
         props[PROVIDER_KEY] = serialize_provider(provider)

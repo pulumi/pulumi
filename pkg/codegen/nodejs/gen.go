@@ -33,8 +33,8 @@ import (
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/tstypes"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/tstypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -218,7 +218,7 @@ func (mod *modContext) objectType(pkg *schema.Package, details *typeDetails, tok
 
 	if args && input && details != nil && details.usedInFunctionOutputVersionInputs {
 		name += "Args"
-	} else if args && mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
+	} else if args && namingCtx.compatibility != tfbridge20 && namingCtx.compatibility != kubernetes20 {
 		name += "Args"
 	}
 
@@ -427,7 +427,7 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 }
 
 // Generate a provide defaults function for an associated plain object.
-func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name, comment string,
+func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	properties []*schema.Property, input, readonly bool, level int) error {
 	indent := strings.Repeat("    ", level)
 	defaults := []string{}
@@ -499,36 +499,12 @@ func provideDefaultsFuncNameFromName(typeName string) string {
 // `type` is the type which the function applies to.
 // `input` indicates whither `type` is an input type.
 func (mod *modContext) provideDefaultsFuncName(typ schema.Type, input bool) string {
-	if !isProvideDefaultsFuncRequired(typ) {
+	if !codegen.IsProvideDefaultsFuncRequired(typ) {
 		return ""
 	}
 	requiredType := codegen.UnwrapType(typ)
 	typeName := mod.typeString(requiredType, input, nil)
 	return provideDefaultsFuncNameFromName(typeName)
-}
-
-// If a helper function needs to be invoked to provide default values for a
-// plain type. The provided map cannot be reused.
-func isProvideDefaultsFuncRequired(t schema.Type) bool {
-	return isProvideDefaultsFuncRequiredHelper(t, map[string]bool{})
-}
-
-func isProvideDefaultsFuncRequiredHelper(t schema.Type, seen map[string]bool) bool {
-	if seen[t.String()] {
-		return false
-	}
-	seen[t.String()] = true
-	t = codegen.UnwrapType(t)
-	object, ok := t.(*schema.ObjectType)
-	if !ok {
-		return false
-	}
-	for _, p := range object.Properties {
-		if p.DefaultValue != nil || isProvideDefaultsFuncRequiredHelper(p.Type, seen) {
-			return true
-		}
-	}
-	return false
 }
 
 func tsPrimitiveValue(value interface{}) (string, error) {
@@ -889,9 +865,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        }\n")
 
 	// If the caller didn't request a specific version, supply one using the version of this library.
-	fmt.Fprintf(w, "        if (!opts.version) {\n")
-	fmt.Fprintf(w, "            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});\n")
-	fmt.Fprintf(w, "        }\n")
+	// If a `pluginDownloadURL` was supplied by the generating schema, we supply a default facility
+	// much like for version. Both operations are handled in the utilities library.
+	fmt.Fprint(w, "        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);\n")
 
 	// Now invoke the super constructor with the type, name, and a property map.
 	if len(r.Aliases) > 0 {
@@ -1121,9 +1097,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	fmt.Fprintf(w, "        opts = {}\n")
 	fmt.Fprintf(w, "    }\n")
 	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "    if (!opts.version) {\n")
-	fmt.Fprintf(w, "        opts.version = utilities.getVersion();\n")
-	fmt.Fprintf(w, "    }\n")
+	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);\n")
 
 	// Now simply invoke the runtime function with the arguments, returning the results.
 	fmt.Fprintf(w, "    return pulumi.runtime.invoke(\"%s\", {\n", fun.Token)
@@ -1258,7 +1232,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 	if err != nil {
 		return err
 	}
-	return mod.genPlainObjectDefaultFunc(w, name, obj.Comment, properties, input, false, level)
+	return mod.genPlainObjectDefaultFunc(w, name, properties, input, false, level)
 }
 
 // getObjectName recovers the name of `obj` as a type.
@@ -1567,7 +1541,7 @@ func (mod *modContext) genTypes() (string, string, error) {
 		}
 
 		mod.getImports(t, externalImports, imports)
-		if isProvideDefaultsFuncRequired(t) {
+		if codegen.IsProvideDefaultsFuncRequired(t) {
 			hasDefaultObjects = true
 		}
 	}
@@ -1749,7 +1723,7 @@ func (mod *modContext) gen(fs fs) error {
 	case "":
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, nil, nil, nil)
-		fmt.Fprintf(buffer, "%s", utilitiesFile)
+		mod.genUtilitiesFile(buffer)
 		fs.add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
 
 		// Ensure that the top-level (provider) module directory contains a README.md file.
@@ -2100,12 +2074,15 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs) {
-	// The generator already emitted Pulumi.yaml, so that leaves two more files to write out:
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs) error {
+	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
+	//     3) install-pulumi-plugin.js: plugin install script
 	files.add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
 	files.add("tsconfig.json", []byte(genTypeScriptProjectFile(info, files)))
+	files.add("scripts/install-pulumi-plugin.js", []byte(genInstallScript(pkg.PluginDownloadURL)))
+	return nil
 }
 
 type npmPackage struct {
@@ -2144,28 +2121,41 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		devDependencies["typescript"] = "^4.3.5"
 	}
 
+	version := "${VERSION}"
+	versionSet := pkg.Version != nil && info.RespectSchemaVersion
+	if versionSet {
+		version = pkg.Version.String()
+	}
+
+	pluginVersion := info.PluginVersion
+	if versionSet && pluginVersion == "" {
+		pluginVersion = version
+	}
+
+	scriptVersion := "${VERSION}"
+	if pluginVersion != "" {
+		scriptVersion = pluginVersion
+	}
+
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        packageName,
-		Version:     "${VERSION}",
+		Version:     version,
 		Description: info.PackageDescription,
 		Keywords:    pkg.Keywords,
 		Homepage:    pkg.Homepage,
 		Repository:  pkg.Repository,
 		License:     pkg.License,
-		// Ideally, this `scripts` section would include an install script that installs the provider, however, doing
-		// so causes problems when we try to restore package dependencies, since we must do an install for that. So
-		// we have another process that adds the install script when generating the package.json that we actually
-		// publish.
 		Scripts: map[string]string{
-			"build": "tsc",
+			"build":   "tsc",
+			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s %s", pkg.Name, scriptVersion),
 		},
 		DevDependencies: devDependencies,
 		Pulumi: npmPulumiManifest{
 			Resource:          true,
 			PluginDownloadURL: pkg.PluginDownloadURL,
 			Name:              info.PluginName,
-			Version:           info.PluginVersion,
+			Version:           pluginVersion,
 		},
 	}
 
@@ -2487,11 +2477,14 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 
 	// Finally emit the package metadata (NPM, TypeScript, and so on).
-	genPackageMetadata(pkg, info, files)
+	if err = genPackageMetadata(pkg, info, files); err != nil {
+		return nil, err
+	}
 	return files, nil
 }
 
-const utilitiesFile = `
+func (mod *modContext) genUtilitiesFile(w io.Writer) {
+	const body = `
 export function getEnv(...vars: string[]): string | undefined {
     for (const v of vars) {
         const value = process.env[v];
@@ -2537,4 +2530,51 @@ export function getVersion(): string {
     }
     return version;
 }
+
+/** @internal */
+export function resourceOptsDefaults(): any {
+    return { version: getVersion()%s };
+}
 `
+	var pluginDownloadURL string
+	if url := mod.pkg.PluginDownloadURL; url != "" {
+		pluginDownloadURL = fmt.Sprintf(", pluginDownloadURL: %q", url)
+	}
+	_, err := fmt.Fprintf(w, body, pluginDownloadURL)
+	contract.AssertNoError(err)
+}
+
+func genInstallScript(pluginDownloadURL string) string {
+	const installScript = `"use strict";
+var childProcess = require("child_process");
+
+var args = process.argv.slice(2);
+
+if (args.indexOf("${VERSION}") !== -1) {
+	process.exit(0);
+}
+
+var res = childProcess.spawnSync("pulumi", ["plugin", "install"%s].concat(args), {
+    stdio: ["ignore", "inherit", "inherit"]
+});
+
+if (res.error && res.error.code === "ENOENT") {
+    console.error("\nThere was an error installing the resource provider plugin. " +
+            "It looks like ` + "`pulumi`" + ` is not installed on your system. " +
+            "Please visit https://pulumi.com/ to install the Pulumi CLI.\n" +
+            "You may try manually installing the plugin by running " +
+            "` + "`" + `pulumi plugin install " + args.join(" ") + "` + "`" + `");
+} else if (res.error || res.status !== 0) {
+    console.error("\nThere was an error installing the resource provider plugin. " +
+            "You may try to manually installing the plugin by running " +
+            "` + "`" + `pulumi plugin install " + args.join(" ") + "` + "`" + `");
+}
+
+process.exit(0);
+`
+	server := ""
+	if pluginDownloadURL != "" {
+		server = fmt.Sprintf(`, "--server", %q`, pluginDownloadURL)
+	}
+	return fmt.Sprintf(installScript, server)
+}

@@ -4,3 +4,5 @@
 /env/
 /*.egg-info
 .venv/
+venv/
+.coverage

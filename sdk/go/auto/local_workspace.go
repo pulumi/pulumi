@@ -162,7 +162,8 @@ func (l *LocalWorkspace) SetConfig(ctx context.Context, stackName string, key st
 	}
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx,
-		"config", "set", key, val.Value, secretArg, "--stack", stackName)
+		"config", "set", key, secretArg, "--stack", stackName,
+		"--non-interactive", "--", val.Value)
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "unable to set config"), stdout, stderr, errCode)
 	}
@@ -422,13 +423,13 @@ func (l *LocalWorkspace) ExportStack(ctx context.Context, stackName string) (api
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "export", "--show-secrets", "--stack", stackName)
 	if err != nil {
-		return state, newAutoError(errors.Wrap(err, "could not export stack."), stdout, stderr, errCode)
+		return state, newAutoError(errors.Wrap(err, "could not export stack"), stdout, stderr, errCode)
 	}
 
 	err = json.Unmarshal([]byte(stdout), &state)
 	if err != nil {
 		return state, newAutoError(
-			errors.Wrap(err, "failed to export stack, unable to unmarshall stack state."), stdout, stderr, errCode,
+			errors.Wrap(err, "failed to export stack, unable to unmarshall stack state"), stdout, stderr, errCode,
 		)
 	}
 
@@ -440,23 +441,23 @@ func (l *LocalWorkspace) ExportStack(ctx context.Context, stackName string) (api
 func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, state apitype.UntypedDeployment) error {
 	f, err := ioutil.TempFile(os.TempDir(), "")
 	if err != nil {
-		return errors.Wrap(err, "could not import stack. failed to allocate temp file.")
+		return errors.Wrap(err, "could not import stack. failed to allocate temp file")
 	}
 	defer func() { contract.IgnoreError(os.Remove(f.Name())) }()
 
 	bytes, err := json.Marshal(state)
 	if err != nil {
-		return errors.Wrap(err, "could not import stack, failed to marshal stack state.")
+		return errors.Wrap(err, "could not import stack, failed to marshal stack state")
 	}
 
 	_, err = f.Write(bytes)
 	if err != nil {
-		return errors.Wrap(err, "could not import stack. failed to write out stack intermediate.")
+		return errors.Wrap(err, "could not import stack. failed to write out stack intermediate")
 	}
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "import", "--file", f.Name(), "--stack", stackName)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "could not import stack."), stdout, stderr, errCode)
+		return newAutoError(errors.Wrap(err, "could not import stack"), stdout, stderr, errCode)
 	}
 
 	return nil
@@ -524,10 +525,10 @@ func parseAndValidatePulumiVersion(minVersion semver.Version, currentVersion str
 		return version, nil
 	}
 	if minVersion.Major < version.Major {
-		return semver.Version{}, errors.Errorf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major)
+		return semver.Version{}, errors.Errorf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major) //nolint
 	}
 	if minVersion.GT(version) {
-		return semver.Version{}, errors.Errorf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion)
+		return semver.Version{}, errors.Errorf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion) //nolint
 	}
 	return version, nil
 }

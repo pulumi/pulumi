@@ -2,9 +2,8 @@ package gen
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
-	"os"
+
 	"path/filepath"
 	"testing"
 
@@ -14,27 +13,32 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func TestGenerateProgram(t *testing.T) {
+	t.Parallel()
+
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{
 			Language:   "go",
 			Extension:  "go",
 			OutputFile: "main.go",
-			Check:      goCheck,
+			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				Check(t, path, dependencies, "../../../../../../../sdk")
+			},
 			GenProgram: GenerateProgram,
+			TestCases:  test.PulumiPulumiProgramTests,
 		})
 }
 
 func TestCollectImports(t *testing.T) {
+	t.Parallel()
+
 	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
 	pulumiImports := codegen.NewStringSet()
 	stdImports := codegen.NewStringSet()
@@ -81,36 +85,4 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 	}
 	g.Formatter = format.NewFormatter(g)
 	return g
-}
-
-func goCheck(t *testing.T, path string, _ codegen.StringSet) {
-	dir := filepath.Dir(path)
-	ex, err := executable.FindExecutable("go")
-	require.NoError(t, err)
-
-	// We remove go.mod to ensure tests are reproducible.
-	goMod := filepath.Join(dir, "go.mod")
-	if err = os.Remove(goMod); !os.IsNotExist(err) {
-		require.NoError(t, err)
-	}
-	err = integration.RunCommand(t, "generate go.mod",
-		[]string{ex, "mod", "init", "main"},
-		dir, &integration.ProgramTestOptions{})
-	require.NoError(t, err)
-	err = integration.RunCommand(t, "go tidy",
-		[]string{ex, "mod", "tidy"},
-		dir, &integration.ProgramTestOptions{})
-	require.NoError(t, err)
-	err = integration.RunCommand(t, "point towards local Go SDK",
-		[]string{ex, "mod", "edit",
-			fmt.Sprintf("--replace=%s=%s",
-				"github.com/pulumi/pulumi/sdk/v3/go/pulumi",
-				"../../../../../../sdk")},
-		dir, &integration.ProgramTestOptions{})
-	require.NoError(t, err)
-	err = integration.RunCommand(t, "test build", []string{ex, "build", "-v", "all"},
-		dir, &integration.ProgramTestOptions{})
-	require.NoError(t, err)
-	os.Remove(filepath.Join(dir, "main"))
-	assert.NoError(t, err)
 }

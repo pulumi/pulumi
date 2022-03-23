@@ -42,12 +42,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -866,6 +869,36 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	return false, nil
 }
 
+func writePlan(path string, plan *deploy.Plan, enc config.Encrypter, showSecrets bool) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(f)
+
+	deploymentPlan, err := stack.SerializePlan(plan, enc, showSecrets)
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "    ")
+	return encoder.Encode(deploymentPlan)
+}
+
+func readPlan(path string, dec config.Decrypter, enc config.Encrypter) (*deploy.Plan, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(f)
+
+	var deploymentPlan apitype.DeploymentPlanV1
+	if err := json.NewDecoder(f).Decode(&deploymentPlan); err != nil {
+		return nil, err
+	}
+	return stack.DeserializePlan(deploymentPlan, dec, enc)
+}
+
 func buildStackName(stackName string) (string, error) {
 	if strings.Count(stackName, "/") == 2 {
 		return stackName, nil
@@ -881,4 +914,35 @@ func buildStackName(stackName string) (string, error) {
 	}
 
 	return stackName, nil
+}
+
+// we only want to log a secrets decryption for a service backend project
+// we will allow any secrets provider to be used (service or self managed)
+// we will log the message and not worry about the response. The types
+// of messages we will log here will range from single secret decryption events
+// to requesting a list of secrets in an individual event e.g. stack export
+// the logging event will only happen during the `--show-secrets` path within the cli
+func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend backend.Stack,
+	secretName, commandName string) {
+	if stack, ok := backend.(httpstate.Stack); ok {
+		// we only want to do something if this is a service backend
+		if be, ok := stack.Backend().(httpstate.Backend); ok {
+			client := be.Client()
+			if client != nil {
+				id := backend.(httpstate.Stack).StackIdentifier()
+				// we don't really care if these logging calls fail as they should not stop the execution
+				if secretName != "" {
+					contract.Assert(commandName == "")
+					err := client.Log3rdPartySecretsProviderDecryptionEvent(ctx, id, secretName)
+					contract.IgnoreError(err)
+				}
+
+				if commandName != "" {
+					contract.Assert(secretName == "")
+					err := client.LogBulk3rdPartySecretsProviderDecryptionEvent(ctx, id, commandName)
+					contract.IgnoreError(err)
+				}
+			}
+		}
+	}
 }

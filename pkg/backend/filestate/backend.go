@@ -80,14 +80,14 @@ type localBackend struct {
 }
 
 type localBackendReference struct {
-	name tokens.QName
+	name tokens.Name
 }
 
 func (r localBackendReference) String() string {
 	return string(r.name)
 }
 
-func (r localBackendReference) Name() tokens.QName {
+func (r localBackendReference) Name() tokens.Name {
 	return r.name
 }
 
@@ -254,7 +254,7 @@ func (b *localBackend) SupportsOrganizations() bool {
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
-	return localBackendReference{name: tokens.QName(stackRefName)}, nil
+	return localBackendReference{name: tokens.Name(stackRefName)}, nil
 }
 
 // ValidateStackName verifies the stack name is valid for the local backend. We use the same rules as the
@@ -280,13 +280,11 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	opts interface{}) (backend.Stack, error) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stackRef)
-		if err != nil {
-			return nil, err
-		}
-		defer b.Unlock(ctx, stackRef)
+	err := b.Lock(ctx, stackRef)
+	if err != nil {
+		return nil, err
 	}
+	defer b.Unlock(ctx, stackRef)
 
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
@@ -323,7 +321,7 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	snapshot, path, err := b.getStack(stackName)
 
 	switch {
-	case gcerrors.Code(drillError(err)) == gcerrors.NotFound:
+	case gcerrors.Code(err) == gcerrors.NotFound:
 		return nil, nil
 	case err != nil:
 		return nil, err
@@ -360,13 +358,11 @@ func (b *localBackend) ListStacks(
 
 func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return false, err
-		}
-		defer b.Unlock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return false, err
 	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	stackName := stack.Ref().Name()
 	snapshot, _, err := b.getStack(stackName)
@@ -385,13 +381,11 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	newName tokens.QName) (backend.StackReference, error) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, err
-		}
-		defer b.Unlock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, err
 	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	// Get the current state from the stack to be renamed.
 	stackName := stack.Ref().Name()
@@ -406,8 +400,10 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 		return nil, err
 	}
 
+	newStackName := newRef.Name()
+
 	// Ensure the destination stack does not already exist.
-	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newName))
+	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newStackName))
 	if err != nil {
 		return nil, err
 	}
@@ -417,22 +413,22 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
 	if snap != nil {
-		if err = edit.RenameStack(snap, newName, ""); err != nil {
+		if err = edit.RenameStack(snap, newStackName, ""); err != nil {
 			return nil, err
 		}
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
-	if _, err = b.saveStack(newName, snap, nil); err != nil {
+	if _, err = b.saveStack(newStackName, snap, nil); err != nil {
 		return nil, err
 	}
 
 	// To remove the old stack, just make a backup of the file and don't write out anything new.
 	file := b.stackPath(stackName)
-	backupTarget(b.bucket, file)
+	backupTarget(b.bucket, file, false)
 
 	// And rename the histoy folder as well.
-	if err = b.renameHistory(stackName, newName); err != nil {
+	if err = b.renameHistory(stackName, newStackName); err != nil {
 		return nil, err
 	}
 	return newRef, err
@@ -461,15 +457,7 @@ func (b *localBackend) PackPolicies(
 }
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-		defer b.Unlock(ctx, stack.Ref())
-	}
+	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
@@ -482,13 +470,11 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-		defer b.Unlock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
 	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
@@ -496,13 +482,11 @@ func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-		defer b.Unlock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
 	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	op.Imports = imports
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
@@ -511,13 +495,11 @@ func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-		defer b.Unlock(ctx, stack.Ref())
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
 	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
@@ -548,7 +530,7 @@ func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (engine.ResourceChanges, result.Result) {
+	events chan<- engine.Event) (*deploy.Plan, engine.ResourceChanges, result.Result) {
 
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
@@ -563,7 +545,7 @@ func (b *localBackend) apply(
 	// Start the update.
 	update, err := b.newUpdate(stackName, op)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 
 	// Spawn a display loop to show events on the CLI.
@@ -604,19 +586,20 @@ func (b *localBackend) apply(
 
 	// Perform the update
 	start := time.Now().Unix()
+	var plan *deploy.Plan
 	var changes engine.ResourceChanges
 	var updateRes result.Result
 	switch kind {
 	case apitype.PreviewUpdate:
-		changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, true)
+		plan, changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.ResourceImportUpdate:
-		changes, updateRes = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
+		_, changes, updateRes = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
 	case apitype.RefreshUpdate:
-		changes, updateRes = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateRes = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.DestroyUpdate:
-		changes, updateRes = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		_, changes, updateRes = engine.Destroy(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
@@ -660,16 +643,16 @@ func (b *localBackend) apply(
 
 	if updateRes != nil {
 		// We swallow saveErr and backupErr as they are less important than the updateErr.
-		return changes, updateRes
+		return plan, changes, updateRes
 	}
 
 	if saveErr != nil {
 		// We swallow backupErr as it is less important than the saveErr.
-		return changes, result.FromError(fmt.Errorf("saving update info: %w", saveErr))
+		return plan, changes, result.FromError(fmt.Errorf("saving update info: %w", saveErr))
 	}
 
 	if backupErr != nil {
-		return changes, result.FromError(fmt.Errorf("saving backup: %w", backupErr))
+		return plan, changes, result.FromError(fmt.Errorf("saving backup: %w", backupErr))
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
@@ -705,7 +688,7 @@ func (b *localBackend) apply(
 		}
 	}
 
-	return changes, nil
+	return plan, changes, nil
 }
 
 // query executes a query program against the resource outputs of a locally hosted stack.
@@ -795,16 +778,14 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	deployment *apitype.UntypedDeployment) error {
 
-	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
-		err := b.Lock(ctx, stk.Ref())
-		if err != nil {
-			return err
-		}
-		defer b.Unlock(ctx, stk.Ref())
+	err := b.Lock(ctx, stk.Ref())
+	if err != nil {
+		return err
 	}
+	defer b.Unlock(ctx, stk.Ref())
 
 	stackName := stk.Ref().Name()
-	_, _, err := b.getStack(stackName)
+	_, _, err = b.getStack(stackName)
 	if err != nil {
 		return err
 	}
@@ -834,8 +815,8 @@ func (b *localBackend) CurrentUser() (string, error) {
 	return user.Username, nil
 }
 
-func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
-	var stacks []tokens.QName
+func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
+	var stacks []tokens.Name
 
 	// Read the stack directory.
 	path := b.stackPath("")
@@ -859,7 +840,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 		}
 
 		// Read in this stack's information.
-		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
+		name := tokens.Name(stackfn[:len(stackfn)-len(ext)])
 
 		stacks = append(stacks, name)
 	}
@@ -883,11 +864,31 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 	return errors.New("stack tags not supported in --local mode")
 }
 
-// Returns the original error in the chain. If `err` is nil, nil is returned.
-func drillError(err error) error {
-	e := err
-	for errors.Unwrap(e) != nil {
-		e = errors.Unwrap(e)
+func (b *localBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
+	// Try to delete ALL the lock files
+	allFiles, err := listBucket(b.bucket, stackLockDir(stackRef.Name()))
+	if err != nil {
+		// Don't error if it just wasn't found
+		if gcerrors.Code(err) == gcerrors.NotFound {
+			return nil
+		}
+		return err
 	}
-	return e
+
+	for _, file := range allFiles {
+		if file.IsDir {
+			continue
+		}
+
+		err := b.bucket.Delete(ctx, file.Key)
+		if err != nil {
+			// Race condition, don't error if the file was delete between us calling list and now
+			if gcerrors.Code(err) == gcerrors.NotFound {
+				return nil
+			}
+			return err
+		}
+	}
+
+	return nil
 }

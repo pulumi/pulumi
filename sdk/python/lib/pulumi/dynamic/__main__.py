@@ -30,7 +30,7 @@ PROVIDER_KEY = "__provider"
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
+_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 def get_provider(props) -> ResourceProvider:
@@ -42,12 +42,16 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def CheckConfig(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("CheckConfig is not implemented by the dynamic provider")
-        raise NotImplementedError("CheckConfig is not implemented by the dynamic provider")
+        raise NotImplementedError(
+            "CheckConfig is not implemented by the dynamic provider"
+        )
 
     def DiffConfig(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("DiffConfig is not implemented by the dynamic provider")
-        raise NotImplementedError("DiffConfig is not implemented by the dynamic provider")
+        raise NotImplementedError(
+            "DiffConfig is not implemented by the dynamic provider"
+        )
 
     def Invoke(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -65,11 +69,17 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         fields = {}
         if result.changes is not None:
             if result.changes:
-                fields["changes"] = proto.DiffResponse.DIFF_SOME # pylint: disable=no-member
+                fields[
+                    "changes"
+                ] = proto.DiffResponse.DIFF_SOME  # pylint: disable=no-member
             else:
-                fields["changes"] = proto.DiffResponse.DIFF_NONE # pylint: disable=no-member
+                fields[
+                    "changes"
+                ] = proto.DiffResponse.DIFF_NONE  # pylint: disable=no-member
         else:
-            fields["changes"] = proto.DiffResponse.DIFF_UNKNOWN # pylint: disable=no-member
+            fields[
+                "changes"
+            ] = proto.DiffResponse.DIFF_UNKNOWN  # pylint: disable=no-member
         if result.replaces is not None:
             fields["replaces"] = result.replaces
         if result.delete_before_replace is not None:
@@ -136,7 +146,9 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         inputs_proto = loop.run_until_complete(rpc.serialize_properties(inputs, {}))
         loop.close()
 
-        failures_proto = [proto.CheckFailure(property=f.property, reason=f.reason) for f in failures]
+        failures_proto = [
+            proto.CheckFailure(property=f.property, reason=f.reason) for f in failures
+        ]
 
         fields = {"inputs": inputs_proto, "failures": failures_proto}
         return proto.CheckResponse(**fields)
@@ -152,7 +164,9 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     def GetSchema(self, request, context):
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("GetSchema is not implemented by the dynamic provider")
-        raise NotImplementedError("GetSchema is not implemented by the dynamic provider")
+        raise NotImplementedError(
+            "GetSchema is not implemented by the dynamic provider"
+        )
 
     def Read(self, request, context):
         id_ = request.id
@@ -176,8 +190,10 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
 def main():
     monitor = DynamicResourceProviderServicer()
     server = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=4),  # pylint: disable=consider-using-with
-        options=_GRPC_CHANNEL_OPTIONS
+        futures.ThreadPoolExecutor(
+            max_workers=4
+        ),  # pylint: disable=consider-using-with
+        options=_GRPC_CHANNEL_OPTIONS,
     )
     provider_pb2_grpc.add_ResourceProviderServicer_to_server(monitor, server)
     port = server.add_insecure_port(address="0.0.0.0:0")

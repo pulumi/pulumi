@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,6 +46,9 @@ type generator struct {
 	asyncInit     bool
 	configCreated bool
 	diagnostics   hcl.Diagnostics
+	// Helper map to emit custom type name suffixes that match
+	// those emitted by codegen.
+	usedInFunctionOutputVersionInputs map[schema.Type]bool
 }
 
 const pulumiPackage = "pulumi"
@@ -64,7 +67,10 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 			return make(map[string][]byte), nil, err
 		}
 
-		csharpInfo := p.Language["csharp"].(CSharpPackageInfo)
+		csharpInfo, hasInfo := p.Language["csharp"].(CSharpPackageInfo)
+		if !hasInfo {
+			csharpInfo = CSharpPackageInfo{}
+		}
 		packageNamespaces := csharpInfo.Namespaces
 		namespaces[p.Name] = packageNamespaces
 		compatibilities[p.Name] = csharpInfo.Compatibility
@@ -149,7 +155,13 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 			pkg, _, _, _ := r.DecomposeToken()
 			if pkg != pulumiPackage {
 				namespace := namespaceName(g.namespaces[pkg], pkg)
-				pulumiUsings.Add(fmt.Sprintf("%s = Pulumi.%[1]s", namespace))
+				var info CSharpPackageInfo
+				if r.Schema != nil && r.Schema.Package != nil {
+					if csharpinfo, ok := r.Schema.Package.Language["csharp"].(CSharpPackageInfo); ok {
+						info = csharpinfo
+					}
+				}
+				pulumiUsings.Add(fmt.Sprintf("%s = %[2]s.%[1]s", namespace, info.GetRootNamespace()))
 			}
 			if r.Options != nil && r.Options.Range != nil {
 				systemUsings.Add("System.Collections.Generic")
@@ -343,14 +355,32 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 	return rootNamespace, fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
 }
 
+func (g *generator) toSchemaType(destType model.Type) (schema.Type, bool) {
+	schemaType, ok := pcl.GetSchemaForType(destType.(model.Type))
+	if !ok {
+		return nil, false
+	}
+	return codegen.UnwrapType(schemaType), true
+}
+
 // argumentTypeName computes the C# argument class name for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
-	schemaType, ok := pcl.GetSchemaForType(destType.(model.Type))
+	schemaType, ok := g.toSchemaType(destType)
 	if !ok {
 		return ""
 	}
+	suffix := "Args"
+	if g.usedInFunctionOutputVersionInputs[schemaType] {
+		suffix = "InputArgs"
+	}
+	return g.argumentTypeNameWithSuffix(expr, destType, suffix)
+}
 
-	schemaType = codegen.UnwrapType(schemaType)
+func (g *generator) argumentTypeNameWithSuffix(expr model.Expression, destType model.Type, suffix string) string {
+	schemaType, ok := g.toSchemaType(destType)
+	if !ok {
+		return ""
+	}
 
 	objType, ok := schemaType.(*schema.ObjectType)
 	if !ok {
@@ -382,7 +412,7 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 	} else if qualifier != "" {
 		namespace = namespace + "." + qualifier
 	}
-	member = member + "Args"
+	member = member + suffix
 
 	return fmt.Sprintf("%s%s.%s", rootNamespace, namespace, Title(member))
 }

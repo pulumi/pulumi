@@ -24,6 +24,7 @@ from .output import Output
 from .runtime.config import get_config, is_config_secret
 from .metadata import get_project
 
+
 class Config:
     """
     Config is a bag of related configuration state.  Each bag contains any number of configuration variables, indexed by
@@ -46,11 +47,16 @@ class Config:
         if not name:
             name = get_project()
         if not isinstance(name, str):
-            raise TypeError('Expected name to be a string')
+            raise TypeError("Expected name to be a string")
         self.name = name
 
     # pylint: disable=unused-argument
-    def _get(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> Optional[str]:
+    def _get(
+        self,
+        key: str,
+        use: Optional[Callable] = None,
+        instead_of: Optional[Callable] = None,
+    ) -> Optional[str]:
         full_key = self.full_key(key)
         # TODO[pulumi/pulumi#7127]: Re-enabled the warning.
         # if use is not None and is_config_secret(full_key):
@@ -84,18 +90,20 @@ class Config:
 
         return Output.secret(c)
 
-    def _get_bool(self,
-                  key: str,
-                  use: Optional[Callable] = None,
-                  instead_of: Optional[Callable] = None) -> Optional[bool]:
+    def _get_bool(
+        self,
+        key: str,
+        use: Optional[Callable] = None,
+        instead_of: Optional[Callable] = None,
+    ) -> Optional[bool]:
         v = self._get(key, use, instead_of)
         if v is None:
             return None
-        if v in ['true', 'True']:
+        if v in ["true", "True"]:
             return True
-        if v in ['false', 'False']:
+        if v in ["false", "False"]:
             return False
-        raise ConfigTypeError(self.full_key(key), v, 'bool')
+        raise ConfigTypeError(self.full_key(key), v, "bool")
 
     def get_bool(self, key: str) -> Optional[bool]:
         """
@@ -125,17 +133,19 @@ class Config:
 
         return Output.secret(v)
 
-    def _get_int(self,
-                 key: str,
-                 use: Optional[Callable] = None,
-                 instead_of: Optional[Callable] = None) -> Optional[int]:
+    def _get_int(
+        self,
+        key: str,
+        use: Optional[Callable] = None,
+        instead_of: Optional[Callable] = None,
+    ) -> Optional[int]:
         v = self._get(key, use, instead_of)
         if v is None:
             return None
         try:
             return int(v)
         except Exception as e:
-            raise ConfigTypeError(self.full_key(key), v, 'int') from e
+            raise ConfigTypeError(self.full_key(key), v, "int") from e
 
     def get_int(self, key: str) -> Optional[int]:
         """
@@ -165,17 +175,19 @@ class Config:
 
         return Output.secret(v)
 
-    def _get_float(self,
-                   key: str,
-                   use: Optional[Callable] = None,
-                   instead_of: Optional[Callable] = None) -> Optional[float]:
+    def _get_float(
+        self,
+        key: str,
+        use: Optional[Callable] = None,
+        instead_of: Optional[Callable] = None,
+    ) -> Optional[float]:
         v = self._get(key, use, instead_of)
         if v is None:
             return None
         try:
             return float(v)
         except Exception as e:
-            raise ConfigTypeError(self.full_key(key), v, 'float') from e
+            raise ConfigTypeError(self.full_key(key), v, "float") from e
 
     def get_float(self, key: str) -> Optional[float]:
         """
@@ -205,10 +217,12 @@ class Config:
 
         return Output.secret(v)
 
-    def _get_object(self,
-                    key: str,
-                    use: Optional[Callable] = None,
-                    instead_of: Optional[Callable] = None) -> Optional[Any]:
+    def _get_object(
+        self,
+        key: str,
+        use: Optional[Callable] = None,
+        instead_of: Optional[Callable] = None,
+    ) -> Optional[Any]:
         v = self._get(key, use, instead_of)
         if v is None:
             return None
@@ -236,7 +250,12 @@ class Config:
             return None
         return Output.secret(v)
 
-    def _require(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> str:
+    def _require(
+        self,
+        key: str,
+        use: Optional[Callable] = None,
+        instead_of: Optional[Callable] = None,
+    ) -> str:
         v = self._get(key, use, instead_of)
         if v is None:
             raise ConfigMissingError(self.full_key(key))
@@ -264,7 +283,12 @@ class Config:
         """
         return Output.secret(self._require(key))
 
-    def _require_bool(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> bool:
+    def _require_bool(
+        self,
+        key: str,
+        use: Optional[Callable] = None,
+        instead_of: Optional[Callable] = None,
+    ) -> bool:
         v = self._get_bool(key, use, instead_of)
         if v is None:
             raise ConfigMissingError(self.full_key(key))
@@ -296,7 +320,12 @@ class Config:
         """
         return Output.secret(self._require_bool(key))
 
-    def _require_int(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> int:
+    def _require_int(
+        self,
+        key: str,
+        use: Optional[Callable] = None,
+        instead_of: Optional[Callable] = None,
+    ) -> int:
         v = self._get_int(key, use, instead_of)
         if v is None:
             raise ConfigMissingError(self.full_key(key))
@@ -328,7 +357,12 @@ class Config:
         """
         return Output.secret(self._require_int(key))
 
-    def _require_float(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> float:
+    def _require_float(
+        self,
+        key: str,
+        use: Optional[Callable] = None,
+        instead_of: Optional[Callable] = None,
+    ) -> float:
         v = self._get_float(key, use, instead_of)
         if v is None:
             raise ConfigMissingError(self.full_key(key))
@@ -360,7 +394,12 @@ class Config:
         """
         return Output.secret(self._require_float(key))
 
-    def _require_object(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> Any:
+    def _require_object(
+        self,
+        key: str,
+        use: Optional[Callable] = None,
+        instead_of: Optional[Callable] = None,
+    ) -> Any:
         v = self._get_object(key, use, instead_of)
         if v is None:
             raise ConfigMissingError(self.full_key(key))
@@ -372,7 +411,9 @@ class Config:
         object. If it doesn't exist, or the configuration value is not a legal JSON string, an error
         is thrown.
         """
-        return self._require_object(key, self.require_secret_object, self.require_object)
+        return self._require_object(
+            key, self.require_secret_object, self.require_object
+        )
 
     def require_secret_object(self, key: str) -> Output[Any]:
         """
@@ -390,7 +431,7 @@ class Config:
         :return: The name of the configuration key, prefixed with the bag's name.
         :rtype: str
         """
-        return f'{self.name}:{key}'
+        return f"{self.name}:{key}"
 
 
 class ConfigTypeError(errors.RunError):
@@ -418,7 +459,8 @@ class ConfigTypeError(errors.RunError):
         self.value = value
         self.expect_type = expect_type
         super().__init__(
-            f"Configuration '{key}' value '{value}' is not a valid '{expect_type}'")
+            f"Configuration '{key}' value '{value}' is not a valid '{expect_type}'"
+        )
 
 
 class ConfigMissingError(errors.RunError):
@@ -434,5 +476,6 @@ class ConfigMissingError(errors.RunError):
     def __init__(self, key: str) -> None:
         self.key = key
         super().__init__(
-            f"Missing required configuration variable '{key}'\n" +
-            f"    please set a value using the command `pulumi config set {key} <value>`")
+            f"Missing required configuration variable '{key}'\n"
+            + f"    please set a value using the command `pulumi config set {key} <value>`"
+        )

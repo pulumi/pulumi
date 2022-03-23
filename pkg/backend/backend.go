@@ -73,7 +73,7 @@ type StackReference interface {
 	// Name is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
 	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
 	// but that information is not part of the StackName() we pass to the engine.
-	Name() tokens.QName
+	Name() tokens.Name
 }
 
 // PolicyPackReference is an opaque type that refers to a PolicyPack managed by a backend. The CLI
@@ -161,7 +161,7 @@ type Backend interface {
 	RenameStack(ctx context.Context, stack Stack, newName tokens.QName) (StackReference, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Preview(ctx context.Context, stack Stack, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Import imports resources into a stack.
@@ -201,6 +201,9 @@ type Backend interface {
 	LogoutAll() error
 	// Returns the identity of the current user for the backend.
 	CurrentUser() (string, error)
+
+	// Cancel the current update for the given stack.
+	CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the
@@ -253,6 +256,8 @@ type UpdateOptions struct {
 	AutoApprove bool
 	// SkipPreview, when true, causes the preview step to be skipped.
 	SkipPreview bool
+	// Experimental plan support, when true cause plans to be generated.
+	ExperimentalPlans bool
 }
 
 // QueryOptions configures a query to operate against a backend and the engine.

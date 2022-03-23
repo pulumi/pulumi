@@ -39,9 +39,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//nolint:paralleltest // mutates environment variables
 func TestStackCommands(t *testing.T) {
 	// stack init, stack ls, stack rm, stack ls
 	t.Run("SanityTest", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -71,6 +74,8 @@ func TestStackCommands(t *testing.T) {
 	})
 
 	t.Run("StackSelect", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -108,7 +113,38 @@ func TestStackCommands(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 
+	t.Run("StackUnselect", func(t *testing.T) {
+		t.Parallel()
+
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		integration.CreateBasicPulumiRepo(e)
+		e.SetBackend(e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "one")
+		e.RunCommand("pulumi", "stack", "init", "two")
+
+		// Last one created is always selected.
+		stacks, current := integration.GetStacks(e)
+		if current == nil {
+			t.Fatalf("No stack was labeled as current among: %v", stacks)
+		}
+		assert.Equal(t, "two", *current)
+
+		e.RunCommand("pulumi", "stack", "unselect")
+		_, updatedCurrentStack := integration.GetStacks(e)
+		if updatedCurrentStack != nil {
+			t.Fatal("No stack should be selected after unselect was executed")
+		}
+	})
+
 	t.Run("StackRm", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -151,6 +187,8 @@ func TestStackCommands(t *testing.T) {
 	// Test that stack import fails if the version of the deployment we give it is not
 	// one that the CLI supports.
 	t.Run("CheckpointVersioning", func(t *testing.T) {
+		t.Parallel()
+
 		versions := []int{
 			apitype.DeploymentSchemaVersionCurrent + 1,
 			stack.DeploymentSchemaVersionOldestSupported - 1,
@@ -270,8 +308,11 @@ func TestStackCommands(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestStackBackups(t *testing.T) {
 	t.Run("StackBackupCreatedSanityTest", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -350,6 +391,8 @@ func TestStackBackups(t *testing.T) {
 }
 
 func TestStackRenameAfterCreate(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -368,6 +411,8 @@ func TestStackRenameAfterCreate(t *testing.T) {
 // TestStackRenameServiceAfterCreateBackend tests a few edge cases about renaming
 // stacks owned by organizations in the service backend.
 func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -409,6 +454,7 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 
 func TestLocalStateLocking(t *testing.T) {
 	t.Skip() // TODO[pulumi/pulumi#7269] flaky test
+	t.Parallel()
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -423,12 +469,10 @@ func TestLocalStateLocking(t *testing.T) {
 	e.RunCommand("yarn", "install")
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 
-	// Enable self-managed backend locking
-	e.SetEnvVars([]string{fmt.Sprintf("%s=1", filestate.PulumiFilestateLockingEnvVar)})
-
-	// Run 10 concurrent updates
 	count := 10
 	stderrs := make(chan string, count)
+
+	// Run 10 concurrent updates
 	for i := 0; i < count; i++ {
 		go func() {
 			_, stderr, err := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
@@ -459,6 +503,25 @@ func TestLocalStateLocking(t *testing.T) {
 			}
 		}
 	}
+
+	// Run 10 concurrent previews
+	for i := 0; i < count; i++ {
+		go func() {
+			_, stderr, err := e.GetCommandResults("pulumi", "preview", "--non-interactive")
+			if err == nil {
+				stderrs <- "" // success marker
+			} else {
+				stderrs <- stderr
+			}
+		}()
+	}
+
+	// Ensure that all of the concurrent previews succeed.
+	for i := 0; i < count; i++ {
+		stderr := <-stderrs
+		assert.Equal(t, "", stderr)
+	}
+
 }
 
 func getFileNames(infos []os.FileInfo) []string {

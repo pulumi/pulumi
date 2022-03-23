@@ -219,6 +219,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setProperties(gstruct.Struct.fromJavaScript(resop.serializedProps));
         req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
         req.setVersion(opts.version || "");
+        req.setPlugindownloadurl(opts.pluginDownloadURL || "");
         req.setAcceptsecrets(true);
         req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
@@ -317,6 +318,8 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setSupportspartialvalues(true);
         req.setRemote(remote);
         req.setReplaceonchangesList(opts.replaceOnChanges || []);
+        req.setPlugindownloadurl(opts.pluginDownloadURL || "");
+        req.setRetainondelete(opts.retainOnDelete || false);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {
@@ -534,6 +537,21 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
         if (remote) {
             const componentOpts = <ComponentResourceOptions>opts;
             expandProviders(componentOpts);
+            // the <ProviderResource[]> casts are safe because expandProviders
+            // /always/ leaves providers as an array.
+            if (componentOpts.provider !== undefined) {
+                if (componentOpts.providers === undefined) {
+                    // We still want to do the promotion, so we define providers
+                    componentOpts.providers = [componentOpts.provider];
+                } else if ((<ProviderResource[]> componentOpts.providers)?.indexOf(componentOpts.provider) !== -1) {
+                    const pkg = componentOpts.provider.getPackage();
+                    const message = `There is a conflit between the 'provider' field (${pkg}) and a member of the 'providers' map'. `;
+                    const deprecationd = "This will become an error by the end of July 2022. See https://github.com/pulumi/pulumi/issues/8799 for more details";
+                    log.warn(message+deprecationd);
+                } else {
+                    (<ProviderResource[]> componentOpts.providers).push(componentOpts.provider);
+                }
+            }
             if (componentOpts.providers) {
                 for (const provider of componentOpts.providers as ProviderResource[]) {
                     const pref = await ProviderResource.register(provider);

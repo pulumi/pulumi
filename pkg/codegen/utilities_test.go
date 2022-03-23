@@ -22,6 +22,8 @@ import (
 )
 
 func TestStringSetContains(t *testing.T) {
+	t.Parallel()
+
 	set123 := NewStringSet("1", "2", "3")
 	set12 := NewStringSet("1", "2")
 	set14 := NewStringSet("1", "4")
@@ -35,6 +37,8 @@ func TestStringSetContains(t *testing.T) {
 }
 
 func TestStringSetSubtract(t *testing.T) {
+	t.Parallel()
+
 	set1234 := NewStringSet("1", "2", "3", "4")
 	set125 := NewStringSet("1", "2", "5")
 	set34 := NewStringSet("3", "4")
@@ -46,6 +50,8 @@ func TestStringSetSubtract(t *testing.T) {
 }
 
 func TestSimplifyInputUnion(t *testing.T) {
+	t.Parallel()
+
 	u1 := &schema.UnionType{
 		ElementTypes: []schema.Type{
 			&schema.InputType{ElementType: schema.StringType},

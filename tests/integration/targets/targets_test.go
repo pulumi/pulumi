@@ -19,6 +19,7 @@ import (
 
 func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 	t.Skip() // TODO[pulumi/pulumi#4149]
+	t.Parallel()
 
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
@@ -55,6 +56,8 @@ func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 }
 
 func TestDeleteManyTargets(t *testing.T) {
+	t.Parallel()
+
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}

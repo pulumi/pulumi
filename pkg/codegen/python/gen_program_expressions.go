@@ -181,24 +181,28 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
 }
 
-var functionImports = map[string]string{
-	"fileArchive": "pulumi",
-	"fileAsset":   "pulumi",
-	"filebase64":  "base64",
-	"readDir":     "os",
-	"toBase64":    "base64",
-	"toJSON":      "json",
-	"sha1":        "hashlib",
+var functionImports = map[string][]string{
+	"fileArchive":      {"pulumi"},
+	"fileAsset":        {"pulumi"},
+	"filebase64":       {"base64"},
+	"filebase64sha256": {"base64", "hashlib"},
+	"readDir":          {"os"},
+	"toBase64":         {"base64"},
+	"toJSON":           {"json"},
+	"sha1":             {"hashlib"},
+	"stack":            {"pulumi"},
+	"project":          {"pulumi"},
+	"cwd":              {"os"},
 }
 
-func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
+func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
 	if x.Name != pcl.Invoke {
 		return functionImports[x.Name]
 	}
 
 	pkg, _, _, diags := functionName(x.Args[0])
 	contract.Assert(len(diags) == 0)
-	return "pulumi_" + pkg
+	return []string{"pulumi_" + pkg}
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
@@ -222,6 +226,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.FileAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		g.Fgenf(w, "(lambda path: base64.b64encode(open(path).read().encode()).decode())(%.v)", expr.Args[0])
+	case "filebase64sha256":
+		// Assuming the existence of the following helper method
+		g.Fgenf(w, "computeFilebase64sha256(%v)", expr.Args[0])
 	case pcl.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
@@ -229,6 +236,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			module = "." + module
 		}
 		name := fmt.Sprintf("%s%s.%s", pkg, module, PyName(fn))
+
+		isOut := pcl.IsOutputVersionInvokeCall(expr)
+		if isOut {
+			name = fmt.Sprintf("%s_output", name)
+		}
 
 		if len(expr.Args) == 1 {
 			g.Fprintf(w, "%s()", name)
@@ -304,6 +316,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
 	case "sha1":
 		g.Fgenf(w, "hashlib.sha1(%v.encode()).hexdigest()", expr.Args[0])
+	case "project":
+		g.Fgen(w, "pulumi.get_project()")
+	case "stack":
+		g.Fgen(w, "pulumi.get_stack()")
+	case "cwd":
+		g.Fgen(w, "os.getcwd()")
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {

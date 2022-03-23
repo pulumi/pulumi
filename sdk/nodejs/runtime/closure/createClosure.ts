@@ -21,6 +21,7 @@ import * as resource from "../../resource";
 import { hasTrueBooleanMember } from "../../utils";
 import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
+import { getModuleFromPath } from "./package";
 import * as utils from "./utils";
 import * as v8 from "./v8";
 
@@ -748,7 +749,7 @@ function getFunctionName(loc: FunctionLocation): string {
         // the entire lambda if it's lots of statements.
         const semicolonIndex = funcString.indexOf(";");
         if (semicolonIndex >= 0) {
-            funcString = funcString.substr(0, semicolonIndex + 1) + " ...";
+            funcString = funcString.slice(0, semicolonIndex + 1) + " ...";
         }
 
         // squash all whitespace to single spaces.
@@ -1225,7 +1226,7 @@ async function getOrCreateEntryAsync(
             // will ensure that the module-name we load is a simple path that can be found off the
             // node_modules that we actually upload with our serialized functions.
             entry.module = isInNodeModules
-                ? upath.join(...moduleParts.slice(nodeModulesSegmentIndex + 1))
+                ? getModuleFromPath(upath.join(...moduleParts.slice(nodeModulesSegmentIndex + 1)))
                 : normalizedModuleName;
         }
     }
@@ -1358,7 +1359,8 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
     // don't pre-compute this because the require cache will get populated
     // dynamically during execution.
     for (const path of Object.keys(require.cache)) {
-        if (require.cache[path].exports === obj) {
+        const c = require.cache[path];
+        if (c !== undefined && c.exports === obj) {
             // Rewrite the path to be a local module reference relative to the current working
             // directory.
             const modPath = upath.relative(process.cwd(), path);

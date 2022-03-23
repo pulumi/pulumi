@@ -814,7 +814,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 	isDockerImageResource := mod.pkg.Name == "docker" && resourceName(r) == "Image"
 
 	// Kubernetes overlay resources use a different ordering of formal params in Python.
-	if isK8sOverlayMod {
+	if isK8sOverlayMod && r.IsOverlay {
 		return getKubernetesOverlayPythonFormalParams(mod.mod)
 	} else if isDockerImageResource {
 		return getDockerImagePythonFormalParams()
@@ -888,7 +888,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 			Name:         python.InitParamName(p.Name),
 			DefaultValue: " = None",
 			Type: propertyType{
-				Name: fmt.Sprintf("%s", typ),
+				Name: typ,
 			},
 		})
 	}
@@ -902,8 +902,14 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
 
-	var typs []docNestedType
+	var sortedTokens []string
 	for token := range tokens {
+		sortedTokens = append(sortedTokens, token)
+	}
+	sort.Strings(sortedTokens)
+
+	var typs []docNestedType
+	for _, token := range sortedTokens {
 		for _, t := range mod.pkg.Types {
 			switch typ := t.(type) {
 			case *schema.ObjectType:
@@ -1633,7 +1639,7 @@ func (mod *modContext) gen(fs fs) error {
 		return err
 	}
 
-	fs.add(path.Join(modName, "_index.md"), []byte(buffer.String()))
+	fs.add(path.Join(modName, "_index.md"), buffer.Bytes())
 	return nil
 }
 

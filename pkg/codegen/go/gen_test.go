@@ -12,12 +12,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 func TestInputUsage(t *testing.T) {
+	t.Parallel()
+
 	pkg := &pkgContext{}
 	arrayUsage := pkg.getInputUsage("FooArray")
 	assert.Equal(
@@ -49,6 +51,8 @@ func TestInputUsage(t *testing.T) {
 }
 
 func TestGoPackageName(t *testing.T) {
+	t.Parallel()
+
 	assert.Equal(t, "aws", goPackage("aws"))
 	assert.Equal(t, "azurenextgen", goPackage("azure-nextgen"))
 	assert.Equal(t, "plantprovider", goPackage("plant-provider"))
@@ -56,6 +60,8 @@ func TestGoPackageName(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
+	t.Parallel()
+
 	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
 
 		for f := range files {
@@ -71,13 +77,14 @@ func TestGeneratePackage(t *testing.T) {
 			"go/compile": typeCheckGeneratedPackage,
 			"go/test":    testGeneratedPackage,
 		},
+		TestCases: test.PulumiPulumiSDKTests,
 	})
 }
 
 func inferModuleName(codeDir string) string {
 	// For example for this path:
 	//
-	// codeDir = "../internal/test/testdata/external-resource-schema/go/"
+	// codeDir = "../testing/test/testdata/external-resource-schema/go/"
 	//
 	// We will generate "$codeDir/go.mod" using
 	// `external-resource-schema` as the module name so that it
@@ -116,6 +123,8 @@ func testGeneratedPackage(t *testing.T, codeDir string) {
 }
 
 func TestGenerateTypeNames(t *testing.T) {
+	t.Parallel()
+
 	test.TestTypeNameCodegen(t, "go", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
 		err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer})
 		require.NoError(t, err)
@@ -137,7 +146,7 @@ func TestGenerateTypeNames(t *testing.T) {
 
 func readSchemaFile(file string) *schema.Package {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", file))
+	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
 	if err != nil {
 		panic(err)
 	}
@@ -155,6 +164,8 @@ func readSchemaFile(file string) *schema.Package {
 
 // We test the naming/module structure of generated packages.
 func TestPackageNaming(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		importBasePath  string
 		rootPackageName string
@@ -176,7 +187,10 @@ func TestPackageNaming(t *testing.T) {
 		},
 	}
 	for _, tt := range testCases {
+		tt := tt
 		t.Run(tt.expectedRoot, func(t *testing.T) {
+			t.Parallel()
+
 			// This schema is arbitrary. We just needed a filled out schema. All
 			// path decisions should be made based off of the Name and
 			// Language[go] fields (which we set after import).
@@ -211,4 +225,138 @@ func TestPackageNaming(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTokenToType(t *testing.T) {
+	t.Parallel()
+
+	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
+	awsSpec := schema.PackageSpec{
+		Name: "aws",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
+		},
+	}
+
+	const googleNativeImportBasePath = "github.com/pulumi/pulumi-google-native/sdk/go/google"
+	googleNativeSpec := schema.PackageSpec{
+		Name: "google-native",
+	}
+
+	tests := []struct {
+		pkg      *pkgContext
+		token    string
+		expected string
+	}{
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+			},
+			token:    "aws:s3/BucketWebsite:BucketWebsite",
+			expected: "s3.BucketWebsite",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3": "awss3",
+				},
+			},
+			token:    "aws:s3/BucketWebsite:BucketWebsite",
+			expected: "awss3.BucketWebsite",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, googleNativeSpec),
+				importBasePath: googleNativeImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1": "dns",
+				},
+			},
+			token:    "google-native:dns/v1:DnsKeySpec",
+			expected: "dns.DnsKeySpec",
+		},
+	}
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
+			t.Parallel()
+
+			actual := tt.pkg.tokenToType(tt.token)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestTokenToResource(t *testing.T) {
+	t.Parallel()
+
+	const awsImportBasePath = "github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
+	awsSpec := schema.PackageSpec{
+		Name: "aws",
+		Meta: &schema.MetadataSpec{
+			ModuleFormat: "(.*)(?:/[^/]*)",
+		},
+	}
+
+	const googleNativeImportBasePath = "github.com/pulumi/pulumi-google-native/sdk/go/google"
+	googleNativeSpec := schema.PackageSpec{
+		Name: "google-native",
+	}
+
+	tests := []struct {
+		pkg      *pkgContext
+		token    string
+		expected string
+	}{
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+			},
+			token:    "aws:s3/Bucket:Bucket",
+			expected: "s3.Bucket",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, awsSpec),
+				importBasePath: awsImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3": "awss3",
+				},
+			},
+			token:    "aws:s3/Bucket:Bucket",
+			expected: "awss3.Bucket",
+		},
+		{
+			pkg: &pkgContext{
+				pkg:            importSpec(t, googleNativeSpec),
+				importBasePath: googleNativeImportBasePath,
+				pkgImportAliases: map[string]string{
+					"github.com/pulumi/pulumi-google-native/sdk/go/google/dns/v1": "dns",
+				},
+			},
+			token:    "google-native:dns/v1:Policy",
+			expected: "dns.Policy",
+		},
+	}
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
+			t.Parallel()
+
+			actual := tt.pkg.tokenToResource(tt.token)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
+	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{})
+	assert.NoError(t, err)
+	return importedPkg
 }

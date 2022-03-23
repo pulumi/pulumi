@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,23 +17,22 @@ package fsutil
 import (
 	"sync"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	"github.com/gofrs/flock"
+	"github.com/rogpeppe/go-internal/lockedfile"
 )
 
 // FileMutex is a mutex that serializes both within and across processes. When acquired, it can be assumed that the
 // caller holds exclusive access over te protected resources, even if there are other consumers both within and outside
 // of the same process.
 type FileMutex struct {
-	proclock sync.Mutex   // lock serializing in-process access to the protected resource
-	fslock   *flock.Flock // lock serializing out-of-process access to the protected resource
+	proclock sync.Mutex        // lock serializing in-process access to the protected resource
+	fslock   *lockedfile.Mutex // lock serializing out-of-process access to the protected resource
+	fsunlock func()
 }
 
 // NewFileMutex creates a new FileMutex using the given file as a file lock.
 func NewFileMutex(path string) *FileMutex {
 	return &FileMutex{
-		fslock: flock.New(path),
+		fslock: lockedfile.MutexAt(path),
 	}
 }
 
@@ -48,12 +47,13 @@ func NewFileMutex(path string) *FileMutex {
 // calling goroutine completely owns the resource.
 func (fm *FileMutex) Lock() error {
 	fm.proclock.Lock()
-	if err := fm.fslock.Lock(); err != nil {
+	fsunlock, err := fm.fslock.Lock()
+	if err != nil {
 		fm.proclock.Unlock()
 		return err
 	}
+	fm.fsunlock = fsunlock
 
-	contract.Assert(fm.fslock.Locked())
 	return nil
 }
 
@@ -61,9 +61,9 @@ func (fm *FileMutex) Lock() error {
 // after which it unlocks the proc lock. Unlocking the file lock first ensures that it is not possible for two
 // goroutines to lock or unlock the file mutex without first holding the proc lock.
 func (fm *FileMutex) Unlock() error {
-	if err := fm.fslock.Unlock(); err != nil {
-		fm.proclock.Unlock()
-		return err
+	if fm.fsunlock != nil {
+		fm.fsunlock()
+		fm.fsunlock = nil
 	}
 
 	fm.proclock.Unlock()

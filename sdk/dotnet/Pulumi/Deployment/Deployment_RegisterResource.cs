@@ -77,6 +77,7 @@ namespace Pulumi
                 Custom = custom,
                 Protect = options.Protect ?? false,
                 Version = options.Version ?? "",
+                PluginDownloadURL = options.PluginDownloadURL ?? "",
                 ImportId = customOpts?.ImportId ?? "",
                 AcceptSecrets = true,
                 AcceptResources = !_disableResourceReferences,
@@ -89,6 +90,7 @@ namespace Pulumi
                     Update = TimeoutString(options.CustomTimeouts?.Update),
                 },
                 Remote = remote,
+                RetainOnDelete = options.RetainOnDelete ?? false,
             };
 
             if (customOpts != null)
