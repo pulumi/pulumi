@@ -18,13 +18,16 @@
 - [cli/plugins] - Improved error message for missing plugins.
   [#5208](https://github.com/pulumi/pulumi/pull/5208)
 
-- [sdk/nodejs] - Take engines property into account when engine-strict appear in npmrc file 
+- [sdk/nodejs] - Take engines property into account when engine-strict appear in npmrc file
   [#9249](https://github.com/pulumi/pulumi/pull/9249)
 
 ### Bug Fixes
 
 - [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack up.
   [#9065](https://github.com/pulumi/pulumi/issues/9065)
+
+- [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack preview.
+  [#9272](https://github.com/pulumi/pulumi/issues/9272)
 
 - [sdk/go] - Fix a panic in `pulumi.All` when using pointer inputs.
   [#9197](https://github.com/pulumi/pulumi/issues/9197)
