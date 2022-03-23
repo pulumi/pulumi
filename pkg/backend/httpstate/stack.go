@@ -103,12 +103,12 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		b:                b,
 	}
 }
-func (s *cloudStack) Ref() backend.StackReference                    { return s.ref }
-func (s *cloudStack) Backend() backend.Backend                       { return s.b }
-func (s *cloudStack) CloudURL() string                               { return s.cloudURL }
-func (s *cloudStack) OrgName() string                                { return s.orgName }
-func (s *cloudStack) CurrentOperation() *apitype.OperationStatus     { return s.currentOperation }
-func (s *cloudStack) Tags() (map[apitype.StackTagName]string, error) { return s.tags, nil }
+func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
+func (s *cloudStack) Backend() backend.Backend                   { return s.b }
+func (s *cloudStack) CloudURL() string                           { return s.cloudURL }
+func (s *cloudStack) OrgName() string                            { return s.orgName }
+func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.currentOperation }
+func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
 
 func (s *cloudStack) StackIdentifier() client.StackIdentifier {
 

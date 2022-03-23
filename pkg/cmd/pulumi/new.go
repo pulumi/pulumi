@@ -507,13 +507,10 @@ func getStack(stack string, opts display.Options) (backend.Stack, string, string
 	name := ""
 	description := ""
 	if s != nil {
-		tags, err := s.Tags()
-		// The only error we really expect from Tags is that the backend doesn't support them. We just
-		// silently ignore that case.
-		if err == nil {
-			name = tags[apitype.ProjectNameTag]
-			description = tags[apitype.ProjectDescriptionTag]
-		}
+		tags := s.Tags()
+		// Tags might be nil/empty, but if it has name and description use them
+		name = tags[apitype.ProjectNameTag]
+		description = tags[apitype.ProjectDescriptionTag]
 	}
 
 	return s, name, description, nil

@@ -341,7 +341,7 @@ type MockStack struct {
 	RefF      func() StackReference
 	ConfigF   func() config.Map
 	SnapshotF func(ctx context.Context) (*deploy.Snapshot, error)
-	TagsF     func() (map[apitype.StackTagName]string, error)
+	TagsF     func() map[apitype.StackTagName]string
 	BackendF  func() Backend
 	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	UpdateF   func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
@@ -382,7 +382,7 @@ func (ms *MockStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 	panic("not implemented")
 }
 
-func (ms *MockStack) Tags() (map[apitype.StackTagName]string, error) {
+func (ms *MockStack) Tags() map[apitype.StackTagName]string {
 	if ms.TagsF != nil {
 		return ms.TagsF()
 	}
