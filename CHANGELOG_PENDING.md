@@ -45,3 +45,6 @@
   
 - [cli] - Stack names correctly take `org set-default` into account when printing.
   [#9240](https://github.com/pulumi/pulumi/pull/9240)
+
+- [codegen/go] - Fix Go SDK function output to check for errors
+  [pulumi-aws#1872](https://github.com/pulumi/pulumi-aws/issues/1872)
