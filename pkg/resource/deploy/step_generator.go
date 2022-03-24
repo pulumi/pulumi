@@ -291,6 +291,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var oldOutputs resource.PropertyMap
 	var old *resource.State
 	var hasOld bool
+	var alias []resource.URN
 	for _, urnOrAlias := range append([]resource.URN{urn}, goal.Aliases...) {
 		old, hasOld = sg.deployment.Olds()[urnOrAlias]
 		if hasOld {
@@ -305,6 +306,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 				// register the alias with the provider registry
 				sg.deployment.providers.RegisterAlias(urn, urnOrAlias)
+
+				alias = []resource.URN{urnOrAlias}
 			}
 			break
 		}
@@ -325,7 +328,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "", 1, goal.RetainOnDelete)
+		goal.AdditionalSecretOutputs, alias, &goal.CustomTimeouts, "", 1, goal.RetainOnDelete)
 	if hasOld {
 		new.SequenceNumber = old.SequenceNumber
 	}
