@@ -2073,13 +2073,11 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 		ApplyT(func(v interface{}) (${fn}Result, error) {
 			args := v.(${fn}Args)
 			r, err := ${fn}(ctx, &args, opts...)
-			if err != nil {
-				return nil, err
+			var s ${fn}Result
+			if r != nil {
+				s = *r
 			}
-			if r == nil {
-				return nil, fmt.Errorf("expected either result or error to be nil, not both")
-			}
-			return *r, err
+			return s, err
 		}).(${outputType})
 }
 

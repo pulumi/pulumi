@@ -45,7 +45,11 @@ func ListProductFamiliesOutput(ctx *pulumi.Context, args ListProductFamiliesOutp
 		ApplyT(func(v interface{}) (ListProductFamiliesResult, error) {
 			args := v.(ListProductFamiliesArgs)
 			r, err := ListProductFamilies(ctx, &args, opts...)
-			return *r, err
+			var s ListProductFamiliesResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(ListProductFamiliesResultOutput)
 }
 

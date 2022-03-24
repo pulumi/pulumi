@@ -41,7 +41,11 @@ func GetBastionShareableLinkOutput(ctx *pulumi.Context, args GetBastionShareable
 		ApplyT(func(v interface{}) (GetBastionShareableLinkResult, error) {
 			args := v.(GetBastionShareableLinkArgs)
 			r, err := GetBastionShareableLink(ctx, &args, opts...)
-			return *r, err
+			var s GetBastionShareableLinkResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(GetBastionShareableLinkResultOutput)
 }
 
