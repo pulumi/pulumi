@@ -95,7 +95,6 @@ func TestDeploymentSerialization(t *testing.T) {
 		false,
 		nil,
 		nil,
-		nil,
 		"",
 		0,
 		false,
