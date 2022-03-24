@@ -60,7 +60,7 @@ jobs:
             [1]: ${{ steps.vars.outputs.run-url }}
 
   go-lint:
-    container: golangci/golangci-lint:latest
+    container: golangci/golangci-lint:v1.44
     name: Lint ${{ matrix.directory }}
     strategy:
       matrix:
