@@ -320,6 +320,27 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}
 	}
 
+	//	for _, urnOrAlias := range append([]resource.URN{urn}, goal.Aliases...) {
+	//		old, hasOld = sg.deployment.Olds()[urnOrAlias]
+	//		if hasOld {
+	//			oldInputs = old.Inputs
+	//			oldOutputs = old.Outputs
+	//			if urnOrAlias != urn {
+	//				if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased {
+	//					invalid = true
+	//					sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
+	//				}
+	//				sg.aliased[urnOrAlias] = urn
+	//
+	//				// register the alias with the provider registry
+	//				sg.deployment.providers.RegisterAlias(urn, urnOrAlias)
+	//
+	//				alias = []resource.URN{urnOrAlias}
+	//			}
+	//			break
+	//		}
+	//	}
+
 	// Create the desired inputs from the goal state
 	inputs := goal.Properties
 	if hasOld {
@@ -1240,7 +1261,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 		return false, err
 	}
 
-	if alias, ok := sg.aliased[oldRef.URN()]; ok && alias == newRef.URN() {
+	if alias, ok := sg.aliased[oldRef.URN()]; ok && alias == newRef.URN() && oldRef.ID() == newRef.ID() {
 		logging.V(stepExecutorLogLevel).Infof(
 			"sg.diffProvider(%s, ...): observed an aliased provider from %q to %q", urn, oldRef.URN(), newRef.URN())
 		return false, nil
