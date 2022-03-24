@@ -100,6 +100,7 @@ func (op TestOp) runWithContext(
 		Events:          events,
 		SnapshotManager: journal,
 		BackendClient:   backendClient,
+		Aliases:         make(map[resource.URN][]resource.URN),
 	}
 
 	// Begin draining events.
