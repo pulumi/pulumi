@@ -129,6 +129,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil,   /* propertyDependencies */
 		false, /* deleteBeforeCreate */
 		event.AdditionalSecretOutputs(),
+		nil,   /* aliases */
 		nil,   /* customTimeouts */
 		"",    /* importID */
 		1,     /* sequenceNumber */
@@ -324,7 +325,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, &goal.CustomTimeouts, "", 1, goal.RetainOnDelete)
+		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "", 1, goal.RetainOnDelete)
 	if hasOld {
 		new.SequenceNumber = old.SequenceNumber
 	}
@@ -491,7 +492,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				IgnoreChanges:           goal.IgnoreChanges,
 				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-				Aliases:                 goal.Aliases,
+				Aliases:                 new.Aliases,
 				CustomTimeouts:          new.CustomTimeouts,
 			},
 		}
@@ -1689,7 +1690,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 					IgnoreChanges:           goal.IgnoreChanges,
 					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 					AdditionalSecretOutputs: v.AdditionalSecretOutputs,
-					Aliases:                 goal.Aliases,
+					Aliases:                 v.Aliases,
 					CustomTimeouts:          v.CustomTimeouts,
 				},
 			},

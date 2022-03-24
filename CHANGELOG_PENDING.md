@@ -23,11 +23,6 @@
 
 ### Bug Fixes
 
-- [cli/engine] - Stops storing aliases in state due to the impact on file size and upload time. Due
-  to [#8627](https://github.com/pulumi/pulumi/pull/8627), the number of aliases stored in state
-  increases combinatorially with the number of type aliases of a resource and of each of its
-  ancestors. [#9089](https://github.com/pulumi/pulumi/issues/9089)
-
 - [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack up.
   [#9065](https://github.com/pulumi/pulumi/issues/9065)
 
