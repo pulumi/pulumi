@@ -18,13 +18,21 @@
 - [cli/plugins] - Improved error message for missing plugins.
   [#5208](https://github.com/pulumi/pulumi/pull/5208)
 
-- [sdk/nodejs] - Take engines property into account when engine-strict appear in npmrc file 
+- [sdk/nodejs] - Take engines property into account when engine-strict appear in npmrc file
   [#9249](https://github.com/pulumi/pulumi/pull/9249)
 
 ### Bug Fixes
 
+- [cli/engine] - Stops storing aliases in state due to the impact on file size and upload time. Due
+  to [#8627](https://github.com/pulumi/pulumi/pull/8627), the number of aliases stored in state
+  increases combinatorially with the number of type aliases of a resource and of each of its
+  ancestors. [#9089](https://github.com/pulumi/pulumi/issues/9089)
+
 - [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack up.
   [#9065](https://github.com/pulumi/pulumi/issues/9065)
+
+- [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack preview.
+  [#9272](https://github.com/pulumi/pulumi/issues/9272)
 
 - [sdk/go] - Fix a panic in `pulumi.All` when using pointer inputs.
   [#9197](https://github.com/pulumi/pulumi/issues/9197)
@@ -37,3 +45,6 @@
 
 - [codegen/go] - Fix Go SDK function output to check for errors
   [pulumi-aws#1872](https://github.com/pulumi/pulumi-aws/issues/1872)
+
+- [cli] - Stack names correctly take `org set-default` into account when printing.
+  [#9240](https://github.com/pulumi/pulumi/pull/9240)

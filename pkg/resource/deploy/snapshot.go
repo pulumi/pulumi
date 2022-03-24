@@ -83,17 +83,6 @@ func (snap *Snapshot) NormalizeURNReferences() error {
 				contract.AssertNoError(err)
 				state.Provider = ref.String()
 			}
-
-			// Add to aliased maps
-			for _, alias := range state.Aliases {
-				// For ease of implementation, some SDKs may end up creating the same alias to the
-				// same resource multiple times.  That's fine, only error if we see the same alias,
-				// but it maps to *different* resources.
-				if otherUrn, has := aliased[alias]; has && otherUrn != state.URN {
-					return fmt.Errorf("Two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
-				}
-				aliased[alias] = state.URN
-			}
 		}
 	}
 
