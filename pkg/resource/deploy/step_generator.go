@@ -293,23 +293,30 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var hasOld bool
 	var alias []resource.URN
 	for _, urnOrAlias := range append([]resource.URN{urn}, goal.Aliases...) {
-		old, hasOld = sg.deployment.Olds()[urnOrAlias]
-		if hasOld {
-			oldInputs = old.Inputs
-			oldOutputs = old.Outputs
-			if urnOrAlias != urn {
-				if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased {
-					invalid = true
-					sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
-				}
-				sg.aliased[urnOrAlias] = urn
-
-				// register the alias with the provider registry
-				sg.deployment.providers.RegisterAlias(urn, urnOrAlias)
-
-				alias = []resource.URN{urnOrAlias}
+		if oldState, hasOldState := sg.deployment.Olds()[urnOrAlias]; hasOldState {
+			if hasOld && old != oldState {
+				invalid = true
+				sg.deployment.Diag().Errorf(diag.GetMultiplyAliasedError(urn), urn, oldState.URN, urnOrAlias)
 			}
-			break
+			old, hasOld = oldState, true
+		}
+
+		if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased && previousAliasURN != urn {
+			invalid = true
+			sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
+		} else {
+			sg.aliased[urnOrAlias] = urn
+		}
+	}
+	if hasOld {
+		oldInputs = old.Inputs
+		oldOutputs = old.Outputs
+
+		if old.URN != urn {
+			// register the alias with the provider registry
+			sg.deployment.providers.RegisterAlias(urn, old.URN)
+
+			alias = []resource.URN{old.URN}
 		}
 	}
 
