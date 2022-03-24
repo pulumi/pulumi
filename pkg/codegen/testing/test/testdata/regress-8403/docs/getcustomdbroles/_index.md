@@ -86,7 +86,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_csharp">
-<a href="#result_csharp" style="color: inherit; text-decoration: inherit;">Result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_csharp" style="color: inherit; text-decoration: inherit;">Result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
@@ -98,7 +98,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_go">
-<a href="#result_go" style="color: inherit; text-decoration: inherit;">Result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_go" style="color: inherit; text-decoration: inherit;">Result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
@@ -110,7 +110,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_nodejs">
-<a href="#result_nodejs" style="color: inherit; text-decoration: inherit;">result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_nodejs" style="color: inherit; text-decoration: inherit;">result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
@@ -122,7 +122,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_python">
-<a href="#result_python" style="color: inherit; text-decoration: inherit;">result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_python" style="color: inherit; text-decoration: inherit;">result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>

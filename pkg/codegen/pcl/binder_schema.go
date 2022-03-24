@@ -32,6 +32,64 @@ type packageSchema struct {
 	schema    *schema.Package
 	resources map[string]*schema.Resource
 	functions map[string]*schema.Function
+
+	resourceAliases map[string]string
+}
+
+func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string, bool) {
+	contract.Assert(ps != nil)
+	r, ok := ps.functions[token]
+	if ok {
+		return r, token, true
+	}
+	canon := canonicalizeToken(token, ps.schema)
+	r, ok = ps.functions[canon]
+	if ok {
+		return r, canon, true
+	}
+	return nil, "", false
+}
+
+func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string, bool) {
+	contract.Assert(ps != nil)
+	r, ok := ps.resources[token]
+	if ok {
+		return r, token, true
+	}
+	canon := canonicalizeToken(token, ps.schema)
+	r, ok = ps.resources[canon]
+	if ok {
+		return r, canon, true
+	}
+
+	// Handle aliases
+	if ps.resourceAliases == nil {
+		m := map[string]string{}
+		for v, r := range ps.resources {
+			for _, k := range r.Aliases {
+				if k.Type != nil {
+					_, ok := m[*k.Type]
+					contract.Assertf(!ok, "found duplicate key '%s', which makes this process non-deterministic", *k.Type)
+					m[*k.Type] = v
+				}
+			}
+		}
+		ps.resourceAliases = m
+	}
+	actual, ok := ps.resourceAliases[token]
+	if ok {
+		r, ok = ps.resources[actual]
+		contract.Assert(ok)
+		return r, actual, true
+	}
+	actual, ok = ps.resourceAliases[canon]
+	if ok {
+		r, ok = ps.resources[actual]
+		contract.Assert(ok)
+		return r, actual, true
+	}
+
+	return nil, "", false
 }
 
 type PackageCache struct {
@@ -101,7 +159,7 @@ func canonicalizeToken(tok string, pkg *schema.Package) string {
 	return fmt.Sprintf("%s:%s:%s", pkg.Name, pkg.TokenToModule(tok), member)
 }
 
-// loadReferencedPackageSchemas loads the schemas for any pacakges referenced by a given node.
+// loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.
 func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	// TODO: package versions
 	packageNames := codegen.StringSet{}

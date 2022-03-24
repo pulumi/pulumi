@@ -203,21 +203,21 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
     let isAsync = false;
     if (funcString.startsWith("async ")) {
         isAsync = true;
-        funcString = funcString.substr("async".length).trimLeft();
+        funcString = funcString.slice("async".length).trimLeft();
     }
 
     if (funcString.startsWith("function get ") || funcString.startsWith("function set ")) {
-        const trimmed = funcString.substr("function get".length);
+        const trimmed = funcString.slice("function get".length);
         return makeFunctionDeclaration(trimmed, isAsync, /*isFunctionDeclaration: */ false);
     }
 
     if (funcString.startsWith("get ") || funcString.startsWith("set ")) {
-        const trimmed = funcString.substr("get ".length);
+        const trimmed = funcString.slice("get ".length);
         return makeFunctionDeclaration(trimmed, isAsync, /*isFunctionDeclaration: */ false);
     }
 
     if (funcString.startsWith("function")) {
-        const trimmed = funcString.substr("function".length);
+        const trimmed = funcString.slice("function".length);
         return makeFunctionDeclaration(trimmed, isAsync, /*isFunctionDeclaration: */ true);
     }
 
@@ -247,7 +247,7 @@ function makeFunctionDeclaration(
     v = v.trimLeft();
 
     if (v.startsWith("*")) {
-        v = v.substr(1).trimLeft();
+        v = v.slice(1).trimLeft();
         prefix = "function* ";
     }
 
@@ -257,7 +257,7 @@ function makeFunctionDeclaration(
     }
 
     if (isComputed(v, openParenIndex)) {
-        v = v.substr(openParenIndex);
+        v = v.slice(openParenIndex);
         return ["", {
             funcExprWithoutName: prefix + v,
             funcExprWithName: prefix + "__computed" + v,
@@ -266,12 +266,12 @@ function makeFunctionDeclaration(
         }];
     }
 
-    const nameChunk = v.substr(0, openParenIndex);
+    const nameChunk = v.slice(0, openParenIndex);
     const funcName = utils.isLegalMemberName(nameChunk)
         ? utils.isLegalFunctionName(nameChunk) ? nameChunk : "/*" + nameChunk + "*/"
         : "";
     const commentedName = utils.isLegalMemberName(nameChunk) ? "/*" + nameChunk + "*/" : "";
-    v = v.substr(openParenIndex).trimLeft();
+    v = v.slice(openParenIndex).trimLeft();
 
     return ["", {
         funcExprWithoutName: prefix + commentedName + v,

@@ -231,10 +231,9 @@ Event: ${line}\n${e.toString()}`);
             });
         }
 
-        const upPromise = this.runPulumiCmd(args, opts?.onOutput);
         let upResult: CommandResult;
         try {
-            upResult = await upPromise;
+            upResult = await this.runPulumiCmd(args, opts?.onOutput);
         } catch (e) {
             didError = true;
             throw e;
@@ -335,7 +334,7 @@ Event: ${line}\n${e.toString()}`);
         const logFile = createLogFile("preview");
         args.push("--event-log", logFile);
         let summaryEvent: SummaryEvent | undefined;
-        const rlPromise = this.readLines(logFile, (event) => {
+        const logPromise = this.readLines(logFile, (event) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
@@ -344,18 +343,16 @@ Event: ${line}\n${e.toString()}`);
                 onEvent(event);
             }
         });
-        const prePromise = this.runPulumiCmd(args, opts?.onOutput);
 
-        let preResult: CommandResult;
-        let rlResult: ReadlineResult | undefined;
+        let previewResult: CommandResult;
         try {
-            [preResult, rlResult] = await Promise.all([prePromise, rlPromise]);
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput);
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, rlResult);
+            await cleanUp(logFile, await logPromise);
         }
 
         if (!summaryEvent) {
@@ -363,8 +360,8 @@ Event: ${line}\n${e.toString()}`);
         }
 
         return {
-            stdout: preResult.stdout,
-            stderr: preResult.stderr,
+            stdout: previewResult.stdout,
+            stderr: previewResult.stderr,
             changeSummary: summaryEvent?.resourceChanges || {},
         };
     }

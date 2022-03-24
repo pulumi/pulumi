@@ -129,7 +129,6 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil,   /* propertyDependencies */
 		false, /* deleteBeforeCreate */
 		event.AdditionalSecretOutputs(),
-		nil,   /* aliases */
 		nil,   /* customTimeouts */
 		"",    /* importID */
 		1,     /* sequenceNumber */
@@ -325,7 +324,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "", 1, goal.RetainOnDelete)
+		goal.AdditionalSecretOutputs, &goal.CustomTimeouts, "", 1, goal.RetainOnDelete)
 	if hasOld {
 		new.SequenceNumber = old.SequenceNumber
 	}
@@ -447,8 +446,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		new.Inputs = inputs
 	}
 
-	// If we're in experimental mode generate a plan
-	if sg.opts.ExperimentalPlans {
+	// If the resource is valid and we're in experimental mode generate a plan
+	if !invalid && sg.opts.ExperimentalPlans {
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
 			oldInputs = nil
 		}
@@ -463,7 +462,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
 	// If theres no plan for this resource check that nothing has been changed.
-	if sg.deployment.plan != nil {
+	// We don't check plans if the resource is invalid, it's going to fail anyway.
+	if !invalid && sg.deployment.plan != nil {
 		resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
 		if !ok {
 			if old == nil {
@@ -491,7 +491,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				IgnoreChanges:           goal.IgnoreChanges,
 				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-				Aliases:                 new.Aliases,
+				Aliases:                 goal.Aliases,
 				CustomTimeouts:          new.CustomTimeouts,
 			},
 		}
@@ -1689,7 +1689,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 					IgnoreChanges:           goal.IgnoreChanges,
 					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 					AdditionalSecretOutputs: v.AdditionalSecretOutputs,
-					Aliases:                 v.Aliases,
+					Aliases:                 goal.Aliases,
 					CustomTimeouts:          v.CustomTimeouts,
 				},
 			},
