@@ -187,10 +187,8 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 ### Clouds
 
-See [Supported Clouds](https://www.pulumi.com/docs/reference/clouds/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=clouds) for the
-full list of supported cloud and infrastructure providers.
+Visit the [Registry](https://www.pulumi.com/registry/) for the full list of supported cloud and infrastructure providers.
 
 ## Contributing
 
-Please See [CONTRIBUTING.md](https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md)
-for information on building Pulumi from source or contributing improvements.
+Visit [CONTRIBUTING.md](https://github.com/pulumi/pulumi/blob/master/CONTRIBUTING.md) for information on building Pulumi from source or contributing improvements.
