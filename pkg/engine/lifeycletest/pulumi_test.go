@@ -1233,7 +1233,7 @@ func TestAliases(t *testing.T) {
 	}
 
 	updateProgramWithResource := func(
-		snap *deploy.Snapshot, resources []Resource, allowedOps []deploy.StepOp) *deploy.Snapshot {
+		snap *deploy.Snapshot, resources []Resource, allowedOps []deploy.StepOp, expectFailure bool) *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			err := registerResources(t, monitor, resources)
 			return err
@@ -1243,7 +1243,8 @@ func TestAliases(t *testing.T) {
 			Options: UpdateOptions{Host: host},
 			Steps: []TestStep{
 				{
-					Op: Update,
+					Op:            Update,
+					ExpectFailure: expectFailure,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
@@ -1278,14 +1279,14 @@ func TestAliases(t *testing.T) {
 	snap := updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-	}}, []deploy.StepOp{deploy.OpCreate})
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
 
 	// Ensure that rename produces Same
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:       "pkgA:index:t1",
 		name:    "n2",
 		aliases: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that rename produces Same with multiple aliases
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1295,7 +1296,7 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that rename produces Same with multiple aliases (reversed)
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1305,7 +1306,7 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that aliasing back to original name is okay
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1316,13 +1317,13 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that removing aliases is okay (once old names are gone from all snapshots)
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that changing the type works
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1331,7 +1332,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that changing the type again works
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1341,7 +1342,7 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 			"urn:pulumi:test::test::pkgA:index:t2::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that order of aliases doesn't matter
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1352,13 +1353,13 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
 			"urn:pulumi:test::test::pkgA:index:t2::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that removing aliases is okay (once old names are gone from all snapshots)
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:othermod:t3",
 		name: "n1",
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that changing everything (including props) leads to update not delete and re-create
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1370,7 +1371,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpUpdate})
+	}}, []deploy.StepOp{deploy.OpUpdate}, false)
 
 	// Ensure that changing everything again (including props) leads to update not delete and re-create
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1382,7 +1383,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t4::n2",
 		},
-	}}, []deploy.StepOp{deploy.OpUpdate})
+	}}, []deploy.StepOp{deploy.OpUpdate}, false)
 
 	// Ensure that changing a forceNew property while also changing type and name leads to replacement not delete+create
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1394,7 +1395,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t5::n3",
 		},
-	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
 	// Ensure that changing a forceNew property and deleteBeforeReplace while also changing type and name leads to
 	// replacement not delete+create
@@ -1408,7 +1409,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t6::n4",
 		},
-	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
 	// Start again - this time with two resources with depends on relationship
 	snap = updateProgramWithResource(nil, []Resource{{
@@ -1422,7 +1423,7 @@ func TestAliases(t *testing.T) {
 		t:            "pkgA:index:t2",
 		name:         "n2",
 		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
-	}}, []deploy.StepOp{deploy.OpCreate})
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
 
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
@@ -1441,7 +1442,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t2::n2",
 		},
-	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
 	// Start again - this time with two resources with parent relationship
 	snap = updateProgramWithResource(nil, []Resource{{
@@ -1455,7 +1456,7 @@ func TestAliases(t *testing.T) {
 		t:      "pkgA:index:t2",
 		name:   "n2",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1::n1"),
-	}}, []deploy.StepOp{deploy.OpCreate})
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
 
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
@@ -1474,10 +1475,10 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2",
 		},
-	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
 	// ensure failure when different resources use duplicate aliases
-	snap = updateProgramWithResource(nil, []Resource{{
+	_ = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
 		aliases: []resource.URN{
@@ -1489,12 +1490,28 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpCreate})
+	}}, []deploy.StepOp{deploy.OpCreate}, true)
 
-	err := snap.NormalizeURNReferences()
-	assert.Equal(t, err.Error(),
-		"Two resources ('urn:pulumi:test::test::pkgA:index:t1::n1'"+
-			" and 'urn:pulumi:test::test::pkgA:index:t2::n2') aliased to the same: 'urn:pulumi:test::test::pkgA:index:t1::n1'")
+	// ensure failure when a different resource is aliased to an unaliased resource's old state
+	_ = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+	}, {
+		t:    "pkgA:index:t2",
+		name: "n2",
+		aliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1::n1",
+		},
+	}}, []deploy.StepOp{deploy.OpCreate}, true)
+
+	// ensure failure when a resource matches multiple base states
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "n1",
+		aliases: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2",
+		},
+	}}, []deploy.StepOp{deploy.OpCreate}, true)
 
 	// ensure different resources can use different aliases
 	snap = updateProgramWithResource(nil, []Resource{{
@@ -1509,9 +1526,9 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 		},
-	}}, []deploy.StepOp{deploy.OpCreate})
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
 
-	err = snap.NormalizeURNReferences()
+	err := snap.NormalizeURNReferences()
 	assert.Nil(t, err)
 }
 

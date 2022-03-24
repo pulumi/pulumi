@@ -59,6 +59,10 @@ func GetDuplicateResourceAliasError(urn resource.URN) *Diag {
 	)
 }
 
+func GetMultiplyAliasedError(urn resource.URN) *Diag {
+	return newError(urn, 2009, "Resource '%v' already matches resource '%v' and cannot be aliased to resource '%v'")
+}
+
 func GetTargetCouldNotBeFoundError() *Diag {
 	return newError("", 2010, "Target '%v' could not be found in the stack.")
 }
