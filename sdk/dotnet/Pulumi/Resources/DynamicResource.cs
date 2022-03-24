@@ -19,14 +19,17 @@ namespace Pulumi
           return $"pulumi-dotnet:{typeName}";
       }
 
-      private static bool ByValueFilter(System.Reflection.Assembly assembly)
+      private static Ibasa.Pikala.AssemblyPickleMode ByValueFilter(System.Reflection.Assembly assembly)
       {
           // Assemblies known to be used for defining dynamic providers
           var knownAssemblies = new string [] {
               "Pulumi", "System.Collections.Immutable"
           };
           var assemblyName = assembly.GetName().Name;
-          return !Array.Exists(knownAssemblies, name => name == assemblyName);
+          if (!Array.Exists(knownAssemblies, name => name == assemblyName)) {
+              return Ibasa.Pikala.AssemblyPickleMode.PickleByValue;
+          }
+          return Ibasa.Pikala.AssemblyPickleMode.Default;
       }
 
       private static ResourceArgs SetProvider(DynamicResourceProvider provider, DynamicResourceArgs? args)
