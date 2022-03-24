@@ -291,7 +291,7 @@ func checkMissingPlan(
 		DeleteBeforeReplace:     nil,
 		IgnoreChanges:           nil,
 		AdditionalSecretOutputs: oldState.AdditionalSecretOutputs,
-		Aliases:                 nil,
+		Aliases:                 oldState.Aliases,
 		ID:                      "",
 		CustomTimeouts:          oldState.CustomTimeouts,
 	}
