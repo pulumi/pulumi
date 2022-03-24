@@ -62,7 +62,7 @@ func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *Mock
 	}
 
 	sp := &MockStackPersister{}
-	return NewSnapshotManager(sp, baseSnap), sp
+	return NewSnapshotManager(sp, baseSnap, nil), sp
 }
 
 func NewResourceWithDeps(name string, deps []resource.URN) *resource.State {

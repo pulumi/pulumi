@@ -167,7 +167,7 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 	var depl *deploy.Deployment
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
-			plugctx, target, target.Snapshot, opts.Plan, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
+			plugctx, target, target.Snapshot, opts.Plan, source, localPolicyPackPaths, dryRun, ctx.BackendClient, ctx.Aliases)
 	} else {
 		_, defaultProviderInfo, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
 			false /*returnInstallErrors*/)

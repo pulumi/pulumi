@@ -56,7 +56,7 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 // of a resource in the resources map.
 //
 // Note: This method modifies the snapshot (and resource.States in the snapshot) in-place.
-func (snap *Snapshot) NormalizeURNReferences() error {
+func (snap *Snapshot) NormalizeURNReferences(aliases map[resource.URN][]resource.URN) error {
 	if snap != nil {
 		aliased := make(map[resource.URN]resource.URN)
 		fixUrn := func(urn resource.URN) resource.URN {
@@ -82,6 +82,18 @@ func (snap *Snapshot) NormalizeURNReferences() error {
 				ref, err = providers.NewReference(fixUrn(ref.URN()), ref.ID())
 				contract.AssertNoError(err)
 				state.Provider = ref.String()
+			}
+			// Add to aliased maps
+			if thisAliases, has := aliases[state.URN]; has {
+				for _, alias := range thisAliases {
+					// For ease of implementation, some SDKs may end up creating the same alias to the
+					// same resource multiple times.  That's fine, only error if we see the same alias,
+					// but it maps to *different* resources.
+					if otherUrn, has := aliased[alias]; has && otherUrn != state.URN {
+						return fmt.Errorf("Two resources ('%s' and '%s') aliased to the same: '%s'", otherUrn, state.URN, alias)
+					}
+					aliased[alias] = state.URN
+				}
 			}
 		}
 	}

@@ -66,6 +66,7 @@ type SnapshotManager struct {
 	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
 	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
 	done             <-chan error             // A channel that sends a single result when the manager has shut down.
+	aliases          map[resource.URN][]resource.URN
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -613,7 +614,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
 func (sm *SnapshotManager) saveSnapshot() error {
 	snap := sm.snap()
-	if err := snap.NormalizeURNReferences(); err != nil {
+	if err := snap.NormalizeURNReferences(sm.aliases); err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
 	}
 	if err := sm.persister.Save(snap); err != nil {
@@ -633,7 +634,8 @@ func (sm *SnapshotManager) saveSnapshot() error {
 // It is *very important* that the baseSnap pointer refers to the same Snapshot
 // given to the engine! The engine will mutate this object and correctness of the
 // SnapshotManager depends on being able to observe this mutation. (This is not ideal...)
-func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) *SnapshotManager {
+func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot,
+	aliases map[resource.URN][]resource.URN) *SnapshotManager {
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
 	manager := &SnapshotManager{
@@ -645,6 +647,7 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,
+		aliases:          aliases,
 	}
 
 	go func() {

@@ -1038,7 +1038,8 @@ func (b *cloudBackend) runEngineAction(
 		sm = u.GetTarget().Snapshot.SecretsManager
 	}
 	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, sm)
-	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
+	aliases := make(map[resource.URN][]resource.URN)
+	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot, aliases)
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
@@ -1048,6 +1049,7 @@ func (b *cloudBackend) runEngineAction(
 		Events:          engineEvents,
 		SnapshotManager: snapshotManager,
 		BackendClient:   httpstateBackendClient{backend: b},
+		Aliases:         aliases,
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()

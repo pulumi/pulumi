@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -578,13 +579,15 @@ func (b *localBackend) apply(
 	}()
 
 	// Create the management machinery.
+	aliases := make(map[resource.URN][]resource.URN)
 	persister := b.newSnapshotPersister(stackName, op.SecretsManager)
-	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
+	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot, aliases)
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
 		Events:          engineEvents,
 		SnapshotManager: manager,
 		BackendClient:   backend.NewBackendClient(b),
+		Aliases:         aliases,
 	}
 
 	// Perform the update

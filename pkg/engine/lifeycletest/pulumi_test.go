@@ -1491,7 +1491,7 @@ func TestAliases(t *testing.T) {
 		},
 	}}, []deploy.StepOp{deploy.OpCreate})
 
-	err := snap.NormalizeURNReferences()
+	err := snap.VerifyIntegrity()
 	assert.Nil(t, err)
 }
 

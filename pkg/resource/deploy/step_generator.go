@@ -283,6 +283,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 	sg.urns[urn] = true
 
+	// Add our aliases to the global context
+	sg.deployment.aliases[urn] = goal.Aliases
+
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
 	// alias, record that alias so that we do not delete the aliased resource later.

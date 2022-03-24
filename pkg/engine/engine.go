@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -53,4 +54,5 @@ type Context struct {
 	SnapshotManager SnapshotManager
 	BackendClient   deploy.BackendClient
 	ParentSpan      opentracing.SpanContext
+	Aliases         map[resource.URN][]resource.URN
 }
