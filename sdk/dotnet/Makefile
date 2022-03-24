@@ -68,6 +68,9 @@ test_all:: dotnet_test test_auto test_go
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
+	dotnet publish Pulumi.Dynamic/Pulumi.Dynamic.csproj /p:Version=${DOTNET_VERSION} --arch x64
+	cp ./Pulumi.Dynamic/bin/Debug/netcoreapp3.1/linux-x64/publish/Pulumi.Dynamic "$$(go env GOPATH)"/bin/pulumi-resource-pulumi-dotnet
+
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}

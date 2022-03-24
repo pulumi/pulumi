@@ -126,7 +126,7 @@ namespace Pulumi
 
             public SerializationResult ToSerializationResult()
                 => new SerializationResult(
-                    Serializer.CreateStruct(PropertyValues),
+                    Serializer.CreateStruct(PropertyValues!),
                     PropertyToDependentResources);
         }
     }

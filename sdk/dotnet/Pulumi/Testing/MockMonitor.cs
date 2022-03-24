@@ -47,7 +47,7 @@ namespace Pulumi.Testing
                 }
                 return new InvokeResponse { Return = await SerializeAsync(registeredResource).ConfigureAwait(false) };
             }
-            
+
             var result = await _mocks.CallAsync(new MockCallArgs
                 {
                     Token = request.Tok,
@@ -183,13 +183,13 @@ namespace Pulumi.Testing
             return builder.ToImmutable();
         }
 
-        private async Task<ImmutableDictionary<string, object>> SerializeToDictionary(object o)
+        private async Task<ImmutableDictionary<string, object?>> SerializeToDictionary(object o)
         {
-            if (o is IDictionary<string, object> d)
+            if (o is IDictionary<string, object?> d)
             {
                 o = d.ToImmutableDictionary();
             }
-            return await _serializer.SerializeAsync("", o, true).ConfigureAwait(false) as ImmutableDictionary<string, object>
+            return await _serializer.SerializeAsync("", o, true).ConfigureAwait(false) as ImmutableDictionary<string, object?>
                 ?? throw new InvalidOperationException($"{o.GetType().FullName} is not a supported argument type");
         }
 

@@ -617,3 +617,22 @@ func TestAboutDotnet(t *testing.T) {
 	// This one doesn't have a current stack. Assert that we caught it.
 	assert.Contains(t, stderr, "No current stack")
 }
+
+// Tests dynamic provider in Dotnet.
+func TestDynamicDotnet(t *testing.T) {
+	var randomVal string
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("dynamic", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomVal = stack.Outputs["random_val"].(string)
+		},
+		EditDirs: []integration.EditDir{{
+			Dir:      "step1",
+			Additive: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
+			},
+		}},
+	})
+}

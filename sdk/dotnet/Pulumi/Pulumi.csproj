@@ -36,10 +36,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="2.9.6">
+    <!--<PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="2.9.6">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    </PackageReference>-->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.16" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
     <PackageReference Include="OneOf" Version="2.1.151" />
@@ -47,6 +47,7 @@
     <PackageReference Include="semver" Version="2.0.6" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="3.0.1" />
     <PackageReference Include="Serilog.Sinks.Console" Version="4.0.1" />
+    <PackageReference Include="Ibasa.Pikala" Version="0.0.15" />
   </ItemGroup>
 
   <ItemGroup>

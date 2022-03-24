@@ -1,5 +1,6 @@
 // Copyright 2016-2019, Pulumi Corporation
 
+using System;
 using Pulumi.Serialization;
 
 namespace Pulumi
@@ -60,6 +61,11 @@ namespace Pulumi
             string type, string name, ResourceArgs? args, CustomResourceOptions? options = null, bool dependency = false)
             : base(type, name, custom: true, args ?? ResourceArgs.Empty, options ?? new CustomResourceOptions(),
                    remote: false, dependency: dependency)
+        {
+        }
+
+        private protected CustomResource( Func<Resource, string> typeProvider, string name, ResourceArgs? args, CustomResourceOptions? options = null)
+            : base(typeProvider, name, custom: true, args ?? ResourceArgs.Empty, options ?? new CustomResourceOptions(), remote: false)
         {
         }
     }

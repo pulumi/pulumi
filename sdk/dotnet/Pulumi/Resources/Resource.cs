@@ -127,8 +127,32 @@ namespace Pulumi
         private protected Resource(
             string type, string name, bool custom,
             ResourceArgs args, ResourceOptions options,
+            bool remote = false, bool dependency = false) :
+            this(_ => type, name, custom, args, options, remote, dependency)
+        {
+        }
+
+        /// <summary>
+        /// Creates and registers a new resource object.  <paramref name="typeProvider"/> is the fully
+        /// qualified type token and <paramref name="name"/> is the "name" part to use in creating a
+        /// stable and globally unique URN for the object. dependsOn is an optional list of other
+        /// resources that this resource depends on, controlling the order in which we perform
+        /// resource operations.
+        /// </summary>
+        /// <param name="typeProvider">The type of the resource.</param>
+        /// <param name="name">The unique name of the resource.</param>
+        /// <param name="custom">True to indicate that this is a custom resource, managed by a plugin.</param>
+        /// <param name="args">The arguments to use to populate the new resource.</param>
+        /// <param name="options">A bag of options that control this resource's behavior.</param>
+        /// <param name="remote">True if this is a remote component resource.</param>
+        /// <param name="dependency">True if this is a synthetic resource used internally for dependency tracking.</param>
+        private protected Resource(
+            Func<Resource, string> typeProvider, string name, bool custom,
+            ResourceArgs args, ResourceOptions options,
             bool remote = false, bool dependency = false)
         {
+            var type = typeProvider(this);
+
             if (dependency)
             {
                 _type = "";
