@@ -39,6 +39,9 @@
 
 - [cli/engine] - Fix a panic due to passing `""` as the ID for a resource read.
   [#9243](https://github.com/pulumi/pulumi/pull/9243)
-
+  
 - [cli/engine] - Fix a panic due to `Check` failing while using update plans.
   [#9254](https://github.com/pulumi/pulumi/pull/9254)
+  
+- [cli] - Stack names correctly take `org set-default` into account when printing.
+  [#9240](https://github.com/pulumi/pulumi/pull/9240)

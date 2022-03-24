@@ -46,7 +46,7 @@ func newOrgCmd() *cobra.Command {
 
 			fmt.Printf("Current Backend: %s\n", cloudURL)
 			if defaultOrg != "" {
-				fmt.Printf("Default Org: %s", defaultOrg)
+				fmt.Printf("Default Org: %s\n", defaultOrg)
 			} else {
 				fmt.Println("No Default Org Specified")
 			}
