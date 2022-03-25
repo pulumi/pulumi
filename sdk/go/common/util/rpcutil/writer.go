@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/creack/pty"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -81,12 +82,20 @@ func (w *stderrWriter) Write(p []byte) (int, error) {
 
 // Returns a pair of streams for use with the language runtimes InstallDependencies method
 func MakeStreams(server pulumirpc.LanguageRuntime_InstallDependenciesServer, isTerminal bool) (io.WriteCloser, io.Writer, error) {
+
+	stderr := &stderrWriter{
+		server: server,
+	}
+
 	if isTerminal {
 		pt, tt, err := pty.Open()
 		if err == pty.ErrUnsupported {
 			// Fall through, just return plain stdout/err pipes
 		} else if err != nil {
-			return nil, nil, err
+			// Fall through, just return plain stdout/err pipes but warn that we tried and failed to make a
+			// pty (with coloring because isTerminal means the other side understands ANSI codes)
+			stderr.Write([]byte(colors.Always.Colorize(
+				colors.SpecWarning + "warning: could not open pty: " + err.Error() + colors.Reset + "\n")))
 		} else {
 			ptyDone := make(chan bool, 1)
 			stdout := &stdoutWriter{
@@ -107,10 +116,6 @@ func MakeStreams(server pulumirpc.LanguageRuntime_InstallDependenciesServer, isT
 	}
 
 	stdout := &stdoutWriter{
-		server: server,
-	}
-
-	stderr := &stderrWriter{
 		server: server,
 	}
 
