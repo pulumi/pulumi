@@ -31,7 +31,9 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 	}
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, _ = pcl.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
-	expr = pcl.RewriteConversions(expr, typ)
+	if typ == nil {
+		expr = pcl.RewriteConversions(expr, typ)
+	}
 	expr, _ = g.lowerProxyApplies(expr)
 	return expr
 }
@@ -333,7 +335,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				})
 			}
 		default:
-			g.Fgenf(w, "%.v", from)
+			g.Fgenf(w, "%v", from)
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
