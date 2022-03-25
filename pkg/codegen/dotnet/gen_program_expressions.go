@@ -284,31 +284,55 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *sc
 	return func(member *schema.Enum) {
 		// We know the enum value at the call site, so we can directly stamp in a
 		// valid enum instance. We don't need to convert.
-		components := strings.Split(to.Token, ":")
-		contract.Assertf(len(components) == 3, "malformed token %v", to.Token)
-		enumName := tokenToName(to.Token)
+		pkg, name := enumName(to)
 		memberTag := member.Name
 		if memberTag == "" {
 			memberTag = member.Value.(string)
 		}
-		memberTag, err := makeSafeEnumName(memberTag, enumName)
+		memberTag, err := makeSafeEnumName(memberTag, name)
 		contract.AssertNoErrorf(err, "Enum is invalid")
-		namespaceMap := to.LanguageOptions()["csharp"].(CSharpPackageInfo).Namespaces
-		namespace := namespaceName(namespaceMap, components[0])
-		if components[1] != "" && components[1] != "index" {
-			namespace += "." + namespaceName(namespaceMap, components[1])
-		}
-		g.Fgenf(w, "%s.%s.%s", namespace, enumName, memberTag)
+		g.Fgenf(w, "%s.%s.%s", pkg, name, memberTag)
 	}
+}
+
+func enumName(enum *model.EnumType) (string, string) {
+	components := strings.Split(enum.Token, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
+	enumName := tokenToName(enum.Token)
+	namespaceMap := enum.LanguageOptions()["csharp"].(CSharpPackageInfo).Namespaces
+	namespace := namespaceName(namespaceMap, components[0])
+	if components[1] != "" && components[1] != "index" {
+		namespace += "." + namespaceName(namespaceMap, components[1])
+	}
+	return namespace, enumName
 }
 
 func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Type) {
 	to = pcl.LowerConversion(from, to)
+	output, isOutput := to.(*model.OutputType)
+	if isOutput {
+		to = output.ElementType
+	}
 	switch to := to.(type) {
 	case *model.EnumType:
-		to.GenEnum(from, g.genSafeEnum(w, to), func(from model.Expression) {
-			panic(fmt.Sprintf("Unsafe enum conversions are not implemented yet: %s => %s", from, to))
-		})
+		pkg, name := enumName(to)
+		var convertFn string
+		switch {
+		case to.Type.Equals(model.StringType):
+			convertFn = fmt.Sprintf("System.Enum.Parse<%s.%s>", pkg, name)
+		default:
+			panic(fmt.Sprintf(
+				"Unsafe enum conversions from type %s not implemented yet: %s => %s",
+				from.Type(), from, to))
+
+		}
+		if isOutput {
+			g.Fgenf(w, "%.v.Apply(%s)", from, convertFn)
+		} else {
+			to.GenEnum(from, g.genSafeEnum(w, to), func(from model.Expression) {
+				g.Fgenf(w, "%s(%v)", convertFn, from)
+			})
+		}
 	default:
 		g.Fgenf(w, "%.v", from) // <- probably wrong w.r.t. precedence
 	}

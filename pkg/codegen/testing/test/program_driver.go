@@ -152,6 +152,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Regress invalid Go",
 		Skip:        codegen.NewStringSet("python", "nodejs", "dotnet"),
 	},
+	{
+		Directory:   "enum",
+		Description: "Supply strongly typed enums",
+		SkipCompile: codegen.NewStringSet("go", "python", "nodejs"),
+	},
 }
 
 // Checks that a generated program is correct

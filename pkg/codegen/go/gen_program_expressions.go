@@ -172,7 +172,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		switch to := to.(type) {
 		case *model.EnumType:
 			to.GenEnum(from, g.genSafeEnum(w, to), func(from model.Expression) {
-				panic(fmt.Sprintf("Unsafe enum conversions are not implemented yet: %s => %s", from, to))
+				name := tokenToName(to.Token)
+				module := tokenToModule(to.Token)
+				g.Fgenf(w, "%s.%s(%v)", name, module, from)
 			})
 			return
 		}
