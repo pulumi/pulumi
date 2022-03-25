@@ -155,7 +155,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "enum",
 		Description: "Supply strongly typed enums",
-		SkipCompile: codegen.NewStringSet("python"),
 	},
 }
 
