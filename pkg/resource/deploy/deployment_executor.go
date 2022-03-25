@@ -146,8 +146,18 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		if opts.RefreshOnly {
 			return nil, nil
 		}
-	} else if ex.deployment.prev != nil && len(ex.deployment.prev.PendingOperations) != 0 && !preview {
-		return nil, result.FromError(PlanPendingOperationsError{ex.deployment.prev.PendingOperations})
+	} else if ex.deployment.prev != nil && len(ex.deployment.prev.PendingOperations) > 0 && !preview {
+		// Print a warning for users that there are pending operations.
+		// Explain that these operations can be cleared using pulumi refresh (except for CREATE operations)
+		// since these require user intevention:
+		warning := "Warning: attempting to deploy or update resources " +
+			fmt.Sprintf("with %d pending operations from previous deployment.\n", len(ex.deployment.prev.PendingOperations)) +
+			"Use pulumi refresh or pulumi up -r to clear those pending operations.\n" +
+			"Note that pending CREATE operations from previous will not be cleared since those could have resulted in resources " +
+			"that are not tracked by pulumi and will need to be manually resolved (for example by editing the stack file)"
+
+		var irrelevantUrn resource.URN = ""
+		ex.deployment.Diag().Warningf(diag.RawMessage(irrelevantUrn, warning))
 	}
 
 	// The set of -t targets provided on the command line.  'nil' means 'update everything'.
