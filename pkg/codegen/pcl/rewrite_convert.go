@@ -212,7 +212,9 @@ func resolveDiscriminatedUnions(obj *model.ObjectConsExpression, modelType model
 // conversions that match HCL2 evaluation semantics, and another would insert calls to some separate intrinsic in order
 // to propagate schema information.
 func RewriteConversions(x model.Expression, to model.Type) model.Expression {
-	x, _ = rewriteConversions(x, to)
+	if to != nil {
+		x, _ = rewriteConversions(x, to)
+	}
 	return x
 }
 

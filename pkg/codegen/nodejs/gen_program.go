@@ -307,7 +307,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	}
 
 	var buffer bytes.Buffer
-	g.Fgenf(&buffer, ", %v", g.lowerExpression(object))
+	g.Fgenf(&buffer, ", %v", g.lowerExpression(object, nil))
 	return buffer.String()
 }
 
@@ -340,17 +340,21 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			indenter = g.Indented
 		}
 		indenter(func() {
+			fmtString := "%s: %.v"
+			if len(r.Inputs) > 1 {
+				fmtString = "\n" + g.Indent + "%s: %.v,"
+			}
+
 			for _, attr := range r.Inputs {
 				propertyName := attr.Name
 				if !isLegalIdentifier(propertyName) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				if len(r.Inputs) == 1 {
-					g.Fgenf(w, "%s: %.v", propertyName, g.lowerExpression(attr.Value))
-				} else {
-					g.Fgenf(w, "\n%s%s: %.v,", g.Indent, propertyName, g.lowerExpression(attr.Value))
-				}
+				destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+				g.diagnostics = append(g.diagnostics, diagnostics...)
+				g.Fgenf(w, fmtString, propertyName,
+					g.lowerExpression(attr.Value, destType.(model.Type)))
 			}
 		})
 		if len(r.Inputs) > 1 {
@@ -361,7 +365,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	if r.Options != nil && r.Options.Range != nil {
 		rangeType := model.ResolveOutputs(r.Options.Range.Type())
-		rangeExpr := g.lowerExpression(r.Options.Range)
+		rangeExpr := g.lowerExpression(r.Options.Range, rangeType)
 
 		if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
 			g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
@@ -429,14 +433,14 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 
 	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
 	if v.DefaultValue != nil {
-		g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue))
+		g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
 	}
 	g.Fgenf(w, ";\n")
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Definition.Value))
+	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, v.Name(), g.lowerExpression(v.Definition.Value, v.Type()))
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
@@ -445,7 +449,8 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 	if g.asyncMain {
 		export = ""
 	}
-	g.Fgenf(w, "%s%sconst %s = %.3v;\n", g.Indent, export, makeValidIdentifier(v.Name()), g.lowerExpression(v.Value))
+	g.Fgenf(w, "%s%sconst %s = %.3v;\n", g.Indent, export,
+		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

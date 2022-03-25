@@ -1653,16 +1653,20 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 	return nil
 }
 
+func enumMemberName(name string, enum *schema.Enum) (string, error) {
+	if enum.Name == "" {
+		enum.Name = fmt.Sprintf("%v", enum.Value)
+	}
+	return makeSafeEnumName(enum.Name, name)
+}
+
 func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
 	enumName := tokenToName(enum.Token)
 	fmt.Fprintf(w, "export const %s = {\n", enumName)
 	for _, e := range enum.Elements {
 		// If the enum doesn't have a name, set the value as the name.
-		if e.Name == "" {
-			e.Name = fmt.Sprintf("%v", e.Value)
-		}
-		safeName, err := makeSafeEnumName(e.Name, enumName)
+		safeName, err := enumMemberName(e.Name, e)
 		if err != nil {
 			return err
 		}
