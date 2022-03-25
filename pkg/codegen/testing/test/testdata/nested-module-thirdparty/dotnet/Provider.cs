@@ -7,9 +7,9 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Foo-bar
+namespace Pulumi.FooBar
 {
-    [Foo-barResourceType("pulumi:providers:foo-bar")]
+    [FooBarResourceType("pulumi:providers:foo-bar")]
     public partial class Provider : Pulumi.ProviderResource
     {
         /// <summary>

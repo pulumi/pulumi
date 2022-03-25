@@ -7,9 +7,9 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Foo-bar.Deeply/nested/module
+namespace Pulumi.FooBar.Deeply/nested/module
 {
-    [Foo-barResourceType("foo-bar:deeply/nested/module:Resource")]
+    [FooBarResourceType("foo-bar:deeply/nested/module:Resource")]
     public partial class Resource : Pulumi.CustomResource
     {
         [Output("baz")]

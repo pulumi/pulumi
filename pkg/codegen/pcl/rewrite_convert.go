@@ -288,9 +288,37 @@ func convertLiteralToString(from model.Expression) (string, bool) {
 	return "", false
 }
 
-// LowerConversionIntrensic lowers a conversion for a specific value, such that
-// converting `from` to a value of the return type will produce valid code.
-func LowerConversionIntrensic(from model.Expression, to model.Type) model.Type {
+// LowerConversion lowers a conversion for a specific value, such that
+// converting `from` to a value of the returned type will produce valid code.
+// The algorithm prioritizes safe conversions over unsafe conversions, and
+// panics if a conversion could not be found.
+//
+// This is useful because it cuts out conversion steps which the caller doesn't
+// need to worry about. For example:
+// Given inputs
+//
+//   from = string("foo") # a constant string with value "foo"
+//   to = union(enum(string: "foo", "bar"), input(enum(string: "foo", "bar")), none)
+//
+// We would receive output type:
+//
+//   enum(string: "foo", "bar")
+//
+// since the caller can convert string("foo") to the enum directly, and does not
+// need to consider the union.
+//
+// For another example consider inputs:
+//
+//   from = var(string) # A variable of type string
+//   to = union(enum(string: "foo", "bar"), string)
+//
+// We would return type:
+//
+//   string
+//
+// since var(string) can be safely assigned to string, but unsafely assigned to
+// enum(string: "foo", "bar").
+func LowerConversion(from model.Expression, to model.Type) model.Type {
 	switch to := to.(type) {
 	case *model.UnionType:
 		// Assignment: it just works

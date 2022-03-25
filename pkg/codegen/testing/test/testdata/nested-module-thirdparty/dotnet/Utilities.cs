@@ -6,7 +6,7 @@ using System.IO;
 using System.Reflection;
 using Pulumi;
 
-namespace Pulumi.Foo-bar
+namespace Pulumi.FooBar
 {
     static class Utilities
     {
@@ -67,7 +67,7 @@ namespace Pulumi.Foo-bar
         static Utilities()
         {
             var assembly = typeof(Utilities).GetTypeInfo().Assembly;
-            using var stream = assembly.GetManifestResourceStream("Pulumi.Foo-bar.version.txt");
+            using var stream = assembly.GetManifestResourceStream("Pulumi.FooBar.version.txt");
             using var reader = new StreamReader(stream ?? throw new NotSupportedException("Missing embedded version.txt file"));
             version = reader.ReadToEnd().Trim();
             var parts = version.Split("\n");
@@ -79,9 +79,9 @@ namespace Pulumi.Foo-bar
         }
     }
 
-    internal sealed class Foo-barResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class FooBarResourceTypeAttribute : Pulumi.ResourceTypeAttribute
     {
-        public Foo-barResourceTypeAttribute(string type) : base(type, Utilities.Version)
+        public FooBarResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {
         }
     }

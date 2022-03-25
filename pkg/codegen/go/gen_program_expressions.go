@@ -168,7 +168,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
 		from := expr.Args[0]
-		to := pcl.LowerConversionIntrensic(from, expr.Signature.ReturnType)
+		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
 		switch to := to.(type) {
 		case *model.EnumType:
 			to.GenEnum(from, g.genSafeEnum(w, to), func(from model.Expression) {

@@ -303,7 +303,7 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *sc
 }
 
 func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Type) {
-	to = pcl.LowerConversionIntrensic(from, to)
+	to = pcl.LowerConversion(from, to)
 	switch to := to.(type) {
 	case *model.EnumType:
 		to.GenEnum(from, g.genSafeEnum(w, to), func(from model.Expression) {
