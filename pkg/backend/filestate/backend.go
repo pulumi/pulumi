@@ -248,7 +248,10 @@ func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string, _ ba
 	return apitype.ListPolicyPacksResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
-// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *localBackend) SupportsTags() bool {
+	return false
+}
+
 func (b *localBackend) SupportsOrganizations() bool {
 	return false
 }
@@ -846,14 +849,6 @@ func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
 	}
 
 	return stacks, nil
-}
-
-// GetStackTags fetches the stack's existing tags.
-func (b *localBackend) GetStackTags(ctx context.Context,
-	stack backend.Stack) (map[apitype.StackTagName]string, error) {
-
-	// The local backend does not currently persist tags.
-	return nil, errors.New("stack tags not supported in --local mode")
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.

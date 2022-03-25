@@ -36,6 +36,7 @@ type Stack interface {
 	Ref() StackReference                                    // this stack's identity.
 	Snapshot(ctx context.Context) (*deploy.Snapshot, error) // the latest deployment snapshot.
 	Backend() Backend                                       // the backend this stack belongs to.
+	Tags() map[apitype.StackTagName]string                  // the stack's existing tags.
 
 	// Preview changes to this stack.
 	Preview(ctx context.Context, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
@@ -133,11 +134,6 @@ func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.Unt
 	return s.Backend().ImportDeployment(ctx, s, deployment)
 }
 
-// GetStackTags fetches the stack's existing tags.
-func GetStackTags(ctx context.Context, s Stack) (map[apitype.StackTagName]string, error) {
-	return s.Backend().GetStackTags(ctx, s)
-}
-
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName]string) error {
 	return s.Backend().UpdateStackTags(ctx, s, tags)
@@ -147,10 +143,7 @@ func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName
 // and Pulumi.yaml file.
 func GetMergedStackTags(ctx context.Context, s Stack) (map[apitype.StackTagName]string, error) {
 	// Get the stack's existing tags.
-	tags, err := GetStackTags(ctx, s)
-	if err != nil {
-		return nil, err
-	}
+	tags := s.Tags()
 	if tags == nil {
 		tags = make(map[apitype.StackTagName]string)
 	}

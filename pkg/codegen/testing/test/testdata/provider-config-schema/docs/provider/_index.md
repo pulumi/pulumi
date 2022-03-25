@@ -158,7 +158,7 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="favoritecolor_csharp">
-<a href="#favoritecolor_csharp" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_csharp" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#color">Pulumi.<wbr>Configstation.<wbr>Color</a></span>
@@ -170,7 +170,7 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="favoritecolor_go">
-<a href="#favoritecolor_go" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_go" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#color">Color</a></span>
@@ -182,7 +182,7 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="favoritecolor_nodejs">
-<a href="#favoritecolor_nodejs" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_nodejs" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#color">Color</a></span>
@@ -194,7 +194,7 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="favorite_color_python">
-<a href="#favorite_color_python" style="color: inherit; text-decoration: inherit;">favorite_<wbr>color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favorite_color_python" style="color: inherit; text-decoration: inherit;">favorite_<wbr>color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str | <a href="#color">Color</a></span>
@@ -213,7 +213,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -225,7 +225,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -237,7 +237,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -249,7 +249,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
