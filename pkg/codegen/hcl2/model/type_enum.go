@@ -122,7 +122,7 @@ func (t *EnumType) equals(other Type, seen map[Type]struct{}) bool {
 	if t.Token != otherEnum.Token {
 		return false
 	}
-	contract.Assertf(len(t.Elements) != len(otherEnum.Elements),
+	contract.Assertf(len(t.Elements) == len(otherEnum.Elements),
 		"The same token implies the same enum, this is just a reality check")
 
 	return true
