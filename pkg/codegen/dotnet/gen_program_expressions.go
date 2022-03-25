@@ -279,6 +279,49 @@ func (g *generator) visitToMarkTypesUsedInFunctionOutputVersionInputs(expr model
 	model.VisitExpression(expr, nil, visitor) // nolint:errcheck
 }
 
+// genSafeEnum generates an enum value when we know at at gen time that we have
+// a valid instance of the enum.
+func (g *generator) genSafeEnum(w io.Writer, value cty.Value, enum *model.EnumType) {
+	// We know the enum value at the call site, so we can directly stamp in a
+	// valid enum instance. We don't need to convert.
+	components := strings.Split(enum.Token, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
+	member := enum.Member(value)
+	contract.Assertf(member != "", "We have already determined that this was a safe conversion,"+
+		" so there must be a matching member")
+	enumName := tokenToName(enum.Token)
+	member, err := makeSafeEnumName(member, enumName)
+	contract.AssertNoErrorf(err, "Enum is invalid")
+	namespace := namespaceName(nil, components[0])
+	if components[1] != "" && components[1] != "index" {
+		namespace += "." + namespaceName(nil, components[1])
+	}
+	g.Fgenf(w, "%s.%s.%s", namespace, enumName, member)
+}
+
+func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Type) {
+	to = pcl.LowerConversionIntrensic(from, to)
+	switch to := to.(type) {
+	case *model.EnumType:
+		known := cty.NilVal
+		if from, ok := from.(*model.TemplateExpression); ok && len(from.Parts) == 1 {
+			if from, ok := from.Parts[0].(*model.LiteralValueExpression); ok {
+				known = from.Value
+			}
+		}
+		if from, ok := from.(*model.LiteralValueExpression); ok {
+			known = from.Value
+		}
+		if known != cty.NilVal {
+			g.genSafeEnum(w, known, to)
+			return
+		}
+		panic(fmt.Sprintf("Unsafe enum conversions are not implemented yet: %s => %s", from, to))
+	default:
+		g.Fgenf(w, "%.v", from) // <- probably wrong w.r.t. precedence
+	}
+}
+
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
@@ -286,7 +329,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		case *model.ObjectConsExpression:
 			g.genObjectConsExpression(w, arg, expr.Type())
 		default:
-			g.Fgenf(w, "%.v", expr.Args[0]) // <- probably wrong w.r.t. precedence
+			g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)

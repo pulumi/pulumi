@@ -1,6 +1,7 @@
 package pcl
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -285,4 +286,38 @@ func convertLiteralToString(from model.Expression) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// LowerConversionIntrensic lowers a conversion for a specific value, such that
+// converting `from` to a value of the return type will produce valid code.
+func LowerConversionIntrensic(from model.Expression, to model.Type) model.Type {
+	switch to := to.(type) {
+	case *model.UnionType:
+		// Assignment: it just works
+		for _, to := range to.ElementTypes {
+			if to.AssignableFrom(from.Type()) {
+				return to
+			}
+		}
+		conversions := make([]model.ConversionKind, len(to.ElementTypes))
+		for i, to := range to.ElementTypes {
+			conversions[i] = to.ConversionFrom(from.Type())
+			if conversions[i] == model.SafeConversion {
+				// We found a safe conversion, and we will use it. We don't need
+				// to search for more conversions.
+				return to
+			}
+		}
+
+		// Unsafe conversions:
+		for i, to := range to.ElementTypes {
+			if conversions[i] == model.UnsafeConversion {
+				return to
+			}
+		}
+		panic(fmt.Sprintf("Could not find a conversion from %s (%s) to type %s",
+			strings.TrimSpace(fmt.Sprintf("%s", from)), from.Type(), to))
+	default:
+		return to
+	}
 }

@@ -202,16 +202,38 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	return nil
 }
 
+func buildEnumValue(v interface{}) cty.Value {
+	switch v := v.(type) {
+	case string:
+		return cty.StringVal(v)
+	case bool:
+		return cty.BoolVal(v)
+	case int:
+		return cty.NumberIntVal(int64(v))
+	case int64:
+		return cty.NumberIntVal(v)
+	case float64:
+		return cty.NumberFloatVal(v)
+	default:
+		contract.Failf("Found unexpected constant type %T: %[1]v", v)
+		return cty.NilVal
+	}
+}
+
 // schemaTypeToType converts a schema.Type to a model Type.
-func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
+func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 	switch src := src.(type) {
 	case *schema.ArrayType:
 		return model.NewListType(b.schemaTypeToType(src.ElementType))
 	case *schema.MapType:
 		return model.NewMapType(b.schemaTypeToType(src.ElementType))
 	case *schema.EnumType:
-		// TODO(codegen): make this a union of constant types.
-		return b.schemaTypeToType(src.ElementType)
+		values := []cty.Value{}
+		elType := b.schemaTypeToType(src.ElementType)
+		for _, el := range src.Elements {
+			values = append(values, buildEnumValue(el.Value))
+		}
+		return model.NewEnumType(elType, src, values...)
 	case *schema.ObjectType:
 		if t, ok := b.schemaTypes[src]; ok {
 			return t
