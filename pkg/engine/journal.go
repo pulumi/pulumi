@@ -111,6 +111,17 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 		}
 	}
 
+	if base != nil {
+		// Track pending create operations from the base snapshot
+		// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
+		// because these must require user intervention to be cleared or resolved.
+		for _, pendingOperation := range base.PendingOperations {
+			if pendingOperation.Type == resource.OperationTypeCreating {
+				operations = append(operations, pendingOperation)
+			}
+		}
+	}
+
 	// If we have a base snapshot, copy over its secrets manager.
 	var secretsManager secrets.Manager
 	if base != nil {
