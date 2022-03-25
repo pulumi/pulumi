@@ -600,6 +600,15 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 		}
 	}
 
+	// Track pending create operations from the base snapshot
+	// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
+	// because these must require user intervention to be cleared or resolved.
+	for _, pendingOperation := range sm.baseSnapshot.PendingOperations {
+		if pendingOperation.Type == resource.OperationTypeCreating {
+			operations = append(operations, pendingOperation)
+		}
+	}
+
 	manifest := deploy.Manifest{
 		Time:    time.Now(),
 		Version: version.Version,
