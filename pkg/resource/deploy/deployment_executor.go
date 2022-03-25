@@ -97,9 +97,9 @@ func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op StepOp) re
 	return nil
 }
 
-func (executer *deploymentExecutor) printPendingOperationsWarning() {
+func (ex *deploymentExecutor) printPendingOperationsWarning() {
 	pendingOperations := ""
-	for _, op := range executer.deployment.prev.PendingOperations {
+	for _, op := range ex.deployment.prev.PendingOperations {
 		pendingOperations = pendingOperations + fmt.Sprintf("  * %s, interrupted while %s\n", op.Resource.URN, op.Type)
 	}
 
@@ -112,18 +112,18 @@ Once you have confirmed the status of the interrupted operations, you can repair
 using 'pulumi refresh' which will refresh the state from the provider you are using and 
 clear the pending operations if there are any.
 
-Not that 'pulumi refresh' will not clear pending CREATE operations since those could have resulted in resources which are
-not tracked by pulumi. To repair the stack and remove pending CREATE operation, use 'pulumi stack export' which will 
-export your stack to a file. For each operation that succeeded,
+Note that 'pulumi refresh' will not clear pending CREATE operations since those could have resulted in resources 
+which are not tracked by pulumi. To repair the stack and remove pending CREATE operation, 
+use 'pulumi stack export' which will  export your stack to a file. For each operation that succeeded,
 remove that operation from the "pending_operations" section of the file. Once this is complete,
 use 'pulumi stack import' to import the repaired stack.`
 
 	warning := "Attempting to deploy or update resources " +
-		fmt.Sprintf("with %d pending operations from previous deployment.\n", len(executer.deployment.prev.PendingOperations)) +
+		fmt.Sprintf("with %d pending operations from previous deployment.\n", len(ex.deployment.prev.PendingOperations)) +
 		pendingOperations +
 		resolutionMessage
 
-	executer.deployment.Diag().Warningf(diag.RawMessage("" /*urn*/, warning))
+	ex.deployment.Diag().Warningf(diag.RawMessage("" /*urn*/, warning))
 }
 
 // reportExecResult issues an appropriate diagnostic depending on went wrong.
