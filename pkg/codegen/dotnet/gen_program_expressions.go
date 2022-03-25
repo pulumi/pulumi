@@ -324,7 +324,6 @@ func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Ty
 			panic(fmt.Sprintf(
 				"Unsafe enum conversions from type %s not implemented yet: %s => %s",
 				from.Type(), from, to))
-
 		}
 		if isOutput {
 			g.Fgenf(w, "%.v.Apply(%s)", from, convertFn)

@@ -169,12 +169,31 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.IntrinsicConvert:
 		from := expr.Args[0]
 		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
+		output, isOutput := to.(*model.OutputType)
+		if isOutput {
+			to = output.ElementType
+		}
 		switch to := to.(type) {
 		case *model.EnumType:
+			var underlyingType string
+			switch {
+			case to.Type.Equals(model.StringType):
+				underlyingType = "string"
+			default:
+				panic(fmt.Sprintf(
+					"Unsafe enum conversions from type %s not implemented yet: %s => %s",
+					from.Type(), from, to))
+			}
+			enumTag := fmt.Sprintf("%s.%s",
+				tokenToModule(to.Token), tokenToName(to.Token))
+			if isOutput {
+				g.Fgenf(w,
+					"%.v.ApplyT(func(x %[3]s) %[2]s { return %[2]s(x) }).(%[2]sOutput)",
+					from, enumTag, underlyingType)
+				return
+			}
 			to.GenEnum(from, g.genSafeEnum(w, to), func(from model.Expression) {
-				name := tokenToName(to.Token)
-				module := tokenToModule(to.Token)
-				g.Fgenf(w, "%s.%s(%v)", name, module, from)
+				g.Fgenf(w, "%s(%v)", enumTag, from)
 			})
 			return
 		}
