@@ -150,7 +150,7 @@ jobs:
         with:
           repo: pulumi/pulumictl
       - name: Set up Python ${{ inputs.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v1
         with:
           python-version: ${{ inputs.python-version }}
           cache: pip
