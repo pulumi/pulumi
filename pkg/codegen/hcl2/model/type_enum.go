@@ -96,6 +96,12 @@ func (t *EnumType) Member(value cty.Value) string {
 	return ""
 }
 
+// LanguageOptions provides the langauge map associated with the enums
+// *schema.Package.
+func (t *EnumType) LanguageOptions() map[string]interface{} {
+	return t.src.Package.Language
+}
+
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*EnumType) SyntaxNode() hclsyntax.Node {
 	return syntax.None

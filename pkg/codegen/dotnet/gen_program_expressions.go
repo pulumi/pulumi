@@ -292,9 +292,10 @@ func (g *generator) genSafeEnum(w io.Writer, value cty.Value, enum *model.EnumTy
 	enumName := tokenToName(enum.Token)
 	member, err := makeSafeEnumName(member, enumName)
 	contract.AssertNoErrorf(err, "Enum is invalid")
-	namespace := namespaceName(nil, components[0])
+	namespaceMap := enum.LanguageOptions()["csharp"].(CSharpPackageInfo).Namespaces
+	namespace := namespaceName(namespaceMap, components[0])
 	if components[1] != "" && components[1] != "index" {
-		namespace += "." + namespaceName(nil, components[1])
+		namespace += "." + namespaceName(namespaceMap, components[1])
 	}
 	g.Fgenf(w, "%s.%s.%s", namespace, enumName, member)
 }
