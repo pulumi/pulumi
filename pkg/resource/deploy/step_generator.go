@@ -307,6 +307,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				// register the alias with the provider registry
 				sg.deployment.providers.RegisterAlias(urn, urnOrAlias)
 
+				// NOTE: we save the URN of the existing resource so that the snapshotter can replace references to the
+				// existing resource with the URN of the newly-registered resource. We do not need to save any of the
+				// resource's other possible aliases.
 				alias = []resource.URN{urnOrAlias}
 			}
 			break
