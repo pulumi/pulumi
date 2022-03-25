@@ -29,7 +29,7 @@ func main() {
 			ResourceGroupName: pulumi.String(someString),
 			AccountName:       pulumi.String(someString),
 			ContainerName:     pulumi.String(someString),
-			Type:              staticwebsite.IndexDocument.ApplyT(func(x string) storage.BlobType { return storage.BlobType(x) }).(storage.BlobTypeOutput),
+			Type:              staticwebsite.IndexDocument.ApplyT(func(x *string) storage.BlobType { return storage.BlobType(*x) }).(storage.BlobTypeOutput),
 		})
 		if err != nil {
 			return err

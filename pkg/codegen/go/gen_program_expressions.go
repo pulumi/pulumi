@@ -188,7 +188,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				tokenToModule(to.Token), tokenToName(to.Token))
 			if isOutput {
 				g.Fgenf(w,
-					"%.v.ApplyT(func(x %[3]s) %[2]s { return %[2]s(x) }).(%[2]sOutput)",
+					"%.v.ApplyT(func(x *%[3]s) %[2]s { return %[2]s(*x) }).(%[2]sOutput)",
 					from, enumTag, underlyingType)
 				return
 			}
