@@ -34,7 +34,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
-	"github.com/docker/docker/pkg/term"
+	"github.com/moby/term"
 
 	"github.com/spf13/cobra"
 

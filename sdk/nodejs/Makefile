@@ -1,6 +1,6 @@
 PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := @pulumi/pulumi
-VERSION 		 := $(shell cd ../../ && pulumictl get version --language javascript)
+VERSION                        := $(if ${PULUMI_VERSION},${PULUMI_VERSION}, $(shell cd ../../ && pulumictl get version --language javascript))
 
 LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs
 PROJECT_ROOT     := $(realpath ../..)
