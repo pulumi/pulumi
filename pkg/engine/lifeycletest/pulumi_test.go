@@ -550,11 +550,6 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	// A preview should succeed despite the pending operations.
 	_, res := op.Run(project, target, options, true, nil, nil)
 	assert.Nil(t, res)
-
-	// But an update should fail.
-	_, res = op.Run(project, target, options, false, nil, nil)
-	assertIsErrorOrBailResult(t, res)
-	assert.EqualError(t, res.Error(), deploy.PlanPendingOperationsError{}.Error())
 }
 
 // Tests that a refresh works for a stack with pending operations.
@@ -604,11 +599,6 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	op := TestOp(Update)
 	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
-
-	// Without refreshing, an update should fail.
-	_, res := op.Run(project, target, options, false, nil, nil)
-	assertIsErrorOrBailResult(t, res)
-	assert.EqualError(t, res.Error(), deploy.PlanPendingOperationsError{}.Error())
 
 	// With a refresh, the update should succeed.
 	withRefresh := options
