@@ -111,7 +111,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
