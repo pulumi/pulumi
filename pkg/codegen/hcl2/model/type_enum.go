@@ -63,43 +63,74 @@ func NewEnumType(typ Type, src *schema.EnumType, elements ...cty.Value) *EnumTyp
 // Member returns the name of the member that matches the given `value`. If no
 // member if found, the empty string is returned. If the type of `value` does
 // not match the type of the enum, Member will panic.
-func (t *EnumType) Member(value cty.Value) string {
+func (t *EnumType) Member(value cty.Value) *schema.Enum {
 	switch {
 	case t.Type.Equals(StringType):
 		s := value.AsString()
 		for _, el := range t.src.Elements {
 			v := el.Value.(string)
 			if v == s {
-				if el.Name == "" {
-					return v
-				}
-				return el.Name
+				return el
 			}
 		}
 	case t.Type.Equals(NumberType):
 		f, _ := value.AsBigFloat().Float64()
 		for _, el := range t.src.Elements {
 			if el.Value.(float64) == f {
-				return el.Name
+				return el
 			}
 		}
 	case t.Type.Equals(IntType):
 		f, _ := value.AsBigFloat().Int64()
 		for _, el := range t.src.Elements {
 			if el.Value.(int64) == f {
-				return el.Name
+				return el
 			}
 		}
 	default:
 		contract.Failf("Unknown enum type '%s' for '%s'", t.Type, t.Token)
 	}
-	return ""
+	return nil
 }
 
-// LanguageOptions provides the langauge map associated with the enums
+// LanguageOptions provides the language map associated with the enums
 // *schema.Package.
 func (t *EnumType) LanguageOptions() map[string]interface{} {
 	return t.src.Package.Language
+}
+
+// GenEnum is a helper function when generating an enum.
+// Given an enum, and instructions on what to do when you find a known value,
+// and an unknown value, return a function that will generate an the given enum
+// from the given expression.
+//
+// This function should probably live in the `codegen` namespace, but cannot
+// because of import cycles.
+func (t *EnumType) GenEnum(
+	from Expression,
+	safeEnum func(member *schema.Enum),
+	unsafeEnum func(from Expression),
+) {
+	known := cty.NilVal
+	if from, ok := from.(*TemplateExpression); ok && len(from.Parts) == 1 {
+		if from, ok := from.Parts[0].(*LiteralValueExpression); ok {
+			known = from.Value
+		}
+	}
+	if from, ok := from.(*LiteralValueExpression); ok {
+		known = from.Value
+	}
+	if known != cty.NilVal {
+		// If the value is known, but we can't find a member, we should have
+		// indicated a conversion is impossible when type checking.
+		member := t.Member(known)
+		contract.Assertf(member != nil,
+			"We have determined %s is a safe enum, which we define as "+
+				"being able to calculate a member for", t)
+		safeEnum(member)
+	} else {
+		unsafeEnum(from)
+	}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.

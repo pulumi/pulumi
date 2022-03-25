@@ -20,13 +20,14 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/zclconf/go-cty/cty"
 )
 
 type nameInfo int
@@ -279,45 +280,35 @@ func (g *generator) visitToMarkTypesUsedInFunctionOutputVersionInputs(expr model
 	model.VisitExpression(expr, nil, visitor) // nolint:errcheck
 }
 
-// genSafeEnum generates an enum value when we know at at gen time that we have
-// a valid instance of the enum.
-func (g *generator) genSafeEnum(w io.Writer, value cty.Value, enum *model.EnumType) {
-	// We know the enum value at the call site, so we can directly stamp in a
-	// valid enum instance. We don't need to convert.
-	components := strings.Split(enum.Token, ":")
-	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
-	member := enum.Member(value)
-	contract.Assertf(member != "", "We have already determined that this was a safe conversion,"+
-		" so there must be a matching member")
-	enumName := tokenToName(enum.Token)
-	member, err := makeSafeEnumName(member, enumName)
-	contract.AssertNoErrorf(err, "Enum is invalid")
-	namespaceMap := enum.LanguageOptions()["csharp"].(CSharpPackageInfo).Namespaces
-	namespace := namespaceName(namespaceMap, components[0])
-	if components[1] != "" && components[1] != "index" {
-		namespace += "." + namespaceName(namespaceMap, components[1])
+func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *schema.Enum) {
+	return func(member *schema.Enum) {
+		// We know the enum value at the call site, so we can directly stamp in a
+		// valid enum instance. We don't need to convert.
+		components := strings.Split(to.Token, ":")
+		contract.Assertf(len(components) == 3, "malformed token %v", to.Token)
+		enumName := tokenToName(to.Token)
+		memberTag := member.Name
+		if memberTag == "" {
+			memberTag = member.Value.(string)
+		}
+		memberTag, err := makeSafeEnumName(memberTag, enumName)
+		contract.AssertNoErrorf(err, "Enum is invalid")
+		namespaceMap := to.LanguageOptions()["csharp"].(CSharpPackageInfo).Namespaces
+		namespace := namespaceName(namespaceMap, components[0])
+		if components[1] != "" && components[1] != "index" {
+			namespace += "." + namespaceName(namespaceMap, components[1])
+		}
+		g.Fgenf(w, "%s.%s.%s", namespace, enumName, memberTag)
 	}
-	g.Fgenf(w, "%s.%s.%s", namespace, enumName, member)
 }
 
 func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Type) {
 	to = pcl.LowerConversionIntrensic(from, to)
 	switch to := to.(type) {
 	case *model.EnumType:
-		known := cty.NilVal
-		if from, ok := from.(*model.TemplateExpression); ok && len(from.Parts) == 1 {
-			if from, ok := from.Parts[0].(*model.LiteralValueExpression); ok {
-				known = from.Value
-			}
-		}
-		if from, ok := from.(*model.LiteralValueExpression); ok {
-			known = from.Value
-		}
-		if known != cty.NilVal {
-			g.genSafeEnum(w, known, to)
-			return
-		}
-		panic(fmt.Sprintf("Unsafe enum conversions are not implemented yet: %s => %s", from, to))
+		to.GenEnum(from, g.genSafeEnum(w, to), func(from model.Expression) {
+			panic(fmt.Sprintf("Unsafe enum conversions are not implemented yet: %s => %s", from, to))
+		})
 	default:
 		g.Fgenf(w, "%.v", from) // <- probably wrong w.r.t. precedence
 	}
