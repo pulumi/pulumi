@@ -424,12 +424,12 @@ func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empt
 func (host *goLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
 
-	stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
 	if err != nil {
 		return err
 	}
 	// best effort close, but we try an explicit close and error check at the end as well
-	defer stdout.Close()
+	defer closer.Close()
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
@@ -454,7 +454,7 @@ func (host *goLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
-	if err := stdout.Close(); err != nil {
+	if err := closer.Close(); err != nil {
 		return err
 	}
 

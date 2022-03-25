@@ -16,61 +16,69 @@ package rpcutil
 
 import (
 	"io"
+	"io/fs"
 	"os"
+	"syscall"
 
 	"github.com/creack/pty"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-type stdoutWriter struct {
-	server   pulumirpc.LanguageRuntime_InstallDependenciesServer
-	done     chan (bool)
+type ptyCloser struct {
+	done     chan (error)
 	pty, tty *os.File
 }
 
-func (w *stdoutWriter) Write(p []byte) (int, error) {
-	data := pulumirpc.InstallDependenciesResponse{}
-	data.Stdout = p
-
-	err := w.server.Send(&data)
-	if err != nil {
-		return 0, err
+func (w *ptyCloser) Close() error {
+	// Close can be called multiple times, but we will of nil'd out everything first time.
+	if w.done == nil {
+		contract.Assert(w.pty == nil)
+		contract.Assert(w.tty == nil)
+		return nil
 	}
 
-	return len(p), nil
-}
+	// Try to close the tty
+	terr := w.tty.Close()
+	// Wait for the done signal
+	err := <-w.done
+	// Now close the pty
+	perr := w.pty.Close()
 
-func (w *stdoutWriter) Close() error {
-	// Try to close the pty and tty if we have them
-	if w.tty != nil {
-		contract.Assert(w.pty != nil)
-		terr := w.tty.Close()
-		perr := w.pty.Close()
-
-		if terr != nil {
-			return terr
-		}
-		if perr != nil {
-			return perr
+	// if err is an error because pty closed ignore it
+	if ioErr, ok := err.(*fs.PathError); ok {
+		if sysErr, ok := ioErr.Err.(syscall.Errno); ok {
+			if sysErr == syscall.EIO {
+				err = nil
+			}
 		}
 	}
 
-	// Wait for the done signal if we have one
-	if w.done != nil {
-		<-w.done
-	}
-	return nil
+	w.done = nil
+	w.pty = nil
+	w.tty = nil
+
+	return multierror.Append(err, terr, perr).ErrorOrNil()
 }
 
-type stderrWriter struct {
-	server pulumirpc.LanguageRuntime_InstallDependenciesServer
+type nullCloser struct{}
+
+func (c *nullCloser) Close() error { return nil }
+
+type pipeWriter struct {
+	sendToStdout bool
+	server       pulumirpc.LanguageRuntime_InstallDependenciesServer
 }
 
-func (w *stderrWriter) Write(p []byte) (int, error) {
+func (w *pipeWriter) Write(p []byte) (int, error) {
 	data := pulumirpc.InstallDependenciesResponse{}
-	data.Stderr = p
+	if w.sendToStdout {
+		data.Stdout = p
+	} else {
+		data.Stderr = p
+	}
 
 	err := w.server.Send(&data)
 	if err != nil {
@@ -81,10 +89,16 @@ func (w *stderrWriter) Write(p []byte) (int, error) {
 }
 
 // Returns a pair of streams for use with the language runtimes InstallDependencies method
-func MakeStreams(server pulumirpc.LanguageRuntime_InstallDependenciesServer, isTerminal bool) (io.WriteCloser, io.Writer, error) {
+func MakeStreams(server pulumirpc.LanguageRuntime_InstallDependenciesServer, isTerminal bool) (io.Closer, io.Writer, io.Writer, error) {
 
-	stderr := &stderrWriter{
-		server: server,
+	stderr := &pipeWriter{
+		server:       server,
+		sendToStdout: false,
+	}
+
+	stdout := &pipeWriter{
+		server:       server,
+		sendToStdout: true,
 	}
 
 	if isTerminal {
@@ -97,27 +111,22 @@ func MakeStreams(server pulumirpc.LanguageRuntime_InstallDependenciesServer, isT
 			stderr.Write([]byte(colors.Always.Colorize(
 				colors.SpecWarning + "warning: could not open pty: " + err.Error() + colors.Reset + "\n")))
 		} else {
-			ptyDone := make(chan bool, 1)
-			stdout := &stdoutWriter{
-				server: server,
-				pty:    pt,
-				tty:    tt,
-				done:   ptyDone,
+			ptyDone := make(chan error, 1)
+			closer := &ptyCloser{
+				pty:  pt,
+				tty:  tt,
+				done: ptyDone,
 			}
 
 			go func() {
-				_, _ = io.Copy(stdout, pt)
-				ptyDone <- true
+				_, err = io.Copy(stdout, pt)
+				ptyDone <- err
 			}()
 
 			// stdout == stderr if we're acting as a terminal
-			return stdout, stdout, nil
+			return closer, tt, tt, nil
 		}
 	}
 
-	stdout := &stdoutWriter{
-		server: server,
-	}
-
-	return stdout, stderr, nil
+	return &nullCloser{}, stdout, stderr, nil
 }
