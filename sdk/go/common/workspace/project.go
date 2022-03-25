@@ -209,10 +209,10 @@ type ProjectRuntimeInfo struct {
 	options map[string]interface{}
 }
 
-func NewProjectRuntimeInfo(name string, options map[string]interface{}) ProjectRuntimeInfo {
+func NewProjectRuntimeInfo(name string, version *semver.Version, options map[string]interface{}) ProjectRuntimeInfo {
 	return ProjectRuntimeInfo{
 		name:    name,
-		version: nil,
+		version: version,
 		options: options,
 	}
 }

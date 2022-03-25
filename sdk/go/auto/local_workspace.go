@@ -993,7 +993,7 @@ func defaultInlineProject(projectName string) (workspace.Project, error) {
 	}
 	proj = workspace.Project{
 		Name:    tokens.PackageName(projectName),
-		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil, nil),
 		Main:    cwd,
 	}
 
