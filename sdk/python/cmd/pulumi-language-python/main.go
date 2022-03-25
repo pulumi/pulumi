@@ -813,7 +813,8 @@ func (host *pythonLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	if err := python.InstallDependenciesWithWriters(req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr); err != nil {
+	if err := python.InstallDependenciesWithWriters(
+		req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr); err != nil {
 		return err
 	}
 

@@ -971,6 +971,12 @@ func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.
 	}, nil
 }
 
+func (s *languageRuntimeServer) InstallDependencies(
+	req *pulumirpc.InstallDependenciesRequest,
+	server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+	return nil
+}
+
 func tailLogs(command string, receivers []chan<- events.EngineEvent) (*tail.Tail, error) {
 	logDir, err := ioutil.TempDir("", fmt.Sprintf("automation-logs-%s-", command))
 	if err != nil {

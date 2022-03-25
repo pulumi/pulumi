@@ -146,7 +146,11 @@ type nodeLanguageHost struct {
 	nodeargs      string
 }
 
-func newLanguageHost(engineAddress, tracing string, typescript bool, tsconfigpath string, nodeargs string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(
+	engineAddress, tracing string,
+	typescript bool, tsconfigpath,
+	nodeargs string) pulumirpc.LanguageRuntimeServer {
+
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
@@ -578,7 +582,9 @@ func (host *nodeLanguageHost) execNodejs(
 // constructArguments constructs a command-line for `pulumi-language-nodejs`
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
-func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, runPath, address, pipesDirectory string) []string {
+func (host *nodeLanguageHost) constructArguments(
+	req *pulumirpc.RunRequest, runPath, address, pipesDirectory string) []string {
+
 	args := []string{runPath}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
