@@ -123,8 +123,7 @@ use 'pulumi stack import' to import the repaired stack.`
 		pendingOperations +
 		resolutionMessage
 
-	var irrelevantUrn resource.URN = ""
-	executer.deployment.Diag().Warningf(diag.RawMessage(irrelevantUrn, warning))
+	executer.deployment.Diag().Warningf(diag.RawMessage("" /*urn*/, warning))
 }
 
 // reportExecResult issues an appropriate diagnostic depending on went wrong.
