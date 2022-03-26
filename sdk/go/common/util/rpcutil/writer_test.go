@@ -64,24 +64,24 @@ func TestWriter_NoTerminal(t *testing.T) {
 	assert.NoError(t, err)
 
 	// stdout and stderr should just write to server
-	l, err := stdout.Write([]byte{1, 2, 3})
+	l, err := stdout.Write([]byte("hello"))
 	assert.NoError(t, err)
-	assert.Equal(t, 3, l)
+	assert.Equal(t, 5, l)
 
-	l, err = stderr.Write([]byte{4, 5, 6})
+	l, err = stderr.Write([]byte("world"))
 	assert.NoError(t, err)
-	assert.Equal(t, 3, l)
+	assert.Equal(t, 5, l)
 
 	err = closer.Close()
 	assert.NoError(t, err)
 
 	outBytes, err := ioutil.ReadAll(&server.stdout)
 	assert.NoError(t, err)
-	assert.Equal(t, []byte{1, 2, 3}, outBytes)
+	assert.Equal(t, []byte("hello"), outBytes)
 
 	errBytes, err := ioutil.ReadAll(&server.stderr)
 	assert.NoError(t, err)
-	assert.Equal(t, []byte{4, 5, 6}, errBytes)
+	assert.Equal(t, []byte("world"), errBytes)
 }
 
 func TestWriter_Terminal(t *testing.T) {
@@ -94,44 +94,44 @@ func TestWriter_Terminal(t *testing.T) {
 
 	// We _may_ have made a pty and stdout and stderr are the same and both send to the server as stdout
 	if stdout == stderr {
-		l, err := stdout.Write([]byte{1, 2, 3})
+		l, err := stdout.Write([]byte("hello"))
 		assert.NoError(t, err)
-		assert.Equal(t, 3, l)
+		assert.Equal(t, 5, l)
 
-		l, err = stderr.Write([]byte{4, 5, 6})
+		l, err = stderr.Write([]byte("world"))
 		assert.NoError(t, err)
-		assert.Equal(t, 3, l)
+		assert.Equal(t, 5, l)
 
 		err = closer.Close()
 		assert.NoError(t, err)
 
 		outBytes, err := ioutil.ReadAll(&server.stdout)
 		assert.NoError(t, err)
-		assert.Equal(t, []byte{1, 2, 3, 4, 5, 6}, outBytes)
+		assert.Equal(t, []byte("helloworld"), outBytes)
 
 		errBytes, err := ioutil.ReadAll(&server.stderr)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte{}, errBytes)
 	} else {
 		// else they are separate and should behave just like the NoTerminal case
-		l, err := stdout.Write([]byte{1, 2, 3})
+		l, err := stdout.Write([]byte("hello"))
 		assert.NoError(t, err)
-		assert.Equal(t, 3, l)
+		assert.Equal(t, 5, l)
 
-		l, err = stderr.Write([]byte{4, 5, 6})
+		l, err = stderr.Write([]byte("world"))
 		assert.NoError(t, err)
-		assert.Equal(t, 3, l)
+		assert.Equal(t, 5, l)
 
 		err = closer.Close()
 		assert.NoError(t, err)
 
 		outBytes, err := ioutil.ReadAll(&server.stdout)
 		assert.NoError(t, err)
-		assert.Equal(t, []byte{1, 2, 3}, outBytes)
+		assert.Equal(t, []byte("hello"), outBytes)
 
 		errBytes, err := ioutil.ReadAll(&server.stderr)
 		assert.NoError(t, err)
-		assert.Equal(t, []byte{4, 5, 6}, errBytes)
+		assert.Equal(t, []byte("world"), errBytes)
 	}
 }
 
