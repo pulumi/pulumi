@@ -476,7 +476,6 @@ func (rp *ResourcePlan) checkGoal(
 	programGoal *resource.Goal) error {
 
 	contract.Assert(programGoal != nil)
-	contract.Assert(newInputs != nil)
 	// rp.Goal may be nil, but if it isn't Type and Name should match
 	contract.Assert(rp.Goal == nil || rp.Goal.Type == programGoal.Type)
 	contract.Assert(rp.Goal == nil || rp.Goal.Name == programGoal.Name)
