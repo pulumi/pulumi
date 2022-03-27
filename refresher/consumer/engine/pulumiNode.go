@@ -405,6 +405,11 @@ func handleCommonProviders(ctx context.Context, commonProviderMap map[string]int
 						return err, ""
 					}
 				}
+			} else if integrationId != "" {
+				updateDict[fmt.Sprintf("integrations.%s.id", provider)], err = primitive.ObjectIDFromHex(integrationId)
+				if err != nil {
+					return err, ""
+				}
 			}
 		} else {
 
