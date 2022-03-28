@@ -199,7 +199,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 			// Try to execute nodejs with the index.js as the first arg
 			jsmodule := filepath.Join(filepath.Dir(bin), "index.js")
 			args = append([]string{jsmodule}, args...)
-			plug, err = execPlugin("nodejs", args, pwd, env)
+			plug, err = execPlugin("node", args, pwd, env)
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 			}
