@@ -19,7 +19,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/blang/semver"
@@ -84,6 +86,12 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	}
 
 	contract.Assert(path != "")
+
+	// Check to see if we have a PulumiPlugin.yaml
+	proj, err := workspace.LoadPluginProject(filepath.Join(filepath.Dir(path), "PulumiPlugin.yaml"))
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, errors.Wrap(err, "loading PulumiPlugin.yaml")
+	}
 
 	// Runtime options are passed as environment variables to the provider.
 	env := os.Environ()
