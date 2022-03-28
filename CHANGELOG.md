@@ -1,6 +1,168 @@
 CHANGELOG
 =========
 
+## 3.27.0 (2022-03-24)
+
+### Improvements
+
+- [cli] - Implement `pulumi stack unselect`.
+  [#9179](https://github.com/pulumi/pulumi/pull/9179)
+
+- [language/dotnet] - Updated Pulumi dotnet packages to use grpc-dotnet instead of grpc.
+  [#9149](https://github.com/pulumi/pulumi/pull/9149)
+
+- [cli/config] - Rename the `config` property in `Pulumi.yaml` to `stackConfigDir`. The `config` key will continue to be supported.
+  [#9145](https://github.com/pulumi/pulumi/pull/9145)
+
+- [cli/plugins] Add support for downloading plugin from private Pulumi GitHub releases. This also drops the use of the `GITHUB_ACTOR` and `GITHUB_PERSONAL_ACCESS_TOKEN` environment variables for authenticating to github. Only `GITHUB_TOKEN` is now used, but this can be set to a personal access token.
+  [#9185](https://github.com/pulumi/pulumi/pull/9185)
+
+- [cli] - Speed up `pulumi stack --show-name` by skipping unneeded snapshot loading.
+  [#9199](https://github.com/pulumi/pulumi/pull/9199)
+
+- [cli/plugins] - Improved error message for missing plugins.
+  [#5208](https://github.com/pulumi/pulumi/pull/5208)
+
+- [sdk/nodejs] - Take engines property into account when engine-strict appear in npmrc file
+  [#9249](https://github.com/pulumi/pulumi/pull/9249)
+
+### Bug Fixes
+
+- [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack up.
+  [#9065](https://github.com/pulumi/pulumi/issues/9065)
+
+- [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack preview.
+  [#9272](https://github.com/pulumi/pulumi/issues/9272)
+
+- [sdk/go] - Fix a panic in `pulumi.All` when using pointer inputs.
+  [#9197](https://github.com/pulumi/pulumi/issues/9197)
+
+- [cli/engine] - Fix a panic due to passing `""` as the ID for a resource read.
+  [#9243](https://github.com/pulumi/pulumi/pull/9243)
+
+- [cli/engine] - Fix a panic due to `Check` failing while using update plans.
+  [#9254](https://github.com/pulumi/pulumi/pull/9254)
+
+- [cli] - Stack names correctly take `org set-default` into account when printing.
+  [#9240](https://github.com/pulumi/pulumi/pull/9240)
+
+
+## 3.26.1 (2022-03-09)
+
+### Improvements
+
+### Bug Fixes
+
+- [cli/new] Fix an error message when the project name picked by default was already used.
+  [#9156](https://github.com/pulumi/pulumi/pull/9156)
+
+## 3.26.0 (2022-03-09)
+
+### Improvements
+
+- [area/cli] - Implemented `state rename` command.
+  [#9098](https://github.com/pulumi/pulumi/pull/9098)
+
+- [cli/plugins] `pulumi plugin install` can now look up the latest version of plugins on GitHub releases.
+  [#9012](https://github.com/pulumi/pulumi/pull/9012)
+
+- [cli/backend] - `pulumi cancel` is now supported for the file state backend.
+  [#9100](https://github.com/pulumi/pulumi/pull/9100)
+
+- [cli/import] - The import command no longer errors if resource properties do not validate. Instead the
+  engine warns about property issues returned by the provider but then continues with the import and codegen
+  as best it can. This should result in more resources being imported to the pulumi state and being able to
+  generate some code, at the cost that the generated code may not work as is in an update. Users will have to
+  edit the code to successfully run.
+  [#8922](https://github.com/pulumi/pulumi/pull/8922)
+
+- [cli/import] - Code generation in `pulumi import` can now be disabled with the `--generate-code=false` flag.
+  [#9141](https://github.com/pulumi/pulumi/pull/9141)
+
+### Bug Fixes
+
+- [sdk/python] - Fix build warnings. See
+  [#9011](https://github.com/pulumi/pulumi/issues/9011) for more details.
+  [#9139](https://github.com/pulumi/pulumi/pull/9139)
+
+- [cli/backend] - Fixed an issue with non-atomicity when saving file state stacks.
+  [#9122](https://github.com/pulumi/pulumi/pull/9122)
+
+- [sdk/go] - Fixed an issue where the RetainOnDelete resource option is not applied.
+  [#9147](https://github.com/pulumi/pulumi/pull/9147)
+
+## 3.25.1 (2022-03-2)
+
+### Improvements
+
+### Bug Fixes
+
+- [sdk/nodejs] - Fix Node `fs.rmdir` DeprecationWarning for Node JS 15.X+
+  [#9044](https://github.com/pulumi/pulumi/pull/9044)
+
+- [engine] - Fix deny default provider handling for Invokes and Reads.
+  [#9067](https://github.com/pulumi/pulumi/pull/9067)
+
+- [codegen/go] - Fix secret codegen for input properties
+  [#9052](https://github.com/pulumi/pulumi/pull/9052)
+
+- [sdk/nodejs] - `PULUMI_NODEJS_TSCONFIG_PATH` is now explicitly passed to tsnode for the tsconfig file.
+  [#9062](https://github.com/pulumi/pulumi/pull/9062)
+
+## 3.25.0 (2022-02-23)
+
+### Improvements
+
+- [codegen/go] - Add GenerateProgramWithOpts function to enable configurable codegen options.
+  [#8997](https://github.com/pulumi/pulumi/pull/8997)
+
+- [cli] -  Enabled dot spinner for non-interactive mode
+  [#8996](https://github.com/pulumi/pulumi/pull/8996)
+
+- [sdk] - Add `RetainOnDelete` as a resource option.
+  [#8746](https://github.com/pulumi/pulumi/pull/8746)
+
+- [cli] - Adding `completion` as an alias to `gen-completion`
+  [#9006](https://github.com/pulumi/pulumi/pull/9006)
+
+- [cli/plugins] Add support for downloading plugin from private GitHub releases.
+  [#8944](https://github.com/pulumi/pulumi/pull/8944)
+
+### Bug Fixes
+
+- [sdk/go] - Normalize merge behavior for `ResourceOptions`, inline
+  with other SDKs. See https://github.com/pulumi/pulumi/issues/8796 for more
+  details.
+  [#8882](https://github.com/pulumi/pulumi/pull/8882)
+
+- [sdk/go] - Correctly parse GoLang version.
+  [#8920](https://github.com/pulumi/pulumi/pull/8920)
+
+- [sdk/go] - Fix git initialization in git_test.go
+  [#8924](https://github.com/pulumi/pulumi/pull/8924)
+
+- [cli/go] - Fix git initialization in util_test.go
+  [#8924](https://github.com/pulumi/pulumi/pull/8924)
+
+- [sdk/nodejs] - Fix nodejs function serialization module path to comply with package.json
+  exports if exports is specified.
+  [#8893](https://github.com/pulumi/pulumi/pull/8893)
+
+- [cli/python] - Parse a larger subset of PEP440 when guessing Pulumi package versions.
+  [#8958](https://github.com/pulumi/pulumi/pull/8958)
+
+- [sdk/nodejs] - Allow disabling TypeScript typechecking
+  [#8981](https://github.com/pulumi/pulumi/pull/8981)
+
+- [cli/backend] - Revert a change to file state locking that was causing stacks to stay locked.
+  [#8995](https://github.com/pulumi/pulumi/pull/8995)
+
+- [cli] - Fix passphrase secrets provider prompting.
+  [#8986](https://github.com/pulumi/pulumi/pull/8986)
+
+- [cli] - Fix an assert when replacing protected resources.
+  [#9004](https://github.com/pulumi/pulumi/pull/9004)
+
 ## 3.24.1 (2022-02-4)
 
 ### Bug Fixes
@@ -36,7 +198,7 @@ CHANGELOG
   [#8448](https://github.com/pulumi/pulumi/pull/8448)
 
 - [codegen] - Add language option to make codegen respect the `Version` field in
-  the Pulumi package schema. 
+  the Pulumi package schema.
   [#8881](https://github.com/pulumi/pulumi/pull/8881)
 
 - [cli] - Support wildcards for `pulumi up --target <urn>` and similar commands.

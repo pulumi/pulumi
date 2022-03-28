@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -84,7 +85,7 @@ func (src *evalSource) Project() tokens.PackageName {
 }
 
 // Stack is the name of the stack being targeted by this evaluation source.
-func (src *evalSource) Stack() tokens.QName {
+func (src *evalSource) Stack() tokens.Name {
 	return src.runinfo.Target.Name
 }
 
@@ -326,7 +327,8 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil, nil, nil, nil, "", nil, nil),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil,
+			nil, nil, nil, "", nil, nil, false),
 		done: done,
 	}
 	return event, done, nil
@@ -409,6 +411,12 @@ func (d *defaultProviders) shouldDenyRequest(req providers.ProviderRequest) (boo
 		array := []interface{}{}
 		if !value.IsString() {
 			return true, fmt.Errorf("Unexpected encoding of pulumi:disable-default-providers")
+		}
+		if value.StringValue() == "" {
+			// If the list is provided but empty, we don't encode a empty json
+			// list, we just encode the empty string. Check to ensure we don't
+			// get parse errors.
+			return false, nil
 		}
 		if err := json.Unmarshal([]byte(value.StringValue()), &array); err != nil {
 			return true, fmt.Errorf("Failed to parse %s: %w", value.StringValue(), err)
@@ -568,16 +576,21 @@ func getProviderReference(defaultProviders *defaultProviders, req providers.Prov
 // package with the given unparsed provider reference. If the unparsed provider reference is empty,
 // this function returns the plugin for the indicated package's default provider.
 func getProviderFromSource(
-	providers ProviderSource, defaultProviders *defaultProviders,
-	req providers.ProviderRequest, rawProviderRef string) (plugin.Provider, error) {
+	providerSource ProviderSource, defaultProviders *defaultProviders,
+	req providers.ProviderRequest, rawProviderRef string,
+	token tokens.ModuleMember) (plugin.Provider, error) {
 
 	providerRef, err := getProviderReference(defaultProviders, req, rawProviderRef)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getProviderFromSource: %w", err)
+	} else if providers.IsDenyDefaultsProvider(providerRef) {
+		msg := diag.GetDefaultProviderDenied("Invoke").Message
+		return nil, fmt.Errorf(msg, req.Package(), token)
 	}
-	provider, ok := providers.GetProvider(providerRef)
+
+	provider, ok := providerSource.GetProvider(providerRef)
 	if !ok {
-		return nil, fmt.Errorf("unknown provider '%v'", rawProviderRef)
+		return nil, fmt.Errorf("unknown provider '%v' -> '%v'", rawProviderRef, providerRef)
 	}
 	return provider, nil
 }
@@ -628,9 +641,9 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Invoke: %w", err)
 	}
 
 	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
@@ -678,7 +691,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 	if err != nil {
 		return nil, err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return nil, err
 	}
@@ -766,7 +779,7 @@ func (rm *resmon) StreamInvoke(
 	if err != nil {
 		return err
 	}
-	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider(), tok)
 	if err != nil {
 		return err
 	}
@@ -836,6 +849,9 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
 		if provErr != nil {
 			return nil, provErr
+		} else if providers.IsDenyDefaultsProvider(ref) {
+			msg := diag.GetDefaultProviderDenied("Read").Message
+			return nil, fmt.Errorf(msg, req.GetType(), t)
 		}
 		provider = ref.String()
 	}
@@ -921,6 +937,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	replaceOnChanges := req.GetReplaceOnChanges()
 	id := resource.ID(req.GetImportId())
 	customTimeouts := req.GetCustomTimeouts()
+	retainOnDelete := req.GetRetainOnDelete()
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
 	// provider responsible for managing a particular resource (based on the type's Package).
@@ -1055,9 +1072,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v, replaceOnChanges=%v",
+			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v",
 		t, name, custom, len(props), parent, protect, providerRef, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliases, timeouts, providerRefs, replaceOnChanges)
+		aliases, timeouts, providerRefs, replaceOnChanges, retainOnDelete)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -1095,7 +1112,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		step := &registerResourceEvent{
 			goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 				providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-				additionalSecretOutputs, aliases, id, &timeouts, replaceOnChanges),
+				additionalSecretOutputs, aliases, id, &timeouts, replaceOnChanges, retainOnDelete),
 			done: make(chan *RegisterResult),
 		}
 

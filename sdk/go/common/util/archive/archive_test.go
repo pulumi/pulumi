@@ -34,6 +34,8 @@ import (
 )
 
 func TestIgnoreSimple(t *testing.T) {
+	t.Parallel()
+
 	doArchiveTest(t,
 		fileContents{name: ".gitignore", contents: []byte("node_modules/pulumi/"), shouldRetain: true},
 		fileContents{name: "included.txt", shouldRetain: true},
@@ -43,6 +45,8 @@ func TestIgnoreSimple(t *testing.T) {
 }
 
 func TestIgnoreNegate(t *testing.T) {
+	t.Parallel()
+
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipped on Windows: TODO[pulumi/pulumi#8648] handle Windows paths in test logic")
 	}
@@ -56,6 +60,8 @@ func TestIgnoreNegate(t *testing.T) {
 }
 
 func TestNested(t *testing.T) {
+	t.Parallel()
+
 	doArchiveTest(t,
 		fileContents{name: ".gitignore", contents: []byte("node_modules/pulumi/"), shouldRetain: true},
 		fileContents{name: "node_modules/.gitignore", contents: []byte("@pulumi/"), shouldRetain: true},
@@ -66,6 +72,8 @@ func TestNested(t *testing.T) {
 }
 
 func TestTypicalPythonPolicyPackDir(t *testing.T) {
+	t.Parallel()
+
 	doArchiveTest(t,
 		fileContents{name: "__main__.py", shouldRetain: true},
 		fileContents{name: ".gitignore", contents: []byte("*.pyc\nvenv/\n"), shouldRetain: true},
@@ -78,6 +86,8 @@ func TestTypicalPythonPolicyPackDir(t *testing.T) {
 }
 
 func TestIgnoreContentOfDotGit(t *testing.T) {
+	t.Parallel()
+
 	doArchiveTest(t,
 		fileContents{name: ".git/HEAD", shouldRetain: false},
 		fileContents{name: ".git/objects/00/02ae827766d77ee9e2082fee9adeaae90aff65", shouldRetain: false},

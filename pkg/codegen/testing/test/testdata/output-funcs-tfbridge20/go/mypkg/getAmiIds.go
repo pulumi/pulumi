@@ -60,7 +60,11 @@ func GetAmiIdsOutput(ctx *pulumi.Context, args GetAmiIdsOutputArgs, opts ...pulu
 		ApplyT(func(v interface{}) (GetAmiIdsResult, error) {
 			args := v.(GetAmiIdsArgs)
 			r, err := GetAmiIds(ctx, &args, opts...)
-			return *r, err
+			var s GetAmiIdsResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(GetAmiIdsResultOutput)
 }
 

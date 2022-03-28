@@ -18,6 +18,7 @@ import * as os from "os";
 import * as path from "path";
 import { ID, runtime, URN } from "../../../index";
 import { asyncTest } from "../../util";
+import { platformIndependentEOL } from "../../constants";
 
 import * as grpc from "@grpc/grpc-js";
 
@@ -32,6 +33,7 @@ const resproto = require("../../../proto/resource_pb.js");
 const providerproto = require("../../../proto/provider_pb.js");
 
 interface RunCase {
+    only?: boolean;
     project?: string;
     stack?: string;
     pwd?: string;
@@ -63,6 +65,21 @@ interface RunCase {
     getRootResource?: (ctx: any) => { urn: string };
     setRootResource?: (ctx: any, urn: string) => void;
 }
+
+let cleanupFns: (() => Promise<void>)[] = [];
+const cleanup = (callback: () => Promise<void>): void => {
+    cleanupFns.push(callback);
+};
+const runCleanup = () => {
+    for (const d of cleanupFns) {
+        // Keep running the test regardless of failure.
+        d().catch(err => console.log("???? Error thrown in defer, ignoring."));
+    }
+    cleanupFns = [];
+};
+afterEach(async () => {
+    runCleanup();
+});
 
 function makeUrn(t: string, name: string): URN {
     return `${t}::${name}`;
@@ -277,9 +294,8 @@ describe("rpc", () => {
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:FileResource");
                 assert.strictEqual(name, "file1");
-                assert.deepStrictEqual(res, {
-                    data: "The test worked!\n\nIf you can see some data!\n\n",
-                });
+                const actualData = res.data.replace(platformIndependentEOL, "\n"); // EOL normalization
+                assert.deepStrictEqual(actualData, "The test worked!\n\nIf you can see some data!\n\n");
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
@@ -1213,7 +1229,14 @@ describe("rpc", () => {
         // }
 
         const opts: RunCase = cases[casename];
-        it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
+
+        afterEach(async () => {
+            runCleanup();
+        });
+
+        const testFn = opts.only ? it.only : it;
+
+        testFn(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
             // For each test case, run it twice: first to preview and then to update.
             for (const dryrun of [true, false]) {
                 // console.log(dryrun ? "PREVIEW:" : "UPDATE:");
@@ -1405,14 +1428,6 @@ describe("rpc", () => {
                             `Expected exactly ${logs.count} logs; got ${logCnt}`);
                     }
                 }
-
-                // Finally, tear down everything so each test case starts anew.
-
-                await new Promise<void>((resolve, reject) => {
-                    langHost.proc.kill();
-                    langHost.proc.on("close", () => { resolve(); });
-                });
-                monitor.server.forceShutdown();
             }
         }));
     }
@@ -1552,6 +1567,8 @@ async function createMockEngineAsync(
 
     server.start();
 
+    cleanup(async () => server.forceShutdown());
+
     return { server: server, addr: `0.0.0.0:${port}` };
 }
 
@@ -1573,7 +1590,7 @@ function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.Chil
     // hand back the resulting process object plus the address we plucked out.
     let addrResolve: ((addr: string) => void) | undefined;
     const addr = new Promise<string>((resolve) => { addrResolve = resolve; });
-    proc.stdout.on("data", (data) => {
+    proc.stdout.on("data", (data: string) => {
         const dataString: string = stripEOL(data);
         if (addrResolve) {
             // The first line is the address; strip off the newline and resolve the promise.
@@ -1583,9 +1600,14 @@ function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.Chil
             console.log(`langhost.stdout: ${dataString}`);
         }
     });
-    proc.stderr.on("data", (data) => {
+    proc.stderr.on("data", (data: string | Buffer) => {
         console.error(`langhost.stderr: ${stripEOL(data)}`);
     });
+
+    cleanup(async () => {
+        proc.kill("SIGKILL");
+    });
+
     return { proc: proc, addr: addr };
 }
 
@@ -1597,10 +1619,5 @@ function stripEOL(data: string | Buffer): string {
     else {
         dataString = data.toString("utf-8");
     }
-    const newLineIndex = dataString.lastIndexOf(os.EOL);
-    if (newLineIndex !== -1) {
-        dataString = dataString.substring(0, newLineIndex);
-    }
-    return dataString;
+    return dataString.trimRight();
 }
-

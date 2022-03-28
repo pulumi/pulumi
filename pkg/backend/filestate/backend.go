@@ -80,14 +80,14 @@ type localBackend struct {
 }
 
 type localBackendReference struct {
-	name tokens.QName
+	name tokens.Name
 }
 
 func (r localBackendReference) String() string {
 	return string(r.name)
 }
 
-func (r localBackendReference) Name() tokens.QName {
+func (r localBackendReference) Name() tokens.Name {
 	return r.name
 }
 
@@ -248,13 +248,16 @@ func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string, _ ba
 	return apitype.ListPolicyPacksResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
-// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *localBackend) SupportsTags() bool {
+	return false
+}
+
 func (b *localBackend) SupportsOrganizations() bool {
 	return false
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
-	return localBackendReference{name: tokens.QName(stackRefName)}, nil
+	return localBackendReference{name: tokens.Name(stackRefName)}, nil
 }
 
 // ValidateStackName verifies the stack name is valid for the local backend. We use the same rules as the
@@ -400,8 +403,10 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 		return nil, err
 	}
 
+	newStackName := newRef.Name()
+
 	// Ensure the destination stack does not already exist.
-	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newName))
+	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newStackName))
 	if err != nil {
 		return nil, err
 	}
@@ -411,22 +416,22 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
 	if snap != nil {
-		if err = edit.RenameStack(snap, newName, ""); err != nil {
+		if err = edit.RenameStack(snap, newStackName, ""); err != nil {
 			return nil, err
 		}
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
-	if _, err = b.saveStack(newName, snap, nil); err != nil {
+	if _, err = b.saveStack(newStackName, snap, nil); err != nil {
 		return nil, err
 	}
 
 	// To remove the old stack, just make a backup of the file and don't write out anything new.
 	file := b.stackPath(stackName)
-	backupTarget(b.bucket, file)
+	backupTarget(b.bucket, file, false)
 
 	// And rename the histoy folder as well.
-	if err = b.renameHistory(stackName, newName); err != nil {
+	if err = b.renameHistory(stackName, newStackName); err != nil {
 		return nil, err
 	}
 	return newRef, err
@@ -467,22 +472,50 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	op.Imports = imports
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
@@ -510,15 +543,6 @@ func (b *localBackend) apply(
 		// Print a banner so it's clear this is a local deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
-	}
-
-	// Take a lock unless this is just a preview
-	if kind != apitype.PreviewUpdate {
-		err := b.Lock(ctx, stack.Ref())
-		if err != nil {
-			return nil, nil, result.FromError(err)
-		}
-		defer b.Unlock(ctx, stack.Ref())
 	}
 
 	// Start the update.
@@ -794,8 +818,8 @@ func (b *localBackend) CurrentUser() (string, error) {
 	return user.Username, nil
 }
 
-func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
-	var stacks []tokens.QName
+func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
+	var stacks []tokens.Name
 
 	// Read the stack directory.
 	path := b.stackPath("")
@@ -819,20 +843,12 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 		}
 
 		// Read in this stack's information.
-		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
+		name := tokens.Name(stackfn[:len(stackfn)-len(ext)])
 
 		stacks = append(stacks, name)
 	}
 
 	return stacks, nil
-}
-
-// GetStackTags fetches the stack's existing tags.
-func (b *localBackend) GetStackTags(ctx context.Context,
-	stack backend.Stack) (map[apitype.StackTagName]string, error) {
-
-	// The local backend does not currently persist tags.
-	return nil, errors.New("stack tags not supported in --local mode")
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
@@ -841,4 +857,33 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 
 	// The local backend does not currently persist tags.
 	return errors.New("stack tags not supported in --local mode")
+}
+
+func (b *localBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
+	// Try to delete ALL the lock files
+	allFiles, err := listBucket(b.bucket, stackLockDir(stackRef.Name()))
+	if err != nil {
+		// Don't error if it just wasn't found
+		if gcerrors.Code(err) == gcerrors.NotFound {
+			return nil
+		}
+		return err
+	}
+
+	for _, file := range allFiles {
+		if file.IsDir {
+			continue
+		}
+
+		err := b.bucket.Delete(ctx, file.Key)
+		if err != nil {
+			// Race condition, don't error if the file was delete between us calling list and now
+			if gcerrors.Code(err) == gcerrors.NotFound {
+				return nil
+			}
+			return err
+		}
+	}
+
+	return nil
 }

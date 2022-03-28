@@ -24,14 +24,18 @@ func TestIsAsName(t *testing.T) {
 	t.Parallel()
 
 	var goodNames = []string{
-		"simple",  // all alpha.
-		"SiMplE",  // mixed-case alpha.
-		"simple0", // alphanumeric.
-		"SiMpLe0", // mixed-case alphanumeric.
-		"_",       // permit underscore.
-		"s1MPl3_", // mixed-case alphanumeric/underscore.
-		"_s1MPl3", // ditto.
-		"hy-phy",  // permit hyphens.
+		"simple",       // all alpha.
+		"SiMplE",       // mixed-case alpha.
+		"simple0",      // alphanumeric.
+		"SiMpLe0",      // mixed-case alphanumeric.
+		"_",            // permit underscore.
+		"s1MPl3_",      // mixed-case alphanumeric/underscore.
+		"_s1MPl3",      // ditto.
+		"hy-phy",       // permit hyphens.
+		".dotstart",    // start with .
+		"-hyphenstart", // start with -
+		"0num",         // start with numbers
+		"9num",         // start with numbers
 	}
 	for _, nm := range goodNames {
 		assert.True(t, IsName(nm), "IsName expected to be true: %v", nm)
@@ -50,12 +54,9 @@ func TestIsAsName(t *testing.T) {
 	}
 
 	var badNames = []string{
-		"0_s1MPl3",                         // cannot start with a number.
-		"namespace/0complex",               // ditto.
-		"namespace/morenamespace/0complex", // ditto.
-		"s!mple",                           // bad characters.
-		"namesp@ce/complex",                // ditto.
-		"namespace/morenamespace/compl#x",  // ditto.
+		"s!mple",                          // bad characters.
+		"namesp@ce/complex",               // ditto.
+		"namespace/morenamespace/compl#x", // ditto.
 	}
 	for _, nm := range badNames {
 		assert.False(t, IsName(nm), "IsName expected to be false: %v", nm)
@@ -79,6 +80,8 @@ func TestNameNamespace(t *testing.T) {
 }
 
 func TestIntoQName(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		input    string
 		expected string
@@ -92,7 +95,9 @@ func TestIntoQName(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.input, func(t *testing.T) {
+			t.Parallel()
 			assert.Equal(t, AsQName(c.expected), IntoQName(c.input))
 		})
 	}

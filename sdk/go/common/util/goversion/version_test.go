@@ -8,6 +8,8 @@ import (
 )
 
 func Test_checkMinimumGoVersion(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name            string
 		goVersionOutput string
@@ -42,7 +44,10 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := checkMinimumGoVersion(tt.goVersionOutput)
 			if err != nil {
 				require.Error(t, err)

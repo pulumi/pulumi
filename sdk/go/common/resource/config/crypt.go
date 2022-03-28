@@ -36,6 +36,12 @@ type Encrypter interface {
 // Decrypter decrypts encrypted ciphertext to its plaintext representation.
 type Decrypter interface {
 	DecryptValue(ciphertext string) (string, error)
+}
+
+// BulkDecrypter is a Decrypter that also supports bulk decryption of secrets.
+type BulkDecrypter interface {
+	Decrypter
+
 	BulkDecrypt(ciphertexts []string) (map[string]string, error)
 }
 
@@ -53,14 +59,6 @@ var NopEncrypter Encrypter = nopCrypter{}
 
 func (nopCrypter) DecryptValue(ciphertext string) (string, error) {
 	return ciphertext, nil
-}
-
-func (nopCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, c := range ciphertexts {
-		secretMap[c] = c
-	}
-	return secretMap, nil
 }
 
 func (nopCrypter) EncryptValue(plaintext string) (string, error) {
@@ -93,22 +91,6 @@ func (t *trackingDecrypter) DecryptValue(ciphertext string) (string, error) {
 	return v, nil
 }
 
-func (t *trackingDecrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, c := range ciphertexts {
-		if _, ok := secretMap[c]; ok {
-			continue
-		}
-		v, err := t.decrypter.DecryptValue(c)
-		if err != nil {
-			return secretMap, err
-		}
-		secretMap[c] = v
-		t.secureValues = append(t.secureValues, v)
-	}
-	return secretMap, nil
-}
-
 func (t *trackingDecrypter) SecureValues() []string {
 	return t.secureValues
 }
@@ -129,78 +111,8 @@ func (b blindingCrypter) DecryptValue(_ string) (string, error) {
 	return "[secret]", nil //nolint:goconst
 }
 
-func (b blindingCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, c := range ciphertexts {
-		if _, ok := secretMap[c]; ok {
-			continue
-		}
-		secretMap[c] = "[secret]"
-	}
-	return secretMap, nil
-}
-
 func (b blindingCrypter) EncryptValue(plaintext string) (string, error) {
 	return "[secret]", nil
-}
-
-type CachedDecrypter interface {
-	Decrypter
-}
-
-// cachedDecrypter is a Decrypter that keeps track if decrypted values, which
-// can be retrieved via SecureValues().
-type cachedDecrypter struct {
-	decrypter Decrypter
-	cache     map[string]string
-}
-
-func NewCachedDecrypter(decrypter Decrypter) CachedDecrypter {
-	return &cachedDecrypter{decrypter: decrypter}
-}
-
-func (c *cachedDecrypter) BulkDecrypt(ciperTexts []string) (map[string]string, error) {
-	secretMap, err := c.decrypter.BulkDecrypt(ciperTexts)
-	if err != nil {
-		return nil, err
-	}
-
-	if c.cache == nil {
-		c.cache = make(map[string]string, len(secretMap))
-	}
-
-	// lets ensure that we loop over the cipertexts to ensure that when we write to the cache
-	// an existing entry in the cache doesn't get updated with a new version of the decrypted value
-	// if this happens, we error as this may be a bug
-	for k, v := range secretMap {
-		if plaintext, ok := c.cache[k]; ok && plaintext != v {
-			return nil, fmt.Errorf("inconsistent decryption value found for cipertext: %q", k)
-		}
-
-		c.cache[k] = v
-	}
-
-	return secretMap, nil
-}
-
-func (c *cachedDecrypter) DecryptValue(ciperText string) (string, error) {
-	if plainText, ok := c.cache[ciperText]; ok {
-		return plainText, nil
-	}
-
-	// The value is not currently in the cache so we need to decrypt it
-	// and add it to the cache
-	plainText, err := c.decrypter.DecryptValue(ciperText)
-	if err != nil {
-		return "", err
-	}
-
-	if c.cache == nil {
-		c.cache = make(map[string]string)
-	}
-	c.cache[ciperText] = plainText
-
-	return plainText, nil
 }
 
 // NewPanicCrypter returns a new config crypter that will panic if used.
@@ -212,10 +124,6 @@ type panicCrypter struct{}
 
 func (p panicCrypter) EncryptValue(_ string) (string, error) {
 	panic("attempt to encrypt value")
-}
-
-func (p panicCrypter) BulkDecrypt(_ []string) (map[string]string, error) {
-	return nil, nil
 }
 
 func (p panicCrypter) DecryptValue(_ string) (string, error) {
@@ -274,21 +182,6 @@ func (s symmetricCrypter) DecryptValue(value string) (string, error) {
 	return decryptAES256GCM(enc, s.key, nonce)
 }
 
-func (s symmetricCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, c := range ciphertexts {
-		if _, ok := secretMap[c]; ok {
-			continue
-		}
-		v, err := s.DecryptValue(c)
-		if err != nil {
-			return nil, err
-		}
-		secretMap[c] = v
-	}
-	return secretMap, nil
-}
-
 // encryptAES256GCGM returns the ciphertext and the generated nonce
 func encryptAES256GCGM(plaintext string, key []byte) ([]byte, []byte) {
 	contract.Requiref(len(key) == SymmetricCrypterKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
@@ -341,17 +234,24 @@ func (c prefixCrypter) EncryptValue(plaintext string) (string, error) {
 	return c.prefix + plaintext, nil
 }
 
-func (c prefixCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+// BulkDecrypt decrypts a list of ciphertexts. If decrypter implements BulkDecrypter, then its BulkDecrypt method will
+// be called. Otherwise, each ciphertext is decrypted individually. The returned map maps from ciphertext to plaintext.
+func BulkDecrypt(decrypter Decrypter, ciphertexts []string) (map[string]string, error) {
+	if len(ciphertexts) == 0 {
+		return nil, nil
+	}
+
+	if bulk, ok := decrypter.(BulkDecrypter); ok {
+		return bulk.BulkDecrypt(ciphertexts)
+	}
+
 	secretMap := map[string]string{}
-	for _, cip := range ciphertexts {
-		if _, ok := secretMap[cip]; ok {
-			continue
-		}
-		v, err := c.DecryptValue(cip)
+	for _, ct := range ciphertexts {
+		pt, err := decrypter.DecryptValue(ct)
 		if err != nil {
 			return nil, err
 		}
-		secretMap[cip] = v
+		secretMap[ct] = pt
 	}
 	return secretMap, nil
 }

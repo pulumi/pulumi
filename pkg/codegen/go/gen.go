@@ -1532,6 +1532,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	}
 
 	var secretProps []*schema.Property
+	var secretInputProps []*schema.Property
 
 	for _, p := range r.Properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
@@ -1573,6 +1574,10 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
 			fmt.Fprintf(w, "\t\treturn nil, errors.New(\"invalid value for required argument '%s'\")\n", Title(p.Name))
 			fmt.Fprintf(w, "\t}\n")
+		}
+
+		if p.Secret {
+			secretInputProps = append(secretInputProps, p)
 		}
 	}
 
@@ -1642,12 +1647,12 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	}
 
 	// Setup secrets
+	for _, p := range secretInputProps {
+		fmt.Fprintf(w, "\tif args.%s != nil {\n", Title(p.Name))
+		fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", Title(p.Name), pkg.outputType(p.Type))
+		fmt.Fprintf(w, "\t}\n")
+	}
 	if len(secretProps) > 0 {
-		for _, p := range secretProps {
-			fmt.Fprintf(w, "\tif args.%s != nil {\n", Title(p.Name))
-			fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", Title(p.Name), pkg.outputType(p.Type))
-			fmt.Fprintf(w, "\t}\n")
-		}
 		fmt.Fprintf(w, "\tsecrets := pulumi.AdditionalSecretOutputs([]string{\n")
 		for _, sp := range secretProps {
 			fmt.Fprintf(w, "\t\t\t%q,\n", sp.Name)
@@ -2068,11 +2073,16 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 		ApplyT(func(v interface{}) (${fn}Result, error) {
 			args := v.(${fn}Args)
 			r, err := ${fn}(ctx, &args, opts...)
-			return *r, err
+			var s ${fn}Result
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(${outputType})
 }
 
 `
+
 	code = strings.ReplaceAll(code, "${fn}", originalName)
 	code = strings.ReplaceAll(code, "${outputType}", resultTypeName)
 	fmt.Fprintf(w, code)
@@ -2746,6 +2756,15 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		}
 	}
 
+	// If there are any internal dependencies, include them as blank imports.
+	if topLevelModule {
+		if goInfo, ok := pkg.pkg.Language["go"].(GoPackageInfo); ok {
+			for _, dep := range goInfo.InternalDependencies {
+				imports[dep] = "_"
+			}
+		}
+	}
+
 	pkg.genHeader(w, []string{"fmt"}, imports)
 
 	var provider *schema.Resource
@@ -2807,7 +2826,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 
 	fmt.Fprintf(w, "func init() {\n")
 	if topLevelModule {
-		fmt.Fprintf(w, "\tversion, err := PkgVersion()\n")
+		fmt.Fprintf(w, "\tversion, _ := PkgVersion()\n")
 	} else {
 		// Some package names contain '-' characters, so grab the name from the base path, unless there is an alias
 		// in which case we use that instead.
@@ -2819,10 +2838,12 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		}
 		pkgName = strings.ReplaceAll(pkgName, "-", "")
 		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
+		// To avoid breaking compatibility, we don't change the function
+		// signature. We instead just ignore the error.
+		fmt.Fprintf(w, "\tif err != nil {\n")
+		fmt.Fprintf(w, "\t\tversion = semver.Version{Major: 1}\n")
+		fmt.Fprintf(w, "\t}\n")
 	}
-	fmt.Fprintf(w, "\tif err != nil {\n")
-	fmt.Fprintf(w, "\t\tfmt.Printf(\"failed to determine package version. defaulting to v1: %%v\\n\", err)\n")
-	fmt.Fprintf(w, "\t}\n")
 	if len(registrations) > 0 {
 		for _, mod := range registrations.SortedValues() {
 			fmt.Fprintf(w, "\tpulumi.RegisterResourceModule(\n")
@@ -3624,6 +3645,8 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 }
 
 // PkgVersion uses reflection to determine the version of the current package.
+// If a version cannot be determined, v1 will be assumed. The second return
+// value is always nil.
 func PkgVersion() (semver.Version, error) {
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
@@ -3635,7 +3658,7 @@ func PkgVersion() (semver.Version, error) {
 		}
 		return semver.MustParse(fmt.Sprintf("%%s.0.0", vStr[2:])), nil
 	}
-	return semver.Version{}, fmt.Errorf("failed to determine the package version from %%s", pkgPath)
+	return semver.Version{Major: 1}, nil
 }
 
 // isZero is a null safe check for if a value is it's types zero value.

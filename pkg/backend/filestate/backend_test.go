@@ -25,6 +25,8 @@ import (
 )
 
 func TestMassageBlobPath(t *testing.T) {
+	t.Parallel()
+
 	testMassagePath := func(t *testing.T, s string, want string) {
 		massaged, err := massageBlobPath(s)
 		assert.NoError(t, err)
@@ -34,12 +36,16 @@ func TestMassageBlobPath(t *testing.T) {
 
 	// URLs not prefixed with "file://" are kept as-is. Also why we add FilePathPrefix as a prefix for other tests.
 	t.Run("NonFilePrefixed", func(t *testing.T) {
+		t.Parallel()
+
 		testMassagePath(t, "asdf-123", "asdf-123")
 	})
 
 	// The home directory is converted into the user's actual home directory.
 	// Which requires even more tweaks to work on Windows.
 	t.Run("PrefixedWithTilde", func(t *testing.T) {
+		t.Parallel()
+
 		usr, err := user.Current()
 		if err != nil {
 			t.Fatalf("Unable to get current user: %v", err)
@@ -52,6 +58,8 @@ func TestMassageBlobPath(t *testing.T) {
 			t.Logf("Running on %v", runtime.GOOS)
 
 			t.Run("NormalizeDirSeparator", func(t *testing.T) {
+				t.Parallel()
+
 				testMassagePath(t, FilePathPrefix+`C:\Users\steve\`, FilePathPrefix+"/C:/Users/steve")
 			})
 
@@ -65,6 +73,8 @@ func TestMassageBlobPath(t *testing.T) {
 	})
 
 	t.Run("MakeAbsolute", func(t *testing.T) {
+		t.Parallel()
+
 		// Run the expected result through filepath.Abs, since on Windows we expect "C:\1\2".
 		expected := "/1/2"
 		abs, err := filepath.Abs(expected)
@@ -80,6 +90,8 @@ func TestMassageBlobPath(t *testing.T) {
 }
 
 func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
+	t.Parallel()
+
 	target := &deploy.Target{
 		Name:      "test",
 		Config:    config.Map{},
@@ -126,6 +138,7 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 	}, nil
 }
 
+//nolint:paralleltest // mutates environment variables
 func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Login to a temp dir filestate backend
 	tmpDir, err := ioutil.TempDir("", "filestatebackend")
@@ -189,6 +202,8 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 }
 
 func TestDrillError(t *testing.T) {
+	t.Parallel()
+
 	// Login to a temp dir filestate backend
 	tmpDir, err := ioutil.TempDir("", "filestatebackend")
 	assert.NoError(t, err)
@@ -203,4 +218,66 @@ func TestDrillError(t *testing.T) {
 	}
 	_, err = b.GetStack(ctx, stackRef)
 	assert.Nil(t, err)
+}
+
+func TestCancel(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	tmpDir, err := ioutil.TempDir("", "filestatebackend")
+	assert.NoError(t, err)
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	// Check that trying to cancel a stack that isn't created yet doesn't error
+	aStackRef, err := b.ParseStackReference("a")
+	assert.NoError(t, err)
+	err = b.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+
+	// Check that trying to cancel a stack that isn't locked doesn't error
+	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+	err = b.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+
+	// Locking and lock checks are only part of the internal interface
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Lock the stack and check CancelCurrentUpdate deletes the lock file
+	err = lb.Lock(ctx, aStackRef)
+	assert.NoError(t, err)
+	// check the lock file exists
+	lockExists, err := lb.bucket.Exists(ctx, lb.lockPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.True(t, lockExists)
+	// Call CancelCurrentUpdate
+	err = lb.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+	// Now check the lock file no longer exists
+	lockExists, err = lb.bucket.Exists(ctx, lb.lockPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.False(t, lockExists)
+
+	// Make another filestate backend which will have a different lockId
+	ob, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	assert.NoError(t, err)
+	otherBackend, ok := ob.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Lock the stack with this new backend, then check that checkForLocks on the first backend now errors
+	err = otherBackend.Lock(ctx, aStackRef)
+	assert.NoError(t, err)
+	err = lb.checkForLock(ctx, aStackRef)
+	assert.Error(t, err)
+	// Now call CancelCurrentUpdate and check that checkForLocks no longer errors
+	err = lb.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+	err = lb.checkForLock(ctx, aStackRef)
+	assert.NoError(t, err)
 }

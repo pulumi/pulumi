@@ -62,6 +62,8 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 }
 
 // PkgVersion uses reflection to determine the version of the current package.
+// If a version cannot be determined, v1 will be assumed. The second return
+// value is always nil.
 func PkgVersion() (semver.Version, error) {
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
@@ -73,7 +75,7 @@ func PkgVersion() (semver.Version, error) {
 		}
 		return semver.MustParse(fmt.Sprintf("%s.0.0", vStr[2:])), nil
 	}
-	return semver.Version{}, fmt.Errorf("failed to determine the package version from %s", pkgPath)
+	return semver.Version{Major: 1}, nil
 }
 
 // isZero is a null safe check for if a value is it's types zero value.

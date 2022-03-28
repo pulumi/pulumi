@@ -326,6 +326,8 @@ type ResourceV3 struct {
 	ImportID resource.ID `json:"importID,omitempty" yaml:"importID,omitempty"`
 	// An auto-incrementing sequence number for each time this resource gets created/replaced (0 means sequence numbers are unknown, -1 means the last replace didn't use a sequence number).
 	SequenceNumber int `json:"sequenceNumber,omitempty" yaml:"sequenceNumber,omitempty"`
+	// If set to True, the providers Delete method will not be called for this resource. Pulumi simply stops tracking the deleted resource.
+	RetainOnDelete bool `json:"retainOnDelete,omitempty" yaml:"retainOnDelete,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

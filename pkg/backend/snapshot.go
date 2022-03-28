@@ -204,6 +204,12 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		return true
 	}
 
+	// We need to persist the changes if CustomTimes have changed
+	if old.RetainOnDelete != new.RetainOnDelete {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of RetainOnDelete")
+		return true
+	}
+
 	contract.Assert(old.ID == new.ID)
 
 	// If this resource's provider has changed, we must write the checkpoint. This can happen in scenarios involving
@@ -391,7 +397,12 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 	return dsm.manager.mutate(func() bool {
 		dsm.manager.markOperationComplete(step.Old())
 		if successful {
-			contract.Assert(!step.Old().Protect)
+			// Either old should not be protected or this is a replace
+			contract.Assert(
+				!step.Old().Protect ||
+					step.Op() == deploy.OpDiscardReplaced ||
+					step.Op() == deploy.OpDeleteReplaced)
+
 			if !step.Old().PendingReplacement {
 				dsm.manager.markDone(step.Old())
 			}
@@ -586,6 +597,17 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	for _, op := range sm.operations {
 		if !sm.completeOps[op.Resource] {
 			operations = append(operations, op)
+		}
+	}
+
+	// Track pending create operations from the base snapshot
+	// and propagate them to the new snapshot: we don't want to clear pending CREATE operations
+	// because these must require user intervention to be cleared or resolved.
+	if base := sm.baseSnapshot; base != nil {
+		for _, pendingOperation := range base.PendingOperations {
+			if pendingOperation.Type == resource.OperationTypeCreating {
+				operations = append(operations, pendingOperation)
+			}
 		}
 	}
 

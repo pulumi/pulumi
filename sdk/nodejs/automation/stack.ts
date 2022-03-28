@@ -231,17 +231,15 @@ Event: ${line}\n${e.toString()}`);
             });
         }
 
-        const upPromise = this.runPulumiCmd(args, opts?.onOutput);
         let upResult: CommandResult;
-        let logResult: ReadlineResult | undefined;
         try {
-            [upResult, logResult] = await Promise.all([upPromise, logPromise]);
+            upResult = await this.runPulumiCmd(args, opts?.onOutput);
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, logResult);
+            await cleanUp(logFile, await logPromise);
         }
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
@@ -336,7 +334,7 @@ Event: ${line}\n${e.toString()}`);
         const logFile = createLogFile("preview");
         args.push("--event-log", logFile);
         let summaryEvent: SummaryEvent | undefined;
-        const rlPromise = this.readLines(logFile, (event) => {
+        const logPromise = this.readLines(logFile, (event) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
@@ -345,18 +343,16 @@ Event: ${line}\n${e.toString()}`);
                 onEvent(event);
             }
         });
-        const prePromise = this.runPulumiCmd(args, opts?.onOutput);
 
-        let preResult: CommandResult;
-        let rlResult: ReadlineResult | undefined;
+        let previewResult: CommandResult;
         try {
-            [preResult, rlResult] = await Promise.all([prePromise, rlPromise]);
+            previewResult = await this.runPulumiCmd(args, opts?.onOutput);
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(logFile, rlResult);
+            await cleanUp(logFile, await logPromise);
         }
 
         if (!summaryEvent) {
@@ -364,8 +360,8 @@ Event: ${line}\n${e.toString()}`);
         }
 
         return {
-            stdout: preResult.stdout,
-            stderr: preResult.stderr,
+            stdout: previewResult.stdout,
+            stderr: previewResult.stderr,
             changeSummary: summaryEvent?.resourceChanges || {},
         };
     }
@@ -825,6 +821,12 @@ const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
     }
     if (logFile) {
         // remove the logfile
-        fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+        if(fs.rm) {
+            // remove with Node JS 15.X+
+            fs.rm(path.dirname(logFile), { recursive: true }, () => { return; });
+        } else {
+            // remove with Node JS 14.X
+            fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+        }
     }
 };

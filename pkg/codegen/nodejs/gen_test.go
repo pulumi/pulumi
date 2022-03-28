@@ -19,6 +19,8 @@ import (
 )
 
 func TestGeneratePackage(t *testing.T) {
+	t.Parallel()
+
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "nodejs",
 		GenPackage: GeneratePackage,
@@ -142,6 +144,8 @@ func getYarnCommands(t *testing.T, pwd string) []string {
 }
 
 func TestGenerateTypeNames(t *testing.T) {
+	t.Parallel()
+
 	test.TestTypeNameCodegen(t, "nodejs", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
 		modules, info, err := generateModuleContextMap("test", pkg, nil)
 		require.NoError(t, err)
@@ -158,6 +162,8 @@ func TestGenerateTypeNames(t *testing.T) {
 }
 
 func TestPascalCases(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input    string
 		expected string
@@ -182,6 +188,8 @@ func TestPascalCases(t *testing.T) {
 }
 
 func Test_isStringType(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		input    schema.Type
@@ -201,7 +209,9 @@ func Test_isStringType(t *testing.T) {
 		}, false},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := isStringType(tt.input); got != tt.expected {
 				t.Errorf("isStringType() = %v, want %v", got, tt.expected)
 			}

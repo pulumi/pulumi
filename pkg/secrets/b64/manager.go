@@ -48,18 +48,3 @@ func (c *base64Crypter) DecryptValue(s string) (string, error) {
 	}
 	return string(b), nil
 }
-
-func (c *base64Crypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	secretMap := map[string]string{}
-	for _, cip := range ciphertexts {
-		if _, ok := secretMap[cip]; ok {
-			continue
-		}
-		v, err := c.DecryptValue(cip)
-		if err != nil {
-			return nil, err
-		}
-		secretMap[cip] = v
-	}
-	return secretMap, nil
-}

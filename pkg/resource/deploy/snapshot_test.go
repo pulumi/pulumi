@@ -21,6 +21,7 @@ func createSnapshot() Snapshot {
 }
 
 func TestGlobUrn(t *testing.T) {
+	t.Parallel()
 
 	snap := createSnapshot()
 
@@ -60,7 +61,10 @@ func TestGlobUrn(t *testing.T) {
 		},
 	}
 	for _, tt := range globs {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			actual := snap.GlobUrn(resource.URN(tt.input))
 			assert.Equal(t, tt.expected, actual)
 		})

@@ -16,6 +16,7 @@ env:
   PULUMI_TEST_OWNER: "moolumi"
   PR_COMMIT_SHA: ${{ github.event.client_payload.pull_request.head.sha }}
   PYTHON: python
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
 
 # Cancel checks on prior commits when new commits are added to a PR.
 # This is motivated by temporary throughput issues on our GitHub
@@ -59,7 +60,8 @@ jobs:
             [1]: ${{ steps.vars.outputs.run-url }}
 
   go-lint:
-    container: golangci/golangci-lint:latest
+    # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
+    container: golangci/golangci-lint:v1.44
     name: Lint ${{ matrix.directory }}
     strategy:
       matrix:
@@ -77,25 +79,59 @@ jobs:
   sdk-lint:
     name: Lint SDKs
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [1.17.x]
+        python-version: [3.9.x]
+        dotnet-version: [3.1.x]
+        node-version: [14.x]
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.PR_COMMIT_SHA }}
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v2
         with:
           go-version: ${{ matrix.go-version }}
+          check-latest: true
+      - id: go-cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+      - name: Go Cache
+        uses: actions/cache@v2
+        id: go-cache
+        if: ${{ runner.os != 'Windows' }} # Note [Windows Go Cache] in build.yml
+        with:
+          path: |
+              ${{ steps.go-cache-paths.outputs.go-build }}
+              ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('*/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
       - name: Set up DotNet ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
       - run: mkdir -p ${{ runner.temp }}/opt/pulumi/nuget
-      - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
-      - name: Set up Node ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+      - name: Add NuGet packages as a local NuGet source
+        run: |
+          echo $(which dotnet)
+          echo $(dotnet --version)
+          dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
+      - name: Set up Node ${{ inputs.node-version }}
+        uses: actions/setup-node@v2
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: ${{ inputs.node-version }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/package.json
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
@@ -106,10 +142,6 @@ jobs:
       - name: Update path
         run: |
           echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ env.PR_COMMIT_SHA }}
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
@@ -139,12 +171,33 @@ jobs:
     with:
       enable-coverage: true
 
-  test:
-    name: Test
+  test-linux:
+    name: Test Linux
     needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
+    uses: ./.github/workflows/test-fast.yml
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     with:
       enable-coverage: true
+      platform: ubuntu-latest
+    secrets:
+      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  test-macos:
+    name: Test MacOS
+    needs: build
+    uses: ./.github/workflows/test-fast.yml
+    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    with:
+      enable-coverage: true
+      platform: macos-latest
+    secrets:
+      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  test-windows:
+    name: Test Windows
+    needs: build
+    uses: ./.github/workflows/test-fast.yml
+    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    with:
+      enable-coverage: true
+      platform: windows-latest
     secrets:
       pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}

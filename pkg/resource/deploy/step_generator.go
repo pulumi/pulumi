@@ -129,10 +129,11 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil,   /* propertyDependencies */
 		false, /* deleteBeforeCreate */
 		event.AdditionalSecretOutputs(),
-		nil, /* aliases */
-		nil, /* customTimeouts */
-		"",  /* importID */
-		1,   /* sequenceNumber */
+		nil,   /* aliases */
+		nil,   /* customTimeouts */
+		"",    /* importID */
+		1,     /* sequenceNumber */
+		false, /* retainOnDelete */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
 
@@ -141,6 +142,10 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		// This means even if we relinqish and then reimport we'll maintain the sequence number that
 		// defined the current name.
 		newState.SequenceNumber = old.SequenceNumber
+	}
+
+	if newState.ID == "" {
+		return nil, result.Errorf("Expected an ID for %v", urn)
 	}
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
@@ -320,7 +325,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "", 1)
+		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "", 1, goal.RetainOnDelete)
 	if hasOld {
 		new.SequenceNumber = old.SequenceNumber
 	}
@@ -442,8 +447,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		new.Inputs = inputs
 	}
 
-	// If we're in experimental mode generate a plan
-	if sg.opts.ExperimentalPlans {
+	// If the resource is valid and we're in experimental mode generate a plan
+	if !invalid && sg.opts.ExperimentalPlans {
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
 			oldInputs = nil
 		}
@@ -458,7 +463,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
 	// If theres no plan for this resource check that nothing has been changed.
-	if sg.deployment.plan != nil {
+	// We don't check plans if the resource is invalid, it's going to fail anyway.
+	if !invalid && sg.deployment.plan != nil {
 		resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
 		if !ok {
 			if old == nil {
@@ -1345,8 +1351,14 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	return diff, nil
 }
 
-// issueCheckErrors prints any check errors to the diagnostics sink.
+// issueCheckErrors prints any check errors to the diagnostics error sink.
 func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.URN,
+	failures []plugin.CheckFailure) bool {
+	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures)
+}
+
+// issueCheckErrors prints any check errors to the given printer function.
+func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.State, urn resource.URN,
 	failures []plugin.CheckFailure) bool {
 
 	if len(failures) == 0 {
@@ -1355,10 +1367,10 @@ func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
-			deployment.Diag().Errorf(diag.GetResourcePropertyInvalidValueError(urn),
+			printf(diag.GetResourcePropertyInvalidValueError(urn),
 				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
-			deployment.Diag().Errorf(
+			printf(
 				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason)
 		}
 	}
@@ -1717,7 +1729,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 				}
 			}
 			if urn == "" {
-				urn = resource.DefaultRootStackURN(sg.deployment.Target().Name, sg.deployment.source.Project())
+				urn = resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project())
 			}
 			sg.opts.Events.OnPolicyViolation(urn, d)
 		}

@@ -16,6 +16,7 @@ package tests
 
 import (
 	"encoding/json"
+	"regexp"
 	"runtime"
 	"testing"
 
@@ -25,9 +26,12 @@ import (
 )
 
 func TestAboutCommands(t *testing.T) {
+	t.Parallel()
 
 	// pulumi about --json
 	t.Run("json", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -39,13 +43,15 @@ func TestAboutCommands(t *testing.T) {
 		stdout, _ := e.RunCommand("pulumi", "about", "--json")
 		var res interface{}
 		assert.NoError(t, json.Unmarshal([]byte(stdout), &res), "Should be valid json")
-		assert.Contains(t, stdout, runtime.Version())
+		assert.Contains(t, stdout, runtimeMajorMinor())
 		assert.Contains(t, stdout, runtime.Compiler)
 		assert.Contains(t, stdout, "Failed to get information about the current stack:")
 	})
 
 	// pulumi about
 	t.Run("plain", func(t *testing.T) {
+		t.Parallel()
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -55,7 +61,14 @@ func TestAboutCommands(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
 		stdout, _ := e.RunCommand("pulumi", "about")
-		assert.Contains(t, stdout, runtime.Version())
+		assert.Contains(t, stdout, runtimeMajorMinor())
 		assert.Contains(t, stdout, runtime.Compiler)
 	})
+}
+
+// Given a runtime version like "go1.17.123", returns "go1.17.", trimming patch and prerelease
+// values.
+func runtimeMajorMinor() string {
+	re := regexp.MustCompile(`go\d+.\d+.`)
+	return re.FindString(runtime.Version())
 }

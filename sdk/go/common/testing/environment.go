@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,6 +52,8 @@ type Environment struct {
 	Env []string
 	// Passphrase for config secrets, if any
 	Passphrase string
+	// Set to true to turn off setting PULUMI_CONFIG_PASSPHRASE.
+	NoPassphrase bool
 
 	// Content to pass on stdin, if any
 	Stdin io.Reader
@@ -203,7 +205,9 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
 	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
-	cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_CONFIG_PASSPHRASE=%s", passphrase))
+	if !e.NoPassphrase {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_CONFIG_PASSPHRASE=%s", passphrase))
+	}
 	if e.Backend != "" {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_BACKEND_URL=%s", e.Backend))
 	}

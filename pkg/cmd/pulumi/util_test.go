@@ -38,6 +38,7 @@ func assertEnvValue(t *testing.T, md *backend.UpdateMetadata, key, val string) {
 
 // TestReadingGitRepo tests the functions which read data fom the local Git repo
 // to add metadata to any updates.
+//nolint:paralleltest // mutates environment variables
 func TestReadingGitRepo(t *testing.T) {
 	// Disable our CI/CD detection code, since if this unit test is ran under CI
 	// it will change the expected behavior.
@@ -198,6 +199,7 @@ func TestReadingGitRepo(t *testing.T) {
 
 // TestReadingGitLabMetadata tests the functions which read data fom the local Git repo
 // to add metadata to any updates.
+//nolint:paralleltest // mutates environment variables
 func TestReadingGitLabMetadata(t *testing.T) {
 	// Disable our CI/CD detection code, since if this unit test is ran under CI
 	// it will change the expected behavior.
@@ -237,6 +239,8 @@ func TestReadingGitLabMetadata(t *testing.T) {
 }
 
 func Test_makeJSONString(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		input    interface{}
@@ -258,7 +262,9 @@ func Test_makeJSONString(t *testing.T) {
 `},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := makeJSONString(tt.input)
 			if err != nil {
 				t.Errorf("makeJSONString() error = %v", err)
@@ -272,6 +278,8 @@ func Test_makeJSONString(t *testing.T) {
 }
 
 func TestGetRefreshOption(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name                 string
 		refresh              string
@@ -322,7 +330,10 @@ func TestGetRefreshOption(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			shouldRefresh, err := getRefreshOption(&tt.project, tt.refresh)
 			if err != nil {
 				t.Errorf("getRefreshOption() error = %v", err)

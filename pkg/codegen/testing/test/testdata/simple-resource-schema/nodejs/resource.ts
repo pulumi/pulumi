@@ -32,6 +32,7 @@ export class Resource extends pulumi.CustomResource {
     }
 
     public readonly bar!: pulumi.Output<string | undefined>;
+    public /*out*/ readonly baz!: pulumi.Output<string | undefined>;
 
     /**
      * Create a Resource resource with the given unique name, arguments, and options.
@@ -45,11 +46,13 @@ export class Resource extends pulumi.CustomResource {
         opts = opts || {};
         if (!opts.id) {
             resourceInputs["bar"] = args?.bar ? pulumi.secret(args.bar) : undefined;
+            resourceInputs["baz"] = undefined /*out*/;
         } else {
             resourceInputs["bar"] = undefined /*out*/;
+            resourceInputs["baz"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
-        const secretOpts = { additionalSecretOutputs: ["bar"] };
+        const secretOpts = { additionalSecretOutputs: ["bar", "baz"] };
         opts = pulumi.mergeOptions(opts, secretOpts);
         super(Resource.__pulumiType, name, resourceInputs, opts);
     }

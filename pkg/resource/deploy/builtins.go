@@ -147,7 +147,8 @@ func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
 
 func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+	contract.Assertf(urn != "", "Read URN was empty")
+	contract.Assertf(id != "", "Read ID was empty")
 	contract.Assert(urn.Type() == stackReferenceType)
 
 	outputs, err := p.readStackReference(state)

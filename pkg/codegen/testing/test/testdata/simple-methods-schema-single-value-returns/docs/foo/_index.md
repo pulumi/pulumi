@@ -180,7 +180,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -192,7 +192,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -204,7 +204,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -216,7 +216,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -267,7 +267,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_profilename_csharp">
-<a href="#getKubeconfig_arg_profilename_csharp" style="color: inherit; text-decoration: inherit;">Profile<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_profilename_csharp" style="color: inherit; text-decoration: inherit;">Profile<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -275,7 +275,7 @@ The following arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_rolearn_csharp">
-<a href="#getKubeconfig_arg_rolearn_csharp" style="color: inherit; text-decoration: inherit;">Role<wbr>Arn</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_rolearn_csharp" style="color: inherit; text-decoration: inherit;">Role<wbr>Arn</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -287,7 +287,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_profilename_go">
-<a href="#getKubeconfig_arg_profilename_go" style="color: inherit; text-decoration: inherit;">Profile<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_profilename_go" style="color: inherit; text-decoration: inherit;">Profile<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -295,7 +295,7 @@ The following arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_rolearn_go">
-<a href="#getKubeconfig_arg_rolearn_go" style="color: inherit; text-decoration: inherit;">Role<wbr>Arn</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_rolearn_go" style="color: inherit; text-decoration: inherit;">Role<wbr>Arn</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -307,7 +307,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_profilename_nodejs">
-<a href="#getKubeconfig_arg_profilename_nodejs" style="color: inherit; text-decoration: inherit;">profile<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_profilename_nodejs" style="color: inherit; text-decoration: inherit;">profile<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -315,7 +315,7 @@ The following arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_rolearn_nodejs">
-<a href="#getKubeconfig_arg_rolearn_nodejs" style="color: inherit; text-decoration: inherit;">role<wbr>Arn</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_rolearn_nodejs" style="color: inherit; text-decoration: inherit;">role<wbr>Arn</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -327,7 +327,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_profile_name_python">
-<a href="#getKubeconfig_arg_profile_name_python" style="color: inherit; text-decoration: inherit;">profile_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_profile_name_python" style="color: inherit; text-decoration: inherit;">profile_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -335,7 +335,7 @@ The following arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_role_arn_python">
-<a href="#getKubeconfig_arg_role_arn_python" style="color: inherit; text-decoration: inherit;">role_<wbr>arn</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_role_arn_python" style="color: inherit; text-decoration: inherit;">role_<wbr>arn</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -352,7 +352,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="getKubeconfig_result_kubeconfig_csharp">
-<a href="#getKubeconfig_result_kubeconfig_csharp" style="color: inherit; text-decoration: inherit;">Kubeconfig</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_result_kubeconfig_csharp" style="color: inherit; text-decoration: inherit;">Kubeconfig</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -364,7 +364,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="getKubeconfig_result_kubeconfig_go">
-<a href="#getKubeconfig_result_kubeconfig_go" style="color: inherit; text-decoration: inherit;">Kubeconfig</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_result_kubeconfig_go" style="color: inherit; text-decoration: inherit;">Kubeconfig</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -376,7 +376,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="getKubeconfig_result_kubeconfig_nodejs">
-<a href="#getKubeconfig_result_kubeconfig_nodejs" style="color: inherit; text-decoration: inherit;">kubeconfig</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_result_kubeconfig_nodejs" style="color: inherit; text-decoration: inherit;">kubeconfig</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -388,7 +388,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="getKubeconfig_result_kubeconfig_python">
-<a href="#getKubeconfig_result_kubeconfig_python" style="color: inherit; text-decoration: inherit;">kubeconfig</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_result_kubeconfig_python" style="color: inherit; text-decoration: inherit;">kubeconfig</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>

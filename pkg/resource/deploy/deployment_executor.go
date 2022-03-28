@@ -146,6 +146,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		if opts.RefreshOnly {
 			return nil, nil
 		}
+	} else if ex.deployment.prev != nil && len(ex.deployment.prev.PendingOperations) != 0 && !preview {
+		return nil, result.FromError(PlanPendingOperationsError{ex.deployment.prev.PendingOperations})
 	}
 
 	// The set of -t targets provided on the command line.  'nil' means 'update everything'.

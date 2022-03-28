@@ -80,6 +80,7 @@
         "automation/workspace.ts",
 
         "tests/config.spec.ts",
+        "tests/constants.ts",
         "tests/init.spec.ts",
         "tests/iterable.spec.ts",
         "tests/options.spec.ts",

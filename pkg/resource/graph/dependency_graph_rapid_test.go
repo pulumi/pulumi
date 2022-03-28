@@ -67,6 +67,8 @@ var expectedDependenciesOf R = union(isParent, hasProvider, hasDependency)
 
 // Verify `DependneciesOf` against `expectedDependenciesOf`.
 func TestRapidDependenciesOf(t *testing.T) {
+	t.Parallel()
+
 	graphCheck(t, func(t *rapid.T, universe []*resource.State) {
 		dg := NewDependencyGraph(universe)
 		for _, a := range universe {
@@ -100,6 +102,8 @@ func TestRapidDependenciesOf(t *testing.T) {
 // Additionally verify no immediate loops in `DependenciesOf`, no `B
 // in DependenciesOf(A) && A in DependenciesOf(B)`.
 func TestRapidDependenciesOfAntisymmetric(t *testing.T) {
+	t.Parallel()
+
 	graphCheck(t, func(t *rapid.T, universe []*resource.State) {
 		dg := NewDependencyGraph(universe)
 		for _, a := range universe {
@@ -143,6 +147,8 @@ func expectedDependingOn(universe []*resource.State, includeChildren bool) R {
 // `DependingOn` is specialised with an empty ignore map, the ignore
 // map is not tested yet.
 func TestRapidDependingOn(t *testing.T) {
+	t.Parallel()
+
 	test := func(t *rapid.T, universe []*resource.State, includingChildren bool) {
 		expected := expectedDependingOn(universe, includingChildren)
 		dg := NewDependencyGraph(universe)
@@ -164,8 +170,12 @@ func TestRapidDependingOn(t *testing.T) {
 		}
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, includingChildren := range []bool{false, true} {
+		includingChildren := includingChildren
 		t.Run(fmt.Sprintf("includingChildren=%v", includingChildren), func(t *testing.T) {
+			t.Parallel()
+
 			graphCheck(t, func(t *rapid.T, universe []*resource.State) {
 				test(t, universe, includingChildren)
 			})
@@ -176,6 +186,8 @@ func TestRapidDependingOn(t *testing.T) {
 // Verify `DependingOn` results are ordered, if `D1` in
 // `DependingOn(D2)` then `D1` appears before `D2`.
 func TestRapidDependingOnOrdered(t *testing.T) {
+	t.Parallel()
+
 	test := func(t *rapid.T, universe []*resource.State, includingChildren bool) {
 		expectedDependingOn := expectedDependingOn(universe, includingChildren)
 		dg := NewDependencyGraph(universe)
@@ -193,8 +205,12 @@ func TestRapidDependingOnOrdered(t *testing.T) {
 		}
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, includingChildren := range []bool{false, true} {
+		includingChildren := includingChildren
 		t.Run(fmt.Sprintf("includingChildren=%v", includingChildren), func(t *testing.T) {
+			t.Parallel()
+
 			graphCheck(t, func(t *rapid.T, universe []*resource.State) {
 				test(t, universe, includingChildren)
 			})
@@ -203,6 +219,8 @@ func TestRapidDependingOnOrdered(t *testing.T) {
 }
 
 func TestRapidTransitiveDependenciesOf(t *testing.T) {
+	t.Parallel()
+
 	graphCheck(t, func(t *rapid.T, universe []*resource.State) {
 		expectedInTDepsOf := transitively(universe)(expectedDependenciesOf)
 		dg := NewDependencyGraph(universe)

@@ -32,7 +32,11 @@ func ArgFunctionOutput(ctx *pulumi.Context, args ArgFunctionOutputArgs, opts ...
 		ApplyT(func(v interface{}) (ArgFunctionResult, error) {
 			args := v.(ArgFunctionArgs)
 			r, err := ArgFunction(ctx, &args, opts...)
-			return *r, err
+			var s ArgFunctionResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(ArgFunctionResultOutput)
 }
 

@@ -20,7 +20,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -47,7 +46,7 @@ func newOrgCmd() *cobra.Command {
 
 			fmt.Printf("Current Backend: %s\n", cloudURL)
 			if defaultOrg != "" {
-				fmt.Printf("Default Org: %s", defaultOrg)
+				fmt.Printf("Default Org: %s\n", defaultOrg)
 			} else {
 				fmt.Println("No Default Org Specified")
 			}
@@ -93,14 +92,12 @@ func newOrgSetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			if _, ok := currentBe.(httpstate.Backend); ok {
-				cloudURL, err := workspace.GetCurrentCloudURL()
-				if err != nil {
-					return err
-				}
-				if err := httpstate.SetDefaultOrg(cloudURL, orgName); err != nil {
-					return err
-				}
+			cloudURL, err := workspace.GetCurrentCloudURL()
+			if err != nil {
+				return err
+			}
+			if err := workspace.SetBackendConfigDefaultOrg(cloudURL, orgName); err != nil {
+				return err
 			}
 
 			return nil

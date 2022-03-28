@@ -3,10 +3,9 @@
     "version": "${VERSION}",
     "license": "Apache-2.0",
     "dependencies": {
-        "@pulumi/pulumi": "=1.6.0"
+        "@pulumi/pulumi": "latest"
     },
     "devDependencies": {
-        "@types/node": "^8.0.0",
-        "typescript": "=3.6"
+        "@types/node": "^16.0.0"
     }
 }

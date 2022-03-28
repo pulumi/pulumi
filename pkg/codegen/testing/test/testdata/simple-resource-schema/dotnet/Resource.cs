@@ -15,6 +15,9 @@ namespace Pulumi.Example
         [Output("bar")]
         public Output<string?> Bar { get; private set; } = null!;
 
+        [Output("baz")]
+        public Output<string?> Baz { get; private set; } = null!;
+
 
         /// <summary>
         /// Create a Resource resource with the given unique name, arguments, and options.
@@ -42,6 +45,7 @@ namespace Pulumi.Example
                 AdditionalSecretOutputs =
                 {
                     "bar",
+                    "baz",
                 },
             };
             var merged = CustomResourceOptions.Merge(defaultOptions, options);

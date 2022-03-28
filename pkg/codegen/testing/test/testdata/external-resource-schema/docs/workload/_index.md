@@ -180,7 +180,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -188,7 +188,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="pod_csharp">
-<a href="#pod_csharp" style="color: inherit; text-decoration: inherit;">Pod</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_csharp" style="color: inherit; text-decoration: inherit;">Pod</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pod">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Outputs.<wbr>Core.<wbr>V1.<wbr>Pod</a></span>
@@ -200,7 +200,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -208,7 +208,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="pod_go">
-<a href="#pod_go" style="color: inherit; text-decoration: inherit;">Pod</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_go" style="color: inherit; text-decoration: inherit;">Pod</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pod">Pod</a></span>
@@ -220,7 +220,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -228,7 +228,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="pod_nodejs">
-<a href="#pod_nodejs" style="color: inherit; text-decoration: inherit;">pod</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_nodejs" style="color: inherit; text-decoration: inherit;">pod</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pod">pulumi<wbr>Kubernetestypesoutputcorev1Pod</a></span>
@@ -240,7 +240,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -248,7 +248,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="pod_python">
-<a href="#pod_python" style="color: inherit; text-decoration: inherit;">pod</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_python" style="color: inherit; text-decoration: inherit;">pod</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pod">Pod</a></span>

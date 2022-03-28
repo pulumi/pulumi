@@ -112,6 +112,10 @@
         "bar": {
           "type": "string",
           "secret": true
+        },
+        "baz": {
+          "type": "string",
+          "secret": true
         }
       },
       "inputProperties": {

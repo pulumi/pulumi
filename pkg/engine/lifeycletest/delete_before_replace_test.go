@@ -116,6 +116,8 @@ func generateComplexTestDependencyGraph(
 }
 
 func TestDeleteBeforeReplace(t *testing.T) {
+	t.Parallel()
+
 	//             A
 	//    _________|_________
 	//    B        C        D
@@ -199,6 +201,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 }
 
 func TestPropertyDependenciesAdapter(t *testing.T) {
+	t.Parallel()
 	// Ensure that the eval source properly shims in property dependencies if none were reported (and does not if
 	// any were reported).
 
@@ -272,6 +275,8 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 }
 
 func TestExplicitDeleteBeforeReplace(t *testing.T) {
+	t.Parallel()
+
 	p := &TestPlan{}
 
 	dbrDiff := false
@@ -484,6 +489,8 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 }
 
 func TestDependencyChangeDBR(t *testing.T) {
+	t.Parallel()
+
 	p := &TestPlan{}
 
 	loaders := []*deploytest.ProviderLoader{

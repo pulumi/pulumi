@@ -22,6 +22,8 @@ import (
 )
 
 func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -43,6 +45,8 @@ func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
 }
 
 func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -77,6 +81,8 @@ func TestSingleResourceExplicitProviderLifecycle(t *testing.T) {
 }
 
 func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -172,6 +178,8 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 }
 
 func TestSingleResourceDefaultProviderReplace(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -251,6 +259,8 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 }
 
 func TestSingleResourceExplicitProviderReplace(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -375,6 +385,8 @@ func (p *configurableProvider) delete(urn resource.URN, id resource.ID, olds res
 // TestSingleResourceExplicitProviderAliasUpdateDelete verifies that providers respect aliases during updates, and
 // that the correct instance of an explicit provider is used to delete a removed resource.
 func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
+	t.Parallel()
+
 	var creates, deletes sync.Map
 
 	loaders := []*deploytest.ProviderLoader{
@@ -462,6 +474,8 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 // TestSingleResourceExplicitProviderAliasReplace verifies that providers respect aliases,
 // and propagate replaces as a result of an aliased provider diff.
 func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
+	t.Parallel()
+
 	var creates, deletes sync.Map
 
 	loaders := []*deploytest.ProviderLoader{
@@ -615,6 +629,8 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 }
 
 func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -728,6 +744,8 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 // TestDefaultProviderDiff tests that the engine can gracefully recover whenever a resource's default provider changes
 // and there is no diff in the provider's inputs.
 func TestDefaultProviderDiff(t *testing.T) {
+	t.Parallel()
+
 	const resName, resBName = "resA", "resB"
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.10"), func() (plugin.Provider, error) {
@@ -838,6 +856,8 @@ func TestDefaultProviderDiff(t *testing.T) {
 // TestDefaultProviderDiffReplacement tests that, when replacing a default provider for a resource, the engine will
 // replace the resource if DiffConfig on the new provider returns a diff for the provider's new state.
 func TestDefaultProviderDiffReplacement(t *testing.T) {
+	t.Parallel()
+
 	const resName, resBName = "resA", "resB"
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.10"), func() (plugin.Provider, error) {
@@ -938,6 +958,8 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 }
 
 func TestProviderVersionDefault(t *testing.T) {
+	t.Parallel()
+
 	version := ""
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -980,6 +1002,8 @@ func TestProviderVersionDefault(t *testing.T) {
 }
 
 func TestProviderVersionOption(t *testing.T) {
+	t.Parallel()
+
 	version := ""
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1025,6 +1049,8 @@ func TestProviderVersionOption(t *testing.T) {
 }
 
 func TestProviderVersionInput(t *testing.T) {
+	t.Parallel()
+
 	version := ""
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1072,6 +1098,8 @@ func TestProviderVersionInput(t *testing.T) {
 }
 
 func TestProviderVersionInputAndOption(t *testing.T) {
+	t.Parallel()
+
 	version := ""
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1120,6 +1148,8 @@ func TestProviderVersionInputAndOption(t *testing.T) {
 }
 
 func TestPluginDownloadURLPassthrough(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -1173,6 +1203,8 @@ func TestPluginDownloadURLPassthrough(t *testing.T) {
 // Check that creating a resource with pluginDownloadURL set will instantiate a default provider with
 // pluginDownloadURL set.
 func TestPluginDownloadURLDefaultProvider(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
@@ -1207,6 +1239,8 @@ func TestPluginDownloadURLDefaultProvider(t *testing.T) {
 }
 
 func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		name       string
 		f          deploytest.ProgramFunc
@@ -1262,7 +1296,10 @@ func TestMultipleResourceDenyDefaultProviderLifecycle(t *testing.T) {
 		},
 	}
 	for _, tt := range cases {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			loaders := []*deploytest.ProviderLoader{
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 					return &deploytest.Provider{}, nil

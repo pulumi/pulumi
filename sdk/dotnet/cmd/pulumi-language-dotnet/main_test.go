@@ -27,6 +27,8 @@ import (
 )
 
 func TestDeterminePluginDependency(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		// Test name
 		Name string
@@ -133,7 +135,10 @@ func TestDeterminePluginDependency(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		c := c
 		t.Run(c.Name, func(t *testing.T) {
+			t.Parallel()
+
 			cwd := t.TempDir()
 			artifactPath := filepath.Join(cwd, strings.ToLower(c.PackageName), c.PackageVersion, "content")
 			err := os.MkdirAll(artifactPath, 0700)

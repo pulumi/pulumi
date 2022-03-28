@@ -73,7 +73,7 @@ type StackReference interface {
 	// Name is the name that will be passed to the Pulumi engine when preforming operations on this stack. This
 	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
 	// but that information is not part of the StackName() we pass to the engine.
-	Name() tokens.QName
+	Name() tokens.Name
 }
 
 // PolicyPackReference is an opaque type that refers to a PolicyPack managed by a backend. The CLI
@@ -132,8 +132,11 @@ type Backend interface {
 	ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
 		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 
+	// SupportsTags tells whether a stack can have associated tags stored with it in this backend.
+	SupportsTags() bool
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
+
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
 	ParseStackReference(s string) (StackReference, error)
@@ -186,8 +189,6 @@ type Backend interface {
 	// Get the configuration from the most recent deployment of the stack.
 	GetLatestConfiguration(ctx context.Context, stack Stack) (config.Map, error)
 
-	// GetStackTags fetches the stack's existing tags.
-	GetStackTags(ctx context.Context, stack Stack) (map[apitype.StackTagName]string, error)
 	// UpdateStackTags updates the stacks's tags, replacing all existing tags.
 	UpdateStackTags(ctx context.Context, stack Stack, tags map[apitype.StackTagName]string) error
 
@@ -201,6 +202,9 @@ type Backend interface {
 	LogoutAll() error
 	// Returns the identity of the current user for the backend.
 	CurrentUser() (string, error)
+
+	// Cancel the current update for the given stack.
+	CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the

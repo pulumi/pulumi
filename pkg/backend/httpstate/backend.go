@@ -107,7 +107,6 @@ type Backend interface {
 
 	CloudURL() string
 
-	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 	Client() *client.Client
 }
@@ -228,10 +227,6 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 	WelcomeUser(opts)
 
 	return New(d, cloudURL)
-}
-
-func SetDefaultOrg(url string, orgName string) error {
-	return workspace.SetBackendConfigDefaultOrg(url, orgName)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
@@ -476,7 +471,10 @@ func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inCo
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
 }
 
-// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *cloudBackend) SupportsTags() bool {
+	return true
+}
+
 func (b *cloudBackend) SupportsOrganizations() bool {
 	return true
 }
@@ -548,16 +546,21 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	if qualifiedName.Project == "" {
 		currentProject, projectErr := workspace.DetectProject()
 		if projectErr != nil {
-			return nil, projectErr
+			return nil, fmt.Errorf("If you're using the --stack flag, "+
+				"pass the fully qualified name (org/project/stack): %w", projectErr)
 		}
 
 		qualifiedName.Project = currentProject.Name.String()
 	}
 
+	if !tokens.IsName(qualifiedName.Name) {
+		return nil, errors.New("stack names may only contain alphanumeric, hyphens, underscores, and periods")
+	}
+
 	return cloudBackendReference{
 		owner:   qualifiedName.Owner,
 		project: qualifiedName.Project,
-		name:    tokens.QName(qualifiedName.Name),
+		name:    tokens.Name(qualifiedName.Name),
 		b:       b,
 	}, nil
 }
@@ -1367,7 +1370,7 @@ func (b *cloudBackend) waitForUpdate(ctx context.Context, actionLabel string, up
 
 func displayEvents(action string, events <-chan displayEvent, done chan<- bool, opts display.Options) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), action)
-	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
+	spinner, ticker := cmdutil.NewSpinnerAndTicker(prefix, nil, opts.Color, 8 /*timesPerSecond*/)
 
 	defer func() {
 		spinner.Reset()
@@ -1470,12 +1473,6 @@ func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool
 	}
 
 	return true, username, nil
-}
-
-// GetStackTags fetches the stack's existing tags.
-func (b *cloudBackend) GetStackTags(ctx context.Context,
-	stack backend.Stack) (map[apitype.StackTagName]string, error) {
-	return stack.(Stack).Tags(), nil
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.

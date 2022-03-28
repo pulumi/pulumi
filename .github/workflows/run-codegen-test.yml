@@ -43,12 +43,13 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.17.x
+          check-latest: true
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
           node-version: '14.x'
       - name: Install Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v3
         with:
           python-version: 3.9.x
       - name: Install Pulumi CLI

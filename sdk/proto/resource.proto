@@ -107,6 +107,7 @@ message RegisterResourceRequest {
     map<string, string> providers = 22;                         // an optional reference to the provider map to manage this resource's CRUD operations.
     repeated string replaceOnChanges = 23;                      // a list of properties that if changed should force a replacement.
     string pluginDownloadURL = 24;                              // the server URL of the provider to use when servicing this request.
+    bool retainOnDelete = 25;                                   // if true the engine will not call the resource providers delete method for this resource.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

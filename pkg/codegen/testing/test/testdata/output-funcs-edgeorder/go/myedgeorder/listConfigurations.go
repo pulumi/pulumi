@@ -43,7 +43,11 @@ func ListConfigurationsOutput(ctx *pulumi.Context, args ListConfigurationsOutput
 		ApplyT(func(v interface{}) (ListConfigurationsResult, error) {
 			args := v.(ListConfigurationsArgs)
 			r, err := ListConfigurations(ctx, &args, opts...)
-			return *r, err
+			var s ListConfigurationsResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(ListConfigurationsResultOutput)
 }
 

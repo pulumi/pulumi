@@ -573,6 +573,8 @@ func assertOutputEqual(t *testing.T, value interface{}, known bool, secret bool,
 }
 
 func TestConstructInputsCopyTo(t *testing.T) {
+	t.Parallel()
+
 	stringPtr := func(v string) *string {
 		return &v
 	}
@@ -1659,7 +1661,10 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx, err := NewContext(context.Background(), RunInfo{})
 			require.NoError(t, err)
 
@@ -1688,6 +1693,8 @@ type MyComponent struct {
 }
 
 func TestConstructResult(t *testing.T) {
+	t.Parallel()
+
 	someOutput := String("something").ToStringOutput()
 
 	component := &MyComponent{

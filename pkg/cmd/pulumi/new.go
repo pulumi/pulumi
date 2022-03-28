@@ -33,7 +33,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -83,7 +82,7 @@ func runNew(args newArgs) error {
 
 	// Validate name (if specified) before further prompts/operations.
 	if args.name != "" && workspace.ValidateProjectName(args.name) != nil {
-		return fmt.Errorf("'%s' is not a valid project name. %s", args.name, workspace.ValidateProjectName(args.name))
+		return fmt.Errorf("'%s' is not a valid project name. %w", args.name, workspace.ValidateProjectName(args.name))
 	}
 
 	// Validate secrets provider type
@@ -208,6 +207,13 @@ func runNew(args newArgs) error {
 	if args.name == "" {
 		defaultValue := workspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
 		if err := validateProjectName(defaultValue, args.generateOnly, opts); err != nil {
+			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
+			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
+			// See https://github.com/pulumi/pulumi/issues/8747.
+			if args.yes {
+				return fmt.Errorf("'%s' is not a valid project name. %w", defaultValue, err)
+			}
+
 			// Do not suggest an invalid or existing name as the default project name.
 			defaultValue = ""
 		}
@@ -501,11 +507,10 @@ func getStack(stack string, opts display.Options) (backend.Stack, string, string
 	name := ""
 	description := ""
 	if s != nil {
-		if cs, ok := s.(httpstate.Stack); ok {
-			tags := cs.Tags()
-			name = tags[apitype.ProjectNameTag]
-			description = tags[apitype.ProjectDescriptionTag]
-		}
+		tags := s.Tags()
+		// Tags might be nil/empty, but if it has name and description use them
+		name = tags[apitype.ProjectNameTag]
+		description = tags[apitype.ProjectDescriptionTag]
 	}
 
 	return s, name, description, nil
@@ -1045,11 +1050,11 @@ func promptForValue(
 			if validationError := isValidFn(value); validationError != nil {
 				// If validation failed, let the user know. If interactive, we will print the error and
 				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
-				msg := fmt.Sprintf("Sorry, '%s' is not a valid %s. %s.", value, valueType, validationError)
+				err := fmt.Errorf("Sorry, '%s' is not a valid %s. %w", value, valueType, validationError)
 				if yes {
-					return "", errors.New(msg)
+					return "", err
 				}
-				fmt.Printf("%s\n", msg)
+				fmt.Printf("%s\n", err)
 				continue
 			}
 		}

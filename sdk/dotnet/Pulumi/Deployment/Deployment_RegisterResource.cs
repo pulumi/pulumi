@@ -90,6 +90,7 @@ namespace Pulumi
                     Update = TimeoutString(options.CustomTimeouts?.Update),
                 },
                 Remote = remote,
+                RetainOnDelete = options.RetainOnDelete ?? false,
             };
 
             if (customOpts != null)
