@@ -1132,7 +1132,7 @@ func (b *cloudBackend) GetHistory(
 
 	updates, err := b.client.GetStackUpdates(ctx, stack, pageSize, page)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get stack updates: %w", err)
 	}
 
 	// Convert apitype.UpdateInfo objects to the backend type.
@@ -1223,6 +1223,8 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg bac
 	return filestate.GetLogsForTarget(target, logQuery)
 }
 
+// ExportDeployment exports a deployment _from_ the backend service.
+// This will return the stack state that was being stored on the backend service.
 func (b *cloudBackend) ExportDeployment(ctx context.Context,
 	stack backend.Stack) (*apitype.UntypedDeployment, error) {
 	return b.exportDeployment(ctx, stack.Ref(), nil /* latest */)
@@ -1260,6 +1262,8 @@ func (b *cloudBackend) exportDeployment(
 	return &deployment, nil
 }
 
+// ImportDeployment imports a deployment _into_ the backend. At the end of this operation,
+// the deployment provided will be the current state stored on the backend service.
 func (b *cloudBackend) ImportDeployment(ctx context.Context, stack backend.Stack,
 	deployment *apitype.UntypedDeployment) error {
 
