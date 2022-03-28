@@ -17,10 +17,12 @@ package plugin
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -41,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // PulumiPluginJSON represents additional information about a package's associated Pulumi plugin.
@@ -126,12 +129,37 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 		logging.V(9).Infof("Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr)
 	}
 
-	// Try to execute the binary.
-	plug, err := execPlugin(bin, args, pwd, env)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
+	var plug *plugin
+	// Check to see if we have a binary we can invoke directly
+	if _, err := os.Stat(bin); errors.Is(err, os.ErrNotExist) {
+		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml"
+		proj, err := workspace.LoadPluginProject(filepath.Join(filepath.Dir(bin), "PulumiPlugin.yaml"))
+		if err != nil {
+			return nil, errors.Wrap(err, "loading PulumiPlugin.yaml")
+		}
+
+		if proj.Runtime.Name() == "nodejs" {
+			// Try to execute nodejs with the index.js as the first arg
+			jsmodule := filepath.Join(filepath.Dir(bin), "index.js")
+			args = append([]string{jsmodule}, args...)
+			plug, err = execPlugin("nodejs", args, pwd, env)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
+			}
+			contract.Assert(plug != nil)
+
+		} else {
+			return nil, fmt.Errorf("unsupported runtime for provider: %s", proj.Runtime.Name())
+		}
+
+	} else {
+		// Try to execute the binary.
+		plug, err = execPlugin(bin, args, pwd, env)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
+		}
+		contract.Assert(plug != nil)
 	}
-	contract.Assert(plug != nil)
 
 	// If we did not successfully launch the plugin, we still need to wait for stderr and stdout to drain.
 	defer func() {
@@ -212,7 +240,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 	}
 
 	// Parse the output line (minus the '\n') to ensure it's a numeric port.
-	if _, err = strconv.Atoi(port); err != nil {
+	if _, err := strconv.Atoi(port); err != nil {
 		killerr := plug.Proc.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
 		return nil, errors.Wrapf(
