@@ -69,6 +69,9 @@ service ResourceProvider {
     rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
+
+    // Attach sends the engine address to an already running plugin.
+    rpc Attach(PluginAttach) returns (google.protobuf.Empty)  {}
 }
 
 message GetSchemaRequest {

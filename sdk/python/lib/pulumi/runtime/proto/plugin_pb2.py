@@ -17,7 +17,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
     package="pulumirpc",
     syntax="proto3",
     serialized_options=None,
-    serialized_pb=b'\n\x0cplugin.proto\x12\tpulumirpc"\x1d\n\nPluginInfo\x12\x0f\n\x07version\x18\x01 \x01(\t"O\n\x10PluginDependency\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x0e\n\x06server\x18\x04 \x01(\tb\x06proto3',
+    serialized_pb=b'\n\x0cplugin.proto\x12\tpulumirpc"\x1d\n\nPluginInfo\x12\x0f\n\x07version\x18\x01 \x01(\t"O\n\x10PluginDependency\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x0e\n\x06server\x18\x04 \x01(\t"\x1f\n\x0cPluginAttach\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\tb\x06proto3',
 )
 
 
@@ -152,8 +152,48 @@ _PLUGINDEPENDENCY = _descriptor.Descriptor(
     serialized_end=137,
 )
 
+
+_PLUGINATTACH = _descriptor.Descriptor(
+    name="PluginAttach",
+    full_name="pulumirpc.PluginAttach",
+    filename=None,
+    file=DESCRIPTOR,
+    containing_type=None,
+    fields=[
+        _descriptor.FieldDescriptor(
+            name="address",
+            full_name="pulumirpc.PluginAttach.address",
+            index=0,
+            number=1,
+            type=9,
+            cpp_type=9,
+            label=1,
+            has_default_value=False,
+            default_value=b"".decode("utf-8"),
+            message_type=None,
+            enum_type=None,
+            containing_type=None,
+            is_extension=False,
+            extension_scope=None,
+            serialized_options=None,
+            file=DESCRIPTOR,
+        ),
+    ],
+    extensions=[],
+    nested_types=[],
+    enum_types=[],
+    serialized_options=None,
+    is_extendable=False,
+    syntax="proto3",
+    extension_ranges=[],
+    oneofs=[],
+    serialized_start=139,
+    serialized_end=170,
+)
+
 DESCRIPTOR.message_types_by_name["PluginInfo"] = _PLUGININFO
 DESCRIPTOR.message_types_by_name["PluginDependency"] = _PLUGINDEPENDENCY
+DESCRIPTOR.message_types_by_name["PluginAttach"] = _PLUGINATTACH
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 PluginInfo = _reflection.GeneratedProtocolMessageType(
@@ -177,6 +217,17 @@ PluginDependency = _reflection.GeneratedProtocolMessageType(
     },
 )
 _sym_db.RegisterMessage(PluginDependency)
+
+PluginAttach = _reflection.GeneratedProtocolMessageType(
+    "PluginAttach",
+    (_message.Message,),
+    {
+        "DESCRIPTOR": _PLUGINATTACH,
+        "__module__": "plugin_pb2"
+        # @@protoc_insertion_point(class_scope:pulumirpc.PluginAttach)
+    },
+)
+_sym_db.RegisterMessage(PluginAttach)
 
 
 # @@protoc_insertion_point(module_scope)
