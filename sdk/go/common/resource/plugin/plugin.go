@@ -372,24 +372,27 @@ func (p *plugin) Close() error {
 
 	var result error
 
-	// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
-	// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
-	// for the child processes to close.
-	if err := cmdutil.KillChildren(p.Proc.Pid); err != nil {
-		result = multierror.Append(result, err)
-	}
+	// If we attached to the plugin we won't have a process or std/err
+	if p.Proc != nil {
+		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
+		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
+		// for the child processes to close.
+		if err := cmdutil.KillChildren(p.Proc.Pid); err != nil {
+			result = multierror.Append(result, err)
+		}
 
-	// IDEA: consider a more graceful termination than just SIGKILL.
-	if err := p.Proc.Kill(); err != nil {
-		result = multierror.Append(result, err)
-	}
+		// IDEA: consider a more graceful termination than just SIGKILL.
+		if err := p.Proc.Kill(); err != nil {
+			result = multierror.Append(result, err)
+		}
 
-	// Wait for stdout and stderr to drain.
-	if p.stdoutDone != nil {
-		<-p.stdoutDone
-	}
-	if p.stderrDone != nil {
-		<-p.stderrDone
+		// Wait for stdout and stderr to drain.
+		if p.stdoutDone != nil {
+			<-p.stdoutDone
+		}
+		if p.stderrDone != nil {
+			<-p.stderrDone
+		}
 	}
 
 	return result
