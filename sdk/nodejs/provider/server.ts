@@ -130,7 +130,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 inputs = news;
             }
 
-            resp.setInputs(structproto.Struct.fromJavaScript(inputs));
+            resp.setInputs(structproto.Struct.fromJavaScript(stripUndefinedFields(inputs)));
 
             if (failures.length !== 0) {
                 const failureList = [];
@@ -195,7 +195,7 @@ class Server implements grpc.UntypedServiceImplementation {
             const props = req.getProperties().toJavaScript();
             const result = await this.provider.create(req.getUrn(), props);
             resp.setId(result.id);
-            resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
+            resp.setProperties(structproto.Struct.fromJavaScript(stripUndefinedFields(result.outs)));
 
             callback(undefined, resp);
         } catch (e) {
@@ -214,7 +214,7 @@ class Server implements grpc.UntypedServiceImplementation {
             if (this.provider.read) {
                 const result: any = await this.provider.read(id, req.getUrn(), props);
                 resp.setId(result.id);
-                resp.setProperties(structproto.Struct.fromJavaScript(result.props));
+                resp.setProperties(structproto.Struct.fromJavaScript(stripUndefinedFields(result.props)));
             } else {
                 // In the event of a missing read, simply return back the input state.
                 resp.setId(id);
@@ -241,7 +241,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 result = await this.provider.update(req.getId(), req.getUrn(), olds, news) || {};
             }
 
-            resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
+            resp.setProperties(structproto.Struct.fromJavaScript(stripUndefinedFields(result.outs)));
 
             callback(undefined, resp);
         } catch (e) {
@@ -339,7 +339,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 deps.setUrnsList(await Promise.all(Array.from(resources).map(r => r.urn.promise())));
                 stateDependenciesMap.set(key, deps);
             }
-            resp.setState(structproto.Struct.fromJavaScript(state));
+            resp.setState(structproto.Struct.fromJavaScript(stripUndefinedFields(state)));
 
             // Wait for RPC operations to complete.
             await runtime.waitForRPCs();
@@ -407,7 +407,7 @@ class Server implements grpc.UntypedServiceImplementation {
                     deps.setUrnsList(await Promise.all(Array.from(resources).map(r => r.urn.promise())));
                     returnDependenciesMap.set(key, deps);
                 }
-                resp.setReturn(structproto.Struct.fromJavaScript(ret));
+                resp.setReturn(structproto.Struct.fromJavaScript(stripUndefinedFields(ret)));
             }
 
             if ((result.failures || []).length !== 0) {
@@ -448,7 +448,7 @@ class Server implements grpc.UntypedServiceImplementation {
             const result = await this.provider.invoke(req.getTok(), args);
 
             const resp = new provproto.InvokeResponse();
-            resp.setReturn(structproto.Struct.fromJavaScript(result.outputs));
+            resp.setReturn(structproto.Struct.fromJavaScript(stripUndefinedFields(result.outputs)));
 
             if ((result.failures || []).length !== 0) {
                 const failureList = [];
@@ -585,7 +585,7 @@ function grpcResponseFromError(e: {id: string; properties: any; message: string;
         // details.
         const detail = new provproto.ErrorResourceInitFailed();
         detail.setId(e.id);
-        detail.setProperties(structproto.Struct.fromJavaScript(e.properties || {}));
+        detail.setProperties(structproto.Struct.fromJavaScript(stripUndefinedFields(e.properties || {})));
         detail.setReasonsList(e.reasons || []);
 
         const details = new anyproto.Any();
@@ -677,4 +677,17 @@ function createProviderResource(ref: string): resource.ProviderResource {
         return resourcePackage.constructProvider(urnName, type, urn);
     }
     return new resource.DependencyProviderResource(ref);
+}
+
+function stripUndefinedFields(obj: any) {
+    if (typeof obj !== "object") {
+        return obj;
+    }
+    const stripped: any = {}
+    for (const [key, value] of Object.entries(obj)) {
+        if (value !== undefined) {
+            stripped[key] = stripUndefinedFields(value);
+        }
+    }
+    return stripped;
 }
