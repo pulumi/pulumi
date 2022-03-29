@@ -420,3 +420,7 @@ func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empt
 		Version: version.Version,
 	}, nil
 }
+
+func (host *goLanguageHost) Start(req *pulumirpc.StartRequest, server pulumirpc.LanguageRuntime_StartServer) error {
+	return errors.New("not supported")
+}

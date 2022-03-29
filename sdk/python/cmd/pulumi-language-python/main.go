@@ -800,3 +800,7 @@ func validateVersion(virtualEnvPath string) {
 			parsed.Minor, eolPythonVersionIssue)
 	}
 }
+
+func (p *pythonLanguageHost) Start(req *pulumirpc.StartRequest, server pulumirpc.LanguageRuntime_StartServer) error {
+	return errors.New("not supported")
+}

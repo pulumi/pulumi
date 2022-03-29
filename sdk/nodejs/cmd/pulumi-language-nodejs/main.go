@@ -102,17 +102,6 @@ func main() {
 		cmdutil.Exit(errors.Wrapf(err, "could not find node on the $PATH"))
 	}
 
-	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
-	if runPath == "" {
-		runPath = defaultRunPath
-	}
-
-	runPath, err = locateModule(runPath, nodePath)
-	if err != nil {
-		cmdutil.ExitError(
-			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
-	}
-
 	// Optionally pluck out the engine so we can do logging, etc.
 	var engineAddress string
 	if len(args) > 0 {
@@ -122,7 +111,7 @@ func main() {
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(nodePath, runPath, engineAddress, tracing, typescript, tsconfigpath, nodeargs)
+			host := newLanguageHost(nodePath, engineAddress, tracing, typescript, tsconfigpath, nodeargs)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -155,7 +144,6 @@ func locateModule(mod string, nodePath string) (string, error) {
 // for use as an API endpoint.
 type nodeLanguageHost struct {
 	nodeBin       string
-	runPath       string
 	engineAddress string
 	tracing       string
 	typescript    bool
@@ -163,11 +151,10 @@ type nodeLanguageHost struct {
 	nodeargs      string
 }
 
-func newLanguageHost(nodePath, runPath, engineAddress,
+func newLanguageHost(nodePath, engineAddress,
 	tracing string, typescript bool, tsconfigpath string, nodeargs string) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		nodeBin:       nodePath,
-		runPath:       runPath,
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		typescript:    typescript,
@@ -583,7 +570,18 @@ func (host *nodeLanguageHost) execNodejs(
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
 func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, address, pipesDirectory string) []string {
-	args := []string{host.runPath}
+	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
+	if runPath == "" {
+		runPath = defaultRunPath
+	}
+
+	runPath, err := locateModule(runPath, host.nodeBin)
+	if err != nil {
+		cmdutil.ExitError(
+			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
+	}
+
+	args := []string{runPath}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
 			args = append(args, "--"+k, v)
@@ -664,4 +662,89 @@ func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Em
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
+}
+
+func (p *nodeLanguageHost) Start(req *pulumirpc.StartRequest, server pulumirpc.LanguageRuntime_StartServer) error {
+	nodeargs, err := shlex.Split(p.nodeargs)
+	if err != nil {
+		return err
+	}
+	nodeargs = append(nodeargs, filepath.Join(filepath.Dir(req.Program), "index.js"))
+	nodeargs = append(nodeargs, req.Args...)
+
+	if logging.V(5) {
+		commandStr := strings.Join(nodeargs, " ")
+		logging.V(5).Infoln("Language host launching process: ", p.nodeBin, commandStr)
+	}
+
+	cmd := exec.Command(p.nodeBin, nodeargs...)
+	cmd.Env = req.Env
+
+	writeStdout := func(p []byte) error {
+		logging.V(5).Infoln("Language host sending stdout: ", p)
+		return server.Send(&pulumirpc.StartResponse{
+			Stdout: p,
+		})
+	}
+
+	writeStderr := func(p []byte) error {
+		logging.V(5).Infoln("Language host sending stderr: ", p)
+		return server.Send(&pulumirpc.StartResponse{
+			Stderr: p,
+		})
+	}
+
+	closer, stdout, stderr, err := rpcutil.MakeStreams(writeStdout, writeStderr, false)
+	if err != nil {
+		return err
+	}
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil
+	}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	logging.V(5).Infoln("Language host started process: ", cmd.Process.Pid)
+
+	stdin.Close()
+
+	cancel := server.Context().Done()
+
+	for {
+		_, ok := <-cancel
+		if ok {
+			logging.V(5).Infoln("Language host killing process: ", cmd.Process.Pid)
+			err = cmd.Process.Kill()
+			contract.IgnoreError(err)
+		}
+
+		if cmd.ProcessState.Exited() {
+			break
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return err
+	}
+
+	logging.V(5).Infoln("Language host process finished: ", cmd.Process.Pid)
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	logging.V(5).Infoln("Language host process flushed: ", cmd.Process.Pid)
+
+	err = server.Send(&pulumirpc.StartResponse{Exitcode: int32(cmd.ProcessState.ExitCode())})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

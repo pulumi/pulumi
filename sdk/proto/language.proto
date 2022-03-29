@@ -28,6 +28,8 @@ service LanguageRuntime {
     rpc Run(RunRequest) returns (RunResponse) {}
     // GetPluginInfo returns generic information about this plugin, like its version.
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
+    // Runs executes a program and returns its result asynchronously.
+    rpc Start(StartRequest) returns (stream StartResponse) {}
 }
 
 message GetRequiredPluginsRequest {
@@ -64,4 +66,17 @@ message RunResponse {
     // with nothing further to print to the user.  This corresponds to a "result.Bail()"
     // value in the 'go' layer.
     bool bail = 2;
+}
+
+message StartRequest{
+    string pwd = 1;
+    string program = 2;
+    repeated string args = 3;
+    repeated string env = 4;
+}
+
+message StartResponse {
+    bytes stdout = 1;
+    bytes stderr = 2;
+    int32 exitcode = 3;
 }

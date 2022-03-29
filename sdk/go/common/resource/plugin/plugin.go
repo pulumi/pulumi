@@ -17,7 +17,6 @@ package plugin
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -87,19 +86,20 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 }
 
 type plugin struct {
-	stdoutDone <-chan bool
-	stderrDone <-chan bool
+	stdoutDone  <-chan bool
+	stderrDone  <-chan bool
+	runtimeDone <-chan StartResponse
 
 	Bin  string
 	Args []string
 	// Env specifies the environment of the plugin in the same format as go's os/exec.Cmd.Env
 	// https://golang.org/pkg/os/exec/#Cmd (each entry is of the form "key=value").
-	Env    []string
-	Conn   *grpc.ClientConn
-	Proc   *os.Process
-	Stdin  io.WriteCloser
-	Stdout io.ReadCloser
-	Stderr io.ReadCloser
+	Env  []string
+	Conn *grpc.ClientConn
+	// A kill function to kill the plugin when we're done with it
+	Kill   func() error
+	Stdout io.Reader
+	Stderr io.Reader
 }
 
 // pluginRPCConnectionTimeout dictates how long we wait for the plugin's RPC to become available.
@@ -186,37 +186,12 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 		logging.V(9).Infof("Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr)
 	}
 
-	var plug *plugin
-	// Check to see if we have a binary we can invoke directly
-	if _, err := os.Stat(bin); errors.Is(err, os.ErrNotExist) {
-		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml"
-		proj, err := workspace.LoadPluginProject(filepath.Join(filepath.Dir(bin), "PulumiPlugin.yaml"))
-		if err != nil {
-			return nil, errors.Wrap(err, "loading PulumiPlugin.yaml")
-		}
-
-		if proj.Runtime.Name() == "nodejs" {
-			// Try to execute nodejs with the index.js as the first arg
-			jsmodule := filepath.Join(filepath.Dir(bin), "index.js")
-			args = append([]string{jsmodule}, args...)
-			plug, err = execPlugin("node", args, pwd, env)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
-			}
-			contract.Assert(plug != nil)
-
-		} else {
-			return nil, fmt.Errorf("unsupported runtime for provider: %s", proj.Runtime.Name())
-		}
-
-	} else {
-		// Try to execute the binary.
-		plug, err = execPlugin(bin, args, pwd, env)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
-		}
-		contract.Assert(plug != nil)
+	// Try to execute the binary.
+	plug, err := execPlugin(ctx, bin, args, pwd, env)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 	}
+	contract.Assert(plug != nil)
 
 	// If we did not successfully launch the plugin, we still need to wait for stderr and stdout to drain.
 	defer func() {
@@ -275,8 +250,9 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 	b := make([]byte, 1)
 	for {
 		n, readerr := plug.Stdout.Read(b)
+		logging.V(9).Infof("Read byte %d bytes %v from provider", n, b[0])
 		if readerr != nil {
-			killerr := plug.Proc.Kill()
+			killerr := plug.Kill()
 			contract.IgnoreError(killerr) // We are ignoring because the readerr trumps it.
 
 			// If from the output we have seen, return a specific error if possible.
@@ -298,7 +274,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 
 	// Parse the output line (minus the '\n') to ensure it's a numeric port.
 	if _, err := strconv.Atoi(port); err != nil {
-		killerr := plug.Proc.Kill()
+		killerr := plug.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
 		return nil, errors.Wrapf(
 			err, "%v plugin [%v] wrote a non-numeric port to stdout ('%v')", prefix, bin, port)
@@ -320,7 +296,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 }
 
 // execPlugin starts the plugin executable.
-func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plugin, error) {
+func execPlugin(ctx *Context, bin string, pluginArgs []string, pwd string, env []string) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
 		tracingEndpoint: cmdutil.TracingEndpoint,
@@ -329,42 +305,88 @@ func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plu
 		logToStderr:     logging.LogToStderr,
 		verbose:         logging.Verbose,
 	})
-	cmd := exec.Command(bin, args...)
-	cmdutil.RegisterProcessGroup(cmd)
-	cmd.Dir = pwd
-	if len(env) > 0 {
-		cmd.Env = env
-	}
-	in, _ := cmd.StdinPipe()
-	out, _ := cmd.StdoutPipe()
-	err, _ := cmd.StderrPipe()
-	if err := cmd.Start(); err != nil {
-		// If we try to run a plugin that isn't found, intercept the error
-		// and instead return a custom one so we can more easily check for
-		// it upstream
-		//
-		// In the case of PAC, note that the plugin usually _does_ exist.
-		// It is a shell script like "pulumi-analyzer-policy". But during
-		// the execution of that script, it fails with the ENOENT error.
-		if pathErr, ok := err.(*os.PathError); ok {
-			syscallErr, ok := pathErr.Err.(syscall.Errno)
-			if ok && syscallErr == syscall.ENOENT {
-				return nil, errPluginNotFound
-			}
 
+	// Check to see if we have a binary we can invoke directly
+	if _, err := os.Stat(bin); errors.Is(err, os.ErrNotExist) {
+		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml"
+		proj, err := workspace.LoadPluginProject(filepath.Join(filepath.Dir(bin), "PulumiPlugin.yaml"))
+		if err != nil {
+			return nil, errors.Wrap(err, "loading PulumiPlugin.yaml")
 		}
-		return nil, err
-	}
 
-	return &plugin{
-		Bin:    bin,
-		Args:   args,
-		Env:    env,
-		Proc:   cmd.Process,
-		Stdin:  in,
-		Stdout: out,
-		Stderr: err,
-	}, nil
+		runtime, err := ctx.Host.LanguageRuntime(proj.Runtime.Name())
+		if err != nil {
+			return nil, errors.Wrap(err, "loading runtime")
+		}
+
+		stdout, stderr, exitcode, kill, err := runtime.Start(StartInfo{
+			Pwd:     pwd,
+			Program: bin,
+			Args:    pluginArgs,
+			Env:     env,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		return &plugin{
+			Bin:         bin,
+			Args:        args,
+			Env:         env,
+			Kill:        func() error { kill(); return nil },
+			Stdout:      stdout,
+			Stderr:      stderr,
+			runtimeDone: exitcode,
+		}, nil
+	} else {
+		cmd := exec.Command(bin, args...)
+		cmdutil.RegisterProcessGroup(cmd)
+		cmd.Dir = pwd
+		if len(env) > 0 {
+			cmd.Env = env
+		}
+		in, _ := cmd.StdinPipe()
+		in.Close()
+		out, _ := cmd.StdoutPipe()
+		err, _ := cmd.StderrPipe()
+		if err := cmd.Start(); err != nil {
+			// If we try to run a plugin that isn't found, intercept the error
+			// and instead return a custom one so we can more easily check for
+			// it upstream
+			//
+			// In the case of PAC, note that the plugin usually _does_ exist.
+			// It is a shell script like "pulumi-analyzer-policy". But during
+			// the execution of that script, it fails with the ENOENT error.
+			if pathErr, ok := err.(*os.PathError); ok {
+				syscallErr, ok := pathErr.Err.(syscall.Errno)
+				if ok && syscallErr == syscall.ENOENT {
+					return nil, errPluginNotFound
+				}
+
+			}
+			return nil, err
+		}
+
+		kill := func() error {
+			// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
+			// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
+			// for the child processes to close.
+			kcErr := cmdutil.KillChildren(cmd.Process.Pid)
+			kErr := cmd.Process.Kill()
+
+			return multierror.Append(kErr, kcErr).ErrorOrNil()
+		}
+
+		return &plugin{
+			Bin:    bin,
+			Args:   args,
+			Env:    env,
+			Kill:   kill,
+			Stdout: out,
+			Stderr: err,
+		}, nil
+	}
 }
 
 type pluginArgumentOptions struct {
@@ -398,30 +420,22 @@ func (p *plugin) Close() error {
 		contract.IgnoreClose(p.Conn)
 	}
 
-	var result error
+	// IDEA: consider a more graceful termination than just SIGKILL.
+	err := p.Kill()
 
-	// If we attached to the plugin we won't have a process or std/err
-	if p.Proc != nil {
-		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
-		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
-		// for the child processes to close.
-		if err := cmdutil.KillChildren(p.Proc.Pid); err != nil {
-			result = multierror.Append(result, err)
-		}
-
-		// IDEA: consider a more graceful termination than just SIGKILL.
-		if err := p.Proc.Kill(); err != nil {
-			result = multierror.Append(result, err)
-		}
-
-		// Wait for stdout and stderr to drain.
-		if p.stdoutDone != nil {
-			<-p.stdoutDone
-		}
-		if p.stderrDone != nil {
-			<-p.stderrDone
-		}
+	// If we ran via a langhost wait for the runtime to say it's done
+	if p.runtimeDone != nil {
+		<-p.runtimeDone
 	}
 
-	return result
+	// If we attached to the plugin, or failed full connect we won't have a process or std/err
+	// Wait for stdout and stderr to drain.
+	if p.stdoutDone != nil {
+		<-p.stdoutDone
+	}
+	if p.stderrDone != nil {
+		<-p.stderrDone
+	}
+
+	return err
 }

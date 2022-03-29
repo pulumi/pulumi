@@ -97,6 +97,7 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 		languagePlugins:         make(map[string]*languagePlugin),
 		resourcePlugins:         make(map[Provider]*resourcePlugin),
 		reportedResourcePlugins: make(map[string]struct{}),
+		languageLoadRequests:    make(chan pluginLoadRequest),
 		loadRequests:            make(chan pluginLoadRequest),
 		disableProviderPreview:  disableProviderPreview,
 	}
@@ -112,6 +113,13 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 	// Start a goroutine we'll use to satisfy load requests serially and avoid race conditions.
 	go func() {
 		for req := range host.loadRequests {
+			req.result <- req.load()
+		}
+	}()
+
+	// Start another goroutine we'll use to satisfy load language plugin requests.
+	go func() {
+		for req := range host.languageLoadRequests {
 			req.result <- req.load()
 		}
 	}()
@@ -141,6 +149,7 @@ type defaultHost struct {
 	resourcePlugins         map[Provider]*resourcePlugin     // the set of loaded resource plugins.
 	reportedResourcePlugins map[string]struct{}              // the set of unique resource plugins we'll report.
 	plugins                 []workspace.PluginInfo           // a list of plugins allocated by this host.
+	languageLoadRequests    chan pluginLoadRequest           // a channel used to satisfy language load requests.
 	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
 	server                  *hostServer                      // the server's RPC machinery.
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
@@ -305,32 +314,44 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 }
 
 func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
-	plugin, err := host.loadPlugin(func() (interface{}, error) {
-		// First see if we already loaded this plugin.
-		if plug, has := host.languagePlugins[runtime]; has {
-			contract.Assert(plug != nil)
-			return plug.Plugin, nil
-		}
+	// Langauge runtimes are a bit special and need their own loading queue
+	var runtimePlugin LanguageRuntime
 
-		// If not, allocate a new one.
-		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.runtimeOptions)
-		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo()
-			if infoerr != nil {
-				return nil, infoerr
+	result := make(chan error)
+	host.languageLoadRequests <- pluginLoadRequest{
+		load: func() error {
+			// First see if we already loaded this plugin.
+			if plugin, has := host.languagePlugins[runtime]; has {
+				contract.Assert(plugin != nil)
+				runtimePlugin = plugin.Plugin
+				return nil
 			}
 
-			// Memoize the result.
-			host.plugins = append(host.plugins, info)
-			host.languagePlugins[runtime] = &languagePlugin{Plugin: plug, Info: info}
-		}
+			// If not, allocate a new one.
+			var err error
+			runtimePlugin, err = NewLanguageRuntime(host, host.ctx, runtime, host.runtimeOptions)
+			if err == nil && runtimePlugin != nil {
+				info, infoerr := runtimePlugin.GetPluginInfo()
+				if infoerr != nil {
+					return infoerr
+				}
 
-		return plug, err
-	})
-	if plugin == nil || err != nil {
+				// Memoize the result.
+				host.plugins = append(host.plugins, info)
+				host.languagePlugins[runtime] = &languagePlugin{Plugin: runtimePlugin, Info: info}
+			}
+
+			return err
+		},
+		result: result,
+	}
+
+	err := <-result
+
+	if runtimePlugin == nil || err != nil {
 		return nil, err
 	}
-	return plugin.(LanguageRuntime), nil
+	return runtimePlugin, nil
 }
 
 func (host *defaultHost) ListPlugins() []workspace.PluginInfo {
@@ -424,6 +445,7 @@ func (host *defaultHost) Close() error {
 	host.resourcePlugins = make(map[Provider]*resourcePlugin)
 
 	// Shut down the plugin loader.
+	close(host.languageLoadRequests)
 	close(host.loadRequests)
 
 	// Finally, shut down the host's gRPC server.

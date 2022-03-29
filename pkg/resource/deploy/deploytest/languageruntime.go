@@ -16,6 +16,8 @@ package deploytest
 
 import (
 	"context"
+	"errors"
+	"io"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -64,4 +66,8 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 
 func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
+}
+
+func (p *languageRuntime) Start(info plugin.StartInfo) (io.Reader, io.Reader, <-chan plugin.StartResponse, context.CancelFunc, error) {
+	return nil, nil, nil, nil, errors.New("not supported")
 }

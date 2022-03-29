@@ -8,6 +8,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cheggaaa/pb v1.0.18
+	github.com/creack/pty v1.1.18
 	github.com/djherbis/times v1.2.0
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -32,6 +33,7 @@ require (
 	golang.org/x/mod v0.3.0
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
 	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 	google.golang.org/grpc v1.29.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.2.8

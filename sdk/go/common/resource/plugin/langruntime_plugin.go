@@ -15,7 +15,9 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 
@@ -235,4 +237,90 @@ func (h *langhost) Close() error {
 		return h.plug.Close()
 	}
 	return nil
+}
+
+type streamReader struct {
+	Msg    chan []byte
+	Buffer []byte
+}
+
+func (r *streamReader) Read(p []byte) (int, error) {
+	if r.Msg == nil {
+		return 0, io.EOF
+	}
+
+	if len(r.Buffer) != 0 {
+		n := copy(p, r.Buffer)
+		r.Buffer = r.Buffer[n:]
+		return n, nil
+	}
+
+	bytes, ok := <-r.Msg
+	if !ok {
+		r.Msg = nil
+		return 0, io.EOF
+	}
+	n := copy(p, bytes)
+	r.Buffer = bytes[n:]
+	return n, nil
+}
+
+func (h *langhost) Start(info StartInfo) (io.Reader, io.Reader, <-chan StartResponse, context.CancelFunc, error) {
+	logging.V(7).Infof("langhost[%v].Start(pwd=%s,program=%s) executing",
+		h.runtime, info.Pwd, info.Program)
+
+	ctx, kill := context.WithCancel(h.ctx.Request())
+
+	resp, err := h.client.Start(ctx, &pulumirpc.StartRequest{
+		Pwd:     info.Pwd,
+		Program: info.Program,
+		Args:    info.Args,
+		Env:     info.Env,
+	})
+
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	done := make(chan StartResponse, 1)
+	outr := &streamReader{
+		Msg: make(chan []byte),
+	}
+	errr := &streamReader{
+		Msg: make(chan []byte),
+	}
+
+	go func() {
+		for {
+			logging.V(5).Infoln("Waiting for plugin message")
+			msg, err := resp.Recv()
+			if err != nil {
+				done <- StartResponse{Error: err}
+				close(outr.Msg)
+				close(errr.Msg)
+				close(done)
+				break
+			}
+
+			logging.V(5).Infoln("Got plugin response: ", msg)
+
+			if msg.Stdout != nil {
+				outr.Msg <- msg.Stdout
+			}
+			if msg.Stderr != nil {
+				errr.Msg <- msg.Stderr
+			}
+
+			// If stdout and stderr are empty we've flushed and are returning the exit code
+			if msg.Stdout == nil && msg.Stderr == nil {
+				close(outr.Msg)
+				close(errr.Msg)
+				done <- StartResponse{Exitcode: int(msg.Exitcode)}
+				close(done)
+				break
+			}
+		}
+	}()
+
+	return outr, errr, done, kill, nil
 }

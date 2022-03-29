@@ -33,6 +33,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -659,4 +660,100 @@ func (host *dotnetLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.
 	return &pulumirpc.PluginInfo{
 		Version: version.Version,
 	}, nil
+}
+
+func (p *dotnetLanguageHost) Start(req *pulumirpc.StartRequest, server pulumirpc.LanguageRuntime_StartServer) error {
+	// req.Program will be something like .plugins/resource-cs-provider/pulumi-resource-cs-provider
+	// but we want to run .plugins/resource-cs-provider/pulumi-resource-cs-provider.dll
+
+	dotnetExec, err := exec.LookPath("dotnet")
+	if err != nil {
+		err = errors.Wrap(err, "could not find `dotnet` on the $PATH")
+		return err
+	}
+
+	logging.V(3).Infof("language host identified executor from path: `%s`", dotnetExec)
+
+	// Replace any extension (like ".exe" with ".dll")
+	baseExt := filepath.Ext(req.Program)
+	baseArg := req.Program[0:(len(req.Program) - len(baseExt))]
+	baseArg = baseArg + ".dll"
+	args := []string{baseArg}
+	args = append(args, req.Args...)
+
+	if logging.V(5) {
+		commandStr := strings.Join(args, " ")
+		logging.V(5).Infoln("Language host launching process: ", dotnetExec, commandStr)
+	}
+
+	cmd := exec.Command(dotnetExec, args...)
+	cmd.Env = req.Env
+
+	writeStdout := func(p []byte) error {
+		logging.V(5).Infoln("Language host sending stdout: ", p)
+		return server.Send(&pulumirpc.StartResponse{
+			Stdout: p,
+		})
+	}
+
+	writeStderr := func(p []byte) error {
+		logging.V(5).Infoln("Language host sending stderr: ", p)
+		return server.Send(&pulumirpc.StartResponse{
+			Stderr: p,
+		})
+	}
+
+	closer, stdout, stderr, err := rpcutil.MakeStreams(writeStdout, writeStderr, false)
+	if err != nil {
+		return err
+	}
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil
+	}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	logging.V(5).Infoln("Language host started process: ", cmd.Process.Pid)
+
+	stdin.Close()
+
+	cancel := server.Context().Done()
+
+	for {
+		_, ok := <-cancel
+		if ok {
+			logging.V(5).Infoln("Language host killing process: ", cmd.Process.Pid)
+			err = cmd.Process.Kill()
+			contract.IgnoreError(err)
+		}
+
+		if cmd.ProcessState.Exited() {
+			break
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return err
+	}
+
+	logging.V(5).Infoln("Language host process finished: ", cmd.Process.Pid)
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	logging.V(5).Infoln("Language host process flushed: ", cmd.Process.Pid)
+
+	err = server.Send(&pulumirpc.StartResponse{Exitcode: int32(cmd.ProcessState.ExitCode())})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

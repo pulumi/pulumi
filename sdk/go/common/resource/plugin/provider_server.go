@@ -240,6 +240,7 @@ func (p *providerServer) Configure(ctx context.Context,
 				value = v
 			}
 
+			inputs := make(resource.PropertyMap)
 			inputs[resource.PropertyKey(key.Name())] = resource.NewPropertyValue(value)
 		}
 	}

@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -38,6 +39,20 @@ type LanguageRuntime interface {
 	Run(info RunInfo) (string, bool, error)
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
+
+	Start(info StartInfo) (io.Reader, io.Reader, <-chan StartResponse, context.CancelFunc, error)
+}
+
+type StartResponse struct {
+	Exitcode int
+	Error    error
+}
+
+type StartInfo struct {
+	Pwd     string
+	Program string
+	Args    []string
+	Env     []string
 }
 
 // ProgInfo contains minimal information about the program to be run.

@@ -27,8 +27,6 @@ import (
 )
 
 func TestOutputApply(t *testing.T) {
-	t.Parallel()
-
 	// Test that resolved outputs lead to applies being run.
 	{
 		out := newIntOutput()
@@ -133,457 +131,381 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.resolve(42, true, false, nil) }()
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) Archive { return *new(Archive) }).(ArchiveOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []Archive { return *new([]Archive) }).(ArchiveArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]Archive { return *new(map[string]Archive) }).(ArchiveMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][]Archive { return *new(map[string][]Archive) }).(ArchiveArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]Archive { return *new([]map[string]Archive) }).(ArchiveMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveMapMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]map[string]Archive { return *new(map[string]map[string]Archive) }).(ArchiveMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArchiveArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]Archive { return *new([][]Archive) }).(ArchiveArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) Asset { return *new(Asset) }).(AssetOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []Asset { return *new([]Asset) }).(AssetArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]Asset { return *new(map[string]Asset) }).(AssetMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][]Asset { return *new(map[string][]Asset) }).(AssetArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]Asset { return *new([]map[string]Asset) }).(AssetMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetMapMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]map[string]Asset { return *new(map[string]map[string]Asset) }).(AssetMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]Asset { return *new([][]Asset) }).(AssetArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) AssetOrArchive { return *new(AssetOrArchive) }).(AssetOrArchiveOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []AssetOrArchive { return *new([]AssetOrArchive) }).(AssetOrArchiveArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]AssetOrArchive { return *new(map[string]AssetOrArchive) }).(AssetOrArchiveMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][]AssetOrArchive { return *new(map[string][]AssetOrArchive) }).(AssetOrArchiveArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]AssetOrArchive { return *new([]map[string]AssetOrArchive) }).(AssetOrArchiveMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveMapMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]map[string]AssetOrArchive { return *new(map[string]map[string]AssetOrArchive) }).(AssetOrArchiveMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::AssetOrArchiveArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]AssetOrArchive { return *new([][]AssetOrArchive) }).(AssetOrArchiveArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) bool { return *new(bool) }).(BoolOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolPtrOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) *bool { return *new(*bool) }).(BoolPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []bool { return *new([]bool) }).(BoolArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]bool { return *new(map[string]bool) }).(BoolMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][]bool { return *new(map[string][]bool) }).(BoolArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]bool { return *new([]map[string]bool) }).(BoolMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolMapMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]map[string]bool { return *new(map[string]map[string]bool) }).(BoolMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::BoolArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]bool { return *new([][]bool) }).(BoolArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64Output", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) float64 { return *new(float64) }).(Float64Output)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64PtrOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) *float64 { return *new(*float64) }).(Float64PtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []float64 { return *new([]float64) }).(Float64ArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]float64 { return *new(map[string]float64) }).(Float64MapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][]float64 { return *new(map[string][]float64) }).(Float64ArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]float64 { return *new([]map[string]float64) }).(Float64MapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64MapMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]map[string]float64 { return *new(map[string]map[string]float64) }).(Float64MapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::Float64ArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]float64 { return *new([][]float64) }).(Float64ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) ID { return *new(ID) }).(IDOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDPtrOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) *ID { return *new(*ID) }).(IDPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []ID { return *new([]ID) }).(IDArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]ID { return *new(map[string]ID) }).(IDMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][]ID { return *new(map[string][]ID) }).(IDArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]ID { return *new([]map[string]ID) }).(IDMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDMapMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]map[string]ID { return *new(map[string]map[string]ID) }).(IDMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IDArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]ID { return *new([][]ID) }).(IDArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []interface{} { return *new([]interface{}) }).(ArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]interface{} { return *new(map[string]interface{}) }).(MapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][]interface{} { return *new(map[string][]interface{}) }).(ArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]interface{} { return *new([]map[string]interface{}) }).(MapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::MapMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]map[string]interface{} { return *new(map[string]map[string]interface{}) }).(MapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]interface{} { return *new([][]interface{}) }).(ArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::ArrayArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][][]interface{} { return *new(map[string][][]interface{}) }).(ArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) int { return *new(int) }).(IntOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntPtrOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) *int { return *new(*int) }).(IntPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []int { return *new([]int) }).(IntArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]int { return *new(map[string]int) }).(IntMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][]int { return *new(map[string][]int) }).(IntArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]int { return *new([]map[string]int) }).(IntMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntMapMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]map[string]int { return *new(map[string]map[string]int) }).(IntMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::IntArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]int { return *new([][]int) }).(IntArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) string { return *new(string) }).(StringOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringPtrOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) *string { return *new(*string) }).(StringPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []string { return *new([]string) }).(StringArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]string { return *new(map[string]string) }).(StringMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][]string { return *new(map[string][]string) }).(StringArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]string { return *new([]map[string]string) }).(StringMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringMapMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]map[string]string { return *new(map[string]map[string]string) }).(StringMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::StringArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]string { return *new([][]string) }).(StringArrayArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) URN { return *new(URN) }).(URNOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNPtrOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) *URN { return *new(*URN) }).(URNPtrOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []URN { return *new([]URN) }).(URNArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]URN { return *new(map[string]URN) }).(URNMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string][]URN { return *new(map[string][]URN) }).(URNArrayMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) []map[string]URN { return *new([]map[string]URN) }).(URNMapArrayOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNMapMapOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) map[string]map[string]URN { return *new(map[string]map[string]URN) }).(URNMapMapOutput)
 			assert.True(t, ok)
 		})
 
-		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::URNArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]URN { return *new([][]URN) }).(URNArrayArrayOutput)
 			assert.True(t, ok)
@@ -702,8 +624,6 @@ func TestOutputApply(t *testing.T) {
 // Test that ToOutput works with all builtin input types
 
 func TestToOutputArchive(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(NewFileArchive("foo.zip"))
 	_, ok := out.(ArchiveInput)
 	assert.True(t, ok)
@@ -722,8 +642,6 @@ func TestToOutputArchive(t *testing.T) {
 }
 
 func TestToOutputArchiveArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(ArchiveArray{NewFileArchive("foo.zip")})
 	_, ok := out.(ArchiveArrayInput)
 	assert.True(t, ok)
@@ -742,8 +660,6 @@ func TestToOutputArchiveArray(t *testing.T) {
 }
 
 func TestToOutputArchiveMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(ArchiveMap{"baz": NewFileArchive("foo.zip")})
 	_, ok := out.(ArchiveMapInput)
 	assert.True(t, ok)
@@ -762,8 +678,6 @@ func TestToOutputArchiveMap(t *testing.T) {
 }
 
 func TestToOutputArchiveArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}})
 	_, ok := out.(ArchiveArrayMapInput)
 	assert.True(t, ok)
@@ -782,8 +696,6 @@ func TestToOutputArchiveArrayMap(t *testing.T) {
 }
 
 func TestToOutputArchiveMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}})
 	_, ok := out.(ArchiveMapArrayInput)
 	assert.True(t, ok)
@@ -802,8 +714,6 @@ func TestToOutputArchiveMapArray(t *testing.T) {
 }
 
 func TestToOutputArchiveMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}})
 	_, ok := out.(ArchiveMapMapInput)
 	assert.True(t, ok)
@@ -822,8 +732,6 @@ func TestToOutputArchiveMapMap(t *testing.T) {
 }
 
 func TestToOutputArchiveArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}})
 	_, ok := out.(ArchiveArrayArrayInput)
 	assert.True(t, ok)
@@ -842,8 +750,6 @@ func TestToOutputArchiveArrayArray(t *testing.T) {
 }
 
 func TestToOutputAsset(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(NewFileAsset("foo.txt"))
 	_, ok := out.(AssetInput)
 	assert.True(t, ok)
@@ -862,8 +768,6 @@ func TestToOutputAsset(t *testing.T) {
 }
 
 func TestToOutputAssetArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetArray{NewFileAsset("foo.txt")})
 	_, ok := out.(AssetArrayInput)
 	assert.True(t, ok)
@@ -882,8 +786,6 @@ func TestToOutputAssetArray(t *testing.T) {
 }
 
 func TestToOutputAssetMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetMap{"baz": NewFileAsset("foo.txt")})
 	_, ok := out.(AssetMapInput)
 	assert.True(t, ok)
@@ -902,8 +804,6 @@ func TestToOutputAssetMap(t *testing.T) {
 }
 
 func TestToOutputAssetArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}})
 	_, ok := out.(AssetArrayMapInput)
 	assert.True(t, ok)
@@ -922,8 +822,6 @@ func TestToOutputAssetArrayMap(t *testing.T) {
 }
 
 func TestToOutputAssetMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetMapArray{AssetMap{"baz": NewFileAsset("foo.txt")}})
 	_, ok := out.(AssetMapArrayInput)
 	assert.True(t, ok)
@@ -942,8 +840,6 @@ func TestToOutputAssetMapArray(t *testing.T) {
 }
 
 func TestToOutputAssetMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}})
 	_, ok := out.(AssetMapMapInput)
 	assert.True(t, ok)
@@ -962,8 +858,6 @@ func TestToOutputAssetMapMap(t *testing.T) {
 }
 
 func TestToOutputAssetArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}})
 	_, ok := out.(AssetArrayArrayInput)
 	assert.True(t, ok)
@@ -982,8 +876,6 @@ func TestToOutputAssetArrayArray(t *testing.T) {
 }
 
 func TestToOutputAssetOrArchive(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(NewFileArchive("foo.zip"))
 	_, ok := out.(AssetOrArchiveInput)
 	assert.True(t, ok)
@@ -1002,8 +894,6 @@ func TestToOutputAssetOrArchive(t *testing.T) {
 }
 
 func TestToOutputAssetOrArchiveArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetOrArchiveArray{NewFileArchive("foo.zip")})
 	_, ok := out.(AssetOrArchiveArrayInput)
 	assert.True(t, ok)
@@ -1022,8 +912,6 @@ func TestToOutputAssetOrArchiveArray(t *testing.T) {
 }
 
 func TestToOutputAssetOrArchiveMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")})
 	_, ok := out.(AssetOrArchiveMapInput)
 	assert.True(t, ok)
@@ -1042,8 +930,6 @@ func TestToOutputAssetOrArchiveMap(t *testing.T) {
 }
 
 func TestToOutputAssetOrArchiveArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}})
 	_, ok := out.(AssetOrArchiveArrayMapInput)
 	assert.True(t, ok)
@@ -1062,8 +948,6 @@ func TestToOutputAssetOrArchiveArrayMap(t *testing.T) {
 }
 
 func TestToOutputAssetOrArchiveMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetOrArchiveMapArray{AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}})
 	_, ok := out.(AssetOrArchiveMapArrayInput)
 	assert.True(t, ok)
@@ -1082,8 +966,6 @@ func TestToOutputAssetOrArchiveMapArray(t *testing.T) {
 }
 
 func TestToOutputAssetOrArchiveMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}})
 	_, ok := out.(AssetOrArchiveMapMapInput)
 	assert.True(t, ok)
@@ -1102,8 +984,6 @@ func TestToOutputAssetOrArchiveMapMap(t *testing.T) {
 }
 
 func TestToOutputAssetOrArchiveArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}})
 	_, ok := out.(AssetOrArchiveArrayArrayInput)
 	assert.True(t, ok)
@@ -1122,8 +1002,6 @@ func TestToOutputAssetOrArchiveArrayArray(t *testing.T) {
 }
 
 func TestToOutputBool(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Bool(true))
 	_, ok := out.(BoolInput)
 	assert.True(t, ok)
@@ -1142,8 +1020,6 @@ func TestToOutputBool(t *testing.T) {
 }
 
 func TestToOutputBoolPtr(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(BoolPtr(bool(Bool(true))))
 	_, ok := out.(BoolPtrInput)
 	assert.True(t, ok)
@@ -1162,8 +1038,6 @@ func TestToOutputBoolPtr(t *testing.T) {
 }
 
 func TestToOutputBoolArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(BoolArray{Bool(true)})
 	_, ok := out.(BoolArrayInput)
 	assert.True(t, ok)
@@ -1182,8 +1056,6 @@ func TestToOutputBoolArray(t *testing.T) {
 }
 
 func TestToOutputBoolMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(BoolMap{"baz": Bool(true)})
 	_, ok := out.(BoolMapInput)
 	assert.True(t, ok)
@@ -1202,8 +1074,6 @@ func TestToOutputBoolMap(t *testing.T) {
 }
 
 func TestToOutputBoolArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(BoolArrayMap{"baz": BoolArray{Bool(true)}})
 	_, ok := out.(BoolArrayMapInput)
 	assert.True(t, ok)
@@ -1222,8 +1092,6 @@ func TestToOutputBoolArrayMap(t *testing.T) {
 }
 
 func TestToOutputBoolMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(BoolMapArray{BoolMap{"baz": Bool(true)}})
 	_, ok := out.(BoolMapArrayInput)
 	assert.True(t, ok)
@@ -1242,8 +1110,6 @@ func TestToOutputBoolMapArray(t *testing.T) {
 }
 
 func TestToOutputBoolMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(BoolMapMap{"baz": BoolMap{"baz": Bool(true)}})
 	_, ok := out.(BoolMapMapInput)
 	assert.True(t, ok)
@@ -1262,8 +1128,6 @@ func TestToOutputBoolMapMap(t *testing.T) {
 }
 
 func TestToOutputBoolArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(BoolArrayArray{BoolArray{Bool(true)}})
 	_, ok := out.(BoolArrayArrayInput)
 	assert.True(t, ok)
@@ -1282,8 +1146,6 @@ func TestToOutputBoolArrayArray(t *testing.T) {
 }
 
 func TestToOutputFloat64(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Float64(999.9))
 	_, ok := out.(Float64Input)
 	assert.True(t, ok)
@@ -1302,8 +1164,6 @@ func TestToOutputFloat64(t *testing.T) {
 }
 
 func TestToOutputFloat64Ptr(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Float64Ptr(float64(Float64(999.9))))
 	_, ok := out.(Float64PtrInput)
 	assert.True(t, ok)
@@ -1322,8 +1182,6 @@ func TestToOutputFloat64Ptr(t *testing.T) {
 }
 
 func TestToOutputFloat64Array(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Float64Array{Float64(999.9)})
 	_, ok := out.(Float64ArrayInput)
 	assert.True(t, ok)
@@ -1342,8 +1200,6 @@ func TestToOutputFloat64Array(t *testing.T) {
 }
 
 func TestToOutputFloat64Map(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Float64Map{"baz": Float64(999.9)})
 	_, ok := out.(Float64MapInput)
 	assert.True(t, ok)
@@ -1362,8 +1218,6 @@ func TestToOutputFloat64Map(t *testing.T) {
 }
 
 func TestToOutputFloat64ArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Float64ArrayMap{"baz": Float64Array{Float64(999.9)}})
 	_, ok := out.(Float64ArrayMapInput)
 	assert.True(t, ok)
@@ -1382,8 +1236,6 @@ func TestToOutputFloat64ArrayMap(t *testing.T) {
 }
 
 func TestToOutputFloat64MapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Float64MapArray{Float64Map{"baz": Float64(999.9)}})
 	_, ok := out.(Float64MapArrayInput)
 	assert.True(t, ok)
@@ -1402,8 +1254,6 @@ func TestToOutputFloat64MapArray(t *testing.T) {
 }
 
 func TestToOutputFloat64MapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}})
 	_, ok := out.(Float64MapMapInput)
 	assert.True(t, ok)
@@ -1422,8 +1272,6 @@ func TestToOutputFloat64MapMap(t *testing.T) {
 }
 
 func TestToOutputFloat64ArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Float64ArrayArray{Float64Array{Float64(999.9)}})
 	_, ok := out.(Float64ArrayArrayInput)
 	assert.True(t, ok)
@@ -1442,8 +1290,6 @@ func TestToOutputFloat64ArrayArray(t *testing.T) {
 }
 
 func TestToOutputID(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(ID("foo"))
 	_, ok := out.(IDInput)
 	assert.True(t, ok)
@@ -1462,8 +1308,6 @@ func TestToOutputID(t *testing.T) {
 }
 
 func TestToOutputIDPtr(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IDPtr(ID(ID("foo"))))
 	_, ok := out.(IDPtrInput)
 	assert.True(t, ok)
@@ -1482,8 +1326,6 @@ func TestToOutputIDPtr(t *testing.T) {
 }
 
 func TestToOutputIDArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IDArray{ID("foo")})
 	_, ok := out.(IDArrayInput)
 	assert.True(t, ok)
@@ -1502,8 +1344,6 @@ func TestToOutputIDArray(t *testing.T) {
 }
 
 func TestToOutputIDMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IDMap{"baz": ID("foo")})
 	_, ok := out.(IDMapInput)
 	assert.True(t, ok)
@@ -1522,8 +1362,6 @@ func TestToOutputIDMap(t *testing.T) {
 }
 
 func TestToOutputIDArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IDArrayMap{"baz": IDArray{ID("foo")}})
 	_, ok := out.(IDArrayMapInput)
 	assert.True(t, ok)
@@ -1542,8 +1380,6 @@ func TestToOutputIDArrayMap(t *testing.T) {
 }
 
 func TestToOutputIDMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IDMapArray{IDMap{"baz": ID("foo")}})
 	_, ok := out.(IDMapArrayInput)
 	assert.True(t, ok)
@@ -1562,8 +1398,6 @@ func TestToOutputIDMapArray(t *testing.T) {
 }
 
 func TestToOutputIDMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IDMapMap{"baz": IDMap{"baz": ID("foo")}})
 	_, ok := out.(IDMapMapInput)
 	assert.True(t, ok)
@@ -1582,8 +1416,6 @@ func TestToOutputIDMapMap(t *testing.T) {
 }
 
 func TestToOutputIDArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IDArrayArray{IDArray{ID("foo")}})
 	_, ok := out.(IDArrayArrayInput)
 	assert.True(t, ok)
@@ -1602,8 +1434,6 @@ func TestToOutputIDArrayArray(t *testing.T) {
 }
 
 func TestToOutputArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Array{String("any")})
 	_, ok := out.(ArrayInput)
 	assert.True(t, ok)
@@ -1622,8 +1452,6 @@ func TestToOutputArray(t *testing.T) {
 }
 
 func TestToOutputMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Map{"baz": String("any")})
 	_, ok := out.(MapInput)
 	assert.True(t, ok)
@@ -1642,8 +1470,6 @@ func TestToOutputMap(t *testing.T) {
 }
 
 func TestToOutputArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(ArrayMap{"baz": Array{String("any")}})
 	_, ok := out.(ArrayMapInput)
 	assert.True(t, ok)
@@ -1662,8 +1488,6 @@ func TestToOutputArrayMap(t *testing.T) {
 }
 
 func TestToOutputMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(MapArray{Map{"baz": String("any")}})
 	_, ok := out.(MapArrayInput)
 	assert.True(t, ok)
@@ -1682,8 +1506,6 @@ func TestToOutputMapArray(t *testing.T) {
 }
 
 func TestToOutputMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(MapMap{"baz": Map{"baz": String("any")}})
 	_, ok := out.(MapMapInput)
 	assert.True(t, ok)
@@ -1702,8 +1524,6 @@ func TestToOutputMapMap(t *testing.T) {
 }
 
 func TestToOutputArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(ArrayArray{Array{String("any")}})
 	_, ok := out.(ArrayArrayInput)
 	assert.True(t, ok)
@@ -1722,8 +1542,6 @@ func TestToOutputArrayArray(t *testing.T) {
 }
 
 func TestToOutputArrayArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(ArrayArrayMap{"baz": ArrayArray{Array{String("any")}}})
 	_, ok := out.(ArrayArrayMapInput)
 	assert.True(t, ok)
@@ -1742,8 +1560,6 @@ func TestToOutputArrayArrayMap(t *testing.T) {
 }
 
 func TestToOutputInt(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(Int(42))
 	_, ok := out.(IntInput)
 	assert.True(t, ok)
@@ -1762,8 +1578,6 @@ func TestToOutputInt(t *testing.T) {
 }
 
 func TestToOutputIntPtr(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IntPtr(int(Int(42))))
 	_, ok := out.(IntPtrInput)
 	assert.True(t, ok)
@@ -1782,8 +1596,6 @@ func TestToOutputIntPtr(t *testing.T) {
 }
 
 func TestToOutputIntArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IntArray{Int(42)})
 	_, ok := out.(IntArrayInput)
 	assert.True(t, ok)
@@ -1802,8 +1614,6 @@ func TestToOutputIntArray(t *testing.T) {
 }
 
 func TestToOutputIntMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IntMap{"baz": Int(42)})
 	_, ok := out.(IntMapInput)
 	assert.True(t, ok)
@@ -1822,8 +1632,6 @@ func TestToOutputIntMap(t *testing.T) {
 }
 
 func TestToOutputIntArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IntArrayMap{"baz": IntArray{Int(42)}})
 	_, ok := out.(IntArrayMapInput)
 	assert.True(t, ok)
@@ -1842,8 +1650,6 @@ func TestToOutputIntArrayMap(t *testing.T) {
 }
 
 func TestToOutputIntMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IntMapArray{IntMap{"baz": Int(42)}})
 	_, ok := out.(IntMapArrayInput)
 	assert.True(t, ok)
@@ -1862,8 +1668,6 @@ func TestToOutputIntMapArray(t *testing.T) {
 }
 
 func TestToOutputIntMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IntMapMap{"baz": IntMap{"baz": Int(42)}})
 	_, ok := out.(IntMapMapInput)
 	assert.True(t, ok)
@@ -1882,8 +1686,6 @@ func TestToOutputIntMapMap(t *testing.T) {
 }
 
 func TestToOutputIntArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(IntArrayArray{IntArray{Int(42)}})
 	_, ok := out.(IntArrayArrayInput)
 	assert.True(t, ok)
@@ -1902,8 +1704,6 @@ func TestToOutputIntArrayArray(t *testing.T) {
 }
 
 func TestToOutputString(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(String("foo"))
 	_, ok := out.(StringInput)
 	assert.True(t, ok)
@@ -1922,8 +1722,6 @@ func TestToOutputString(t *testing.T) {
 }
 
 func TestToOutputStringPtr(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(StringPtr(string(String("foo"))))
 	_, ok := out.(StringPtrInput)
 	assert.True(t, ok)
@@ -1942,8 +1740,6 @@ func TestToOutputStringPtr(t *testing.T) {
 }
 
 func TestToOutputStringArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(StringArray{String("foo")})
 	_, ok := out.(StringArrayInput)
 	assert.True(t, ok)
@@ -1962,8 +1758,6 @@ func TestToOutputStringArray(t *testing.T) {
 }
 
 func TestToOutputStringMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(StringMap{"baz": String("foo")})
 	_, ok := out.(StringMapInput)
 	assert.True(t, ok)
@@ -1982,8 +1776,6 @@ func TestToOutputStringMap(t *testing.T) {
 }
 
 func TestToOutputStringArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(StringArrayMap{"baz": StringArray{String("foo")}})
 	_, ok := out.(StringArrayMapInput)
 	assert.True(t, ok)
@@ -2002,8 +1794,6 @@ func TestToOutputStringArrayMap(t *testing.T) {
 }
 
 func TestToOutputStringMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(StringMapArray{StringMap{"baz": String("foo")}})
 	_, ok := out.(StringMapArrayInput)
 	assert.True(t, ok)
@@ -2022,8 +1812,6 @@ func TestToOutputStringMapArray(t *testing.T) {
 }
 
 func TestToOutputStringMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(StringMapMap{"baz": StringMap{"baz": String("foo")}})
 	_, ok := out.(StringMapMapInput)
 	assert.True(t, ok)
@@ -2042,8 +1830,6 @@ func TestToOutputStringMapMap(t *testing.T) {
 }
 
 func TestToOutputStringArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(StringArrayArray{StringArray{String("foo")}})
 	_, ok := out.(StringArrayArrayInput)
 	assert.True(t, ok)
@@ -2062,8 +1848,6 @@ func TestToOutputStringArrayArray(t *testing.T) {
 }
 
 func TestToOutputURN(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(URN("foo"))
 	_, ok := out.(URNInput)
 	assert.True(t, ok)
@@ -2082,8 +1866,6 @@ func TestToOutputURN(t *testing.T) {
 }
 
 func TestToOutputURNPtr(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(URNPtr(URN(URN("foo"))))
 	_, ok := out.(URNPtrInput)
 	assert.True(t, ok)
@@ -2102,8 +1884,6 @@ func TestToOutputURNPtr(t *testing.T) {
 }
 
 func TestToOutputURNArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(URNArray{URN("foo")})
 	_, ok := out.(URNArrayInput)
 	assert.True(t, ok)
@@ -2122,8 +1902,6 @@ func TestToOutputURNArray(t *testing.T) {
 }
 
 func TestToOutputURNMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(URNMap{"baz": URN("foo")})
 	_, ok := out.(URNMapInput)
 	assert.True(t, ok)
@@ -2142,8 +1920,6 @@ func TestToOutputURNMap(t *testing.T) {
 }
 
 func TestToOutputURNArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(URNArrayMap{"baz": URNArray{URN("foo")}})
 	_, ok := out.(URNArrayMapInput)
 	assert.True(t, ok)
@@ -2162,8 +1938,6 @@ func TestToOutputURNArrayMap(t *testing.T) {
 }
 
 func TestToOutputURNMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(URNMapArray{URNMap{"baz": URN("foo")}})
 	_, ok := out.(URNMapArrayInput)
 	assert.True(t, ok)
@@ -2182,8 +1956,6 @@ func TestToOutputURNMapArray(t *testing.T) {
 }
 
 func TestToOutputURNMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(URNMapMap{"baz": URNMap{"baz": URN("foo")}})
 	_, ok := out.(URNMapMapInput)
 	assert.True(t, ok)
@@ -2202,8 +1974,6 @@ func TestToOutputURNMapMap(t *testing.T) {
 }
 
 func TestToOutputURNArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToOutput(URNArrayArray{URNArray{URN("foo")}})
 	_, ok := out.(URNArrayArrayInput)
 	assert.True(t, ok)
@@ -2224,8 +1994,6 @@ func TestToOutputURNArrayArray(t *testing.T) {
 // Test that type-specific ToOutput methods work with all builtin input and output types
 
 func TestToArchiveOutput(t *testing.T) {
-	t.Parallel()
-
 	in := ArchiveInput(NewFileArchive("foo.zip"))
 
 	out := in.ToArchiveOutput()
@@ -2254,8 +2022,6 @@ func TestToArchiveOutput(t *testing.T) {
 }
 
 func TestToArchiveArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := ArchiveArrayInput(ArchiveArray{NewFileArchive("foo.zip")})
 
 	out := in.ToArchiveArrayOutput()
@@ -2284,8 +2050,6 @@ func TestToArchiveArrayOutput(t *testing.T) {
 }
 
 func TestToArchiveMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := ArchiveMapInput(ArchiveMap{"baz": NewFileArchive("foo.zip")})
 
 	out := in.ToArchiveMapOutput()
@@ -2314,8 +2078,6 @@ func TestToArchiveMapOutput(t *testing.T) {
 }
 
 func TestToArchiveArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := ArchiveArrayMapInput(ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}})
 
 	out := in.ToArchiveArrayMapOutput()
@@ -2344,8 +2106,6 @@ func TestToArchiveArrayMapOutput(t *testing.T) {
 }
 
 func TestToArchiveMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := ArchiveMapArrayInput(ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}})
 
 	out := in.ToArchiveMapArrayOutput()
@@ -2374,8 +2134,6 @@ func TestToArchiveMapArrayOutput(t *testing.T) {
 }
 
 func TestToArchiveMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := ArchiveMapMapInput(ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}})
 
 	out := in.ToArchiveMapMapOutput()
@@ -2404,8 +2162,6 @@ func TestToArchiveMapMapOutput(t *testing.T) {
 }
 
 func TestToArchiveArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := ArchiveArrayArrayInput(ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}})
 
 	out := in.ToArchiveArrayArrayOutput()
@@ -2434,8 +2190,6 @@ func TestToArchiveArrayArrayOutput(t *testing.T) {
 }
 
 func TestToAssetOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetInput(NewFileAsset("foo.txt"))
 
 	out := in.ToAssetOutput()
@@ -2464,8 +2218,6 @@ func TestToAssetOutput(t *testing.T) {
 }
 
 func TestToAssetArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetArrayInput(AssetArray{NewFileAsset("foo.txt")})
 
 	out := in.ToAssetArrayOutput()
@@ -2494,8 +2246,6 @@ func TestToAssetArrayOutput(t *testing.T) {
 }
 
 func TestToAssetMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetMapInput(AssetMap{"baz": NewFileAsset("foo.txt")})
 
 	out := in.ToAssetMapOutput()
@@ -2524,8 +2274,6 @@ func TestToAssetMapOutput(t *testing.T) {
 }
 
 func TestToAssetArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetArrayMapInput(AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}})
 
 	out := in.ToAssetArrayMapOutput()
@@ -2554,8 +2302,6 @@ func TestToAssetArrayMapOutput(t *testing.T) {
 }
 
 func TestToAssetMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetMapArrayInput(AssetMapArray{AssetMap{"baz": NewFileAsset("foo.txt")}})
 
 	out := in.ToAssetMapArrayOutput()
@@ -2584,8 +2330,6 @@ func TestToAssetMapArrayOutput(t *testing.T) {
 }
 
 func TestToAssetMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetMapMapInput(AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}})
 
 	out := in.ToAssetMapMapOutput()
@@ -2614,8 +2358,6 @@ func TestToAssetMapMapOutput(t *testing.T) {
 }
 
 func TestToAssetArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetArrayArrayInput(AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}})
 
 	out := in.ToAssetArrayArrayOutput()
@@ -2644,8 +2386,6 @@ func TestToAssetArrayArrayOutput(t *testing.T) {
 }
 
 func TestToAssetOrArchiveOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetOrArchiveInput(NewFileArchive("foo.zip"))
 
 	out := in.ToAssetOrArchiveOutput()
@@ -2674,8 +2414,6 @@ func TestToAssetOrArchiveOutput(t *testing.T) {
 }
 
 func TestToAssetOrArchiveArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetOrArchiveArrayInput(AssetOrArchiveArray{NewFileArchive("foo.zip")})
 
 	out := in.ToAssetOrArchiveArrayOutput()
@@ -2704,8 +2442,6 @@ func TestToAssetOrArchiveArrayOutput(t *testing.T) {
 }
 
 func TestToAssetOrArchiveMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetOrArchiveMapInput(AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")})
 
 	out := in.ToAssetOrArchiveMapOutput()
@@ -2734,8 +2470,6 @@ func TestToAssetOrArchiveMapOutput(t *testing.T) {
 }
 
 func TestToAssetOrArchiveArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetOrArchiveArrayMapInput(AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}})
 
 	out := in.ToAssetOrArchiveArrayMapOutput()
@@ -2764,8 +2498,6 @@ func TestToAssetOrArchiveArrayMapOutput(t *testing.T) {
 }
 
 func TestToAssetOrArchiveMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetOrArchiveMapArrayInput(AssetOrArchiveMapArray{AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}})
 
 	out := in.ToAssetOrArchiveMapArrayOutput()
@@ -2794,8 +2526,6 @@ func TestToAssetOrArchiveMapArrayOutput(t *testing.T) {
 }
 
 func TestToAssetOrArchiveMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetOrArchiveMapMapInput(AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}})
 
 	out := in.ToAssetOrArchiveMapMapOutput()
@@ -2824,8 +2554,6 @@ func TestToAssetOrArchiveMapMapOutput(t *testing.T) {
 }
 
 func TestToAssetOrArchiveArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := AssetOrArchiveArrayArrayInput(AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}})
 
 	out := in.ToAssetOrArchiveArrayArrayOutput()
@@ -2854,8 +2582,6 @@ func TestToAssetOrArchiveArrayArrayOutput(t *testing.T) {
 }
 
 func TestToBoolOutput(t *testing.T) {
-	t.Parallel()
-
 	in := BoolInput(Bool(true))
 
 	out := in.ToBoolOutput()
@@ -2884,8 +2610,6 @@ func TestToBoolOutput(t *testing.T) {
 }
 
 func TestToBoolPtrOutput(t *testing.T) {
-	t.Parallel()
-
 	in := BoolPtrInput(BoolPtr(bool(Bool(true))))
 
 	out := in.ToBoolPtrOutput()
@@ -2914,8 +2638,6 @@ func TestToBoolPtrOutput(t *testing.T) {
 }
 
 func TestToBoolArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := BoolArrayInput(BoolArray{Bool(true)})
 
 	out := in.ToBoolArrayOutput()
@@ -2944,8 +2666,6 @@ func TestToBoolArrayOutput(t *testing.T) {
 }
 
 func TestToBoolMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := BoolMapInput(BoolMap{"baz": Bool(true)})
 
 	out := in.ToBoolMapOutput()
@@ -2974,8 +2694,6 @@ func TestToBoolMapOutput(t *testing.T) {
 }
 
 func TestToBoolArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := BoolArrayMapInput(BoolArrayMap{"baz": BoolArray{Bool(true)}})
 
 	out := in.ToBoolArrayMapOutput()
@@ -3004,8 +2722,6 @@ func TestToBoolArrayMapOutput(t *testing.T) {
 }
 
 func TestToBoolMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := BoolMapArrayInput(BoolMapArray{BoolMap{"baz": Bool(true)}})
 
 	out := in.ToBoolMapArrayOutput()
@@ -3034,8 +2750,6 @@ func TestToBoolMapArrayOutput(t *testing.T) {
 }
 
 func TestToBoolMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := BoolMapMapInput(BoolMapMap{"baz": BoolMap{"baz": Bool(true)}})
 
 	out := in.ToBoolMapMapOutput()
@@ -3064,8 +2778,6 @@ func TestToBoolMapMapOutput(t *testing.T) {
 }
 
 func TestToBoolArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := BoolArrayArrayInput(BoolArrayArray{BoolArray{Bool(true)}})
 
 	out := in.ToBoolArrayArrayOutput()
@@ -3094,8 +2806,6 @@ func TestToBoolArrayArrayOutput(t *testing.T) {
 }
 
 func TestToFloat64Output(t *testing.T) {
-	t.Parallel()
-
 	in := Float64Input(Float64(999.9))
 
 	out := in.ToFloat64Output()
@@ -3124,8 +2834,6 @@ func TestToFloat64Output(t *testing.T) {
 }
 
 func TestToFloat64PtrOutput(t *testing.T) {
-	t.Parallel()
-
 	in := Float64PtrInput(Float64Ptr(float64(Float64(999.9))))
 
 	out := in.ToFloat64PtrOutput()
@@ -3154,8 +2862,6 @@ func TestToFloat64PtrOutput(t *testing.T) {
 }
 
 func TestToFloat64ArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := Float64ArrayInput(Float64Array{Float64(999.9)})
 
 	out := in.ToFloat64ArrayOutput()
@@ -3184,8 +2890,6 @@ func TestToFloat64ArrayOutput(t *testing.T) {
 }
 
 func TestToFloat64MapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := Float64MapInput(Float64Map{"baz": Float64(999.9)})
 
 	out := in.ToFloat64MapOutput()
@@ -3214,8 +2918,6 @@ func TestToFloat64MapOutput(t *testing.T) {
 }
 
 func TestToFloat64ArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := Float64ArrayMapInput(Float64ArrayMap{"baz": Float64Array{Float64(999.9)}})
 
 	out := in.ToFloat64ArrayMapOutput()
@@ -3244,8 +2946,6 @@ func TestToFloat64ArrayMapOutput(t *testing.T) {
 }
 
 func TestToFloat64MapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := Float64MapArrayInput(Float64MapArray{Float64Map{"baz": Float64(999.9)}})
 
 	out := in.ToFloat64MapArrayOutput()
@@ -3274,8 +2974,6 @@ func TestToFloat64MapArrayOutput(t *testing.T) {
 }
 
 func TestToFloat64MapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := Float64MapMapInput(Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}})
 
 	out := in.ToFloat64MapMapOutput()
@@ -3304,8 +3002,6 @@ func TestToFloat64MapMapOutput(t *testing.T) {
 }
 
 func TestToFloat64ArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := Float64ArrayArrayInput(Float64ArrayArray{Float64Array{Float64(999.9)}})
 
 	out := in.ToFloat64ArrayArrayOutput()
@@ -3334,8 +3030,6 @@ func TestToFloat64ArrayArrayOutput(t *testing.T) {
 }
 
 func TestToIDOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IDInput(ID("foo"))
 
 	out := in.ToIDOutput()
@@ -3364,8 +3058,6 @@ func TestToIDOutput(t *testing.T) {
 }
 
 func TestToIDPtrOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IDPtrInput(IDPtr(ID(ID("foo"))))
 
 	out := in.ToIDPtrOutput()
@@ -3394,8 +3086,6 @@ func TestToIDPtrOutput(t *testing.T) {
 }
 
 func TestToIDArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IDArrayInput(IDArray{ID("foo")})
 
 	out := in.ToIDArrayOutput()
@@ -3424,8 +3114,6 @@ func TestToIDArrayOutput(t *testing.T) {
 }
 
 func TestToIDMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IDMapInput(IDMap{"baz": ID("foo")})
 
 	out := in.ToIDMapOutput()
@@ -3454,8 +3142,6 @@ func TestToIDMapOutput(t *testing.T) {
 }
 
 func TestToIDArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IDArrayMapInput(IDArrayMap{"baz": IDArray{ID("foo")}})
 
 	out := in.ToIDArrayMapOutput()
@@ -3484,8 +3170,6 @@ func TestToIDArrayMapOutput(t *testing.T) {
 }
 
 func TestToIDMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IDMapArrayInput(IDMapArray{IDMap{"baz": ID("foo")}})
 
 	out := in.ToIDMapArrayOutput()
@@ -3514,8 +3198,6 @@ func TestToIDMapArrayOutput(t *testing.T) {
 }
 
 func TestToIDMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IDMapMapInput(IDMapMap{"baz": IDMap{"baz": ID("foo")}})
 
 	out := in.ToIDMapMapOutput()
@@ -3544,8 +3226,6 @@ func TestToIDMapMapOutput(t *testing.T) {
 }
 
 func TestToIDArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IDArrayArrayInput(IDArrayArray{IDArray{ID("foo")}})
 
 	out := in.ToIDArrayArrayOutput()
@@ -3574,8 +3254,6 @@ func TestToIDArrayArrayOutput(t *testing.T) {
 }
 
 func TestToArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := ArrayInput(Array{String("any")})
 
 	out := in.ToArrayOutput()
@@ -3604,8 +3282,6 @@ func TestToArrayOutput(t *testing.T) {
 }
 
 func TestToMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := MapInput(Map{"baz": String("any")})
 
 	out := in.ToMapOutput()
@@ -3634,8 +3310,6 @@ func TestToMapOutput(t *testing.T) {
 }
 
 func TestToArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := ArrayMapInput(ArrayMap{"baz": Array{String("any")}})
 
 	out := in.ToArrayMapOutput()
@@ -3664,8 +3338,6 @@ func TestToArrayMapOutput(t *testing.T) {
 }
 
 func TestToMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := MapArrayInput(MapArray{Map{"baz": String("any")}})
 
 	out := in.ToMapArrayOutput()
@@ -3694,8 +3366,6 @@ func TestToMapArrayOutput(t *testing.T) {
 }
 
 func TestToMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := MapMapInput(MapMap{"baz": Map{"baz": String("any")}})
 
 	out := in.ToMapMapOutput()
@@ -3724,8 +3394,6 @@ func TestToMapMapOutput(t *testing.T) {
 }
 
 func TestToArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := ArrayArrayInput(ArrayArray{Array{String("any")}})
 
 	out := in.ToArrayArrayOutput()
@@ -3754,8 +3422,6 @@ func TestToArrayArrayOutput(t *testing.T) {
 }
 
 func TestToArrayArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := ArrayArrayMapInput(ArrayArrayMap{"baz": ArrayArray{Array{String("any")}}})
 
 	out := in.ToArrayArrayMapOutput()
@@ -3784,8 +3450,6 @@ func TestToArrayArrayMapOutput(t *testing.T) {
 }
 
 func TestToIntOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IntInput(Int(42))
 
 	out := in.ToIntOutput()
@@ -3814,8 +3478,6 @@ func TestToIntOutput(t *testing.T) {
 }
 
 func TestToIntPtrOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IntPtrInput(IntPtr(int(Int(42))))
 
 	out := in.ToIntPtrOutput()
@@ -3844,8 +3506,6 @@ func TestToIntPtrOutput(t *testing.T) {
 }
 
 func TestToIntArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IntArrayInput(IntArray{Int(42)})
 
 	out := in.ToIntArrayOutput()
@@ -3874,8 +3534,6 @@ func TestToIntArrayOutput(t *testing.T) {
 }
 
 func TestToIntMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IntMapInput(IntMap{"baz": Int(42)})
 
 	out := in.ToIntMapOutput()
@@ -3904,8 +3562,6 @@ func TestToIntMapOutput(t *testing.T) {
 }
 
 func TestToIntArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IntArrayMapInput(IntArrayMap{"baz": IntArray{Int(42)}})
 
 	out := in.ToIntArrayMapOutput()
@@ -3934,8 +3590,6 @@ func TestToIntArrayMapOutput(t *testing.T) {
 }
 
 func TestToIntMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IntMapArrayInput(IntMapArray{IntMap{"baz": Int(42)}})
 
 	out := in.ToIntMapArrayOutput()
@@ -3964,8 +3618,6 @@ func TestToIntMapArrayOutput(t *testing.T) {
 }
 
 func TestToIntMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IntMapMapInput(IntMapMap{"baz": IntMap{"baz": Int(42)}})
 
 	out := in.ToIntMapMapOutput()
@@ -3994,8 +3646,6 @@ func TestToIntMapMapOutput(t *testing.T) {
 }
 
 func TestToIntArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := IntArrayArrayInput(IntArrayArray{IntArray{Int(42)}})
 
 	out := in.ToIntArrayArrayOutput()
@@ -4024,8 +3674,6 @@ func TestToIntArrayArrayOutput(t *testing.T) {
 }
 
 func TestToStringOutput(t *testing.T) {
-	t.Parallel()
-
 	in := StringInput(String("foo"))
 
 	out := in.ToStringOutput()
@@ -4054,8 +3702,6 @@ func TestToStringOutput(t *testing.T) {
 }
 
 func TestToStringPtrOutput(t *testing.T) {
-	t.Parallel()
-
 	in := StringPtrInput(StringPtr(string(String("foo"))))
 
 	out := in.ToStringPtrOutput()
@@ -4084,8 +3730,6 @@ func TestToStringPtrOutput(t *testing.T) {
 }
 
 func TestToStringArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := StringArrayInput(StringArray{String("foo")})
 
 	out := in.ToStringArrayOutput()
@@ -4114,8 +3758,6 @@ func TestToStringArrayOutput(t *testing.T) {
 }
 
 func TestToStringMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := StringMapInput(StringMap{"baz": String("foo")})
 
 	out := in.ToStringMapOutput()
@@ -4144,8 +3786,6 @@ func TestToStringMapOutput(t *testing.T) {
 }
 
 func TestToStringArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := StringArrayMapInput(StringArrayMap{"baz": StringArray{String("foo")}})
 
 	out := in.ToStringArrayMapOutput()
@@ -4174,8 +3814,6 @@ func TestToStringArrayMapOutput(t *testing.T) {
 }
 
 func TestToStringMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := StringMapArrayInput(StringMapArray{StringMap{"baz": String("foo")}})
 
 	out := in.ToStringMapArrayOutput()
@@ -4204,8 +3842,6 @@ func TestToStringMapArrayOutput(t *testing.T) {
 }
 
 func TestToStringMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := StringMapMapInput(StringMapMap{"baz": StringMap{"baz": String("foo")}})
 
 	out := in.ToStringMapMapOutput()
@@ -4234,8 +3870,6 @@ func TestToStringMapMapOutput(t *testing.T) {
 }
 
 func TestToStringArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := StringArrayArrayInput(StringArrayArray{StringArray{String("foo")}})
 
 	out := in.ToStringArrayArrayOutput()
@@ -4264,8 +3898,6 @@ func TestToStringArrayArrayOutput(t *testing.T) {
 }
 
 func TestToURNOutput(t *testing.T) {
-	t.Parallel()
-
 	in := URNInput(URN("foo"))
 
 	out := in.ToURNOutput()
@@ -4294,8 +3926,6 @@ func TestToURNOutput(t *testing.T) {
 }
 
 func TestToURNPtrOutput(t *testing.T) {
-	t.Parallel()
-
 	in := URNPtrInput(URNPtr(URN(URN("foo"))))
 
 	out := in.ToURNPtrOutput()
@@ -4324,8 +3954,6 @@ func TestToURNPtrOutput(t *testing.T) {
 }
 
 func TestToURNArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := URNArrayInput(URNArray{URN("foo")})
 
 	out := in.ToURNArrayOutput()
@@ -4354,8 +3982,6 @@ func TestToURNArrayOutput(t *testing.T) {
 }
 
 func TestToURNMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := URNMapInput(URNMap{"baz": URN("foo")})
 
 	out := in.ToURNMapOutput()
@@ -4384,8 +4010,6 @@ func TestToURNMapOutput(t *testing.T) {
 }
 
 func TestToURNArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := URNArrayMapInput(URNArrayMap{"baz": URNArray{URN("foo")}})
 
 	out := in.ToURNArrayMapOutput()
@@ -4414,8 +4038,6 @@ func TestToURNArrayMapOutput(t *testing.T) {
 }
 
 func TestToURNMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := URNMapArrayInput(URNMapArray{URNMap{"baz": URN("foo")}})
 
 	out := in.ToURNMapArrayOutput()
@@ -4444,8 +4066,6 @@ func TestToURNMapArrayOutput(t *testing.T) {
 }
 
 func TestToURNMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	in := URNMapMapInput(URNMapMap{"baz": URNMap{"baz": URN("foo")}})
 
 	out := in.ToURNMapMapOutput()
@@ -4474,8 +4094,6 @@ func TestToURNMapMapOutput(t *testing.T) {
 }
 
 func TestToURNArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	in := URNArrayArrayInput(URNArrayArray{URNArray{URN("foo")}})
 
 	out := in.ToURNArrayArrayOutput()
@@ -4505,8 +4123,6 @@ func TestToURNArrayArrayOutput(t *testing.T) {
 
 // Test type-specific ToOutput methods for builtins that implement other builtin input types.
 func TestBuiltinConversions(t *testing.T) {
-	t.Parallel()
-
 	archiveIn := NewFileArchive("foo.zip")
 	assetOrArchiveOut := archiveIn.ToAssetOrArchiveOutput()
 	archiveV, known, _, _, err := await(assetOrArchiveOut)
@@ -4567,8 +4183,6 @@ func TestBuiltinConversions(t *testing.T) {
 // Test pointer types.
 
 func TestBoolPtrElem(t *testing.T) {
-	t.Parallel()
-
 	out := (BoolPtr(bool(Bool(true)))).ToBoolPtrOutput()
 
 	av, known, _, _, err := await(out)
@@ -4583,8 +4197,6 @@ func TestBoolPtrElem(t *testing.T) {
 }
 
 func TestFloat64PtrElem(t *testing.T) {
-	t.Parallel()
-
 	out := (Float64Ptr(float64(Float64(999.9)))).ToFloat64PtrOutput()
 
 	av, known, _, _, err := await(out)
@@ -4599,8 +4211,6 @@ func TestFloat64PtrElem(t *testing.T) {
 }
 
 func TestIDPtrElem(t *testing.T) {
-	t.Parallel()
-
 	out := (IDPtr(ID(ID("foo")))).ToIDPtrOutput()
 
 	av, known, _, _, err := await(out)
@@ -4615,8 +4225,6 @@ func TestIDPtrElem(t *testing.T) {
 }
 
 func TestIntPtrElem(t *testing.T) {
-	t.Parallel()
-
 	out := (IntPtr(int(Int(42)))).ToIntPtrOutput()
 
 	av, known, _, _, err := await(out)
@@ -4631,8 +4239,6 @@ func TestIntPtrElem(t *testing.T) {
 }
 
 func TestStringPtrElem(t *testing.T) {
-	t.Parallel()
-
 	out := (StringPtr(string(String("foo")))).ToStringPtrOutput()
 
 	av, known, _, _, err := await(out)
@@ -4647,8 +4253,6 @@ func TestStringPtrElem(t *testing.T) {
 }
 
 func TestURNPtrElem(t *testing.T) {
-	t.Parallel()
-
 	out := (URNPtr(URN(URN("foo")))).ToURNPtrOutput()
 
 	av, known, _, _, err := await(out)
@@ -4665,8 +4269,6 @@ func TestURNPtrElem(t *testing.T) {
 // Test array indexers.
 
 func TestArchiveArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (ArchiveArray{NewFileArchive("foo.zip")}).ToArchiveArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4685,8 +4287,6 @@ func TestArchiveArrayIndex(t *testing.T) {
 }
 
 func TestToArchiveArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveArray([]Archive{NewFileArchive("foo.zip")}).ToArchiveArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4701,8 +4301,6 @@ func TestToArchiveArray(t *testing.T) {
 }
 
 func TestTopLevelToArchiveArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveArrayOutput([]ArchiveOutput{ToOutput(NewFileArchive("foo.zip")).(ArchiveOutput)})
 
 	av, known, _, _, err := await(out)
@@ -4717,8 +4315,6 @@ func TestTopLevelToArchiveArrayOutput(t *testing.T) {
 }
 
 func TestArchiveMapArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}}).ToArchiveMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4737,8 +4333,6 @@ func TestArchiveMapArrayIndex(t *testing.T) {
 }
 
 func TestToArchiveMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveMapArray([]map[string]Archive{{"baz": NewFileArchive("foo.zip")}}).ToArchiveMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4753,8 +4347,6 @@ func TestToArchiveMapArray(t *testing.T) {
 }
 
 func TestTopLevelToArchiveMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveMapArrayOutput([]ArchiveMapOutput{ToOutput(ArchiveMap{"baz": NewFileArchive("foo.zip")}).(ArchiveMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -4769,8 +4361,6 @@ func TestTopLevelToArchiveMapArrayOutput(t *testing.T) {
 }
 
 func TestArchiveArrayArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}).ToArchiveArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4789,8 +4379,6 @@ func TestArchiveArrayArrayIndex(t *testing.T) {
 }
 
 func TestToArchiveArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveArrayArray([][]Archive{{NewFileArchive("foo.zip")}}).ToArchiveArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4805,8 +4393,6 @@ func TestToArchiveArrayArray(t *testing.T) {
 }
 
 func TestTopLevelToArchiveArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveArrayArrayOutput([]ArchiveArrayOutput{ToOutput(ArchiveArray{NewFileArchive("foo.zip")}).(ArchiveArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -4821,8 +4407,6 @@ func TestTopLevelToArchiveArrayArrayOutput(t *testing.T) {
 }
 
 func TestAssetArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetArray{NewFileAsset("foo.txt")}).ToAssetArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4841,8 +4425,6 @@ func TestAssetArrayIndex(t *testing.T) {
 }
 
 func TestToAssetArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetArray([]Asset{NewFileAsset("foo.txt")}).ToAssetArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4857,8 +4439,6 @@ func TestToAssetArray(t *testing.T) {
 }
 
 func TestTopLevelToAssetArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetArrayOutput([]AssetOutput{ToOutput(NewFileAsset("foo.txt")).(AssetOutput)})
 
 	av, known, _, _, err := await(out)
@@ -4873,8 +4453,6 @@ func TestTopLevelToAssetArrayOutput(t *testing.T) {
 }
 
 func TestAssetMapArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetMapArray{AssetMap{"baz": NewFileAsset("foo.txt")}}).ToAssetMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4893,8 +4471,6 @@ func TestAssetMapArrayIndex(t *testing.T) {
 }
 
 func TestToAssetMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetMapArray([]map[string]Asset{{"baz": NewFileAsset("foo.txt")}}).ToAssetMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4909,8 +4485,6 @@ func TestToAssetMapArray(t *testing.T) {
 }
 
 func TestTopLevelToAssetMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetMapArrayOutput([]AssetMapOutput{ToOutput(AssetMap{"baz": NewFileAsset("foo.txt")}).(AssetMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -4925,8 +4499,6 @@ func TestTopLevelToAssetMapArrayOutput(t *testing.T) {
 }
 
 func TestAssetArrayArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}).ToAssetArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4945,8 +4517,6 @@ func TestAssetArrayArrayIndex(t *testing.T) {
 }
 
 func TestToAssetArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetArrayArray([][]Asset{{NewFileAsset("foo.txt")}}).ToAssetArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4961,8 +4531,6 @@ func TestToAssetArrayArray(t *testing.T) {
 }
 
 func TestTopLevelToAssetArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetArrayArrayOutput([]AssetArrayOutput{ToOutput(AssetArray{NewFileAsset("foo.txt")}).(AssetArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -4977,8 +4545,6 @@ func TestTopLevelToAssetArrayArrayOutput(t *testing.T) {
 }
 
 func TestAssetOrArchiveArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetOrArchiveArray{NewFileArchive("foo.zip")}).ToAssetOrArchiveArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -4997,8 +4563,6 @@ func TestAssetOrArchiveArrayIndex(t *testing.T) {
 }
 
 func TestAssetOrArchiveMapArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetOrArchiveMapArray{AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}).ToAssetOrArchiveMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5017,8 +4581,6 @@ func TestAssetOrArchiveMapArrayIndex(t *testing.T) {
 }
 
 func TestAssetOrArchiveArrayArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetOrArchiveArrayArray{AssetOrArchiveArray{NewFileArchive("foo.zip")}}).ToAssetOrArchiveArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5037,8 +4599,6 @@ func TestAssetOrArchiveArrayArrayIndex(t *testing.T) {
 }
 
 func TestBoolArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (BoolArray{Bool(true)}).ToBoolArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5057,8 +4617,6 @@ func TestBoolArrayIndex(t *testing.T) {
 }
 
 func TestToBoolArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolArray([]bool{true}).ToBoolArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5073,8 +4631,6 @@ func TestToBoolArray(t *testing.T) {
 }
 
 func TestTopLevelToBoolArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolArrayOutput([]BoolOutput{ToOutput(Bool(true)).(BoolOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5089,8 +4645,6 @@ func TestTopLevelToBoolArrayOutput(t *testing.T) {
 }
 
 func TestBoolMapArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (BoolMapArray{BoolMap{"baz": Bool(true)}}).ToBoolMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5109,8 +4663,6 @@ func TestBoolMapArrayIndex(t *testing.T) {
 }
 
 func TestToBoolMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolMapArray([]map[string]bool{{"baz": true}}).ToBoolMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5125,8 +4677,6 @@ func TestToBoolMapArray(t *testing.T) {
 }
 
 func TestTopLevelToBoolMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolMapArrayOutput([]BoolMapOutput{ToOutput(BoolMap{"baz": Bool(true)}).(BoolMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5141,8 +4691,6 @@ func TestTopLevelToBoolMapArrayOutput(t *testing.T) {
 }
 
 func TestBoolArrayArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (BoolArrayArray{BoolArray{Bool(true)}}).ToBoolArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5161,8 +4709,6 @@ func TestBoolArrayArrayIndex(t *testing.T) {
 }
 
 func TestToBoolArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolArrayArray([][]bool{{true}}).ToBoolArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5177,8 +4723,6 @@ func TestToBoolArrayArray(t *testing.T) {
 }
 
 func TestTopLevelToBoolArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolArrayArrayOutput([]BoolArrayOutput{ToOutput(BoolArray{Bool(true)}).(BoolArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5193,8 +4737,6 @@ func TestTopLevelToBoolArrayArrayOutput(t *testing.T) {
 }
 
 func TestFloat64ArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (Float64Array{Float64(999.9)}).ToFloat64ArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5213,8 +4755,6 @@ func TestFloat64ArrayIndex(t *testing.T) {
 }
 
 func TestToFloat64Array(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64Array([]float64{999.9}).ToFloat64ArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5229,8 +4769,6 @@ func TestToFloat64Array(t *testing.T) {
 }
 
 func TestTopLevelToFloat64ArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64ArrayOutput([]Float64Output{ToOutput(Float64(999.9)).(Float64Output)})
 
 	av, known, _, _, err := await(out)
@@ -5245,8 +4783,6 @@ func TestTopLevelToFloat64ArrayOutput(t *testing.T) {
 }
 
 func TestFloat64MapArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (Float64MapArray{Float64Map{"baz": Float64(999.9)}}).ToFloat64MapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5265,8 +4801,6 @@ func TestFloat64MapArrayIndex(t *testing.T) {
 }
 
 func TestToFloat64MapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64MapArray([]map[string]float64{{"baz": 999.9}}).ToFloat64MapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5281,8 +4815,6 @@ func TestToFloat64MapArray(t *testing.T) {
 }
 
 func TestTopLevelToFloat64MapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64MapArrayOutput([]Float64MapOutput{ToOutput(Float64Map{"baz": Float64(999.9)}).(Float64MapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5297,8 +4829,6 @@ func TestTopLevelToFloat64MapArrayOutput(t *testing.T) {
 }
 
 func TestFloat64ArrayArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (Float64ArrayArray{Float64Array{Float64(999.9)}}).ToFloat64ArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5317,8 +4847,6 @@ func TestFloat64ArrayArrayIndex(t *testing.T) {
 }
 
 func TestToFloat64ArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64ArrayArray([][]float64{{999.9}}).ToFloat64ArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5333,8 +4861,6 @@ func TestToFloat64ArrayArray(t *testing.T) {
 }
 
 func TestTopLevelToFloat64ArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64ArrayArrayOutput([]Float64ArrayOutput{ToOutput(Float64Array{Float64(999.9)}).(Float64ArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5349,8 +4875,6 @@ func TestTopLevelToFloat64ArrayArrayOutput(t *testing.T) {
 }
 
 func TestIDArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IDArray{ID("foo")}).ToIDArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5369,8 +4893,6 @@ func TestIDArrayIndex(t *testing.T) {
 }
 
 func TestToIDArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDArray([]ID{ID("foo")}).ToIDArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5385,8 +4907,6 @@ func TestToIDArray(t *testing.T) {
 }
 
 func TestTopLevelToIDArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDArrayOutput([]IDOutput{ToOutput(ID("foo")).(IDOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5401,8 +4921,6 @@ func TestTopLevelToIDArrayOutput(t *testing.T) {
 }
 
 func TestIDMapArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IDMapArray{IDMap{"baz": ID("foo")}}).ToIDMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5421,8 +4939,6 @@ func TestIDMapArrayIndex(t *testing.T) {
 }
 
 func TestToIDMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDMapArray([]map[string]ID{{"baz": ID("foo")}}).ToIDMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5437,8 +4953,6 @@ func TestToIDMapArray(t *testing.T) {
 }
 
 func TestTopLevelToIDMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDMapArrayOutput([]IDMapOutput{ToOutput(IDMap{"baz": ID("foo")}).(IDMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5453,8 +4967,6 @@ func TestTopLevelToIDMapArrayOutput(t *testing.T) {
 }
 
 func TestIDArrayArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IDArrayArray{IDArray{ID("foo")}}).ToIDArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5473,8 +4985,6 @@ func TestIDArrayArrayIndex(t *testing.T) {
 }
 
 func TestToIDArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDArrayArray([][]ID{{ID("foo")}}).ToIDArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5489,8 +4999,6 @@ func TestToIDArrayArray(t *testing.T) {
 }
 
 func TestTopLevelToIDArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDArrayArrayOutput([]IDArrayOutput{ToOutput(IDArray{ID("foo")}).(IDArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5505,8 +5013,6 @@ func TestTopLevelToIDArrayArrayOutput(t *testing.T) {
 }
 
 func TestArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (Array{String("any")}).ToArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5525,8 +5031,6 @@ func TestArrayIndex(t *testing.T) {
 }
 
 func TestToArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToArray([]interface{}{String("any")}).ToArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5541,8 +5045,6 @@ func TestToArray(t *testing.T) {
 }
 
 func TestTopLevelToArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToArrayOutput([]Output{ToOutput(String("any")).(Output)})
 
 	av, known, _, _, err := await(out)
@@ -5557,8 +5059,6 @@ func TestTopLevelToArrayOutput(t *testing.T) {
 }
 
 func TestMapArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (MapArray{Map{"baz": String("any")}}).ToMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5577,8 +5077,6 @@ func TestMapArrayIndex(t *testing.T) {
 }
 
 func TestToMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToMapArray([]map[string]interface{}{{"baz": String("any")}}).ToMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5593,8 +5091,6 @@ func TestToMapArray(t *testing.T) {
 }
 
 func TestTopLevelToMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToMapArrayOutput([]MapOutput{ToOutput(Map{"baz": String("any")}).(MapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5609,8 +5105,6 @@ func TestTopLevelToMapArrayOutput(t *testing.T) {
 }
 
 func TestArrayArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (ArrayArray{Array{String("any")}}).ToArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5629,8 +5123,6 @@ func TestArrayArrayIndex(t *testing.T) {
 }
 
 func TestToArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToArrayArray([][]interface{}{{String("any")}}).ToArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5645,8 +5137,6 @@ func TestToArrayArray(t *testing.T) {
 }
 
 func TestTopLevelToArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToArrayArrayOutput([]ArrayOutput{ToOutput(Array{String("any")}).(ArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5661,8 +5151,6 @@ func TestTopLevelToArrayArrayOutput(t *testing.T) {
 }
 
 func TestIntArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IntArray{Int(42)}).ToIntArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5681,8 +5169,6 @@ func TestIntArrayIndex(t *testing.T) {
 }
 
 func TestToIntArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntArray([]int{42}).ToIntArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5697,8 +5183,6 @@ func TestToIntArray(t *testing.T) {
 }
 
 func TestTopLevelToIntArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntArrayOutput([]IntOutput{ToOutput(Int(42)).(IntOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5713,8 +5197,6 @@ func TestTopLevelToIntArrayOutput(t *testing.T) {
 }
 
 func TestIntMapArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IntMapArray{IntMap{"baz": Int(42)}}).ToIntMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5733,8 +5215,6 @@ func TestIntMapArrayIndex(t *testing.T) {
 }
 
 func TestToIntMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntMapArray([]map[string]int{{"baz": 42}}).ToIntMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5749,8 +5229,6 @@ func TestToIntMapArray(t *testing.T) {
 }
 
 func TestTopLevelToIntMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntMapArrayOutput([]IntMapOutput{ToOutput(IntMap{"baz": Int(42)}).(IntMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5765,8 +5243,6 @@ func TestTopLevelToIntMapArrayOutput(t *testing.T) {
 }
 
 func TestIntArrayArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IntArrayArray{IntArray{Int(42)}}).ToIntArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5785,8 +5261,6 @@ func TestIntArrayArrayIndex(t *testing.T) {
 }
 
 func TestToIntArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntArrayArray([][]int{{42}}).ToIntArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5801,8 +5275,6 @@ func TestToIntArrayArray(t *testing.T) {
 }
 
 func TestTopLevelToIntArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntArrayArrayOutput([]IntArrayOutput{ToOutput(IntArray{Int(42)}).(IntArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5817,8 +5289,6 @@ func TestTopLevelToIntArrayArrayOutput(t *testing.T) {
 }
 
 func TestStringArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (StringArray{String("foo")}).ToStringArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5837,8 +5307,6 @@ func TestStringArrayIndex(t *testing.T) {
 }
 
 func TestToStringArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringArray([]string{"foo"}).ToStringArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5853,8 +5321,6 @@ func TestToStringArray(t *testing.T) {
 }
 
 func TestTopLevelToStringArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringArrayOutput([]StringOutput{ToOutput(String("foo")).(StringOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5869,8 +5335,6 @@ func TestTopLevelToStringArrayOutput(t *testing.T) {
 }
 
 func TestStringMapArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (StringMapArray{StringMap{"baz": String("foo")}}).ToStringMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5889,8 +5353,6 @@ func TestStringMapArrayIndex(t *testing.T) {
 }
 
 func TestToStringMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringMapArray([]map[string]string{{"baz": "foo"}}).ToStringMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5905,8 +5367,6 @@ func TestToStringMapArray(t *testing.T) {
 }
 
 func TestTopLevelToStringMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringMapArrayOutput([]StringMapOutput{ToOutput(StringMap{"baz": String("foo")}).(StringMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5921,8 +5381,6 @@ func TestTopLevelToStringMapArrayOutput(t *testing.T) {
 }
 
 func TestStringArrayArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (StringArrayArray{StringArray{String("foo")}}).ToStringArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5941,8 +5399,6 @@ func TestStringArrayArrayIndex(t *testing.T) {
 }
 
 func TestToStringArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringArrayArray([][]string{{"foo"}}).ToStringArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5957,8 +5413,6 @@ func TestToStringArrayArray(t *testing.T) {
 }
 
 func TestTopLevelToStringArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringArrayArrayOutput([]StringArrayOutput{ToOutput(StringArray{String("foo")}).(StringArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -5973,8 +5427,6 @@ func TestTopLevelToStringArrayArrayOutput(t *testing.T) {
 }
 
 func TestURNArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (URNArray{URN("foo")}).ToURNArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -5993,8 +5445,6 @@ func TestURNArrayIndex(t *testing.T) {
 }
 
 func TestToURNArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNArray([]URN{URN("foo")}).ToURNArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -6009,8 +5459,6 @@ func TestToURNArray(t *testing.T) {
 }
 
 func TestTopLevelToURNArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNArrayOutput([]URNOutput{ToOutput(URN("foo")).(URNOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6025,8 +5473,6 @@ func TestTopLevelToURNArrayOutput(t *testing.T) {
 }
 
 func TestURNMapArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (URNMapArray{URNMap{"baz": URN("foo")}}).ToURNMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -6045,8 +5491,6 @@ func TestURNMapArrayIndex(t *testing.T) {
 }
 
 func TestToURNMapArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNMapArray([]map[string]URN{{"baz": URN("foo")}}).ToURNMapArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -6061,8 +5505,6 @@ func TestToURNMapArray(t *testing.T) {
 }
 
 func TestTopLevelToURNMapArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNMapArrayOutput([]URNMapOutput{ToOutput(URNMap{"baz": URN("foo")}).(URNMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6077,8 +5519,6 @@ func TestTopLevelToURNMapArrayOutput(t *testing.T) {
 }
 
 func TestURNArrayArrayIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (URNArrayArray{URNArray{URN("foo")}}).ToURNArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -6097,8 +5537,6 @@ func TestURNArrayArrayIndex(t *testing.T) {
 }
 
 func TestToURNArrayArray(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNArrayArray([][]URN{{URN("foo")}}).ToURNArrayArrayOutput()
 
 	av, known, _, _, err := await(out)
@@ -6113,8 +5551,6 @@ func TestToURNArrayArray(t *testing.T) {
 }
 
 func TestTopLevelToURNArrayArrayOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNArrayArrayOutput([]URNArrayOutput{ToOutput(URNArray{URN("foo")}).(URNArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6131,8 +5567,6 @@ func TestTopLevelToURNArrayArrayOutput(t *testing.T) {
 // Test map indexers.
 
 func TestArchiveMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (ArchiveMap{"baz": NewFileArchive("foo.zip")}).ToArchiveMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6151,8 +5585,6 @@ func TestArchiveMapIndex(t *testing.T) {
 }
 
 func TestToArchiveMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveMap(map[string]Archive{"baz": NewFileArchive("foo.zip")}).ToArchiveMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6167,8 +5599,6 @@ func TestToArchiveMap(t *testing.T) {
 }
 
 func TestTopLevelToArchiveMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveMapOutput(map[string]ArchiveOutput{"baz": ToOutput(NewFileArchive("foo.zip")).(ArchiveOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6183,8 +5613,6 @@ func TestTopLevelToArchiveMapOutput(t *testing.T) {
 }
 
 func TestArchiveArrayMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}).ToArchiveArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6203,8 +5631,6 @@ func TestArchiveArrayMapIndex(t *testing.T) {
 }
 
 func TestToArchiveArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveArrayMap(map[string][]Archive{"baz": {NewFileArchive("foo.zip")}}).ToArchiveArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6219,8 +5645,6 @@ func TestToArchiveArrayMap(t *testing.T) {
 }
 
 func TestTopLevelToArchiveArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveArrayMapOutput(map[string]ArchiveArrayOutput{"baz": ToOutput(ArchiveArray{NewFileArchive("foo.zip")}).(ArchiveArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6235,8 +5659,6 @@ func TestTopLevelToArchiveArrayMapOutput(t *testing.T) {
 }
 
 func TestArchiveMapMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}).ToArchiveMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6255,8 +5677,6 @@ func TestArchiveMapMapIndex(t *testing.T) {
 }
 
 func TestToArchiveMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveMapMap(map[string]map[string]Archive{"baz": {"baz": NewFileArchive("foo.zip")}}).ToArchiveMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6271,8 +5691,6 @@ func TestToArchiveMapMap(t *testing.T) {
 }
 
 func TestTopLevelToArchiveMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToArchiveMapMapOutput(map[string]ArchiveMapOutput{"baz": ToOutput(ArchiveMap{"baz": NewFileArchive("foo.zip")}).(ArchiveMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6287,8 +5705,6 @@ func TestTopLevelToArchiveMapMapOutput(t *testing.T) {
 }
 
 func TestAssetMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetMap{"baz": NewFileAsset("foo.txt")}).ToAssetMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6307,8 +5723,6 @@ func TestAssetMapIndex(t *testing.T) {
 }
 
 func TestToAssetMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetMap(map[string]Asset{"baz": NewFileAsset("foo.txt")}).ToAssetMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6323,8 +5737,6 @@ func TestToAssetMap(t *testing.T) {
 }
 
 func TestTopLevelToAssetMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetMapOutput(map[string]AssetOutput{"baz": ToOutput(NewFileAsset("foo.txt")).(AssetOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6339,8 +5751,6 @@ func TestTopLevelToAssetMapOutput(t *testing.T) {
 }
 
 func TestAssetArrayMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}).ToAssetArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6359,8 +5769,6 @@ func TestAssetArrayMapIndex(t *testing.T) {
 }
 
 func TestToAssetArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetArrayMap(map[string][]Asset{"baz": {NewFileAsset("foo.txt")}}).ToAssetArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6375,8 +5783,6 @@ func TestToAssetArrayMap(t *testing.T) {
 }
 
 func TestTopLevelToAssetArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetArrayMapOutput(map[string]AssetArrayOutput{"baz": ToOutput(AssetArray{NewFileAsset("foo.txt")}).(AssetArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6391,8 +5797,6 @@ func TestTopLevelToAssetArrayMapOutput(t *testing.T) {
 }
 
 func TestAssetMapMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}).ToAssetMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6411,8 +5815,6 @@ func TestAssetMapMapIndex(t *testing.T) {
 }
 
 func TestToAssetMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetMapMap(map[string]map[string]Asset{"baz": {"baz": NewFileAsset("foo.txt")}}).ToAssetMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6427,8 +5829,6 @@ func TestToAssetMapMap(t *testing.T) {
 }
 
 func TestTopLevelToAssetMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToAssetMapMapOutput(map[string]AssetMapOutput{"baz": ToOutput(AssetMap{"baz": NewFileAsset("foo.txt")}).(AssetMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6443,8 +5843,6 @@ func TestTopLevelToAssetMapMapOutput(t *testing.T) {
 }
 
 func TestAssetOrArchiveMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}).ToAssetOrArchiveMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6463,8 +5861,6 @@ func TestAssetOrArchiveMapIndex(t *testing.T) {
 }
 
 func TestAssetOrArchiveArrayMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetOrArchiveArrayMap{"baz": AssetOrArchiveArray{NewFileArchive("foo.zip")}}).ToAssetOrArchiveArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6483,8 +5879,6 @@ func TestAssetOrArchiveArrayMapIndex(t *testing.T) {
 }
 
 func TestAssetOrArchiveMapMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (AssetOrArchiveMapMap{"baz": AssetOrArchiveMap{"baz": NewFileArchive("foo.zip")}}).ToAssetOrArchiveMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6503,8 +5897,6 @@ func TestAssetOrArchiveMapMapIndex(t *testing.T) {
 }
 
 func TestBoolMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (BoolMap{"baz": Bool(true)}).ToBoolMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6523,8 +5915,6 @@ func TestBoolMapIndex(t *testing.T) {
 }
 
 func TestToBoolMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolMap(map[string]bool{"baz": true}).ToBoolMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6539,8 +5929,6 @@ func TestToBoolMap(t *testing.T) {
 }
 
 func TestTopLevelToBoolMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolMapOutput(map[string]BoolOutput{"baz": ToOutput(Bool(true)).(BoolOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6555,8 +5943,6 @@ func TestTopLevelToBoolMapOutput(t *testing.T) {
 }
 
 func TestBoolArrayMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (BoolArrayMap{"baz": BoolArray{Bool(true)}}).ToBoolArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6575,8 +5961,6 @@ func TestBoolArrayMapIndex(t *testing.T) {
 }
 
 func TestToBoolArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolArrayMap(map[string][]bool{"baz": {true}}).ToBoolArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6591,8 +5975,6 @@ func TestToBoolArrayMap(t *testing.T) {
 }
 
 func TestTopLevelToBoolArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolArrayMapOutput(map[string]BoolArrayOutput{"baz": ToOutput(BoolArray{Bool(true)}).(BoolArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6607,8 +5989,6 @@ func TestTopLevelToBoolArrayMapOutput(t *testing.T) {
 }
 
 func TestBoolMapMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (BoolMapMap{"baz": BoolMap{"baz": Bool(true)}}).ToBoolMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6627,8 +6007,6 @@ func TestBoolMapMapIndex(t *testing.T) {
 }
 
 func TestToBoolMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolMapMap(map[string]map[string]bool{"baz": {"baz": true}}).ToBoolMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6643,8 +6021,6 @@ func TestToBoolMapMap(t *testing.T) {
 }
 
 func TestTopLevelToBoolMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToBoolMapMapOutput(map[string]BoolMapOutput{"baz": ToOutput(BoolMap{"baz": Bool(true)}).(BoolMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6659,8 +6035,6 @@ func TestTopLevelToBoolMapMapOutput(t *testing.T) {
 }
 
 func TestFloat64MapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (Float64Map{"baz": Float64(999.9)}).ToFloat64MapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6679,8 +6053,6 @@ func TestFloat64MapIndex(t *testing.T) {
 }
 
 func TestToFloat64Map(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64Map(map[string]float64{"baz": 999.9}).ToFloat64MapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6695,8 +6067,6 @@ func TestToFloat64Map(t *testing.T) {
 }
 
 func TestTopLevelToFloat64MapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64MapOutput(map[string]Float64Output{"baz": ToOutput(Float64(999.9)).(Float64Output)})
 
 	av, known, _, _, err := await(out)
@@ -6711,8 +6081,6 @@ func TestTopLevelToFloat64MapOutput(t *testing.T) {
 }
 
 func TestFloat64ArrayMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (Float64ArrayMap{"baz": Float64Array{Float64(999.9)}}).ToFloat64ArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6731,8 +6099,6 @@ func TestFloat64ArrayMapIndex(t *testing.T) {
 }
 
 func TestToFloat64ArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64ArrayMap(map[string][]float64{"baz": {999.9}}).ToFloat64ArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6747,8 +6113,6 @@ func TestToFloat64ArrayMap(t *testing.T) {
 }
 
 func TestTopLevelToFloat64ArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64ArrayMapOutput(map[string]Float64ArrayOutput{"baz": ToOutput(Float64Array{Float64(999.9)}).(Float64ArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6763,8 +6127,6 @@ func TestTopLevelToFloat64ArrayMapOutput(t *testing.T) {
 }
 
 func TestFloat64MapMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}).ToFloat64MapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6783,8 +6145,6 @@ func TestFloat64MapMapIndex(t *testing.T) {
 }
 
 func TestToFloat64MapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64MapMap(map[string]map[string]float64{"baz": {"baz": 999.9}}).ToFloat64MapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6799,8 +6159,6 @@ func TestToFloat64MapMap(t *testing.T) {
 }
 
 func TestTopLevelToFloat64MapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToFloat64MapMapOutput(map[string]Float64MapOutput{"baz": ToOutput(Float64Map{"baz": Float64(999.9)}).(Float64MapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6815,8 +6173,6 @@ func TestTopLevelToFloat64MapMapOutput(t *testing.T) {
 }
 
 func TestIDMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IDMap{"baz": ID("foo")}).ToIDMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6835,8 +6191,6 @@ func TestIDMapIndex(t *testing.T) {
 }
 
 func TestToIDMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDMap(map[string]ID{"baz": ID("foo")}).ToIDMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6851,8 +6205,6 @@ func TestToIDMap(t *testing.T) {
 }
 
 func TestTopLevelToIDMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDMapOutput(map[string]IDOutput{"baz": ToOutput(ID("foo")).(IDOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6867,8 +6219,6 @@ func TestTopLevelToIDMapOutput(t *testing.T) {
 }
 
 func TestIDArrayMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IDArrayMap{"baz": IDArray{ID("foo")}}).ToIDArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6887,8 +6237,6 @@ func TestIDArrayMapIndex(t *testing.T) {
 }
 
 func TestToIDArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDArrayMap(map[string][]ID{"baz": {ID("foo")}}).ToIDArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6903,8 +6251,6 @@ func TestToIDArrayMap(t *testing.T) {
 }
 
 func TestTopLevelToIDArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDArrayMapOutput(map[string]IDArrayOutput{"baz": ToOutput(IDArray{ID("foo")}).(IDArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6919,8 +6265,6 @@ func TestTopLevelToIDArrayMapOutput(t *testing.T) {
 }
 
 func TestIDMapMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IDMapMap{"baz": IDMap{"baz": ID("foo")}}).ToIDMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6939,8 +6283,6 @@ func TestIDMapMapIndex(t *testing.T) {
 }
 
 func TestToIDMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDMapMap(map[string]map[string]ID{"baz": {"baz": ID("foo")}}).ToIDMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6955,8 +6297,6 @@ func TestToIDMapMap(t *testing.T) {
 }
 
 func TestTopLevelToIDMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIDMapMapOutput(map[string]IDMapOutput{"baz": ToOutput(IDMap{"baz": ID("foo")}).(IDMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -6971,8 +6311,6 @@ func TestTopLevelToIDMapMapOutput(t *testing.T) {
 }
 
 func TestMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (Map{"baz": String("any")}).ToMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -6991,8 +6329,6 @@ func TestMapIndex(t *testing.T) {
 }
 
 func TestToMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToMap(map[string]interface{}{"baz": String("any")}).ToMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7007,8 +6343,6 @@ func TestToMap(t *testing.T) {
 }
 
 func TestTopLevelToMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToMapOutput(map[string]Output{"baz": ToOutput(String("any")).(Output)})
 
 	av, known, _, _, err := await(out)
@@ -7023,8 +6357,6 @@ func TestTopLevelToMapOutput(t *testing.T) {
 }
 
 func TestArrayMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (ArrayMap{"baz": Array{String("any")}}).ToArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7043,8 +6375,6 @@ func TestArrayMapIndex(t *testing.T) {
 }
 
 func TestToArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToArrayMap(map[string][]interface{}{"baz": {String("any")}}).ToArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7059,8 +6389,6 @@ func TestToArrayMap(t *testing.T) {
 }
 
 func TestTopLevelToArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToArrayMapOutput(map[string]ArrayOutput{"baz": ToOutput(Array{String("any")}).(ArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -7075,8 +6403,6 @@ func TestTopLevelToArrayMapOutput(t *testing.T) {
 }
 
 func TestMapMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (MapMap{"baz": Map{"baz": String("any")}}).ToMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7095,8 +6421,6 @@ func TestMapMapIndex(t *testing.T) {
 }
 
 func TestToMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToMapMap(map[string]map[string]interface{}{"baz": {"baz": String("any")}}).ToMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7111,8 +6435,6 @@ func TestToMapMap(t *testing.T) {
 }
 
 func TestTopLevelToMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToMapMapOutput(map[string]MapOutput{"baz": ToOutput(Map{"baz": String("any")}).(MapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -7127,8 +6449,6 @@ func TestTopLevelToMapMapOutput(t *testing.T) {
 }
 
 func TestArrayArrayMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (ArrayArrayMap{"baz": ArrayArray{Array{String("any")}}}).ToArrayArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7147,8 +6467,6 @@ func TestArrayArrayMapIndex(t *testing.T) {
 }
 
 func TestToArrayArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToArrayArrayMap(map[string][][]interface{}{"baz": {{String("any")}}}).ToArrayArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7163,8 +6481,6 @@ func TestToArrayArrayMap(t *testing.T) {
 }
 
 func TestTopLevelToArrayArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToArrayArrayMapOutput(map[string]ArrayArrayOutput{"baz": ToOutput(ArrayArray{Array{String("any")}}).(ArrayArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -7179,8 +6495,6 @@ func TestTopLevelToArrayArrayMapOutput(t *testing.T) {
 }
 
 func TestIntMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IntMap{"baz": Int(42)}).ToIntMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7199,8 +6513,6 @@ func TestIntMapIndex(t *testing.T) {
 }
 
 func TestToIntMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntMap(map[string]int{"baz": 42}).ToIntMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7215,8 +6527,6 @@ func TestToIntMap(t *testing.T) {
 }
 
 func TestTopLevelToIntMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntMapOutput(map[string]IntOutput{"baz": ToOutput(Int(42)).(IntOutput)})
 
 	av, known, _, _, err := await(out)
@@ -7231,8 +6541,6 @@ func TestTopLevelToIntMapOutput(t *testing.T) {
 }
 
 func TestIntArrayMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IntArrayMap{"baz": IntArray{Int(42)}}).ToIntArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7251,8 +6559,6 @@ func TestIntArrayMapIndex(t *testing.T) {
 }
 
 func TestToIntArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntArrayMap(map[string][]int{"baz": {42}}).ToIntArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7267,8 +6573,6 @@ func TestToIntArrayMap(t *testing.T) {
 }
 
 func TestTopLevelToIntArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntArrayMapOutput(map[string]IntArrayOutput{"baz": ToOutput(IntArray{Int(42)}).(IntArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -7283,8 +6587,6 @@ func TestTopLevelToIntArrayMapOutput(t *testing.T) {
 }
 
 func TestIntMapMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (IntMapMap{"baz": IntMap{"baz": Int(42)}}).ToIntMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7303,8 +6605,6 @@ func TestIntMapMapIndex(t *testing.T) {
 }
 
 func TestToIntMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntMapMap(map[string]map[string]int{"baz": {"baz": 42}}).ToIntMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7319,8 +6619,6 @@ func TestToIntMapMap(t *testing.T) {
 }
 
 func TestTopLevelToIntMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToIntMapMapOutput(map[string]IntMapOutput{"baz": ToOutput(IntMap{"baz": Int(42)}).(IntMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -7335,8 +6633,6 @@ func TestTopLevelToIntMapMapOutput(t *testing.T) {
 }
 
 func TestStringMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (StringMap{"baz": String("foo")}).ToStringMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7355,8 +6651,6 @@ func TestStringMapIndex(t *testing.T) {
 }
 
 func TestToStringMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringMap(map[string]string{"baz": "foo"}).ToStringMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7371,8 +6665,6 @@ func TestToStringMap(t *testing.T) {
 }
 
 func TestTopLevelToStringMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringMapOutput(map[string]StringOutput{"baz": ToOutput(String("foo")).(StringOutput)})
 
 	av, known, _, _, err := await(out)
@@ -7387,8 +6679,6 @@ func TestTopLevelToStringMapOutput(t *testing.T) {
 }
 
 func TestStringArrayMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (StringArrayMap{"baz": StringArray{String("foo")}}).ToStringArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7407,8 +6697,6 @@ func TestStringArrayMapIndex(t *testing.T) {
 }
 
 func TestToStringArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringArrayMap(map[string][]string{"baz": {"foo"}}).ToStringArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7423,8 +6711,6 @@ func TestToStringArrayMap(t *testing.T) {
 }
 
 func TestTopLevelToStringArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringArrayMapOutput(map[string]StringArrayOutput{"baz": ToOutput(StringArray{String("foo")}).(StringArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -7439,8 +6725,6 @@ func TestTopLevelToStringArrayMapOutput(t *testing.T) {
 }
 
 func TestStringMapMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (StringMapMap{"baz": StringMap{"baz": String("foo")}}).ToStringMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7459,8 +6743,6 @@ func TestStringMapMapIndex(t *testing.T) {
 }
 
 func TestToStringMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringMapMap(map[string]map[string]string{"baz": {"baz": "foo"}}).ToStringMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7475,8 +6757,6 @@ func TestToStringMapMap(t *testing.T) {
 }
 
 func TestTopLevelToStringMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToStringMapMapOutput(map[string]StringMapOutput{"baz": ToOutput(StringMap{"baz": String("foo")}).(StringMapOutput)})
 
 	av, known, _, _, err := await(out)
@@ -7491,8 +6771,6 @@ func TestTopLevelToStringMapMapOutput(t *testing.T) {
 }
 
 func TestURNMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (URNMap{"baz": URN("foo")}).ToURNMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7511,8 +6789,6 @@ func TestURNMapIndex(t *testing.T) {
 }
 
 func TestToURNMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNMap(map[string]URN{"baz": URN("foo")}).ToURNMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7527,8 +6803,6 @@ func TestToURNMap(t *testing.T) {
 }
 
 func TestTopLevelToURNMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNMapOutput(map[string]URNOutput{"baz": ToOutput(URN("foo")).(URNOutput)})
 
 	av, known, _, _, err := await(out)
@@ -7543,8 +6817,6 @@ func TestTopLevelToURNMapOutput(t *testing.T) {
 }
 
 func TestURNArrayMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (URNArrayMap{"baz": URNArray{URN("foo")}}).ToURNArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7563,8 +6835,6 @@ func TestURNArrayMapIndex(t *testing.T) {
 }
 
 func TestToURNArrayMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNArrayMap(map[string][]URN{"baz": {URN("foo")}}).ToURNArrayMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7579,8 +6849,6 @@ func TestToURNArrayMap(t *testing.T) {
 }
 
 func TestTopLevelToURNArrayMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNArrayMapOutput(map[string]URNArrayOutput{"baz": ToOutput(URNArray{URN("foo")}).(URNArrayOutput)})
 
 	av, known, _, _, err := await(out)
@@ -7595,8 +6863,6 @@ func TestTopLevelToURNArrayMapOutput(t *testing.T) {
 }
 
 func TestURNMapMapIndex(t *testing.T) {
-	t.Parallel()
-
 	out := (URNMapMap{"baz": URNMap{"baz": URN("foo")}}).ToURNMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7615,8 +6881,6 @@ func TestURNMapMapIndex(t *testing.T) {
 }
 
 func TestToURNMapMap(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNMapMap(map[string]map[string]URN{"baz": {"baz": URN("foo")}}).ToURNMapMapOutput()
 
 	av, known, _, _, err := await(out)
@@ -7631,8 +6895,6 @@ func TestToURNMapMap(t *testing.T) {
 }
 
 func TestTopLevelToURNMapMapOutput(t *testing.T) {
-	t.Parallel()
-
 	out := ToURNMapMapOutput(map[string]URNMapOutput{"baz": ToOutput(URNMap{"baz": URN("foo")}).(URNMapOutput)})
 
 	av, known, _, _, err := await(out)

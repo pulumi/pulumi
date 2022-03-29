@@ -6,7 +6,6 @@ from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf import reflection as _reflection
 from google.protobuf import symbol_database as _symbol_database
-
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
@@ -18,3800 +17,2279 @@ from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
-    name="provider.proto",
-    package="pulumirpc",
-    syntax="proto3",
-    serialized_options=None,
-    serialized_pb=b'\n\x0eprovider.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto"#\n\x10GetSchemaRequest\x12\x0f\n\x07version\x18\x01 \x01(\x05"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\t"\xda\x01\n\x10\x43onfigureRequest\x12=\n\tvariables\x18\x01 \x03(\x0b\x32*.pulumirpc.ConfigureRequest.VariablesEntry\x12%\n\x04\x61rgs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x15\n\racceptSecrets\x18\x03 \x01(\x08\x12\x17\n\x0f\x61\x63\x63\x65ptResources\x18\x04 \x01(\x08\x1a\x30\n\x0eVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01"s\n\x11\x43onfigureResponse\x12\x15\n\racceptSecrets\x18\x01 \x01(\x08\x12\x17\n\x0fsupportsPreview\x18\x02 \x01(\x08\x12\x17\n\x0f\x61\x63\x63\x65ptResources\x18\x03 \x01(\x08\x12\x15\n\racceptOutputs\x18\x04 \x01(\x08"\x92\x01\n\x19\x43onfigureErrorMissingKeys\x12\x44\n\x0bmissingKeys\x18\x01 \x03(\x0b\x32/.pulumirpc.ConfigureErrorMissingKeys.MissingKey\x1a/\n\nMissingKey\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t"\x9a\x01\n\rInvokeRequest\x12\x0b\n\x03tok\x18\x01 \x01(\t\x12%\n\x04\x61rgs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x10\n\x08provider\x18\x03 \x01(\t\x12\x0f\n\x07version\x18\x04 \x01(\t\x12\x17\n\x0f\x61\x63\x63\x65ptResources\x18\x05 \x01(\x08\x12\x19\n\x11pluginDownloadURL\x18\x06 \x01(\t"d\n\x0eInvokeResponse\x12\'\n\x06return\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12)\n\x08\x66\x61ilures\x18\x02 \x03(\x0b\x32\x17.pulumirpc.CheckFailure"\xa8\x04\n\x0b\x43\x61llRequest\x12\x0b\n\x03tok\x18\x01 \x01(\t\x12%\n\x04\x61rgs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x44\n\x0f\x61rgDependencies\x18\x03 \x03(\x0b\x32+.pulumirpc.CallRequest.ArgDependenciesEntry\x12\x10\n\x08provider\x18\x04 \x01(\t\x12\x0f\n\x07version\x18\x05 \x01(\t\x12\x19\n\x11pluginDownloadURL\x18\r \x01(\t\x12\x0f\n\x07project\x18\x06 \x01(\t\x12\r\n\x05stack\x18\x07 \x01(\t\x12\x32\n\x06\x63onfig\x18\x08 \x03(\x0b\x32".pulumirpc.CallRequest.ConfigEntry\x12\x18\n\x10\x63onfigSecretKeys\x18\t \x03(\t\x12\x0e\n\x06\x64ryRun\x18\n \x01(\x08\x12\x10\n\x08parallel\x18\x0b \x01(\x05\x12\x17\n\x0fmonitorEndpoint\x18\x0c \x01(\t\x1a$\n\x14\x41rgumentDependencies\x12\x0c\n\x04urns\x18\x01 \x03(\t\x1a\x63\n\x14\x41rgDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12:\n\x05value\x18\x02 \x01(\x0b\x32+.pulumirpc.CallRequest.ArgumentDependencies:\x02\x38\x01\x1a-\n\x0b\x43onfigEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01"\xba\x02\n\x0c\x43\x61llResponse\x12\'\n\x06return\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12K\n\x12returnDependencies\x18\x02 \x03(\x0b\x32/.pulumirpc.CallResponse.ReturnDependenciesEntry\x12)\n\x08\x66\x61ilures\x18\x03 \x03(\x0b\x32\x17.pulumirpc.CheckFailure\x1a"\n\x12ReturnDependencies\x12\x0c\n\x04urns\x18\x01 \x03(\t\x1a\x65\n\x17ReturnDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x39\n\x05value\x18\x02 \x01(\x0b\x32*.pulumirpc.CallResponse.ReturnDependencies:\x02\x38\x01"\x81\x01\n\x0c\x43heckRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12%\n\x04olds\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x16\n\x0esequenceNumber\x18\x04 \x01(\x05"c\n\rCheckResponse\x12\'\n\x06inputs\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12)\n\x08\x66\x61ilures\x18\x02 \x03(\x0b\x32\x17.pulumirpc.CheckFailure"0\n\x0c\x43heckFailure\x12\x10\n\x08property\x18\x01 \x01(\t\x12\x0e\n\x06reason\x18\x02 \x01(\t"\x8b\x01\n\x0b\x44iffRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12%\n\x04olds\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x15\n\rignoreChanges\x18\x05 \x03(\t"\xaf\x01\n\x0cPropertyDiff\x12*\n\x04kind\x18\x01 \x01(\x0e\x32\x1c.pulumirpc.PropertyDiff.Kind\x12\x11\n\tinputDiff\x18\x02 \x01(\x08"`\n\x04Kind\x12\x07\n\x03\x41\x44\x44\x10\x00\x12\x0f\n\x0b\x41\x44\x44_REPLACE\x10\x01\x12\n\n\x06\x44\x45LETE\x10\x02\x12\x12\n\x0e\x44\x45LETE_REPLACE\x10\x03\x12\n\n\x06UPDATE\x10\x04\x12\x12\n\x0eUPDATE_REPLACE\x10\x05"\xfa\x02\n\x0c\x44iffResponse\x12\x10\n\x08replaces\x18\x01 \x03(\t\x12\x0f\n\x07stables\x18\x02 \x03(\t\x12\x1b\n\x13\x64\x65leteBeforeReplace\x18\x03 \x01(\x08\x12\x34\n\x07\x63hanges\x18\x04 \x01(\x0e\x32#.pulumirpc.DiffResponse.DiffChanges\x12\r\n\x05\x64iffs\x18\x05 \x03(\t\x12?\n\x0c\x64\x65tailedDiff\x18\x06 \x03(\x0b\x32).pulumirpc.DiffResponse.DetailedDiffEntry\x12\x17\n\x0fhasDetailedDiff\x18\x07 \x01(\x08\x1aL\n\x11\x44\x65tailedDiffEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12&\n\x05value\x18\x02 \x01(\x0b\x32\x17.pulumirpc.PropertyDiff:\x02\x38\x01"=\n\x0b\x44iffChanges\x12\x10\n\x0c\x44IFF_UNKNOWN\x10\x00\x12\r\n\tDIFF_NONE\x10\x01\x12\r\n\tDIFF_SOME\x10\x02"k\n\rCreateRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0f\n\x07timeout\x18\x03 \x01(\x01\x12\x0f\n\x07preview\x18\x04 \x01(\x08"I\n\x0e\x43reateResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct"|\n\x0bReadRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12+\n\nproperties\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\'\n\x06inputs\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct"p\n\x0cReadResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\'\n\x06inputs\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct"\xaf\x01\n\rUpdateRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12%\n\x04olds\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0f\n\x07timeout\x18\x05 \x01(\x01\x12\x15\n\rignoreChanges\x18\x06 \x03(\t\x12\x0f\n\x07preview\x18\x07 \x01(\x08"=\n\x0eUpdateResponse\x12+\n\nproperties\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct"f\n\rDeleteRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12+\n\nproperties\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0f\n\x07timeout\x18\x04 \x01(\x01"\xce\x05\n\x10\x43onstructRequest\x12\x0f\n\x07project\x18\x01 \x01(\t\x12\r\n\x05stack\x18\x02 \x01(\t\x12\x37\n\x06\x63onfig\x18\x03 \x03(\x0b\x32\'.pulumirpc.ConstructRequest.ConfigEntry\x12\x0e\n\x06\x64ryRun\x18\x04 \x01(\x08\x12\x10\n\x08parallel\x18\x05 \x01(\x05\x12\x17\n\x0fmonitorEndpoint\x18\x06 \x01(\t\x12\x0c\n\x04type\x18\x07 \x01(\t\x12\x0c\n\x04name\x18\x08 \x01(\t\x12\x0e\n\x06parent\x18\t \x01(\t\x12\'\n\x06inputs\x18\n \x01(\x0b\x32\x17.google.protobuf.Struct\x12M\n\x11inputDependencies\x18\x0b \x03(\x0b\x32\x32.pulumirpc.ConstructRequest.InputDependenciesEntry\x12\x0f\n\x07protect\x18\x0c \x01(\x08\x12=\n\tproviders\x18\r \x03(\x0b\x32*.pulumirpc.ConstructRequest.ProvidersEntry\x12\x0f\n\x07\x61liases\x18\x0e \x03(\t\x12\x14\n\x0c\x64\x65pendencies\x18\x0f \x03(\t\x12\x18\n\x10\x63onfigSecretKeys\x18\x10 \x03(\t\x1a$\n\x14PropertyDependencies\x12\x0c\n\x04urns\x18\x01 \x03(\t\x1a-\n\x0b\x43onfigEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1aj\n\x16InputDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12?\n\x05value\x18\x02 \x01(\x0b\x32\x30.pulumirpc.ConstructRequest.PropertyDependencies:\x02\x38\x01\x1a\x30\n\x0eProvidersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01"\xab\x02\n\x11\x43onstructResponse\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12&\n\x05state\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12N\n\x11stateDependencies\x18\x03 \x03(\x0b\x32\x33.pulumirpc.ConstructResponse.StateDependenciesEntry\x1a$\n\x14PropertyDependencies\x12\x0c\n\x04urns\x18\x01 \x03(\t\x1ak\n\x16StateDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12@\n\x05value\x18\x02 \x01(\x0b\x32\x31.pulumirpc.ConstructResponse.PropertyDependencies:\x02\x38\x01"\x8c\x01\n\x17\x45rrorResourceInitFailed\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0f\n\x07reasons\x18\x03 \x03(\t\x12\'\n\x06inputs\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct2\xe9\x08\n\x10ResourceProvider\x12H\n\tGetSchema\x12\x1b.pulumirpc.GetSchemaRequest\x1a\x1c.pulumirpc.GetSchemaResponse"\x00\x12\x42\n\x0b\x43heckConfig\x12\x17.pulumirpc.CheckRequest\x1a\x18.pulumirpc.CheckResponse"\x00\x12?\n\nDiffConfig\x12\x16.pulumirpc.DiffRequest\x1a\x17.pulumirpc.DiffResponse"\x00\x12H\n\tConfigure\x12\x1b.pulumirpc.ConfigureRequest\x1a\x1c.pulumirpc.ConfigureResponse"\x00\x12?\n\x06Invoke\x12\x18.pulumirpc.InvokeRequest\x1a\x19.pulumirpc.InvokeResponse"\x00\x12G\n\x0cStreamInvoke\x12\x18.pulumirpc.InvokeRequest\x1a\x19.pulumirpc.InvokeResponse"\x00\x30\x01\x12\x39\n\x04\x43\x61ll\x12\x16.pulumirpc.CallRequest\x1a\x17.pulumirpc.CallResponse"\x00\x12<\n\x05\x43heck\x12\x17.pulumirpc.CheckRequest\x1a\x18.pulumirpc.CheckResponse"\x00\x12\x39\n\x04\x44iff\x12\x16.pulumirpc.DiffRequest\x1a\x17.pulumirpc.DiffResponse"\x00\x12?\n\x06\x43reate\x12\x18.pulumirpc.CreateRequest\x1a\x19.pulumirpc.CreateResponse"\x00\x12\x39\n\x04Read\x12\x16.pulumirpc.ReadRequest\x1a\x17.pulumirpc.ReadResponse"\x00\x12?\n\x06Update\x12\x18.pulumirpc.UpdateRequest\x1a\x19.pulumirpc.UpdateResponse"\x00\x12<\n\x06\x44\x65lete\x12\x18.pulumirpc.DeleteRequest\x1a\x16.google.protobuf.Empty"\x00\x12H\n\tConstruct\x12\x1b.pulumirpc.ConstructRequest\x1a\x1c.pulumirpc.ConstructResponse"\x00\x12:\n\x06\x43\x61ncel\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo"\x00\x12;\n\x06\x41ttach\x12\x17.pulumirpc.PluginAttach\x1a\x16.google.protobuf.Empty"\x00\x62\x06proto3',
-    dependencies=[
-        plugin__pb2.DESCRIPTOR,
-        google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,
-        google_dot_protobuf_dot_struct__pb2.DESCRIPTOR,
-    ],
-)
+  name='provider.proto',
+  package='pulumirpc',
+  syntax='proto3',
+  serialized_options=None,
+  serialized_pb=b'\n\x0eprovider.proto\x12\tpulumirpc\x1a\x0cplugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"#\n\x10GetSchemaRequest\x12\x0f\n\x07version\x18\x01 \x01(\x05\"#\n\x11GetSchemaResponse\x12\x0e\n\x06schema\x18\x01 \x01(\t\"\xda\x01\n\x10\x43onfigureRequest\x12=\n\tvariables\x18\x01 \x03(\x0b\x32*.pulumirpc.ConfigureRequest.VariablesEntry\x12%\n\x04\x61rgs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x15\n\racceptSecrets\x18\x03 \x01(\x08\x12\x17\n\x0f\x61\x63\x63\x65ptResources\x18\x04 \x01(\x08\x1a\x30\n\x0eVariablesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"s\n\x11\x43onfigureResponse\x12\x15\n\racceptSecrets\x18\x01 \x01(\x08\x12\x17\n\x0fsupportsPreview\x18\x02 \x01(\x08\x12\x17\n\x0f\x61\x63\x63\x65ptResources\x18\x03 \x01(\x08\x12\x15\n\racceptOutputs\x18\x04 \x01(\x08\"\x92\x01\n\x19\x43onfigureErrorMissingKeys\x12\x44\n\x0bmissingKeys\x18\x01 \x03(\x0b\x32/.pulumirpc.ConfigureErrorMissingKeys.MissingKey\x1a/\n\nMissingKey\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\"\x9a\x01\n\rInvokeRequest\x12\x0b\n\x03tok\x18\x01 \x01(\t\x12%\n\x04\x61rgs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x10\n\x08provider\x18\x03 \x01(\t\x12\x0f\n\x07version\x18\x04 \x01(\t\x12\x17\n\x0f\x61\x63\x63\x65ptResources\x18\x05 \x01(\x08\x12\x19\n\x11pluginDownloadURL\x18\x06 \x01(\t\"d\n\x0eInvokeResponse\x12\'\n\x06return\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12)\n\x08\x66\x61ilures\x18\x02 \x03(\x0b\x32\x17.pulumirpc.CheckFailure\"\xa8\x04\n\x0b\x43\x61llRequest\x12\x0b\n\x03tok\x18\x01 \x01(\t\x12%\n\x04\x61rgs\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x44\n\x0f\x61rgDependencies\x18\x03 \x03(\x0b\x32+.pulumirpc.CallRequest.ArgDependenciesEntry\x12\x10\n\x08provider\x18\x04 \x01(\t\x12\x0f\n\x07version\x18\x05 \x01(\t\x12\x19\n\x11pluginDownloadURL\x18\r \x01(\t\x12\x0f\n\x07project\x18\x06 \x01(\t\x12\r\n\x05stack\x18\x07 \x01(\t\x12\x32\n\x06\x63onfig\x18\x08 \x03(\x0b\x32\".pulumirpc.CallRequest.ConfigEntry\x12\x18\n\x10\x63onfigSecretKeys\x18\t \x03(\t\x12\x0e\n\x06\x64ryRun\x18\n \x01(\x08\x12\x10\n\x08parallel\x18\x0b \x01(\x05\x12\x17\n\x0fmonitorEndpoint\x18\x0c \x01(\t\x1a$\n\x14\x41rgumentDependencies\x12\x0c\n\x04urns\x18\x01 \x03(\t\x1a\x63\n\x14\x41rgDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12:\n\x05value\x18\x02 \x01(\x0b\x32+.pulumirpc.CallRequest.ArgumentDependencies:\x02\x38\x01\x1a-\n\x0b\x43onfigEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xba\x02\n\x0c\x43\x61llResponse\x12\'\n\x06return\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12K\n\x12returnDependencies\x18\x02 \x03(\x0b\x32/.pulumirpc.CallResponse.ReturnDependenciesEntry\x12)\n\x08\x66\x61ilures\x18\x03 \x03(\x0b\x32\x17.pulumirpc.CheckFailure\x1a\"\n\x12ReturnDependencies\x12\x0c\n\x04urns\x18\x01 \x03(\t\x1a\x65\n\x17ReturnDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x39\n\x05value\x18\x02 \x01(\x0b\x32*.pulumirpc.CallResponse.ReturnDependencies:\x02\x38\x01\"\x81\x01\n\x0c\x43heckRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12%\n\x04olds\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x16\n\x0esequenceNumber\x18\x04 \x01(\x05\"c\n\rCheckResponse\x12\'\n\x06inputs\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\x12)\n\x08\x66\x61ilures\x18\x02 \x03(\x0b\x32\x17.pulumirpc.CheckFailure\"0\n\x0c\x43heckFailure\x12\x10\n\x08property\x18\x01 \x01(\t\x12\x0e\n\x06reason\x18\x02 \x01(\t\"\x8b\x01\n\x0b\x44iffRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12%\n\x04olds\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x15\n\rignoreChanges\x18\x05 \x03(\t\"\xaf\x01\n\x0cPropertyDiff\x12*\n\x04kind\x18\x01 \x01(\x0e\x32\x1c.pulumirpc.PropertyDiff.Kind\x12\x11\n\tinputDiff\x18\x02 \x01(\x08\"`\n\x04Kind\x12\x07\n\x03\x41\x44\x44\x10\x00\x12\x0f\n\x0b\x41\x44\x44_REPLACE\x10\x01\x12\n\n\x06\x44\x45LETE\x10\x02\x12\x12\n\x0e\x44\x45LETE_REPLACE\x10\x03\x12\n\n\x06UPDATE\x10\x04\x12\x12\n\x0eUPDATE_REPLACE\x10\x05\"\xfa\x02\n\x0c\x44iffResponse\x12\x10\n\x08replaces\x18\x01 \x03(\t\x12\x0f\n\x07stables\x18\x02 \x03(\t\x12\x1b\n\x13\x64\x65leteBeforeReplace\x18\x03 \x01(\x08\x12\x34\n\x07\x63hanges\x18\x04 \x01(\x0e\x32#.pulumirpc.DiffResponse.DiffChanges\x12\r\n\x05\x64iffs\x18\x05 \x03(\t\x12?\n\x0c\x64\x65tailedDiff\x18\x06 \x03(\x0b\x32).pulumirpc.DiffResponse.DetailedDiffEntry\x12\x17\n\x0fhasDetailedDiff\x18\x07 \x01(\x08\x1aL\n\x11\x44\x65tailedDiffEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12&\n\x05value\x18\x02 \x01(\x0b\x32\x17.pulumirpc.PropertyDiff:\x02\x38\x01\"=\n\x0b\x44iffChanges\x12\x10\n\x0c\x44IFF_UNKNOWN\x10\x00\x12\r\n\tDIFF_NONE\x10\x01\x12\r\n\tDIFF_SOME\x10\x02\"k\n\rCreateRequest\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0f\n\x07timeout\x18\x03 \x01(\x01\x12\x0f\n\x07preview\x18\x04 \x01(\x08\"I\n\x0e\x43reateResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\"|\n\x0bReadRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12+\n\nproperties\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\'\n\x06inputs\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\"p\n\x0cReadResponse\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\'\n\x06inputs\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\"\xaf\x01\n\rUpdateRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12%\n\x04olds\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12%\n\x04news\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0f\n\x07timeout\x18\x05 \x01(\x01\x12\x15\n\rignoreChanges\x18\x06 \x03(\t\x12\x0f\n\x07preview\x18\x07 \x01(\x08\"=\n\x0eUpdateResponse\x12+\n\nproperties\x18\x01 \x01(\x0b\x32\x17.google.protobuf.Struct\"f\n\rDeleteRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0b\n\x03urn\x18\x02 \x01(\t\x12+\n\nproperties\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0f\n\x07timeout\x18\x04 \x01(\x01\"\xce\x05\n\x10\x43onstructRequest\x12\x0f\n\x07project\x18\x01 \x01(\t\x12\r\n\x05stack\x18\x02 \x01(\t\x12\x37\n\x06\x63onfig\x18\x03 \x03(\x0b\x32\'.pulumirpc.ConstructRequest.ConfigEntry\x12\x0e\n\x06\x64ryRun\x18\x04 \x01(\x08\x12\x10\n\x08parallel\x18\x05 \x01(\x05\x12\x17\n\x0fmonitorEndpoint\x18\x06 \x01(\t\x12\x0c\n\x04type\x18\x07 \x01(\t\x12\x0c\n\x04name\x18\x08 \x01(\t\x12\x0e\n\x06parent\x18\t \x01(\t\x12\'\n\x06inputs\x18\n \x01(\x0b\x32\x17.google.protobuf.Struct\x12M\n\x11inputDependencies\x18\x0b \x03(\x0b\x32\x32.pulumirpc.ConstructRequest.InputDependenciesEntry\x12\x0f\n\x07protect\x18\x0c \x01(\x08\x12=\n\tproviders\x18\r \x03(\x0b\x32*.pulumirpc.ConstructRequest.ProvidersEntry\x12\x0f\n\x07\x61liases\x18\x0e \x03(\t\x12\x14\n\x0c\x64\x65pendencies\x18\x0f \x03(\t\x12\x18\n\x10\x63onfigSecretKeys\x18\x10 \x03(\t\x1a$\n\x14PropertyDependencies\x12\x0c\n\x04urns\x18\x01 \x03(\t\x1a-\n\x0b\x43onfigEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1aj\n\x16InputDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12?\n\x05value\x18\x02 \x01(\x0b\x32\x30.pulumirpc.ConstructRequest.PropertyDependencies:\x02\x38\x01\x1a\x30\n\x0eProvidersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xab\x02\n\x11\x43onstructResponse\x12\x0b\n\x03urn\x18\x01 \x01(\t\x12&\n\x05state\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12N\n\x11stateDependencies\x18\x03 \x03(\x0b\x32\x33.pulumirpc.ConstructResponse.StateDependenciesEntry\x1a$\n\x14PropertyDependencies\x12\x0c\n\x04urns\x18\x01 \x03(\t\x1ak\n\x16StateDependenciesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12@\n\x05value\x18\x02 \x01(\x0b\x32\x31.pulumirpc.ConstructResponse.PropertyDependencies:\x02\x38\x01\"\x8c\x01\n\x17\x45rrorResourceInitFailed\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\nproperties\x18\x02 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x0f\n\x07reasons\x18\x03 \x03(\t\x12\'\n\x06inputs\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct2\xe9\x08\n\x10ResourceProvider\x12H\n\tGetSchema\x12\x1b.pulumirpc.GetSchemaRequest\x1a\x1c.pulumirpc.GetSchemaResponse\"\x00\x12\x42\n\x0b\x43heckConfig\x12\x17.pulumirpc.CheckRequest\x1a\x18.pulumirpc.CheckResponse\"\x00\x12?\n\nDiffConfig\x12\x16.pulumirpc.DiffRequest\x1a\x17.pulumirpc.DiffResponse\"\x00\x12H\n\tConfigure\x12\x1b.pulumirpc.ConfigureRequest\x1a\x1c.pulumirpc.ConfigureResponse\"\x00\x12?\n\x06Invoke\x12\x18.pulumirpc.InvokeRequest\x1a\x19.pulumirpc.InvokeResponse\"\x00\x12G\n\x0cStreamInvoke\x12\x18.pulumirpc.InvokeRequest\x1a\x19.pulumirpc.InvokeResponse\"\x00\x30\x01\x12\x39\n\x04\x43\x61ll\x12\x16.pulumirpc.CallRequest\x1a\x17.pulumirpc.CallResponse\"\x00\x12<\n\x05\x43heck\x12\x17.pulumirpc.CheckRequest\x1a\x18.pulumirpc.CheckResponse\"\x00\x12\x39\n\x04\x44iff\x12\x16.pulumirpc.DiffRequest\x1a\x17.pulumirpc.DiffResponse\"\x00\x12?\n\x06\x43reate\x12\x18.pulumirpc.CreateRequest\x1a\x19.pulumirpc.CreateResponse\"\x00\x12\x39\n\x04Read\x12\x16.pulumirpc.ReadRequest\x1a\x17.pulumirpc.ReadResponse\"\x00\x12?\n\x06Update\x12\x18.pulumirpc.UpdateRequest\x1a\x19.pulumirpc.UpdateResponse\"\x00\x12<\n\x06\x44\x65lete\x12\x18.pulumirpc.DeleteRequest\x1a\x16.google.protobuf.Empty\"\x00\x12H\n\tConstruct\x12\x1b.pulumirpc.ConstructRequest\x1a\x1c.pulumirpc.ConstructResponse\"\x00\x12:\n\x06\x43\x61ncel\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12@\n\rGetPluginInfo\x12\x16.google.protobuf.Empty\x1a\x15.pulumirpc.PluginInfo\"\x00\x12;\n\x06\x41ttach\x12\x17.pulumirpc.PluginAttach\x1a\x16.google.protobuf.Empty\"\x00\x62\x06proto3'
+  ,
+  dependencies=[plugin__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,google_dot_protobuf_dot_struct__pb2.DESCRIPTOR,])
+
 
 
 _PROPERTYDIFF_KIND = _descriptor.EnumDescriptor(
-    name="Kind",
-    full_name="pulumirpc.PropertyDiff.Kind",
-    filename=None,
-    file=DESCRIPTOR,
-    values=[
-        _descriptor.EnumValueDescriptor(
-            name="ADD", index=0, number=0, serialized_options=None, type=None
-        ),
-        _descriptor.EnumValueDescriptor(
-            name="ADD_REPLACE", index=1, number=1, serialized_options=None, type=None
-        ),
-        _descriptor.EnumValueDescriptor(
-            name="DELETE", index=2, number=2, serialized_options=None, type=None
-        ),
-        _descriptor.EnumValueDescriptor(
-            name="DELETE_REPLACE", index=3, number=3, serialized_options=None, type=None
-        ),
-        _descriptor.EnumValueDescriptor(
-            name="UPDATE", index=4, number=4, serialized_options=None, type=None
-        ),
-        _descriptor.EnumValueDescriptor(
-            name="UPDATE_REPLACE", index=5, number=5, serialized_options=None, type=None
-        ),
-    ],
-    containing_type=None,
-    serialized_options=None,
-    serialized_start=2299,
-    serialized_end=2395,
+  name='Kind',
+  full_name='pulumirpc.PropertyDiff.Kind',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='ADD', index=0, number=0,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='ADD_REPLACE', index=1, number=1,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DELETE', index=2, number=2,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DELETE_REPLACE', index=3, number=3,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='UPDATE', index=4, number=4,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='UPDATE_REPLACE', index=5, number=5,
+      serialized_options=None,
+      type=None),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=2299,
+  serialized_end=2395,
 )
 _sym_db.RegisterEnumDescriptor(_PROPERTYDIFF_KIND)
 
 _DIFFRESPONSE_DIFFCHANGES = _descriptor.EnumDescriptor(
-    name="DiffChanges",
-    full_name="pulumirpc.DiffResponse.DiffChanges",
-    filename=None,
-    file=DESCRIPTOR,
-    values=[
-        _descriptor.EnumValueDescriptor(
-            name="DIFF_UNKNOWN", index=0, number=0, serialized_options=None, type=None
-        ),
-        _descriptor.EnumValueDescriptor(
-            name="DIFF_NONE", index=1, number=1, serialized_options=None, type=None
-        ),
-        _descriptor.EnumValueDescriptor(
-            name="DIFF_SOME", index=2, number=2, serialized_options=None, type=None
-        ),
-    ],
-    containing_type=None,
-    serialized_options=None,
-    serialized_start=2715,
-    serialized_end=2776,
+  name='DiffChanges',
+  full_name='pulumirpc.DiffResponse.DiffChanges',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='DIFF_UNKNOWN', index=0, number=0,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DIFF_NONE', index=1, number=1,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DIFF_SOME', index=2, number=2,
+      serialized_options=None,
+      type=None),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=2715,
+  serialized_end=2776,
 )
 _sym_db.RegisterEnumDescriptor(_DIFFRESPONSE_DIFFCHANGES)
 
 
 _GETSCHEMAREQUEST = _descriptor.Descriptor(
-    name="GetSchemaRequest",
-    full_name="pulumirpc.GetSchemaRequest",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="version",
-            full_name="pulumirpc.GetSchemaRequest.version",
-            index=0,
-            number=1,
-            type=5,
-            cpp_type=1,
-            label=1,
-            has_default_value=False,
-            default_value=0,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=102,
-    serialized_end=137,
+  name='GetSchemaRequest',
+  full_name='pulumirpc.GetSchemaRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='version', full_name='pulumirpc.GetSchemaRequest.version', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=102,
+  serialized_end=137,
 )
 
 
 _GETSCHEMARESPONSE = _descriptor.Descriptor(
-    name="GetSchemaResponse",
-    full_name="pulumirpc.GetSchemaResponse",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="schema",
-            full_name="pulumirpc.GetSchemaResponse.schema",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=139,
-    serialized_end=174,
+  name='GetSchemaResponse',
+  full_name='pulumirpc.GetSchemaResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='schema', full_name='pulumirpc.GetSchemaResponse.schema', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=139,
+  serialized_end=174,
 )
 
 
 _CONFIGUREREQUEST_VARIABLESENTRY = _descriptor.Descriptor(
-    name="VariablesEntry",
-    full_name="pulumirpc.ConfigureRequest.VariablesEntry",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="key",
-            full_name="pulumirpc.ConfigureRequest.VariablesEntry.key",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="value",
-            full_name="pulumirpc.ConfigureRequest.VariablesEntry.value",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=b"8\001",
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=347,
-    serialized_end=395,
+  name='VariablesEntry',
+  full_name='pulumirpc.ConfigureRequest.VariablesEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.ConfigureRequest.VariablesEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.ConfigureRequest.VariablesEntry.value', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=347,
+  serialized_end=395,
 )
 
 _CONFIGUREREQUEST = _descriptor.Descriptor(
-    name="ConfigureRequest",
-    full_name="pulumirpc.ConfigureRequest",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="variables",
-            full_name="pulumirpc.ConfigureRequest.variables",
-            index=0,
-            number=1,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="args",
-            full_name="pulumirpc.ConfigureRequest.args",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="acceptSecrets",
-            full_name="pulumirpc.ConfigureRequest.acceptSecrets",
-            index=2,
-            number=3,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="acceptResources",
-            full_name="pulumirpc.ConfigureRequest.acceptResources",
-            index=3,
-            number=4,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[
-        _CONFIGUREREQUEST_VARIABLESENTRY,
-    ],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=177,
-    serialized_end=395,
+  name='ConfigureRequest',
+  full_name='pulumirpc.ConfigureRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='variables', full_name='pulumirpc.ConfigureRequest.variables', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='args', full_name='pulumirpc.ConfigureRequest.args', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='acceptSecrets', full_name='pulumirpc.ConfigureRequest.acceptSecrets', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='acceptResources', full_name='pulumirpc.ConfigureRequest.acceptResources', index=3,
+      number=4, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_CONFIGUREREQUEST_VARIABLESENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=177,
+  serialized_end=395,
 )
 
 
 _CONFIGURERESPONSE = _descriptor.Descriptor(
-    name="ConfigureResponse",
-    full_name="pulumirpc.ConfigureResponse",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="acceptSecrets",
-            full_name="pulumirpc.ConfigureResponse.acceptSecrets",
-            index=0,
-            number=1,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="supportsPreview",
-            full_name="pulumirpc.ConfigureResponse.supportsPreview",
-            index=1,
-            number=2,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="acceptResources",
-            full_name="pulumirpc.ConfigureResponse.acceptResources",
-            index=2,
-            number=3,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="acceptOutputs",
-            full_name="pulumirpc.ConfigureResponse.acceptOutputs",
-            index=3,
-            number=4,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=397,
-    serialized_end=512,
+  name='ConfigureResponse',
+  full_name='pulumirpc.ConfigureResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='acceptSecrets', full_name='pulumirpc.ConfigureResponse.acceptSecrets', index=0,
+      number=1, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='supportsPreview', full_name='pulumirpc.ConfigureResponse.supportsPreview', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='acceptResources', full_name='pulumirpc.ConfigureResponse.acceptResources', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='acceptOutputs', full_name='pulumirpc.ConfigureResponse.acceptOutputs', index=3,
+      number=4, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=397,
+  serialized_end=512,
 )
 
 
 _CONFIGUREERRORMISSINGKEYS_MISSINGKEY = _descriptor.Descriptor(
-    name="MissingKey",
-    full_name="pulumirpc.ConfigureErrorMissingKeys.MissingKey",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="name",
-            full_name="pulumirpc.ConfigureErrorMissingKeys.MissingKey.name",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="description",
-            full_name="pulumirpc.ConfigureErrorMissingKeys.MissingKey.description",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=614,
-    serialized_end=661,
+  name='MissingKey',
+  full_name='pulumirpc.ConfigureErrorMissingKeys.MissingKey',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='pulumirpc.ConfigureErrorMissingKeys.MissingKey.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='description', full_name='pulumirpc.ConfigureErrorMissingKeys.MissingKey.description', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=614,
+  serialized_end=661,
 )
 
 _CONFIGUREERRORMISSINGKEYS = _descriptor.Descriptor(
-    name="ConfigureErrorMissingKeys",
-    full_name="pulumirpc.ConfigureErrorMissingKeys",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="missingKeys",
-            full_name="pulumirpc.ConfigureErrorMissingKeys.missingKeys",
-            index=0,
-            number=1,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[
-        _CONFIGUREERRORMISSINGKEYS_MISSINGKEY,
-    ],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=515,
-    serialized_end=661,
+  name='ConfigureErrorMissingKeys',
+  full_name='pulumirpc.ConfigureErrorMissingKeys',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='missingKeys', full_name='pulumirpc.ConfigureErrorMissingKeys.missingKeys', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_CONFIGUREERRORMISSINGKEYS_MISSINGKEY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=515,
+  serialized_end=661,
 )
 
 
 _INVOKEREQUEST = _descriptor.Descriptor(
-    name="InvokeRequest",
-    full_name="pulumirpc.InvokeRequest",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="tok",
-            full_name="pulumirpc.InvokeRequest.tok",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="args",
-            full_name="pulumirpc.InvokeRequest.args",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="provider",
-            full_name="pulumirpc.InvokeRequest.provider",
-            index=2,
-            number=3,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="version",
-            full_name="pulumirpc.InvokeRequest.version",
-            index=3,
-            number=4,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="acceptResources",
-            full_name="pulumirpc.InvokeRequest.acceptResources",
-            index=4,
-            number=5,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="pluginDownloadURL",
-            full_name="pulumirpc.InvokeRequest.pluginDownloadURL",
-            index=5,
-            number=6,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=664,
-    serialized_end=818,
+  name='InvokeRequest',
+  full_name='pulumirpc.InvokeRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='tok', full_name='pulumirpc.InvokeRequest.tok', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='args', full_name='pulumirpc.InvokeRequest.args', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='provider', full_name='pulumirpc.InvokeRequest.provider', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='version', full_name='pulumirpc.InvokeRequest.version', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='acceptResources', full_name='pulumirpc.InvokeRequest.acceptResources', index=4,
+      number=5, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='pluginDownloadURL', full_name='pulumirpc.InvokeRequest.pluginDownloadURL', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=664,
+  serialized_end=818,
 )
 
 
 _INVOKERESPONSE = _descriptor.Descriptor(
-    name="InvokeResponse",
-    full_name="pulumirpc.InvokeResponse",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="return",
-            full_name="pulumirpc.InvokeResponse.return",
-            index=0,
-            number=1,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="failures",
-            full_name="pulumirpc.InvokeResponse.failures",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=820,
-    serialized_end=920,
+  name='InvokeResponse',
+  full_name='pulumirpc.InvokeResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='return', full_name='pulumirpc.InvokeResponse.return', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='failures', full_name='pulumirpc.InvokeResponse.failures', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=820,
+  serialized_end=920,
 )
 
 
 _CALLREQUEST_ARGUMENTDEPENDENCIES = _descriptor.Descriptor(
-    name="ArgumentDependencies",
-    full_name="pulumirpc.CallRequest.ArgumentDependencies",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="urns",
-            full_name="pulumirpc.CallRequest.ArgumentDependencies.urns",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=1291,
-    serialized_end=1327,
+  name='ArgumentDependencies',
+  full_name='pulumirpc.CallRequest.ArgumentDependencies',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='urns', full_name='pulumirpc.CallRequest.ArgumentDependencies.urns', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1291,
+  serialized_end=1327,
 )
 
 _CALLREQUEST_ARGDEPENDENCIESENTRY = _descriptor.Descriptor(
-    name="ArgDependenciesEntry",
-    full_name="pulumirpc.CallRequest.ArgDependenciesEntry",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="key",
-            full_name="pulumirpc.CallRequest.ArgDependenciesEntry.key",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="value",
-            full_name="pulumirpc.CallRequest.ArgDependenciesEntry.value",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=b"8\001",
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=1329,
-    serialized_end=1428,
+  name='ArgDependenciesEntry',
+  full_name='pulumirpc.CallRequest.ArgDependenciesEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.CallRequest.ArgDependenciesEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.CallRequest.ArgDependenciesEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1329,
+  serialized_end=1428,
 )
 
 _CALLREQUEST_CONFIGENTRY = _descriptor.Descriptor(
-    name="ConfigEntry",
-    full_name="pulumirpc.CallRequest.ConfigEntry",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="key",
-            full_name="pulumirpc.CallRequest.ConfigEntry.key",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="value",
-            full_name="pulumirpc.CallRequest.ConfigEntry.value",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=b"8\001",
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=1430,
-    serialized_end=1475,
+  name='ConfigEntry',
+  full_name='pulumirpc.CallRequest.ConfigEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.CallRequest.ConfigEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.CallRequest.ConfigEntry.value', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1430,
+  serialized_end=1475,
 )
 
 _CALLREQUEST = _descriptor.Descriptor(
-    name="CallRequest",
-    full_name="pulumirpc.CallRequest",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="tok",
-            full_name="pulumirpc.CallRequest.tok",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="args",
-            full_name="pulumirpc.CallRequest.args",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="argDependencies",
-            full_name="pulumirpc.CallRequest.argDependencies",
-            index=2,
-            number=3,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="provider",
-            full_name="pulumirpc.CallRequest.provider",
-            index=3,
-            number=4,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="version",
-            full_name="pulumirpc.CallRequest.version",
-            index=4,
-            number=5,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="pluginDownloadURL",
-            full_name="pulumirpc.CallRequest.pluginDownloadURL",
-            index=5,
-            number=13,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="project",
-            full_name="pulumirpc.CallRequest.project",
-            index=6,
-            number=6,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="stack",
-            full_name="pulumirpc.CallRequest.stack",
-            index=7,
-            number=7,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="config",
-            full_name="pulumirpc.CallRequest.config",
-            index=8,
-            number=8,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="configSecretKeys",
-            full_name="pulumirpc.CallRequest.configSecretKeys",
-            index=9,
-            number=9,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="dryRun",
-            full_name="pulumirpc.CallRequest.dryRun",
-            index=10,
-            number=10,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="parallel",
-            full_name="pulumirpc.CallRequest.parallel",
-            index=11,
-            number=11,
-            type=5,
-            cpp_type=1,
-            label=1,
-            has_default_value=False,
-            default_value=0,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="monitorEndpoint",
-            full_name="pulumirpc.CallRequest.monitorEndpoint",
-            index=12,
-            number=12,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[
-        _CALLREQUEST_ARGUMENTDEPENDENCIES,
-        _CALLREQUEST_ARGDEPENDENCIESENTRY,
-        _CALLREQUEST_CONFIGENTRY,
-    ],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=923,
-    serialized_end=1475,
+  name='CallRequest',
+  full_name='pulumirpc.CallRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='tok', full_name='pulumirpc.CallRequest.tok', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='args', full_name='pulumirpc.CallRequest.args', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='argDependencies', full_name='pulumirpc.CallRequest.argDependencies', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='provider', full_name='pulumirpc.CallRequest.provider', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='version', full_name='pulumirpc.CallRequest.version', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='pluginDownloadURL', full_name='pulumirpc.CallRequest.pluginDownloadURL', index=5,
+      number=13, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='project', full_name='pulumirpc.CallRequest.project', index=6,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='stack', full_name='pulumirpc.CallRequest.stack', index=7,
+      number=7, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='config', full_name='pulumirpc.CallRequest.config', index=8,
+      number=8, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='configSecretKeys', full_name='pulumirpc.CallRequest.configSecretKeys', index=9,
+      number=9, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='dryRun', full_name='pulumirpc.CallRequest.dryRun', index=10,
+      number=10, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='parallel', full_name='pulumirpc.CallRequest.parallel', index=11,
+      number=11, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='monitorEndpoint', full_name='pulumirpc.CallRequest.monitorEndpoint', index=12,
+      number=12, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_CALLREQUEST_ARGUMENTDEPENDENCIES, _CALLREQUEST_ARGDEPENDENCIESENTRY, _CALLREQUEST_CONFIGENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=923,
+  serialized_end=1475,
 )
 
 
 _CALLRESPONSE_RETURNDEPENDENCIES = _descriptor.Descriptor(
-    name="ReturnDependencies",
-    full_name="pulumirpc.CallResponse.ReturnDependencies",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="urns",
-            full_name="pulumirpc.CallResponse.ReturnDependencies.urns",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=1655,
-    serialized_end=1689,
+  name='ReturnDependencies',
+  full_name='pulumirpc.CallResponse.ReturnDependencies',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='urns', full_name='pulumirpc.CallResponse.ReturnDependencies.urns', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1655,
+  serialized_end=1689,
 )
 
 _CALLRESPONSE_RETURNDEPENDENCIESENTRY = _descriptor.Descriptor(
-    name="ReturnDependenciesEntry",
-    full_name="pulumirpc.CallResponse.ReturnDependenciesEntry",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="key",
-            full_name="pulumirpc.CallResponse.ReturnDependenciesEntry.key",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="value",
-            full_name="pulumirpc.CallResponse.ReturnDependenciesEntry.value",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=b"8\001",
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=1691,
-    serialized_end=1792,
+  name='ReturnDependenciesEntry',
+  full_name='pulumirpc.CallResponse.ReturnDependenciesEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.CallResponse.ReturnDependenciesEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.CallResponse.ReturnDependenciesEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1691,
+  serialized_end=1792,
 )
 
 _CALLRESPONSE = _descriptor.Descriptor(
-    name="CallResponse",
-    full_name="pulumirpc.CallResponse",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="return",
-            full_name="pulumirpc.CallResponse.return",
-            index=0,
-            number=1,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="returnDependencies",
-            full_name="pulumirpc.CallResponse.returnDependencies",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="failures",
-            full_name="pulumirpc.CallResponse.failures",
-            index=2,
-            number=3,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[
-        _CALLRESPONSE_RETURNDEPENDENCIES,
-        _CALLRESPONSE_RETURNDEPENDENCIESENTRY,
-    ],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=1478,
-    serialized_end=1792,
+  name='CallResponse',
+  full_name='pulumirpc.CallResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='return', full_name='pulumirpc.CallResponse.return', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='returnDependencies', full_name='pulumirpc.CallResponse.returnDependencies', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='failures', full_name='pulumirpc.CallResponse.failures', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_CALLRESPONSE_RETURNDEPENDENCIES, _CALLRESPONSE_RETURNDEPENDENCIESENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1478,
+  serialized_end=1792,
 )
 
 
 _CHECKREQUEST = _descriptor.Descriptor(
-    name="CheckRequest",
-    full_name="pulumirpc.CheckRequest",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="urn",
-            full_name="pulumirpc.CheckRequest.urn",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="olds",
-            full_name="pulumirpc.CheckRequest.olds",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="news",
-            full_name="pulumirpc.CheckRequest.news",
-            index=2,
-            number=3,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="sequenceNumber",
-            full_name="pulumirpc.CheckRequest.sequenceNumber",
-            index=3,
-            number=4,
-            type=5,
-            cpp_type=1,
-            label=1,
-            has_default_value=False,
-            default_value=0,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=1795,
-    serialized_end=1924,
+  name='CheckRequest',
+  full_name='pulumirpc.CheckRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='urn', full_name='pulumirpc.CheckRequest.urn', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='olds', full_name='pulumirpc.CheckRequest.olds', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='news', full_name='pulumirpc.CheckRequest.news', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='sequenceNumber', full_name='pulumirpc.CheckRequest.sequenceNumber', index=3,
+      number=4, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1795,
+  serialized_end=1924,
 )
 
 
 _CHECKRESPONSE = _descriptor.Descriptor(
-    name="CheckResponse",
-    full_name="pulumirpc.CheckResponse",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="inputs",
-            full_name="pulumirpc.CheckResponse.inputs",
-            index=0,
-            number=1,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="failures",
-            full_name="pulumirpc.CheckResponse.failures",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=1926,
-    serialized_end=2025,
+  name='CheckResponse',
+  full_name='pulumirpc.CheckResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='inputs', full_name='pulumirpc.CheckResponse.inputs', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='failures', full_name='pulumirpc.CheckResponse.failures', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1926,
+  serialized_end=2025,
 )
 
 
 _CHECKFAILURE = _descriptor.Descriptor(
-    name="CheckFailure",
-    full_name="pulumirpc.CheckFailure",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="property",
-            full_name="pulumirpc.CheckFailure.property",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="reason",
-            full_name="pulumirpc.CheckFailure.reason",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=2027,
-    serialized_end=2075,
+  name='CheckFailure',
+  full_name='pulumirpc.CheckFailure',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='property', full_name='pulumirpc.CheckFailure.property', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='reason', full_name='pulumirpc.CheckFailure.reason', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2027,
+  serialized_end=2075,
 )
 
 
 _DIFFREQUEST = _descriptor.Descriptor(
-    name="DiffRequest",
-    full_name="pulumirpc.DiffRequest",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="id",
-            full_name="pulumirpc.DiffRequest.id",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="urn",
-            full_name="pulumirpc.DiffRequest.urn",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="olds",
-            full_name="pulumirpc.DiffRequest.olds",
-            index=2,
-            number=3,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="news",
-            full_name="pulumirpc.DiffRequest.news",
-            index=3,
-            number=4,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="ignoreChanges",
-            full_name="pulumirpc.DiffRequest.ignoreChanges",
-            index=4,
-            number=5,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=2078,
-    serialized_end=2217,
+  name='DiffRequest',
+  full_name='pulumirpc.DiffRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='pulumirpc.DiffRequest.id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='urn', full_name='pulumirpc.DiffRequest.urn', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='olds', full_name='pulumirpc.DiffRequest.olds', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='news', full_name='pulumirpc.DiffRequest.news', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='ignoreChanges', full_name='pulumirpc.DiffRequest.ignoreChanges', index=4,
+      number=5, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2078,
+  serialized_end=2217,
 )
 
 
 _PROPERTYDIFF = _descriptor.Descriptor(
-    name="PropertyDiff",
-    full_name="pulumirpc.PropertyDiff",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="kind",
-            full_name="pulumirpc.PropertyDiff.kind",
-            index=0,
-            number=1,
-            type=14,
-            cpp_type=8,
-            label=1,
-            has_default_value=False,
-            default_value=0,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="inputDiff",
-            full_name="pulumirpc.PropertyDiff.inputDiff",
-            index=1,
-            number=2,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[
-        _PROPERTYDIFF_KIND,
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=2220,
-    serialized_end=2395,
+  name='PropertyDiff',
+  full_name='pulumirpc.PropertyDiff',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='kind', full_name='pulumirpc.PropertyDiff.kind', index=0,
+      number=1, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='inputDiff', full_name='pulumirpc.PropertyDiff.inputDiff', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _PROPERTYDIFF_KIND,
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2220,
+  serialized_end=2395,
 )
 
 
 _DIFFRESPONSE_DETAILEDDIFFENTRY = _descriptor.Descriptor(
-    name="DetailedDiffEntry",
-    full_name="pulumirpc.DiffResponse.DetailedDiffEntry",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="key",
-            full_name="pulumirpc.DiffResponse.DetailedDiffEntry.key",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="value",
-            full_name="pulumirpc.DiffResponse.DetailedDiffEntry.value",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=b"8\001",
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=2637,
-    serialized_end=2713,
+  name='DetailedDiffEntry',
+  full_name='pulumirpc.DiffResponse.DetailedDiffEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.DiffResponse.DetailedDiffEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.DiffResponse.DetailedDiffEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2637,
+  serialized_end=2713,
 )
 
 _DIFFRESPONSE = _descriptor.Descriptor(
-    name="DiffResponse",
-    full_name="pulumirpc.DiffResponse",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="replaces",
-            full_name="pulumirpc.DiffResponse.replaces",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="stables",
-            full_name="pulumirpc.DiffResponse.stables",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="deleteBeforeReplace",
-            full_name="pulumirpc.DiffResponse.deleteBeforeReplace",
-            index=2,
-            number=3,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="changes",
-            full_name="pulumirpc.DiffResponse.changes",
-            index=3,
-            number=4,
-            type=14,
-            cpp_type=8,
-            label=1,
-            has_default_value=False,
-            default_value=0,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="diffs",
-            full_name="pulumirpc.DiffResponse.diffs",
-            index=4,
-            number=5,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="detailedDiff",
-            full_name="pulumirpc.DiffResponse.detailedDiff",
-            index=5,
-            number=6,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="hasDetailedDiff",
-            full_name="pulumirpc.DiffResponse.hasDetailedDiff",
-            index=6,
-            number=7,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[
-        _DIFFRESPONSE_DETAILEDDIFFENTRY,
-    ],
-    enum_types=[
-        _DIFFRESPONSE_DIFFCHANGES,
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=2398,
-    serialized_end=2776,
+  name='DiffResponse',
+  full_name='pulumirpc.DiffResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replaces', full_name='pulumirpc.DiffResponse.replaces', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='stables', full_name='pulumirpc.DiffResponse.stables', index=1,
+      number=2, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='deleteBeforeReplace', full_name='pulumirpc.DiffResponse.deleteBeforeReplace', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='changes', full_name='pulumirpc.DiffResponse.changes', index=3,
+      number=4, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='diffs', full_name='pulumirpc.DiffResponse.diffs', index=4,
+      number=5, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='detailedDiff', full_name='pulumirpc.DiffResponse.detailedDiff', index=5,
+      number=6, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='hasDetailedDiff', full_name='pulumirpc.DiffResponse.hasDetailedDiff', index=6,
+      number=7, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_DIFFRESPONSE_DETAILEDDIFFENTRY, ],
+  enum_types=[
+    _DIFFRESPONSE_DIFFCHANGES,
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2398,
+  serialized_end=2776,
 )
 
 
 _CREATEREQUEST = _descriptor.Descriptor(
-    name="CreateRequest",
-    full_name="pulumirpc.CreateRequest",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="urn",
-            full_name="pulumirpc.CreateRequest.urn",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="properties",
-            full_name="pulumirpc.CreateRequest.properties",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="timeout",
-            full_name="pulumirpc.CreateRequest.timeout",
-            index=2,
-            number=3,
-            type=1,
-            cpp_type=5,
-            label=1,
-            has_default_value=False,
-            default_value=float(0),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="preview",
-            full_name="pulumirpc.CreateRequest.preview",
-            index=3,
-            number=4,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=2778,
-    serialized_end=2885,
+  name='CreateRequest',
+  full_name='pulumirpc.CreateRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='urn', full_name='pulumirpc.CreateRequest.urn', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='pulumirpc.CreateRequest.properties', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='timeout', full_name='pulumirpc.CreateRequest.timeout', index=2,
+      number=3, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='preview', full_name='pulumirpc.CreateRequest.preview', index=3,
+      number=4, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2778,
+  serialized_end=2885,
 )
 
 
 _CREATERESPONSE = _descriptor.Descriptor(
-    name="CreateResponse",
-    full_name="pulumirpc.CreateResponse",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="id",
-            full_name="pulumirpc.CreateResponse.id",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="properties",
-            full_name="pulumirpc.CreateResponse.properties",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=2887,
-    serialized_end=2960,
+  name='CreateResponse',
+  full_name='pulumirpc.CreateResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='pulumirpc.CreateResponse.id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='pulumirpc.CreateResponse.properties', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2887,
+  serialized_end=2960,
 )
 
 
 _READREQUEST = _descriptor.Descriptor(
-    name="ReadRequest",
-    full_name="pulumirpc.ReadRequest",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="id",
-            full_name="pulumirpc.ReadRequest.id",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="urn",
-            full_name="pulumirpc.ReadRequest.urn",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="properties",
-            full_name="pulumirpc.ReadRequest.properties",
-            index=2,
-            number=3,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="inputs",
-            full_name="pulumirpc.ReadRequest.inputs",
-            index=3,
-            number=4,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=2962,
-    serialized_end=3086,
+  name='ReadRequest',
+  full_name='pulumirpc.ReadRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='pulumirpc.ReadRequest.id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='urn', full_name='pulumirpc.ReadRequest.urn', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='pulumirpc.ReadRequest.properties', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='inputs', full_name='pulumirpc.ReadRequest.inputs', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2962,
+  serialized_end=3086,
 )
 
 
 _READRESPONSE = _descriptor.Descriptor(
-    name="ReadResponse",
-    full_name="pulumirpc.ReadResponse",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="id",
-            full_name="pulumirpc.ReadResponse.id",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="properties",
-            full_name="pulumirpc.ReadResponse.properties",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="inputs",
-            full_name="pulumirpc.ReadResponse.inputs",
-            index=2,
-            number=3,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=3088,
-    serialized_end=3200,
+  name='ReadResponse',
+  full_name='pulumirpc.ReadResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='pulumirpc.ReadResponse.id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='pulumirpc.ReadResponse.properties', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='inputs', full_name='pulumirpc.ReadResponse.inputs', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3088,
+  serialized_end=3200,
 )
 
 
 _UPDATEREQUEST = _descriptor.Descriptor(
-    name="UpdateRequest",
-    full_name="pulumirpc.UpdateRequest",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="id",
-            full_name="pulumirpc.UpdateRequest.id",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="urn",
-            full_name="pulumirpc.UpdateRequest.urn",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="olds",
-            full_name="pulumirpc.UpdateRequest.olds",
-            index=2,
-            number=3,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="news",
-            full_name="pulumirpc.UpdateRequest.news",
-            index=3,
-            number=4,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="timeout",
-            full_name="pulumirpc.UpdateRequest.timeout",
-            index=4,
-            number=5,
-            type=1,
-            cpp_type=5,
-            label=1,
-            has_default_value=False,
-            default_value=float(0),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="ignoreChanges",
-            full_name="pulumirpc.UpdateRequest.ignoreChanges",
-            index=5,
-            number=6,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="preview",
-            full_name="pulumirpc.UpdateRequest.preview",
-            index=6,
-            number=7,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=3203,
-    serialized_end=3378,
+  name='UpdateRequest',
+  full_name='pulumirpc.UpdateRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='pulumirpc.UpdateRequest.id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='urn', full_name='pulumirpc.UpdateRequest.urn', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='olds', full_name='pulumirpc.UpdateRequest.olds', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='news', full_name='pulumirpc.UpdateRequest.news', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='timeout', full_name='pulumirpc.UpdateRequest.timeout', index=4,
+      number=5, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='ignoreChanges', full_name='pulumirpc.UpdateRequest.ignoreChanges', index=5,
+      number=6, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='preview', full_name='pulumirpc.UpdateRequest.preview', index=6,
+      number=7, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3203,
+  serialized_end=3378,
 )
 
 
 _UPDATERESPONSE = _descriptor.Descriptor(
-    name="UpdateResponse",
-    full_name="pulumirpc.UpdateResponse",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="properties",
-            full_name="pulumirpc.UpdateResponse.properties",
-            index=0,
-            number=1,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=3380,
-    serialized_end=3441,
+  name='UpdateResponse',
+  full_name='pulumirpc.UpdateResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='pulumirpc.UpdateResponse.properties', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3380,
+  serialized_end=3441,
 )
 
 
 _DELETEREQUEST = _descriptor.Descriptor(
-    name="DeleteRequest",
-    full_name="pulumirpc.DeleteRequest",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="id",
-            full_name="pulumirpc.DeleteRequest.id",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="urn",
-            full_name="pulumirpc.DeleteRequest.urn",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="properties",
-            full_name="pulumirpc.DeleteRequest.properties",
-            index=2,
-            number=3,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="timeout",
-            full_name="pulumirpc.DeleteRequest.timeout",
-            index=3,
-            number=4,
-            type=1,
-            cpp_type=5,
-            label=1,
-            has_default_value=False,
-            default_value=float(0),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=3443,
-    serialized_end=3545,
+  name='DeleteRequest',
+  full_name='pulumirpc.DeleteRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='pulumirpc.DeleteRequest.id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='urn', full_name='pulumirpc.DeleteRequest.urn', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='pulumirpc.DeleteRequest.properties', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='timeout', full_name='pulumirpc.DeleteRequest.timeout', index=3,
+      number=4, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3443,
+  serialized_end=3545,
 )
 
 
 _CONSTRUCTREQUEST_PROPERTYDEPENDENCIES = _descriptor.Descriptor(
-    name="PropertyDependencies",
-    full_name="pulumirpc.ConstructRequest.PropertyDependencies",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="urns",
-            full_name="pulumirpc.ConstructRequest.PropertyDependencies.urns",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=4025,
-    serialized_end=4061,
+  name='PropertyDependencies',
+  full_name='pulumirpc.ConstructRequest.PropertyDependencies',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='urns', full_name='pulumirpc.ConstructRequest.PropertyDependencies.urns', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4025,
+  serialized_end=4061,
 )
 
 _CONSTRUCTREQUEST_CONFIGENTRY = _descriptor.Descriptor(
-    name="ConfigEntry",
-    full_name="pulumirpc.ConstructRequest.ConfigEntry",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="key",
-            full_name="pulumirpc.ConstructRequest.ConfigEntry.key",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="value",
-            full_name="pulumirpc.ConstructRequest.ConfigEntry.value",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=b"8\001",
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=1430,
-    serialized_end=1475,
+  name='ConfigEntry',
+  full_name='pulumirpc.ConstructRequest.ConfigEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.ConstructRequest.ConfigEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.ConstructRequest.ConfigEntry.value', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1430,
+  serialized_end=1475,
 )
 
 _CONSTRUCTREQUEST_INPUTDEPENDENCIESENTRY = _descriptor.Descriptor(
-    name="InputDependenciesEntry",
-    full_name="pulumirpc.ConstructRequest.InputDependenciesEntry",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="key",
-            full_name="pulumirpc.ConstructRequest.InputDependenciesEntry.key",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="value",
-            full_name="pulumirpc.ConstructRequest.InputDependenciesEntry.value",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=b"8\001",
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=4110,
-    serialized_end=4216,
+  name='InputDependenciesEntry',
+  full_name='pulumirpc.ConstructRequest.InputDependenciesEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.ConstructRequest.InputDependenciesEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.ConstructRequest.InputDependenciesEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4110,
+  serialized_end=4216,
 )
 
 _CONSTRUCTREQUEST_PROVIDERSENTRY = _descriptor.Descriptor(
-    name="ProvidersEntry",
-    full_name="pulumirpc.ConstructRequest.ProvidersEntry",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="key",
-            full_name="pulumirpc.ConstructRequest.ProvidersEntry.key",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="value",
-            full_name="pulumirpc.ConstructRequest.ProvidersEntry.value",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=b"8\001",
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=4218,
-    serialized_end=4266,
+  name='ProvidersEntry',
+  full_name='pulumirpc.ConstructRequest.ProvidersEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.ConstructRequest.ProvidersEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.ConstructRequest.ProvidersEntry.value', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4218,
+  serialized_end=4266,
 )
 
 _CONSTRUCTREQUEST = _descriptor.Descriptor(
-    name="ConstructRequest",
-    full_name="pulumirpc.ConstructRequest",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="project",
-            full_name="pulumirpc.ConstructRequest.project",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="stack",
-            full_name="pulumirpc.ConstructRequest.stack",
-            index=1,
-            number=2,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="config",
-            full_name="pulumirpc.ConstructRequest.config",
-            index=2,
-            number=3,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="dryRun",
-            full_name="pulumirpc.ConstructRequest.dryRun",
-            index=3,
-            number=4,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="parallel",
-            full_name="pulumirpc.ConstructRequest.parallel",
-            index=4,
-            number=5,
-            type=5,
-            cpp_type=1,
-            label=1,
-            has_default_value=False,
-            default_value=0,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="monitorEndpoint",
-            full_name="pulumirpc.ConstructRequest.monitorEndpoint",
-            index=5,
-            number=6,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="type",
-            full_name="pulumirpc.ConstructRequest.type",
-            index=6,
-            number=7,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="name",
-            full_name="pulumirpc.ConstructRequest.name",
-            index=7,
-            number=8,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="parent",
-            full_name="pulumirpc.ConstructRequest.parent",
-            index=8,
-            number=9,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="inputs",
-            full_name="pulumirpc.ConstructRequest.inputs",
-            index=9,
-            number=10,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="inputDependencies",
-            full_name="pulumirpc.ConstructRequest.inputDependencies",
-            index=10,
-            number=11,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="protect",
-            full_name="pulumirpc.ConstructRequest.protect",
-            index=11,
-            number=12,
-            type=8,
-            cpp_type=7,
-            label=1,
-            has_default_value=False,
-            default_value=False,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="providers",
-            full_name="pulumirpc.ConstructRequest.providers",
-            index=12,
-            number=13,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="aliases",
-            full_name="pulumirpc.ConstructRequest.aliases",
-            index=13,
-            number=14,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="dependencies",
-            full_name="pulumirpc.ConstructRequest.dependencies",
-            index=14,
-            number=15,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="configSecretKeys",
-            full_name="pulumirpc.ConstructRequest.configSecretKeys",
-            index=15,
-            number=16,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[
-        _CONSTRUCTREQUEST_PROPERTYDEPENDENCIES,
-        _CONSTRUCTREQUEST_CONFIGENTRY,
-        _CONSTRUCTREQUEST_INPUTDEPENDENCIESENTRY,
-        _CONSTRUCTREQUEST_PROVIDERSENTRY,
-    ],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=3548,
-    serialized_end=4266,
+  name='ConstructRequest',
+  full_name='pulumirpc.ConstructRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='project', full_name='pulumirpc.ConstructRequest.project', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='stack', full_name='pulumirpc.ConstructRequest.stack', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='config', full_name='pulumirpc.ConstructRequest.config', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='dryRun', full_name='pulumirpc.ConstructRequest.dryRun', index=3,
+      number=4, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='parallel', full_name='pulumirpc.ConstructRequest.parallel', index=4,
+      number=5, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='monitorEndpoint', full_name='pulumirpc.ConstructRequest.monitorEndpoint', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='type', full_name='pulumirpc.ConstructRequest.type', index=6,
+      number=7, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='pulumirpc.ConstructRequest.name', index=7,
+      number=8, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='parent', full_name='pulumirpc.ConstructRequest.parent', index=8,
+      number=9, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='inputs', full_name='pulumirpc.ConstructRequest.inputs', index=9,
+      number=10, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='inputDependencies', full_name='pulumirpc.ConstructRequest.inputDependencies', index=10,
+      number=11, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='protect', full_name='pulumirpc.ConstructRequest.protect', index=11,
+      number=12, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='providers', full_name='pulumirpc.ConstructRequest.providers', index=12,
+      number=13, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='aliases', full_name='pulumirpc.ConstructRequest.aliases', index=13,
+      number=14, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='dependencies', full_name='pulumirpc.ConstructRequest.dependencies', index=14,
+      number=15, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='configSecretKeys', full_name='pulumirpc.ConstructRequest.configSecretKeys', index=15,
+      number=16, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_CONSTRUCTREQUEST_PROPERTYDEPENDENCIES, _CONSTRUCTREQUEST_CONFIGENTRY, _CONSTRUCTREQUEST_INPUTDEPENDENCIESENTRY, _CONSTRUCTREQUEST_PROVIDERSENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3548,
+  serialized_end=4266,
 )
 
 
 _CONSTRUCTRESPONSE_PROPERTYDEPENDENCIES = _descriptor.Descriptor(
-    name="PropertyDependencies",
-    full_name="pulumirpc.ConstructResponse.PropertyDependencies",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="urns",
-            full_name="pulumirpc.ConstructResponse.PropertyDependencies.urns",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=4025,
-    serialized_end=4061,
+  name='PropertyDependencies',
+  full_name='pulumirpc.ConstructResponse.PropertyDependencies',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='urns', full_name='pulumirpc.ConstructResponse.PropertyDependencies.urns', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4025,
+  serialized_end=4061,
 )
 
 _CONSTRUCTRESPONSE_STATEDEPENDENCIESENTRY = _descriptor.Descriptor(
-    name="StateDependenciesEntry",
-    full_name="pulumirpc.ConstructResponse.StateDependenciesEntry",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="key",
-            full_name="pulumirpc.ConstructResponse.StateDependenciesEntry.key",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="value",
-            full_name="pulumirpc.ConstructResponse.StateDependenciesEntry.value",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=b"8\001",
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=4461,
-    serialized_end=4568,
+  name='StateDependenciesEntry',
+  full_name='pulumirpc.ConstructResponse.StateDependenciesEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='pulumirpc.ConstructResponse.StateDependenciesEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='pulumirpc.ConstructResponse.StateDependenciesEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4461,
+  serialized_end=4568,
 )
 
 _CONSTRUCTRESPONSE = _descriptor.Descriptor(
-    name="ConstructResponse",
-    full_name="pulumirpc.ConstructResponse",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="urn",
-            full_name="pulumirpc.ConstructResponse.urn",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="state",
-            full_name="pulumirpc.ConstructResponse.state",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="stateDependencies",
-            full_name="pulumirpc.ConstructResponse.stateDependencies",
-            index=2,
-            number=3,
-            type=11,
-            cpp_type=10,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[
-        _CONSTRUCTRESPONSE_PROPERTYDEPENDENCIES,
-        _CONSTRUCTRESPONSE_STATEDEPENDENCIESENTRY,
-    ],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=4269,
-    serialized_end=4568,
+  name='ConstructResponse',
+  full_name='pulumirpc.ConstructResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='urn', full_name='pulumirpc.ConstructResponse.urn', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='state', full_name='pulumirpc.ConstructResponse.state', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='stateDependencies', full_name='pulumirpc.ConstructResponse.stateDependencies', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_CONSTRUCTRESPONSE_PROPERTYDEPENDENCIES, _CONSTRUCTRESPONSE_STATEDEPENDENCIESENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4269,
+  serialized_end=4568,
 )
 
 
 _ERRORRESOURCEINITFAILED = _descriptor.Descriptor(
-    name="ErrorResourceInitFailed",
-    full_name="pulumirpc.ErrorResourceInitFailed",
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name="id",
-            full_name="pulumirpc.ErrorResourceInitFailed.id",
-            index=0,
-            number=1,
-            type=9,
-            cpp_type=9,
-            label=1,
-            has_default_value=False,
-            default_value=b"".decode("utf-8"),
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="properties",
-            full_name="pulumirpc.ErrorResourceInitFailed.properties",
-            index=1,
-            number=2,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="reasons",
-            full_name="pulumirpc.ErrorResourceInitFailed.reasons",
-            index=2,
-            number=3,
-            type=9,
-            cpp_type=9,
-            label=3,
-            has_default_value=False,
-            default_value=[],
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-        _descriptor.FieldDescriptor(
-            name="inputs",
-            full_name="pulumirpc.ErrorResourceInitFailed.inputs",
-            index=3,
-            number=4,
-            type=11,
-            cpp_type=10,
-            label=1,
-            has_default_value=False,
-            default_value=None,
-            message_type=None,
-            enum_type=None,
-            containing_type=None,
-            is_extension=False,
-            extension_scope=None,
-            serialized_options=None,
-            file=DESCRIPTOR,
-        ),
-    ],
-    extensions=[],
-    nested_types=[],
-    enum_types=[],
-    serialized_options=None,
-    is_extendable=False,
-    syntax="proto3",
-    extension_ranges=[],
-    oneofs=[],
-    serialized_start=4571,
-    serialized_end=4711,
+  name='ErrorResourceInitFailed',
+  full_name='pulumirpc.ErrorResourceInitFailed',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='pulumirpc.ErrorResourceInitFailed.id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='properties', full_name='pulumirpc.ErrorResourceInitFailed.properties', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='reasons', full_name='pulumirpc.ErrorResourceInitFailed.reasons', index=2,
+      number=3, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='inputs', full_name='pulumirpc.ErrorResourceInitFailed.inputs', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4571,
+  serialized_end=4711,
 )
 
 _CONFIGUREREQUEST_VARIABLESENTRY.containing_type = _CONFIGUREREQUEST
-_CONFIGUREREQUEST.fields_by_name[
-    "variables"
-].message_type = _CONFIGUREREQUEST_VARIABLESENTRY
-_CONFIGUREREQUEST.fields_by_name[
-    "args"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_CONFIGUREREQUEST.fields_by_name['variables'].message_type = _CONFIGUREREQUEST_VARIABLESENTRY
+_CONFIGUREREQUEST.fields_by_name['args'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
 _CONFIGUREERRORMISSINGKEYS_MISSINGKEY.containing_type = _CONFIGUREERRORMISSINGKEYS
-_CONFIGUREERRORMISSINGKEYS.fields_by_name[
-    "missingKeys"
-].message_type = _CONFIGUREERRORMISSINGKEYS_MISSINGKEY
-_INVOKEREQUEST.fields_by_name[
-    "args"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_INVOKERESPONSE.fields_by_name[
-    "return"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_INVOKERESPONSE.fields_by_name["failures"].message_type = _CHECKFAILURE
+_CONFIGUREERRORMISSINGKEYS.fields_by_name['missingKeys'].message_type = _CONFIGUREERRORMISSINGKEYS_MISSINGKEY
+_INVOKEREQUEST.fields_by_name['args'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_INVOKERESPONSE.fields_by_name['return'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_INVOKERESPONSE.fields_by_name['failures'].message_type = _CHECKFAILURE
 _CALLREQUEST_ARGUMENTDEPENDENCIES.containing_type = _CALLREQUEST
-_CALLREQUEST_ARGDEPENDENCIESENTRY.fields_by_name[
-    "value"
-].message_type = _CALLREQUEST_ARGUMENTDEPENDENCIES
+_CALLREQUEST_ARGDEPENDENCIESENTRY.fields_by_name['value'].message_type = _CALLREQUEST_ARGUMENTDEPENDENCIES
 _CALLREQUEST_ARGDEPENDENCIESENTRY.containing_type = _CALLREQUEST
 _CALLREQUEST_CONFIGENTRY.containing_type = _CALLREQUEST
-_CALLREQUEST.fields_by_name[
-    "args"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_CALLREQUEST.fields_by_name[
-    "argDependencies"
-].message_type = _CALLREQUEST_ARGDEPENDENCIESENTRY
-_CALLREQUEST.fields_by_name["config"].message_type = _CALLREQUEST_CONFIGENTRY
+_CALLREQUEST.fields_by_name['args'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_CALLREQUEST.fields_by_name['argDependencies'].message_type = _CALLREQUEST_ARGDEPENDENCIESENTRY
+_CALLREQUEST.fields_by_name['config'].message_type = _CALLREQUEST_CONFIGENTRY
 _CALLRESPONSE_RETURNDEPENDENCIES.containing_type = _CALLRESPONSE
-_CALLRESPONSE_RETURNDEPENDENCIESENTRY.fields_by_name[
-    "value"
-].message_type = _CALLRESPONSE_RETURNDEPENDENCIES
+_CALLRESPONSE_RETURNDEPENDENCIESENTRY.fields_by_name['value'].message_type = _CALLRESPONSE_RETURNDEPENDENCIES
 _CALLRESPONSE_RETURNDEPENDENCIESENTRY.containing_type = _CALLRESPONSE
-_CALLRESPONSE.fields_by_name[
-    "return"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_CALLRESPONSE.fields_by_name[
-    "returnDependencies"
-].message_type = _CALLRESPONSE_RETURNDEPENDENCIESENTRY
-_CALLRESPONSE.fields_by_name["failures"].message_type = _CHECKFAILURE
-_CHECKREQUEST.fields_by_name[
-    "olds"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_CHECKREQUEST.fields_by_name[
-    "news"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_CHECKRESPONSE.fields_by_name[
-    "inputs"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_CHECKRESPONSE.fields_by_name["failures"].message_type = _CHECKFAILURE
-_DIFFREQUEST.fields_by_name[
-    "olds"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_DIFFREQUEST.fields_by_name[
-    "news"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_PROPERTYDIFF.fields_by_name["kind"].enum_type = _PROPERTYDIFF_KIND
+_CALLRESPONSE.fields_by_name['return'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_CALLRESPONSE.fields_by_name['returnDependencies'].message_type = _CALLRESPONSE_RETURNDEPENDENCIESENTRY
+_CALLRESPONSE.fields_by_name['failures'].message_type = _CHECKFAILURE
+_CHECKREQUEST.fields_by_name['olds'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_CHECKREQUEST.fields_by_name['news'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_CHECKRESPONSE.fields_by_name['inputs'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_CHECKRESPONSE.fields_by_name['failures'].message_type = _CHECKFAILURE
+_DIFFREQUEST.fields_by_name['olds'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_DIFFREQUEST.fields_by_name['news'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_PROPERTYDIFF.fields_by_name['kind'].enum_type = _PROPERTYDIFF_KIND
 _PROPERTYDIFF_KIND.containing_type = _PROPERTYDIFF
-_DIFFRESPONSE_DETAILEDDIFFENTRY.fields_by_name["value"].message_type = _PROPERTYDIFF
+_DIFFRESPONSE_DETAILEDDIFFENTRY.fields_by_name['value'].message_type = _PROPERTYDIFF
 _DIFFRESPONSE_DETAILEDDIFFENTRY.containing_type = _DIFFRESPONSE
-_DIFFRESPONSE.fields_by_name["changes"].enum_type = _DIFFRESPONSE_DIFFCHANGES
-_DIFFRESPONSE.fields_by_name[
-    "detailedDiff"
-].message_type = _DIFFRESPONSE_DETAILEDDIFFENTRY
+_DIFFRESPONSE.fields_by_name['changes'].enum_type = _DIFFRESPONSE_DIFFCHANGES
+_DIFFRESPONSE.fields_by_name['detailedDiff'].message_type = _DIFFRESPONSE_DETAILEDDIFFENTRY
 _DIFFRESPONSE_DIFFCHANGES.containing_type = _DIFFRESPONSE
-_CREATEREQUEST.fields_by_name[
-    "properties"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_CREATERESPONSE.fields_by_name[
-    "properties"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_READREQUEST.fields_by_name[
-    "properties"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_READREQUEST.fields_by_name[
-    "inputs"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_READRESPONSE.fields_by_name[
-    "properties"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_READRESPONSE.fields_by_name[
-    "inputs"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_UPDATEREQUEST.fields_by_name[
-    "olds"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_UPDATEREQUEST.fields_by_name[
-    "news"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_UPDATERESPONSE.fields_by_name[
-    "properties"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_DELETEREQUEST.fields_by_name[
-    "properties"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_CREATEREQUEST.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_CREATERESPONSE.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_READREQUEST.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_READREQUEST.fields_by_name['inputs'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_READRESPONSE.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_READRESPONSE.fields_by_name['inputs'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_UPDATEREQUEST.fields_by_name['olds'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_UPDATEREQUEST.fields_by_name['news'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_UPDATERESPONSE.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_DELETEREQUEST.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
 _CONSTRUCTREQUEST_PROPERTYDEPENDENCIES.containing_type = _CONSTRUCTREQUEST
 _CONSTRUCTREQUEST_CONFIGENTRY.containing_type = _CONSTRUCTREQUEST
-_CONSTRUCTREQUEST_INPUTDEPENDENCIESENTRY.fields_by_name[
-    "value"
-].message_type = _CONSTRUCTREQUEST_PROPERTYDEPENDENCIES
+_CONSTRUCTREQUEST_INPUTDEPENDENCIESENTRY.fields_by_name['value'].message_type = _CONSTRUCTREQUEST_PROPERTYDEPENDENCIES
 _CONSTRUCTREQUEST_INPUTDEPENDENCIESENTRY.containing_type = _CONSTRUCTREQUEST
 _CONSTRUCTREQUEST_PROVIDERSENTRY.containing_type = _CONSTRUCTREQUEST
-_CONSTRUCTREQUEST.fields_by_name["config"].message_type = _CONSTRUCTREQUEST_CONFIGENTRY
-_CONSTRUCTREQUEST.fields_by_name[
-    "inputs"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_CONSTRUCTREQUEST.fields_by_name[
-    "inputDependencies"
-].message_type = _CONSTRUCTREQUEST_INPUTDEPENDENCIESENTRY
-_CONSTRUCTREQUEST.fields_by_name[
-    "providers"
-].message_type = _CONSTRUCTREQUEST_PROVIDERSENTRY
+_CONSTRUCTREQUEST.fields_by_name['config'].message_type = _CONSTRUCTREQUEST_CONFIGENTRY
+_CONSTRUCTREQUEST.fields_by_name['inputs'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_CONSTRUCTREQUEST.fields_by_name['inputDependencies'].message_type = _CONSTRUCTREQUEST_INPUTDEPENDENCIESENTRY
+_CONSTRUCTREQUEST.fields_by_name['providers'].message_type = _CONSTRUCTREQUEST_PROVIDERSENTRY
 _CONSTRUCTRESPONSE_PROPERTYDEPENDENCIES.containing_type = _CONSTRUCTRESPONSE
-_CONSTRUCTRESPONSE_STATEDEPENDENCIESENTRY.fields_by_name[
-    "value"
-].message_type = _CONSTRUCTRESPONSE_PROPERTYDEPENDENCIES
+_CONSTRUCTRESPONSE_STATEDEPENDENCIESENTRY.fields_by_name['value'].message_type = _CONSTRUCTRESPONSE_PROPERTYDEPENDENCIES
 _CONSTRUCTRESPONSE_STATEDEPENDENCIESENTRY.containing_type = _CONSTRUCTRESPONSE
-_CONSTRUCTRESPONSE.fields_by_name[
-    "state"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_CONSTRUCTRESPONSE.fields_by_name[
-    "stateDependencies"
-].message_type = _CONSTRUCTRESPONSE_STATEDEPENDENCIESENTRY
-_ERRORRESOURCEINITFAILED.fields_by_name[
-    "properties"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-_ERRORRESOURCEINITFAILED.fields_by_name[
-    "inputs"
-].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
-DESCRIPTOR.message_types_by_name["GetSchemaRequest"] = _GETSCHEMAREQUEST
-DESCRIPTOR.message_types_by_name["GetSchemaResponse"] = _GETSCHEMARESPONSE
-DESCRIPTOR.message_types_by_name["ConfigureRequest"] = _CONFIGUREREQUEST
-DESCRIPTOR.message_types_by_name["ConfigureResponse"] = _CONFIGURERESPONSE
-DESCRIPTOR.message_types_by_name[
-    "ConfigureErrorMissingKeys"
-] = _CONFIGUREERRORMISSINGKEYS
-DESCRIPTOR.message_types_by_name["InvokeRequest"] = _INVOKEREQUEST
-DESCRIPTOR.message_types_by_name["InvokeResponse"] = _INVOKERESPONSE
-DESCRIPTOR.message_types_by_name["CallRequest"] = _CALLREQUEST
-DESCRIPTOR.message_types_by_name["CallResponse"] = _CALLRESPONSE
-DESCRIPTOR.message_types_by_name["CheckRequest"] = _CHECKREQUEST
-DESCRIPTOR.message_types_by_name["CheckResponse"] = _CHECKRESPONSE
-DESCRIPTOR.message_types_by_name["CheckFailure"] = _CHECKFAILURE
-DESCRIPTOR.message_types_by_name["DiffRequest"] = _DIFFREQUEST
-DESCRIPTOR.message_types_by_name["PropertyDiff"] = _PROPERTYDIFF
-DESCRIPTOR.message_types_by_name["DiffResponse"] = _DIFFRESPONSE
-DESCRIPTOR.message_types_by_name["CreateRequest"] = _CREATEREQUEST
-DESCRIPTOR.message_types_by_name["CreateResponse"] = _CREATERESPONSE
-DESCRIPTOR.message_types_by_name["ReadRequest"] = _READREQUEST
-DESCRIPTOR.message_types_by_name["ReadResponse"] = _READRESPONSE
-DESCRIPTOR.message_types_by_name["UpdateRequest"] = _UPDATEREQUEST
-DESCRIPTOR.message_types_by_name["UpdateResponse"] = _UPDATERESPONSE
-DESCRIPTOR.message_types_by_name["DeleteRequest"] = _DELETEREQUEST
-DESCRIPTOR.message_types_by_name["ConstructRequest"] = _CONSTRUCTREQUEST
-DESCRIPTOR.message_types_by_name["ConstructResponse"] = _CONSTRUCTRESPONSE
-DESCRIPTOR.message_types_by_name["ErrorResourceInitFailed"] = _ERRORRESOURCEINITFAILED
+_CONSTRUCTRESPONSE.fields_by_name['state'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_CONSTRUCTRESPONSE.fields_by_name['stateDependencies'].message_type = _CONSTRUCTRESPONSE_STATEDEPENDENCIESENTRY
+_ERRORRESOURCEINITFAILED.fields_by_name['properties'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_ERRORRESOURCEINITFAILED.fields_by_name['inputs'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+DESCRIPTOR.message_types_by_name['GetSchemaRequest'] = _GETSCHEMAREQUEST
+DESCRIPTOR.message_types_by_name['GetSchemaResponse'] = _GETSCHEMARESPONSE
+DESCRIPTOR.message_types_by_name['ConfigureRequest'] = _CONFIGUREREQUEST
+DESCRIPTOR.message_types_by_name['ConfigureResponse'] = _CONFIGURERESPONSE
+DESCRIPTOR.message_types_by_name['ConfigureErrorMissingKeys'] = _CONFIGUREERRORMISSINGKEYS
+DESCRIPTOR.message_types_by_name['InvokeRequest'] = _INVOKEREQUEST
+DESCRIPTOR.message_types_by_name['InvokeResponse'] = _INVOKERESPONSE
+DESCRIPTOR.message_types_by_name['CallRequest'] = _CALLREQUEST
+DESCRIPTOR.message_types_by_name['CallResponse'] = _CALLRESPONSE
+DESCRIPTOR.message_types_by_name['CheckRequest'] = _CHECKREQUEST
+DESCRIPTOR.message_types_by_name['CheckResponse'] = _CHECKRESPONSE
+DESCRIPTOR.message_types_by_name['CheckFailure'] = _CHECKFAILURE
+DESCRIPTOR.message_types_by_name['DiffRequest'] = _DIFFREQUEST
+DESCRIPTOR.message_types_by_name['PropertyDiff'] = _PROPERTYDIFF
+DESCRIPTOR.message_types_by_name['DiffResponse'] = _DIFFRESPONSE
+DESCRIPTOR.message_types_by_name['CreateRequest'] = _CREATEREQUEST
+DESCRIPTOR.message_types_by_name['CreateResponse'] = _CREATERESPONSE
+DESCRIPTOR.message_types_by_name['ReadRequest'] = _READREQUEST
+DESCRIPTOR.message_types_by_name['ReadResponse'] = _READRESPONSE
+DESCRIPTOR.message_types_by_name['UpdateRequest'] = _UPDATEREQUEST
+DESCRIPTOR.message_types_by_name['UpdateResponse'] = _UPDATERESPONSE
+DESCRIPTOR.message_types_by_name['DeleteRequest'] = _DELETEREQUEST
+DESCRIPTOR.message_types_by_name['ConstructRequest'] = _CONSTRUCTREQUEST
+DESCRIPTOR.message_types_by_name['ConstructResponse'] = _CONSTRUCTRESPONSE
+DESCRIPTOR.message_types_by_name['ErrorResourceInitFailed'] = _ERRORRESOURCEINITFAILED
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
-GetSchemaRequest = _reflection.GeneratedProtocolMessageType(
-    "GetSchemaRequest",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _GETSCHEMAREQUEST,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.GetSchemaRequest)
-    },
-)
+GetSchemaRequest = _reflection.GeneratedProtocolMessageType('GetSchemaRequest', (_message.Message,), {
+  'DESCRIPTOR' : _GETSCHEMAREQUEST,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.GetSchemaRequest)
+  })
 _sym_db.RegisterMessage(GetSchemaRequest)
 
-GetSchemaResponse = _reflection.GeneratedProtocolMessageType(
-    "GetSchemaResponse",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _GETSCHEMARESPONSE,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.GetSchemaResponse)
-    },
-)
+GetSchemaResponse = _reflection.GeneratedProtocolMessageType('GetSchemaResponse', (_message.Message,), {
+  'DESCRIPTOR' : _GETSCHEMARESPONSE,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.GetSchemaResponse)
+  })
 _sym_db.RegisterMessage(GetSchemaResponse)
 
-ConfigureRequest = _reflection.GeneratedProtocolMessageType(
-    "ConfigureRequest",
-    (_message.Message,),
-    {
-        "VariablesEntry": _reflection.GeneratedProtocolMessageType(
-            "VariablesEntry",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CONFIGUREREQUEST_VARIABLESENTRY,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureRequest.VariablesEntry)
-            },
-        ),
-        "DESCRIPTOR": _CONFIGUREREQUEST,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureRequest)
-    },
-)
+ConfigureRequest = _reflection.GeneratedProtocolMessageType('ConfigureRequest', (_message.Message,), {
+
+  'VariablesEntry' : _reflection.GeneratedProtocolMessageType('VariablesEntry', (_message.Message,), {
+    'DESCRIPTOR' : _CONFIGUREREQUEST_VARIABLESENTRY,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureRequest.VariablesEntry)
+    })
+  ,
+  'DESCRIPTOR' : _CONFIGUREREQUEST,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureRequest)
+  })
 _sym_db.RegisterMessage(ConfigureRequest)
 _sym_db.RegisterMessage(ConfigureRequest.VariablesEntry)
 
-ConfigureResponse = _reflection.GeneratedProtocolMessageType(
-    "ConfigureResponse",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _CONFIGURERESPONSE,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureResponse)
-    },
-)
+ConfigureResponse = _reflection.GeneratedProtocolMessageType('ConfigureResponse', (_message.Message,), {
+  'DESCRIPTOR' : _CONFIGURERESPONSE,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureResponse)
+  })
 _sym_db.RegisterMessage(ConfigureResponse)
 
-ConfigureErrorMissingKeys = _reflection.GeneratedProtocolMessageType(
-    "ConfigureErrorMissingKeys",
-    (_message.Message,),
-    {
-        "MissingKey": _reflection.GeneratedProtocolMessageType(
-            "MissingKey",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CONFIGUREERRORMISSINGKEYS_MISSINGKEY,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureErrorMissingKeys.MissingKey)
-            },
-        ),
-        "DESCRIPTOR": _CONFIGUREERRORMISSINGKEYS,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureErrorMissingKeys)
-    },
-)
+ConfigureErrorMissingKeys = _reflection.GeneratedProtocolMessageType('ConfigureErrorMissingKeys', (_message.Message,), {
+
+  'MissingKey' : _reflection.GeneratedProtocolMessageType('MissingKey', (_message.Message,), {
+    'DESCRIPTOR' : _CONFIGUREERRORMISSINGKEYS_MISSINGKEY,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureErrorMissingKeys.MissingKey)
+    })
+  ,
+  'DESCRIPTOR' : _CONFIGUREERRORMISSINGKEYS,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.ConfigureErrorMissingKeys)
+  })
 _sym_db.RegisterMessage(ConfigureErrorMissingKeys)
 _sym_db.RegisterMessage(ConfigureErrorMissingKeys.MissingKey)
 
-InvokeRequest = _reflection.GeneratedProtocolMessageType(
-    "InvokeRequest",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _INVOKEREQUEST,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.InvokeRequest)
-    },
-)
+InvokeRequest = _reflection.GeneratedProtocolMessageType('InvokeRequest', (_message.Message,), {
+  'DESCRIPTOR' : _INVOKEREQUEST,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.InvokeRequest)
+  })
 _sym_db.RegisterMessage(InvokeRequest)
 
-InvokeResponse = _reflection.GeneratedProtocolMessageType(
-    "InvokeResponse",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _INVOKERESPONSE,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.InvokeResponse)
-    },
-)
+InvokeResponse = _reflection.GeneratedProtocolMessageType('InvokeResponse', (_message.Message,), {
+  'DESCRIPTOR' : _INVOKERESPONSE,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.InvokeResponse)
+  })
 _sym_db.RegisterMessage(InvokeResponse)
 
-CallRequest = _reflection.GeneratedProtocolMessageType(
-    "CallRequest",
-    (_message.Message,),
-    {
-        "ArgumentDependencies": _reflection.GeneratedProtocolMessageType(
-            "ArgumentDependencies",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CALLREQUEST_ARGUMENTDEPENDENCIES,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.CallRequest.ArgumentDependencies)
-            },
-        ),
-        "ArgDependenciesEntry": _reflection.GeneratedProtocolMessageType(
-            "ArgDependenciesEntry",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CALLREQUEST_ARGDEPENDENCIESENTRY,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.CallRequest.ArgDependenciesEntry)
-            },
-        ),
-        "ConfigEntry": _reflection.GeneratedProtocolMessageType(
-            "ConfigEntry",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CALLREQUEST_CONFIGENTRY,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.CallRequest.ConfigEntry)
-            },
-        ),
-        "DESCRIPTOR": _CALLREQUEST,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.CallRequest)
-    },
-)
+CallRequest = _reflection.GeneratedProtocolMessageType('CallRequest', (_message.Message,), {
+
+  'ArgumentDependencies' : _reflection.GeneratedProtocolMessageType('ArgumentDependencies', (_message.Message,), {
+    'DESCRIPTOR' : _CALLREQUEST_ARGUMENTDEPENDENCIES,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.CallRequest.ArgumentDependencies)
+    })
+  ,
+
+  'ArgDependenciesEntry' : _reflection.GeneratedProtocolMessageType('ArgDependenciesEntry', (_message.Message,), {
+    'DESCRIPTOR' : _CALLREQUEST_ARGDEPENDENCIESENTRY,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.CallRequest.ArgDependenciesEntry)
+    })
+  ,
+
+  'ConfigEntry' : _reflection.GeneratedProtocolMessageType('ConfigEntry', (_message.Message,), {
+    'DESCRIPTOR' : _CALLREQUEST_CONFIGENTRY,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.CallRequest.ConfigEntry)
+    })
+  ,
+  'DESCRIPTOR' : _CALLREQUEST,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.CallRequest)
+  })
 _sym_db.RegisterMessage(CallRequest)
 _sym_db.RegisterMessage(CallRequest.ArgumentDependencies)
 _sym_db.RegisterMessage(CallRequest.ArgDependenciesEntry)
 _sym_db.RegisterMessage(CallRequest.ConfigEntry)
 
-CallResponse = _reflection.GeneratedProtocolMessageType(
-    "CallResponse",
-    (_message.Message,),
-    {
-        "ReturnDependencies": _reflection.GeneratedProtocolMessageType(
-            "ReturnDependencies",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CALLRESPONSE_RETURNDEPENDENCIES,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.CallResponse.ReturnDependencies)
-            },
-        ),
-        "ReturnDependenciesEntry": _reflection.GeneratedProtocolMessageType(
-            "ReturnDependenciesEntry",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CALLRESPONSE_RETURNDEPENDENCIESENTRY,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.CallResponse.ReturnDependenciesEntry)
-            },
-        ),
-        "DESCRIPTOR": _CALLRESPONSE,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.CallResponse)
-    },
-)
+CallResponse = _reflection.GeneratedProtocolMessageType('CallResponse', (_message.Message,), {
+
+  'ReturnDependencies' : _reflection.GeneratedProtocolMessageType('ReturnDependencies', (_message.Message,), {
+    'DESCRIPTOR' : _CALLRESPONSE_RETURNDEPENDENCIES,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.CallResponse.ReturnDependencies)
+    })
+  ,
+
+  'ReturnDependenciesEntry' : _reflection.GeneratedProtocolMessageType('ReturnDependenciesEntry', (_message.Message,), {
+    'DESCRIPTOR' : _CALLRESPONSE_RETURNDEPENDENCIESENTRY,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.CallResponse.ReturnDependenciesEntry)
+    })
+  ,
+  'DESCRIPTOR' : _CALLRESPONSE,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.CallResponse)
+  })
 _sym_db.RegisterMessage(CallResponse)
 _sym_db.RegisterMessage(CallResponse.ReturnDependencies)
 _sym_db.RegisterMessage(CallResponse.ReturnDependenciesEntry)
 
-CheckRequest = _reflection.GeneratedProtocolMessageType(
-    "CheckRequest",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _CHECKREQUEST,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.CheckRequest)
-    },
-)
+CheckRequest = _reflection.GeneratedProtocolMessageType('CheckRequest', (_message.Message,), {
+  'DESCRIPTOR' : _CHECKREQUEST,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.CheckRequest)
+  })
 _sym_db.RegisterMessage(CheckRequest)
 
-CheckResponse = _reflection.GeneratedProtocolMessageType(
-    "CheckResponse",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _CHECKRESPONSE,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.CheckResponse)
-    },
-)
+CheckResponse = _reflection.GeneratedProtocolMessageType('CheckResponse', (_message.Message,), {
+  'DESCRIPTOR' : _CHECKRESPONSE,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.CheckResponse)
+  })
 _sym_db.RegisterMessage(CheckResponse)
 
-CheckFailure = _reflection.GeneratedProtocolMessageType(
-    "CheckFailure",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _CHECKFAILURE,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.CheckFailure)
-    },
-)
+CheckFailure = _reflection.GeneratedProtocolMessageType('CheckFailure', (_message.Message,), {
+  'DESCRIPTOR' : _CHECKFAILURE,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.CheckFailure)
+  })
 _sym_db.RegisterMessage(CheckFailure)
 
-DiffRequest = _reflection.GeneratedProtocolMessageType(
-    "DiffRequest",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _DIFFREQUEST,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.DiffRequest)
-    },
-)
+DiffRequest = _reflection.GeneratedProtocolMessageType('DiffRequest', (_message.Message,), {
+  'DESCRIPTOR' : _DIFFREQUEST,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.DiffRequest)
+  })
 _sym_db.RegisterMessage(DiffRequest)
 
-PropertyDiff = _reflection.GeneratedProtocolMessageType(
-    "PropertyDiff",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _PROPERTYDIFF,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.PropertyDiff)
-    },
-)
+PropertyDiff = _reflection.GeneratedProtocolMessageType('PropertyDiff', (_message.Message,), {
+  'DESCRIPTOR' : _PROPERTYDIFF,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.PropertyDiff)
+  })
 _sym_db.RegisterMessage(PropertyDiff)
 
-DiffResponse = _reflection.GeneratedProtocolMessageType(
-    "DiffResponse",
-    (_message.Message,),
-    {
-        "DetailedDiffEntry": _reflection.GeneratedProtocolMessageType(
-            "DetailedDiffEntry",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _DIFFRESPONSE_DETAILEDDIFFENTRY,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.DiffResponse.DetailedDiffEntry)
-            },
-        ),
-        "DESCRIPTOR": _DIFFRESPONSE,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.DiffResponse)
-    },
-)
+DiffResponse = _reflection.GeneratedProtocolMessageType('DiffResponse', (_message.Message,), {
+
+  'DetailedDiffEntry' : _reflection.GeneratedProtocolMessageType('DetailedDiffEntry', (_message.Message,), {
+    'DESCRIPTOR' : _DIFFRESPONSE_DETAILEDDIFFENTRY,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.DiffResponse.DetailedDiffEntry)
+    })
+  ,
+  'DESCRIPTOR' : _DIFFRESPONSE,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.DiffResponse)
+  })
 _sym_db.RegisterMessage(DiffResponse)
 _sym_db.RegisterMessage(DiffResponse.DetailedDiffEntry)
 
-CreateRequest = _reflection.GeneratedProtocolMessageType(
-    "CreateRequest",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _CREATEREQUEST,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.CreateRequest)
-    },
-)
+CreateRequest = _reflection.GeneratedProtocolMessageType('CreateRequest', (_message.Message,), {
+  'DESCRIPTOR' : _CREATEREQUEST,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.CreateRequest)
+  })
 _sym_db.RegisterMessage(CreateRequest)
 
-CreateResponse = _reflection.GeneratedProtocolMessageType(
-    "CreateResponse",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _CREATERESPONSE,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.CreateResponse)
-    },
-)
+CreateResponse = _reflection.GeneratedProtocolMessageType('CreateResponse', (_message.Message,), {
+  'DESCRIPTOR' : _CREATERESPONSE,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.CreateResponse)
+  })
 _sym_db.RegisterMessage(CreateResponse)
 
-ReadRequest = _reflection.GeneratedProtocolMessageType(
-    "ReadRequest",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _READREQUEST,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.ReadRequest)
-    },
-)
+ReadRequest = _reflection.GeneratedProtocolMessageType('ReadRequest', (_message.Message,), {
+  'DESCRIPTOR' : _READREQUEST,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.ReadRequest)
+  })
 _sym_db.RegisterMessage(ReadRequest)
 
-ReadResponse = _reflection.GeneratedProtocolMessageType(
-    "ReadResponse",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _READRESPONSE,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.ReadResponse)
-    },
-)
+ReadResponse = _reflection.GeneratedProtocolMessageType('ReadResponse', (_message.Message,), {
+  'DESCRIPTOR' : _READRESPONSE,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.ReadResponse)
+  })
 _sym_db.RegisterMessage(ReadResponse)
 
-UpdateRequest = _reflection.GeneratedProtocolMessageType(
-    "UpdateRequest",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _UPDATEREQUEST,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.UpdateRequest)
-    },
-)
+UpdateRequest = _reflection.GeneratedProtocolMessageType('UpdateRequest', (_message.Message,), {
+  'DESCRIPTOR' : _UPDATEREQUEST,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.UpdateRequest)
+  })
 _sym_db.RegisterMessage(UpdateRequest)
 
-UpdateResponse = _reflection.GeneratedProtocolMessageType(
-    "UpdateResponse",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _UPDATERESPONSE,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.UpdateResponse)
-    },
-)
+UpdateResponse = _reflection.GeneratedProtocolMessageType('UpdateResponse', (_message.Message,), {
+  'DESCRIPTOR' : _UPDATERESPONSE,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.UpdateResponse)
+  })
 _sym_db.RegisterMessage(UpdateResponse)
 
-DeleteRequest = _reflection.GeneratedProtocolMessageType(
-    "DeleteRequest",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _DELETEREQUEST,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.DeleteRequest)
-    },
-)
+DeleteRequest = _reflection.GeneratedProtocolMessageType('DeleteRequest', (_message.Message,), {
+  'DESCRIPTOR' : _DELETEREQUEST,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.DeleteRequest)
+  })
 _sym_db.RegisterMessage(DeleteRequest)
 
-ConstructRequest = _reflection.GeneratedProtocolMessageType(
-    "ConstructRequest",
-    (_message.Message,),
-    {
-        "PropertyDependencies": _reflection.GeneratedProtocolMessageType(
-            "PropertyDependencies",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CONSTRUCTREQUEST_PROPERTYDEPENDENCIES,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.ConstructRequest.PropertyDependencies)
-            },
-        ),
-        "ConfigEntry": _reflection.GeneratedProtocolMessageType(
-            "ConfigEntry",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CONSTRUCTREQUEST_CONFIGENTRY,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.ConstructRequest.ConfigEntry)
-            },
-        ),
-        "InputDependenciesEntry": _reflection.GeneratedProtocolMessageType(
-            "InputDependenciesEntry",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CONSTRUCTREQUEST_INPUTDEPENDENCIESENTRY,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.ConstructRequest.InputDependenciesEntry)
-            },
-        ),
-        "ProvidersEntry": _reflection.GeneratedProtocolMessageType(
-            "ProvidersEntry",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CONSTRUCTREQUEST_PROVIDERSENTRY,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.ConstructRequest.ProvidersEntry)
-            },
-        ),
-        "DESCRIPTOR": _CONSTRUCTREQUEST,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.ConstructRequest)
-    },
-)
+ConstructRequest = _reflection.GeneratedProtocolMessageType('ConstructRequest', (_message.Message,), {
+
+  'PropertyDependencies' : _reflection.GeneratedProtocolMessageType('PropertyDependencies', (_message.Message,), {
+    'DESCRIPTOR' : _CONSTRUCTREQUEST_PROPERTYDEPENDENCIES,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.ConstructRequest.PropertyDependencies)
+    })
+  ,
+
+  'ConfigEntry' : _reflection.GeneratedProtocolMessageType('ConfigEntry', (_message.Message,), {
+    'DESCRIPTOR' : _CONSTRUCTREQUEST_CONFIGENTRY,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.ConstructRequest.ConfigEntry)
+    })
+  ,
+
+  'InputDependenciesEntry' : _reflection.GeneratedProtocolMessageType('InputDependenciesEntry', (_message.Message,), {
+    'DESCRIPTOR' : _CONSTRUCTREQUEST_INPUTDEPENDENCIESENTRY,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.ConstructRequest.InputDependenciesEntry)
+    })
+  ,
+
+  'ProvidersEntry' : _reflection.GeneratedProtocolMessageType('ProvidersEntry', (_message.Message,), {
+    'DESCRIPTOR' : _CONSTRUCTREQUEST_PROVIDERSENTRY,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.ConstructRequest.ProvidersEntry)
+    })
+  ,
+  'DESCRIPTOR' : _CONSTRUCTREQUEST,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.ConstructRequest)
+  })
 _sym_db.RegisterMessage(ConstructRequest)
 _sym_db.RegisterMessage(ConstructRequest.PropertyDependencies)
 _sym_db.RegisterMessage(ConstructRequest.ConfigEntry)
 _sym_db.RegisterMessage(ConstructRequest.InputDependenciesEntry)
 _sym_db.RegisterMessage(ConstructRequest.ProvidersEntry)
 
-ConstructResponse = _reflection.GeneratedProtocolMessageType(
-    "ConstructResponse",
-    (_message.Message,),
-    {
-        "PropertyDependencies": _reflection.GeneratedProtocolMessageType(
-            "PropertyDependencies",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CONSTRUCTRESPONSE_PROPERTYDEPENDENCIES,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.ConstructResponse.PropertyDependencies)
-            },
-        ),
-        "StateDependenciesEntry": _reflection.GeneratedProtocolMessageType(
-            "StateDependenciesEntry",
-            (_message.Message,),
-            {
-                "DESCRIPTOR": _CONSTRUCTRESPONSE_STATEDEPENDENCIESENTRY,
-                "__module__": "provider_pb2"
-                # @@protoc_insertion_point(class_scope:pulumirpc.ConstructResponse.StateDependenciesEntry)
-            },
-        ),
-        "DESCRIPTOR": _CONSTRUCTRESPONSE,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.ConstructResponse)
-    },
-)
+ConstructResponse = _reflection.GeneratedProtocolMessageType('ConstructResponse', (_message.Message,), {
+
+  'PropertyDependencies' : _reflection.GeneratedProtocolMessageType('PropertyDependencies', (_message.Message,), {
+    'DESCRIPTOR' : _CONSTRUCTRESPONSE_PROPERTYDEPENDENCIES,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.ConstructResponse.PropertyDependencies)
+    })
+  ,
+
+  'StateDependenciesEntry' : _reflection.GeneratedProtocolMessageType('StateDependenciesEntry', (_message.Message,), {
+    'DESCRIPTOR' : _CONSTRUCTRESPONSE_STATEDEPENDENCIESENTRY,
+    '__module__' : 'provider_pb2'
+    # @@protoc_insertion_point(class_scope:pulumirpc.ConstructResponse.StateDependenciesEntry)
+    })
+  ,
+  'DESCRIPTOR' : _CONSTRUCTRESPONSE,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.ConstructResponse)
+  })
 _sym_db.RegisterMessage(ConstructResponse)
 _sym_db.RegisterMessage(ConstructResponse.PropertyDependencies)
 _sym_db.RegisterMessage(ConstructResponse.StateDependenciesEntry)
 
-ErrorResourceInitFailed = _reflection.GeneratedProtocolMessageType(
-    "ErrorResourceInitFailed",
-    (_message.Message,),
-    {
-        "DESCRIPTOR": _ERRORRESOURCEINITFAILED,
-        "__module__": "provider_pb2"
-        # @@protoc_insertion_point(class_scope:pulumirpc.ErrorResourceInitFailed)
-    },
-)
+ErrorResourceInitFailed = _reflection.GeneratedProtocolMessageType('ErrorResourceInitFailed', (_message.Message,), {
+  'DESCRIPTOR' : _ERRORRESOURCEINITFAILED,
+  '__module__' : 'provider_pb2'
+  # @@protoc_insertion_point(class_scope:pulumirpc.ErrorResourceInitFailed)
+  })
 _sym_db.RegisterMessage(ErrorResourceInitFailed)
 
 
@@ -3826,171 +2304,170 @@ _CONSTRUCTREQUEST_PROVIDERSENTRY._options = None
 _CONSTRUCTRESPONSE_STATEDEPENDENCIESENTRY._options = None
 
 _RESOURCEPROVIDER = _descriptor.ServiceDescriptor(
-    name="ResourceProvider",
-    full_name="pulumirpc.ResourceProvider",
-    file=DESCRIPTOR,
+  name='ResourceProvider',
+  full_name='pulumirpc.ResourceProvider',
+  file=DESCRIPTOR,
+  index=0,
+  serialized_options=None,
+  serialized_start=4714,
+  serialized_end=5843,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='GetSchema',
+    full_name='pulumirpc.ResourceProvider.GetSchema',
     index=0,
+    containing_service=None,
+    input_type=_GETSCHEMAREQUEST,
+    output_type=_GETSCHEMARESPONSE,
     serialized_options=None,
-    serialized_start=4714,
-    serialized_end=5843,
-    methods=[
-        _descriptor.MethodDescriptor(
-            name="GetSchema",
-            full_name="pulumirpc.ResourceProvider.GetSchema",
-            index=0,
-            containing_service=None,
-            input_type=_GETSCHEMAREQUEST,
-            output_type=_GETSCHEMARESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="CheckConfig",
-            full_name="pulumirpc.ResourceProvider.CheckConfig",
-            index=1,
-            containing_service=None,
-            input_type=_CHECKREQUEST,
-            output_type=_CHECKRESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="DiffConfig",
-            full_name="pulumirpc.ResourceProvider.DiffConfig",
-            index=2,
-            containing_service=None,
-            input_type=_DIFFREQUEST,
-            output_type=_DIFFRESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Configure",
-            full_name="pulumirpc.ResourceProvider.Configure",
-            index=3,
-            containing_service=None,
-            input_type=_CONFIGUREREQUEST,
-            output_type=_CONFIGURERESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Invoke",
-            full_name="pulumirpc.ResourceProvider.Invoke",
-            index=4,
-            containing_service=None,
-            input_type=_INVOKEREQUEST,
-            output_type=_INVOKERESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="StreamInvoke",
-            full_name="pulumirpc.ResourceProvider.StreamInvoke",
-            index=5,
-            containing_service=None,
-            input_type=_INVOKEREQUEST,
-            output_type=_INVOKERESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Call",
-            full_name="pulumirpc.ResourceProvider.Call",
-            index=6,
-            containing_service=None,
-            input_type=_CALLREQUEST,
-            output_type=_CALLRESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Check",
-            full_name="pulumirpc.ResourceProvider.Check",
-            index=7,
-            containing_service=None,
-            input_type=_CHECKREQUEST,
-            output_type=_CHECKRESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Diff",
-            full_name="pulumirpc.ResourceProvider.Diff",
-            index=8,
-            containing_service=None,
-            input_type=_DIFFREQUEST,
-            output_type=_DIFFRESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Create",
-            full_name="pulumirpc.ResourceProvider.Create",
-            index=9,
-            containing_service=None,
-            input_type=_CREATEREQUEST,
-            output_type=_CREATERESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Read",
-            full_name="pulumirpc.ResourceProvider.Read",
-            index=10,
-            containing_service=None,
-            input_type=_READREQUEST,
-            output_type=_READRESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Update",
-            full_name="pulumirpc.ResourceProvider.Update",
-            index=11,
-            containing_service=None,
-            input_type=_UPDATEREQUEST,
-            output_type=_UPDATERESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Delete",
-            full_name="pulumirpc.ResourceProvider.Delete",
-            index=12,
-            containing_service=None,
-            input_type=_DELETEREQUEST,
-            output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Construct",
-            full_name="pulumirpc.ResourceProvider.Construct",
-            index=13,
-            containing_service=None,
-            input_type=_CONSTRUCTREQUEST,
-            output_type=_CONSTRUCTRESPONSE,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Cancel",
-            full_name="pulumirpc.ResourceProvider.Cancel",
-            index=14,
-            containing_service=None,
-            input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-            output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="GetPluginInfo",
-            full_name="pulumirpc.ResourceProvider.GetPluginInfo",
-            index=15,
-            containing_service=None,
-            input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-            output_type=plugin__pb2._PLUGININFO,
-            serialized_options=None,
-        ),
-        _descriptor.MethodDescriptor(
-            name="Attach",
-            full_name="pulumirpc.ResourceProvider.Attach",
-            index=16,
-            containing_service=None,
-            input_type=plugin__pb2._PLUGINATTACH,
-            output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-            serialized_options=None,
-        ),
-    ],
-)
+  ),
+  _descriptor.MethodDescriptor(
+    name='CheckConfig',
+    full_name='pulumirpc.ResourceProvider.CheckConfig',
+    index=1,
+    containing_service=None,
+    input_type=_CHECKREQUEST,
+    output_type=_CHECKRESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='DiffConfig',
+    full_name='pulumirpc.ResourceProvider.DiffConfig',
+    index=2,
+    containing_service=None,
+    input_type=_DIFFREQUEST,
+    output_type=_DIFFRESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Configure',
+    full_name='pulumirpc.ResourceProvider.Configure',
+    index=3,
+    containing_service=None,
+    input_type=_CONFIGUREREQUEST,
+    output_type=_CONFIGURERESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Invoke',
+    full_name='pulumirpc.ResourceProvider.Invoke',
+    index=4,
+    containing_service=None,
+    input_type=_INVOKEREQUEST,
+    output_type=_INVOKERESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='StreamInvoke',
+    full_name='pulumirpc.ResourceProvider.StreamInvoke',
+    index=5,
+    containing_service=None,
+    input_type=_INVOKEREQUEST,
+    output_type=_INVOKERESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Call',
+    full_name='pulumirpc.ResourceProvider.Call',
+    index=6,
+    containing_service=None,
+    input_type=_CALLREQUEST,
+    output_type=_CALLRESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Check',
+    full_name='pulumirpc.ResourceProvider.Check',
+    index=7,
+    containing_service=None,
+    input_type=_CHECKREQUEST,
+    output_type=_CHECKRESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Diff',
+    full_name='pulumirpc.ResourceProvider.Diff',
+    index=8,
+    containing_service=None,
+    input_type=_DIFFREQUEST,
+    output_type=_DIFFRESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Create',
+    full_name='pulumirpc.ResourceProvider.Create',
+    index=9,
+    containing_service=None,
+    input_type=_CREATEREQUEST,
+    output_type=_CREATERESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Read',
+    full_name='pulumirpc.ResourceProvider.Read',
+    index=10,
+    containing_service=None,
+    input_type=_READREQUEST,
+    output_type=_READRESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Update',
+    full_name='pulumirpc.ResourceProvider.Update',
+    index=11,
+    containing_service=None,
+    input_type=_UPDATEREQUEST,
+    output_type=_UPDATERESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Delete',
+    full_name='pulumirpc.ResourceProvider.Delete',
+    index=12,
+    containing_service=None,
+    input_type=_DELETEREQUEST,
+    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Construct',
+    full_name='pulumirpc.ResourceProvider.Construct',
+    index=13,
+    containing_service=None,
+    input_type=_CONSTRUCTREQUEST,
+    output_type=_CONSTRUCTRESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Cancel',
+    full_name='pulumirpc.ResourceProvider.Cancel',
+    index=14,
+    containing_service=None,
+    input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='GetPluginInfo',
+    full_name='pulumirpc.ResourceProvider.GetPluginInfo',
+    index=15,
+    containing_service=None,
+    input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    output_type=plugin__pb2._PLUGININFO,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Attach',
+    full_name='pulumirpc.ResourceProvider.Attach',
+    index=16,
+    containing_service=None,
+    input_type=plugin__pb2._PLUGINATTACH,
+    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    serialized_options=None,
+  ),
+])
 _sym_db.RegisterServiceDescriptor(_RESOURCEPROVIDER)
 
-DESCRIPTOR.services_by_name["ResourceProvider"] = _RESOURCEPROVIDER
+DESCRIPTOR.services_by_name['ResourceProvider'] = _RESOURCEPROVIDER
 
 # @@protoc_insertion_point(module_scope)
