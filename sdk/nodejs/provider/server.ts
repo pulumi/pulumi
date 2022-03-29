@@ -36,14 +36,14 @@ const plugproto = require("../proto/plugin_pb.js");
 const statusproto = require("../proto/status_pb.js");
 
 class Server implements grpc.UntypedServiceImplementation {
-    readonly engineAddr: string;
+    engineAddr: string | undefined;
     readonly provider: Provider;
     readonly uncaughtErrors: Set<Error>;
 
     /** Queue of construct calls. */
     constructCallQueue = Promise.resolve();
-
-    constructor(engineAddr: string, provider: Provider, uncaughtErrors: Set<Error>) {
+ 
+    constructor(engineAddr: string | undefined, provider: Provider, uncaughtErrors: Set<Error>) {
         this.engineAddr = engineAddr;
         this.provider = provider;
         this.uncaughtErrors = uncaughtErrors;
@@ -56,6 +56,13 @@ class Server implements grpc.UntypedServiceImplementation {
 
     public cancel(call: any, callback: any): void {
         callback(undefined, new emptyproto.Empty());
+    }
+
+    public attach(call: any, callback:any): void {
+        const req = call.request;
+        const host = req.getAddress();
+        this.engineAddr = host;
+        callback(undefined, new emptyproto.Empty())
     }
 
     public getPluginInfo(call: any, callback: any): void {
@@ -469,9 +476,13 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 }
 
-function configureRuntime(req: any, engineAddr: string) {
+function configureRuntime(req: any, engineAddr: string | undefined) {
     // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
     // refactor so we can avoid the global state.
+    if (engineAddr === undefined) {
+        throw new Error("fatal: Missing <engine> address");
+    }
+
     runtime.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
         req.getMonitorendpoint(), req.getDryrun());
 
@@ -622,19 +633,15 @@ export async function main(provider: Provider, args: string[]) {
 
     const parsedArgs = parseArgs(args);
 
-    // The program requires a single argument: the address of the RPC endpoint for the engine.  It
-    // optionally also takes a second argument, a reference back to the engine, but this may be missing.
-    if (parsedArgs === undefined) {
-        console.error("fatal: Missing <engine> address");
-        process.exit(-1);
-        return;
-    }
-    const engineAddr: string = parsedArgs.engineAddress;
-
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
         "grpc.max_receive_message_length": runtime.maxRPCMessageSize,
     });
+
+    // The program receives a single optional argument: the address of the RPC endpoint for the engine.  It
+    // optionally also takes a second argument, a reference back to the engine, but this may be missing.
+
+    const engineAddr = parsedArgs?.engineAddress;
     server.addService(provrpc.ResourceProviderService, new Server(engineAddr, provider, uncaughtErrors));
     const port: number = await new Promise<number>((resolve, reject) => {
         server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
