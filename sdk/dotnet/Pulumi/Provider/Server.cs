@@ -299,7 +299,9 @@ namespace Pulumi.Provider
                 throw new RpcException(new Status(StatusCode.Unknown, ex.Message));
             }
         }
+    }
 
+    public static class Server {
         public static async Task Main(IProvider provider, string[] args, System.Threading.CancellationToken cancellationToken)
         {
             // maxRpcMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
@@ -382,3 +384,24 @@ namespace Pulumi.Provider
         }
     }
 }
+
+// Example Program.cs
+//
+//public class Provider : IProvider
+//{
+//    public virtual Task<(string, IDictionary<string, object?>)> Create(ImmutableDictionary<string, object?> properties)
+//    {
+//        return ("id", properties);
+//    }
+//}
+//
+//public static class Program {
+//    public static void Main(string[] args) {
+//        var cts = new System.Threading.CancellationTokenSource();
+//        Console.CancelKeyPress += (object sender, ConsoleCancelEventArgs e) => cts.Cancel()
+//        var provider = new Provider();
+//
+//        Pulumi.Provider.Server.Main(provider, args, cts.Token)
+//    }
+//
+//}
