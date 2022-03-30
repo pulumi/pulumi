@@ -1,0 +1,39 @@
+Pulumi.Provider.CheckFailure
+Pulumi.Provider.CheckFailure.CheckFailure(string property, string reason) -> void
+Pulumi.Provider.CheckResult
+Pulumi.Provider.CheckResult.CheckResult(System.Collections.Generic.IDictionary<string, object> inputs, System.Collections.Generic.IList<Pulumi.Provider.CheckFailure> failures) -> void
+Pulumi.Provider.CheckResult.Inputs.get -> System.Collections.Generic.IDictionary<string, object>
+Pulumi.Provider.CheckResult.Failures.get -> System.Collections.Generic.IList<Pulumi.Provider.CheckFailure>
+Pulumi.Provider.CheckFailure.Property.get -> string
+Pulumi.Provider.CheckFailure.Reason.get -> string
+Pulumi.Provider.ConfigureResult
+Pulumi.Provider.ConfigureResult.ConfigureResult(bool acceptSecrets, bool acceptResources, bool acceptOutputs, bool supportsPreview) -> void
+Pulumi.Provider.DiffResult
+Pulumi.Provider.DiffResult.Changes.get -> bool?
+Pulumi.Provider.DiffResult.DiffResult(bool? changes = null, System.Collections.Generic.IEnumerable<string> replaces = null, System.Collections.Generic.IEnumerable<string> stables = null, bool deleteBeforeReplace = false) -> void
+Pulumi.Provider.DiffResult.Replaces.get -> System.Collections.Generic.IReadOnlyList<string>
+Pulumi.Provider.DiffResult.Stables.get -> System.Collections.Generic.IReadOnlyList<string>
+Pulumi.Provider.DiffResult.DeleteBeforeReplace.get -> bool
+Pulumi.Provider.ConfigureResult.AcceptSecrets.get -> bool
+Pulumi.Provider.ConfigureResult.AcceptResources.get -> bool
+Pulumi.Provider.ConfigureResult.AcceptOutputs.get -> bool
+Pulumi.Provider.ConfigureResult.SupportsPreview.get -> bool
+Pulumi.Provider.IProvider
+Pulumi.Provider.IProvider.Check(System.Collections.Immutable.ImmutableDictionary<string, object> olds, System.Collections.Immutable.ImmutableDictionary<string, object> news) -> System.Threading.Tasks.Task<Pulumi.Provider.CheckResult>
+Pulumi.Provider.IProvider.CheckConfig(System.Collections.Immutable.ImmutableDictionary<string, object> olds, System.Collections.Immutable.ImmutableDictionary<string, object> news) -> System.Threading.Tasks.Task<Pulumi.Provider.CheckResult>
+Pulumi.Provider.IProvider.Configure(bool acceptSecrets, bool acceptResources, System.Collections.Generic.IDictionary<string, object> args, System.Collections.Generic.IDictionary<string, string> variables) -> System.Threading.Tasks.Task<Pulumi.Provider.ConfigureResult>
+Pulumi.Provider.IProvider.Create(System.Collections.Immutable.ImmutableDictionary<string, object> properties) -> System.Threading.Tasks.Task<(string, System.Collections.Generic.IDictionary<string, object>)>
+Pulumi.Provider.IProvider.Delete(string id, System.Collections.Immutable.ImmutableDictionary<string, object> properties) -> System.Threading.Tasks.Task
+Pulumi.Provider.IProvider.Diff(string id, System.Collections.Immutable.ImmutableDictionary<string, object> olds, System.Collections.Immutable.ImmutableDictionary<string, object> news) -> System.Threading.Tasks.Task<Pulumi.Provider.DiffResult>
+Pulumi.Provider.IProvider.DiffConfig(string id, System.Collections.Immutable.ImmutableDictionary<string, object> olds, System.Collections.Immutable.ImmutableDictionary<string, object> news) -> System.Threading.Tasks.Task<Pulumi.Provider.DiffResult>
+Pulumi.Provider.IProvider.GetSchema(int version) -> System.Threading.Tasks.Task<string>
+Pulumi.Provider.IProvider.Invoke(string token, System.Collections.Immutable.ImmutableDictionary<string, object> args) -> System.Threading.Tasks.Task<Pulumi.Provider.InvokeResult>
+Pulumi.Provider.IProvider.Read(string id, System.Collections.Immutable.ImmutableDictionary<string, object> properties) -> System.Threading.Tasks.Task<(string, System.Collections.Generic.IDictionary<string, object>)>
+Pulumi.Provider.IProvider.Update(string id, System.Collections.Immutable.ImmutableDictionary<string, object> olds, System.Collections.Immutable.ImmutableDictionary<string, object> news) -> System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>
+Pulumi.Provider.InvokeResult
+Pulumi.Provider.InvokeResult.InvokeResult(System.Collections.Generic.IDictionary<string, object> return, System.Collections.Generic.IList<Pulumi.Provider.CheckFailure> failures) -> void
+Pulumi.Provider.InvokeResult.Return.get -> System.Collections.Generic.IDictionary<string, object>
+Pulumi.Provider.InvokeResult.Failures.get -> System.Collections.Generic.IList<Pulumi.Provider.CheckFailure>
+Pulumi.Serialization.Rpc
+static Pulumi.Serialization.Rpc.DeserialiseProperties(Google.Protobuf.WellKnownTypes.Struct properties) -> System.Collections.Immutable.ImmutableDictionary<string, object>
+static Pulumi.Serialization.Rpc.SerialiseProperties(System.Collections.Generic.IDictionary<string, object> properties) -> Google.Protobuf.WellKnownTypes.Struct

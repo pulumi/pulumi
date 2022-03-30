@@ -40,7 +40,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="CliWrap" Version="3.3.2" />
-    <PackageReference Include="Grpc.AspNetCore.Server" version="2.37.0" />
     <PackageReference Include="YamlDotNet" Version="11.1.1" />
   </ItemGroup>
 

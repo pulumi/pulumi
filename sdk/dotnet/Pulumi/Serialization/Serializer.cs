@@ -437,7 +437,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 bool b => Value.ForBool(b),
                 string s => Value.ForString(s),
                 ImmutableArray<object> list => Value.ForList(list.Select(CreateValue).ToArray()),
-                ImmutableDictionary<string, object> dict => Value.ForStruct(CreateStruct(dict)),
+                ImmutableDictionary<string, object?> dict => Value.ForStruct(CreateStruct(dict)),
                 _ => throw new InvalidOperationException("Unsupported value when converting to protobuf: " + value.GetType().FullName),
             };
 
@@ -466,7 +466,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
         /// Given a <see cref="ImmutableDictionary{TKey, TValue}"/> produced by <see cref="SerializeAsync"/>,
         /// produces the equivalent <see cref="Struct"/> that can be passed to the Pulumi engine.
         /// </summary>
-        public static Struct CreateStruct(ImmutableDictionary<string, object> serializedDictionary)
+        public static Struct CreateStruct(ImmutableDictionary<string, object?> serializedDictionary)
         {
             var result = new Struct();
             foreach (var key in serializedDictionary.Keys.OrderBy(k => k))
