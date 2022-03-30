@@ -34,6 +34,8 @@ Pulumi.Provider.InvokeResult
 Pulumi.Provider.InvokeResult.InvokeResult(System.Collections.Generic.IDictionary<string, object> return, System.Collections.Generic.IList<Pulumi.Provider.CheckFailure> failures) -> void
 Pulumi.Provider.InvokeResult.Return.get -> System.Collections.Generic.IDictionary<string, object>
 Pulumi.Provider.InvokeResult.Failures.get -> System.Collections.Generic.IList<Pulumi.Provider.CheckFailure>
+Pulumi.Provider.Server
 Pulumi.Serialization.Rpc
+static Pulumi.Provider.Server.Main(Pulumi.Provider.IProvider provider, string[] args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task
 static Pulumi.Serialization.Rpc.DeserialiseProperties(Google.Protobuf.WellKnownTypes.Struct properties) -> System.Collections.Immutable.ImmutableDictionary<string, object>
 static Pulumi.Serialization.Rpc.SerialiseProperties(System.Collections.Generic.IDictionary<string, object> properties) -> Google.Protobuf.WellKnownTypes.Struct
