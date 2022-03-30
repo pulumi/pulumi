@@ -39,13 +39,19 @@ build_package:: ensure
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
+build_dynamic:: build_package
+	yarn --cwd ./cmd/pulumi-resource-pulumi-nodejs
+	yarn --cwd ./cmd/pulumi-resource-pulumi-nodejs run tsc
+	cp ./cmd/pulumi-resource-pulumi-nodejs/PulumiPlugin.yaml ./cmd/pulumi-resource-pulumi-nodejs/bin/PulumiPlugin.yaml
+
 build_plugin::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 
-build:: build_package build_plugin
+build:: build_package build_dynamic build_plugin
 
 install_package:: build
-	cp dist/pulumi-resource-pulumi-nodejs* "$(PULUMI_BIN)"
+	mkdir -p "$(PULUMI_ROOT)/plugins"
+	cp -r cmd/pulumi-resource-pulumi-nodejs/bin "$(PULUMI_ROOT)/plugins/pulumi-resource-pulumi-nodejs-${VERSION}"
 	cp dist/pulumi-analyzer-policy* "$(PULUMI_BIN)"
 
 install_plugin:: build

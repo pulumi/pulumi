@@ -15,6 +15,7 @@ module.exports = {
     ],
     "ignorePatterns": [
         "**/bin/**/*.ts",
+        "**/cmd/**/*.ts",
         "tests/automation/data/tcfg/*.ts",
         "tests/sxs_ts_test/*.ts",
         "tests/mockpackage/**/*.ts",

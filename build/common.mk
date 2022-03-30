@@ -97,6 +97,7 @@ STEP_MESSAGE = @echo -e "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):
 
 # Our install targets place items item into $PULUMI_ROOT.
 PULUMI_ROOT ?= $$HOME/.pulumi-dev
+PULUMI_HOME = PULUMI_ROOT
 
 # Use Python 3 explicitly vs expecting that `python` will resolve to a python 3
 # runtime.

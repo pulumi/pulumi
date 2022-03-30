@@ -49,7 +49,6 @@ pkg/codegen/testing/test/testdata/*-pp/*/go.sum
 # for goreleaser
 **/*.exe
 goreleaser
-pulumi-resource-pulumi-nodejs
 pulumi-resource-pulumi-python
 pulumi-analyzer-policy
 pulumi-analyzer-policy-python
