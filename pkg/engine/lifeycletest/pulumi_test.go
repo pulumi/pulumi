@@ -2297,6 +2297,10 @@ func (ctx *updateContext) GetPluginInfo(_ context.Context, req *pbempty.Empty) (
 	}, nil
 }
 
+func (p *updateContext) Start(info plugin.StartInfo) (io.Reader, io.Reader, <-chan plugin.StartResponse, context.CancelFunc, error) {
+	return nil, nil, nil, nil, errors.New("not supported")
+}
+
 func TestLanguageClient(t *testing.T) {
 	t.Parallel()
 
