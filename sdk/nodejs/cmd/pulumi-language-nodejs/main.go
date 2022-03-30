@@ -480,7 +480,18 @@ func (host *nodeLanguageHost) execNodejs(
 
 	// Actually launch nodejs and process the result of it into an appropriate response object.
 	response := func() *pulumirpc.RunResponse {
-		args := host.constructArguments(req, address, pipesDirectory)
+		runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
+		if runPath == "" {
+			runPath = defaultRunPath
+		}
+
+		runPath, err := locateModule(runPath, host.nodeBin)
+		if err != nil {
+			cmdutil.ExitError(
+				"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
+		}
+
+		args := host.constructArguments(req, address, pipesDirectory, runPath)
 		config, err := host.constructConfig(req)
 		if err != nil {
 			err = errors.Wrap(err, "failed to serialize configuration")
@@ -569,18 +580,7 @@ func (host *nodeLanguageHost) execNodejs(
 // constructArguments constructs a command-line for `pulumi-language-nodejs`
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
-func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, address, pipesDirectory string) []string {
-	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
-	if runPath == "" {
-		runPath = defaultRunPath
-	}
-
-	runPath, err := locateModule(runPath, host.nodeBin)
-	if err != nil {
-		cmdutil.ExitError(
-			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
-	}
-
+func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, address, pipesDirectory, runPath string) []string {
 	args := []string{runPath}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
