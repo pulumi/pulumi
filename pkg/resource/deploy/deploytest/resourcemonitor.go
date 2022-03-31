@@ -284,7 +284,7 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	}
 
 	// submit request
-	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.InvokeRequest{
+	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
 		Tok:      string(tok),
 		Provider: provider,
 		Args:     ins,

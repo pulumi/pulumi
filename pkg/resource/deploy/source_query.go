@@ -321,7 +321,7 @@ func (rm *queryResmon) Cancel() error {
 }
 
 // Invoke performs an invocation of a member located in a resource provider.
-func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("QueryResourceMonitor.Invoke(%s)", tok)
 
@@ -372,7 +372,7 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 }
 
 func (rm *queryResmon) StreamInvoke(
-	req *pulumirpc.InvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
+	req *pulumirpc.ResourceInvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
 
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("QueryResourceMonitor.StreamInvoke(%s)", tok)
@@ -396,7 +396,10 @@ func (rm *queryResmon) StreamInvoke(
 	// streaming operation completes!
 	logging.V(5).Infof("QueryResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
 	failures, err := prov.StreamInvoke(tok, args, func(event resource.PropertyMap) error {
-		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
+		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{Label: label,
+			KeepUnknowns:  true,
+			KeepResources: req.GetAcceptResources(),
+		})
 		if err != nil {
 			return fmt.Errorf("failed to marshal return: %w", err)
 		}

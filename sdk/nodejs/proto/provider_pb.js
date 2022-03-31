@@ -1757,11 +1757,7 @@ proto.pulumirpc.InvokeRequest.prototype.toObject = function(opt_includeInstance)
 proto.pulumirpc.InvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    provider: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 6, "")
+    args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1807,22 +1803,6 @@ proto.pulumirpc.InvokeRequest.deserializeBinaryFromReader = function(msg, reader
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setArgs(value);
       break;
-    case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setProvider(value);
-      break;
-    case 4:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVersion(value);
-      break;
-    case 5:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setAcceptresources(value);
-      break;
-    case 6:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPlugindownloadurl(value);
-      break;
     default:
       reader.skipField();
       break;
@@ -1865,34 +1845,6 @@ proto.pulumirpc.InvokeRequest.serializeBinaryToWriter = function(message, writer
       2,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
-  f = message.getProvider();
-  if (f.length > 0) {
-    writer.writeString(
-      3,
-      f
-    );
-  }
-  f = message.getVersion();
-  if (f.length > 0) {
-    writer.writeString(
-      4,
-      f
-    );
-  }
-  f = message.getAcceptresources();
-  if (f) {
-    writer.writeBool(
-      5,
-      f
-    );
-  }
-  f = message.getPlugindownloadurl();
-  if (f.length > 0) {
-    writer.writeString(
-      6,
-      f
     );
   }
 };
@@ -1950,78 +1902,6 @@ proto.pulumirpc.InvokeRequest.prototype.clearArgs = function() {
  */
 proto.pulumirpc.InvokeRequest.prototype.hasArgs = function() {
   return jspb.Message.getField(this, 2) != null;
-};
-
-
-/**
- * optional string provider = 3;
- * @return {string}
- */
-proto.pulumirpc.InvokeRequest.prototype.getProvider = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.InvokeRequest} returns this
- */
-proto.pulumirpc.InvokeRequest.prototype.setProvider = function(value) {
-  return jspb.Message.setProto3StringField(this, 3, value);
-};
-
-
-/**
- * optional string version = 4;
- * @return {string}
- */
-proto.pulumirpc.InvokeRequest.prototype.getVersion = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.InvokeRequest} returns this
- */
-proto.pulumirpc.InvokeRequest.prototype.setVersion = function(value) {
-  return jspb.Message.setProto3StringField(this, 4, value);
-};
-
-
-/**
- * optional bool acceptResources = 5;
- * @return {boolean}
- */
-proto.pulumirpc.InvokeRequest.prototype.getAcceptresources = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 5, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.pulumirpc.InvokeRequest} returns this
- */
-proto.pulumirpc.InvokeRequest.prototype.setAcceptresources = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 5, value);
-};
-
-
-/**
- * optional string pluginDownloadURL = 6;
- * @return {string}
- */
-proto.pulumirpc.InvokeRequest.prototype.getPlugindownloadurl = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.InvokeRequest} returns this
- */
-proto.pulumirpc.InvokeRequest.prototype.setPlugindownloadurl = function(value) {
-  return jspb.Message.setProto3StringField(this, 6, value);
 };
 
 

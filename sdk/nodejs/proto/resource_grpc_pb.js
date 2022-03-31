@@ -55,17 +55,6 @@ function deserialize_pulumirpc_CallResponse(buffer_arg) {
   return provider_pb.CallResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_InvokeRequest(arg) {
-  if (!(arg instanceof provider_pb.InvokeRequest)) {
-    throw new Error('Expected argument of type pulumirpc.InvokeRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_InvokeRequest(buffer_arg) {
-  return provider_pb.InvokeRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_InvokeResponse(arg) {
   if (!(arg instanceof provider_pb.InvokeResponse)) {
     throw new Error('Expected argument of type pulumirpc.InvokeResponse');
@@ -132,6 +121,17 @@ function deserialize_pulumirpc_RegisterResourceResponse(buffer_arg) {
   return resource_pb.RegisterResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ResourceInvokeRequest(arg) {
+  if (!(arg instanceof resource_pb.ResourceInvokeRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ResourceInvokeRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ResourceInvokeRequest(buffer_arg) {
+  return resource_pb.ResourceInvokeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_SupportsFeatureRequest(arg) {
   if (!(arg instanceof resource_pb.SupportsFeatureRequest)) {
     throw new Error('Expected argument of type pulumirpc.SupportsFeatureRequest');
@@ -172,10 +172,10 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     path: '/pulumirpc.ResourceMonitor/Invoke',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.InvokeRequest,
+    requestType: resource_pb.ResourceInvokeRequest,
     responseType: provider_pb.InvokeResponse,
-    requestSerialize: serialize_pulumirpc_InvokeRequest,
-    requestDeserialize: deserialize_pulumirpc_InvokeRequest,
+    requestSerialize: serialize_pulumirpc_ResourceInvokeRequest,
+    requestDeserialize: deserialize_pulumirpc_ResourceInvokeRequest,
     responseSerialize: serialize_pulumirpc_InvokeResponse,
     responseDeserialize: deserialize_pulumirpc_InvokeResponse,
   },
@@ -183,10 +183,10 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     path: '/pulumirpc.ResourceMonitor/StreamInvoke',
     requestStream: false,
     responseStream: true,
-    requestType: provider_pb.InvokeRequest,
+    requestType: resource_pb.ResourceInvokeRequest,
     responseType: provider_pb.InvokeResponse,
-    requestSerialize: serialize_pulumirpc_InvokeRequest,
-    requestDeserialize: deserialize_pulumirpc_InvokeRequest,
+    requestSerialize: serialize_pulumirpc_ResourceInvokeRequest,
+    requestDeserialize: deserialize_pulumirpc_ResourceInvokeRequest,
     responseSerialize: serialize_pulumirpc_InvokeResponse,
     responseDeserialize: deserialize_pulumirpc_InvokeResponse,
   },
