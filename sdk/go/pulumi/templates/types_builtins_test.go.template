@@ -27,6 +27,8 @@ import (
 )
 
 func TestOutputApply(t *testing.T) {
+	t.Parallel()
+
 	// Test that resolved outputs lead to applies being run.
 	{
 		out := newIntOutput()
@@ -132,6 +134,7 @@ func TestOutputApply(t *testing.T) {
 		go func() { out.resolve(42, true, false, nil) }()
 
 {{range .Builtins}}
+		//nolint:paralleltest // uses shared state with parent
 		t.Run("ApplyT::{{.Name}}Output", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) {{.ElementType}} { return *new({{.ElementType}}) }).({{.Name}}Output)
 			assert.True(t, ok)
@@ -250,6 +253,8 @@ func TestOutputApply(t *testing.T) {
 // Test that ToOutput works with all builtin input types
 {{range .Builtins}}
 func TestToOutput{{.Name}}(t *testing.T) {
+	t.Parallel()
+
 	out := ToOutput({{.Example}})
 	_, ok := out.({{.Name}}Input)
 	assert.True(t, ok)
@@ -271,6 +276,8 @@ func TestToOutput{{.Name}}(t *testing.T) {
 // Test that type-specific ToOutput methods work with all builtin input and output types
 {{range .Builtins}}
 func TestTo{{.Name}}Output(t *testing.T) {
+	t.Parallel()
+
 	in := {{.Name}}Input({{.Example}})
 
 	out := in.To{{.Name}}Output()
@@ -301,6 +308,8 @@ func TestTo{{.Name}}Output(t *testing.T) {
 
 // Test type-specific ToOutput methods for builtins that implement other builtin input types.
 func TestBuiltinConversions(t *testing.T) {
+	t.Parallel()
+
 	archiveIn := NewFileArchive("foo.zip")
 	assetOrArchiveOut := archiveIn.ToAssetOrArchiveOutput()
 	archiveV, known, _, _, err := await(assetOrArchiveOut)
@@ -362,6 +371,8 @@ func TestBuiltinConversions(t *testing.T) {
 {{range .Builtins}}
 {{if .DefineElem}}
 func Test{{.Name}}Elem(t *testing.T) {
+	t.Parallel()
+
 	out := ({{.Example}}).To{{.Name}}Output()
 
 	av, known, _, _, err := await(out)
@@ -382,6 +393,8 @@ func Test{{.Name}}Elem(t *testing.T) {
 {{range .Builtins}}
 {{if .DefineIndex}}
 func Test{{.Name}}Index(t *testing.T) {
+	t.Parallel()
+
 	out := ({{.Example}}).To{{.Name}}Output()
 
 	av, known, _, _, err := await(out)
@@ -400,6 +413,8 @@ func Test{{.Name}}Index(t *testing.T) {
 }
 {{if .DefineToFunction}}
 func TestTo{{.Name}}(t *testing.T) {
+	t.Parallel()
+
 	out := To{{.Name}}([]{{.IndexElementType}}{{.ElemExample}}).To{{.Name}}Output()
 
 	av, known, _, _, err := await(out)
@@ -414,6 +429,8 @@ func TestTo{{.Name}}(t *testing.T) {
 }
 
 func TestTopLevelTo{{.Name}}Output(t *testing.T) {
+	t.Parallel()
+
 	out := To{{.Name}}Output([]{{.IndexReturnType}}Output{ ToOutput({{.ItemExample}}).({{.IndexReturnType}}Output) })
 
 	av, known, _, _, err := await(out)
@@ -434,6 +451,8 @@ func TestTopLevelTo{{.Name}}Output(t *testing.T) {
 {{range .Builtins}}
 {{if .DefineMapIndex}}
 func Test{{.Name}}Index(t *testing.T) {
+	t.Parallel()
+
 	out := ({{.Example}}).To{{.Name}}Output()
 
 	av, known, _, _, err := await(out)
@@ -452,6 +471,8 @@ func Test{{.Name}}Index(t *testing.T) {
 }
 {{if .DefineToFunction}}
 func TestTo{{.Name}}(t *testing.T) {
+	t.Parallel()
+
 	out := To{{.Name}}(map[string]{{.MapIndexElementType}}{{.ElemExample}}).To{{.Name}}Output()
 
 	av, known, _, _, err := await(out)
@@ -466,6 +487,8 @@ func TestTo{{.Name}}(t *testing.T) {
 }
 
 func TestTopLevelTo{{.Name}}Output(t *testing.T) {
+	t.Parallel()
+
 	out := To{{.Name}}Output(map[string]{{.MapIndexReturnType}}Output{"baz": ToOutput({{.ItemExample}}).({{.MapIndexReturnType}}Output)})
 
 	av, known, _, _, err := await(out)
