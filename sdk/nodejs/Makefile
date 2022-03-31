@@ -51,7 +51,7 @@ build:: build_package build_dynamic build_plugin
 
 install_package:: build
 	mkdir -p "$(PULUMI_ROOT)/plugins"
-	cp -r cmd/pulumi-resource-pulumi-nodejs/bin "$(PULUMI_ROOT)/plugins/pulumi-resource-pulumi-nodejs-${VERSION}"
+	cp -r cmd/pulumi-resource-pulumi-nodejs/bin "$(PULUMI_ROOT)/plugins/resource-pulumi-nodejs-${VERSION}"
 	cp dist/pulumi-analyzer-policy* "$(PULUMI_BIN)"
 
 install_plugin:: build

@@ -1,5 +1,5 @@
 {
-    "name": "pulumi-nodejs",
+    "name": "pulumi-resource-nodejs",
     "dependencies": {
       "@pulumi/pulumi": "file:../../bin"
     },
