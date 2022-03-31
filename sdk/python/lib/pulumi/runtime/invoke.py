@@ -111,7 +111,7 @@ def invoke(
             os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"}
         )
         log.debug(f"Invoking function prepared: tok={tok}")
-        req = provider_pb2.InvokeRequest(
+        req = provider_pb2.ResourceInvokeRequest(
             tok=tok,
             args=inputs,
             provider=provider_ref,
