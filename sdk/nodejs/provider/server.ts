@@ -17,7 +17,7 @@ import * as path from "path";
 
 import * as grpc from "@grpc/grpc-js";
 
-import { Provider, RawProvider } from "./provider";
+import { Provider, CustomProvider } from "./provider";
 
 import * as log from "../log";
 import { Inputs, Output, output } from "../output";
@@ -273,7 +273,7 @@ class Server implements grpc.UntypedServiceImplementation {
         // https://nodejs.org/api/vm.html#vm_vm_createcontext_contextobject_options
         const res = this.constructCallQueue.then(() => this.constructImpl(call, callback));
         /* eslint-disable no-empty,no-empty-function,@typescript-eslint/no-empty-function */
-        this.constructCallQueue = res.catch(() => {});
+        this.constructCallQueue = res.catch(() => { });
         return res;
     }
 
@@ -364,7 +364,7 @@ class Server implements grpc.UntypedServiceImplementation {
         // https://nodejs.org/api/vm.html#vm_vm_createcontext_contextobject_options
         const res = this.constructCallQueue.then(() => this.callImpl(call, callback));
         /* eslint-disable no-empty, no-empty-function, @typescript-eslint/no-empty-function */
-        this.constructCallQueue = res.catch(() => {});
+        this.constructCallQueue = res.catch(() => { });
         return res;
     }
 
@@ -476,15 +476,15 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 }
 
-class RawServer implements grpc.UntypedServiceImplementation {
+class CustomServer implements grpc.UntypedServiceImplementation {
     engineAddr: string | undefined;
-    readonly provider: RawProvider;
+    readonly provider: CustomProvider;
     readonly uncaughtErrors: Set<Error>;
 
     /** Queue of construct calls. */
     constructCallQueue = Promise.resolve();
- 
-    constructor(engineAddr: string | undefined, provider: RawProvider, uncaughtErrors: Set<Error>) {
+
+    constructor(engineAddr: string | undefined, provider: CustomProvider, uncaughtErrors: Set<Error>) {
         this.engineAddr = engineAddr;
         this.provider = provider;
         this.uncaughtErrors = uncaughtErrors;
@@ -499,7 +499,7 @@ class RawServer implements grpc.UntypedServiceImplementation {
         callback(undefined, new emptyproto.Empty());
     }
 
-    public attach(call: any, callback:any): void {
+    public attach(call: any, callback: any): void {
         const req = call.request;
         const host = req.getAddress();
         this.engineAddr = host;
@@ -550,7 +550,7 @@ class RawServer implements grpc.UntypedServiceImplementation {
                         resp.setFailuresList(failureList);
                     }
                 }
-    
+
                 callback(undefined, resp)
             } catch (e: any) {
                 console.error(`${e}: ${e.stack}`);
@@ -571,12 +571,19 @@ class RawServer implements grpc.UntypedServiceImplementation {
         }, undefined);
     }
 
-    public configure(call: any, callback: any): void {
-        const resp = new provproto.ConfigureResponse();
-        resp.setAcceptsecrets(true);
-        resp.setAcceptresources(true);
-        resp.setAcceptoutputs(true);
-        callback(undefined, resp);
+    public async configure(call: any, callback: any): Promise<void> {
+        try {
+            const result = await this.provider.configure();
+            const resp = new provproto.ConfigureResponse();
+            if (result.acceptOutputs) { resp.setAcceptoutputs(true) };
+            if (result.acceptResources) { resp.setAcceptresources(true) };
+            if (result.acceptSecrets) { resp.setAcceptsecrets(true) };
+            if (result.supportsPreview) { resp.setSupportspreview(true) };
+            callback(undefined, resp);
+        } catch (e: any) {
+            console.error(`${e}: ${e.stack}`);
+            callback(e, undefined);
+        }
     }
 
     // CRUD resource methods
@@ -747,7 +754,7 @@ class RawServer implements grpc.UntypedServiceImplementation {
         // https://nodejs.org/api/vm.html#vm_vm_createcontext_contextobject_options
         const res = this.constructCallQueue.then(() => this.constructImpl(call, callback));
         /* eslint-disable no-empty,no-empty-function,@typescript-eslint/no-empty-function */
-        this.constructCallQueue = res.catch(() => {});
+        this.constructCallQueue = res.catch(() => { });
         return res;
     }
 
@@ -838,7 +845,7 @@ class RawServer implements grpc.UntypedServiceImplementation {
         // https://nodejs.org/api/vm.html#vm_vm_createcontext_contextobject_options
         const res = this.constructCallQueue.then(() => this.callImpl(call, callback));
         /* eslint-disable no-empty, no-empty-function, @typescript-eslint/no-empty-function */
-        this.constructCallQueue = res.catch(() => {});
+        this.constructCallQueue = res.catch(() => { });
         return res;
     }
 
@@ -960,7 +967,7 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
     runtime.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
         req.getMonitorendpoint(), req.getDryrun());
 
-    const pulumiConfig: {[key: string]: string} = {};
+    const pulumiConfig: { [key: string]: string } = {};
     const rpcConfig = req.getConfigMap();
     if (rpcConfig) {
         for (const [k, v] of rpcConfig.entries()) {
@@ -1047,7 +1054,7 @@ export function containsOutputs(input: any): boolean {
 // rejected the resource, or an initialization error, where the API server has accepted the
 // resource, but it failed to initialize (e.g., the app code is continually crashing and the
 // resource has failed to become alive).
-function grpcResponseFromError(e: {id: string; properties: any; message: string; reasons?: string[]}) {
+function grpcResponseFromError(e: { id: string; properties: any; message: string; reasons?: string[] }) {
     // Create response object.
     const resp = new statusproto.Status();
     resp.setCode(grpc.status.UNKNOWN);
@@ -1081,7 +1088,7 @@ function grpcResponseFromError(e: {id: string; properties: any; message: string;
     };
 }
 
-export async function main(provider: Provider | RawProvider, args: string[]) {
+export async function main(provider: Provider | CustomProvider, args: string[]) {
     // We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
     // code.
     const uncaughtErrors = new Set<Error>();
@@ -1116,11 +1123,11 @@ export async function main(provider: Provider | RawProvider, args: string[]) {
     // optionally also takes a second argument, a reference back to the engine, but this may be missing.
 
     const engineAddr = parsedArgs?.engineAddress;
-    if ('supportsPreview' in provider && provider.supportsPreview) {
-        server.addService(provrpc.ResourceProviderService, new RawServer(engineAddr, provider, uncaughtErrors));
-    } else {
-        server.addService(provrpc.ResourceProviderService, new Server(engineAddr, provider, uncaughtErrors));
-    }
+    const service =
+        'configure' in provider
+            ? new CustomServer(engineAddr, provider, uncaughtErrors)
+            : new Server(engineAddr, provider, uncaughtErrors);
+    server.addService(provrpc.ResourceProviderService, service);
     const port: number = await new Promise<number>((resolve, reject) => {
         server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
             if (err) {

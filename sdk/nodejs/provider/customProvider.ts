@@ -12,145 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Input, Inputs } from "../output";
+import { Inputs } from "../output";
 import * as resource from "../resource";
-import * as runtime from "../runtime";
 
-/**
- * CheckResult represents the results of a call to `ResourceProvider.check`.
- */
-export interface CheckResult {
-    /**
-     * The inputs to use, if any.
-     */
-    readonly inputs?: any;
-
-    /**
-     * Any validation failures that occurred.
-     */
-    readonly failures?: CheckFailure[];
+export interface ConfigureRequest {
+    readonly variables?: Record<string, string>;
+    readonly args?: any;
+    readonly acceptSecrets?: boolean;
+    readonly acceptResources?: boolean;
 }
 
-/**
- * CheckFailure represents a single failure in the results of a call to `ResourceProvider.check`
- */
-export interface CheckFailure {
-    /**
-     * The property that failed validation.
-     */
-    readonly property: string;
-
-    /**
-     * The reason that the property failed validation.
-     */
-    readonly reason: string;
-}
-
-/**
- * DiffResult represents the results of a call to `ResourceProvider.diff`.
- */
-export interface DiffResult {
-    /**
-     * If true, this diff detected changes and suggests an update.
-     */
-    readonly changes?: boolean;
-
-    /**
-     * If this update requires a replacement, the set of properties triggering it.
-     */
-    readonly replaces?: string[];
-
-    /**
-     * An optional list of properties that will not ever change.
-     */
-    readonly stables?: string[];
-
-    /**
-     * If true, and a replacement occurs, the resource will first be deleted before being recreated.  This is to
-     * avoid potential side-by-side issues with the default create before delete behavior.
-     */
-    readonly deleteBeforeReplace?: boolean;
-}
-
-/**
- * CreateResult represents the results of a call to `ResourceProvider.create`.
- */
-export interface CreateResult {
-    /**
-     * The ID of the created resource.
-     */
-    readonly id: resource.ID;
-
-    /**
-     * Any properties that were computed during creation.
-     */
-    readonly outs?: any;
-}
-
-export interface ReadResult {
-    /**
-     * The ID of the resource ready back (or blank if missing).
-     */
-    readonly id?: resource.ID;
-    /**
-     * The current property state read from the live environment.
-     */
-    readonly props?: any;
-}
-
-/**
- * UpdateResult represents the results of a call to `ResourceProvider.update`.
- */
-export interface UpdateResult {
-    /**
-     * Any properties that were computed during updating.
-     */
-    readonly outs?: any;
-}
-
-/**
- * ConstructResult represents the results of a call to `ResourceProvider.construct`.
- */
-export interface ConstructResult {
-    /**
-     * The URN of the constructed resource.
-     */
-    readonly urn: Input<resource.URN>;
-
-    /**
-     * Any state that was computed during construction.
-     */
-    readonly state: Inputs;
-}
-
-/**
- * InvokeResult represents the results of a call to `ResourceProvider.invoke`.
- */
-export interface InvokeResult {
-    /**
-     * The outputs returned by the invoked function, if any.
-     */
-    readonly outputs?: any;
-
-    /**
-     * Any validation failures that occurred.
-     */
-    readonly failures?: CheckFailure[];
+export interface ConfigureResult {
+    readonly acceptSecrets?: boolean;
+    readonly supportsPreview?: boolean;
+    readonly acceptResources?: boolean;
+    readonly acceptOutputs?: boolean;
 }
 
 /**
  * Provider represents an object that implements the resources and functions for a particular Pulumi package.
  */
-export interface Provider {
+export interface CustomProvider {
     /**
      * The version of the provider. Must be valid semver.
      */
     version: string;
 
+    configure: (req: ConfigureRequest) => Promise<ConfigureResult>;
+
     /**
      * The JSON-encoded schema for this provider's package.
      */
-    schema?: string;
+    getSchema: () => string;
+
+    /**
+     * CheckConfig validates the configuration for this provider.
+     */
+    checkConfig?: (urn: string, olds: any, news: any) => Promise<CheckResult>;
 
     /**
      * Check validates that the given property bag is valid for a resource of the given type.
@@ -208,8 +106,7 @@ export interface Provider {
      * @param inputs The inputs to the resource.
      * @param options the options for the resource.
      */
-    construct?: (name: string, type: string, inputs: Inputs, options: resource.ComponentResourceOptions)
-        => Promise<ConstructResult>;
+    construct?: (name: string, type: string, inputs: Inputs, options: resource.ComponentResourceOptions) => Promise<ConstructResult>;
 
     /**
      * Call calls the indicated method.
@@ -227,5 +124,3 @@ export interface Provider {
      */
     invoke?: (token: string, inputs: any) => Promise<InvokeResult>;
 }
-
-
