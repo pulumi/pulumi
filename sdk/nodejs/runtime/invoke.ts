@@ -37,6 +37,7 @@ import { PushableAsyncIterable } from "./asyncIterableUtil";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const providerproto = require("../proto/provider_pb.js");
+const resourceproto = require("../proto/resource_pb.js");
 
 /**
  * `invoke` dynamically invokes the function, `tok`, which is offered by a provider plugin. `invoke`
@@ -198,7 +199,7 @@ function createInvokeRequest(tok: string, serialized: any, provider: string | un
 
     const obj = gstruct.Struct.fromJavaScript(serialized);
 
-    const req = new providerproto.InvokeRequest();
+    const req = new resourceproto.ResourceInvokeRequest();
     req.setTok(tok);
     req.setArgs(obj);
     req.setProvider(provider);
