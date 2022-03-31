@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package engine
+package display
 
 import (
 	"bytes"
@@ -25,6 +25,7 @@ import (
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -33,7 +34,7 @@ import (
 )
 
 // GetIndent computes a step's parent indentation.
-func GetIndent(step StepEventMetadata, seen map[resource.URN]StepEventMetadata) int {
+func GetIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) int {
 	indent := 0
 	for p := step.Res.Parent; p != ""; {
 		if par, has := seen[p]; !has {
@@ -49,7 +50,7 @@ func GetIndent(step StepEventMetadata, seen map[resource.URN]StepEventMetadata) 
 	return indent
 }
 
-func printStepHeader(b io.StringWriter, step StepEventMetadata) {
+func printStepHeader(b io.StringWriter, step engine.StepEventMetadata) {
 	var extra string
 	old := step.Old
 	new := step.New
@@ -113,7 +114,7 @@ func writeVerbatim(b io.StringWriter, op deploy.StepOp, value string) {
 	writeWithIndentNoPrefix(b, 0, op, "%s", value)
 }
 
-func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
+func GetResourcePropertiesSummary(step engine.StepEventMetadata, indent int) string {
 	var b bytes.Buffer
 
 	op := step.Op
@@ -176,7 +177,7 @@ func GetResourcePropertiesSummary(step StepEventMetadata, indent int) string {
 }
 
 func GetResourcePropertiesDetails(
-	step StepEventMetadata, indent int, planning bool, summary bool, debug bool) string {
+	step engine.StepEventMetadata, indent int, planning bool, summary bool, debug bool) string {
 	var b bytes.Buffer
 
 	// indent everything an additional level, like other properties.
@@ -312,7 +313,7 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 // GetResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func GetResourceOutputsPropertiesString(
-	step StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
+	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
 
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
 	if !showSames && !planning && step.URN.Type() == resource.RootStackType {
