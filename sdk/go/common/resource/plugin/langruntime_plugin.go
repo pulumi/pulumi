@@ -279,6 +279,8 @@ func (h *langhost) Start(info StartInfo) (io.Reader, io.Reader, <-chan StartResp
 	})
 
 	if err != nil {
+		// Ignore that kill isn't used if we error here
+		_ = kill
 		return nil, nil, nil, nil, err
 	}
 

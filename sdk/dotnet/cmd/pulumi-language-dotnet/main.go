@@ -662,7 +662,7 @@ func (host *dotnetLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.
 	}, nil
 }
 
-func (p *dotnetLanguageHost) Start(req *pulumirpc.StartRequest, server pulumirpc.LanguageRuntime_StartServer) error {
+func (host *dotnetLanguageHost) Start(req *pulumirpc.StartRequest, server pulumirpc.LanguageRuntime_StartServer) error {
 	// req.Program will be something like .plugins/resource-cs-provider/pulumi-resource-cs-provider
 	// but we want to run .plugins/resource-cs-provider/pulumi-resource-cs-provider.dll
 

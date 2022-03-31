@@ -339,54 +339,53 @@ func execPlugin(ctx *Context, bin string, pluginArgs []string, pwd string, env [
 			Stderr:      stderr,
 			runtimeDone: exitcode,
 		}, nil
-	} else {
-		cmd := exec.Command(bin, args...)
-		cmdutil.RegisterProcessGroup(cmd)
-		cmd.Dir = pwd
-		if len(env) > 0 {
-			cmd.Env = env
-		}
-		in, _ := cmd.StdinPipe()
-		in.Close()
-		out, _ := cmd.StdoutPipe()
-		err, _ := cmd.StderrPipe()
-		if err := cmd.Start(); err != nil {
-			// If we try to run a plugin that isn't found, intercept the error
-			// and instead return a custom one so we can more easily check for
-			// it upstream
-			//
-			// In the case of PAC, note that the plugin usually _does_ exist.
-			// It is a shell script like "pulumi-analyzer-policy". But during
-			// the execution of that script, it fails with the ENOENT error.
-			if pathErr, ok := err.(*os.PathError); ok {
-				syscallErr, ok := pathErr.Err.(syscall.Errno)
-				if ok && syscallErr == syscall.ENOENT {
-					return nil, errPluginNotFound
-				}
-
-			}
-			return nil, err
-		}
-
-		kill := func() error {
-			// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
-			// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
-			// for the child processes to close.
-			kcErr := cmdutil.KillChildren(cmd.Process.Pid)
-			kErr := cmd.Process.Kill()
-
-			return multierror.Append(kErr, kcErr).ErrorOrNil()
-		}
-
-		return &plugin{
-			Bin:    bin,
-			Args:   args,
-			Env:    env,
-			Kill:   kill,
-			Stdout: out,
-			Stderr: err,
-		}, nil
 	}
+	cmd := exec.Command(bin, args...)
+	cmdutil.RegisterProcessGroup(cmd)
+	cmd.Dir = pwd
+	if len(env) > 0 {
+		cmd.Env = env
+	}
+	in, _ := cmd.StdinPipe()
+	in.Close()
+	out, _ := cmd.StdoutPipe()
+	err, _ := cmd.StderrPipe()
+	if err := cmd.Start(); err != nil {
+		// If we try to run a plugin that isn't found, intercept the error
+		// and instead return a custom one so we can more easily check for
+		// it upstream
+		//
+		// In the case of PAC, note that the plugin usually _does_ exist.
+		// It is a shell script like "pulumi-analyzer-policy". But during
+		// the execution of that script, it fails with the ENOENT error.
+		if pathErr, ok := err.(*os.PathError); ok {
+			syscallErr, ok := pathErr.Err.(syscall.Errno)
+			if ok && syscallErr == syscall.ENOENT {
+				return nil, errPluginNotFound
+			}
+
+		}
+		return nil, err
+	}
+
+	kill := func() error {
+		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
+		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
+		// for the child processes to close.
+		kcErr := cmdutil.KillChildren(cmd.Process.Pid)
+		err := cmd.Process.Kill()
+
+		return multierror.Append(err, kcErr).ErrorOrNil()
+	}
+
+	return &plugin{
+		Bin:    bin,
+		Args:   args,
+		Env:    env,
+		Kill:   kill,
+		Stdout: out,
+		Stderr: err,
+	}, nil
 }
 
 type pluginArgumentOptions struct {

@@ -580,7 +580,9 @@ func (host *nodeLanguageHost) execNodejs(
 // constructArguments constructs a command-line for `pulumi-language-nodejs`
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
-func (host *nodeLanguageHost) constructArguments(req *pulumirpc.RunRequest, address, pipesDirectory, runPath string) []string {
+func (host *nodeLanguageHost) constructArguments(
+	req *pulumirpc.RunRequest, address, pipesDirectory, runPath string) []string {
+
 	args := []string{runPath}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
@@ -664,8 +666,8 @@ func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Em
 	}, nil
 }
 
-func (p *nodeLanguageHost) Start(req *pulumirpc.StartRequest, server pulumirpc.LanguageRuntime_StartServer) error {
-	nodeargs, err := shlex.Split(p.nodeargs)
+func (host *nodeLanguageHost) Start(req *pulumirpc.StartRequest, server pulumirpc.LanguageRuntime_StartServer) error {
+	nodeargs, err := shlex.Split(host.nodeargs)
 	if err != nil {
 		return err
 	}
@@ -674,10 +676,11 @@ func (p *nodeLanguageHost) Start(req *pulumirpc.StartRequest, server pulumirpc.L
 
 	if logging.V(5) {
 		commandStr := strings.Join(nodeargs, " ")
-		logging.V(5).Infoln("Language host launching process: ", p.nodeBin, commandStr)
+		logging.V(5).Infoln("Language host launching process: ", host.nodeBin, commandStr)
 	}
 
-	cmd := exec.Command(p.nodeBin, nodeargs...)
+	// #nosec G204
+	cmd := exec.Command(host.nodeBin, nodeargs...)
 	cmd.Env = req.Env
 
 	writeStdout := func(p []byte) error {

@@ -801,6 +801,6 @@ func validateVersion(virtualEnvPath string) {
 	}
 }
 
-func (p *pythonLanguageHost) Start(req *pulumirpc.StartRequest, server pulumirpc.LanguageRuntime_StartServer) error {
+func (host *pythonLanguageHost) Start(req *pulumirpc.StartRequest, server pulumirpc.LanguageRuntime_StartServer) error {
 	return errors.New("not supported")
 }

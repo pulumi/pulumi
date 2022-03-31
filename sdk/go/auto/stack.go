@@ -971,6 +971,10 @@ func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.
 	}, nil
 }
 
+func (s *languageRuntimeServer) Start(_ *pulumirpc.StartRequest, _ pulumirpc.LanguageRuntime_StartServer) error {
+	return errors.New("not supported")
+}
+
 func tailLogs(command string, receivers []chan<- events.EngineEvent) (*tail.Tail, error) {
 	logDir, err := ioutil.TempDir("", fmt.Sprintf("automation-logs-%s-", command))
 	if err != nil {

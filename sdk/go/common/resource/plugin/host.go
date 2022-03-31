@@ -314,7 +314,7 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 }
 
 func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
-	// Langauge runtimes are a bit special and need their own loading queue
+	// Language runtimes are a bit special and need their own loading queue
 	var runtimePlugin LanguageRuntime
 
 	result := make(chan error)
