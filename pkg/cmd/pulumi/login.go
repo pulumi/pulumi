@@ -151,7 +151,7 @@ func newLoginCmd() *cobra.Command {
 				return fmt.Errorf("problem logging in: %w", err)
 			}
 
-			if currentUser, err := be.CurrentUser(); err == nil {
+			if currentUser, _, err := be.CurrentUser(); err == nil {
 				fmt.Printf("Logged in to %s as %s (%s)\n", be.Name(), currentUser, be.URL())
 			} else {
 				fmt.Printf("Logged in to %s (%s)\n", be.Name(), be.URL())

@@ -8,6 +8,9 @@
 - Clear pending operations during `pulumi refresh` or `pulumi up -r`.
   [#8435](https://github.com/pulumi/pulumi/pull/8435)
 
+- [cli] - `pulumi whoami --verbose` and `pulumi about` include a list of the current users organizations.
+  [#9211](https://github.com/pulumi/pulumi/pull/9211)
+
 ### Bug Fixes
 
 - [codegen/go] - Fix Go SDK function output to check for errors
