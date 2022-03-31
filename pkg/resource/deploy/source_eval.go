@@ -1320,7 +1320,7 @@ func decorateResourceSpans(span opentracing.Span, method string, req, resp inter
 
 	switch method {
 	case "/pulumirpc.ResourceMonitor/Invoke":
-		span.SetTag("pulumi-decorator", req.(*pulumirpc.InvokeRequest).Tok)
+		span.SetTag("pulumi-decorator", req.(*pulumirpc.ResourceInvokeRequest).Tok)
 	case "/pulumirpc.ResourceMonitor/ReadResource":
 		span.SetTag("pulumi-decorator", req.(*pulumirpc.ReadResourceRequest).Type)
 	case "/pulumirpc.ResourceMonitor/RegisterResource":
