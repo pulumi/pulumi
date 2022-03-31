@@ -19,12 +19,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -55,7 +54,7 @@ func newStackRenameCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			oldConfigPath, err := workspace.DetectProjectStackPath(s.Ref().Name())
+			oldConfigPath, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
 			if err != nil {
 				return err
 			}
@@ -66,7 +65,7 @@ func newStackRenameCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			newConfigPath, err := workspace.DetectProjectStackPath(newStackRef.Name())
+			newConfigPath, err := workspace.DetectProjectStackPath(newStackRef.Name().Q())
 			if err != nil {
 				return err
 			}

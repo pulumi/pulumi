@@ -45,7 +45,11 @@ func GetIntegrationRuntimeObjectMetadatumOutput(ctx *pulumi.Context, args GetInt
 		ApplyT(func(v interface{}) (GetIntegrationRuntimeObjectMetadatumResult, error) {
 			args := v.(GetIntegrationRuntimeObjectMetadatumArgs)
 			r, err := GetIntegrationRuntimeObjectMetadatum(ctx, &args, opts...)
-			return *r, err
+			var s GetIntegrationRuntimeObjectMetadatumResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(GetIntegrationRuntimeObjectMetadatumResultOutput)
 }
 

@@ -66,14 +66,11 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 
 	var inputProperties, properties []*schema.Property
 	if !isProvider {
-		res, ok := pkgSchema.resources[token]
-		if !ok {
-			canon := canonicalizeToken(token, pkgSchema.schema)
-			if res, ok = pkgSchema.resources[canon]; ok {
-				token = canon
-			}
-		}
-		if !ok {
+		var res *schema.Resource
+		if r, tk, ok := pkgSchema.LookupResource(token); ok {
+			res = r
+			token = tk
+		} else {
 			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
 		}
 		node.Schema = res

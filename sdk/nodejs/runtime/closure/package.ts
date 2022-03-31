@@ -202,9 +202,9 @@ class ModuleMap {
 
         const rules: [string, string[]][] = [];
         for (const [modPath, objectOrPath] of Object.entries(exports)) {
-            const modName: string = name + modPath.substr(1);
+            const modName: string = name + modPath.slice(1);
             const leaves = getAllLeafStrings(objectOrPath, opts);
-            rules.push([modName, leaves.map(leaf => name + leaf.substr(1))]);
+            rules.push([modName, leaves.map(leaf => name + leaf.slice(1))]);
         }
         this.wildcardMap = new WildcardMap(rules);
     }

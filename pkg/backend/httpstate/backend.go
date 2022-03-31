@@ -483,7 +483,10 @@ func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inCo
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
 }
 
-// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *cloudBackend) SupportsTags() bool {
+	return true
+}
+
 func (b *cloudBackend) SupportsOrganizations() bool {
 	return true
 }
@@ -555,17 +558,21 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	if qualifiedName.Project == "" {
 		currentProject, projectErr := workspace.DetectProject()
 		if projectErr != nil {
-			return nil, fmt.Errorf("If you're using the --stack flag,"+
+			return nil, fmt.Errorf("If you're using the --stack flag, "+
 				"pass the fully qualified name (org/project/stack): %w", projectErr)
 		}
 
 		qualifiedName.Project = currentProject.Name.String()
 	}
 
+	if !tokens.IsName(qualifiedName.Name) {
+		return nil, errors.New("stack names may only contain alphanumeric, hyphens, underscores, and periods")
+	}
+
 	return cloudBackendReference{
 		owner:   qualifiedName.Owner,
 		project: qualifiedName.Project,
-		name:    tokens.QName(qualifiedName.Name),
+		name:    tokens.Name(qualifiedName.Name),
 		b:       b,
 	}, nil
 }
@@ -1137,7 +1144,7 @@ func (b *cloudBackend) GetHistory(
 
 	updates, err := b.client.GetStackUpdates(ctx, stack, pageSize, page)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get stack updates: %w", err)
 	}
 
 	// Convert apitype.UpdateInfo objects to the backend type.
@@ -1228,6 +1235,8 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg bac
 	return filestate.GetLogsForTarget(target, logQuery)
 }
 
+// ExportDeployment exports a deployment _from_ the backend service.
+// This will return the stack state that was being stored on the backend service.
 func (b *cloudBackend) ExportDeployment(ctx context.Context,
 	stack backend.Stack) (*apitype.UntypedDeployment, error) {
 	return b.exportDeployment(ctx, stack.Ref(), nil /* latest */)
@@ -1265,6 +1274,8 @@ func (b *cloudBackend) exportDeployment(
 	return &deployment, nil
 }
 
+// ImportDeployment imports a deployment _into_ the backend. At the end of this operation,
+// the deployment provided will be the current state stored on the backend service.
 func (b *cloudBackend) ImportDeployment(ctx context.Context, stack backend.Stack,
 	deployment *apitype.UntypedDeployment) error {
 
@@ -1478,12 +1489,6 @@ func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool
 	}
 
 	return true, username, organizations, nil
-}
-
-// GetStackTags fetches the stack's existing tags.
-func (b *cloudBackend) GetStackTags(ctx context.Context,
-	stack backend.Stack) (map[apitype.StackTagName]string, error) {
-	return stack.(Stack).Tags(), nil
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.

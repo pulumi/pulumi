@@ -159,7 +159,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="varieties_csharp">
-<a href="#varieties_csharp" style="color: inherit; text-decoration: inherit;">Varieties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_csharp" style="color: inherit; text-decoration: inherit;">Varieties</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">List&lt;Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Rubber<wbr>Tree<wbr>Variety&gt;</a></span>
@@ -167,7 +167,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
     <dd>{{% md %}}The varieties available{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_csharp">
-<a href="#sizes_csharp" style="color: inherit; text-decoration: inherit;">Sizes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_csharp" style="color: inherit; text-decoration: inherit;">Sizes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size&gt;</span>
@@ -179,7 +179,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="varieties_go">
-<a href="#varieties_go" style="color: inherit; text-decoration: inherit;">Varieties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_go" style="color: inherit; text-decoration: inherit;">Varieties</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">[]Rubber<wbr>Tree<wbr>Variety</a></span>
@@ -187,7 +187,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
     <dd>{{% md %}}The varieties available{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_go">
-<a href="#sizes_go" style="color: inherit; text-decoration: inherit;">Sizes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_go" style="color: inherit; text-decoration: inherit;">Sizes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">map[string]Tree<wbr>Size</span>
@@ -199,7 +199,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="varieties_nodejs">
-<a href="#varieties_nodejs" style="color: inherit; text-decoration: inherit;">varieties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_nodejs" style="color: inherit; text-decoration: inherit;">varieties</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety[]</a></span>
@@ -207,7 +207,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
     <dd>{{% md %}}The varieties available{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_nodejs">
-<a href="#sizes_nodejs" style="color: inherit; text-decoration: inherit;">sizes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_nodejs" style="color: inherit; text-decoration: inherit;">sizes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: Tree<wbr>Size}</span>
@@ -219,7 +219,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="varieties_python">
-<a href="#varieties_python" style="color: inherit; text-decoration: inherit;">varieties</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_python" style="color: inherit; text-decoration: inherit;">varieties</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Sequence[Rubber<wbr>Tree<wbr>Variety]</a></span>
@@ -227,7 +227,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
     <dd>{{% md %}}The varieties available{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="sizes_python">
-<a href="#sizes_python" style="color: inherit; text-decoration: inherit;">sizes</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_python" style="color: inherit; text-decoration: inherit;">sizes</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Mapping[str, Tree<wbr>Size]</span>
@@ -246,7 +246,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -258,7 +258,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -270,7 +270,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -282,7 +282,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>

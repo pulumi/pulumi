@@ -159,7 +159,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="age_csharp">
-<a href="#age_csharp" style="color: inherit; text-decoration: inherit;">Age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_csharp" style="color: inherit; text-decoration: inherit;">Age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
@@ -167,7 +167,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="pet_csharp">
-<a href="#pet_csharp" style="color: inherit; text-decoration: inherit;">Pet</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pet_csharp" style="color: inherit; text-decoration: inherit;">Pet</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
@@ -179,7 +179,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="age_go">
-<a href="#age_go" style="color: inherit; text-decoration: inherit;">Age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_go" style="color: inherit; text-decoration: inherit;">Age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
@@ -187,7 +187,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="pet_go">
-<a href="#pet_go" style="color: inherit; text-decoration: inherit;">Pet</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pet_go" style="color: inherit; text-decoration: inherit;">Pet</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
@@ -199,7 +199,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="age_nodejs">
-<a href="#age_nodejs" style="color: inherit; text-decoration: inherit;">age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_nodejs" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
@@ -207,7 +207,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="pet_nodejs">
-<a href="#pet_nodejs" style="color: inherit; text-decoration: inherit;">pet</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pet_nodejs" style="color: inherit; text-decoration: inherit;">pet</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
@@ -219,7 +219,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="age_python">
-<a href="#age_python" style="color: inherit; text-decoration: inherit;">age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_python" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
@@ -227,7 +227,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="pet_python">
-<a href="#pet_python" style="color: inherit; text-decoration: inherit;">pet</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pet_python" style="color: inherit; text-decoration: inherit;">pet</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
@@ -246,7 +246,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -254,7 +254,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="name_csharp">
-<a href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -266,7 +266,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -274,7 +274,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="name_go">
-<a href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -286,7 +286,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -294,7 +294,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="name_nodejs">
-<a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -306,7 +306,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -314,7 +314,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="name_python">
-<a href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -338,7 +338,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredname_csharp">
-<a href="#requiredname_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredname_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
@@ -346,7 +346,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_csharp">
-<a href="#requirednamearray_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;Pulumi.<wbr>Random.<wbr>Random<wbr>Pet&gt;</span>
@@ -354,7 +354,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="requirednamemap_csharp">
-<a href="#requirednamemap_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamemap_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Random.<wbr>Random<wbr>Pet&gt;</span>
@@ -362,7 +362,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="age_csharp">
-<a href="#age_csharp" style="color: inherit; text-decoration: inherit;">Age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_csharp" style="color: inherit; text-decoration: inherit;">Age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
@@ -370,7 +370,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
-<a href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
@@ -378,7 +378,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_csharp">
-<a href="#namearray_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;Pulumi.<wbr>Random.<wbr>Random<wbr>Pet&gt;</span>
@@ -386,7 +386,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="namemap_csharp">
-<a href="#namemap_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namemap_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Random.<wbr>Random<wbr>Pet&gt;</span>
@@ -398,7 +398,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredname_go">
-<a href="#requiredname_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredname_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
@@ -406,7 +406,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_go">
-<a href="#requirednamearray_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
@@ -414,7 +414,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="requirednamemap_go">
-<a href="#requirednamemap_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamemap_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
@@ -422,7 +422,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="age_go">
-<a href="#age_go" style="color: inherit; text-decoration: inherit;">Age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_go" style="color: inherit; text-decoration: inherit;">Age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
@@ -430,7 +430,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="name_go">
-<a href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
@@ -438,7 +438,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_go">
-<a href="#namearray_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
@@ -446,7 +446,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="namemap_go">
-<a href="#namemap_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namemap_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
@@ -458,7 +458,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredname_nodejs">
-<a href="#requiredname_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requiredname_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
@@ -466,7 +466,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="requirednamearray_nodejs">
-<a href="#requirednamearray_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamearray_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet[]</span>
@@ -474,7 +474,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="requirednamemap_nodejs">
-<a href="#requirednamemap_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#requirednamemap_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: pulumi<wbr>Random<wbr>Random<wbr>Pet}</span>
@@ -482,7 +482,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="age_nodejs">
-<a href="#age_nodejs" style="color: inherit; text-decoration: inherit;">age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_nodejs" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
@@ -490,7 +490,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
-<a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
@@ -498,7 +498,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="namearray_nodejs">
-<a href="#namearray_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namearray_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet[]</span>
@@ -506,7 +506,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="namemap_nodejs">
-<a href="#namemap_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#namemap_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: pulumi<wbr>Random<wbr>Random<wbr>Pet}</span>
@@ -518,7 +518,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="required_name_python">
-<a href="#required_name_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_name_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
@@ -526,7 +526,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="required_name_array_python">
-<a href="#required_name_array_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name_<wbr>array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_name_array_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet]</span>
@@ -534,7 +534,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="required_name_map_python">
-<a href="#required_name_map_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name_<wbr>map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#required_name_map_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet]</span>
@@ -542,7 +542,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="age_python">
-<a href="#age_python" style="color: inherit; text-decoration: inherit;">age</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_python" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
@@ -550,7 +550,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="name_python">
-<a href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
@@ -558,7 +558,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="name_array_python">
-<a href="#name_array_python" style="color: inherit; text-decoration: inherit;">name_<wbr>array</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_array_python" style="color: inherit; text-decoration: inherit;">name_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet]</span>
@@ -566,7 +566,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="name_map_python">
-<a href="#name_map_python" style="color: inherit; text-decoration: inherit;">name_<wbr>map</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_map_python" style="color: inherit; text-decoration: inherit;">name_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet]</span>

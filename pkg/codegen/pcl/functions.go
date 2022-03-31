@@ -272,4 +272,16 @@ var pulumiBuiltins = map[string]*model.Function{
 		}},
 		ReturnType: model.StringType,
 	}),
+	// Returns the name of the current stack
+	"stack": model.NewFunction(model.StaticFunctionSignature{
+		ReturnType: model.StringType,
+	}),
+	// Returns the name of the current project
+	"project": model.NewFunction(model.StaticFunctionSignature{
+		ReturnType: model.StringType,
+	}),
+	// Returns the directory from which pulumi was run
+	"cwd": model.NewFunction(model.StaticFunctionSignature{
+		ReturnType: model.StringType,
+	}),
 }

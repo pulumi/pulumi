@@ -718,3 +718,61 @@ func TestRegisterInputType(t *testing.T) {
 		RegisterInputType(reflect.TypeOf((*FooInput)(nil)).Elem(), FooArgs{})
 	})
 }
+
+func TestAll(t *testing.T) {
+	t.Parallel()
+
+	aStringInput := String("Test")
+	aStringPtrInput := StringPtr("Hello World")
+	aStringOutput := String("Frob").ToStringOutput()
+
+	a := All(aStringInput).ApplyT(func(args []interface{}) (string, error) {
+		a := args[0].(string)
+		return a, nil
+	}).(StringOutput)
+
+	v, known, secret, deps, err := await(a)
+	assert.Equal(t, "Test", v)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.ElementsMatch(t, []Resource{}, deps)
+	assert.NoError(t, err)
+
+	a = All(aStringPtrInput).ApplyT(func(args []interface{}) (string, error) {
+		a := args[0].(*string)
+		return *a, nil
+	}).(StringOutput)
+
+	v, known, secret, deps, err = await(a)
+	assert.Equal(t, "Hello World", v)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.ElementsMatch(t, []Resource{}, deps)
+	assert.NoError(t, err)
+
+	a = All(aStringOutput).ApplyT(func(args []interface{}) (string, error) {
+		a := args[0].(string)
+		return a, nil
+	}).(StringOutput)
+
+	v, known, secret, deps, err = await(a)
+	assert.Equal(t, "Frob", v)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.ElementsMatch(t, []Resource{}, deps)
+	assert.NoError(t, err)
+
+	a = All(aStringInput, aStringPtrInput, aStringOutput).ApplyT(func(args []interface{}) (string, error) {
+		a := args[0].(string)
+		b := args[1].(*string)
+		c := args[2].(string)
+		return fmt.Sprintf("%s: %s: %s", a, *b, c), nil
+	}).(StringOutput)
+
+	v, known, secret, deps, err = await(a)
+	assert.Equal(t, "Test: Hello World: Frob", v)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.ElementsMatch(t, []Resource{}, deps)
+	assert.NoError(t, err)
+}

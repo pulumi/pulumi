@@ -1,22 +1,20 @@
 ### Improvements
 
-- [area/cli] - Implement `pulumi stack unselect` [#9179](https://github.com/pulumi/pulumi/pull/9179)
-- [language/dotnet] - Updated Pulumi dotnet packages to use grpc-dotnet instead of grpc.
-  [#9149](https://github.com/pulumi/pulumi/pull/9149)
+- When a resource is aliased to an existing resource with a different URN, only store
+  the alias of the existing resource in the statefile rather than storing all possible
+  aliases.
+  [#9288](https://github.com/pulumi/pulumi/pull/9288)
 
-- [cli/config] - Rename the `config` property in `Pulumi.yaml` to `stackConfigDir`. The `config` key will continue to be supported.
-  [#9145](https://github.com/pulumi/pulumi/pull/9145)
-
-- [cli/plugins] Add support for downloading plugin from private Pulumi GitHub releases. This also drops the use of the `GITHUB_ACTOR` and `GITHUB_PERSONAL_ACCESS_TOKEN` environment variables for authenticating to github. Only `GITHUB_TOKEN` is now used, but this can be set to a personal access token.
-  [#9185](https://github.com/pulumi/pulumi/pull/9185)
-
-- [cli] - Speed up `pulumi stack --show-name` by skipping unneeded snapshot loading.
-  [#9199](https://github.com/pulumi/pulumi/pull/9199)
+- Clear pending operations during `pulumi refresh` or `pulumi up -r`.
+  [#8435](https://github.com/pulumi/pulumi/pull/8435)
 
 - [cli] - `pulumi whoami --verbose` and `pulumi about` include a list of the current users organizations.
   [#9211](https://github.com/pulumi/pulumi/pull/9211)
 
 ### Bug Fixes
 
-  [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack up
-  [#9065](https://github.com/pulumi/pulumi/issues/9065)
+- [codegen/go] - Fix Go SDK function output to check for errors
+  [pulumi-aws#1872](https://github.com/pulumi/pulumi-aws/issues/1872)
+
+- [cli/engine] - Fix a panic due to `Check` returning nil while using update plans.
+  [#9304](https://github.com/pulumi/pulumi/pull/9304)

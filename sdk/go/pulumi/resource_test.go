@@ -376,9 +376,9 @@ func TestNewResourceInput(t *testing.T) {
 	t.Parallel()
 
 	var resource Resource = &testRes{foo: "abracadabra"}
-	var resourceInput ResourceInput = NewResourceInput(resource)
+	resourceInput := NewResourceInput(resource)
 
-	var resourceOutput ResourceOutput = resourceInput.ToResourceOutput()
+	resourceOutput := resourceInput.ToResourceOutput()
 
 	channel := make(chan interface{})
 	resourceOutput.ApplyT(func(res interface{}) interface{} {

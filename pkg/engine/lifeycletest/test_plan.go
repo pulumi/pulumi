@@ -8,6 +8,7 @@ import (
 
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -121,8 +122,10 @@ func (op TestOp) runWithContext(
 		return plan, nil, res
 	}
 
-	snap := journal.Snap(target.Snapshot)
-	if res == nil && snap != nil {
+	snap, err := journal.Snap(target.Snapshot)
+	if res == nil && err != nil {
+		res = result.FromError(err)
+	} else if res == nil && snap != nil {
 		res = result.WrapIfNonNil(snap.VerifyIntegrity())
 	}
 	return nil, snap, res
@@ -160,7 +163,7 @@ type TestPlan struct {
 }
 
 //nolint: goconst
-func (p *TestPlan) getNames() (stack tokens.QName, project tokens.PackageName, runtime string) {
+func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, runtime string) {
 	project = tokens.PackageName(p.Project)
 	if project == "" {
 		project = "test"
@@ -169,7 +172,7 @@ func (p *TestPlan) getNames() (stack tokens.QName, project tokens.PackageName, r
 	if runtime == "" {
 		runtime = "test"
 	}
-	stack = tokens.QName(p.Stack)
+	stack = tokens.Name(p.Stack)
 	if stack == "" {
 		stack = "test"
 	}
@@ -182,7 +185,7 @@ func (p *TestPlan) NewURN(typ tokens.Type, name string, parent resource.URN) res
 	if parent != "" {
 		pt = parent.Type()
 	}
-	return resource.NewURN(stack, project, pt, typ, tokens.QName(name))
+	return resource.NewURN(stack.Q(), project, pt, typ, tokens.QName(name))
 }
 
 func (p *TestPlan) NewProviderURN(pkg tokens.Package, name string, parent resource.URN) resource.URN {
@@ -290,7 +293,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 					op := entry.Step.Op()
 					assert.True(t, op == deploy.OpCreate || op == deploy.OpRead)
 				}
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, resCount)
 				return res
 			},
 		},
@@ -305,7 +310,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 					assert.Equal(t, deploy.OpSame, entry.Step.(*deploy.RefreshStep).ResultOp())
 				}
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, resCount)
 				return res
 			},
 		},
@@ -320,7 +327,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 					op := entry.Step.Op()
 					assert.True(t, op == deploy.OpSame || op == deploy.OpRead)
 				}
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, resCount)
 				return res
 			},
 		},
@@ -335,7 +344,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 					assert.Equal(t, deploy.OpSame, entry.Step.(*deploy.RefreshStep).ResultOp())
 				}
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, resCount)
 				return res
 			},
 		},
@@ -354,7 +365,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 						assert.Fail(t, "expected OpDelete or OpReadDiscard")
 					}
 				}
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, 0)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, 0)
 				return res
 			},
 		},
@@ -365,7 +378,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				_ []Event, res result.Result) result.Result {
 
 				assert.Len(t, entries, 0)
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, 0)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, 0)
 				return res
 			},
 		},

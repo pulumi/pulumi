@@ -159,7 +159,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		if parent != "" {
 			pt = parent.Type()
 		}
-		return resource.NewURN(runInfo.Target.Name, runInfo.Proj.Name, pt, t, tokens.QName(name))
+		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
 	}
 
 	newProviderURN := func(pkg tokens.Package, name string, parent resource.URN) resource.URN {
@@ -258,7 +258,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		if parent != "" {
 			pt = parent.Type()
 		}
-		return resource.NewURN(runInfo.Target.Name, runInfo.Proj.Name, pt, t, tokens.QName(name))
+		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
 	}
 
 	componentURN := newURN("component", "component", "")
@@ -352,7 +352,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 		if parent != "" {
 			pt = parent.Type()
 		}
-		return resource.NewURN(runInfo.Target.Name, runInfo.Proj.Name, pt, t, tokens.QName(name))
+		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
 	}
 
 	newProviderURN := func(pkg tokens.Package, name string, parent resource.URN) resource.URN {
@@ -444,7 +444,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 		if parent != "" {
 			pt = parent.Type()
 		}
-		return resource.NewURN(runInfo.Target.Name, runInfo.Proj.Name, pt, t, tokens.QName(name))
+		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
 	}
 
 	invokes := int32(0)
@@ -588,7 +588,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 				if parent != "" {
 					pt = parent.Type()
 				}
-				return resource.NewURN(runInfo.Target.Name, runInfo.Proj.Name, pt, t, tokens.QName(name))
+				return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
 			}
 
 			newProviderURN := func(pkg tokens.Package, name string, parent resource.URN) resource.URN {

@@ -39,6 +39,11 @@ func newMockClient(server *httptest.Server) *Client {
 		apiToken: "",
 		apiUser:  "",
 		diag:     nil,
+		client: &defaultRESTClient{
+			client: &defaultHTTPClient{
+				client: http.DefaultClient,
+			},
+		},
 	}
 }
 

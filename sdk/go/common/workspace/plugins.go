@@ -122,24 +122,33 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 type MissingError struct {
 	// Info contains information about the plugin that was not found.
 	Info PluginInfo
+	// includeAmbient is true if we search $PATH for this plugin
+	includeAmbient bool
 }
 
 // NewMissingError allocates a new error indicating the given plugin info was not found.
-func NewMissingError(info PluginInfo) error {
+func NewMissingError(info PluginInfo, includeAmbient bool) error {
 	return &MissingError{
-		Info: info,
+		Info:           info,
+		includeAmbient: includeAmbient,
 	}
 }
 
 func (err *MissingError) Error() string {
-	if err.Info.Version != nil {
-		return fmt.Sprintf("no %[1]s plugin '%[2]s-v%[3]s' found in the workspace or on your $PATH, "+
-			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
-			err.Info.Kind, err.Info.Name, err.Info.Version)
+	includePath := ""
+	if err.includeAmbient {
+		includePath = " or on your $PATH"
 	}
 
-	return fmt.Sprintf("no %s plugin '%s' found in the workspace or on your $PATH",
-		err.Info.Kind, err.Info.String())
+	if err.Info.Version != nil {
+		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace at version v%[3]s%[4]s, "+
+			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
+			err.Info.Kind, err.Info.Name, err.Info.Version, includePath)
+	}
+
+	return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace%[3]s, "+
+		"install the plugin using `pulumi plugin install %[1]s %[2]s`",
+		err.Info.Kind, err.Info.Name, includePath)
 }
 
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
@@ -675,7 +684,16 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, -1, errors.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, req.URL)
+
+		errmsg := "%d HTTP error fetching plugin from %s"
+
+		if req.URL.Host == "api.github.com" && resp.StatusCode == 404 {
+			errmsg += ". If this is a private GitHub repository, try " +
+				"providing a token via the GITHUB_TOKEN environment variable. " +
+				"See: https://github.com/settings/tokens"
+		}
+
+		return nil, -1, errors.Errorf(errmsg, resp.StatusCode, req.URL)
 	}
 
 	return resp.Body, resp.ContentLength, nil
@@ -1032,7 +1050,8 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
 	optOut, isFound := os.LookupEnv("PULUMI_IGNORE_AMBIENT_PLUGINS")
-	if !(isFound && cmdutil.IsTruthy(optOut)) || isBundledLangauge {
+	includeAmbient := !(isFound && cmdutil.IsTruthy(optOut)) || isBundledLangauge
+	if includeAmbient {
 		filename = (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
 		if path, err := exec.LookPath(filename); err == nil {
 			logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
@@ -1082,7 +1101,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 				Name:    name,
 				Kind:    kind,
 				Version: version,
-			})
+			}, includeAmbient)
 		}
 		match = &candidate
 	} else {
@@ -1126,7 +1145,11 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		return matchDir, matchPath, nil
 	}
 
-	return "", "", nil
+	return "", "", NewMissingError(PluginInfo{
+		Name:    name,
+		Kind:    kind,
+		Version: version,
+	}, includeAmbient)
 }
 
 // SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.

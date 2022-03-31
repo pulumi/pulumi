@@ -7,6 +7,10 @@ defaults:
 on:
   workflow_call:
     inputs:
+      platform:
+        description: 'OS to run tests on, e.g.: ubuntu-latest'
+        required: true
+        type: string
       go-version:
         description: 'Version of the Go toolchain for the build'
         default: '1.17.x'
@@ -42,6 +46,7 @@ env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.pulumi-access-token }}
   PYTHON: python
   TESTPARALLELISM: 4
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
 
 jobs:
   test:
@@ -50,10 +55,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
         test-suite:
           - run: |
               cd sdk/python
@@ -74,6 +75,7 @@ jobs:
               make test_auto
               make test_go
             test-parallelism: 2
+            test-parallelism-windows: 1
 
           - run: |
               cd sdk/go
@@ -83,16 +85,17 @@ jobs:
           - run: make test_pkg_nodejs
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
 
           - run: make test_pkg_python
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
 
           - run: make test_pkg_rest
             require-build: true
             test-parallelism: 2
+            test-parallelism-windows: 1
 
           - run: make test_integration_dotnet
             require-build: true
@@ -100,29 +103,30 @@ jobs:
           - run: make test_integration_go
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
           - run: make test_integration_nodejs
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
           - run: make test_integration_python
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
           - run: make test_integration_rest
             require-build: true
             test-parallelism: 4
-            test-parallelism-windows: 2
+            test-parallelism-windows: 1
           - run: make test_integration_subpkgs
             require-build: true
             test-parallelism: 4
+            test-parallelism-windows: 1
 
     env:
       PULUMI_HOME: ${{ github.workspace }}/home
       PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
       TEST_ALL_DEPS: ""
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ inputs.platform }}
 
     steps:
       - name: Checkout Repo
@@ -142,7 +146,7 @@ jobs:
           echo "TESTPARALLELISM=${{ matrix.test-suite.test-parallelism-windows }}" >> $GITHUB_ENV
           mkdir -p "${{ runner.temp }}/tmp"
       - name: Enable code coverage
-        if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
+        if: ${{ inputs.enable-coverage && (inputs.platform != 'windows-latest') }}
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> $GITHUB_ENV
       # See: https://github.com/actions/virtual-environments/issues/2642#issuecomment-774988591
@@ -174,7 +178,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Set up Python ${{ inputs.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ inputs.python-version }}
           cache: pip
@@ -190,7 +194,7 @@ jobs:
           cache: yarn
           cache-dependency-path: sdk/nodejs/package.json
       - name: Uninstall pre-installed Pulumi (windows)
-        if: ${{ matrix.platform == 'windows-latest' }}
+        if: ${{ inputs.platform == 'windows-latest' }}
         run: |
           if which pulumi.exe; then
             echo "Deleting pulumi"
@@ -224,25 +228,25 @@ jobs:
           repo: t0yv0/goteststats
           tag: v0.0.7
       - name: Download Pulumi Go Binaries (linux-x64)
-        if: ${{ matrix.platform == 'ubuntu-latest' }}
+        if: ${{ inputs.platform == 'ubuntu-latest' }}
         uses: actions/download-artifact@v2
         with:
           name: pulumi-linux-x64
           path: artifacts/go
       - name: Download Pulumi Go Binaries (darwin-x64)
-        if: ${{ matrix.platform == 'macos-latest' }}
+        if: ${{ inputs.platform == 'macos-latest' }}
         uses: actions/download-artifact@v2
         with:
           name: pulumi-darwin-x64
           path: artifacts/go
       - name: Download Pulumi Go Binaries (windows-x64)
-        if: ${{ matrix.platform == 'windows-latest' }}
+        if: ${{ inputs.platform == 'windows-latest' }}
         uses: actions/download-artifact@v2
         with:
           name: pulumi-windows-x64
           path: artifacts/go
       - name: Install Pulumi Go Binaries (non-windows)
-        if: ${{ matrix.platform != 'windows-latest' }}
+        if: ${{ inputs.platform != 'windows-latest' }}
         run: |
           mkdir -p pulumi-bin
           tar -xf artifacts/go/*.tar.gz -C pulumi-bin
@@ -250,7 +254,7 @@ jobs:
           mv pulumi-bin/pulumi/* bin/
           rm -rf pulumi-bin
       - name: Install Pulumi Go Binaries (windows)
-        if: ${{ matrix.platform == 'windows-latest' }}
+        if: ${{ inputs.platform == 'windows-latest' }}
         run: |
           mkdir -p $PWD/bin
           unzip -d $PWD/bin artifacts/go/*.zip
@@ -275,6 +279,8 @@ jobs:
           path: ${{ github.workspace }}/nuget
       - name: Add NuGet packages as a local NuGet source
         run: |
+          echo $(which dotnet)
+          echo $(dotnet --version)
           echo "PULUMI_LOCAL_NUGET=$PULUMI_LOCAL_NUGET"
           SOURCE=$(./scripts/normpath $PULUMI_LOCAL_NUGET)
           echo "SOURCE=$SOURCE"
@@ -318,17 +324,17 @@ jobs:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Convert Node coverage data
-        if: ${{ matrix.platform != 'windows-latest' }}
+        if: ${{ inputs.platform != 'windows-latest' }}
         run: |
           cd sdk/nodejs
           if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $PULUMI_TEST_COVERAGE_PATH; fi
       - name: Merge Go coverage data
-        if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
+        if: ${{ inputs.enable-coverage && (inputs.platform != 'windows-latest') }}
         run: |
           pulumictl cover merge --in ./coverage --out ./coverage/go-all.txt
           rm ./coverage/*.cov || true
       - name: Upload code coverage
-        if: ${{ inputs.enable-coverage && (matrix.platform != 'windows-latest') }}
+        if: ${{ inputs.enable-coverage && (inputs.platform != 'windows-latest') }}
         uses: codecov/codecov-action@v2
         with:
           directory: coverage

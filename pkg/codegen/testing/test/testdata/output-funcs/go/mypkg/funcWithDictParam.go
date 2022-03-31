@@ -34,7 +34,11 @@ func FuncWithDictParamOutput(ctx *pulumi.Context, args FuncWithDictParamOutputAr
 		ApplyT(func(v interface{}) (FuncWithDictParamResult, error) {
 			args := v.(FuncWithDictParamArgs)
 			r, err := FuncWithDictParam(ctx, &args, opts...)
-			return *r, err
+			var s FuncWithDictParamResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(FuncWithDictParamResultOutput)
 }
 

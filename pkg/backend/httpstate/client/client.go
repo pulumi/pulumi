@@ -26,8 +26,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -36,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -48,15 +47,27 @@ type Client struct {
 	apiUser  string
 	apiOrgs  []string
 	diag     diag.Sink
+	client   restClient
 }
 
-// NewClient creates a new Pulumi API client with the given URL and API token.
-func NewClient(apiURL, apiToken string, d diag.Sink) *Client {
+// newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
+// function so it can be set to a different implementation at runtime, if necessary.
+var newClient = func(apiURL, apiToken string, d diag.Sink) *Client {
 	return &Client{
 		apiURL:   apiURL,
 		apiToken: apiAccessToken(apiToken),
 		diag:     d,
+		client: &defaultRESTClient{
+			client: &defaultHTTPClient{
+				client: http.DefaultClient,
+			},
+		},
 	}
+}
+
+// NewClient creates a new Pulumi API client with the given URL and API token.
+func NewClient(apiURL, apiToken string, d diag.Sink) *Client {
+	return newClient(apiURL, apiToken, d)
 }
 
 // URL returns the URL of the API endpoint this client interacts with
@@ -67,14 +78,15 @@ func (pc *Client) URL() string {
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
 func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{}) error {
-	return pulumiRESTCall(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, httpCallOptions{})
+	return pc.client.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken,
+		httpCallOptions{})
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
 func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, queryObj, reqObj,
 	respObj interface{}, opts httpCallOptions) error {
-	return pulumiRESTCall(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
+	return pc.client.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
 }
 
 // updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
@@ -83,7 +95,7 @@ func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, 
 func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{},
 	token updateAccessToken, httpOptions httpCallOptions) error {
 
-	return pulumiRESTCall(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
+	return pc.client.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
 }
 
 // getProjectPath returns the API path for the given owner and the given project name joined with path separators
@@ -158,7 +170,7 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 }
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L7-L16
-type userInfo struct {
+type serviceUserInfo struct {
 	Name        string `json:"name"`
 	GitHubLogin string `json:"githubLogin"`
 	AvatarURL   string `json:"avatarUrl"`
@@ -166,21 +178,21 @@ type userInfo struct {
 }
 
 // Copied from https://github.com/pulumi/pulumi-service/blob/master/pkg/apitype/users.go#L20-L34
-type user struct {
-	ID            string     `json:"id"`
-	GitHubLogin   string     `json:"githubLogin"`
-	Name          string     `json:"name"`
-	Email         string     `json:"email"`
-	AvatarURL     string     `json:"avatarUrl"`
-	Organizations []userInfo `json:"organizations"`
-	Identities    []string   `json:"identities"`
-	SiteAdmin     *bool      `json:"siteAdmin,omitempty"`
+type serviceUser struct {
+	ID            string            `json:"id"`
+	GitHubLogin   string            `json:"githubLogin"`
+	Name          string            `json:"name"`
+	Email         string            `json:"email"`
+	AvatarURL     string            `json:"avatarUrl"`
+	Organizations []serviceUserInfo `json:"organizations"`
+	Identities    []string          `json:"identities"`
+	SiteAdmin     *bool             `json:"siteAdmin,omitempty"`
 }
 
 // GetPulumiAccountName returns the user implied by the API token associated with this client.
 func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, error) {
 	if pc.apiUser == "" {
-		resp := user{}
+		resp := serviceUser{}
 		if err := pc.restCall(ctx, "GET", "/api/user", nil, nil, &resp); err != nil {
 			return "", nil, err
 		}
@@ -263,12 +275,13 @@ var (
 	ErrNoPreviousDeployment = errors.New("no previous deployment")
 )
 
+type getLatestConfigurationResponse struct {
+	Info apitype.UpdateInfo `json:"info,omitempty"`
+}
+
 // GetLatestConfiguration returns the configuration for the latest deployment of a given stack.
 func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdentifier) (config.Map, error) {
-	latest := struct {
-		Info apitype.UpdateInfo `json:"info,omitempty"`
-	}{}
-
+	latest := getLatestConfigurationResponse{}
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "updates", "latest"), nil, nil, &latest); err != nil {
 		if restErr, ok := err.(*apitype.ErrorResponse); ok {
 			if restErr.Code == http.StatusNotFound {
@@ -344,11 +357,9 @@ func (pc *Client) CreateStack(
 		Tags:      tags,
 	}
 
-	var createStackResp apitype.CreateStackResponse
-
 	endpoint := fmt.Sprintf("/api/stacks/%s/%s", stackID.Owner, stackID.Project)
 	if err := pc.restCall(
-		ctx, "POST", endpoint, nil, &createStackReq, &createStackResp); err != nil {
+		ctx, "POST", endpoint, nil, &createStackReq, nil); err != nil {
 		return apitype.Stack{}, err
 	}
 
@@ -568,9 +579,7 @@ func (pc *Client) RenameStack(ctx context.Context, currentID, newID StackIdentif
 		NewName:    newID.Stack,
 		NewProject: newID.Project,
 	}
-	var resp apitype.ImportStackResponse
-
-	return pc.restCall(ctx, "POST", getStackPath(currentID, "rename"), nil, &req, &resp)
+	return pc.restCall(ctx, "POST", getStackPath(currentID, "rename"), nil, &req, nil)
 }
 
 // StartUpdate starts the indicated update. It returns the new version of the update's target stack and the token used

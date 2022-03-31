@@ -557,6 +557,75 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	assert.EqualError(t, res.Error(), deploy.PlanPendingOperationsError{}.Error())
 }
 
+// Tests that a refresh works for a stack with pending operations.
+func TestRefreshWithPendingOperations(t *testing.T) {
+	t.Parallel()
+
+	p := &TestPlan{}
+
+	const resType = "pkgA:m:typA"
+	urnA := p.NewURN(resType, "resA", "")
+
+	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+		return &resource.State{
+			Type:         urn.Type(),
+			URN:          urn,
+			Custom:       true,
+			Delete:       delete,
+			ID:           id,
+			Inputs:       resource.PropertyMap{},
+			Outputs:      resource.PropertyMap{},
+			Dependencies: dependencies,
+		}
+	}
+
+	old := &deploy.Snapshot{
+		PendingOperations: []resource.Operation{{
+			Resource: newResource(urnA, "0", false),
+			Type:     resource.OperationTypeUpdating,
+		}},
+		Resources: []*resource.State{
+			newResource(urnA, "0", false),
+		},
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+
+	op := TestOp(Update)
+	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	project, target := p.GetProject(), p.GetTarget(t, old)
+
+	// Without refreshing, an update should fail.
+	_, res := op.Run(project, target, options, false, nil, nil)
+	assertIsErrorOrBailResult(t, res)
+	assert.EqualError(t, res.Error(), deploy.PlanPendingOperationsError{}.Error())
+
+	// With a refresh, the update should succeed.
+	withRefresh := options
+	withRefresh.Refresh = true
+	new, res := op.Run(project, target, withRefresh, false, nil, nil)
+	assert.Nil(t, res)
+	assert.Len(t, new.PendingOperations, 0)
+
+	// Similarly, the update should succeed if performed after a separate refresh.
+	new, res = TestOp(Refresh).Run(project, target, options, false, nil, nil)
+	assert.Nil(t, res)
+	assert.Len(t, new.PendingOperations, 0)
+
+	_, res = op.Run(project, p.GetTarget(t, new), options, false, nil, nil)
+	assert.Nil(t, res)
+}
+
 // Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
 func TestUpdatePartialFailure(t *testing.T) {
 	t.Parallel()
@@ -1233,7 +1302,7 @@ func TestAliases(t *testing.T) {
 	}
 
 	updateProgramWithResource := func(
-		snap *deploy.Snapshot, resources []Resource, allowedOps []deploy.StepOp) *deploy.Snapshot {
+		snap *deploy.Snapshot, resources []Resource, allowedOps []deploy.StepOp, expectFailure bool) *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			err := registerResources(t, monitor, resources)
 			return err
@@ -1243,7 +1312,8 @@ func TestAliases(t *testing.T) {
 			Options: UpdateOptions{Host: host},
 			Steps: []TestStep{
 				{
-					Op: Update,
+					Op:            Update,
+					ExpectFailure: expectFailure,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						events []Event, res result.Result) result.Result {
 						for _, event := range events {
@@ -1278,14 +1348,14 @@ func TestAliases(t *testing.T) {
 	snap := updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-	}}, []deploy.StepOp{deploy.OpCreate})
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
 
 	// Ensure that rename produces Same
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:       "pkgA:index:t1",
 		name:    "n2",
 		aliases: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that rename produces Same with multiple aliases
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1295,7 +1365,7 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that rename produces Same with multiple aliases (reversed)
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1305,7 +1375,7 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that aliasing back to original name is okay
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1316,13 +1386,13 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that removing aliases is okay (once old names are gone from all snapshots)
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that changing the type works
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1331,7 +1401,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that changing the type again works
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1341,7 +1411,7 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 			"urn:pulumi:test::test::pkgA:index:t2::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that order of aliases doesn't matter
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1352,13 +1422,13 @@ func TestAliases(t *testing.T) {
 			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
 			"urn:pulumi:test::test::pkgA:index:t2::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that removing aliases is okay (once old names are gone from all snapshots)
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:othermod:t3",
 		name: "n1",
-	}}, []deploy.StepOp{deploy.OpSame})
+	}}, []deploy.StepOp{deploy.OpSame}, false)
 
 	// Ensure that changing everything (including props) leads to update not delete and re-create
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1370,7 +1440,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpUpdate})
+	}}, []deploy.StepOp{deploy.OpUpdate}, false)
 
 	// Ensure that changing everything again (including props) leads to update not delete and re-create
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1382,7 +1452,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t4::n2",
 		},
-	}}, []deploy.StepOp{deploy.OpUpdate})
+	}}, []deploy.StepOp{deploy.OpUpdate}, false)
 
 	// Ensure that changing a forceNew property while also changing type and name leads to replacement not delete+create
 	snap = updateProgramWithResource(snap, []Resource{{
@@ -1394,7 +1464,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t5::n3",
 		},
-	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
 	// Ensure that changing a forceNew property and deleteBeforeReplace while also changing type and name leads to
 	// replacement not delete+create
@@ -1408,7 +1478,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t6::n4",
 		},
-	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+	}}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
 	// Start again - this time with two resources with depends on relationship
 	snap = updateProgramWithResource(nil, []Resource{{
@@ -1422,7 +1492,7 @@ func TestAliases(t *testing.T) {
 		t:            "pkgA:index:t2",
 		name:         "n2",
 		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n1"},
-	}}, []deploy.StepOp{deploy.OpCreate})
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
 
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
@@ -1441,7 +1511,7 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t2::n2",
 		},
-	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
 	// Start again - this time with two resources with parent relationship
 	snap = updateProgramWithResource(nil, []Resource{{
@@ -1455,7 +1525,7 @@ func TestAliases(t *testing.T) {
 		t:      "pkgA:index:t2",
 		name:   "n2",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1::n1"),
-	}}, []deploy.StepOp{deploy.OpCreate})
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
 
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
@@ -1474,27 +1544,22 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2",
 		},
-	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+	}}, []deploy.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
 	// ensure failure when different resources use duplicate aliases
-	snap = updateProgramWithResource(nil, []Resource{{
+	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1",
-		name: "n1",
+		name: "n2",
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
 	}, {
 		t:    "pkgA:index:t2",
-		name: "n2",
+		name: "n3",
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
 		},
-	}}, []deploy.StepOp{deploy.OpCreate})
-
-	err := snap.NormalizeURNReferences()
-	assert.Equal(t, err.Error(),
-		"Two resources ('urn:pulumi:test::test::pkgA:index:t1::n1'"+
-			" and 'urn:pulumi:test::test::pkgA:index:t2::n2') aliased to the same: 'urn:pulumi:test::test::pkgA:index:t1::n1'")
+	}}, []deploy.StepOp{deploy.OpCreate}, true)
 
 	// ensure different resources can use different aliases
 	snap = updateProgramWithResource(nil, []Resource{{
@@ -1509,9 +1574,9 @@ func TestAliases(t *testing.T) {
 		aliases: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n2",
 		},
-	}}, []deploy.StepOp{deploy.OpCreate})
+	}}, []deploy.StepOp{deploy.OpCreate}, false)
 
-	err = snap.NormalizeURNReferences()
+	err := snap.NormalizeURNReferences()
 	assert.Nil(t, err)
 }
 
@@ -3646,7 +3711,7 @@ func TestExpectedUnneededDelete(t *testing.T) {
 func TestResoucesWithSames(t *testing.T) {
 	t.Parallel()
 
-	// This test checks that if between generating a constriant and running the update that if new resources have been
+	// This test checks that if between generating a constraint and running the update that if new resources have been
 	// added to the stack that the update doesn't change those resources in any way that they don't cause constraint
 	// errors.
 
@@ -4469,4 +4534,115 @@ func TestRetainOnDelete(t *testing.T) {
 	assert.Nil(t, res)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 0)
+}
+
+func TestInvalidGetIDReportsUserError(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "", "", resource.PropertyMap{}, "", "")
+		assert.Error(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	validate := ExpectDiagMessage(t, "<{%reset%}>Expected an ID for urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>")
+
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	assert.NotNil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 1)
+}
+
+func TestPlannedUpdateWithCheckFailure(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/9247
+
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+				CheckF: func(urn resource.URN, olds, news resource.PropertyMap,
+					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					if news["foo"].StringValue() == "bad" {
+						return nil, []plugin.CheckFailure{
+							{Property: resource.PropertyKey("foo"), Reason: "Bad foo"},
+						}, nil
+					}
+					return news, nil, nil
+				},
+			}, nil
+		}),
+	}
+
+	var ins resource.PropertyMap
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host, ExperimentalPlans: true},
+	}
+
+	project := p.GetProject()
+
+	// Generate a plan with bad inputs
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bad",
+	})
+	validate := ExpectDiagMessage(t,
+		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>\n")
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate)
+	assert.Nil(t, plan)
+	assert.Nil(t, res)
+
+	// Generate a plan with good inputs
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "good",
+	})
+	plan, res = TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	assert.NotNil(t, plan)
+	assert.Contains(t, plan.ResourcePlans, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+	assert.Nil(t, res)
+
+	// Try and run against the plan with inputs that will fail Check
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bad",
+	})
+	p.Options.Plan = plan.Clone()
+	validate = ExpectDiagMessage(t,
+		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>\n")
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+
+	// Check the resource's state.
+	if !assert.Len(t, snap.Resources, 1) {
+		return
+	}
 }

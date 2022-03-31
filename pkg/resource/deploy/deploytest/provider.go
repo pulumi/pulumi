@@ -167,6 +167,8 @@ func (prov *Provider) Delete(urn resource.URN,
 
 func (prov *Provider) Read(urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+	contract.Assertf(urn != "", "Read URN was empty")
+	contract.Assertf(id != "", "Read ID was empty")
 	if prov.ReadF == nil {
 		return plugin.ReadResult{
 			Outputs: resource.PropertyMap{},

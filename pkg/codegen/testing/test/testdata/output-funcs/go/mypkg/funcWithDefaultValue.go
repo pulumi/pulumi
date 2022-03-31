@@ -47,7 +47,11 @@ func FuncWithDefaultValueOutput(ctx *pulumi.Context, args FuncWithDefaultValueOu
 		ApplyT(func(v interface{}) (FuncWithDefaultValueResult, error) {
 			args := v.(FuncWithDefaultValueArgs)
 			r, err := FuncWithDefaultValue(ctx, &args, opts...)
-			return *r, err
+			var s FuncWithDefaultValueResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(FuncWithDefaultValueResultOutput)
 }
 

@@ -30,5 +30,5 @@ We run tests that validate our template-rendering output. If you need to make ch
 For minor diffs, you can just update the test files manually and include those updates with your PR. But for large diffs, you may want to regenerate the full set. To do that, from the root of the repo, run:
 
 ```
-PULUMI_ACCEPT=true pushd pkg/codegen/docs && go test . && popd
+cd pkg/codegen/docs && PULUMI_ACCEPT=true go test . && cd -
 ```

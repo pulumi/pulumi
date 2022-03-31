@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -48,7 +49,7 @@ func newPolicyGroupLsCmd() *cobra.Command {
 			// Get backend.
 			b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to get current backend: %w", err)
 			}
 
 			// Get organization.
