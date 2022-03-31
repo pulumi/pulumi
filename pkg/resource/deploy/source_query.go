@@ -321,7 +321,9 @@ func (rm *queryResmon) Cancel() error {
 }
 
 // Invoke performs an invocation of a member located in a resource provider.
-func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
+func (rm *queryResmon) Invoke(
+	ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
+
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("QueryResourceMonitor.Invoke(%s)", tok)
 
