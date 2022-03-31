@@ -421,7 +421,10 @@ func (p *plugin) Close() error {
 	}
 
 	// IDEA: consider a more graceful termination than just SIGKILL.
-	err := p.Kill()
+	var err error
+	if p.Kill != nil {
+		err = p.Kill()
+	}
 
 	// If we ran via a langhost wait for the runtime to say it's done
 	if p.runtimeDone != nil {
