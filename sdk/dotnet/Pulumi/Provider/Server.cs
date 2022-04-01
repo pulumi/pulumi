@@ -374,13 +374,9 @@ namespace Pulumi.Provider
             var port = await portTcs.Task;
             System.Console.WriteLine(port.ToString());
 
-            var exitTcs = new TaskCompletionSource<Task>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var registration = cancellationToken.Register(() => {
-                exitTcs.SetResult(host.StopAsync());
-            });
+            await host.WaitForShutdownAsync(cancellationToken);
 
-            var stopTask = await exitTcs.Task;
-            await stopTask;
+            host.Dispose();
         }
     }
 }
