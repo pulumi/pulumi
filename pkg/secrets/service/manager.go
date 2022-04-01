@@ -156,7 +156,8 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		Project: s.Project,
 		Stack:   s.Stack,
 	}
-	c := client.NewClient(s.URL, token, diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{Color: colors.Never}))
+	c := client.NewClient(s.URL, token, diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{
+		Color: colors.Never}))
 
 	return &serviceSecretsManager{
 		state:   s,
