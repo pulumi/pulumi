@@ -34,6 +34,8 @@ import (
 
 func newPluginInstallCmd() *cobra.Command {
 	var serverURL string
+	var githubOrg string
+	var githubRepo string
 	var exact bool
 	var file string
 	var reinstall bool
@@ -74,11 +76,30 @@ func newPluginInstallCmd() *cobra.Command {
 					}
 				}
 
+				var source map[string]interface{}
+				if serverURL != "" && githubOrg != "" {
+					return fmt.Errorf("can not set --server and --github-org")
+				}
+
+				if serverURL != "" {
+					source = map[string]interface{}{
+						"type": "url",
+						"url":  serverURL,
+					}
+				}
+				if githubOrg != "" {
+					source = map[string]interface{}{
+						"type": "github",
+						"org":  githubOrg,
+						"repo": githubRepo,
+					}
+				}
+
 				pluginInfo := workspace.PluginInfo{
-					Kind:              workspace.PluginKind(args[0]),
-					Name:              args[1],
-					Version:           version,
-					PluginDownloadURL: serverURL, // If empty, will use default plugin source.
+					Kind:         workspace.PluginKind(args[0]),
+					Name:         args[1],
+					Version:      version,
+					PluginSource: source, // If empty, will use default plugin source.
 				}
 
 				// If we don't have a version try to look one up
@@ -140,7 +161,7 @@ func newPluginInstallCmd() *cobra.Command {
 				if file == "" {
 					var size int64
 					if tarball, size, err = install.Download(); err != nil {
-						return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
+						return fmt.Errorf("%s downloading: %w", label, err)
 					}
 					tarball = workspace.ReadCloserProgressBar(tarball, size, "Downloading plugin", displayOpts.Color)
 				} else {
@@ -162,6 +183,10 @@ func newPluginInstallCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(&serverURL,
 		"server", "", "A URL to download plugins from")
+	cmd.PersistentFlags().StringVar(&githubOrg,
+		"github-org", "", "A GitHub organization to download plugins from")
+	cmd.PersistentFlags().StringVar(&githubRepo,
+		"github-repo", "", "A GitHub repository to download plugins from (must also set --gtithub-org)")
 	cmd.PersistentFlags().BoolVar(&exact,
 		"exact", false, "Force installation of an exact version match (usually >= is accepted)")
 	cmd.PersistentFlags().StringVarP(&file,

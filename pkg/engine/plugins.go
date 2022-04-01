@@ -86,8 +86,8 @@ func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pl
 		}
 
 		logging.V(preparePluginLog).Infof(
-			"gatherPluginsFromProgram(): plugin %s %s (%s) is required by language host",
-			plug.Name, plug.Version, plug.PluginDownloadURL)
+			"gatherPluginsFromProgram(): plugin %s %s (%v) is required by language host",
+			plug.Name, plug.Version, plug.PluginSource)
 		set.Add(plug)
 	}
 	return set, nil
@@ -118,13 +118,20 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 		if err != nil {
 			return set, err
 		}
+		var source map[string]interface{}
+		if downloadURL != "" {
+			source = map[string]interface{}{
+				"type": "url",
+				"url":  downloadURL,
+			}
+		}
 		logging.V(preparePluginLog).Infof(
 			"gatherPluginsFromSnapshot(): plugin %s %s is required by first-class provider %q", pkg, version, urn)
 		set.Add(workspace.PluginInfo{
-			Name:              pkg.String(),
-			Kind:              workspace.ResourcePlugin,
-			Version:           version,
-			PluginDownloadURL: downloadURL,
+			Name:         pkg.String(),
+			Kind:         workspace.ResourcePlugin,
+			Version:      version,
+			PluginSource: source,
 		})
 	}
 	return set, nil

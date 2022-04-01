@@ -187,7 +187,7 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 					imp.Version = defaultProviderInfo[imp.Type.Package()].Version
 				}
 				if imp.PluginDownloadURL == "" {
-					imp.PluginDownloadURL = defaultProviderInfo[imp.Type.Package()].PluginDownloadURL
+					imp.PluginDownloadURL = defaultProviderInfo[imp.Type.Package()].PluginSource["url"].(string)
 				}
 			}
 		}

@@ -202,6 +202,7 @@ func (source *getPulumiSource) Download(
 // githubSource can download a plugin from github releases
 type githubSource struct {
 	organization string
+	repo         string
 	name         string
 	kind         PluginKind
 
@@ -209,7 +210,7 @@ type githubSource struct {
 }
 
 // Creates a new github source adding authentication data in the environment, if it exists
-func newGithubSource(organization, name string, kind PluginKind) *githubSource {
+func newGithubSource(organization, repo, name string, kind PluginKind) *githubSource {
 
 	// 14-03-2022 we stopped looking at GITHUB_PERSONAL_ACCESS_TOKEN and sending basic auth for github and
 	// instead just look at GITHUB_TOKEN and send in a header. Given GITHUB_PERSONAL_ACCESS_TOKEN was an
@@ -221,6 +222,7 @@ func newGithubSource(organization, name string, kind PluginKind) *githubSource {
 
 	return &githubSource{
 		organization: organization,
+		repo:         repo,
 		name:         name,
 		kind:         kind,
 
@@ -235,8 +237,8 @@ func (source *githubSource) HasAuthentication() bool {
 func (source *githubSource) GetLatestVersion(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
 	releaseURL := fmt.Sprintf(
-		"https://api.github.com/repos/%s/pulumi-%s/releases/latest",
-		source.organization, source.name)
+		"https://api.github.com/repos/%s/%s/releases/latest",
+		source.organization, source.repo)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
 	req, err := buildHTTPRequest(releaseURL, source.token)
 	if err != nil {
@@ -272,11 +274,11 @@ func (source *githubSource) Download(
 		// If we're not using authentication we can just download from the release/download URL
 
 		logging.V(1).Infof(
-			"%s downloading from github.com/%s/pulumi-%s/releases",
-			source.name, source.organization, source.name)
+			"%s downloading from github.com/%s/%s/releases",
+			source.name, source.organization, source.repo)
 
-		pluginURL := fmt.Sprintf("https://github.com/%s/pulumi-%s/releases/download/v%s/%s",
-			source.organization, source.name, version.String(), url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz",
+		pluginURL := fmt.Sprintf("https://github.com/%s/%s/releases/download/v%s/%s",
+			source.organization, source.repo, version.String(), url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz",
 				source.kind, source.name, version.String(), opSy, arch)))
 
 		req, err := buildHTTPRequest(pluginURL, "")
@@ -290,8 +292,8 @@ func (source *githubSource) Download(
 	assetName := fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)
 
 	releaseURL := fmt.Sprintf(
-		"https://api.github.com/repos/%s/pulumi-%s/releases/tags/v%s",
-		source.organization, source.name, version.String())
+		"https://api.github.com/repos/%s/%s/releases/tags/v%s",
+		source.organization, source.repo, version.String())
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
 
 	req, err := buildHTTPRequest(releaseURL, source.token)
@@ -400,7 +402,7 @@ func newFallbackSource(name string, kind PluginKind) *fallbackSource {
 func (source *fallbackSource) GetLatestVersion(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
 	// Try and get this package from public pulumi github
-	public := newGithubSource("pulumi", source.name, source.kind)
+	public := newGithubSource("pulumi", "pulumi-"+source.name, source.name, source.kind)
 	version, err := public.GetLatestVersion(getHTTPResponse)
 	if err == nil {
 		return version, nil
@@ -414,7 +416,7 @@ func (source *fallbackSource) GetLatestVersion(
 		if repoOwner == "" {
 			privateErr = errors.New("ENV[GITHUB_REPOSITORY_OWNER] not set")
 		} else {
-			private := newGithubSource(repoOwner, source.name, source.kind)
+			private := newGithubSource(repoOwner, "pulumi-"+source.name, source.name, source.kind)
 			if !private.HasAuthentication() {
 				privateErr = errors.New("no GitHub authentication information provided")
 			} else {
@@ -439,7 +441,7 @@ func (source *fallbackSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
 	// Try and get this package from public pulumi github
-	public := newGithubSource("pulumi", source.name, source.kind)
+	public := newGithubSource("pulumi", "pulumi-"+source.name, source.name, source.kind)
 	resp, length, err := public.Download(version, opSy, arch, getHTTPResponse)
 	if err == nil {
 		return resp, length, nil
@@ -452,7 +454,7 @@ func (source *fallbackSource) Download(
 		if repoOwner == "" {
 			err = errors.New("ENV[GITHUB_REPOSITORY_OWNER] not set")
 		} else {
-			private := newGithubSource(repoOwner, source.name, source.kind)
+			private := newGithubSource(repoOwner, "pulumi-"+source.name, source.name, source.kind)
 			if !private.HasAuthentication() {
 				err = errors.New("no GitHub authentication information provided")
 			} else {
@@ -475,15 +477,15 @@ func (source *fallbackSource) Download(
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
 type PluginInfo struct {
-	Name              string          // the simple name of the plugin.
-	Path              string          // the path that a plugin was loaded from.
-	Kind              PluginKind      // the kind of the plugin (language, resource, etc).
-	Version           *semver.Version // the plugin's semantic version, if present.
-	Size              int64           // the size of the plugin, in bytes.
-	InstallTime       time.Time       // the time the plugin was installed.
-	LastUsedTime      time.Time       // the last time the plugin was used.
-	PluginDownloadURL string          // an optional server to use when downloading this plugin.
-	PluginDir         string          // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
+	Name         string                 // the simple name of the plugin.
+	Path         string                 // the path that a plugin was loaded from.
+	Kind         PluginKind             // the kind of the plugin (language, resource, etc).
+	Version      *semver.Version        // the plugin's semantic version, if present.
+	Size         int64                  // the size of the plugin, in bytes.
+	InstallTime  time.Time              // the time the plugin was installed.
+	LastUsedTime time.Time              // the last time the plugin was used.
+	PluginDir    string                 // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
+	PluginSource map[string]interface{} // The explicit source to use for this plugin.
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -607,25 +609,77 @@ func interpolateURL(serverURL string, version semver.Version, os, arch string) s
 	return replacer.Replace(serverURL)
 }
 
-func (info PluginInfo) GetSource() PluginSource {
-	// The plugin has a set URL use that.
-	if info.PluginDownloadURL != "" {
-		return newPluginURLSource(info.Name, info.Kind, info.PluginDownloadURL)
+func getRequiredString(config map[string]interface{}, key string) (string, error) {
+	if value, has := config[key]; has {
+		if value, ok := value.(string); ok {
+			return value, nil
+		}
+		return "", fmt.Errorf("source.%s should be a string", key)
+	}
+	return "", fmt.Errorf("source.%s is missing", key)
+}
+
+func getOptionalString(config map[string]interface{}, key string) (string, error) {
+	if value, has := config[key]; has {
+		if value, ok := value.(string); ok {
+			return value, nil
+		}
+		return "", fmt.Errorf("source.%s should be a string", key)
+	}
+	return "", nil
+}
+
+func (info PluginInfo) GetSource() (PluginSource, error) {
+	// The plugin has a set source use that.
+	if typ, has := info.PluginSource["type"]; has {
+		if typ, ok := typ.(string); ok {
+			switch typ {
+			case "url":
+				url, err := getRequiredString(info.PluginSource, "url")
+				if err != nil {
+					return nil, err
+				}
+				return newPluginURLSource(info.Name, info.Kind, url), nil
+
+			case "github":
+				org, err := getRequiredString(info.PluginSource, "org")
+				if err != nil {
+					return nil, err
+				}
+				repo, err := getOptionalString(info.PluginSource, "repo")
+				if err != nil {
+					return nil, err
+				}
+				if repo == "" {
+					repo = "pulumi-" + info.Name
+				}
+
+				return newGithubSource(org, repo, info.Name, info.Kind), nil
+
+			default:
+				return nil, fmt.Errorf("unknown plugin source '%s'", typ)
+			}
+		}
+
+		return nil, errors.New("source.type should be a string")
 	}
 
 	// If the plugin name matches an override, download the plugin from the override URL.
 	if url, ok := pluginDownloadURLOverridesParsed.get(info.Name); ok {
-		return newPluginURLSource(info.Name, info.Kind, url)
+		return newPluginURLSource(info.Name, info.Kind, url), nil
 	}
 
 	// Use our default fallback behaviour of github then get.pulumi.com
-	return newFallbackSource(info.Name, info.Kind)
+	return newFallbackSource(info.Name, info.Kind), nil
 }
 
 // GetLatestVersion tries to find the latest version for this plugin. This is currently only supported for
 // plugins we can get from github releases.
 func (info PluginInfo) GetLatestVersion() (*semver.Version, error) {
-	source := info.GetSource()
+	source, err := info.GetSource()
+	if err != nil {
+		return nil, err
+	}
 	return source.GetLatestVersion(getHTTPResponse)
 }
 
@@ -652,7 +706,10 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 		return nil, -1, errors.Errorf("unknown version for plugin %s", info.Name)
 	}
 
-	source := info.GetSource()
+	source, err := info.GetSource()
+	if err != nil {
+		return nil, -1, err
+	}
 	return source.Download(*info.Version, opSy, arch, getHTTPResponse)
 }
 

@@ -236,7 +236,7 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 			}
 			if pkgInfo, ok := defaultProviderInfo[pkg]; ok {
 				providers.SetProviderVersion(inputs, pkgInfo.Version)
-				providers.SetProviderURL(inputs, pkgInfo.PluginDownloadURL)
+				providers.SetProviderURL(inputs, pkgInfo.PluginSource["url"].(string))
 			}
 
 			uuid, err := uuid.NewV4()
