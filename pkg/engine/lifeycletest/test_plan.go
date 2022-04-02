@@ -8,6 +8,7 @@ import (
 
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -121,8 +122,10 @@ func (op TestOp) runWithContext(
 		return plan, nil, res
 	}
 
-	snap := journal.Snap(target.Snapshot)
-	if res == nil && snap != nil {
+	snap, err := journal.Snap(target.Snapshot)
+	if res == nil && err != nil {
+		res = result.FromError(err)
+	} else if res == nil && snap != nil {
 		res = result.WrapIfNonNil(snap.VerifyIntegrity())
 	}
 	return nil, snap, res
@@ -290,7 +293,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 					op := entry.Step.Op()
 					assert.True(t, op == deploy.OpCreate || op == deploy.OpRead)
 				}
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, resCount)
 				return res
 			},
 		},
@@ -305,7 +310,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 					assert.Equal(t, deploy.OpSame, entry.Step.(*deploy.RefreshStep).ResultOp())
 				}
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, resCount)
 				return res
 			},
 		},
@@ -320,7 +327,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 					op := entry.Step.Op()
 					assert.True(t, op == deploy.OpSame || op == deploy.OpRead)
 				}
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, resCount)
 				return res
 			},
 		},
@@ -335,7 +344,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 					assert.Equal(t, deploy.OpSame, entry.Step.(*deploy.RefreshStep).ResultOp())
 				}
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, resCount)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, resCount)
 				return res
 			},
 		},
@@ -354,7 +365,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 						assert.Fail(t, "expected OpDelete or OpReadDiscard")
 					}
 				}
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, 0)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, 0)
 				return res
 			},
 		},
@@ -365,7 +378,9 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 				_ []Event, res result.Result) result.Result {
 
 				assert.Len(t, entries, 0)
-				assert.Len(t, entries.Snap(target.Snapshot).Resources, 0)
+				snap, err := entries.Snap(target.Snapshot)
+				require.NoError(t, err)
+				assert.Len(t, snap.Resources, 0)
 				return res
 			},
 		},

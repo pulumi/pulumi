@@ -86,6 +86,7 @@ func newDefaultSink(opts FormatOptions, writers map[Severity]io.Writer) *default
 	contract.Assert(writers[Infoerr] != nil)
 	contract.Assert(writers[Error] != nil)
 	contract.Assert(writers[Warning] != nil)
+	contract.Assertf(opts.Color != "", "FormatOptions.Color must be set")
 	return &defaultSink{
 		opts:    opts,
 		writers: writers,

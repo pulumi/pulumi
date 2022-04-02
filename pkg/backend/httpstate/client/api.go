@@ -29,14 +29,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -127,9 +126,37 @@ func intPtr(i int) *int {
 	return &i
 }
 
+// httpClient is an HTTP client abstraction, used by defaultRESTClient.
+type httpClient interface {
+	Do(req *http.Request, retryAllMethods bool) (*http.Response, error)
+}
+
+// defaultHTTPClient is an implementation of httpClient that provides a basic implementation of Do
+// using the specified *http.Client, with retry support.
+type defaultHTTPClient struct {
+	client *http.Client
+}
+
+func (c *defaultHTTPClient) Do(req *http.Request, retryAllMethods bool) (*http.Response, error) {
+	if req.Method == "GET" || retryAllMethods {
+		// Wait 1s before retrying on failure. Then increase by 2x until the
+		// maximum delay is reached. Stop after maxRetryCount requests have
+		// been made.
+		opts := httputil.RetryOpts{
+			Delay:    durationPtr(time.Second),
+			Backoff:  float64Ptr(2.0),
+			MaxDelay: durationPtr(30 * time.Second),
+
+			MaxRetryCount: intPtr(4),
+		}
+		return httputil.DoWithRetryOpts(req, c.client, opts)
+	}
+	return c.client.Do(req)
+}
+
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path string, body []byte, tok accessToken,
-	opts httpCallOptions) (string, *http.Response, error) {
+func pulumiAPICall(ctx context.Context, d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
+	tok accessToken, opts httpCallOptions) (string, *http.Response, error) {
 
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
@@ -215,24 +242,12 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 			"Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
 	}
 
-	var resp *http.Response
-	if req.Method == "GET" || opts.RetryAllMethods {
-		// Wait 1s before retrying on failure. Then increase by 2x until the
-		// maximum delay is reached. Stop after maxRetryCount requests have
-		// been made.
-		opts := httputil.RetryOpts{
-			Delay:    durationPtr(time.Second),
-			Backoff:  float64Ptr(2.0),
-			MaxDelay: durationPtr(30 * time.Second),
-
-			MaxRetryCount: intPtr(4),
-		}
-		resp, err = httputil.DoWithRetryOpts(req, http.DefaultClient, opts)
-	} else {
-		resp, err = http.DefaultClient.Do(req)
-	}
-
+	resp, err := client.Do(req, opts.RetryAllMethods)
 	if err != nil {
+		// Don't wrap *apitype.ErrorResponse.
+		if _, ok := err.(*apitype.ErrorResponse); ok {
+			return "", nil, err
+		}
 		return "", nil, fmt.Errorf("performing HTTP request: %w", err)
 	}
 	logging.V(apiRequestLogLevel).Infof("Pulumi API call response code (%s): %v", url, resp.Status)
@@ -275,11 +290,22 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 	return url, resp, nil
 }
 
-// pulumiRESTCall calls the Pulumi REST API marshalling reqObj to JSON and using that as
+// restClient is an abstraction for calling the Pulumi REST API.
+type restClient interface {
+	Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
+		respObj interface{}, tok accessToken, opts httpCallOptions) error
+}
+
+// defaultRESTClient is the default implementation for calling the Pulumi REST API.
+type defaultRESTClient struct {
+	client httpClient
+}
+
+// Call calls the Pulumi REST API marshalling reqObj to JSON and using that as
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
-func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
+func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
 	respObj interface{}, tok accessToken, opts httpCallOptions) error {
 
 	// Compute query string from query object
@@ -306,7 +332,8 @@ func pulumiRESTCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path 
 	}
 
 	// Make API call
-	url, resp, err := pulumiAPICall(ctx, diag, cloudAPI, method, path+querystring, reqBody, tok, opts)
+	url, resp, err := pulumiAPICall(
+		ctx, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
 	if err != nil {
 		return err
 	}

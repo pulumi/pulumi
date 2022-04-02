@@ -60,7 +60,7 @@ func (c cloudBackendReference) String() string {
 				return string(c.name)
 			}
 		} else {
-			currentUser, userErr := c.b.CurrentUser()
+			currentUser, _, userErr := c.b.CurrentUser()
 			if userErr == nil && c.owner == currentUser {
 				return string(c.name)
 			}
