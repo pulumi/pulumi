@@ -28,7 +28,7 @@ type JournalEntry struct {
 
 type JournalEntries []JournalEntry
 
-func (entries JournalEntries) Snap(base *deploy.Snapshot) *deploy.Snapshot {
+func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
 	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
 	ops, doneOps := []resource.Operation{}, make(map[*resource.State]bool)
@@ -130,8 +130,13 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) *deploy.Snapshot {
 
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations)
 
+	snap := deploy.NewSnapshot(manifest, secretsManager, resources, operations)
+	err := snap.NormalizeURNReferences()
+	if err != nil {
+		return snap, err
+	}
+	return snap, snap.VerifyIntegrity()
 }
 
 type Journal struct {
@@ -189,7 +194,7 @@ func (j *Journal) RecordPlugin(plugin workspace.PluginInfo) error {
 	return nil
 }
 
-func (j *Journal) Snap(base *deploy.Snapshot) *deploy.Snapshot {
+func (j *Journal) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	return j.entries.Snap(base)
 }
 

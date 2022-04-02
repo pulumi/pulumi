@@ -133,7 +133,9 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 				t.Fatalf("unexpected resource %v", urn)
 			}
 		}
-		assert.Len(t, entries.Snap(target.Snapshot).Resources, 2)
+		snap, err := entries.Snap(target.Snapshot)
+		require.NoError(t, err)
+		assert.Len(t, snap.Resources, 2)
 		return res
 	}
 
@@ -166,7 +168,9 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 				}
 			}
 			assert.Len(t, deleted, 2)
-			assert.Len(t, entries.Snap(target.Snapshot).Resources, 0)
+			snap, err := entries.Snap(target.Snapshot)
+			require.NoError(t, err)
+			assert.Len(t, snap.Resources, 0)
 			return res
 		},
 	}}
