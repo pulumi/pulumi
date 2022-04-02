@@ -1,6 +1,8 @@
 # Packages needed by the library.
 # Keep this list in sync with setup.py.
-protobuf>=3.6.0
+# Updating to protobuf 3.20.0 causes issues in linting such as:
+# lib/pulumi/runtime/mocks.py:246:15: E1101: Module 'google.protobuf.empty_pb2' has no 'Empty' member (no-member)
+protobuf>=3.6.0,<3.20.0
 grpcio>=1.33.2,<1.44.0
 dill>=0.3.0
 six>=1.12.0
