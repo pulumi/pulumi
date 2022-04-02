@@ -42,7 +42,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
     /** Queue of construct calls. */
     constructCallQueue = Promise.resolve();
- 
+
     constructor(engineAddr: string | undefined, provider: Provider, uncaughtErrors: Set<Error>) {
         this.engineAddr = engineAddr;
         this.provider = provider;
@@ -58,11 +58,11 @@ class Server implements grpc.UntypedServiceImplementation {
         callback(undefined, new emptyproto.Empty());
     }
 
-    public attach(call: any, callback:any): void {
+    public attach(call: any, callback: any): void {
         const req = call.request;
         const host = req.getAddress();
         this.engineAddr = host;
-        callback(undefined, new emptyproto.Empty())
+        callback(undefined, new emptyproto.Empty());
     }
 
     public getPluginInfo(call: any, callback: any): void {
