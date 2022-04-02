@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -104,8 +105,10 @@ func MakeStreams(
 	}
 
 	if isTerminal {
+		logging.V(11).Infoln("Opening pseudo terminal")
 		pt, tt, err := pty.Open()
 		if err == pty.ErrUnsupported {
+			logging.V(11).Infoln("Pseudo terminal not supported")
 			// Fall through, just return plain stdout/err pipes
 		} else if err != nil {
 			// Fall through, just return plain stdout/err pipes but warn that we tried and failed to make a
