@@ -21,7 +21,6 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/term/termios"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -106,7 +105,7 @@ func MakeStreams(
 
 	if isTerminal {
 		logging.V(11).Infoln("Opening pseudo terminal")
-		pt, tt, err := termios.Pty()
+		pt, tt, err := openPty()
 		if err == errUnsupported {
 			logging.V(11).Infoln("Pseudo terminal not supported")
 			// Fall through, just return plain stdout/err pipes
