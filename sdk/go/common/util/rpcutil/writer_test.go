@@ -19,6 +19,8 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"strings"
 	"testing"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -94,20 +96,46 @@ func TestWriter_Terminal(t *testing.T) {
 
 	// We _may_ have made a pty and stdout and stderr are the same and both send to the server as stdout
 	if stdout == stderr {
-		l, err := stdout.Write([]byte("hello"))
-		assert.NoError(t, err)
-		assert.Equal(t, 5, l)
+		// osx behaves strangely reading and writing a pty in the same process, and we want to check that this
+		// is still a tty when invoking other processes so invoke the "test" program.
 
-		l, err = stderr.Write([]byte("world"))
+		// We can't use the tty program because that tests stdin and we aren't setting stdin, but "test" can
+		// check if file descriptor 1 (i.e. stdout) is a tty with -t.
+		cmd := exec.Command("test", "-t", "1")
+		cmd.Stdin = nil
+		cmd.Stdout = stdout
+		cmd.Stderr = stdout
+
+		err := cmd.Run()
 		assert.NoError(t, err)
-		assert.Equal(t, 5, l)
+
+		exitcode := cmd.ProcessState.ExitCode()
+		assert.Equal(t, 0, exitcode)
+
+		// Now check we can reuse the stream to echo some text back
+		text := "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n" +
+			"Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n" +
+			"Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\n" +
+			"Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n"
+		cmd = exec.Command("echo", text)
+		cmd.Stdin = nil
+		cmd.Stdout = stdout
+		cmd.Stderr = stdout
+
+		err = cmd.Run()
+		assert.NoError(t, err)
+
+		exitcode = cmd.ProcessState.ExitCode()
+		assert.Equal(t, 0, exitcode)
 
 		err = closer.Close()
 		assert.NoError(t, err)
 
 		outBytes, err := ioutil.ReadAll(&server.stdout)
 		assert.NoError(t, err)
-		assert.Equal(t, []byte("helloworld"), outBytes)
+		// echo adds an extra \n at the end, and line discipline will cause \n to come back as \r\n
+		expected := strings.Replace(text+"\n", "\n", "\r\n", -1)
+		assert.Equal(t, []byte(expected), outBytes)
 
 		errBytes, err := ioutil.ReadAll(&server.stderr)
 		assert.NoError(t, err)

@@ -24,5 +24,6 @@ import (
 var errUnsupported = errors.New("unsupported")
 
 func openPty() (*os.File, *os.File, error) {
+	// termios.Pty() is not supported on windows
 	return nil, nil, errUnsupported
 }
