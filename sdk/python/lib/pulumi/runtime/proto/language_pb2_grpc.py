@@ -32,6 +32,11 @@ class LanguageRuntimeStub(object):
             request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             response_deserializer=plugin__pb2.PluginInfo.FromString,
         )
+        self.InstallDependencies = channel.unary_stream(
+            "/pulumirpc.LanguageRuntime/InstallDependencies",
+            request_serializer=language__pb2.InstallDependenciesRequest.SerializeToString,
+            response_deserializer=language__pb2.InstallDependenciesResponse.FromString,
+        )
 
 
 class LanguageRuntimeServicer(object):
@@ -57,6 +62,12 @@ class LanguageRuntimeServicer(object):
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
 
+    def InstallDependencies(self, request, context):
+        """InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
+
 
 def add_LanguageRuntimeServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -74,6 +85,11 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
             servicer.GetPluginInfo,
             request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             response_serializer=plugin__pb2.PluginInfo.SerializeToString,
+        ),
+        "InstallDependencies": grpc.unary_stream_rpc_method_handler(
+            servicer.InstallDependencies,
+            request_deserializer=language__pb2.InstallDependenciesRequest.FromString,
+            response_serializer=language__pb2.InstallDependenciesResponse.SerializeToString,
         ),
     }
     generic_handler = grpc.method_handlers_generic_handler(

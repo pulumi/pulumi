@@ -147,7 +147,7 @@ require (
 	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2 // indirect
-	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.6 // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
 	golang.org/x/tools v0.1.0 // indirect
@@ -162,5 +162,6 @@ require (
 
 require (
 	github.com/hashicorp/go-version v1.4.0 // indirect
+	github.com/pkg/term v1.1.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 )
