@@ -161,7 +161,7 @@ require (
 )
 
 require (
-	github.com/creack/pty v1.1.11 // indirect
 	github.com/hashicorp/go-version v1.4.0 // indirect
+	github.com/pkg/term v1.1.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 )
