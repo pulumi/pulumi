@@ -18,6 +18,7 @@
 package rpcutil
 
 import (
+	"errors"
 	"os"
 )
 
