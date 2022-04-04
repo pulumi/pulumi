@@ -23,7 +23,7 @@ namespace Pulumi
             });
 
         /// <summary>
-        /// <see cref="RunAsync(Action{DeploymentOutputs})"/> is an
+        /// <see cref="RunAsync(Func{Outputs})"/> is an
         /// entry-point to a Pulumi application. .NET applications should perform all startup logic
         /// they need at the top of the program and then call it:
         /// <para>
@@ -31,10 +31,13 @@ namespace Pulumi
         /// using System;
         /// using Pulumi;
         ///
-        /// async Deployment.RunAsync(outputs =>
+        /// async Deployment.RunAsync(() =>
         /// {
-        ///     var bucket = new Bucket(args);
-        ///     outputs.Export("BucketName", bucket.BucketName);
+        ///     var bucket = new Bucket("my-bucket");
+        ///     return new Outputs 
+        ///     {
+        ///        { "BucketName", bucket.BucketName }
+        ///     };
         /// });
         /// </c>
         /// </para>
@@ -49,12 +52,11 @@ namespace Pulumi
         /// 
         /// </summary>
         /// <param name="contextHandler">Callback that creates stack resources.</param>
-        public static async Task<int> RunAsync(Action<DeploymentOutputs> contextHandler)
+        public static async Task<int> RunAsync(Func<Outputs> contextHandler)
         {
-            var outputs = DeploymentOutputs.Create();
             return await Deployment.RunAsync(() => 
             {
-                contextHandler(outputs);
+                var outputs = contextHandler();
                 return outputs.AsDictionary();
             });
         }

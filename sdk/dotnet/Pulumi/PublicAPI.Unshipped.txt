@@ -1,8 +1,11 @@
-Pulumi.DeploymentOutputs
-static Pulumi.DeploymentOutputs.Create() -> Pulumi.DeploymentOutputs
-Pulumi.DeploymentOutputs.Export<T>(string outputName, Pulumi.Output<T> value) -> void
-Pulumi.DeploymentOutputs.Export(string outputName, string value) -> void
-Pulumi.DeploymentOutputs.Export(string outputName, int value) -> void
-Pulumi.DeploymentOutputs.Export(string outputName, bool value) -> void
-Pulumi.DeploymentOutputs.AsDictionary() -> System.Collections.Generic.IDictionary<string, object>
-static Pulumi.Deployment.RunAsync(System.Action<Pulumi.DeploymentOutputs> contextHandler) -> System.Threading.Tasks.Task<int>
+Pulumi.Outputs
+Pulumi.Outputs.Outputs() -> void
+Pulumi.Outputs.Add(string outputName, string value) -> void
+Pulumi.Outputs.Add(string outputName, int value) -> void
+Pulumi.Outputs.Add(string outputName, bool value) -> void
+Pulumi.Outputs.Add(string outputName, Pulumi.Output<string> value) -> void
+Pulumi.Outputs.Add(string outputName, Pulumi.Output<int> value) -> void
+Pulumi.Outputs.Add(string outputName, Pulumi.Output<bool> value) -> void
+Pulumi.Outputs.AsDictionary() -> System.Collections.Generic.IDictionary<string, object>
+static Pulumi.Deployment.RunAsync(System.Func<Pulumi.Outputs> contextHandler) -> System.Threading.Tasks.Task<int>
+Pulumi.Outputs.GetEnumerator() -> System.Collections.Generic.IEnumerator<System.Collections.Generic.KeyValuePair<string, object>>
