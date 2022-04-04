@@ -29,12 +29,12 @@ namespace Pulumi
         /// <para>
         /// <c>
         /// using System;
+        /// using Pulumi;
         ///
         /// async Deployment.RunAsync(outputs =>
         /// {
-        ///     // Create resources here
         ///     var bucket = new Bucket(args);
-        ///     outputs.Export("BucketName", bucket.Name);
+        ///     outputs.Export("BucketName", bucket.BucketName);
         /// });
         /// </c>
         /// </para>
