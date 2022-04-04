@@ -250,7 +250,10 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			foundRes3 := false
 			foundRes4Child := false
 			// foundRes5Child1 := false
-			for _, res := range entries.Snap(target.Snapshot).Resources {
+
+			snap, err := entries.Snap(target.Snapshot)
+			require.NoError(t, err)
+			for _, res := range snap.Resources {
 				// "res1" has a transformation which adds additionalSecretOutputs
 				if res.URN.Name() == "res1" {
 					foundRes1 = true

@@ -60,7 +60,8 @@ jobs:
             [1]: ${{ steps.vars.outputs.run-url }}
 
   go-lint:
-    container: golangci/golangci-lint:latest
+    # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
+    container: golangci/golangci-lint:v1.44
     name: Lint ${{ matrix.directory }}
     strategy:
       matrix:
@@ -110,7 +111,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip

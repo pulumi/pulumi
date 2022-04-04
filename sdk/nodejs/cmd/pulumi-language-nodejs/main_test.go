@@ -35,7 +35,7 @@ func TestArgumentConstruction(t *testing.T) {
 
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{DryRun: true}
-		args := host.constructArguments(rr, "", "")
+		args := host.constructArguments(rr, "", "", "")
 		assert.Contains(t, args, "--dry-run")
 		assert.NotContains(t, args, "true")
 	})
@@ -45,7 +45,7 @@ func TestArgumentConstruction(t *testing.T) {
 
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{Project: "foo"}
-		args := strings.Join(host.constructArguments(rr, "", ""), " ")
+		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
 		assert.Contains(t, args, "--project foo")
 	})
 
@@ -54,7 +54,7 @@ func TestArgumentConstruction(t *testing.T) {
 
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{}
-		args := strings.Join(host.constructArguments(rr, "", ""), " ")
+		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
 		assert.NotContains(t, args, "--stack")
 	})
 
@@ -63,7 +63,7 @@ func TestArgumentConstruction(t *testing.T) {
 
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{}
-		args := strings.Join(host.constructArguments(rr, "", ""), " ")
+		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
 		assert.Contains(t, args, ".")
 	})
 
@@ -72,7 +72,7 @@ func TestArgumentConstruction(t *testing.T) {
 
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{Program: "foobar"}
-		args := strings.Join(host.constructArguments(rr, "", ""), " ")
+		args := strings.Join(host.constructArguments(rr, "", "", ""), " ")
 		assert.Contains(t, args, "foobar")
 	})
 }

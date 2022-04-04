@@ -34,7 +34,11 @@ func FuncWithListParamOutput(ctx *pulumi.Context, args FuncWithListParamOutputAr
 		ApplyT(func(v interface{}) (FuncWithListParamResult, error) {
 			args := v.(FuncWithListParamArgs)
 			r, err := FuncWithListParam(ctx, &args, opts...)
-			return *r, err
+			var s FuncWithListParamResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(FuncWithListParamResultOutput)
 }
 

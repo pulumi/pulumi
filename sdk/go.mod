@@ -8,6 +8,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cheggaaa/pb v1.0.18
+	github.com/creack/pty v1.1.9 // indirect
 	github.com/djherbis/times v1.2.0
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -23,7 +24,7 @@ require (
 	github.com/rogpeppe/go-internal v1.8.1
 	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
 	github.com/spf13/cast v1.3.1
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.6.1
 	github.com/texttheater/golang-levenshtein v0.0.0-20191208221605-eb6844b05fc6
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
@@ -34,9 +35,15 @@ require (
 	golang.org/x/sys v0.0.0-20210817190340-bfb29a6856f2
 	google.golang.org/grpc v1.29.1
 	gopkg.in/src-d/go-git.v4 v4.13.1
-	gopkg.in/yaml.v2 v2.2.8
+	gopkg.in/yaml.v2 v2.4.0
 	pgregory.net/rapid v0.4.7
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0
+)
+
+require (
+	github.com/kr/pty v1.1.8
+	github.com/pkg/term v1.1.0
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 )
 
 require (
@@ -60,7 +67,7 @@ require (
 	github.com/opentracing/basictracer-go v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
-	github.com/spf13/pflag v1.0.3 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
 	github.com/xanzy/ssh-agent v0.2.1 // indirect

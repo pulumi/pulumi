@@ -36,7 +36,11 @@ func FuncWithAllOptionalInputsOutput(ctx *pulumi.Context, args FuncWithAllOption
 		ApplyT(func(v interface{}) (FuncWithAllOptionalInputsResult, error) {
 			args := v.(FuncWithAllOptionalInputsArgs)
 			r, err := FuncWithAllOptionalInputs(ctx, &args, opts...)
-			return *r, err
+			var s FuncWithAllOptionalInputsResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(FuncWithAllOptionalInputsResultOutput)
 }
 
