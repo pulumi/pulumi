@@ -6,9 +6,12 @@ SUB_PROJECTS := $(SDKS:%=sdk/%)
 include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
-# Exclude longest running tests to run in separate workers
+# To enable excluding longest running tests to run in separate workers
 PKG_CODEGEN_NODEJS := github.com/pulumi/pulumi/pkg/v3/codegen/nodejs
 PKG_CODEGEN_PYTHON := github.com/pulumi/pulumi/pkg/v3/codegen/python
+PKG_CODEGEN_DOTNET := github.com/pulumi/pulumi/pkg/v3/codegen/dotnet
+PKG_CODEGEN_GO     := github.com/pulumi/pulumi/pkg/v3/codegen/go
+# nodejs and python codegen tests are much slower than go/dotnet:
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v -E '^(${PKG_CODEGEN_NODEJS}|${PKG_CODEGEN_PYTHON})$$')
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$)
@@ -103,10 +106,22 @@ test_build:: $(TEST_ALL_DEPS)
 test_all:: test_build test_pkg test_integration
 
 test_pkg_nodejs: get_schemas
+# this is not invoked as part of test_pkg_rest, in order to improve CI velocity by running this
+# target in a separate CI job.
 	@cd pkg && $(GO_TEST) ${PKG_CODEGEN_NODEJS}
 
 test_pkg_python: get_schemas
+# this is not invoked as part of test_pkg_rest, in order to improve CI velocity by running this
+# target in a separate CI job.
 	@cd pkg && $(GO_TEST) ${PKG_CODEGEN_PYTHON}
+
+test_pkg_dotnet: get_schemas
+# invoked as part of "test_pkg_rest", listed separately to update codegen just for dotnet
+	@cd pkg && $(GO_TEST) ${PKG_CODEGEN_DOTNET}
+
+test_pkg_go: get_schemas
+# invoked as part of "test_pkg_rest", listed separately to update codegen just for go
+	@cd pkg && $(GO_TEST) ${PKG_CODEGEN_GO}
 
 test_pkg_rest: get_schemas
 	@cd pkg && $(GO_TEST) ${PROJECT_PKGS}
