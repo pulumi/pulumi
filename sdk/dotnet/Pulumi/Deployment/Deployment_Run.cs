@@ -23,6 +23,43 @@ namespace Pulumi
             });
 
         /// <summary>
+        /// <see cref="RunAsync(Action{DeploymentOutputs})"/> is an
+        /// entry-point to a Pulumi application. .NET applications should perform all startup logic
+        /// they need at the top of the program and then call it:
+        /// <para>
+        /// <c>
+        /// using System;
+        ///
+        /// async Deployment.RunAsync(outputs =>
+        /// {
+        ///     // Create resources here
+        ///     var bucket = new Bucket(args);
+        ///     outputs.Export("BucketName", bucket.Name);
+        /// });
+        /// </c>
+        /// </para>
+        /// <para>
+        /// Importantly: Cloud resources cannot be created outside of the lambda passed to any of the
+        /// <see cref="Deployment.RunAsync(Action)"/> overloads.  Because cloud Resource construction is
+        /// inherently asynchronous, the result of this function is a <see cref="Task{T}"/> which should
+        /// then be returned or awaited.  This will ensure that any problems that are encountered during
+        /// the running of the program are properly reported.  Failure to do this may lead to the
+        /// program ending early before all resources are properly registered.
+        /// </para>
+        /// 
+        /// </summary>
+        /// <param name="contextHandler">Callback that creates stack resources.</param>
+        public static async Task<int> RunAsync(Action<DeploymentOutputs> contextHandler)
+        {
+            var outputs = DeploymentOutputs.Create();
+            return await Deployment.RunAsync(() => 
+            {
+                contextHandler(outputs);
+                return outputs.AsDictionary();
+            });
+        }
+ 
+        /// <summary>
         /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
         /// </summary>
         /// <param name="func">Callback that creates stack resources.</param>

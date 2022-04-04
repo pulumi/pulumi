@@ -1,0 +1,8 @@
+Pulumi.DeploymentOutputs
+static Pulumi.DeploymentOutputs.Create() -> Pulumi.DeploymentOutputs
+Pulumi.DeploymentOutputs.Export<T>(string outputName, Pulumi.Output<T> value) -> void
+Pulumi.DeploymentOutputs.Export(string outputName, string value) -> void
+Pulumi.DeploymentOutputs.Export(string outputName, int value) -> void
+Pulumi.DeploymentOutputs.Export(string outputName, bool value) -> void
+Pulumi.DeploymentOutputs.AsDictionary() -> System.Collections.Generic.IDictionary<string, object>
+static Pulumi.Deployment.RunAsync(System.Action<Pulumi.DeploymentOutputs> contextHandler) -> System.Threading.Tasks.Task<int>
