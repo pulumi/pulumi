@@ -106,9 +106,13 @@ test_build:: $(TEST_ALL_DEPS)
 test_all:: test_build test_pkg test_integration
 
 test_pkg_nodejs: get_schemas
+# this is not invoked as part of test_pkg_rest, in order to improve CI velocity by running this
+# target in a separate CI job.
 	@cd pkg && $(GO_TEST) ${PKG_CODEGEN_NODEJS}
 
 test_pkg_python: get_schemas
+# this is not invoked as part of test_pkg_rest, in order to improve CI velocity by running this
+# target in a separate CI job.
 	@cd pkg && $(GO_TEST) ${PKG_CODEGEN_PYTHON}
 
 test_pkg_dotnet: get_schemas
