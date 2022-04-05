@@ -4564,10 +4564,10 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 
 	project := p.GetProject()
 
-	validate := ExpectDiagMessage(t, "<{%reset%}>Expected an ID for urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>")
+	validate := ExpectDiagMessage(t, "<{%reset%}>Expected an ID for urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>\n")
 
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.NotNil(t, res)
+	assert.Nil(t, res)
 	assert.NotNil(t, snap)
 	assert.Len(t, snap.Resources, 1)
 }
