@@ -738,15 +738,15 @@ func TestUpdateShowsWarningWithPendingoOperations(t *testing.T) {
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// The update should succeed but give a warning
+	initialPartOfMessage := "Attempting to deploy or update resources with 1 pending operations from previous deployment."
 	validate := func(
 		project workspace.Project, target deploy.Target,
 		entries JournalEntries, events []Event,
 		res result.Result) result.Result {
-
 		for i := range events {
 			if events[i].Type == "diag" {
 				payload := events[i].Payload().(engine.DiagEventPayload)
-				initialPartOfMessage := "Attempting to deploy or update resources with 1 pending operations from previous deployment."
+
 				if payload.Severity == "warning" && strings.Contains(payload.Message, initialPartOfMessage) {
 					return nil
 				}
