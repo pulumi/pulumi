@@ -689,14 +689,25 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	assert.Equal(t, urnB, new.PendingOperations[0].Resource.URN)
 }
 
+func findPendingOperationsByType(opType resource.OperationType, snapshot *deploy.Snapshot) []resource.Operation {
+	var operations []resource.Operation
+	for _, operation := range snapshot.PendingOperations {
+		if operation.Type == opType {
+			operations = append(operations, operation)
+		}
+	}
+	return operations
+}
+
 // Update succeeds but gives a warning when there are pending operations
-func TestUpdateShowsWarningWithPendingoOperations(t *testing.T) {
+func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	t.Parallel()
 
 	p := &TestPlan{}
 
 	const resType = "pkgA:m:typA"
 	urnA := p.NewURN(resType, "resA", "")
+	urnB := p.NewURN(resType, "resB", "")
 
 	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
@@ -712,10 +723,15 @@ func TestUpdateShowsWarningWithPendingoOperations(t *testing.T) {
 	}
 
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{{
-			Resource: newResource(urnA, "0", false),
-			Type:     resource.OperationTypeUpdating,
-		}},
+		PendingOperations: []resource.Operation{
+			{
+				Resource: newResource(urnA, "0", false),
+				Type:     resource.OperationTypeUpdating,
+			},
+			{
+				Resource: newResource(urnB, "1", false),
+				Type:     resource.OperationTypeCreating,
+			}},
 		Resources: []*resource.State{
 			newResource(urnA, "0", false),
 		},
@@ -756,8 +772,17 @@ func TestUpdateShowsWarningWithPendingoOperations(t *testing.T) {
 		return result.Error("Expected a diagnostic message, got none")
 	}
 
-	_, res := op.Run(project, target, options, false, nil, validate)
-	assert.Nil(t, res)
+	new, _ := op.Run(project, target, options, false, nil, validate)
+	assert.NotNil(t, new)
+
+	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
+
+	// Assert that CREATE pending operations are retained
+	// TODO: should revisit whether non-CREATE pending operations should also be retained
+	assert.Equal(t, 1, len(new.PendingOperations))
+	createOperations := findPendingOperationsByType(resource.OperationTypeCreating, new)
+	assert.Equal(t, 1, len(createOperations))
+	assert.Equal(t, urnB, createOperations[0].Resource.URN)
 }
 
 // Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
