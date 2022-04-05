@@ -616,7 +616,9 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	assert.Nil(t, res)
 }
 
-// Test to make sure that if we pulumi refresh while having pending CREATE operations, that these are preserved after the refresh.
+// Test to make sure that if we pulumi refresh
+// while having pending CREATE operations,
+// that these are preserved after the refresh.
 func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	t.Parallel()
 
