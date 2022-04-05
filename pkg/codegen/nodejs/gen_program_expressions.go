@@ -31,7 +31,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 	}
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, _ = pcl.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
-	if typ == nil {
+	if typ != nil {
 		expr = pcl.RewriteConversions(expr, typ)
 	}
 	expr, _ = g.lowerProxyApplies(expr)
