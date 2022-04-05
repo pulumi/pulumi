@@ -146,7 +146,7 @@ func getSummaryAbout(transitiveDependencies bool) summaryAbout {
 			result.Runtime = &runtime
 		}
 		if deps, err := getProgramDependenciesAbout(proj, pwd, transitiveDependencies); err != nil {
-			addError(err, "Failed to get information about the Puluimi program's plugins")
+			addError(err, "Failed to get information about the Pulumi program's plugins")
 		} else {
 			result.Dependencies = deps
 		}
