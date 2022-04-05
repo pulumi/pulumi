@@ -616,6 +616,79 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	assert.Nil(t, res)
 }
 
+// Test to make sure that if we pulumi refresh while having pending CREATE operations, that these are preserved after the refresh.
+func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
+	t.Parallel()
+
+	p := &TestPlan{}
+
+	const resType = "pkgA:m:typA"
+	urnA := p.NewURN(resType, "resA", "")
+	urnB := p.NewURN(resType, "resB", "")
+
+	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+		return &resource.State{
+			Type:         urn.Type(),
+			URN:          urn,
+			Custom:       true,
+			Delete:       delete,
+			ID:           id,
+			Inputs:       resource.PropertyMap{},
+			Outputs:      resource.PropertyMap{},
+			Dependencies: dependencies,
+		}
+	}
+
+	// Notice here, we have two pending operations: update and create
+	// After a refresh, only the pending CREATE operation should
+	// be in the updated snapshot
+
+	resA := newResource(urnA, "0", false)
+	resB := newResource(urnB, "0", false)
+
+	old := &deploy.Snapshot{
+		PendingOperations: []resource.Operation{
+			{
+				Resource: resA,
+				Type:     resource.OperationTypeUpdating,
+			},
+			{
+				Resource: resB,
+				Type:     resource.OperationTypeCreating,
+			},
+		},
+		Resources: []*resource.State{
+			resA,
+		},
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+
+	op := TestOp(Update)
+	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	project, target := p.GetProject(), p.GetTarget(t, old)
+
+	// With a refresh, the update should succeed.
+	withRefresh := options
+	withRefresh.Refresh = true
+	new, res := op.Run(project, target, withRefresh, false, nil, nil)
+	assert.Nil(t, res)
+	// Assert that pending CREATE operation was preserved
+	assert.Len(t, new.PendingOperations, 1)
+	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
+	assert.Equal(t, urnB, new.PendingOperations[0].Resource.URN)
+}
+
 // Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
 func TestUpdatePartialFailure(t *testing.T) {
 	t.Parallel()
