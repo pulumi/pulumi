@@ -544,7 +544,7 @@ func filterAsset(v *resource.Asset, debug bool) *resource.Asset {
 	// we only include the text if it represents a user's serialized program code, as
 	// that is something we want the receiver to see to display as part of
 	// progress/diffs/etc.
-	text := v.Text
+	var text string
 	if v.IsUserProgramCode() {
 		// also make sure we filter this in case there are any secrets in the code.
 		text = logging.FilterString(resource.MassageIfUserProgramCodeAsset(v, debug).Text)
