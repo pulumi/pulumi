@@ -642,10 +642,8 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	// Notice here, we have two pending operations: update and create
 	// After a refresh, only the pending CREATE operation should
 	// be in the updated snapshot
-
 	resA := newResource(urnA, "0", false)
 	resB := newResource(urnB, "0", false)
-
 	old := &deploy.Snapshot{
 		PendingOperations: []resource.Operation{
 			{
@@ -687,6 +685,77 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	assert.Len(t, new.PendingOperations, 1)
 	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
 	assert.Equal(t, urnB, new.PendingOperations[0].Resource.URN)
+}
+
+// Update succeeds but gives a warning when there are pending operations
+func TestUpdateShowsWarningWithPendingoOperations(t *testing.T) {
+	t.Parallel()
+
+	p := &TestPlan{}
+
+	const resType = "pkgA:m:typA"
+	urnA := p.NewURN(resType, "resA", "")
+
+	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
+		return &resource.State{
+			Type:         urn.Type(),
+			URN:          urn,
+			Custom:       true,
+			Delete:       delete,
+			ID:           id,
+			Inputs:       resource.PropertyMap{},
+			Outputs:      resource.PropertyMap{},
+			Dependencies: dependencies,
+		}
+	}
+
+	old := &deploy.Snapshot{
+		PendingOperations: []resource.Operation{{
+			Resource: newResource(urnA, "0", false),
+			Type:     resource.OperationTypeUpdating,
+		}},
+		Resources: []*resource.State{
+			newResource(urnA, "0", false),
+		},
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+
+	op := TestOp(Update)
+	options := UpdateOptions{Host: deploytest.NewPluginHost(nil, nil, program, loaders...)}
+	project, target := p.GetProject(), p.GetTarget(t, old)
+
+	// The update should succeed but give a warning
+	validate := func(
+		project workspace.Project, target deploy.Target,
+		entries JournalEntries, events []Event,
+		res result.Result) result.Result {
+
+		for i := range events {
+			if events[i].Type == "diag" {
+				payload := events[i].Payload().(engine.DiagEventPayload)
+				initialPartOfMessage := "Attempting to deploy or update resources with 1 pending operations from previous deployment."
+				if payload.Severity == "warning" && strings.Contains(payload.Message, initialPartOfMessage) {
+					return nil
+				}
+				return result.Errorf("Unexpected warning diag message: %s", payload.Message)
+			}
+		}
+		return result.Error("Expected a diagnostic message, got none")
+	}
+
+	_, res := op.Run(project, target, options, false, nil, validate)
+	assert.Nil(t, res)
 }
 
 // Tests that a failed partial update causes the engine to persist the resource's old inputs and new outputs.
