@@ -466,7 +466,7 @@ func printPropertyValue(
 	indent int, op deploy.StepOp, prefix bool, debug bool) {
 
 	switch {
-	case isPrimitive(v) || v.IsSecret():
+	case isPrimitive(v):
 		printPrimitivePropertyValue(b, v, planning, op)
 	case v.IsArray():
 		arr := v.ArrayValue()
@@ -701,7 +701,7 @@ func printPropertyValueDiff(
 
 func isPrimitive(value resource.PropertyValue) bool {
 	return value.IsNull() || value.IsString() || value.IsNumber() ||
-		value.IsBool() || value.IsComputed() || value.IsOutput()
+		value.IsBool() || value.IsComputed() || value.IsOutput() || value.IsSecret()
 }
 
 func printPrimitivePropertyValue(b io.StringWriter, v resource.PropertyValue, planning bool, op deploy.StepOp) {
@@ -728,6 +728,8 @@ func printPrimitivePropertyValue(b io.StringWriter, v resource.PropertyValue, pl
 		} else {
 			write(b, op, "undefined")
 		}
+	} else if v.IsSecret() {
+		write(b, op, "[secret]")
 	} else {
 		contract.Failf("Unexpected property value kind '%v'", v)
 	}

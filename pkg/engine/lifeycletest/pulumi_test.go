@@ -4811,3 +4811,102 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 		return
 	}
 }
+
+func TestEventSecrets(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					diff := olds.Diff(news)
+					if diff == nil {
+						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+					}
+					detailedDiff := plugin.NewDetailedDiffFromObjectDiff(diff)
+					changedKeys := diff.ChangedKeys()
+
+					return plugin.DiffResult{
+						Changes:      plugin.DiffSome,
+						ChangedKeys:  changedKeys,
+						DetailedDiff: detailedDiff,
+					}, nil
+				},
+
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("id123"), inputs, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	var inputs resource.PropertyMap
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps: []TestStep{{
+			Op:          Update,
+			SkipPreview: true,
+		}},
+	}
+
+	inputs = resource.PropertyMap{
+		"webhooks": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewObjectProperty(resource.PropertyMap{
+				"clientConfig": resource.NewObjectProperty(resource.PropertyMap{
+					"service": resource.NewStringProperty("foo"),
+				}),
+			}),
+		})),
+	}
+	snap := p.Run(t, nil)
+
+	inputs = resource.PropertyMap{
+		"webhooks": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewObjectProperty(resource.PropertyMap{
+				"clientConfig": resource.NewObjectProperty(resource.PropertyMap{
+					"service": resource.NewStringProperty("bar"),
+				}),
+			}),
+		})),
+	}
+	p.Steps[0].Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
+		evts []Event, res result.Result) result.Result {
+
+		for _, e := range evts {
+			var step StepEventMetadata
+			switch e.Type {
+			case ResourcePreEvent:
+				step = e.Payload().(ResourcePreEventPayload).Metadata
+			case ResourceOutputsEvent:
+				step = e.Payload().(ResourceOutputsEventPayload).Metadata
+			default:
+				continue
+			}
+			if step.URN.Name() != "resA" {
+				continue
+			}
+
+			assert.True(t, step.Old.Inputs["webhooks"].IsSecret())
+			assert.True(t, step.Old.Outputs["webhooks"].IsSecret())
+			assert.True(t, step.New.Inputs["webhooks"].IsSecret())
+		}
+		return res
+	}
+	p.Run(t, snap)
+}
