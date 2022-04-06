@@ -285,6 +285,8 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *sc
 		// We know the enum value at the call site, so we can directly stamp in a
 		// valid enum instance. We don't need to convert.
 		pkg, name := enumName(to)
+		contract.Assertf(pkg != "", "pkg cannot be empty")
+		contract.Assertf(name != "", "name cannot be empty")
 		memberTag := member.Name
 		if memberTag == "" {
 			memberTag = member.Value.(string)
@@ -299,7 +301,11 @@ func enumName(enum *model.EnumType) (string, string) {
 	components := strings.Split(enum.Token, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
 	enumName := tokenToName(enum.Token)
-	namespaceMap := enum.LanguageOptions()["csharp"].(CSharpPackageInfo).Namespaces
+	e, ok := pcl.GetSchemaForType(enum)
+	if !ok {
+		return "", ""
+	}
+	namespaceMap := e.(*schema.EnumType).Package.Language["csharp"].(CSharpPackageInfo).Namespaces
 	namespace := namespaceName(namespaceMap, components[0])
 	if components[1] != "" && components[1] != "index" {
 		namespace += "." + namespaceName(namespaceMap, components[1])
@@ -316,6 +322,11 @@ func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Ty
 	switch to := to.(type) {
 	case *model.EnumType:
 		pkg, name := enumName(to)
+		if pkg == "" || name == "" {
+			// Something has gone wrong. Produce a best effort result.
+			g.Fgenf(w, "%.v", from)
+			return
+		}
 		var convertFn string
 		switch {
 		case to.Type.Equals(model.StringType):
@@ -328,7 +339,7 @@ func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Ty
 		if isOutput {
 			g.Fgenf(w, "%.v.Apply(%s)", from, convertFn)
 		} else {
-			to.GenEnum(from, g.genSafeEnum(w, to), func(from model.Expression) {
+			pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
 				g.Fgenf(w, "%s(%v)", convertFn, from)
 			})
 		}

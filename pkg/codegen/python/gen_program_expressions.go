@@ -220,7 +220,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		case *model.EnumType:
 			components := strings.Split(to.Token, ":")
 			contract.Assertf(len(components) == 3, "malformed token %v", to.Token)
-			moduleNameOverrides := to.LanguageOptions()["python"].(PackageInfo).ModuleNameOverrides
+			enum, ok := pcl.GetSchemaForType(to)
+			if !ok {
+				// No schema was provided
+				g.Fgenf(w, "%.v", expr.Args[0])
+				return
+			}
+			moduleNameOverrides := enum.(*schema.EnumType).Package.Language["python"].(PackageInfo).ModuleNameOverrides
 			pkg := strings.ReplaceAll(components[0], "-", "_")
 			if m := tokenToModule(to.Token, &schema.Package{}, moduleNameOverrides); m != "" {
 				pkg += "." + m
@@ -230,7 +236,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			if isOutput {
 				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)
 			} else {
-				to.GenEnum(from, func(member *schema.Enum) {
+				pcl.GenEnum(to, from, func(member *schema.Enum) {
 					tag := member.Name
 					if tag == "" {
 						tag = fmt.Sprintf("%v", member.Value)

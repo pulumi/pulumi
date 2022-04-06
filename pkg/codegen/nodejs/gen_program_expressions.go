@@ -292,7 +292,7 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 	return []string{"@pulumi/" + pkg}
 }
 
-func enumName(enum *model.EnumType) string {
+func enumName(enum *model.EnumType) (string, error) {
 	components := strings.Split(enum.Token, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
 	name := tokenToName(enum.Token)
@@ -301,14 +301,18 @@ func enumName(enum *model.EnumType) string {
 		return strings.ReplaceAll(pkg, "-", "_")
 	}
 	pkg := components[0]
-	if name := enum.LanguageOptions()["nodejs"].(NodePackageInfo).PackageName; name != "" {
+	e, ok := pcl.GetSchemaForType(enum)
+	if !ok {
+		return "", fmt.Errorf("Could not get associated enum")
+	}
+	if name := e.(*schema.EnumType).Package.Language["nodejs"].(NodePackageInfo).PackageName; name != "" {
 		pkg = name
 	}
 	pkg = module(pkg)
 	if components[1] != "" && components[1] != "index" {
 		pkg += "." + module(components[1])
 	}
-	return fmt.Sprintf("%s.%s", pkg, name)
+	return fmt.Sprintf("%s.%s", pkg, name), nil
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
@@ -322,17 +326,20 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		switch to := to.(type) {
 		case *model.EnumType:
-			enum := enumName(to)
-			if isOutput {
-				g.Fgenf(w, "%.v.apply((x) => %s[x])", from, enum)
+			if enum, err := enumName(to); err == nil {
+				if isOutput {
+					g.Fgenf(w, "%.v.apply((x) => %s[x])", from, enum)
+				} else {
+					pcl.GenEnum(to, from, func(member *schema.Enum) {
+						memberTag, err := enumMemberName(tokenToName(to.Token), member)
+						contract.AssertNoErrorf(err, "Failed to get member name on enum '%s'", enum)
+						g.Fgenf(w, "%s.%s", enum, memberTag)
+					}, func(from model.Expression) {
+						g.Fgenf(w, "%s[%.v]", enum, from)
+					})
+				}
 			} else {
-				to.GenEnum(from, func(member *schema.Enum) {
-					memberTag, err := enumMemberName(tokenToName(to.Token), member)
-					contract.AssertNoError(err)
-					g.Fgenf(w, "%s.%s", enum, memberTag)
-				}, func(from model.Expression) {
-					g.Fgenf(w, "%s[%.v]", enum, from)
-				})
+				g.Fgenf(w, "%v", from)
 			}
 		default:
 			g.Fgenf(w, "%v", from)

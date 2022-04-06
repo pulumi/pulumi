@@ -192,7 +192,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					from, enumTag, underlyingType)
 				return
 			}
-			to.GenEnum(from, g.genSafeEnum(w, to), func(from model.Expression) {
+			pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
 				g.Fgenf(w, "%s(%v)", enumTag, from)
 			})
 			return

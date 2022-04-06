@@ -23,7 +23,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -35,16 +34,25 @@ type EnumType struct {
 	// The type of the enum's values.
 	Type Type
 
-	// The associated schema type. It is necessary to include this, since
-	// otherwise identical types are distinct if they have a different schema
-	// type.
+	// Token that uniquely identifies a EnumType.
+	// Given EnumA, EnumB of type EnumType
+	// 		EnumA.Token != EnumB.Token => EnumA != EnumB (regardless of other fields)
+	//
+	// It is the responsibility of enum constructors to ensure that given EnumA,
+	// EnumB of type EnumType
+	//
+	// 		EnumA.Token = EnumB.Token => EnumA = EnumB (all fields match)
+	//
+	// Failure to do so may lead to panics.
 	Token string
 
-	s   string
-	src *schema.EnumType
+	// Annotations records any annotations associated with the object type.
+	Annotations []interface{}
+
+	s string
 }
 
-func NewEnumType(typ Type, src *schema.EnumType, elements ...cty.Value) *EnumType {
+func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...interface{}) *EnumType {
 	if len(elements) != 0 {
 		t := elements[0].Type()
 		for _, e := range elements[1:] {
@@ -53,83 +61,10 @@ func NewEnumType(typ Type, src *schema.EnumType, elements ...cty.Value) *EnumTyp
 		}
 	}
 	return &EnumType{
-		Type:     typ,
-		Token:    src.Token,
-		Elements: elements,
-		src:      src,
-	}
-}
-
-// Member returns the name of the member that matches the given `value`. If no
-// member if found, the empty string is returned. If the type of `value` does
-// not match the type of the enum, Member will panic.
-func (t *EnumType) Member(value cty.Value) *schema.Enum {
-	switch {
-	case t.Type.Equals(StringType):
-		s := value.AsString()
-		for _, el := range t.src.Elements {
-			v := el.Value.(string)
-			if v == s {
-				return el
-			}
-		}
-	case t.Type.Equals(NumberType):
-		f, _ := value.AsBigFloat().Float64()
-		for _, el := range t.src.Elements {
-			if el.Value.(float64) == f {
-				return el
-			}
-		}
-	case t.Type.Equals(IntType):
-		f, _ := value.AsBigFloat().Int64()
-		for _, el := range t.src.Elements {
-			if el.Value.(int64) == f {
-				return el
-			}
-		}
-	default:
-		contract.Failf("Unknown enum type '%s' for '%s'", t.Type, t.Token)
-	}
-	return nil
-}
-
-// LanguageOptions provides the language map associated with the enums
-// *schema.Package.
-func (t *EnumType) LanguageOptions() map[string]interface{} {
-	return t.src.Package.Language
-}
-
-// GenEnum is a helper function when generating an enum.
-// Given an enum, and instructions on what to do when you find a known value,
-// and an unknown value, return a function that will generate an the given enum
-// from the given expression.
-//
-// This function should probably live in the `codegen` namespace, but cannot
-// because of import cycles.
-func (t *EnumType) GenEnum(
-	from Expression,
-	safeEnum func(member *schema.Enum),
-	unsafeEnum func(from Expression),
-) {
-	known := cty.NilVal
-	if from, ok := from.(*TemplateExpression); ok && len(from.Parts) == 1 {
-		if from, ok := from.Parts[0].(*LiteralValueExpression); ok {
-			known = from.Value
-		}
-	}
-	if from, ok := from.(*LiteralValueExpression); ok {
-		known = from.Value
-	}
-	if known != cty.NilVal {
-		// If the value is known, but we can't find a member, we should have
-		// indicated a conversion is impossible when type checking.
-		member := t.Member(known)
-		contract.Assertf(member != nil,
-			"We have determined %s is a safe enum, which we define as "+
-				"being able to calculate a member for", t)
-		safeEnum(member)
-	} else {
-		unsafeEnum(from)
+		Type:        typ,
+		Annotations: annotations,
+		Elements:    elements,
+		Token:       token,
 	}
 }
 
