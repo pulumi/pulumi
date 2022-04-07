@@ -730,7 +730,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 		oldInputs := resource.NewPropertyMapFromMap(c.oldInputs)
 		state := resource.NewPropertyMapFromMap(c.state)
 		inputs := resource.NewPropertyMapFromMap(c.inputs)
-		diff := translateDetailedDiff(StepEventMetadata{
+		diff := TranslateDetailedDiff(&StepEventMetadata{
 			Old:          &StepEventStateMetadata{Inputs: oldInputs, Outputs: state},
 			New:          &StepEventStateMetadata{Inputs: inputs},
 			DetailedDiff: c.detailedDiff,
