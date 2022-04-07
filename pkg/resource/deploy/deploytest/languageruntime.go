@@ -65,3 +65,7 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
 }
+
+func (p *languageRuntime) InstallDependencies(directory string) error {
+	return nil
+}
