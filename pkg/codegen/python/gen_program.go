@@ -379,7 +379,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		}
 		indenter(func() {
 			for _, attr := range r.Inputs {
-				propertyName := PyName(attr.Name)
+				propertyName := InitParamName(attr.Name)
 				if len(r.Inputs) == 1 {
 					g.Fgenf(w, ", %s=%.v", propertyName, attr.Value)
 				} else {
