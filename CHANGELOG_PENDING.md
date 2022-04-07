@@ -9,5 +9,8 @@
 - [cli] Display more useful diffs for secrets that are not primitive values
   [#9351](https://github.com/pulumi/pulumi/pull/9351)
 
+- [cli] - Warn when `additionalSecretOutputs` is used to mark the `id` property as secret.
+  [#9360](https://github.com/pulumi/pulumi/pull/9360)
+
 ### Bug Fixes
 
