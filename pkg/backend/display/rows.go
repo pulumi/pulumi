@@ -406,7 +406,7 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff
 		if step.DetailedDiff != nil {
-			diff = translateDetailedDiff(step)
+			diff = engine.TranslateDetailedDiff(&step)
 		} else if diffOutputs {
 			if step.Old.Outputs != nil && step.New.Outputs != nil {
 				diff = step.Old.Outputs.Diff(step.New.Outputs)
