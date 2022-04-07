@@ -12,5 +12,8 @@
 - [cli] - Warn when `additionalSecretOutputs` is used to mark the `id` property as secret.
   [#9360](https://github.com/pulumi/pulumi/pull/9360)
 
+- [providers] - gRPC providers can now support an Attach method for debugging. The engine will attach to providers listed in the PULUMI_DEBUG_PROVIDERS environment variable. This should be of the form "providerName:port,otherProvider:port".
+  [#8979](https://github.com/pulumi/pulumi/pull/8979)
+
 ### Bug Fixes
 
