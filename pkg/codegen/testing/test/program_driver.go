@@ -152,6 +152,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Regress invalid Go",
 		Skip:        codegen.NewStringSet("python", "nodejs", "dotnet"),
 	},
+	{
+		Directory:   "python-resource-names",
+		Description: "Repro for #9357",
+		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+	},
 }
 
 // Checks that a generated program is correct
