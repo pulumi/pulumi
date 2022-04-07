@@ -30,7 +30,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/v3/host"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
