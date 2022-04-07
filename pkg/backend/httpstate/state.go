@@ -168,7 +168,7 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 
 	var apiEvents apitype.EngineEventBatch
 	for idx, event := range events {
-		apiEvent, convErr := display.ConvertEngineEvent(event)
+		apiEvent, convErr := display.ConvertEngineEvent(event, false /* showSecrets */)
 		if convErr != nil {
 			return fmt.Errorf("converting engine event: %w", convErr)
 		}

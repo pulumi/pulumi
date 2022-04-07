@@ -230,6 +230,8 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newViewTraceCmd())
 	cmd.AddCommand(newConvertTraceCmd())
 
+	cmd.AddCommand(newReplayEventsCmd())
+
 	if !hasDebugCommands() {
 		err := cmd.PersistentFlags().MarkHidden("tracing-header")
 		contract.IgnoreError(err)
