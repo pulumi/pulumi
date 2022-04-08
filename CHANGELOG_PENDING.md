@@ -14,3 +14,5 @@
 
 ### Bug Fixes
 
+- [cli] - StackReferences will now correctly use the service bulk decryption end point.
+  [#9373](https://github.com/pulumi/pulumi/pull/9373)
