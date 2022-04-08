@@ -46,6 +46,10 @@ func (t *testSecretsManager) DecryptValue(ciphertext string) (string, error) {
 	return ciphertext[i+1:], nil
 }
 
+func (t *testSecretsManager) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return config.DefaultBulkDecrypt(t, ciphertexts)
+}
+
 func deserializeProperty(v interface{}, dec config.Decrypter) (resource.PropertyValue, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
@@ -228,7 +232,7 @@ func (t *mapTestDecrypter) DecryptValue(ciphertext string) (string, error) {
 
 func (t *mapTestDecrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
 	t.bulkDecryptCalls++
-	return config.BulkDecrypt(t.d, ciphertexts)
+	return config.DefaultBulkDecrypt(t.d, ciphertexts)
 }
 
 func TestMapCrypter(t *testing.T) {

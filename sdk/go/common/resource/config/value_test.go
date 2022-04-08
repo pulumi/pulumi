@@ -219,6 +219,10 @@ func (d passThroughDecrypter) DecryptValue(ciphertext string) (string, error) {
 	return ciphertext, nil
 }
 
+func (d passThroughDecrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return DefaultBulkDecrypt(d, ciphertexts)
+}
+
 func TestSecureValues(t *testing.T) {
 	t.Parallel()
 

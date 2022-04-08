@@ -338,6 +338,10 @@ func (b brokenDecrypter) DecryptValue(_ string) (string, error) {
 	return "", fmt.Errorf(b.ErrorMessage)
 }
 
+func (b brokenDecrypter) BulkDecrypt(_ []string) (map[string]string, error) {
+	return nil, fmt.Errorf(b.ErrorMessage)
+}
+
 // Tests that the engine presents a reasonable error message when a decrypter fails to decrypt a config value.
 func TestBrokenDecrypter(t *testing.T) {
 	t.Parallel()
