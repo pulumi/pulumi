@@ -14,3 +14,5 @@
 
 ### Bug Fixes
 
+- [codegen/node] - Fix an issue with escaping deprecation messages.
+  [#9371](https://github.com/pulumi/pulumi/pull/9371)
