@@ -767,6 +767,12 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 
 			if isPrimitive(diff.Old) && isPrimitive(diff.New) {
 				titleFunc(p)
+
+				if diff.Old.IsString() && diff.New.IsString() {
+					p.printTextDiff(diff.Old.StringValue(), diff.New.StringValue())
+					return
+				}
+
 				p.withOp(deploy.OpDelete).printPrimitivePropertyValue(diff.Old)
 				p.writeVerbatim(" => ")
 				p.withOp(deploy.OpCreate).printPrimitivePropertyValue(diff.New)
@@ -985,19 +991,12 @@ func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAs
 	if oldAsset.IsText() {
 		if newAsset.IsText() {
 			titleFunc(p)
-			p.write("asset(text:%s) {\n", hashChange)
+			p.write("asset(text:%s) {", hashChange)
 
 			massagedOldText := resource.MassageIfUserProgramCodeAsset(oldAsset, p.debug).Text
 			massagedNewText := resource.MassageIfUserProgramCodeAsset(newAsset, p.debug).Text
 
-			differ := diffmatchpatch.New()
-			differ.DiffTimeout = 0
-
-			hashed1, hashed2, lineArray := differ.DiffLinesToChars(massagedOldText, massagedNewText)
-			diffs1 := differ.DiffMain(hashed1, hashed2, false)
-			diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
-
-			p.indented(1).prettyPrintDiff(diffs2)
+			p.indented(1).printTextDiff(massagedOldText, massagedNewText)
 
 			p.writeWithIndentNoPrefix("}\n")
 			return
@@ -1037,12 +1036,62 @@ func getTextChangeString(old string, new string) string {
 	return fmt.Sprintf("%s->%s", old, new)
 }
 
-// prettyPrintDiff takes the full diff produed by diffmatchpatch and condenses it into something
+func escape(s string) string {
+	escaped := strconv.Quote(s)
+	return escaped[1 : len(escaped)-1]
+}
+
+func (p *propertyPrinter) printTextDiff(old, new string) {
+	differ := diffmatchpatch.New()
+	differ.DiffTimeout = 0
+
+	singleLine := !strings.ContainsRune(old, '\n') && !strings.ContainsRune(new, '\n')
+	if singleLine {
+		diff := differ.DiffMain(old, new, false)
+		p.printCharacterDiff(differ.DiffCleanupEfficiency(diff))
+	} else {
+		hashed1, hashed2, lineArray := differ.DiffLinesToChars(old, new)
+		diffs := differ.DiffMain(hashed1, hashed2, false)
+		p.indented(1).printLineDiff(differ.DiffCharsToLines(diffs, lineArray))
+	}
+}
+
+func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
+	// write the old text.
+	p.writeVerbatim(`"`)
+	for _, d := range diffs {
+		switch d.Type {
+		case diffmatchpatch.DiffDelete:
+			p.withOp(deploy.OpDelete).write(escape(d.Text))
+		case diffmatchpatch.DiffEqual:
+			p.withOp(deploy.OpSame).write(escape(d.Text))
+		}
+	}
+	p.writeVerbatim(`"`)
+
+	p.writeVerbatim(" => ")
+
+	// write the new text.
+	p.writeVerbatim(`"`)
+	for _, d := range diffs {
+		switch d.Type {
+		case diffmatchpatch.DiffInsert:
+			p.withOp(deploy.OpCreate).write(escape(d.Text))
+		case diffmatchpatch.DiffEqual:
+			p.withOp(deploy.OpSame).write(escape(d.Text))
+		}
+	}
+	p.writeVerbatim("\"\n")
+}
+
+// printLineDiff takes the full diff produed by diffmatchpatch and condenses it into something
 // useful we can print to the console. Specifically, while it includes any adds/removes in
 // green/red, it will also show portions of the unchanged text to help give surrounding context to
 // those add/removes. Because the unchanged portions may be very large, it only included around 3
 // lines before/after the change.
-func (p *propertyPrinter) prettyPrintDiff(diffs []diffmatchpatch.Diff) {
+func (p *propertyPrinter) printLineDiff(diffs []diffmatchpatch.Diff) {
+	p.writeVerbatim("\n")
+
 	writeDiff := func(op deploy.StepOp, text string) {
 		prefix := op == deploy.OpCreate || op == deploy.OpDelete
 		p.withOp(op).withPrefix(prefix).writeWithIndent("%s", text)
