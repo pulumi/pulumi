@@ -218,3 +218,27 @@ func Test_isStringType(t *testing.T) {
 		})
 	}
 }
+
+func TestEscape(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"test", "test"},
+		{"sub\"string\"", "sub\\\"string\\\""},
+		{"slash\\s", "slash\\\\s"},
+		{"N\\A \"bad data\"", "N\\\\A \\\"bad data\\\""},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
+			got := escape(tt.input)
+			if tt.expected != got {
+				t.Errorf("escape(%s) was %s want %s", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
