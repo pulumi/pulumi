@@ -135,7 +135,9 @@ func escape(s string) string {
 	escaped, err := json.Marshal(s)
 	contract.AssertNoError(err)
 	contract.Assertf(len(escaped) >= 2, "JSON(%s) expected a quoted string but returned %s", s, escaped)
-	contract.Assertf(escaped[0] == byte('"') && escaped[len(escaped)-1] == byte('"'), "JSON(%s) expected a quoted string but returned %s", s, escaped)
+	contract.Assertf(
+		escaped[0] == byte('"') && escaped[len(escaped)-1] == byte('"'),
+		"JSON(%s) expected a quoted string but returned %s", s, escaped)
 
 	return string(escaped)[1:(len(escaped) - 1)]
 }
