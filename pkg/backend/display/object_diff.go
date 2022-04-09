@@ -220,29 +220,57 @@ func PrintObject(
 	b *bytes.Buffer, props resource.PropertyMap, planning bool,
 	indent int, op deploy.StepOp, prefix bool, debug bool) {
 
+	p := propertyPrinter{
+		dest:     b,
+		planning: planning,
+		indent:   indent,
+		op:       op,
+		prefix:   prefix,
+		debug:    debug,
+	}
+	p.printObject(props)
+}
+
+func (p *propertyPrinter) printObject(props resource.PropertyMap) {
 	// Compute the maximum width of property keys so we can justify everything.
 	keys := props.StableKeys()
 	maxkey := maxKey(keys)
 
 	// Now print out the values intelligently based on the type.
 	for _, k := range keys {
-		if v := props[k]; !resource.IsInternalPropertyKey(k) && shouldPrintPropertyValue(v, planning) {
-			printPropertyTitle(b, string(k), maxkey, indent, op, prefix)
-			printPropertyValue(b, v, planning, indent, op, prefix, debug)
+		if v := props[k]; !resource.IsInternalPropertyKey(k) && shouldPrintPropertyValue(v, p.planning) {
+			p.printObjectProperty(k, v, maxkey)
 		}
 	}
+}
+
+func (p *propertyPrinter) printObjectProperty(key resource.PropertyKey, value resource.PropertyValue, maxkey int) {
+	p.printPropertyTitle(string(key), maxkey)
+	p.printPropertyValue(value)
 }
 
 func PrintResourceReference(
 	b *bytes.Buffer, resRef resource.ResourceReference, planning bool,
 	indent int, op deploy.StepOp, prefix bool, debug bool) {
 
-	printPropertyTitle(b, "URN", 3, indent, op, prefix)
-	write(b, op, "%q\n", resRef.URN)
-	printPropertyTitle(b, "ID", 3, indent, op, prefix)
-	printPropertyValue(b, resRef.ID, planning, indent, op, prefix, debug)
-	printPropertyTitle(b, "PackageVersion", 3, indent, op, prefix)
-	write(b, op, "%q\n", resRef.PackageVersion)
+	p := propertyPrinter{
+		dest:     b,
+		planning: planning,
+		indent:   indent,
+		op:       op,
+		prefix:   prefix,
+		debug:    debug,
+	}
+	p.printResourceReference(resRef)
+}
+
+func (p *propertyPrinter) printResourceReference(resRef resource.ResourceReference) {
+	p.printPropertyTitle("URN", 3)
+	p.write("%q\n", resRef.URN)
+	p.printPropertyTitle("ID", 3)
+	p.printPropertyValue(resRef.ID)
+	p.printPropertyTitle("PackageVersion", 3)
+	p.write("%q\n", resRef.PackageVersion)
 }
 
 func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
@@ -392,6 +420,13 @@ func GetResourceOutputsPropertiesString(
 	maxkey := maxKey(keys)
 
 	b := &bytes.Buffer{}
+	p := propertyPrinter{
+		dest:     b,
+		planning: planning,
+		indent:   indent,
+		op:       op,
+		debug:    debug,
+	}
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
 	for _, k := range keys {
@@ -415,10 +450,9 @@ func GetResourceOutputsPropertiesString(
 			}
 
 			if outputDiff != nil {
-				printObjectPropertyDiff(b, k, maxkey, *outputDiff, planning, indent, false, debug)
+				p.printObjectPropertyDiff(k, maxkey, *outputDiff)
 			} else {
-				printPropertyTitle(b, string(k), maxkey, indent, op, false)
-				printPropertyValue(b, out, planning, indent, op, false, debug)
+				p.printObjectProperty(k, out, maxkey)
 			}
 		}
 	}
@@ -458,94 +492,145 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 	return true
 }
 
-func printPropertyTitle(b io.StringWriter, name string, align int, indent int, op deploy.StepOp, prefix bool) {
-	writeWithIndent(b, indent, op, prefix, "%-"+strconv.Itoa(align)+"s: ", name)
+type propertyPrinter struct {
+	dest io.StringWriter
+
+	op       deploy.StepOp
+	planning bool
+	prefix   bool
+	debug    bool
+	summary  bool
+
+	indent int
 }
 
-func printPropertyValue(
-	b *bytes.Buffer, v resource.PropertyValue, planning bool,
-	indent int, op deploy.StepOp, prefix bool, debug bool) {
+func (p *propertyPrinter) indented(amt int) *propertyPrinter {
+	new := *p
+	new.indent += amt
+	return &new
+}
 
+func (p *propertyPrinter) withOp(op deploy.StepOp) *propertyPrinter {
+	new := *p
+	new.op = op
+	return &new
+}
+
+func (p *propertyPrinter) withPrefix(value bool) *propertyPrinter {
+	new := *p
+	new.prefix = value
+	return &new
+}
+
+func (p *propertyPrinter) writeString(s string) {
+	writeString(p.dest, s)
+}
+
+func (p *propertyPrinter) writeWithIndent(format string, a ...interface{}) {
+	writeWithIndent(p.dest, p.indent, p.op, p.prefix, format, a...)
+}
+
+func (p *propertyPrinter) writeWithIndentNoPrefix(format string, a ...interface{}) {
+	writeWithIndentNoPrefix(p.dest, p.indent, p.op, format, a...)
+}
+
+func (p *propertyPrinter) write(format string, a ...interface{}) {
+	write(p.dest, p.op, format, a...)
+}
+
+func (p *propertyPrinter) writeVerbatim(value string) {
+	writeVerbatim(p.dest, p.op, value)
+}
+
+func (p *propertyPrinter) printPropertyTitle(name string, align int) {
+	p.writeWithIndent("%-"+strconv.Itoa(align)+"s: ", name)
+}
+
+func propertyTitlePrinter(name string, align int) func(*propertyPrinter) {
+	return func(p *propertyPrinter) {
+		p.printPropertyTitle(name, align)
+	}
+}
+
+func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 	switch {
 	case isPrimitive(v):
-		printPrimitivePropertyValue(b, v, planning, op)
+		p.printPrimitivePropertyValue(v)
 	case v.IsArray():
 		arr := v.ArrayValue()
 		if len(arr) == 0 {
-			writeVerbatim(b, op, "[]")
+			p.writeVerbatim("[]")
 		} else {
-			writeVerbatim(b, op, "[\n")
+			p.writeVerbatim("[\n")
 			for i, elem := range arr {
-				writeWithIndent(b, indent, op, prefix, "    [%d]: ", i)
-				printPropertyValue(b, elem, planning, indent+1, op, prefix, debug)
+				p.writeWithIndent("    [%d]: ", i)
+				p.indented(1).printPropertyValue(elem)
 			}
-			writeWithIndentNoPrefix(b, indent, op, "]")
+			p.writeWithIndentNoPrefix("]")
 		}
 	case v.IsAsset():
 		a := v.AssetValue()
 		if a.IsText() {
-			write(b, op, "asset(text:%s) {\n", shortHash(a.Hash))
+			p.write("asset(text:%s) {\n", shortHash(a.Hash))
 
-			a = resource.MassageIfUserProgramCodeAsset(a, debug)
+			a = resource.MassageIfUserProgramCodeAsset(a, p.debug)
 
 			massaged := a.Text
 
 			// pretty print the text, line by line, with proper breaks.
 			lines := strings.Split(massaged, "\n")
 			for _, line := range lines {
-				writeWithIndentNoPrefix(b, indent, op, "    %s\n", line)
+				p.writeWithIndentNoPrefix("    %s\n", line)
 			}
-			writeWithIndentNoPrefix(b, indent, op, "}")
+			p.writeWithIndentNoPrefix("}")
 		} else if path, has := a.GetPath(); has {
-			write(b, op, "asset(file:%s) { %s }", shortHash(a.Hash), path)
+			p.write("asset(file:%s) { %s }", shortHash(a.Hash), path)
 		} else {
 			contract.Assert(a.IsURI())
-			write(b, op, "asset(uri:%s) { %s }", shortHash(a.Hash), a.URI)
+			p.write("asset(uri:%s) { %s }", shortHash(a.Hash), a.URI)
 		}
 	case v.IsArchive():
 		a := v.ArchiveValue()
 		if assets, has := a.GetAssets(); has {
-			write(b, op, "archive(assets:%s) {\n", shortHash(a.Hash))
+			p.write("archive(assets:%s) {\n", shortHash(a.Hash))
 			var names []string
 			for name := range assets {
 				names = append(names, name)
 			}
 			sort.Strings(names)
 			for _, name := range names {
-				printAssetOrArchive(b, assets[name], name, planning, indent, op, prefix, debug)
+				p.printAssetOrArchive(assets[name], name)
 			}
-			writeWithIndentNoPrefix(b, indent, op, "}")
+			p.writeWithIndentNoPrefix("}")
 		} else if path, has := a.GetPath(); has {
-			write(b, op, "archive(file:%s) { %s }", shortHash(a.Hash), path)
+			p.write("archive(file:%s) { %s }", shortHash(a.Hash), path)
 		} else {
 			contract.Assert(a.IsURI())
-			write(b, op, "archive(uri:%s) { %v }", shortHash(a.Hash), a.URI)
+			p.write("archive(uri:%s) { %v }", shortHash(a.Hash), a.URI)
 		}
 	case v.IsObject():
 		obj := v.ObjectValue()
 		if len(obj) == 0 {
-			writeVerbatim(b, op, "{}")
+			p.writeVerbatim("{}")
 		} else {
-			writeVerbatim(b, op, "{\n")
-			PrintObject(b, obj, planning, indent+1, op, prefix, debug)
-			writeWithIndentNoPrefix(b, indent, op, "}")
+			p.writeVerbatim("{\n")
+			p.indented(1).printObject(obj)
+			p.writeWithIndentNoPrefix("}")
 		}
 	case v.IsResourceReference():
 		resRef := v.ResourceReferenceValue()
-		writeVerbatim(b, op, "{\n")
-		PrintResourceReference(b, resRef, planning, indent+1, op, prefix, debug)
-		writeWithIndentNoPrefix(b, indent, op, "}")
+		p.writeVerbatim("{\n")
+		p.indented(1).printResourceReference(resRef)
+		p.writeWithIndentNoPrefix("}")
 	default:
 		contract.Failf("Unknown PropertyValue type %v", v)
 	}
-	writeVerbatim(b, op, "\n")
+	p.writeVerbatim("\n")
 }
 
-func printAssetOrArchive(
-	b *bytes.Buffer, v interface{}, name string, planning bool,
-	indent int, op deploy.StepOp, prefix bool, debug bool) {
-	writeWithIndent(b, indent, op, prefix, "    \"%v\": ", name)
-	printPropertyValue(b, assetOrArchiveToPropertyValue(v), planning, indent+1, op, prefix, debug)
+func (p *propertyPrinter) printAssetOrArchive(v interface{}, name string) {
+	p.writeWithIndent("    \"%v\": ", name)
+	p.indented(1).printPropertyValue(assetOrArchiveToPropertyValue(v))
 }
 
 func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
@@ -584,7 +669,19 @@ func printOldNewDiffs(
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
 	planning bool, indent int, summary bool, debug bool) {
 
-	contract.Assert(indent > 0)
+	p := propertyPrinter{
+		dest:     b,
+		planning: planning,
+		indent:   indent,
+		prefix:   true,
+		debug:    debug,
+		summary:  summary,
+	}
+	p.printObjectDiff(diff, include)
+}
+
+func (p *propertyPrinter) printObjectDiff(diff resource.ObjectDiff, include []resource.PropertyKey) {
+	contract.Assert(p.indent > 0)
 
 	// Compute the maximum width of property keys so we can justify everything. If an include set was given, filter out
 	// any properties that are not in the set.
@@ -606,65 +703,56 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 
 	// To print an object diff, enumerate the keys in stable order, and print each property independently.
 	for _, k := range keys {
-		printObjectPropertyDiff(b, k, maxkey, diff, planning, indent, summary, debug)
+		p.printObjectPropertyDiff(k, maxkey, diff)
 	}
 }
 
-func printObjectPropertyDiff(b *bytes.Buffer, key resource.PropertyKey, maxkey int, diff resource.ObjectDiff,
-	planning bool, indent int, summary bool, debug bool) {
-
-	titleFunc := func(top deploy.StepOp, prefix bool) {
-		printPropertyTitle(b, string(key), maxkey, indent, top, prefix)
-	}
+func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxkey int, diff resource.ObjectDiff) {
+	titleFunc := propertyTitlePrinter(string(key), maxkey)
 	if add, isadd := diff.Adds[key]; isadd {
-		printAdd(b, add, titleFunc, planning, indent, debug)
+		p.printAdd(add, titleFunc)
 	} else if delete, isdelete := diff.Deletes[key]; isdelete {
-		printDelete(b, delete, titleFunc, planning, indent, debug)
+		p.printDelete(delete, titleFunc)
 	} else if update, isupdate := diff.Updates[key]; isupdate {
-		printPropertyValueDiff(
-			b, titleFunc, update, planning, indent, summary, debug)
-	} else if same := diff.Sames[key]; !summary && shouldPrintPropertyValue(same, planning) {
-		titleFunc(deploy.OpSame, false)
-		printPropertyValue(b, diff.Sames[key], planning, indent, deploy.OpSame, false, debug)
+		p.printPropertyValueDiff(titleFunc, update)
+	} else if same := diff.Sames[key]; !p.summary && shouldPrintPropertyValue(same, p.planning) {
+		p.withOp(deploy.OpSame).withPrefix(false).printObjectProperty(key, same, maxkey)
 	}
 }
 
-func printPropertyValueDiff(
-	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
-	diff resource.ValueDiff, planning bool,
-	indent int, summary bool, debug bool) {
-
-	op := deploy.OpUpdate
-	contract.Assert(indent > 0)
+func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter), diff resource.ValueDiff) {
+	p = p.withOp(deploy.OpUpdate).withPrefix(true)
+	contract.Assert(p.indent > 0)
 
 	if diff.Array != nil {
-		titleFunc(op, true)
-		writeVerbatim(b, op, "[\n")
+		titleFunc(p)
+		p.writeVerbatim("[\n")
 
 		a := diff.Array
 		for i := 0; i < a.Len(); i++ {
-			elemTitleFunc := func(eop deploy.StepOp, eprefix bool) {
-				writeWithIndent(b, indent+1, eop, eprefix, "[%d]: ", i)
+			elemPrinter := p.indented(2)
+			elemTitleFunc := func(p *propertyPrinter) {
+				p.indented(-1).writeWithIndent("[%d]: ", i)
 			}
+
 			if add, isadd := a.Adds[i]; isadd {
-				printAdd(b, add, elemTitleFunc, planning, indent+2, debug)
+				elemPrinter.printAdd(add, elemTitleFunc)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
-				printDelete(b, delete, elemTitleFunc, planning, indent+2, debug)
+				elemPrinter.printDelete(delete, elemTitleFunc)
 			} else if update, isupdate := a.Updates[i]; isupdate {
-				printPropertyValueDiff(
-					b, elemTitleFunc, update, planning,
-					indent+2, summary, debug)
-			} else if !summary {
-				elemTitleFunc(deploy.OpSame, false)
-				printPropertyValue(b, a.Sames[i], planning, indent+2, deploy.OpSame, false, debug)
+				elemPrinter.printPropertyValueDiff(elemTitleFunc, update)
+			} else if !p.summary {
+				elemPrinter = elemPrinter.withOp(deploy.OpSame).withPrefix(false)
+				elemTitleFunc(elemPrinter)
+				elemPrinter.printPropertyValue(a.Sames[i])
 			}
 		}
-		writeWithIndentNoPrefix(b, indent, op, "]\n")
+		p.writeWithIndentNoPrefix("]\n")
 	} else if diff.Object != nil {
-		titleFunc(op, true)
-		writeVerbatim(b, op, "{\n")
-		PrintObjectDiff(b, *diff.Object, nil, planning, indent+1, summary, debug)
-		writeWithIndentNoPrefix(b, indent, op, "}\n")
+		titleFunc(p)
+		p.writeVerbatim("{\n")
+		p.indented(1).printObjectDiff(*diff.Object, nil)
+		p.writeWithIndentNoPrefix("}\n")
 	} else {
 		shouldPrintOld := shouldPrintPropertyValue(diff.Old, false)
 		shouldPrintNew := shouldPrintPropertyValue(diff.New, false)
@@ -673,18 +761,16 @@ func printPropertyValueDiff(
 			if diff.Old.IsArchive() &&
 				diff.New.IsArchive() {
 
-				printArchiveDiff(
-					b, titleFunc, diff.Old.ArchiveValue(), diff.New.ArchiveValue(),
-					planning, indent, summary, debug)
+				p.printArchiveDiff(titleFunc, diff.Old.ArchiveValue(), diff.New.ArchiveValue())
 				return
 			}
 
 			if isPrimitive(diff.Old) && isPrimitive(diff.New) {
-				titleFunc(deploy.OpUpdate, true /*indent*/)
-				printPrimitivePropertyValue(b, diff.Old, planning, deploy.OpDelete)
-				writeVerbatim(b, deploy.OpUpdate, " => ")
-				printPrimitivePropertyValue(b, diff.New, planning, deploy.OpCreate)
-				writeVerbatim(b, deploy.OpUpdate, "\n")
+				titleFunc(p)
+				p.withOp(deploy.OpDelete).printPrimitivePropertyValue(diff.Old)
+				p.writeVerbatim(" => ")
+				p.withOp(deploy.OpCreate).printPrimitivePropertyValue(diff.New)
+				p.writeVerbatim("\n")
 				return
 			}
 		}
@@ -692,10 +778,10 @@ func printPropertyValueDiff(
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
 		if shouldPrintOld {
-			printDelete(b, diff.Old, titleFunc, planning, indent, debug)
+			p.printDelete(diff.Old, titleFunc)
 		}
 		if shouldPrintNew {
-			printAdd(b, diff.New, titleFunc, planning, indent, debug)
+			p.printAdd(diff.New, titleFunc)
 		}
 	}
 }
@@ -705,17 +791,17 @@ func isPrimitive(value resource.PropertyValue) bool {
 		value.IsBool() || value.IsComputed() || value.IsOutput() || value.IsSecret()
 }
 
-func printPrimitivePropertyValue(b io.StringWriter, v resource.PropertyValue, planning bool, op deploy.StepOp) {
+func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) {
 	contract.Assert(isPrimitive(v))
 
 	if v.IsNull() {
-		writeVerbatim(b, op, "<null>")
+		p.writeVerbatim("<null>")
 	} else if v.IsBool() {
-		write(b, op, "%t", v.BoolValue())
+		p.write("%t", v.BoolValue())
 	} else if v.IsNumber() {
-		write(b, op, "%v", v.NumberValue())
+		p.write("%v", v.NumberValue())
 	} else if v.IsString() {
-		write(b, op, "%q", v.StringValue())
+		p.write("%q", v.StringValue())
 	} else if v.IsComputed() || v.IsOutput() {
 		// We render computed and output values differently depending on whether or not we are
 		// planning or deploying: in the former case, we display `computed<type>` or `output<type>`;
@@ -724,53 +810,47 @@ func printPrimitivePropertyValue(b io.StringWriter, v resource.PropertyValue, pl
 		// they were sourced from undefined values in other resources' output properties. Once we
 		// have richer information about the dataflow between resources, we should be able to do a
 		// better job here (pulumi/pulumi#234).
-		if planning {
-			writeVerbatim(b, op, v.TypeString())
+		if p.planning {
+			p.writeVerbatim(v.TypeString())
 		} else {
-			write(b, op, "undefined")
+			p.write("undefined")
 		}
 	} else if v.IsSecret() {
-		write(b, op, "[secret]")
+		p.write("[secret]")
 	} else {
 		contract.Failf("Unexpected property value kind '%v'", v)
 	}
 }
 
-func printDelete(
-	b *bytes.Buffer, v resource.PropertyValue, title func(deploy.StepOp, bool),
-	planning bool, indent int, debug bool) {
-	op := deploy.OpDelete
-	title(op, true)
-	printPropertyValue(b, v, planning, indent, op, true, debug)
+func (p *propertyPrinter) printDelete(v resource.PropertyValue, title func(*propertyPrinter)) {
+	p = p.withOp(deploy.OpDelete).withPrefix(true)
+	title(p)
+	p.printPropertyValue(v)
 }
 
-func printAdd(
-	b *bytes.Buffer, v resource.PropertyValue, title func(deploy.StepOp, bool),
-	planning bool, indent int, debug bool) {
-	op := deploy.OpCreate
-	title(op, true)
-	printPropertyValue(b, v, planning, indent, op, true, debug)
+func (p *propertyPrinter) printAdd(v resource.PropertyValue, title func(*propertyPrinter)) {
+	p = p.withOp(deploy.OpCreate).withPrefix(true)
+	title(p)
+	p.printPropertyValue(v)
 }
 
-func printArchiveDiff(
-	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
-	oldArchive *resource.Archive, newArchive *resource.Archive,
-	planning bool, indent int, summary bool, debug bool) {
+func (p *propertyPrinter) printArchiveDiff(titleFunc func(*propertyPrinter),
+	oldArchive, newArchive *resource.Archive) {
 
-	op := deploy.OpUpdate
+	p = p.withOp(deploy.OpUpdate).withPrefix(true)
 
 	hashChange := getTextChangeString(shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
 
 	if oldPath, has := oldArchive.GetPath(); has {
 		if newPath, has := newArchive.GetPath(); has {
-			titleFunc(op, true)
-			write(b, op, "archive(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
+			titleFunc(p)
+			p.write("archive(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
 			return
 		}
 	} else if oldURI, has := oldArchive.GetURI(); has {
 		if newURI, has := newArchive.GetURI(); has {
-			titleFunc(op, true)
-			write(b, op, "archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
+			titleFunc(p)
+			p.write("archive(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
 			return
 		}
 	} else {
@@ -778,28 +858,20 @@ func printArchiveDiff(
 		oldAssets, _ := oldArchive.GetAssets()
 
 		if newAssets, has := newArchive.GetAssets(); has {
-			titleFunc(op, true)
-			write(b, op, "archive(assets:%s) {\n", hashChange)
-			printAssetsDiff(b, oldAssets, newAssets, planning, indent+1, summary, debug)
-			writeWithIndentNoPrefix(b, indent, deploy.OpUpdate, "}\n")
+			titleFunc(p)
+			p.write("archive(assets:%s) {\n", hashChange)
+			p.indented(1).printAssetsDiff(oldAssets, newAssets)
+			p.writeWithIndentNoPrefix("}\n")
 			return
 		}
 	}
 
 	// Type of archive changed, print this out as an remove and an add.
-	printDelete(
-		b, assetOrArchiveToPropertyValue(oldArchive),
-		titleFunc, planning, indent, debug)
-	printAdd(
-		b, assetOrArchiveToPropertyValue(newArchive),
-		titleFunc, planning, indent, debug)
+	p.printDelete(assetOrArchiveToPropertyValue(oldArchive), titleFunc)
+	p.printAdd(assetOrArchiveToPropertyValue(newArchive), titleFunc)
 }
 
-func printAssetsDiff(
-	b *bytes.Buffer,
-	oldAssets map[string]interface{}, newAssets map[string]interface{},
-	planning bool, indent int, summary bool, debug bool) {
-
+func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interface{}) {
 	// Diffing assets proceeds by getting the sorted list of asset names from both the old and
 	// new assets, and then stepwise processing each.  For any asset in old that isn't in new,
 	// we print this out as a delete.  For any asset in new that isn't in old, we print this out
@@ -841,9 +913,7 @@ func printAssetsDiff(
 			newName := newNames[j]
 
 			if oldName == newName {
-				titleFunc := func(top deploy.StepOp, tprefix bool) {
-					printPropertyTitle(b, "\""+oldName+"\"", maxkey, indent, top, tprefix)
-				}
+				titleFunc := propertyTitlePrinter("\""+oldName+"\"", maxkey)
 
 				old := oldAssets[oldName]
 				new := newAssets[newName]
@@ -858,21 +928,17 @@ func printAssetsDiff(
 					newArchive, newIsArchive := new.(*resource.Archive)
 					switch {
 					case !newIsArchive:
-						printAssetArchiveDiff(b, titleFunc, t, new, planning, indent, summary, debug)
+						p.printAssetArchiveDiff(titleFunc, t, new)
 					case t.Hash != newArchive.Hash:
-						printArchiveDiff(
-							b, titleFunc, t, newArchive,
-							planning, indent, summary, debug)
+						p.printArchiveDiff(titleFunc, t, newArchive)
 					}
 				case *resource.Asset:
 					newAsset, newIsAsset := new.(*resource.Asset)
 					switch {
 					case !newIsAsset:
-						printAssetArchiveDiff(b, titleFunc, t, new, planning, indent, summary, debug)
+						p.printAssetArchiveDiff(titleFunc, t, new)
 					case t.Hash != newAsset.Hash:
-						printAssetDiff(
-							b, titleFunc, t, newAsset,
-							planning, indent, summary, debug)
+						p.printAssetDiff(titleFunc, t, newAsset)
 					}
 				}
 
@@ -892,50 +958,37 @@ func printAssetsDiff(
 			addNew = true
 		}
 
-		newIndent := indent + 1
 		if deleteOld {
 			oldName := oldNames[i]
-			titleFunc := func(top deploy.StepOp, tprefix bool) {
-				printPropertyTitle(b, "\""+oldName+"\"", maxkey, indent, top, tprefix)
-			}
-			printDelete(
-				b, assetOrArchiveToPropertyValue(oldAssets[oldName]),
-				titleFunc, planning, newIndent, debug)
+			titleFunc := propertyTitlePrinter("\""+oldName+"\"", maxkey)
+			p.indented(1).printDelete(assetOrArchiveToPropertyValue(oldAssets[oldName]), titleFunc)
 			i++
 			continue
 		} else {
 			contract.Assert(addNew)
 			newName := newNames[j]
-			titleFunc := func(top deploy.StepOp, tprefix bool) {
-				printPropertyTitle(b, "\""+newName+"\"", maxkey, indent, top, tprefix)
-			}
-			printAdd(
-				b, assetOrArchiveToPropertyValue(newAssets[newName]),
-				titleFunc, planning, newIndent, debug)
+			titleFunc := propertyTitlePrinter("\""+newName+"\"", maxkey)
+			p.indented(1).printAdd(assetOrArchiveToPropertyValue(newAssets[newName]), titleFunc)
 			j++
 		}
 	}
 }
 
-func printAssetDiff(
-	b *bytes.Buffer, titleFunc func(deploy.StepOp, bool),
-	oldAsset *resource.Asset, newAsset *resource.Asset,
-	planning bool, indent int, summary bool, debug bool) {
-
+func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAsset, newAsset *resource.Asset) {
 	contract.Assertf(oldAsset.Hash != newAsset.Hash, "Should not call printAssetDiff on unchanged assets")
 
-	op := deploy.OpUpdate
+	p = p.withOp(deploy.OpUpdate).withPrefix(true)
 
 	// if the asset changed, print out: ~ assetName: type(hash->hash) details...
 	hashChange := getTextChangeString(shortHash(oldAsset.Hash), shortHash(newAsset.Hash))
 
 	if oldAsset.IsText() {
 		if newAsset.IsText() {
-			titleFunc(deploy.OpUpdate, true)
-			write(b, op, "asset(text:%s) {\n", hashChange)
+			titleFunc(p)
+			p.write("asset(text:%s) {\n", hashChange)
 
-			massagedOldText := resource.MassageIfUserProgramCodeAsset(oldAsset, debug).Text
-			massagedNewText := resource.MassageIfUserProgramCodeAsset(newAsset, debug).Text
+			massagedOldText := resource.MassageIfUserProgramCodeAsset(oldAsset, p.debug).Text
+			massagedNewText := resource.MassageIfUserProgramCodeAsset(newAsset, p.debug).Text
 
 			differ := diffmatchpatch.New()
 			differ.DiffTimeout = 0
@@ -944,15 +997,15 @@ func printAssetDiff(
 			diffs1 := differ.DiffMain(hashed1, hashed2, false)
 			diffs2 := differ.DiffCharsToLines(diffs1, lineArray)
 
-			writeString(b, diffToPrettyString(diffs2, indent+1))
+			p.indented(1).prettyPrintDiff(diffs2)
 
-			writeWithIndentNoPrefix(b, indent, op, "}\n")
+			p.writeWithIndentNoPrefix("}\n")
 			return
 		}
 	} else if oldPath, has := oldAsset.GetPath(); has {
 		if newPath, has := newAsset.GetPath(); has {
-			titleFunc(deploy.OpUpdate, true)
-			write(b, op, "asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
+			titleFunc(p)
+			p.write("asset(file:%s) { %s }\n", hashChange, getTextChangeString(oldPath, newPath))
 			return
 		}
 	} else {
@@ -960,25 +1013,20 @@ func printAssetDiff(
 
 		oldURI, _ := oldAsset.GetURI()
 		if newURI, has := newAsset.GetURI(); has {
-			titleFunc(deploy.OpUpdate, true)
-			write(b, op, "asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
+			titleFunc(p)
+			p.write("asset(uri:%s) { %s }\n", hashChange, getTextChangeString(oldURI, newURI))
 			return
 		}
 	}
 
 	// Type of asset changed, print this out as an remove and an add.
-	printDelete(
-		b, assetOrArchiveToPropertyValue(oldAsset),
-		titleFunc, planning, indent, debug)
-	printAdd(
-		b, assetOrArchiveToPropertyValue(newAsset),
-		titleFunc, planning, indent, debug)
+	p.printDelete(assetOrArchiveToPropertyValue(oldAsset), titleFunc)
+	p.printAdd(assetOrArchiveToPropertyValue(newAsset), titleFunc)
 }
 
-func printAssetArchiveDiff(b *bytes.Buffer, titleFunc func(deploy.StepOp, bool), old interface{}, new interface{},
-	planning bool, indent int, summary bool, debug bool) {
-	printDelete(b, assetOrArchiveToPropertyValue(old), titleFunc, planning, indent, debug)
-	printAdd(b, assetOrArchiveToPropertyValue(new), titleFunc, planning, indent, debug)
+func (p *propertyPrinter) printAssetArchiveDiff(titleFunc func(p *propertyPrinter), old, new interface{}) {
+	p.printDelete(assetOrArchiveToPropertyValue(old), titleFunc)
+	p.printAdd(assetOrArchiveToPropertyValue(new), titleFunc)
 }
 
 func getTextChangeString(old string, new string) string {
@@ -989,20 +1037,15 @@ func getTextChangeString(old string, new string) string {
 	return fmt.Sprintf("%s->%s", old, new)
 }
 
-// diffToPrettyString takes the full diff produed by diffmatchpatch and condenses it into something
-// useful we can print to the console.  Specifically, while it includes any adds/removes in
+// prettyPrintDiff takes the full diff produed by diffmatchpatch and condenses it into something
+// useful we can print to the console. Specifically, while it includes any adds/removes in
 // green/red, it will also show portions of the unchanged text to help give surrounding context to
 // those add/removes. Because the unchanged portions may be very large, it only included around 3
 // lines before/after the change.
-func diffToPrettyString(diffs []diffmatchpatch.Diff, indent int) string {
-	var buff bytes.Buffer
-
+func (p *propertyPrinter) prettyPrintDiff(diffs []diffmatchpatch.Diff) {
 	writeDiff := func(op deploy.StepOp, text string) {
-		var prefix bool
-		if op == deploy.OpCreate || op == deploy.OpDelete {
-			prefix = true
-		}
-		writeWithIndent(&buff, indent, op, prefix, "%s", text)
+		prefix := op == deploy.OpCreate || op == deploy.OpDelete
+		p.withOp(op).withPrefix(prefix).writeWithIndent("%s", text)
 	}
 
 	for index, diff := range diffs {
@@ -1012,7 +1055,7 @@ func diffToPrettyString(diffs []diffmatchpatch.Diff, indent int) string {
 			for i := startInclusive; i < endExclusive; i++ {
 				if strings.TrimSpace(lines[i]) != "" {
 					writeDiff(op, lines[i])
-					buff.WriteString("\n")
+					p.writeString("\n")
 				}
 			}
 		}
@@ -1059,6 +1102,4 @@ func diffToPrettyString(diffs []diffmatchpatch.Diff, indent int) string {
 			printLines(deploy.OpSame, 0, len(lines))
 		}
 	}
-
-	return buff.String()
 }

@@ -1,0 +1,159 @@
+<{%reset%}>Configuration:<{%reset%}>
+    aws:region: us-west-2
+<{%reset%}>  pulumi:pulumi:Stack: (same)
+<{%reset%}>    [urn=urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev]
+<{%reset%}><{%reset%}>    <{%reset%}>  aws:iam/role:Role: (same)
+<{%reset%}>        [id=eks-role-be36613]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:iam/role:Role::eks-role]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+<{%reset%}><{%reset%}>        assumeRolePolicy   : <{%reset%}><{%reset%}>"{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"eks.amazonaws.com\"},\"Sid\":\"\"}],\"Version\":\"2008-10-17\"}"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        forceDetachPolicies: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        maxSessionDuration : <{%reset%}><{%reset%}>3600<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        name               : <{%reset%}><{%reset%}>"eks-role-be36613"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        path               : <{%reset%}><{%reset%}>"/"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>        --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}>        arn                : <{%reset%}><{%reset%}>"arn:aws:iam::616138583583:role/eks-role-be36613"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        assumeRolePolicy   : <{%reset%}><{%reset%}>"{\"Version\":\"2008-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"eks.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        createDate         : <{%reset%}><{%reset%}>"2022-04-01T07:30:56Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        id                 : <{%reset%}><{%reset%}>"eks-role-be36613"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        inlinePolicies     : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        uniqueId           : <{%reset%}><{%reset%}>"AROAY65FYVYPY5QOJG3Q3"<{%reset%}><{%reset%}>
+<{%reset%}>    <{%reset%}>  aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
+<{%reset%}>        [id=eks-role-be36613-20220401073059037900000001]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-service-policy]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+<{%reset%}><{%reset%}>        policyArn : <{%reset%}><{%reset%}>"arn:aws:iam::aws:policy/AmazonEKSServicePolicy"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        role      : <{%reset%}><{%reset%}>"eks-role-be36613"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>        --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}>        id       : <{%reset%}><{%reset%}>"eks-role-be36613-20220401073059037900000001"<{%reset%}><{%reset%}>
+<{%reset%}>    <{%reset%}>  aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
+<{%reset%}>        [id=eks-role-be36613-20220401073059129000000002]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-cluster-policy]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+<{%reset%}><{%reset%}>        policyArn : <{%reset%}><{%reset%}>"arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        role      : <{%reset%}><{%reset%}>"eks-role-be36613"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>        --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}>        id       : <{%reset%}><{%reset%}>"eks-role-be36613-20220401073059129000000002"<{%reset%}><{%reset%}>
+<{%reset%}>    <{%fg 3%}>~ aws:ec2/securityGroup:SecurityGroup: (update)
+<{%reset%}>        [id=sg-0d1f8bb63e78926f4]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:ec2/securityGroup:SecurityGroup::eks-sg]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+<{%reset%}><{%fg 3%}>      ~ ingress: <{%reset%}><{%fg 3%}>[
+<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}><null><{%reset%}><{%reset%}>
+<{%reset%}><{%fg 2%}>          + [1]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                  + cidrBlocks: <{%reset%}><{%fg 2%}>[
+<{%reset%}><{%fg 2%}>                  +     [0]: <{%reset%}><{%fg 2%}>"0.0.0.0/0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    ]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + fromPort  : <{%reset%}><{%fg 2%}>22<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + protocol  : <{%reset%}><{%fg 2%}>"tcp"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + self      : <{%reset%}><{%fg 2%}>false<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + toPort    : <{%reset%}><{%fg 2%}>22<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 3%}>        ]
+<{%reset%}><{%reset%}><{%!f(MISSING)g 3%!}(MISSING)>        --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}>        arn                : <{%reset%}><{%reset%}>"arn:aws:ec2:us-west-2:616138583583:security-group/sg-0d1f8bb63e78926f4"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        egress             : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                cidrBlocks    : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                fromPort      : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                protocol      : <{%reset%}><{%reset%}>"-1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                self          : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                toPort        : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        id                 : <{%reset%}><{%reset%}>"sg-0d1f8bb63e78926f4"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>      ~ ingress            : <{%reset%}><{%fg 3%}>[
+<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                    cidrBlocks    : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                        [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    fromPort      : <{%reset%}><{%reset%}>80<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    protocol      : <{%reset%}><{%reset%}>"tcp"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    self          : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    toPort        : <{%reset%}><{%reset%}>80<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 2%}>          + [1]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                  + cidrBlocks    : <{%reset%}><{%fg 2%}>[
+<{%reset%}><{%fg 2%}>                  +     [0]: <{%reset%}><{%fg 2%}>"0.0.0.0/0"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    ]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + fromPort      : <{%reset%}><{%fg 2%}>22<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + protocol      : <{%reset%}><{%fg 2%}>"tcp"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + self          : <{%reset%}><{%fg 2%}>false<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + toPort        : <{%reset%}><{%fg 2%}>22<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 3%}>        ]
+<{%reset%}><{%reset%}>        ownerId            : <{%reset%}><{%reset%}>"616138583583"<{%reset%}><{%reset%}>
+<{%reset%}>    <{%reset%}>  aws:eks/cluster:Cluster: (same)
+<{%reset%}>        [id=eks-cluster-dc83353]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:eks/cluster:Cluster::eks-cluster]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
+<{%reset%}><{%reset%}>        name      : <{%reset%}><{%reset%}>"eks-cluster-dc83353"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        roleArn   : <{%reset%}><{%reset%}>"arn:aws:iam::616138583583:role/eks-role-be36613"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        vpcConfig : <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>            endpointPrivateAccess: <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            endpointPublicAccess : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            publicAccessCidrs    : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            securityGroupIds     : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"sg-0d1f8bb63e78926f4"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            subnetIds            : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"subnet-0016572b"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                [1]: <{%reset%}><{%reset%}>"subnet-d7e7fe9c"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                [2]: <{%reset%}><{%reset%}>"subnet-c7d926bf"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                [3]: <{%reset%}><{%reset%}>"subnet-43f43a1e"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>        --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}>        arn                    : <{%reset%}><{%reset%}>"arn:aws:eks:us-west-2:616138583583:cluster/eks-cluster-dc83353"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        certificateAuthority   : <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>            data: <{%reset%}><{%reset%}>"LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EUXdNVEEzTXpZeU5Gb1hEVE15TURNeU9UQTNNell5TkZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTHBWCjRhZUVwNGgrcWcwbDhYeDQ4WlZ1eHlrc3IySFZyUWhkOTVsSm05WnRHUlB3Y2wzelAzNWtKVWV0dWdsMWtWVVkKcmRkc3NnNVBYdEtNK1lwdUlOQldDNTR5ZU14QzczcnpoU2hsYXAwMzliTExWcDI0WDFHQjJobWI3NDliN1JYZworNDRvdjVuRUFWTnc4SWgwU1FXL3g1bXBQNHBNTHVSNlFqOVpJZ3NXSTlDUGJCdG10RGphbHB4U1J3SWs3dXloCjZzOXhIUmFxNE95bmtCdFZ3OWNmd1pBdU5FeXFYbnppN0lrOW1Dc2hOWENuUXJScmFSWmhoMzdtUGVBS3RmdHIKdGV5UkNmQXo4U1UzREQrK0Z0SkJiSVdSZWFhVHBpU2NMclVXU21hQ0xSNlVpOXVhMEg5S2ttRUhZcHI3VGhFdQpMeHYrcnRFVnNxakZSOGhjN1VrQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZBRUlTUWNrVnQyZ0l5bzRRSVJ2eWZFcUQvNDJNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDUVI2emtsRGIwRDd0ZXF2bEFHVzU3Q0xtWnp2MzRWWVRTRTlXQkcyTmRQcEJ5VFJCcQpZejBvb05VamNqclg2NE94dlZEY1N5MXdoMlQzbU5nYi95ZVQ3ZlhLMU8xMEN2bXRHUWU3UU1kMEEwOUVDNElqCndyWDJjUTRObVEzRVd6Mkc3SW9tSFlNMjQyaUNFRHNtL3pqVm5hK0ZDeVpPdy9yUnE0V2NycEFYL085djR5Z3cKMStPNUJlOFVBYUV5ZzJSZ1RHQ0g4VEp5ZW94cnhnOXJCcnRvNmpUTmVpYXB5djVsRktrK1ZCd3N4dXdicjN2MworWmNlQXpkOWFhc2l5QW9OeEV0V3FIYmN6Mmp6S1dvazBpTWpUUk9iQ1NJQXhCUzhhRWhlejhYOXQxbzVZa0VJCmhNK1BtcUIzbVF2aEhWblJZVWdySUh0MnBneVJXZ1FmaG9SNAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        createdAt              : <{%reset%}><{%reset%}>"2022-04-01 07:31:02.127 +0000 UTC"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        endpoint               : <{%reset%}><{%reset%}>"https://0030743A7B6BDF62E7A8C6F66FC10D8E.gr7.us-west-2.eks.amazonaws.com"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        id                     : <{%reset%}><{%reset%}>"eks-cluster-dc83353"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        identities             : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                oidcs: <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                        issuer: <{%reset%}><{%reset%}>"https://oidc.eks.us-west-2.amazonaws.com/id/0030743A7B6BDF62E7A8C6F66FC10D8E"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        kubernetesNetworkConfig: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>            ipFamily       : <{%reset%}><{%reset%}>"ipv4"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            serviceIpv4Cidr: <{%reset%}><{%reset%}>"10.100.0.0/16"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        platformVersion        : <{%reset%}><{%reset%}>"eks.5"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        status                 : <{%reset%}><{%reset%}>"ACTIVE"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        version                : <{%reset%}><{%reset%}>"1.21"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        vpcConfig              : <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>            clusterSecurityGroupId: <{%reset%}><{%reset%}>"sg-02bacf2bb5464b516"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            endpointPrivateAccess : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            endpointPublicAccess  : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            publicAccessCidrs     : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            securityGroupIds      : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"sg-0d1f8bb63e78926f4"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            subnetIds             : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>"subnet-0016572b"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                [1]: <{%reset%}><{%reset%}>"subnet-d7e7fe9c"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                [2]: <{%reset%}><{%reset%}>"subnet-c7d926bf"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                [3]: <{%reset%}><{%reset%}>"subnet-43f43a1e"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            vpcId                 : <{%reset%}><{%reset%}>"vpc-4b82e033"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+    5 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 2s
