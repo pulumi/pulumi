@@ -12,6 +12,9 @@
 - [cli] - Warn when `additionalSecretOutputs` is used to mark the `id` property as secret.
   [#9360](https://github.com/pulumi/pulumi/pull/9360)
 
+- [cli] Display richer diffs for texutal property values.
+  [#9376](https://github.com/pulumi/pulumi/pull/9376)
+
 ### Bug Fixes
 
 - [codegen/node] - Fix an issue with escaping deprecation messages.
