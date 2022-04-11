@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -33,21 +32,17 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
@@ -83,7 +78,7 @@ func runNew(args newArgs) error {
 
 	// Validate name (if specified) before further prompts/operations.
 	if args.name != "" && workspace.ValidateProjectName(args.name) != nil {
-		return fmt.Errorf("'%s' is not a valid project name. %s", args.name, workspace.ValidateProjectName(args.name))
+		return fmt.Errorf("'%s' is not a valid project name. %w", args.name, workspace.ValidateProjectName(args.name))
 	}
 
 	// Validate secrets provider type
@@ -208,6 +203,13 @@ func runNew(args newArgs) error {
 	if args.name == "" {
 		defaultValue := workspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
 		if err := validateProjectName(defaultValue, args.generateOnly, opts); err != nil {
+			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
+			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
+			// See https://github.com/pulumi/pulumi/issues/8747.
+			if args.yes {
+				return fmt.Errorf("'%s' is not a valid project name. %w", defaultValue, err)
+			}
+
 			// Do not suggest an invalid or existing name as the default project name.
 			defaultValue = ""
 		}
@@ -248,6 +250,14 @@ func runNew(args newArgs) error {
 	proj.Name = tokens.PackageName(args.name)
 	proj.Description = &args.description
 	proj.Template = nil
+	// Workaround for python, most of our templates don't specify a venv but we want to use one
+	if proj.Runtime.Name() == "python" {
+		// If the template does give virtualenv use it, else default to "venv"
+		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
+			proj.Runtime.SetOption("virtualenv", "venv")
+		}
+	}
+
 	if err = workspace.SaveProject(proj); err != nil {
 		return fmt.Errorf("saving project: %w", err)
 	}
@@ -277,7 +287,13 @@ func runNew(args newArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
-		if err := installDependencies(proj, root); err != nil {
+		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+		if err != nil {
+			return err
+		}
+
+		if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
 			return err
 		}
 	}
@@ -501,11 +517,10 @@ func getStack(stack string, opts display.Options) (backend.Stack, string, string
 	name := ""
 	description := ""
 	if s != nil {
-		if cs, ok := s.(httpstate.Stack); ok {
-			tags := cs.Tags()
-			name = tags[apitype.ProjectNameTag]
-			description = tags[apitype.ProjectDescriptionTag]
-		}
+		tags := s.Tags()
+		// Tags might be nil/empty, but if it has name and description use them
+		name = tags[apitype.ProjectNameTag]
+		description = tags[apitype.ProjectDescriptionTag]
 	}
 
 	return s, name, description, nil
@@ -588,112 +603,18 @@ func saveConfig(stack backend.Stack, c config.Map) error {
 }
 
 // installDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-func installDependencies(proj *workspace.Project, root string) error {
-	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		if bin, err := nodeInstallDependencies(); err != nil {
-			return fmt.Errorf("%s install failed; rerun manually to try again, "+
-				"then run 'pulumi up' to perform an initial deployment"+": %w", bin, err)
-
-		}
-	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		return pythonInstallDependencies(proj, root)
-	} else if strings.EqualFold(proj.Runtime.Name(), "dotnet") {
-		return dotnetInstallDependenciesAndBuild(proj, root)
-	} else if strings.EqualFold(proj.Runtime.Name(), "go") {
-		if err := goInstallDependencies(); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// nodeInstallDependencies will install dependencies for the project or Policy Pack by running `npm install` or
-// `yarn install`.
-func nodeInstallDependencies() (string, error) {
-	fmt.Println("Installing dependencies...")
-	fmt.Println()
-
-	bin, err := npm.Install("", false /*production*/, os.Stdout, os.Stderr)
+func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeInfo, directory string) error {
+	// First make sure the language plugin is present.  We need this to load the required resource plugins.
+	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
+	lang, err := ctx.Host.LanguageRuntime(runtime.Name())
 	if err != nil {
-		return bin, err
+		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}
 
-	fmt.Println("Finished installing dependencies")
-	fmt.Println()
-
-	return bin, nil
-}
-
-// pythonInstallDependencies will create a new virtual environment and install dependencies.
-func pythonInstallDependencies(proj *workspace.Project, root string) error {
-	const venvDir = "venv"
-	if err := python.InstallDependencies(root, venvDir, true /*showOutput*/); err != nil {
-		return err
+	if err = lang.InstallDependencies(directory); err != nil {
+		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
+			"then run 'pulumi up' to perform an initial deployment: %w", err)
 	}
-
-	// Save project with venv info.
-	proj.Runtime.SetOption("virtualenv", venvDir)
-	if err := workspace.SaveProject(proj); err != nil {
-		return fmt.Errorf("saving project: %w", err)
-	}
-	return nil
-}
-
-// dotnetInstallDependenciesAndBuild will install dependencies and build the project.
-func dotnetInstallDependenciesAndBuild(proj *workspace.Project, root string) error {
-	contract.Assert(proj != nil)
-
-	fmt.Println("Installing dependencies...")
-	fmt.Println()
-
-	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, plugctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
-	if err != nil {
-		return err
-	}
-	defer plugctx.Close()
-
-	// Call RunInstallPlugins, which will run `dotnet build`. This will automatically
-	// restore dependencies, install any plugins, and build the project so it will be
-	// prepped and ready to go for a faster initial `pulumi up`.
-	if err = engine.RunInstallPlugins(proj, pwd, main, nil, plugctx); err != nil {
-		return err
-	}
-
-	fmt.Println("Finished installing dependencies")
-	fmt.Println()
-
-	return nil
-}
-
-// goInstallDependencies will install dependencies for the project by running `go mod tidy`.
-func goInstallDependencies() error {
-	fmt.Println("Installing dependencies...")
-	fmt.Println()
-
-	gobin, err := executable.FindExecutable("go")
-	if err != nil {
-		return err
-	}
-
-	if err = goversion.CheckMinimumGoVersion(gobin); err != nil {
-		return err
-	}
-
-	cmd := exec.Command(gobin, "mod", "tidy")
-	cmd.Env = os.Environ()
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("`go mod tidy` failed to install dependencies; rerun manually to try again, "+
-			"then run 'pulumi up' to perform an initial deployment"+": %w", err)
-
-	}
-
-	fmt.Println("Finished installing dependencies")
-	fmt.Println()
 
 	return nil
 }
@@ -1045,11 +966,11 @@ func promptForValue(
 			if validationError := isValidFn(value); validationError != nil {
 				// If validation failed, let the user know. If interactive, we will print the error and
 				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
-				msg := fmt.Sprintf("Sorry, '%s' is not a valid %s. %s.", value, valueType, validationError)
+				err := fmt.Errorf("Sorry, '%s' is not a valid %s. %w", value, valueType, validationError)
 				if yes {
-					return "", errors.New(msg)
+					return "", err
 				}
-				fmt.Printf("%s\n", msg)
+				fmt.Printf("%s\n", err)
 				continue
 			}
 		}

@@ -1,16 +1,17 @@
-package display
+package engine
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 func TestTranslateDetailedDiff(t *testing.T) {
+	t.Parallel()
+
 	var (
 		A = plugin.PropertyDiff{Kind: plugin.DiffAdd}
 		D = plugin.PropertyDiff{Kind: plugin.DiffDelete}
@@ -729,9 +730,9 @@ func TestTranslateDetailedDiff(t *testing.T) {
 		oldInputs := resource.NewPropertyMapFromMap(c.oldInputs)
 		state := resource.NewPropertyMapFromMap(c.state)
 		inputs := resource.NewPropertyMapFromMap(c.inputs)
-		diff := translateDetailedDiff(engine.StepEventMetadata{
-			Old:          &engine.StepEventStateMetadata{Inputs: oldInputs, Outputs: state},
-			New:          &engine.StepEventStateMetadata{Inputs: inputs},
+		diff := TranslateDetailedDiff(&StepEventMetadata{
+			Old:          &StepEventStateMetadata{Inputs: oldInputs, Outputs: state},
+			New:          &StepEventStateMetadata{Inputs: inputs},
 			DetailedDiff: c.detailedDiff,
 		})
 		assert.Equal(t, c.expected, diff)

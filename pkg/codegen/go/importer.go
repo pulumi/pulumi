@@ -71,6 +71,10 @@ type GoPackageInfo struct {
 
 	// Respect the Pkg.Version field for emitted code.
 	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
+
+	// InternalDependencies are blank imports that are emitted in the SDK so that `go mod tidy` does not remove the
+	// associated module dependencies from the SDK's go.mod.
+	InternalDependencies []string `json:"internalDependencies,omitempty"`
 }
 
 // Importer implements schema.Language for Go.

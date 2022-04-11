@@ -62,7 +62,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="enums_csharp">
-<a href="#enums_csharp" style="color: inherit; text-decoration: inherit;">Enums</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#enums_csharp" style="color: inherit; text-decoration: inherit;">Enums</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;Union&lt;string, Pulumi.<wbr>My8110.<wbr>My<wbr>Enum&gt;&gt;</span>
@@ -74,7 +74,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="enums_go">
-<a href="#enums_go" style="color: inherit; text-decoration: inherit;">Enums</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#enums_go" style="color: inherit; text-decoration: inherit;">Enums</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -86,7 +86,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="enums_nodejs">
-<a href="#enums_nodejs" style="color: inherit; text-decoration: inherit;">enums</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#enums_nodejs" style="color: inherit; text-decoration: inherit;">enums</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">(string | My<wbr>Enum)[]</span>
@@ -98,7 +98,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="enums_python">
-<a href="#enums_python" style="color: inherit; text-decoration: inherit;">enums</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#enums_python" style="color: inherit; text-decoration: inherit;">enums</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[Union[str, My<wbr>Enum]]</span>

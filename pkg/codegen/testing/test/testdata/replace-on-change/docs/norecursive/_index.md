@@ -180,7 +180,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -188,7 +188,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="rec_csharp">
-<a href="#rec_csharp" style="color: inherit; text-decoration: inherit;">Rec</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_csharp" style="color: inherit; text-decoration: inherit;">Rec</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
@@ -196,7 +196,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="replace_csharp">
-<a href="#replace_csharp" style="color: inherit; text-decoration: inherit;">Replace</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replace_csharp" style="color: inherit; text-decoration: inherit;">Replace</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -208,7 +208,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -216,7 +216,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="rec_go">
-<a href="#rec_go" style="color: inherit; text-decoration: inherit;">Rec</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_go" style="color: inherit; text-decoration: inherit;">Rec</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
@@ -224,7 +224,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="replace_go">
-<a href="#replace_go" style="color: inherit; text-decoration: inherit;">Replace</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replace_go" style="color: inherit; text-decoration: inherit;">Replace</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -236,7 +236,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -244,7 +244,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="rec_nodejs">
-<a href="#rec_nodejs" style="color: inherit; text-decoration: inherit;">rec</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_nodejs" style="color: inherit; text-decoration: inherit;">rec</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
@@ -252,7 +252,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="replace_nodejs">
-<a href="#replace_nodejs" style="color: inherit; text-decoration: inherit;">replace</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replace_nodejs" style="color: inherit; text-decoration: inherit;">replace</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -264,7 +264,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -272,7 +272,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="rec_python">
-<a href="#rec_python" style="color: inherit; text-decoration: inherit;">rec</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_python" style="color: inherit; text-decoration: inherit;">rec</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
@@ -280,7 +280,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
         <span id="replace_python">
-<a href="#replace_python" style="color: inherit; text-decoration: inherit;">replace</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replace_python" style="color: inherit; text-decoration: inherit;">replace</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -304,7 +304,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="rec1_csharp">
-<a href="#rec1_csharp" style="color: inherit; text-decoration: inherit;">Rec1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec1_csharp" style="color: inherit; text-decoration: inherit;">Rec1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
@@ -316,7 +316,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="rec1_go">
-<a href="#rec1_go" style="color: inherit; text-decoration: inherit;">Rec1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec1_go" style="color: inherit; text-decoration: inherit;">Rec1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
@@ -328,7 +328,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="rec1_nodejs">
-<a href="#rec1_nodejs" style="color: inherit; text-decoration: inherit;">rec1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec1_nodejs" style="color: inherit; text-decoration: inherit;">rec1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>
@@ -340,7 +340,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="rec1_python">
-<a href="#rec1_python" style="color: inherit; text-decoration: inherit;">rec1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec1_python" style="color: inherit; text-decoration: inherit;">rec1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rec">Rec</a></span>

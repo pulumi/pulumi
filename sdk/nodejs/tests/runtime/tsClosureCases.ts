@@ -15,11 +15,11 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { EOL } from "os";
 import { runtime } from "../../index";
 import * as pulumi from "../../index";
 import { output } from "../../output";
 import { assertAsyncThrows, asyncTest } from "../util";
+import { platformIndependentEOL } from "../constants";
 import * as typescript from "typescript";
 import * as semver from "semver";
 import { z } from "mockpackage";
@@ -6762,7 +6762,7 @@ return function /*reproHandler*/(input) {
             });
         }
         else if (test.factoryFunc) {
-            return await runtime.serializeFunction(test.factoryFunc!, { 
+            return await runtime.serializeFunction(test.factoryFunc!, {
               allowSecrets: test.allowSecrets,
               isFactoryFunction: true,
             });
@@ -6793,6 +6793,9 @@ return function /*reproHandler*/(input) {
 function compareTextWithWildcards(expected: string, actual: string) {
     const wildcard = "(...)";
 
+    expected = expected.replace(platformIndependentEOL, '\n');
+    actual = actual.replace(platformIndependentEOL, '\n');
+
     if (!expected.includes(wildcard)) {
         // We get a nice diff view if we diff the entire string, so do that
         // if we didn't get a wildcard.
@@ -6800,8 +6803,8 @@ function compareTextWithWildcards(expected: string, actual: string) {
         return;
     }
 
-    const expectedLines = expected.split(EOL);
-    const actualLines = actual.split(EOL);
+    const expectedLines = expected.split('\n');
+    const actualLines = actual.split('\n');
     let actualIndex = 0;
     for (let expectedIndex = 0; expectedIndex < expectedLines.length; expectedIndex++) {
         const expectedLine = expectedLines[expectedIndex].trim();

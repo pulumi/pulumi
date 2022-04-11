@@ -2073,11 +2073,16 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 		ApplyT(func(v interface{}) (${fn}Result, error) {
 			args := v.(${fn}Args)
 			r, err := ${fn}(ctx, &args, opts...)
-			return *r, err
+			var s ${fn}Result
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(${outputType})
 }
 
 `
+
 	code = strings.ReplaceAll(code, "${fn}", originalName)
 	code = strings.ReplaceAll(code, "${outputType}", resultTypeName)
 	fmt.Fprintf(w, code)
@@ -2748,6 +2753,15 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 			imports[basePath] = alias
 		} else {
 			imports[basePath] = ""
+		}
+	}
+
+	// If there are any internal dependencies, include them as blank imports.
+	if topLevelModule {
+		if goInfo, ok := pkg.pkg.Language["go"].(GoPackageInfo); ok {
+			for _, dep := range goInfo.InternalDependencies {
+				imports[dep] = "_"
+			}
 		}
 	}
 

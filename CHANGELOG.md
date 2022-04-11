@@ -1,6 +1,120 @@
 CHANGELOG
 =========
 
+## 3.28.0 (2022-04-01)
+
+### Improvements
+
+- When a resource is aliased to an existing resource with a different URN, only store
+  the alias of the existing resource in the statefile rather than storing all possible
+  aliases.
+  [#9288](https://github.com/pulumi/pulumi/pull/9288)
+
+- Clear pending operations during `pulumi refresh` or `pulumi up -r`.
+  [#8435](https://github.com/pulumi/pulumi/pull/8435)
+
+- [cli] - `pulumi whoami --verbose` and `pulumi about` include a list of the current users organizations.
+  [#9211](https://github.com/pulumi/pulumi/pull/9211)
+
+### Bug Fixes
+
+- [codegen/go] - Fix Go SDK function output to check for errors
+  [pulumi-aws#1872](https://github.com/pulumi/pulumi-aws/issues/1872)
+
+- [cli/engine] - Fix a panic due to `Check` returning nil while using update plans.
+  [#9304](https://github.com/pulumi/pulumi/pull/9304)
+
+
+## 3.27.0 (2022-03-24)
+
+### Improvements
+
+- [cli] - Implement `pulumi stack unselect`.
+  [#9179](https://github.com/pulumi/pulumi/pull/9179)
+
+- [language/dotnet] - Updated Pulumi dotnet packages to use grpc-dotnet instead of grpc.
+  [#9149](https://github.com/pulumi/pulumi/pull/9149)
+
+- [cli/config] - Rename the `config` property in `Pulumi.yaml` to `stackConfigDir`. The `config` key will continue to be supported.
+  [#9145](https://github.com/pulumi/pulumi/pull/9145)
+
+- [cli/plugins] Add support for downloading plugin from private Pulumi GitHub releases. This also drops the use of the `GITHUB_ACTOR` and `GITHUB_PERSONAL_ACCESS_TOKEN` environment variables for authenticating to github. Only `GITHUB_TOKEN` is now used, but this can be set to a personal access token.
+  [#9185](https://github.com/pulumi/pulumi/pull/9185)
+
+- [cli] - Speed up `pulumi stack --show-name` by skipping unneeded snapshot loading.
+  [#9199](https://github.com/pulumi/pulumi/pull/9199)
+
+- [cli/plugins] - Improved error message for missing plugins.
+  [#5208](https://github.com/pulumi/pulumi/pull/5208)
+
+- [sdk/nodejs] - Take engines property into account when engine-strict appear in npmrc file
+  [#9249](https://github.com/pulumi/pulumi/pull/9249)
+
+### Bug Fixes
+
+- [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack up.
+  [#9065](https://github.com/pulumi/pulumi/issues/9065)
+
+- [sdk/nodejs] - Fix uncaught error "ENOENT: no such file or directory" when an error occurs during the stack preview.
+  [#9272](https://github.com/pulumi/pulumi/issues/9272)
+
+- [sdk/go] - Fix a panic in `pulumi.All` when using pointer inputs.
+  [#9197](https://github.com/pulumi/pulumi/issues/9197)
+
+- [cli/engine] - Fix a panic due to passing `""` as the ID for a resource read.
+  [#9243](https://github.com/pulumi/pulumi/pull/9243)
+
+- [cli/engine] - Fix a panic due to `Check` failing while using update plans.
+  [#9254](https://github.com/pulumi/pulumi/pull/9254)
+
+- [cli] - Stack names correctly take `org set-default` into account when printing.
+  [#9240](https://github.com/pulumi/pulumi/pull/9240)
+
+
+## 3.26.1 (2022-03-09)
+
+### Improvements
+
+### Bug Fixes
+
+- [cli/new] Fix an error message when the project name picked by default was already used.
+  [#9156](https://github.com/pulumi/pulumi/pull/9156)
+
+## 3.26.0 (2022-03-09)
+
+### Improvements
+
+- [area/cli] - Implemented `state rename` command.
+  [#9098](https://github.com/pulumi/pulumi/pull/9098)
+
+- [cli/plugins] `pulumi plugin install` can now look up the latest version of plugins on GitHub releases.
+  [#9012](https://github.com/pulumi/pulumi/pull/9012)
+
+- [cli/backend] - `pulumi cancel` is now supported for the file state backend.
+  [#9100](https://github.com/pulumi/pulumi/pull/9100)
+
+- [cli/import] - The import command no longer errors if resource properties do not validate. Instead the
+  engine warns about property issues returned by the provider but then continues with the import and codegen
+  as best it can. This should result in more resources being imported to the pulumi state and being able to
+  generate some code, at the cost that the generated code may not work as is in an update. Users will have to
+  edit the code to successfully run.
+  [#8922](https://github.com/pulumi/pulumi/pull/8922)
+
+- [cli/import] - Code generation in `pulumi import` can now be disabled with the `--generate-code=false` flag.
+  [#9141](https://github.com/pulumi/pulumi/pull/9141)
+
+### Bug Fixes
+
+- [sdk/python] - Fix build warnings. See
+  [#9011](https://github.com/pulumi/pulumi/issues/9011) for more details.
+  [#9139](https://github.com/pulumi/pulumi/pull/9139)
+
+- [cli/backend] - Fixed an issue with non-atomicity when saving file state stacks.
+  [#9122](https://github.com/pulumi/pulumi/pull/9122)
+
+- [sdk/go] - Fixed an issue where the RetainOnDelete resource option is not applied.
+  [#9147](https://github.com/pulumi/pulumi/pull/9147)
+
 ## 3.25.1 (2022-03-2)
 
 ### Improvements

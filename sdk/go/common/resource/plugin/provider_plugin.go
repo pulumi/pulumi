@@ -81,13 +81,9 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
 	if err != nil {
 		return nil, err
-	} else if path == "" {
-		return nil, workspace.NewMissingError(workspace.PluginInfo{
-			Kind:    workspace.ResourcePlugin,
-			Name:    string(pkg),
-			Version: version,
-		})
 	}
+
+	contract.Assert(path != "")
 
 	// Runtime options are passed as environment variables to the provider.
 	env := os.Environ()
@@ -805,8 +801,8 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 func (p *provider) Read(urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (ReadResult, resource.Status, error) {
 
-	contract.Assert(urn != "")
-	contract.Assert(id != "")
+	contract.Assertf(urn != "", "Read URN was empty")
+	contract.Assertf(id != "", "Read ID was empty")
 
 	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), id, urn)
 	logging.V(7).Infof("%s executing (#inputs=%v, #state=%v)", label, len(inputs), len(state))

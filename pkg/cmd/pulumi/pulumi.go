@@ -34,7 +34,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
-	"github.com/docker/docker/pkg/term"
+	"github.com/moby/term"
 
 	"github.com/spf13/cobra"
 
@@ -229,6 +229,8 @@ func NewPulumiCmd() *cobra.Command {
 
 	cmd.AddCommand(newViewTraceCmd())
 	cmd.AddCommand(newConvertTraceCmd())
+
+	cmd.AddCommand(newReplayEventsCmd())
 
 	if !hasDebugCommands() {
 		err := cmd.PersistentFlags().MarkHidden("tracing-header")

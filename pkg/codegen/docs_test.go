@@ -23,6 +23,8 @@ import (
 const codeFence = "```"
 
 func TestFilterExamples(t *testing.T) {
+	t.Parallel()
+
 	tsCodeSnippet := `### Example 1
 ` + codeFence + `typescript
 import * as path from path;
@@ -48,6 +50,8 @@ func fakeFunc() {
 {{% /examples %}}`
 
 	t.Run("ContainsRelevantCodeSnippet", func(t *testing.T) {
+		t.Parallel()
+
 		strippedDescription := FilterExamples(description, "typescript")
 		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
 		assert.Contains(t, strippedDescription, leadingDescription, "expected to at least find the leading description")
@@ -57,6 +61,8 @@ func fakeFunc() {
 	// the description contains only one Example without any Python code snippet,
 	// we should expect an empty string in this test.
 	t.Run("DoesNotContainRelevantSnippet", func(t *testing.T) {
+		t.Parallel()
+
 		strippedDescription := FilterExamples(description, "python")
 		assert.Contains(t, strippedDescription, leadingDescription, "expected to at least find the leading description")
 		// Should not contain any examples sections.
@@ -65,6 +71,8 @@ func fakeFunc() {
 }
 
 func TestTestFilterExamplesFromMultipleExampleSections(t *testing.T) {
+	t.Parallel()
+
 	tsCodeSnippet := codeFence + `typescript
 import * as path from path;
 
@@ -93,6 +101,8 @@ func fakeFunc() {
 	description := `{{% examples %}}` + "\n" + example1ShortCode + "\n" + example2ShortCode + "\n" + `{{% /examples %}}`
 
 	t.Run("EveryExampleHasRelevantCodeSnippet", func(t *testing.T) {
+		t.Parallel()
+
 		strippedDescription := FilterExamples(description, "typescript")
 		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
 		assert.Contains(t, strippedDescription, "Example 1", "expected Example 1 section")
@@ -100,6 +110,8 @@ func fakeFunc() {
 	})
 
 	t.Run("SomeExamplesHaveRelevantCodeSnippet", func(t *testing.T) {
+		t.Parallel()
+
 		strippedDescription := FilterExamples(description, "go")
 		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
 		assert.Contains(t, strippedDescription, "Example 1", "expected Example 1 section")

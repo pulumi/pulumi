@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
@@ -35,27 +36,32 @@ type Stack interface {
 	backend.Stack
 	OrgName() string                            // the organization that owns this stack.
 	CurrentOperation() *apitype.OperationStatus // in progress operation, if applicable.
-	Tags() map[apitype.StackTagName]string      // the stack's tags.
 	StackIdentifier() client.StackIdentifier
 }
 
 type cloudBackendReference struct {
-	name    tokens.QName
+	name    tokens.Name
 	project string
 	owner   string
 	b       *cloudBackend
 }
 
 func (c cloudBackendReference) String() string {
-	curUser, err := c.b.CurrentUser()
-	if err != nil {
-		curUser = ""
-	}
-
 	// If the project names match, we can elide them.
 	if c.b.currentProject != nil && c.project == string(c.b.currentProject.Name) {
-		if c.owner == curUser {
-			return string(c.name) // Elide owner too, if it is the current user.
+
+		// Elide owner too, if it is the default owner.
+		defaultOrg, err := workspace.GetBackendConfigDefaultOrg()
+		if err == nil && defaultOrg != "" {
+			// The default owner is the org
+			if c.owner == defaultOrg {
+				return string(c.name)
+			}
+		} else {
+			currentUser, _, userErr := c.b.CurrentUser()
+			if userErr == nil && c.owner == currentUser {
+				return string(c.name)
+			}
 		}
 		return fmt.Sprintf("%s/%s", c.owner, c.name)
 	}
@@ -63,7 +69,7 @@ func (c cloudBackendReference) String() string {
 	return fmt.Sprintf("%s/%s/%s", c.owner, c.project, c.name)
 }
 
-func (c cloudBackendReference) Name() tokens.QName {
+func (c cloudBackendReference) Name() tokens.Name {
 	return c.name
 }
 
@@ -89,7 +95,7 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		ref: cloudBackendReference{
 			owner:   apistack.OrgName,
 			project: apistack.ProjectName,
-			name:    apistack.StackName,
+			name:    tokens.Name(apistack.StackName.String()),
 			b:       b,
 		},
 		orgName:          apistack.OrgName,
@@ -188,7 +194,7 @@ func (css cloudStackSummary) Name() backend.StackReference {
 	return cloudBackendReference{
 		owner:   css.summary.OrgName,
 		project: css.summary.ProjectName,
-		name:    tokens.QName(css.summary.StackName),
+		name:    tokens.Name(css.summary.StackName),
 		b:       css.b,
 	}
 }

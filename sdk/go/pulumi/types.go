@@ -718,10 +718,18 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		} else {
 			// Handle pointer inputs.
 			if v.Kind() == reflect.Ptr {
-				v, valueType = v.Elem(), valueType.Elem()
-
-				resolved.Set(reflect.New(resolved.Type().Elem()))
-				resolved = resolved.Elem()
+				v = v.Elem()
+				valueType = valueType.Elem()
+				if resolved.Type() != anyType {
+					// resolved should be some pointer type U such that value Type is convertable to U.
+					resolved.Set(reflect.New(resolved.Type().Elem()))
+					resolved = resolved.Elem()
+				} else {
+					// Allocate storage for a pointer and assign that to resolved, then continue below with resolved set to the inner value of the pointer just allocated
+					ptr := reflect.New(valueType)
+					resolved.Set(ptr)
+					resolved = ptr.Elem()
+				}
 			}
 		}
 	}

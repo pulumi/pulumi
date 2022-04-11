@@ -212,13 +212,18 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 
 	accessToken := <-c
 
-	username, err := client.NewClient(cloudURL, accessToken, d).GetPulumiAccountName(ctx)
+	username, organizations, err := client.NewClient(cloudURL, accessToken, d).GetPulumiAccountDetails(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Save the token and return the backend
-	account := workspace.Account{AccessToken: accessToken, Username: username, LastValidatedAt: time.Now()}
+	account := workspace.Account{
+		AccessToken:     accessToken,
+		Username:        username,
+		Organizations:   organizations,
+		LastValidatedAt: time.Now(),
+	}
 	if err = workspace.StoreAccount(cloudURL, account, true); err != nil {
 		return nil, err
 	}
@@ -237,9 +242,9 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	existingAccount, err := workspace.GetAccount(cloudURL)
 	if err == nil && existingAccount.AccessToken != "" {
 		// If the account was last verified less than an hour ago, assume the token is valid.
-		valid, username := true, existingAccount.Username
+		valid, username, organizations := true, existingAccount.Username, existingAccount.Organizations
 		if username == "" || existingAccount.LastValidatedAt.Add(1*time.Hour).Before(time.Now()) {
-			valid, username, err = IsValidAccessToken(ctx, cloudURL, existingAccount.AccessToken)
+			valid, username, organizations, err = IsValidAccessToken(ctx, cloudURL, existingAccount.AccessToken)
 			if err != nil {
 				return nil, err
 			}
@@ -249,6 +254,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 		if valid {
 			// Save the token. While it hasn't changed this will update the current cloud we are logged into, as well.
 			existingAccount.Username = username
+			existingAccount.Organizations = organizations
 			if err = workspace.StoreAccount(cloudURL, existingAccount, true); err != nil {
 				return nil, err
 			}
@@ -328,7 +334,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	}
 
 	// Try and use the credentials to see if they are valid.
-	valid, username, err := IsValidAccessToken(ctx, cloudURL, accessToken)
+	valid, username, organizations, err := IsValidAccessToken(ctx, cloudURL, accessToken)
 	if err != nil {
 		return nil, err
 	} else if !valid {
@@ -336,7 +342,12 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	}
 
 	// Save them.
-	account := workspace.Account{AccessToken: accessToken, Username: username, LastValidatedAt: time.Now()}
+	account := workspace.Account{
+		AccessToken:     accessToken,
+		Username:        username,
+		Organizations:   organizations,
+		LastValidatedAt: time.Now(),
+	}
 	if err = workspace.StoreAccount(cloudURL, account, true); err != nil {
 		return nil, err
 	}
@@ -389,28 +400,29 @@ func (b *cloudBackend) Name() string {
 }
 
 func (b *cloudBackend) URL() string {
-	user, err := b.CurrentUser()
+	user, _, err := b.CurrentUser()
 	if err != nil {
 		return cloudConsoleURL(b.url)
 	}
 	return cloudConsoleURL(b.url, user)
 }
 
-func (b *cloudBackend) CurrentUser() (string, error) {
+func (b *cloudBackend) CurrentUser() (string, []string, error) {
 	return b.currentUser(context.Background())
 }
 
-func (b *cloudBackend) currentUser(ctx context.Context) (string, error) {
+func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, error) {
 	account, err := workspace.GetAccount(b.CloudURL())
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if account.Username != "" {
 		logging.V(1).Infof("found username for access token")
-		return account.Username, nil
+		return account.Username, account.Organizations, nil
 	}
 	logging.V(1).Infof("no username for access token")
-	return b.client.GetPulumiAccountName(ctx)
+	name, orgs, err := b.client.GetPulumiAccountDetails(ctx)
+	return name, orgs, err
 }
 
 func (b *cloudBackend) CloudURL() string { return b.url }
@@ -430,7 +442,7 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 	}
 
 	if orgName == "" {
-		currentUser, userErr := b.CurrentUser()
+		currentUser, _, userErr := b.CurrentUser()
 		if userErr != nil {
 			return nil, userErr
 		}
@@ -471,7 +483,10 @@ func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inCo
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
 }
 
-// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
+func (b *cloudBackend) SupportsTags() bool {
+	return true
+}
+
 func (b *cloudBackend) SupportsOrganizations() bool {
 	return true
 }
@@ -532,7 +547,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		if defaultOrg != "" {
 			qualifiedName.Owner = defaultOrg
 		} else {
-			currentUser, userErr := b.CurrentUser()
+			currentUser, _, userErr := b.CurrentUser()
 			if userErr != nil {
 				return nil, userErr
 			}
@@ -543,16 +558,21 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	if qualifiedName.Project == "" {
 		currentProject, projectErr := workspace.DetectProject()
 		if projectErr != nil {
-			return nil, projectErr
+			return nil, fmt.Errorf("If you're using the --stack flag, "+
+				"pass the fully qualified name (org/project/stack): %w", projectErr)
 		}
 
 		qualifiedName.Project = currentProject.Name.String()
 	}
 
+	if !tokens.IsName(qualifiedName.Name) {
+		return nil, errors.New("stack names may only contain alphanumeric, hyphens, underscores, and periods")
+	}
+
 	return cloudBackendReference{
 		owner:   qualifiedName.Owner,
 		project: qualifiedName.Project,
-		name:    tokens.QName(qualifiedName.Name),
+		name:    tokens.Name(qualifiedName.Name),
 		b:       b,
 	}, nil
 }
@@ -666,7 +686,7 @@ func (b *cloudBackend) LogoutAll() error {
 
 // DoesProjectExist returns true if a project with the given name exists in this backend, or false otherwise.
 func (b *cloudBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
-	owner, err := b.currentUser(ctx)
+	owner, _, err := b.currentUser(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -1124,7 +1144,7 @@ func (b *cloudBackend) GetHistory(
 
 	updates, err := b.client.GetStackUpdates(ctx, stack, pageSize, page)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get stack updates: %w", err)
 	}
 
 	// Convert apitype.UpdateInfo objects to the backend type.
@@ -1215,6 +1235,8 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg bac
 	return filestate.GetLogsForTarget(target, logQuery)
 }
 
+// ExportDeployment exports a deployment _from_ the backend service.
+// This will return the stack state that was being stored on the backend service.
 func (b *cloudBackend) ExportDeployment(ctx context.Context,
 	stack backend.Stack) (*apitype.UntypedDeployment, error) {
 	return b.exportDeployment(ctx, stack.Ref(), nil /* latest */)
@@ -1252,6 +1274,8 @@ func (b *cloudBackend) exportDeployment(
 	return &deployment, nil
 }
 
+// ImportDeployment imports a deployment _into_ the backend. At the end of this operation,
+// the deployment provided will be the current state stored on the backend service.
 func (b *cloudBackend) ImportDeployment(ctx context.Context, stack backend.Stack,
 	deployment *apitype.UntypedDeployment) error {
 
@@ -1452,25 +1476,19 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 
 // IsValidAccessToken tries to use the provided Pulumi access token and returns if it is accepted
 // or not. Returns error on any unexpected error.
-func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool, string, error) {
+func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool, string, []string, error) {
 	// Make a request to get the authenticated user. If it returns a successful response,
 	// we know the access token is legit. We also parse the response as JSON and confirm
 	// it has a githubLogin field that is non-empty (like the Pulumi Service would return).
-	username, err := client.NewClient(cloudURL, accessToken, cmdutil.Diag()).GetPulumiAccountName(ctx)
+	username, organizations, err := client.NewClient(cloudURL, accessToken, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
 	if err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
-			return false, "", nil
+			return false, "", nil, nil
 		}
-		return false, "", fmt.Errorf("getting user info from %v: %w", cloudURL, err)
+		return false, "", nil, fmt.Errorf("getting user info from %v: %w", cloudURL, err)
 	}
 
-	return true, username, nil
-}
-
-// GetStackTags fetches the stack's existing tags.
-func (b *cloudBackend) GetStackTags(ctx context.Context,
-	stack backend.Stack) (map[apitype.StackTagName]string, error) {
-	return stack.(Stack).Tags(), nil
+	return true, username, organizations, nil
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.

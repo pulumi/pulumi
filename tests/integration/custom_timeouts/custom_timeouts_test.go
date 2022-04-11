@@ -1,3 +1,4 @@
+//go:build python || all
 // +build python all
 
 package ints
@@ -10,13 +11,15 @@ import (
 )
 
 func TestCustomTimeouts(t *testing.T) {
+	t.Parallel()
+
 	opts := &integration.ProgramTestOptions{
 		Dir: filepath.Join(".", "python", "success"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick:      true,
-		NoParallel: true,
+		Quick:            true,
+		DestroyOnCleanup: true,
 	}
 	integration.ProgramTest(t, opts)
 
@@ -25,9 +28,9 @@ func TestCustomTimeouts(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick:         true,
-		NoParallel:    true,
-		ExpectFailure: true,
+		Quick:            true,
+		DestroyOnCleanup: true,
+		ExpectFailure:    true,
 	}
 	integration.ProgramTest(t, opts)
 }

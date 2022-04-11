@@ -38,6 +38,8 @@ func getPulumiResources(t *testing.T, path string) *Resource {
 }
 
 func TestTodo(t *testing.T) {
+	t.Parallel()
+
 	components := getPulumiResources(t, "testdata/todo.json")
 	assert.Equal(t, 4, len(components.Children))
 
@@ -75,6 +77,8 @@ func TestTodo(t *testing.T) {
 }
 
 func TestCrawler(t *testing.T) {
+	t.Parallel()
+
 	components := getPulumiResources(t, "testdata/crawler.json")
 	assert.Equal(t, 7, len(components.Children))
 

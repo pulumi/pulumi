@@ -9,6 +9,7 @@ import (
 )
 
 func TestStackReference(t *testing.T) {
+	t.Parallel()
 	var resName string
 	outputs := map[string]interface{}{
 		"foo": "bar",

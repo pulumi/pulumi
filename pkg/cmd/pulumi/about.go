@@ -30,7 +30,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/v3/host"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -146,7 +146,7 @@ func getSummaryAbout(transitiveDependencies bool) summaryAbout {
 			result.Runtime = &runtime
 		}
 		if deps, err := getProgramDependenciesAbout(proj, pwd, transitiveDependencies); err != nil {
-			addError(err, "Failed to get information about the Puluimi program's plugins")
+			addError(err, "Failed to get information about the Pulumi program's plugins")
 		} else {
 			result.Dependencies = deps
 		}
@@ -280,22 +280,22 @@ func (host hostAbout) String() string {
 }
 
 type backendAbout struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-	User string `json:"user"`
+	Name          string   `json:"name"`
+	URL           string   `json:"url"`
+	User          string   `json:"user"`
+	Organizations []string `json:"organizations"`
 }
 
 func getBackendAbout(b backend.Backend) backendAbout {
-	var err error
-	var currentUser string
-	currentUser, err = b.CurrentUser()
+	currentUser, currentOrgs, err := b.CurrentUser()
 	if err != nil {
 		currentUser = "Unknown"
 	}
 	return backendAbout{
-		Name: b.Name(),
-		URL:  b.URL(),
-		User: currentUser,
+		Name:          b.Name(),
+		URL:           b.URL(),
+		User:          currentUser,
+		Organizations: currentOrgs,
 	}
 }
 
@@ -306,6 +306,7 @@ func (b backendAbout) String() string {
 			{"Name", b.Name},
 			{"URL", b.URL},
 			{"User", b.User},
+			{"Organizations", strings.Join(b.Organizations, ", ")},
 		}),
 	}.String()
 }

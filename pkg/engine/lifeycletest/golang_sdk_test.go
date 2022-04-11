@@ -47,6 +47,8 @@ func (*testResourceInputs) ElementType() reflect.Type {
 }
 
 func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -102,6 +104,8 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 
 // Inspired by transformations_test.go.
 func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -246,7 +250,10 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 			foundRes3 := false
 			foundRes4Child := false
 			// foundRes5Child1 := false
-			for _, res := range entries.Snap(target.Snapshot).Resources {
+
+			snap, err := entries.Snap(target.Snapshot)
+			require.NoError(t, err)
+			for _, res := range snap.Resources {
 				// "res1" has a transformation which adds additionalSecretOutputs
 				if res.URN.Name() == "res1" {
 					foundRes1 = true
@@ -299,6 +306,8 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 // This test validates the wiring of the IgnoreChanges prop in the go SDK.
 // It doesn't attempt to validate underlying behavior.
 func TestIgnoreChangesGolangLifecycle(t *testing.T) {
+	t.Parallel()
+
 	var expectedIgnoreChanges []string
 
 	loaders := []*deploytest.ProviderLoader{
@@ -375,6 +384,8 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 }
 
 func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
+	t.Parallel()
+
 	p := &TestPlan{}
 
 	loaders := []*deploytest.ProviderLoader{
@@ -491,6 +502,8 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 }
 
 func TestReadResourceGolangLifecycle(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -558,6 +571,8 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 // and Invoke all respect the provider hierarchy
 // most specific providers are used first 1. resource.provider, 2. resource.providers, 3. resource.parent.providers
 func TestProviderInheritanceGolangLifecycle(t *testing.T) {
+	t.Parallel()
+
 	type invokeArgs struct {
 		Bang string `pulumi:"bang"`
 		Bar  string `pulumi:"bar"`
@@ -727,6 +742,8 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 // This test validates the wiring of the ReplaceOnChanges prop in the go SDK.
 // It doesn't attempt to validate underlying behavior.
 func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
+	t.Parallel()
+
 	var expectedReplaceOnChanges []string
 
 	loaders := []*deploytest.ProviderLoader{
@@ -824,6 +841,8 @@ type remoteComponent struct {
 }
 
 func TestRemoteComponentGolang(t *testing.T) {
+	t.Parallel()
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{

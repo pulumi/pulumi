@@ -73,7 +73,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="arg1_csharp">
-<a href="#arg1_csharp" style="color: inherit; text-decoration: inherit;">Arg1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#arg1_csharp" style="color: inherit; text-decoration: inherit;">Arg1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Example.<wbr>Resource</span>
@@ -85,7 +85,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="arg1_go">
-<a href="#arg1_go" style="color: inherit; text-decoration: inherit;">Arg1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#arg1_go" style="color: inherit; text-decoration: inherit;">Arg1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
@@ -97,7 +97,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="arg1_nodejs">
-<a href="#arg1_nodejs" style="color: inherit; text-decoration: inherit;">arg1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#arg1_nodejs" style="color: inherit; text-decoration: inherit;">arg1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
@@ -109,7 +109,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="arg1_python">
-<a href="#arg1_python" style="color: inherit; text-decoration: inherit;">arg1</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#arg1_python" style="color: inherit; text-decoration: inherit;">arg1</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
@@ -130,7 +130,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_csharp">
-<a href="#result_csharp" style="color: inherit; text-decoration: inherit;">Result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_csharp" style="color: inherit; text-decoration: inherit;">Result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Example.<wbr>Resource</span>
@@ -142,7 +142,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_go">
-<a href="#result_go" style="color: inherit; text-decoration: inherit;">Result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_go" style="color: inherit; text-decoration: inherit;">Result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
@@ -154,7 +154,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_nodejs">
-<a href="#result_nodejs" style="color: inherit; text-decoration: inherit;">result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_nodejs" style="color: inherit; text-decoration: inherit;">result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
@@ -166,7 +166,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="result_python">
-<a href="#result_python" style="color: inherit; text-decoration: inherit;">result</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_python" style="color: inherit; text-decoration: inherit;">result</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>

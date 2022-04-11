@@ -6,6 +6,8 @@ import (
 )
 
 func TestMakeSafeEnumName(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		input    string
 		expected string
@@ -26,7 +28,10 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"Standard_E8as_v4+1TB_PS", "Standard_E8as_v4_1TB_PS", false},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := makeSafeEnumName(tt.input, "TypeName")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("makeSafeEnumName() error = %v, wantErr %v", err, tt.wantErr)
@@ -34,6 +39,30 @@ func TestMakeSafeEnumName(t *testing.T) {
 			}
 			if got != tt.expected {
 				t.Errorf("makeSafeEnumName() got = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestEscape(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"test", "test"},
+		{"sub\"string\"", "sub\\\"string\\\""},
+		{"slash\\s", "slash\\\\s"},
+		{"N\\A \"bad data\"", "N\\\\A \\\"bad data\\\""},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
+			got := escape(tt.input)
+			if tt.expected != got {
+				t.Errorf("escape(%s) was %s want %s", tt.input, got, tt.expected)
 			}
 		})
 	}

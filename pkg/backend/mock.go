@@ -35,6 +35,7 @@ type MockBackend struct {
 	NameF                  func() string
 	URLF                   func() string
 	GetPolicyPackF         func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
+	SupportsTagsF          func() bool
 	SupportsOrganizationsF func() bool
 	ParseStackReferenceF   func(s string) (StackReference, error)
 	ValidateStackNameF     func(s string) error
@@ -49,13 +50,12 @@ type MockBackend struct {
 	QueryF                  func(context.Context, QueryOperation) result.Result
 	GetLatestConfigurationF func(context.Context, Stack) (config.Map, error)
 	GetHistoryF             func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
-	GetStackTagsF           func(context.Context, Stack) (map[apitype.StackTagName]string, error)
 	UpdateStackTagsF        func(context.Context, Stack, map[apitype.StackTagName]string) error
 	ExportDeploymentF       func(context.Context, Stack) (*apitype.UntypedDeployment, error)
 	ImportDeploymentF       func(context.Context, Stack, *apitype.UntypedDeployment) error
 	LogoutF                 func() error
 	LogoutAllF              func() error
-	CurrentUserF            func() (string, error)
+	CurrentUserF            func() (string, []string, error)
 	PreviewF                func(context.Context, Stack,
 		UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	UpdateF func(context.Context, Stack,
@@ -105,6 +105,13 @@ func (be *MockBackend) GetPolicyPack(
 
 	if be.GetPolicyPackF != nil {
 		return be.GetPolicyPackF(ctx, policyPack, d)
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) SupportsTags() bool {
+	if be.SupportsTagsF != nil {
+		return be.SupportsTagsF()
 	}
 	panic("not implemented")
 }
@@ -271,15 +278,6 @@ func (be *MockBackend) GetLatestConfiguration(ctx context.Context,
 	panic("not implemented")
 }
 
-func (be *MockBackend) GetStackTags(ctx context.Context,
-	stack Stack) (map[apitype.StackTagName]string, error) {
-
-	if be.GetStackTagsF != nil {
-		return be.GetStackTagsF(ctx, stack)
-	}
-	panic("not implemented")
-}
-
 func (be *MockBackend) UpdateStackTags(ctx context.Context, stack Stack,
 	tags map[apitype.StackTagName]string) error {
 
@@ -321,7 +319,7 @@ func (be *MockBackend) LogoutAll() error {
 	panic("not implemented")
 }
 
-func (be *MockBackend) CurrentUser() (string, error) {
+func (be *MockBackend) CurrentUser() (string, []string, error) {
 	if be.CurrentUserF != nil {
 		return be.CurrentUserF()
 	}
@@ -343,6 +341,7 @@ type MockStack struct {
 	RefF      func() StackReference
 	ConfigF   func() config.Map
 	SnapshotF func(ctx context.Context) (*deploy.Snapshot, error)
+	TagsF     func() map[apitype.StackTagName]string
 	BackendF  func() Backend
 	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
 	UpdateF   func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
@@ -379,6 +378,13 @@ func (ms *MockStack) Config() config.Map {
 func (ms *MockStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
 	if ms.SnapshotF != nil {
 		return ms.SnapshotF(ctx)
+	}
+	panic("not implemented")
+}
+
+func (ms *MockStack) Tags() map[apitype.StackTagName]string {
+	if ms.TagsF != nil {
+		return ms.TagsF()
 	}
 	panic("not implemented")
 }

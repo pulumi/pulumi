@@ -31,6 +31,7 @@ import (
 )
 
 func TestGenerateLanguageDefinition(t *testing.T) {
+	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	cases, err := readTestCases("testdata/cases.json")
@@ -38,8 +39,11 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 		t.Fatal()
 	}
 
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, s := range cases.Resources {
+		s := s
 		t.Run(string(s.URN), func(t *testing.T) {
+			t.Parallel()
 			state, err := stack.DeserializeResource(s, config.NopDecrypter, config.NopEncrypter)
 			if !assert.NoError(t, err) {
 				t.Fatal()

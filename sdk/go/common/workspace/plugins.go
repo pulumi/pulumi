@@ -122,24 +122,33 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 type MissingError struct {
 	// Info contains information about the plugin that was not found.
 	Info PluginInfo
+	// includeAmbient is true if we search $PATH for this plugin
+	includeAmbient bool
 }
 
 // NewMissingError allocates a new error indicating the given plugin info was not found.
-func NewMissingError(info PluginInfo) error {
+func NewMissingError(info PluginInfo, includeAmbient bool) error {
 	return &MissingError{
-		Info: info,
+		Info:           info,
+		includeAmbient: includeAmbient,
 	}
 }
 
 func (err *MissingError) Error() string {
-	if err.Info.Version != nil {
-		return fmt.Sprintf("no %[1]s plugin '%[2]s-v%[3]s' found in the workspace or on your $PATH, "+
-			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
-			err.Info.Kind, err.Info.Name, err.Info.Version)
+	includePath := ""
+	if err.includeAmbient {
+		includePath = " or on your $PATH"
 	}
 
-	return fmt.Sprintf("no %s plugin '%s' found in the workspace or on your $PATH",
-		err.Info.Kind, err.Info.String())
+	if err.Info.Version != nil {
+		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace at version v%[3]s%[4]s, "+
+			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`",
+			err.Info.Kind, err.Info.Name, err.Info.Version, includePath)
+	}
+
+	return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace%[3]s, "+
+		"install the plugin using `pulumi plugin install %[1]s %[2]s`",
+		err.Info.Kind, err.Info.Name, includePath)
 }
 
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
@@ -183,7 +192,7 @@ func (source *getPulumiSource) Download(
 		serverURL,
 		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)))
 
-	req, err := buildHTTPRequest(endpoint, "", "", "", "")
+	req, err := buildHTTPRequest(endpoint, "")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -196,47 +205,31 @@ type githubSource struct {
 	name         string
 	kind         PluginKind
 
-	tokenType string
-	token     string
-	username  string
-	secret    string
+	token string
 }
 
+// Creates a new github source adding authentication data in the environment, if it exists
 func newGithubSource(organization, name string, kind PluginKind) *githubSource {
+
+	// 14-03-2022 we stopped looking at GITHUB_PERSONAL_ACCESS_TOKEN and sending basic auth for github and
+	// instead just look at GITHUB_TOKEN and send in a header. Given GITHUB_PERSONAL_ACCESS_TOKEN was an
+	// envvar we made up we check to see if it's set here and log a warning. This can be removed after a few
+	// releases.
+	if os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN") != "" {
+		logging.Warningf("GITHUB_PERSONAL_ACCESS_TOKEN is no longer used for Github authentication, set GITHUB_TOKEN instead")
+	}
+
 	return &githubSource{
 		organization: organization,
 		name:         name,
 		kind:         kind,
+
+		token: os.Getenv("GITHUB_TOKEN"),
 	}
 }
 
-// Creates a new github source from authentication data in the environment, if it exists
-func newAuthenticatedGithubSource(organization, name string, kind PluginKind) (*githubSource, error) {
-	ghToken := os.Getenv("GITHUB_TOKEN")
-	paToken := ""
-	actor := ""
-	tokenType := "token"
-	if ghToken == "" {
-		tokenType = ""
-		paToken = os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
-		actor = os.Getenv("GITHUB_ACTOR")
-	}
-	if ghToken == "" && (paToken == "" || actor == "") {
-		return nil, errors.New("no GitHub authentication information provided")
-	}
-
-	source := &githubSource{
-		organization: organization,
-		name:         name,
-		kind:         kind,
-
-		tokenType: tokenType,
-		token:     ghToken,
-		username:  actor,
-		secret:    paToken,
-	}
-
-	return source, nil
+func (source *githubSource) HasAuthentication() bool {
+	return source.token != ""
 }
 
 func (source *githubSource) GetLatestVersion(
@@ -245,7 +238,7 @@ func (source *githubSource) GetLatestVersion(
 		"https://api.github.com/repos/%s/pulumi-%s/releases/latest",
 		source.organization, source.name)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
-	req, err := buildHTTPRequest(releaseURL, source.tokenType, source.token, source.username, source.secret)
+	req, err := buildHTTPRequest(releaseURL, source.token)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +268,7 @@ func (source *githubSource) GetLatestVersion(
 func (source *githubSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
-	if source.tokenType == "" && source.token == "" && source.username == "" && source.secret == "" {
+	if !source.HasAuthentication() {
 		// If we're not using authentication we can just download from the release/download URL
 
 		logging.V(1).Infof(
@@ -286,7 +279,7 @@ func (source *githubSource) Download(
 			source.organization, source.name, version.String(), url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz",
 				source.kind, source.name, version.String(), opSy, arch)))
 
-		req, err := buildHTTPRequest(pluginURL, "", "", "", "")
+		req, err := buildHTTPRequest(pluginURL, "")
 		if err != nil {
 			return nil, -1, err
 		}
@@ -301,7 +294,7 @@ func (source *githubSource) Download(
 		source.organization, source.name, version.String())
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
 
-	req, err := buildHTTPRequest(releaseURL, source.tokenType, source.token, source.username, source.secret)
+	req, err := buildHTTPRequest(releaseURL, source.token)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -341,7 +334,7 @@ func (source *githubSource) Download(
 
 	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
 
-	req, err = buildHTTPRequest(assetURL, source.tokenType, source.token, source.username, source.secret)
+	req, err = buildHTTPRequest(assetURL, source.token)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -383,7 +376,7 @@ func (source *pluginURLSource) Download(
 		serverURL,
 		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)))
 
-	req, err := buildHTTPRequest(endpoint, "", "", "", "")
+	req, err := buildHTTPRequest(endpoint, "")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -413,7 +406,7 @@ func (source *fallbackSource) GetLatestVersion(
 		return version, nil
 	}
 
-	// Are we in experimental mode? Try a private github release
+	// Are we in experimental mode? Try a users private github release
 	if _, ok := os.LookupEnv("PULUMI_EXPERIMENTAL"); ok {
 		// Check if we have a repo owner set
 		repoOwner := os.Getenv("GITHUB_REPOSITORY_OWNER")
@@ -421,9 +414,10 @@ func (source *fallbackSource) GetLatestVersion(
 		if repoOwner == "" {
 			privateErr = errors.New("ENV[GITHUB_REPOSITORY_OWNER] not set")
 		} else {
-			var private PluginSource
-			private, privateErr = newAuthenticatedGithubSource(repoOwner, source.name, source.kind)
-			if privateErr == nil {
+			private := newGithubSource(repoOwner, source.name, source.kind)
+			if !private.HasAuthentication() {
+				privateErr = errors.New("no GitHub authentication information provided")
+			} else {
 				version, privateErr = private.GetLatestVersion(getHTTPResponse)
 				if privateErr == nil {
 					return version, nil
@@ -458,8 +452,10 @@ func (source *fallbackSource) Download(
 		if repoOwner == "" {
 			err = errors.New("ENV[GITHUB_REPOSITORY_OWNER] not set")
 		} else {
-			private, err := newAuthenticatedGithubSource(repoOwner, source.name, source.kind)
-			if err == nil {
+			private := newGithubSource(repoOwner, source.name, source.kind)
+			if !private.HasAuthentication() {
+				err = errors.New("no GitHub authentication information provided")
+			} else {
 				resp, length, err := private.Download(version, opSy, arch, getHTTPResponse)
 				if err == nil {
 					return resp, length, nil
@@ -660,7 +656,7 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	return source.Download(*info.Version, opSy, arch, getHTTPResponse)
 }
 
-func buildHTTPRequest(pluginEndpoint, tokenType, token, username, secret string) (*http.Request, error) {
+func buildHTTPRequest(pluginEndpoint string, token string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", pluginEndpoint, nil)
 	if err != nil {
 		return nil, err
@@ -670,12 +666,7 @@ func buildHTTPRequest(pluginEndpoint, tokenType, token, username, secret string)
 	req.Header.Set("User-Agent", userAgent)
 
 	if token != "" {
-		if tokenType == "" {
-			tokenType = "Bearer"
-		}
-		req.Header.Set("Authentication", fmt.Sprintf("%s %s", tokenType, token))
-	} else if secret != "" && username != "" {
-		req.SetBasicAuth(username, secret)
+		req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 	}
 
 	return req, nil
@@ -693,7 +684,16 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, -1, errors.Errorf("%d HTTP error fetching plugin from %s", resp.StatusCode, req.URL)
+
+		errmsg := "%d HTTP error fetching plugin from %s"
+
+		if req.URL.Host == "api.github.com" && resp.StatusCode == 404 {
+			errmsg += ". If this is a private GitHub repository, try " +
+				"providing a token via the GITHUB_TOKEN environment variable. " +
+				"See: https://github.com/settings/tokens"
+		}
+
+		return nil, -1, errors.Errorf(errmsg, resp.StatusCode, req.URL)
 	}
 
 	return resp.Body, resp.ContentLength, nil
@@ -1040,10 +1040,18 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, string, error) {
 	var filename string
 
+	// We currently bundle some language plugins with "pulumi" and thus expect them to be next to the pulumi
+	// binary. We also always allow these language plugins to be picked up from PATH even if
+	// PULUMI_IGNORE_AMBIENT_PLUGINS is set. New languages will not be specially treated and will behave like
+	// any other plugin.
+	isBundledLangauge := kind == LanguagePlugin &&
+		(name == "dotnet" || name == "go" || name == "nodejs" || name == "python")
+
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
 	optOut, isFound := os.LookupEnv("PULUMI_IGNORE_AMBIENT_PLUGINS")
-	if !(isFound && cmdutil.IsTruthy(optOut)) || kind == LanguagePlugin {
+	includeAmbient := !(isFound && cmdutil.IsTruthy(optOut)) || isBundledLangauge
+	if includeAmbient {
 		filename = (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
 		if path, err := exec.LookPath(filename); err == nil {
 			logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
@@ -1057,7 +1065,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 	// the language plugin) it's possible someone is running `pulumi` with an explicit path on the command line or
 	// has done symlink magic such that `pulumi` is on the path, but the language plugins are not. So, if possible,
 	// look next to the instance of `pulumi` that is running to find this language plugin.
-	if kind == LanguagePlugin {
+	if isBundledLangauge {
 		exePath, exeErr := os.Executable()
 		if exeErr == nil {
 			fullPath, fullErr := filepath.EvalSymlinks(exePath)
@@ -1093,7 +1101,7 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 				Name:    name,
 				Kind:    kind,
 				Version: version,
-			})
+			}, includeAmbient)
 		}
 		match = &candidate
 	} else {
@@ -1137,7 +1145,11 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		return matchDir, matchPath, nil
 	}
 
-	return "", "", nil
+	return "", "", NewMissingError(PluginInfo{
+		Name:    name,
+		Kind:    kind,
+		Version: version,
+	}, includeAmbient)
 }
 
 // SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.

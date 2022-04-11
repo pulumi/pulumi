@@ -279,6 +279,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
+	t.Parallel()
 
 	// build a stack with an export
 	exporterOpts := &integration.ProgramTestOptions{
@@ -290,28 +291,10 @@ func TestMultiStackReferencePython(t *testing.T) {
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
-		NoParallel: true,
+		DestroyOnCleanup: true,
 	}
-
-	// we're going to manually initialize and then defer the deletion of this stack
-	exporterPt := integration.ProgramTestManualLifeCycle(t, exporterOpts)
-	exporterPt.TestFinished = false
-	err := exporterPt.TestLifeCyclePrepare()
-	assert.NoError(t, err)
-	err = exporterPt.TestLifeCycleInitialize()
-	assert.NoError(t, err)
-
-	defer func() {
-		destroyErr := exporterPt.TestLifeCycleDestroy()
-		assert.NoError(t, destroyErr)
-		exporterPt.TestFinished = true
-		exporterPt.TestCleanUp()
-	}()
-
-	err = exporterPt.TestPreviewUpdateAndEdits()
-	assert.NoError(t, err)
-
 	exporterStackName := exporterOpts.GetStackName().String()
+	integration.ProgramTest(t, exporterOpts)
 
 	importerOpts := &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
@@ -323,7 +306,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 			"org":                 os.Getenv("PULUMI_TEST_OWNER"),
 			"exporter_stack_name": exporterStackName,
 		},
-		NoParallel: true,
+		DestroyOnCleanup: true,
 	}
 	integration.ProgramTest(t, importerOpts)
 }
@@ -547,6 +530,7 @@ func TestPythonResourceArgs(t *testing.T) {
 
 // Test remote component construction in Python.
 func TestConstructPython(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -574,6 +558,7 @@ func TestConstructPython(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
@@ -594,8 +579,7 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...stri
 		Secrets: map[string]string{
 			"secret": "this super secret is encrypted",
 		},
-		Quick:      true,
-		NoParallel: true, // avoid contention for Dir
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -669,6 +653,7 @@ func TestConstructSlowPython(t *testing.T) {
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainPython(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -696,6 +681,7 @@ func TestConstructPlainPython(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t,
 				filepath.Join("..", "testprovider"),
@@ -714,8 +700,7 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int,
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick:      true,
-		NoParallel: true, // avoid contention for Dir
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
@@ -730,6 +715,7 @@ func TestConstructUnknownPython(t *testing.T) {
 
 // Test methods on remote components.
 func TestConstructMethodsPython(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		componentDir string
 	}{
@@ -744,6 +730,7 @@ func TestConstructMethodsPython(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -752,8 +739,7 @@ func TestConstructMethodsPython(t *testing.T) {
 				Dependencies: []string{
 					filepath.Join("..", "..", "sdk", "python", "env", "src"),
 				},
-				Quick:      true,
-				NoParallel: true, // avoid contention for Dir
+				Quick: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
 				},
@@ -775,6 +761,7 @@ func TestConstructMethodsErrorsPython(t *testing.T) {
 }
 
 func TestConstructProviderPython(t *testing.T) {
+	t.Parallel()
 	const testDir = "construct_component_provider"
 	tests := []struct {
 		componentDir string
@@ -790,6 +777,7 @@ func TestConstructProviderPython(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -798,8 +786,7 @@ func TestConstructProviderPython(t *testing.T) {
 				Dependencies: []string{
 					filepath.Join("..", "..", "sdk", "python", "env", "src"),
 				},
-				Quick:      true,
-				NoParallel: true, // avoid contention for Dir
+				Quick: true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
@@ -823,11 +810,14 @@ func TestGetResourcePython(t *testing.T) {
 
 // Regresses https://github.com/pulumi/pulumi/issues/6471
 func TestAutomaticVenvCreation(t *testing.T) {
+	t.Parallel()
+
 	// Do not use integration.ProgramTest to avoid automatic venv
 	// handling by test harness; we actually are testing venv
 	// handling by the pulumi CLI itself.
 
 	check := func(t *testing.T, venvPathTemplate string, dir string) {
+		t.Parallel()
 
 		e := ptesting.NewEnvironment(t)
 		defer func() {
@@ -895,6 +885,8 @@ func TestAutomaticVenvCreation(t *testing.T) {
 }
 
 func TestPythonAwaitOutputs(t *testing.T) {
+	t.Parallel()
+
 	t.Run("SuccessSimple", func(t *testing.T) {
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "success"),
@@ -1113,6 +1105,7 @@ func TestComponentProviderSchemaPython(t *testing.T) {
 // results of each runtime independently, we have an integration test in each
 // language.
 func TestAboutPython(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join("about", "python")
 
 	e := ptesting.NewEnvironment(t)

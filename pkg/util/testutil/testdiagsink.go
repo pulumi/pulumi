@@ -18,6 +18,7 @@ import (
 	"io/ioutil"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 // TestDiagSink suppresses message output, but captures them, so that they can be compared to expected results.
@@ -31,7 +32,8 @@ func NewTestDiagSink(pwd string) *TestDiagSink {
 	return &TestDiagSink{
 		Pwd: pwd,
 		sink: diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{
-			Pwd: pwd,
+			Color: colors.Never,
+			Pwd:   pwd,
 		}),
 		messages: make(map[diag.Severity][]string),
 	}

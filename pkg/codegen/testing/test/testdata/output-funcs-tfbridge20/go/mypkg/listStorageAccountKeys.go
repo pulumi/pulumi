@@ -41,7 +41,11 @@ func ListStorageAccountKeysOutput(ctx *pulumi.Context, args ListStorageAccountKe
 		ApplyT(func(v interface{}) (ListStorageAccountKeysResult, error) {
 			args := v.(ListStorageAccountKeysArgs)
 			r, err := ListStorageAccountKeys(ctx, &args, opts...)
-			return *r, err
+			var s ListStorageAccountKeysResult
+			if r != nil {
+				s = *r
+			}
+			return s, err
 		}).(ListStorageAccountKeysResultOutput)
 }
 

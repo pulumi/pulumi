@@ -24,6 +24,8 @@ import (
 )
 
 func TestV1ToV2(t *testing.T) {
+	t.Parallel()
+
 	v1 := apitype.ResourceV1{
 		URN:    resource.URN("foo"),
 		Custom: true,

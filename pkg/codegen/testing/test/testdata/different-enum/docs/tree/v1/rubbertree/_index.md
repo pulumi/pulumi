@@ -162,7 +162,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_csharp">
-<a href="#diameter_csharp" style="color: inherit; text-decoration: inherit;">Diameter</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#diameter_csharp" style="color: inherit; text-decoration: inherit;">Diameter</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#diameter">Pulumi.<wbr>Other.<wbr>Tree.<wbr>V1.<wbr>Diameter</a></span>
@@ -170,7 +170,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="type_csharp">
-<a href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Rubber<wbr>Tree<wbr>Variety</a></span>
@@ -178,7 +178,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="container_csharp">
-<a href="#container_csharp" style="color: inherit; text-decoration: inherit;">Container</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_csharp" style="color: inherit; text-decoration: inherit;">Container</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Pulumi.<wbr>Plant.<wbr>Inputs.<wbr>Container<wbr>Args</a></span>
@@ -186,7 +186,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="farm_csharp">
-<a href="#farm_csharp" style="color: inherit; text-decoration: inherit;">Farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#farm_csharp" style="color: inherit; text-decoration: inherit;">Farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Farm</a> | string</span>
@@ -194,7 +194,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="size_csharp">
-<a href="#size_csharp" style="color: inherit; text-decoration: inherit;">Size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_csharp" style="color: inherit; text-decoration: inherit;">Size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#treesize">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size</a></span>
@@ -206,7 +206,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_go">
-<a href="#diameter_go" style="color: inherit; text-decoration: inherit;">Diameter</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#diameter_go" style="color: inherit; text-decoration: inherit;">Diameter</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#diameter">Diameter</a></span>
@@ -214,7 +214,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="type_go">
-<a href="#type_go" style="color: inherit; text-decoration: inherit;">Type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_go" style="color: inherit; text-decoration: inherit;">Type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</a></span>
@@ -222,7 +222,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="container_go">
-<a href="#container_go" style="color: inherit; text-decoration: inherit;">Container</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_go" style="color: inherit; text-decoration: inherit;">Container</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
@@ -230,7 +230,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="farm_go">
-<a href="#farm_go" style="color: inherit; text-decoration: inherit;">Farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#farm_go" style="color: inherit; text-decoration: inherit;">Farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | string</span>
@@ -238,7 +238,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="size_go">
-<a href="#size_go" style="color: inherit; text-decoration: inherit;">Size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_go" style="color: inherit; text-decoration: inherit;">Size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
@@ -250,7 +250,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_nodejs">
-<a href="#diameter_nodejs" style="color: inherit; text-decoration: inherit;">diameter</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#diameter_nodejs" style="color: inherit; text-decoration: inherit;">diameter</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#diameter">Diameter</a></span>
@@ -258,7 +258,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="type_nodejs">
-<a href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</a></span>
@@ -266,7 +266,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="container_nodejs">
-<a href="#container_nodejs" style="color: inherit; text-decoration: inherit;">container</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_nodejs" style="color: inherit; text-decoration: inherit;">container</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
@@ -274,7 +274,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="farm_nodejs">
-<a href="#farm_nodejs" style="color: inherit; text-decoration: inherit;">farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#farm_nodejs" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | string</span>
@@ -282,7 +282,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="size_nodejs">
-<a href="#size_nodejs" style="color: inherit; text-decoration: inherit;">size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_nodejs" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
@@ -294,7 +294,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_python">
-<a href="#diameter_python" style="color: inherit; text-decoration: inherit;">diameter</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#diameter_python" style="color: inherit; text-decoration: inherit;">diameter</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#diameter">Diameter</a></span>
@@ -302,7 +302,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
         <span id="type_python">
-<a href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</a></span>
@@ -310,7 +310,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="container_python">
-<a href="#container_python" style="color: inherit; text-decoration: inherit;">container</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_python" style="color: inherit; text-decoration: inherit;">container</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
@@ -318,7 +318,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="farm_python">
-<a href="#farm_python" style="color: inherit; text-decoration: inherit;">farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#farm_python" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | str</span>
@@ -326,7 +326,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="size_python">
-<a href="#size_python" style="color: inherit; text-decoration: inherit;">size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_python" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
@@ -345,7 +345,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
-<a href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -357,7 +357,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
-<a href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -369,7 +369,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
-<a href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -381,7 +381,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
-<a href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -519,7 +519,7 @@ The following state arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_csharp">
-<a href="#state_farm_csharp" style="color: inherit; text-decoration: inherit;">Farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_farm_csharp" style="color: inherit; text-decoration: inherit;">Farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Farm</a> | string</span>
@@ -531,7 +531,7 @@ The following state arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_go">
-<a href="#state_farm_go" style="color: inherit; text-decoration: inherit;">Farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_farm_go" style="color: inherit; text-decoration: inherit;">Farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | string</span>
@@ -543,7 +543,7 @@ The following state arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_nodejs">
-<a href="#state_farm_nodejs" style="color: inherit; text-decoration: inherit;">farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_farm_nodejs" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | string</span>
@@ -555,7 +555,7 @@ The following state arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_python">
-<a href="#state_farm_python" style="color: inherit; text-decoration: inherit;">farm</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_farm_python" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#farm">Farm</a> | str</span>
@@ -578,7 +578,7 @@ The following state arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_csharp">
-<a href="#size_csharp" style="color: inherit; text-decoration: inherit;">Size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_csharp" style="color: inherit; text-decoration: inherit;">Size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containersize">Pulumi.<wbr>Plant.<wbr>Container<wbr>Size</a></span>
@@ -586,7 +586,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="brightness_csharp">
-<a href="#brightness_csharp" style="color: inherit; text-decoration: inherit;">Brightness</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#brightness_csharp" style="color: inherit; text-decoration: inherit;">Brightness</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containerbrightness">Pulumi.<wbr>Plant.<wbr>Container<wbr>Brightness</a></span>
@@ -594,7 +594,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="color_csharp">
-<a href="#color_csharp" style="color: inherit; text-decoration: inherit;">Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_csharp" style="color: inherit; text-decoration: inherit;">Color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containercolor">Pulumi.<wbr>Plant.<wbr>Container<wbr>Color</a> | string</span>
@@ -602,7 +602,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="material_csharp">
-<a href="#material_csharp" style="color: inherit; text-decoration: inherit;">Material</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#material_csharp" style="color: inherit; text-decoration: inherit;">Material</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -614,7 +614,7 @@ The following state arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_go">
-<a href="#size_go" style="color: inherit; text-decoration: inherit;">Size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_go" style="color: inherit; text-decoration: inherit;">Size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containersize">Container<wbr>Size</a></span>
@@ -622,7 +622,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="brightness_go">
-<a href="#brightness_go" style="color: inherit; text-decoration: inherit;">Brightness</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#brightness_go" style="color: inherit; text-decoration: inherit;">Brightness</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness</a></span>
@@ -630,7 +630,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="color_go">
-<a href="#color_go" style="color: inherit; text-decoration: inherit;">Color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_go" style="color: inherit; text-decoration: inherit;">Color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containercolor">Container<wbr>Color</a> | string</span>
@@ -638,7 +638,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="material_go">
-<a href="#material_go" style="color: inherit; text-decoration: inherit;">Material</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#material_go" style="color: inherit; text-decoration: inherit;">Material</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -650,7 +650,7 @@ The following state arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_nodejs">
-<a href="#size_nodejs" style="color: inherit; text-decoration: inherit;">size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_nodejs" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containersize">Container<wbr>Size</a></span>
@@ -658,7 +658,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="brightness_nodejs">
-<a href="#brightness_nodejs" style="color: inherit; text-decoration: inherit;">brightness</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#brightness_nodejs" style="color: inherit; text-decoration: inherit;">brightness</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness</a></span>
@@ -666,7 +666,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="color_nodejs">
-<a href="#color_nodejs" style="color: inherit; text-decoration: inherit;">color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_nodejs" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containercolor">Container<wbr>Color</a> | string</span>
@@ -674,7 +674,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="material_nodejs">
-<a href="#material_nodejs" style="color: inherit; text-decoration: inherit;">material</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#material_nodejs" style="color: inherit; text-decoration: inherit;">material</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -686,7 +686,7 @@ The following state arguments are supported:
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_python">
-<a href="#size_python" style="color: inherit; text-decoration: inherit;">size</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#size_python" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containersize">Container<wbr>Size</a></span>
@@ -694,7 +694,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="brightness_python">
-<a href="#brightness_python" style="color: inherit; text-decoration: inherit;">brightness</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#brightness_python" style="color: inherit; text-decoration: inherit;">brightness</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness</a></span>
@@ -702,7 +702,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="color_python">
-<a href="#color_python" style="color: inherit; text-decoration: inherit;">color</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#color_python" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#containercolor">Container<wbr>Color</a> | str</span>
@@ -710,7 +710,7 @@ The following state arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="material_python">
-<a href="#material_python" style="color: inherit; text-decoration: inherit;">material</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#material_python" style="color: inherit; text-decoration: inherit;">material</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>

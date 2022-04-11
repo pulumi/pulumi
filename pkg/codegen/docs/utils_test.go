@@ -25,6 +25,8 @@ import (
 )
 
 func TestWbr(t *testing.T) {
+	t.Parallel()
+
 	assert.Equal(t, wbr(""), "")
 	assert.Equal(t, wbr("a"), "a")
 	assert.Equal(t, wbr("A"), "A")

@@ -15,6 +15,7 @@
 package nodejs
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"regexp"
@@ -22,6 +23,7 @@ import (
 	"unicode"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // isReservedWord returns true if s is a reserved word as per ECMA-262.
@@ -125,4 +127,17 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 	}
 
 	return safeName, nil
+}
+
+// escape returns the string escaped for a JS string literal
+func escape(s string) string {
+	// Seems the most fool-proof way of doing this is by using the JSON marshaler and then stripping the surrounding quotes
+	escaped, err := json.Marshal(s)
+	contract.AssertNoError(err)
+	contract.Assertf(len(escaped) >= 2, "JSON(%s) expected a quoted string but returned %s", s, escaped)
+	contract.Assertf(
+		escaped[0] == byte('"') && escaped[len(escaped)-1] == byte('"'),
+		"JSON(%s) expected a quoted string but returned %s", s, escaped)
+
+	return string(escaped)[1:(len(escaped) - 1)]
 }

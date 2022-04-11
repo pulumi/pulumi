@@ -79,7 +79,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_csharp">
-<a href="#a_csharp" style="color: inherit; text-decoration: inherit;">A</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_csharp" style="color: inherit; text-decoration: inherit;">A</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
@@ -87,7 +87,7 @@ The following arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="b_csharp">
-<a href="#b_csharp" style="color: inherit; text-decoration: inherit;">B</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_csharp" style="color: inherit; text-decoration: inherit;">B</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -99,7 +99,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_go">
-<a href="#a_go" style="color: inherit; text-decoration: inherit;">A</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_go" style="color: inherit; text-decoration: inherit;">A</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
@@ -107,7 +107,7 @@ The following arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="b_go">
-<a href="#b_go" style="color: inherit; text-decoration: inherit;">B</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_go" style="color: inherit; text-decoration: inherit;">B</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -119,7 +119,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_nodejs">
-<a href="#a_nodejs" style="color: inherit; text-decoration: inherit;">a</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_nodejs" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
@@ -127,7 +127,7 @@ The following arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="b_nodejs">
-<a href="#b_nodejs" style="color: inherit; text-decoration: inherit;">b</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_nodejs" style="color: inherit; text-decoration: inherit;">b</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -139,7 +139,7 @@ The following arguments are supported:
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_python">
-<a href="#a_python" style="color: inherit; text-decoration: inherit;">a</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#a_python" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
@@ -147,7 +147,7 @@ The following arguments are supported:
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="b_python">
-<a href="#b_python" style="color: inherit; text-decoration: inherit;">b</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_python" style="color: inherit; text-decoration: inherit;">b</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
@@ -168,7 +168,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_csharp">
-<a href="#r_csharp" style="color: inherit; text-decoration: inherit;">R</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#r_csharp" style="color: inherit; text-decoration: inherit;">R</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -180,7 +180,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_go">
-<a href="#r_go" style="color: inherit; text-decoration: inherit;">R</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#r_go" style="color: inherit; text-decoration: inherit;">R</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -192,7 +192,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_nodejs">
-<a href="#r_nodejs" style="color: inherit; text-decoration: inherit;">r</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#r_nodejs" style="color: inherit; text-decoration: inherit;">r</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
@@ -204,7 +204,7 @@ The following output properties are available:
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_python">
-<a href="#r_python" style="color: inherit; text-decoration: inherit;">r</a>
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#r_python" style="color: inherit; text-decoration: inherit;">r</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>

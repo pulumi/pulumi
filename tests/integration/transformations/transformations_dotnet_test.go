@@ -14,6 +14,8 @@ import (
 )
 
 func TestDotNetTransformations(t *testing.T) {
+	t.Parallel()
+
 	for _, dir := range Dirs {
 		d := filepath.Join("dotnet", dir)
 		t.Run(d, func(t *testing.T) {

@@ -46,8 +46,13 @@ var pathTests = []struct {
 }
 
 func TestRelPathToRelImport(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range pathTests {
+		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
 			result := relPathToRelImport(tt.input)
 			if result != tt.expected {
 				t.Errorf("expected \"%s\"; got \"%s\"", tt.expected, result)
@@ -57,6 +62,8 @@ func TestRelPathToRelImport(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
+	t.Parallel()
+
 	if !test.NoSDKCodegenChecks() {
 		// To speed up these tests, we will generate one common
 		// virtual environment for all of them to run in, rather than
@@ -206,6 +213,8 @@ func pyTestCheck(t *testing.T, codeDir string) {
 }
 
 func TestGenerateTypeNames(t *testing.T) {
+	t.Parallel()
+
 	test.TestTypeNameCodegen(t, "python", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
 		// Decode python-specific info
 		err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer})

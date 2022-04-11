@@ -129,6 +129,10 @@ func (c *cachingCrypter) DecryptValue(ciphertext string) (string, error) {
 	return c.decrypter.DecryptValue(ciphertext)
 }
 
+func (c *cachingCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	return c.decrypter.BulkDecrypt(ciphertexts)
+}
+
 // encryptSecret encrypts the plaintext associated with the given secret value.
 func (c *cachingCrypter) encryptSecret(secret *resource.Secret, plaintext string) (string, error) {
 	// If the cache has an entry for this secret and the plaintext has not changed, re-use the ciphertext.
@@ -187,4 +191,41 @@ func (c *mapDecrypter) DecryptValue(ciphertext string) (string, error) {
 	c.cache[ciphertext] = plaintext
 
 	return plaintext, nil
+}
+
+func (c *mapDecrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
+	// Loop and find the entries that are already cached, then BulkDecrypt the rest
+	secretMap := map[string]string{}
+	var toDecrypt []string
+	if c.cache == nil {
+		// Don't bother searching for the cached subset if the cache is nil
+		toDecrypt = ciphertexts
+	} else {
+		toDecrypt = make([]string, 0)
+		for _, ct := range ciphertexts {
+			if plaintext, ok := c.cache[ct]; ok {
+				secretMap[ct] = plaintext
+			} else {
+				toDecrypt = append(toDecrypt, ct)
+			}
+		}
+	}
+
+	// try and bulk decrypt the rest
+	decrypted, err := c.decrypter.BulkDecrypt(toDecrypt)
+	if err != nil {
+		return nil, err
+	}
+
+	// And add them to the cache
+	if c.cache == nil {
+		c.cache = make(map[string]string)
+	}
+
+	for ct, pt := range decrypted {
+		secretMap[ct] = pt
+		c.cache[ct] = pt
+	}
+
+	return secretMap, nil
 }

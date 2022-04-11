@@ -16,14 +16,13 @@ module.exports = {
     "ignorePatterns": [
         "**/bin/**/*.ts",
         "tests/automation/data/tcfg/*.ts",
-        "tests/sxs_ts_3.6/*.ts",
-        "tests/sxs_ts_latest/*.ts",
+        "tests/sxs_ts_test/*.ts",
         "tests/mockpackage/**/*.ts",
     ],
     "rules": {
         "header/header": [
-            2, 
-            "line", 
+            2,
+            "line",
             [
                 {
                     "pattern": "Copyright \\d{4}-\\d{4}, Pulumi Corporation."

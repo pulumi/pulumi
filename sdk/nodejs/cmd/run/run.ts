@@ -17,6 +17,8 @@ import * as url from "url";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
+import * as ini from "ini";
+import * as semver from "semver";
 import { parseConfigFileTextToJson } from "typescript";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
@@ -56,6 +58,28 @@ function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> 
         // This is all best-effort so if we can't load the package.json file, that's
         // fine.
         return {};
+    }
+}
+
+// Reads and parses the contents of .npmrc file if it exists under the project root
+// This assumes that .npmrc is a sibling to package.json
+function npmRcFromProjectRoot(projectRoot: string): Record<string, any>  {
+    const emptyConfig = {};
+    try {
+        const npmRcPath = path.join(projectRoot, ".npmrc");
+        if (!fs.existsSync(npmRcPath)) {
+            return emptyConfig;
+        }
+        // file .npmrc exists, read its contents
+        const npmRc = fs.readFileSync(npmRcPath, "utf-8");
+        // Use ini to parse the contents of the .npmrc file
+        // This is what node does as described in the npm docs
+        // https://docs.npmjs.com/cli/v8/configuring-npm/npmrc#comments
+        return ini.parse(npmRc);
+    } catch {
+        // .npmrc file exists but we couldn't read or parse it
+        // user out of luck here
+        return emptyConfig;
     }
 }
 
@@ -191,7 +215,7 @@ export function run(
     }
 
     let program: string = argv._[0];
-    if (program.indexOf("/") !== 0) {
+    if (!path.isAbsolute(program)) {
         // If this isn't an absolute path, make it relative to the working directory.
         program = path.join(process.cwd(), program);
     }
@@ -262,7 +286,8 @@ ${defaultMessage}`);
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
-            const packageObject = packageObjectFromProjectRoot(projectRootFromProgramPath(program));
+            const projectRoot = projectRootFromProgramPath(program);
+            const packageObject = packageObjectFromProjectRoot(projectRoot);
 
             let programExport: any;
 
@@ -294,6 +319,28 @@ ${defaultMessage}`);
             } else {
                 // It's a CommonJS module, so require the module and capture any module outputs it exported.
                 programExport = require(program);
+            }
+
+            // Check compatible engines before running the program:
+            const npmRc = npmRcFromProjectRoot(projectRoot);
+            if (npmRc["engine-strict"] && packageObject.engines && packageObject.engines.node) {
+                // found:
+                //   - { engines: { node: "<version>" } } in package.json
+                //   - engine-strict=true in .npmrc
+                //
+                // Check that current node version satistfies the required version
+                const requiredNodeVersion = packageObject.engines.node;
+                const currentNodeVersion = process.versions.node;
+                if (!semver.satisfies(currentNodeVersion, requiredNodeVersion)) {
+                    const errorMessage = [
+                        `Your current Node version is incompatible to run ${projectRoot}`,
+                        `Expected version: ${requiredNodeVersion} as found in package.json > engines > node`,
+                        `Actual Node version: ${currentNodeVersion}`,
+                        `To fix issue, install a Node version that is compatible with ${requiredNodeVersion}`,
+                    ];
+
+                    throw new Error(errorMessage.join("\n"));
+                }
             }
 
             // If the exported value was itself a Function, then just execute it.  This allows for

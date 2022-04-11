@@ -1,10 +1,21 @@
 ### Improvements
- - [area/cli] - Implemented `state rename` command [#9098](https://github.com/pulumi/pulumi/pull/9098)
 
-- [cli/plugins] `pulumi plugin install` can now look up the latest version of plugins on GitHub releases.
-  [#9012](https://github.com/pulumi/pulumi/pull/9012)
+- [cli] - Installing of language specific project dependencies is now managed by the language plugins, not the pulumi cli.
+  [#9294](https://github.com/pulumi/pulumi/pull/9294)
 
-- [cli/backend] - `pulumi cancel` is now supported for the file state backend.
-  [#9100](https://github.com/pulumi/pulumi/pull/9100)
+- [cli] Warn users when there are pending operations but proceed with deployment
+  [#9293](https://github.com/pulumi/pulumi/pull/9293)
+
+- [cli] Display more useful diffs for secrets that are not primitive values
+  [#9351](https://github.com/pulumi/pulumi/pull/9351)
+
+- [cli] - Warn when `additionalSecretOutputs` is used to mark the `id` property as secret.
+  [#9360](https://github.com/pulumi/pulumi/pull/9360)
 
 ### Bug Fixes
+
+- [codegen/node] - Fix an issue with escaping deprecation messages.
+  [#9371](https://github.com/pulumi/pulumi/pull/9371)
+
+- [cli] - StackReferences will now correctly use the service bulk decryption end point.
+  [#9373](https://github.com/pulumi/pulumi/pull/9373)
