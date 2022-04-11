@@ -198,3 +198,34 @@ func TestNewUniqueV2HexDeterminism(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEqual(t, id2, id3)
 }
+
+func TestUniqueNameDeterminism(t *testing.T) {
+	t.Parallel()
+
+	randomSeed := []byte{0, 1, 2, 3, 4}
+	prefix := "prefix"
+	randlen := 7
+	maxlen := 100
+	randchars := []rune("xyzw")
+	name, err := NewUniqueName(randomSeed, prefix, randlen, maxlen, randchars)
+	assert.Nil(t, err)
+	assert.Equal(t, "prefixzyxwwzy", name)
+}
+
+func TestUniqueNameNonDeterminism(t *testing.T) {
+	t.Parallel()
+
+	prefix := "prefix"
+	randlen := 4
+	maxlen := 100
+	name, err := NewUniqueName(nil, prefix, randlen, maxlen, nil)
+	assert.Nil(t, err)
+	assert.True(t, strings.HasPrefix(name, prefix), "%s does not have prefix %s", name, prefix)
+	assert.Len(t, name, len(prefix)+randlen)
+
+	name2, err := NewUniqueName(nil, prefix, randlen, maxlen, nil)
+	assert.Nil(t, err)
+	assert.True(t, strings.HasPrefix(name2, prefix), "%s does not have prefix %s", name2, prefix)
+	assert.Len(t, name2, len(prefix)+randlen)
+	assert.NotEqual(t, name, name2)
+}

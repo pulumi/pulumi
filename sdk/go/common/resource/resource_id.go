@@ -19,6 +19,8 @@ import (
 	cryptorand "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"hash"
+	"math/rand"
 
 	"github.com/pkg/errors"
 
@@ -127,4 +129,88 @@ func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randlen, maxlen 
 	contract.Assert(len(bs) == 64)
 
 	return prefix + hex.EncodeToString(bs)[:randlen], nil
+}
+
+type cryptoSource struct{}
+
+func (c *cryptoSource) Int63() int64 {
+	return int64(c.Uint64() & ((1 << 63) - 1))
+}
+func (cryptoSource) Uint64() uint64 {
+	var data uint64
+	err := binary.Read(cryptorand.Reader, binary.LittleEndian, &data)
+	contract.AssertNoError(err)
+	return data
+}
+func (cryptoSource) Seed(seed int64) {
+	panic("We don't expect or support this method being called")
+}
+
+type hashSource struct {
+	hasher hash.Hash
+	seed   []byte
+}
+
+func (src *hashSource) Int63() int64 {
+	return int64(src.Uint64() & ((1 << 63) - 1))
+}
+func (src *hashSource) Uint64() uint64 {
+	// hashSource works by re-hashing the same seed over and over.
+	n, err := src.hasher.Write(src.seed)
+	contract.Assert(n == len(src.seed))
+	contract.AssertNoError(err)
+
+	randomBytes := src.hasher.Sum(nil)
+	// We expect hasher to be a SHA256 hash function
+	contract.Assert(len(randomBytes) == 32)
+
+	// Collapse the 32 bytes down to 8
+	seed :=
+		binary.LittleEndian.Uint64(randomBytes[0:]) ^
+			binary.LittleEndian.Uint64(randomBytes[8:]) ^
+			binary.LittleEndian.Uint64(randomBytes[16:]) ^
+			binary.LittleEndian.Uint64(randomBytes[24:])
+
+	return seed
+}
+func (hashSource) Seed(seed int64) {
+	panic("We don't expect or support this method being called")
+}
+
+// NewUniqueName generates a new "random" string primarily intended for use by resource providers for
+// autonames. It will take the optional prefix and append randlen random characters (defaulting to 8 if not >
+// 0). The result must not exceed maxlen total characters (if > 0). The characters that make up the random
+// suffix can be set via charset, and will default to [a-f0-9]. Note that capping to maxlen necessarily
+// increases the risk of collisions. The randomness for this method is a function of randomSeed if given, else
+// it falls back to a non-deterministic source of randomness.
+func NewUniqueName(randomSeed []byte, prefix string, randlen, maxlen int, charset []rune) (string, error) {
+	if randlen <= 0 {
+		randlen = 8
+	}
+	if maxlen > 0 && len(prefix)+randlen > maxlen {
+		return "", errors.Errorf(
+			"name '%s' plus %d random chars is longer than maximum length %d", prefix, randlen, maxlen)
+	}
+
+	if charset == nil {
+		charset = []rune("0123456789abcdef")
+	}
+
+	var randomSource rand.Source
+	if randomSeed == nil {
+		randomSource = &cryptoSource{}
+	} else {
+		randomSource = &hashSource{
+			seed:   randomSeed,
+			hasher: crypto.SHA256.New(),
+		}
+	}
+
+	random := rand.New(randomSource) // nolint gosec
+	randomSuffix := make([]rune, randlen)
+	for i := range randomSuffix {
+		randomSuffix[i] = charset[random.Intn(len(charset))]
+	}
+
+	return prefix + string(randomSuffix), nil
 }
