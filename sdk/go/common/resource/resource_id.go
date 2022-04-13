@@ -120,9 +120,7 @@ func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randlen, maxlen 
 	_, err := hasher.Write([]byte(urn))
 	contract.AssertNoError(err)
 
-	bytes := make([]byte, 4)
-	binary.LittleEndian.PutUint32(bytes, uint32(sequenceNumber))
-	_, err = hasher.Write(bytes)
+	err = binary.Write(hasher, binary.LittleEndian, uint32(sequenceNumber))
 	contract.AssertNoError(err)
 
 	bs := hasher.Sum(nil)
