@@ -98,17 +98,6 @@ type Events interface {
 	PolicyEvents
 }
 
-// PlanPendingOperationsError is an error returned from `NewPlan` if there exist pending operations in the
-// snapshot that we are preparing to operate upon. The engine does not allow any operations to be pending
-// when operating on a snapshot.
-type PlanPendingOperationsError struct {
-	Operations []resource.Operation
-}
-
-func (p PlanPendingOperationsError) Error() string {
-	return "one or more operations are currently pending"
-}
-
 type goalMap struct {
 	m sync.Map
 }

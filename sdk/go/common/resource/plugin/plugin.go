@@ -91,9 +91,10 @@ type plugin struct {
 	Args []string
 	// Env specifies the environment of the plugin in the same format as go's os/exec.Cmd.Env
 	// https://golang.org/pkg/os/exec/#Cmd (each entry is of the form "key=value").
-	Env    []string
-	Conn   *grpc.ClientConn
-	Proc   *os.Process
+	Env  []string
+	Conn *grpc.ClientConn
+	// Function to trigger the plugin to be killed. If the plugin is a process this will just SIGKILL it.
+	Kill   func() error
 	Stdin  io.WriteCloser
 	Stdout io.ReadCloser
 	Stderr io.ReadCloser
@@ -191,7 +192,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 	for {
 		n, readerr := plug.Stdout.Read(b)
 		if readerr != nil {
-			killerr := plug.Proc.Kill()
+			killerr := plug.Kill()
 			contract.IgnoreError(killerr) // We are ignoring because the readerr trumps it.
 
 			// If from the output we have seen, return a specific error if possible.
@@ -213,7 +214,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 
 	// Parse the output line (minus the '\n') to ensure it's a numeric port.
 	if _, err = strconv.Atoi(port); err != nil {
-		killerr := plug.Proc.Kill()
+		killerr := plug.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
 		return nil, errors.Wrapf(
 			err, "%v plugin [%v] wrote a non-numeric port to stdout ('%v')", prefix, bin, port)
@@ -319,11 +320,29 @@ func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plu
 		return nil, err
 	}
 
+	kill := func() error {
+		var result *multierror.Error
+
+		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
+		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
+		// for the child processes to close.
+		if err := cmdutil.KillChildren(cmd.Process.Pid); err != nil {
+			result = multierror.Append(result, err)
+		}
+
+		// IDEA: consider a more graceful termination than just SIGKILL.
+		if err := cmd.Process.Kill(); err != nil {
+			result = multierror.Append(result, err)
+		}
+
+		return result.ErrorOrNil()
+	}
+
 	return &plugin{
 		Bin:    bin,
 		Args:   args,
 		Env:    env,
-		Proc:   cmd.Process,
+		Kill:   kill,
 		Stdin:  in,
 		Stdout: out,
 		Stderr: err,
@@ -361,19 +380,7 @@ func (p *plugin) Close() error {
 		contract.IgnoreClose(p.Conn)
 	}
 
-	var result error
-
-	// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
-	// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
-	// for the child processes to close.
-	if err := cmdutil.KillChildren(p.Proc.Pid); err != nil {
-		result = multierror.Append(result, err)
-	}
-
-	// IDEA: consider a more graceful termination than just SIGKILL.
-	if err := p.Proc.Kill(); err != nil {
-		result = multierror.Append(result, err)
-	}
+	result := p.Kill()
 
 	// Wait for stdout and stderr to drain.
 	if p.stdoutDone != nil {

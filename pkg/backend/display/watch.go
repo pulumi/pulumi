@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -35,7 +34,7 @@ import (
 const timeFormat = "15:04:05.000"
 
 // ShowWatchEvents renders incoming engine events for display in Watch Mode.
-func ShowWatchEvents(op string, action apitype.UpdateKind, events <-chan engine.Event, done chan<- bool, opts Options) {
+func ShowWatchEvents(op string, events <-chan engine.Event, done chan<- bool, opts Options) {
 	// Ensure we close the done channel before exiting.
 	defer func() { close(done) }()
 	for e := range events {

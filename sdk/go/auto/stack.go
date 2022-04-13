@@ -242,7 +242,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", preOpts.UserAgent))
 	}
 	if preOpts.Color != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%q", preOpts.Color))
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%s", preOpts.Color))
 	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
