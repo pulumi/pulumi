@@ -1,20 +1,24 @@
 ### Improvements
 
-- When a resource is aliased to an existing resource with a different URN, only store
-  the alias of the existing resource in the statefile rather than storing all possible
-  aliases.
-  [#9288](https://github.com/pulumi/pulumi/pull/9288)
+- [cli] - Installing of language specific project dependencies is now managed by the language plugins, not the pulumi cli.
+  [#9294](https://github.com/pulumi/pulumi/pull/9294)
 
-- Clear pending operations during `pulumi refresh` or `pulumi up -r`.
-  [#8435](https://github.com/pulumi/pulumi/pull/8435)
+- [cli] Warn users when there are pending operations but proceed with deployment
+  [#9293](https://github.com/pulumi/pulumi/pull/9293)
 
-- [cli] - `pulumi whoami --verbose` and `pulumi about` include a list of the current users organizations.
-  [#9211](https://github.com/pulumi/pulumi/pull/9211)
+- [cli] Display more useful diffs for secrets that are not primitive values
+  [#9351](https://github.com/pulumi/pulumi/pull/9351)
+
+- [cli] - Warn when `additionalSecretOutputs` is used to mark the `id` property as secret.
+  [#9360](https://github.com/pulumi/pulumi/pull/9360)
+
+- [cli] Display richer diffs for texutal property values.
+  [#9376](https://github.com/pulumi/pulumi/pull/9376)
 
 ### Bug Fixes
 
-- [codegen/go] - Fix Go SDK function output to check for errors
-  [pulumi-aws#1872](https://github.com/pulumi/pulumi-aws/issues/1872)
+- [codegen/node] - Fix an issue with escaping deprecation messages.
+  [#9371](https://github.com/pulumi/pulumi/pull/9371)
 
-- [cli/engine] - Fix a panic due to `Check` returning nil while using update plans.
-  [#9304](https://github.com/pulumi/pulumi/pull/9304)
+- [cli] - StackReferences will now correctly use the service bulk decryption end point.
+  [#9373](https://github.com/pulumi/pulumi/pull/9373)

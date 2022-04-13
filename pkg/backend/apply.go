@@ -236,7 +236,7 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 	displayOpts.SummaryDiff = true
 
 	for _, e := range events {
-		msg := display.RenderDiffEvent(updateKind, e, seen, displayOpts)
+		msg := display.RenderDiffEvent(e, seen, displayOpts)
 		if msg != "" && e.Type != engine.SummaryEvent {
 			_, err := buff.WriteString(msg)
 			contract.IgnoreError(err)
