@@ -290,6 +290,7 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case pcl.IntrinsicApply:
+		fmt.Printf("Generating apply %v returning %v\n", expr, expr.Signature.ReturnType)
 		g.genApply(w, expr)
 	case intrinsicAwait:
 		g.Fgenf(w, "await %.17v", expr.Args[0])
@@ -327,24 +328,74 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "computeFilebase64sha256(%v)", expr.Args[0])
 	case pcl.Invoke:
-		pkg, module, fn, diags := functionName(expr.Args[0])
-		contract.Assert(len(diags) == 0)
-		if module != "" {
-			module = "." + module
-		}
+
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
-		name := fmt.Sprintf("%s%s.%s", makeValidIdentifier(pkg), module, fn)
-		if isOut {
-			name = fmt.Sprintf("%sOutput", name)
+		promiseArgs := []model.Expression{}
+		for _, e := range expr.Args {
+			if model.ContainsPromises(e.Type()) {
+				promiseArgs = append(promiseArgs, e)
+			} else {
+				switch e := e.(type) {
+				case *model.ObjectConsExpression:
+					for _, item := range e.Items {
+						if model.ContainsPromises(item.Value.Type()) {
+							fmt.Printf("(cons) Found promise in object-cons\n")
+						} else {
+							if e, ok := item.Value.(*model.ScopeTraversalExpression); ok {
+								for _, part := range e.Parts {
+									fmt.Printf("(cons) (template) Part: %v of type %v (%[1]T)", part, part.Type())
+								}
+							} else {
+								e := item.Value
+								fmt.Printf("(cons) Found non-promise value: %v of type %v(%T)\n", e, e.Type(), e)
+							}
+						}
+					}
+				default:
+					fmt.Printf("Found non-promise value: %v of type %v(%T)\n", e, e.Type(), e)
+				}
+			}
 		}
-		g.Fprintf(w, "%s(", name)
-		if len(expr.Args) >= 2 {
-			g.Fgenf(w, "%.v", expr.Args[1])
+
+		writeInvoke := func() {
+			pkg, module, fn, diags := functionName(expr.Args[0])
+			contract.Assert(len(diags) == 0)
+			if module != "" {
+				module = "." + module
+			}
+			name := fmt.Sprintf("%s%s.%s", makeValidIdentifier(pkg), module, fn)
+			if isOut {
+				name = fmt.Sprintf("%sOutput", name)
+			}
+			g.Fprintf(w, "%s(", name)
+			if len(expr.Args) >= 2 {
+				g.Fgenf(w, "%.v", expr.Args[1])
+			}
+			if len(expr.Args) == 3 {
+				g.Fgenf(w, ", %.v", expr.Args[2])
+			}
+			g.Fprint(w, ")")
 		}
-		if len(expr.Args) == 3 {
-			g.Fgenf(w, ", %.v", expr.Args[2])
+
+		// We need to hoist this into an
+		switch len(promiseArgs) {
+		// No promised inputs, we can just apply the inputs normally
+		case 0:
+			writeInvoke()
+		// We should use a arg.then((arg) => ${INVOKE}(arg))
+		case 1:
+			g.Fgenf(w, "%v.then(TEMP => ", promiseArgs[0])
+			writeInvoke()
+			g.Fgen(w, ")")
+
+		// We should use Promise.all(promiseArgs => ${INVOKE}(args))
+		default:
+			g.Fgenf(w, "Promise.all(%.v).then(TEMP => ", promiseArgs)
+			// TODO: handle reassignment
+			writeInvoke()
+			g.Fgen(w, ")")
 		}
-		g.Fprint(w, ")")
+
 	case "join":
 		g.Fgenf(w, "%.20v.join(%v)", expr.Args[1], expr.Args[0])
 	case "length":

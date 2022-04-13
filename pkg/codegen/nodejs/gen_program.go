@@ -42,14 +42,17 @@ type generator struct {
 
 	asyncMain     bool
 	configCreated bool
+
+	iterNodes  []pcl.Node
+	varInScope string
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-	// Linearize the nodes into an order appropriate for procedural code generation.
-	nodes := pcl.Linearize(program)
 
 	g := &generator{
 		program: program,
+		// Linearize the nodes into an order appropriate for procedural code generation.
+		iterNodes: pcl.Linearize(program),
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -64,7 +67,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 
 	var index bytes.Buffer
 	g.genPreamble(&index, program, preambleHelperMethods)
-	for _, n := range nodes {
+	for _, n := range g.iterNodes {
 		if r, ok := n.(*pcl.Resource); ok && requiresAsyncMain(r) {
 			g.asyncMain = true
 			break
@@ -78,13 +81,13 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 
 	indenter(func() {
-		for _, n := range nodes {
+		for _, n := range g.iterNodes {
 			g.genNode(&index, n)
 		}
 
 		if g.asyncMain {
 			var result *model.ObjectConsExpression
-			for _, n := range nodes {
+			for _, n := range g.iterNodes {
 				if o, ok := n.(*pcl.OutputVariable); ok {
 					if result == nil {
 						result = &model.ObjectConsExpression{}

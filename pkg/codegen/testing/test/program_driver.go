@@ -157,6 +157,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Repro for #9357",
 		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
 	},
+	{
+		Directory:   "chained-invokes",
+		Description: "Chain invokes",
+		Skip:        codegen.NewStringSet("dotnet", "go"),
+	},
 }
 
 // Checks that a generated program is correct
@@ -267,17 +272,17 @@ func TestProgramCodegen(
 				assert.Equal(t, string(expected), string(files[testcase.OutputFile]))
 			}
 			if testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
-				extraPulumiPackages := codegen.NewStringSet()
-				for _, n := range program.Nodes {
-					if r, isResource := n.(*pcl.Resource); isResource {
-						pkg, _, _, _ := r.DecomposeToken()
-						if pkg != "pulumi" {
-							extraPulumiPackages.Add(pkg)
-						}
-					}
-				}
-				testcase.Check(t, expectedFile, extraPulumiPackages)
+				deps := getDeps(program)
+				testcase.Check(t, expectedFile, deps)
 			}
 		})
 	}
+}
+
+func getDeps(program *pcl.Program) codegen.StringSet {
+	deps := codegen.NewStringSet()
+	for _, pkg := range program.Packages() {
+		deps.Add(pkg.Name)
+	}
+	return deps
 }

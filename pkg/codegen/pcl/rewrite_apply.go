@@ -652,3 +652,50 @@ func RewriteApplies(expr model.Expression, nameInfo NameInfo, applyPromises bool
 	}
 	return model.VisitExpression(expr, applyRewriter.preVisit, applyRewriter.postVisit)
 }
+
+func VisitExpressionsInNode(node Node, pre, post model.ExpressionVisitor) (Node, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
+	rewrite := func(expr model.Expression) model.Expression {
+		e, d := model.VisitExpression(expr, pre, post)
+		diags = diags.Extend(d)
+		return e
+	}
+	switch node := node.(type) {
+	case *Resource:
+		r := *node
+		if node.Inputs != nil {
+			r.Inputs = nil
+			for _, attr := range node.Inputs {
+				a := *attr
+				a.Value = rewrite(a.Value)
+				r.Inputs = append(r.Inputs, &a)
+			}
+		}
+		if node.Options != nil {
+			r.Options = &ResourceOptions{
+				Definition:    node.Definition,
+				Range:         rewrite(node.Options.Range),
+				Parent:        rewrite(node.Options.Parent),
+				Provider:      rewrite(node.Options.Provider),
+				DependsOn:     rewrite(node.Options.DependsOn),
+				Protect:       rewrite(node.Options.Protect),
+				IgnoreChanges: rewrite(node.Options.IgnoreChanges),
+			}
+		}
+		return &r, diags
+
+	case *ConfigVariable:
+		c := *node
+		c.DefaultValue = rewrite(node.DefaultValue)
+		return &c, diags
+
+	case *LocalVariable:
+		v := *node
+		v.Definition.Value = rewrite(node.Definition.Value)
+		return &v, diags
+	case *OutputVariable:
+		o := *node
+		o.Value = rewrite(node.Value)
+		return &o, diags
+	}
+}

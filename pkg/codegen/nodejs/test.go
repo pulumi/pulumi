@@ -70,7 +70,11 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 	for _, d := range deps.SortedValues() {
 		pkgName := fmt.Sprintf("@pulumi/%s", d)
 		set := func(pkgVersion string) {
-			result[pkgName] = "^" + pkgVersion
+			if pkgVersion == "" {
+				result[pkgName] = "latest"
+			} else {
+				result[pkgName] = "^" + pkgVersion
+			}
 		}
 		switch d {
 		case "aws":
@@ -84,7 +88,8 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 		case "random":
 			set(test.RandomSchema)
 		default:
-			t.Logf("Unknown package requested: %s", d)
+			set("")
+			t.Logf(`Unknown package requested: %s, "latest" set`, d)
 		}
 
 	}
