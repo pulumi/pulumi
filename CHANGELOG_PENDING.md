@@ -15,6 +15,9 @@
 - [cli] Display richer diffs for texutal property values.
   [#9376](https://github.com/pulumi/pulumi/pull/9376)
 
+- [auto/*] Add `--save-plan` and `--plan` options to automation API.
+  [#9391](https://github.com/pulumi/pulumi/pull/9391)
+
 ### Bug Fixes
 
 - [codegen/node] - Fix an issue with escaping deprecation messages.
