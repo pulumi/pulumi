@@ -8,7 +8,6 @@ require (
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cheggaaa/pb v1.0.18
-	github.com/creack/pty v1.1.9 // indirect
 	github.com/djherbis/times v1.2.0
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
@@ -41,7 +40,6 @@ require (
 )
 
 require (
-	github.com/kr/pty v1.1.8
 	github.com/pkg/term v1.1.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
 )
