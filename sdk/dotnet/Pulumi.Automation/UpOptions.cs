@@ -20,6 +20,8 @@ namespace Pulumi.Automation
 
         public PulumiFn? Program { get; set; }
 
+        public string? Plan {get; set; }
+
         /// <summary>
         /// A custom logger instance that will be used for the action. Note that it will only be used
         /// if <see cref="Program"/> is also provided.

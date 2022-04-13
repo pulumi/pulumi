@@ -101,6 +101,13 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// Plan specifies the path to save the update plan from the preview to.
+func Plan(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Plan = path
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -135,6 +142,8 @@ type Options struct {
 	UserAgent string
 	// Colorize output. Choices are: always, never, raw, auto (default "auto")
 	Color string
+	// Save an update plan to the given path.
+	Plan string
 }
 
 type optionFunc func(*Options)

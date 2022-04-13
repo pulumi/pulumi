@@ -187,6 +187,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.color) {
                 args.push("--color", opts.color);
             }
+            if (opts.plan) {
+                args.push("--plan", opts.plan);
+            }
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -298,6 +301,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.color) {
                 args.push("--color", opts.color);
+            }
+            if (opts.plan) {
+                args.push("--save-plan", opts.plan);
             }
         }
 
@@ -747,6 +753,7 @@ export interface UpOptions {
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
     color?: "always" | "never" | "raw" | "auto";
+    plan?: string;
 }
 
 /**
@@ -765,6 +772,7 @@ export interface PreviewOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     color?: "always" | "never" | "raw" | "auto";
+    plan?: string;
 }
 
 /**
