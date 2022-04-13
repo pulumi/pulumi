@@ -771,7 +771,8 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			var res pulumi.CustomResourceState
-			err := ctx.RegisterResource("pkgA:m:typA", "resA", resourceProperties, &res, pulumi.ReplaceOnChanges([]string{"foo"}))
+			err := ctx.RegisterResource("pkgA:m:typA", "resA", resourceProperties, &res,
+				pulumi.ReplaceOnChanges([]string{"foo"}))
 			assert.NoError(t, err)
 
 			return nil
