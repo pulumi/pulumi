@@ -196,7 +196,7 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 		return nil, err
 	}
 
-	diff, err := p.provider.DiffConfig(urn, state, inputs, true, req.GetIgnoreChanges())
+	diff, err := p.provider.DiffConfig(urn, state, inputs, true)
 	if err != nil {
 		return nil, p.checkNYI("DiffConfig", err)
 	}
@@ -283,7 +283,7 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 		return nil, err
 	}
 
-	diff, err := p.provider.Diff(urn, id, state, inputs, true, req.GetIgnoreChanges())
+	diff, err := p.provider.Diff(urn, id, state, inputs, true)
 	if err != nil {
 		return nil, err
 	}
@@ -362,8 +362,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	newState, _, err := p.provider.Update(urn, id, state, inputs, req.GetTimeout(), req.GetIgnoreChanges(),
-		req.GetPreview())
+	newState, _, err := p.provider.Update(urn, id, state, inputs, req.GetTimeout(), req.GetPreview())
 	if err != nil {
 		return nil, err
 	}

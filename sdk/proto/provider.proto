@@ -172,7 +172,10 @@ message DiffRequest {
     string urn = 2;                    // the Pulumi URN for this resource.
     google.protobuf.Struct olds = 3;   // the old values of provider inputs to diff.
     google.protobuf.Struct news = 4;   // the new values of provider inputs to diff.
-    repeated string ignoreChanges = 5; // a set of property paths that should be treated as unchanged.
+    // We used to send a set of property paths that should be treated as unchanged to the provider, but we
+    // manage this entirely in the engine now.
+    reserved 5;
+    reserved "ignoreChanges";
 }
 
 message PropertyDiff {
@@ -271,7 +274,10 @@ message UpdateRequest {
     google.protobuf.Struct olds = 3;   // the old values of provider inputs for the resource to update.
     google.protobuf.Struct news = 4;   // the new values of provider inputs for the resource to update.
     double timeout = 5;                // the update request timeout represented in seconds.
-    repeated string ignoreChanges = 6; // a set of property paths that should be treated as unchanged.
+    // We used to send a set of property paths that should be treated as unchanged to the provider, but we
+    // manage this entirely in the engine now.
+    reserved 6;
+    reserved "ignoreChanges";
     bool preview = 7;                   // true if this is a preview and the provider should not actually create the resource.
 }
 

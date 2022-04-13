@@ -376,7 +376,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.DiffRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.DiffRequest.repeatedFields_, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
 goog.inherits(proto.pulumirpc.DiffRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -523,7 +523,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.UpdateRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.UpdateRequest.repeatedFields_, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
 goog.inherits(proto.pulumirpc.UpdateRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -3969,13 +3969,6 @@ proto.pulumirpc.CheckFailure.prototype.setReason = function(value) {
 
 
 
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.pulumirpc.DiffRequest.repeatedFields_ = [5];
-
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -4010,8 +4003,7 @@ proto.pulumirpc.DiffRequest.toObject = function(includeInstance, msg) {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     urn: jspb.Message.getFieldWithDefault(msg, 2, ""),
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f
+    news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -4065,10 +4057,6 @@ proto.pulumirpc.DiffRequest.deserializeBinaryFromReader = function(msg, reader) 
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setNews(value);
-      break;
-    case 5:
-      var value = /** @type {string} */ (reader.readString());
-      msg.addIgnorechanges(value);
       break;
     default:
       reader.skipField();
@@ -4127,13 +4115,6 @@ proto.pulumirpc.DiffRequest.serializeBinaryToWriter = function(message, writer) 
       4,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
-  f = message.getIgnorechangesList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
-      5,
-      f
     );
   }
 };
@@ -4246,43 +4227,6 @@ proto.pulumirpc.DiffRequest.prototype.clearNews = function() {
  */
 proto.pulumirpc.DiffRequest.prototype.hasNews = function() {
   return jspb.Message.getField(this, 4) != null;
-};
-
-
-/**
- * repeated string ignoreChanges = 5;
- * @return {!Array<string>}
- */
-proto.pulumirpc.DiffRequest.prototype.getIgnorechangesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 5));
-};
-
-
-/**
- * @param {!Array<string>} value
- * @return {!proto.pulumirpc.DiffRequest} returns this
- */
-proto.pulumirpc.DiffRequest.prototype.setIgnorechangesList = function(value) {
-  return jspb.Message.setField(this, 5, value || []);
-};
-
-
-/**
- * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.pulumirpc.DiffRequest} returns this
- */
-proto.pulumirpc.DiffRequest.prototype.addIgnorechanges = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 5, value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.pulumirpc.DiffRequest} returns this
- */
-proto.pulumirpc.DiffRequest.prototype.clearIgnorechangesList = function() {
-  return this.setIgnorechangesList([]);
 };
 
 
@@ -5761,13 +5705,6 @@ proto.pulumirpc.ReadResponse.prototype.hasInputs = function() {
 
 
 
-/**
- * List of repeated fields within this message type.
- * @private {!Array<number>}
- * @const
- */
-proto.pulumirpc.UpdateRequest.repeatedFields_ = [6];
-
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -5804,7 +5741,6 @@ proto.pulumirpc.UpdateRequest.toObject = function(includeInstance, msg) {
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     timeout: jspb.Message.getFloatingPointFieldWithDefault(msg, 5, 0.0),
-    ignorechangesList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
     preview: jspb.Message.getBooleanFieldWithDefault(msg, 7, false)
   };
 
@@ -5863,10 +5799,6 @@ proto.pulumirpc.UpdateRequest.deserializeBinaryFromReader = function(msg, reader
     case 5:
       var value = /** @type {number} */ (reader.readDouble());
       msg.setTimeout(value);
-      break;
-    case 6:
-      var value = /** @type {string} */ (reader.readString());
-      msg.addIgnorechanges(value);
       break;
     case 7:
       var value = /** @type {boolean} */ (reader.readBool());
@@ -5935,13 +5867,6 @@ proto.pulumirpc.UpdateRequest.serializeBinaryToWriter = function(message, writer
   if (f !== 0.0) {
     writer.writeDouble(
       5,
-      f
-    );
-  }
-  f = message.getIgnorechangesList();
-  if (f.length > 0) {
-    writer.writeRepeatedString(
-      6,
       f
     );
   }
@@ -6080,43 +6005,6 @@ proto.pulumirpc.UpdateRequest.prototype.getTimeout = function() {
  */
 proto.pulumirpc.UpdateRequest.prototype.setTimeout = function(value) {
   return jspb.Message.setProto3FloatField(this, 5, value);
-};
-
-
-/**
- * repeated string ignoreChanges = 6;
- * @return {!Array<string>}
- */
-proto.pulumirpc.UpdateRequest.prototype.getIgnorechangesList = function() {
-  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 6));
-};
-
-
-/**
- * @param {!Array<string>} value
- * @return {!proto.pulumirpc.UpdateRequest} returns this
- */
-proto.pulumirpc.UpdateRequest.prototype.setIgnorechangesList = function(value) {
-  return jspb.Message.setField(this, 6, value || []);
-};
-
-
-/**
- * @param {string} value
- * @param {number=} opt_index
- * @return {!proto.pulumirpc.UpdateRequest} returns this
- */
-proto.pulumirpc.UpdateRequest.prototype.addIgnorechanges = function(value, opt_index) {
-  return jspb.Message.addToRepeatedField(this, 6, value, opt_index);
-};
-
-
-/**
- * Clears the list making it empty but non-null.
- * @return {!proto.pulumirpc.UpdateRequest} returns this
- */
-proto.pulumirpc.UpdateRequest.prototype.clearIgnorechangesList = function() {
-  return this.setIgnorechangesList([]);
 };
 
 

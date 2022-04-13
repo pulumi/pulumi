@@ -389,7 +389,6 @@ operation necessary to reconcile the two (i.e. no operation, an `Update, or a `R
           [`Unknown`s](#unknowns).
 - `news`: the current input `Object` for the resource as returned by [`Check`](#check) or
           [`Read`](#read). This value may contain [`Unknown`s](#unknowns).
-- `ignoreChanges`: the set of [property paths](#property-paths) to treat as unchanged.
 
 ##### Results
 
@@ -491,7 +490,6 @@ updating the resource, in which case the `preview` argument will be `true`.
           [`Unknown`](#unknowns) value; otherwise, it is guaranteed to be fully-known.
 - `timeout`: the timeout for the update operation. If this value is `0`, the provider
              should apply the default update timeout for the resource.
-- `ignoreChanges`: the set of [property paths](#property-paths) to treat as unchanged.
 - `preview`: if true, the provider should calculate the state `Object` as accurately as it
              is able without actually updating the resource. Top-level properties that
              are present in the resource's [schema](#schema) but are omitted from its

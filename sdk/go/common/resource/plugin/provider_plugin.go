@@ -280,7 +280,7 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
+	allowUnknowns bool) (DiffResult, error) {
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 	molds, err := MarshalProperties(olds, MarshalOptions{
@@ -304,10 +304,9 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	}
 
 	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
-		Urn:           string(urn),
-		Olds:          molds,
-		News:          mnews,
-		IgnoreChanges: ignoreChanges,
+		Urn:  string(urn),
+		Olds: molds,
+		News: mnews,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -604,8 +603,7 @@ func (p *provider) Check(urn resource.URN,
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *provider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool,
-	ignoreChanges []string) (DiffResult, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool) (DiffResult, error) {
 
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
@@ -652,11 +650,10 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	}
 
 	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
-		Id:            string(id),
-		Urn:           string(urn),
-		Olds:          molds,
-		News:          mnews,
-		IgnoreChanges: ignoreChanges,
+		Id:   string(id),
+		Urn:  string(urn),
+		Olds: molds,
+		News: mnews,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -919,7 +916,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 // Update updates an existing resource with new values.
 func (p *provider) Update(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+	preview bool) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
@@ -984,13 +981,12 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	var resourceError error
 	var resourceStatus = resource.StatusOK
 	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
-		Id:            string(id),
-		Urn:           string(urn),
-		Olds:          molds,
-		News:          mnews,
-		Timeout:       timeout,
-		IgnoreChanges: ignoreChanges,
-		Preview:       preview,
+		Id:      string(id),
+		Urn:     string(urn),
+		Olds:    molds,
+		News:    mnews,
+		Timeout: timeout,
+		Preview: preview,
 	})
 	if err != nil {
 		resourceStatus, _, liveObject, _, resourceError = parseError(err)

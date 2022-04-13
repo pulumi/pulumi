@@ -684,7 +684,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.deployment.preview
 
-	diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns, goal.IgnoreChanges)
+	diff, err := sg.diff(urn, old, new, oldInputs, oldOutputs, inputs, prov, allowUnknowns)
 	// If the plugin indicated that the diff is unavailable, assume that the resource will be updated and
 	// report the message contained in the error.
 	if _, ok := err.(plugin.DiffUnavailableError); ok {
@@ -701,6 +701,12 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	}
 
 	hasInitErrors := len(old.InitErrors) > 0
+
+	// Update the diff to apply any ignoreChanges annotations
+	diff, err = applyIgnoreChanges(diff, goal.IgnoreChanges)
+	if err != nil {
+		return nil, result.FromError(err)
+	}
 
 	// Update the diff to apply any replaceOnChanges annotations and to include initErrors in the diff.
 	diff, err = applyReplaceOnChanges(diff, goal.ReplaceOnChanges, hasInitErrors)
@@ -1281,7 +1287,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	newRes, ok := sg.providers[newRef.URN()]
 	contract.Assertf(ok, "new deployment didn't have provider, despite resource using it?")
 
-	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, newRes.Inputs, true, nil)
+	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, newRes.Inputs, true)
 	if err != nil {
 		return false, err
 	}
@@ -1301,8 +1307,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 
 // diff returns a DiffResult for the given resource.
 func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInputs, oldOutputs,
-	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
-	ignoreChanges []string) (plugin.DiffResult, error) {
+	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool) (plugin.DiffResult, error) {
 
 	// If this resource is marked for replacement, just return a "replace" diff that blames the id.
 	if sg.isTargetedReplace(urn) {
@@ -1333,28 +1338,23 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 	}
 
-	return diffResource(urn, old.ID, oldInputs, oldOutputs, newInputs, prov, allowUnknowns, ignoreChanges)
+	return diffResource(urn, old.ID, oldInputs, oldOutputs, newInputs, prov, allowUnknowns)
 }
 
 // diffResource invokes the Diff function for the given custom resource's provider and returns the result.
 func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
-	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
-	ignoreChanges []string) (plugin.DiffResult, error) {
+	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool) (plugin.DiffResult, error) {
 
 	contract.Require(prov != nil, "prov != nil")
 
 	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
-	diff, err := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
+	diff, err := prov.Diff(urn, id, oldOutputs, newInputs, allowUnknowns)
 	if err != nil {
 		return diff, err
 	}
 	if diff.Changes == plugin.DiffUnknown {
-		new, res := processIgnoreChanges(newInputs, oldInputs, ignoreChanges)
-		if res != nil {
-			return plugin.DiffResult{}, err
-		}
-		tmp := oldInputs.Diff(new)
+		tmp := oldInputs.Diff(newInputs)
 		if tmp.AnyChanges() {
 			diff.Changes = plugin.DiffSome
 			diff.ChangedKeys = tmp.ChangedKeys()
@@ -1390,6 +1390,87 @@ func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.S
 		}
 	}
 	return true
+}
+
+// applyIgnoreChanges clears any changes from a diff result that should be ignored
+func applyIgnoreChanges(diff plugin.DiffResult, ignoreChanges []string) (plugin.DiffResult, error) {
+
+	var ignoreChangesPaths []resource.PropertyPath
+	for _, p := range ignoreChanges {
+		path, err := resource.ParsePropertyPath(p)
+		if err != nil {
+			return diff, err
+		}
+		ignoreChangesPaths = append(ignoreChangesPaths, path)
+	}
+
+	// Calculate the new DetailedDiff
+	var modifiedDiff map[string]plugin.PropertyDiff
+	if diff.DetailedDiff != nil {
+		modifiedDiff = map[string]plugin.PropertyDiff{}
+		for p, v := range diff.DetailedDiff {
+			diffPath, err := resource.ParsePropertyPath(p)
+			if err != nil {
+				return diff, err
+			}
+			ignoreChange := false
+			for _, replaceOnChangePath := range ignoreChangesPaths {
+				if replaceOnChangePath.Contains(diffPath) {
+					ignoreChange = true
+					break
+				}
+			}
+			if !ignoreChange {
+				modifiedDiff[p] = v
+			}
+		}
+	}
+
+	var modifiedReplaceKeys = make([]resource.PropertyKey, 0)
+	for _, k := range diff.ReplaceKeys {
+		diffPath := resource.PropertyPath{string(k)}
+		ignoreChange := false
+		for _, replaceOnChangePath := range ignoreChangesPaths {
+			if replaceOnChangePath.Contains(diffPath) {
+				ignoreChange = true
+				break
+			}
+		}
+		if !ignoreChange {
+			modifiedReplaceKeys = append(modifiedReplaceKeys, k)
+		}
+	}
+
+	var modifiedChangedKeys = make([]resource.PropertyKey, 0)
+	for _, k := range diff.ChangedKeys {
+		diffPath := resource.PropertyPath{string(k)}
+		ignoreChange := false
+		for _, replaceOnChangePath := range ignoreChangesPaths {
+			if replaceOnChangePath.Contains(diffPath) {
+				ignoreChange = true
+				break
+			}
+		}
+		if !ignoreChange {
+			modifiedChangedKeys = append(modifiedChangedKeys, k)
+		}
+	}
+
+	modifiedChanges := diff.Changes
+	// If we've cleared everything, report no diff
+	if len(modifiedChangedKeys) == 0 && len(modifiedReplaceKeys) == 0 && len(modifiedDiff) == 0 {
+		modifiedChanges = plugin.DiffNone
+	}
+
+	return plugin.DiffResult{
+		DetailedDiff:        modifiedDiff,
+		ReplaceKeys:         modifiedReplaceKeys,
+		ChangedKeys:         modifiedChangedKeys,
+		Changes:             modifiedChanges,
+		DeleteBeforeReplace: diff.DeleteBeforeReplace,
+		StableKeys:          diff.StableKeys,
+	}, nil
+
 }
 
 // processIgnoreChanges sets the value for each ignoreChanges property in inputs to the value from oldInputs.  This has
@@ -1655,7 +1736,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		contract.Assert(prov != nil)
 
 		// Call the provider's `Diff` method and return.
-		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true, nil)
+		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true)
 		if err != nil {
 			return false, nil, result.FromError(err)
 		}

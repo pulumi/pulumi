@@ -308,8 +308,6 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 	t.Parallel()
 
-	var expectedIgnoreChanges []string
-
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -323,9 +321,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-					// just verify that the IgnoreChanges prop made it through
-					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil
 				},
 			}, nil
@@ -391,8 +387,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					if !olds["foo"].DeepEquals(news["foo"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
@@ -402,7 +397,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 
 					if !olds["foo"].DeepEquals(news["foo"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"foo"}}, nil
@@ -759,8 +754,9 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, replaceOnChanges []string) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					// just verify that the ReplaceOnChanges prop made it through
+					var replaceOnChanges []string
 					assert.Equal(t, expectedReplaceOnChanges, replaceOnChanges)
 					return plugin.DiffResult{}, nil
 				},

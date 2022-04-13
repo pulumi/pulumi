@@ -187,8 +187,7 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
@@ -268,8 +267,7 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
 					for k := range news {
@@ -401,8 +399,7 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 			}
 
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil
 				},
 				ConfigureF: configurable.configure,
@@ -491,8 +488,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 			}
 
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					keys := []resource.PropertyKey{}
 					for k := range news {
 						keys = append(keys, k)
@@ -638,8 +634,7 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
 					for k := range news {
@@ -867,8 +862,7 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.10"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				// This implementation of DiffConfig always requests replacement.
-				DiffConfigF: func(_ resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffConfigF: func(_ resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 
 					keys := []resource.PropertyKey{}
 					for k := range news {

@@ -77,8 +77,7 @@ func destroySpecificTargets(
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
@@ -88,7 +87,7 @@ func destroySpecificTargets(
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
@@ -178,8 +177,7 @@ func updateSpecificTargets(t *testing.T, targets []string, targetDependents bool
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 
 					// all resources will change.
 					return plugin.DiffResult{
@@ -188,7 +186,7 @@ func updateSpecificTargets(t *testing.T, targets []string, targetDependents bool
 				},
 
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					preview bool) (resource.PropertyMap, resource.Status, error) {
 
 					outputs := olds.Copy()
 
@@ -285,8 +283,7 @@ func updateInvalidTarget(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 
 					// all resources will change.
 					return plugin.DiffResult{
@@ -295,7 +292,7 @@ func updateInvalidTarget(t *testing.T) {
 				},
 
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					preview bool) (resource.PropertyMap, resource.Status, error) {
 
 					outputs := olds.Copy()
 
@@ -575,8 +572,7 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 
 					// No resources will change.
 					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
@@ -802,8 +798,7 @@ func destroySpecificTargetsWithChildren(
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
@@ -813,7 +808,7 @@ func destroySpecificTargetsWithChildren(
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil

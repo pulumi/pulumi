@@ -55,7 +55,7 @@ func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (p *builtinProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+	allowUnknowns bool) (plugin.DiffResult, error) {
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 }
 
@@ -91,7 +91,7 @@ func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.Propert
 }
 
 func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+	allowUnknowns bool) (plugin.DiffResult, error) {
 
 	contract.Assert(urn.Type() == stackReferenceType)
 
@@ -129,7 +129,7 @@ func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, 
 }
 
 func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+	preview bool) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Failf("unexpected update for builtin resource %v", urn)
 	contract.Assert(urn.Type() == stackReferenceType)

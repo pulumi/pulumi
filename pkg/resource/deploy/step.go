@@ -467,7 +467,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 		// Update to the combination of the old "all" state, but overwritten with new inputs.
 		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs,
-			s.new.CustomTimeouts.Update, s.ignoreChanges, s.deployment.preview)
+			s.new.CustomTimeouts.Update, s.deployment.preview)
 		if upderr != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, upderr
@@ -1008,8 +1008,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 	// Diff the user inputs against the provider inputs. If there are any differences, fail the import unless this step
 	// is from an import deployment.
-	diff, err := diffResource(s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview,
-		s.ignoreChanges)
+	diff, err := diffResource(s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview)
 	if err != nil {
 		return rst, nil, err
 	}

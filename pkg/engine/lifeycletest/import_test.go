@@ -24,7 +24,7 @@ func TestImportOption(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 
 					if olds["foo"].DeepEquals(news["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
@@ -276,7 +276,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 
 					if olds["foo"].DeepEquals(news["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
@@ -446,7 +446,7 @@ const importSchema = `{
 }`
 
 func diffImportResource(urn resource.URN, id resource.ID,
-	olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+	olds, news resource.PropertyMap) (plugin.DiffResult, error) {
 
 	if olds["foo"].DeepEquals(news["foo"]) && olds["frob"].DeepEquals(news["frob"]) {
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil

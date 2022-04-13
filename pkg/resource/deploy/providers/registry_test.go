@@ -88,7 +88,7 @@ type testProvider struct {
 	configured  bool
 	checkConfig func(resource.URN, resource.PropertyMap,
 		resource.PropertyMap, bool) (resource.PropertyMap, []plugin.CheckFailure, error)
-	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
+	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool) (plugin.DiffResult, error)
 	config     func(resource.PropertyMap) error
 }
 
@@ -109,8 +109,8 @@ func (prov *testProvider) CheckConfig(urn resource.URN, olds,
 	return prov.checkConfig(urn, olds, news, allowUnknowns)
 }
 func (prov *testProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
-	return prov.diffConfig(urn, olds, news, allowUnknowns, ignoreChanges)
+	allowUnknowns bool) (plugin.DiffResult, error) {
+	return prov.diffConfig(urn, olds, news, allowUnknowns)
 }
 func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
 	if err := prov.config(inputs); err != nil {
@@ -132,12 +132,12 @@ func (prov *testProvider) Read(urn resource.URN, id resource.ID,
 	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("unsupported")
 }
 func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, _ bool, _ []string) (plugin.DiffResult, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, _ bool) (plugin.DiffResult, error) {
 	return plugin.DiffResult{}, errors.New("unsupported")
 }
 func (prov *testProvider) Update(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+	preview bool) (resource.PropertyMap, resource.Status, error) {
 	return nil, resource.StatusOK, errors.New("unsupported")
 }
 func (prov *testProvider) Delete(urn resource.URN,
@@ -236,7 +236,7 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 				return news, nil, nil
 			},
 			diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
-				allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+				allowUnknowns bool) (plugin.DiffResult, error) {
 				return plugin.DiffResult{}, nil
 			},
 			config: config,
@@ -509,7 +509,7 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false, nil)
+		diff, err := r.Diff(urn, id, olds, news, false)
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
@@ -519,7 +519,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, old, p2)
 
 		// Update
-		outs, status, err := r.Update(urn, id, olds, inputs, timeout, nil, false)
+		outs, status, err := r.Update(urn, id, olds, inputs, timeout, false)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, outs)
 		assert.Equal(t, resource.StatusOK, status)
@@ -571,7 +571,7 @@ func TestCRUDPreview(t *testing.T) {
 					return news, nil, nil
 				},
 				diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
-					allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+					allowUnknowns bool) (plugin.DiffResult, error) {
 					// Always reuquire replacement.
 					return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"id"}}, nil
 				},
@@ -640,7 +640,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false, nil)
+		diff, err := r.Diff(urn, id, olds, news, false)
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
@@ -673,7 +673,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false, nil)
+		diff, err := r.Diff(urn, id, olds, news, false)
 		assert.NoError(t, err)
 		assert.True(t, diff.Replace())
 
