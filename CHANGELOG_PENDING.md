@@ -15,6 +15,9 @@
 - [cli] Display richer diffs for texutal property values.
   [#9376](https://github.com/pulumi/pulumi/pull/9376)
 
+- [cli] Display richer diffs for JSON/YAML property values.
+  [#9380](https://github.com/pulumi/pulumi/pull/9380)
+
 ### Bug Fixes
 
 - [codegen/node] - Fix an issue with escaping deprecation messages.
