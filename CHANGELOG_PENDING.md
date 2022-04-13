@@ -22,3 +22,6 @@
 
 - [cli] - StackReferences will now correctly use the service bulk decryption end point.
   [#9373](https://github.com/pulumi/pulumi/pull/9373)
+
+- [cli/plugin] - Dynamic provider binaries will now be found even if pulumi/bin is not on $PATH.
+  [#9396](https://github.com/pulumi/pulumi/pull/9396)
