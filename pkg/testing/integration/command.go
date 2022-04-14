@@ -40,6 +40,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	env = append(env, "PULUMI_DEBUG_COMMANDS=true")
 	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
+	env = append(env, "PULUMI_IGNORE_AMBIENT_PLUGINS=true")
 
 	cmd := exec.Cmd{
 		Path: path,
