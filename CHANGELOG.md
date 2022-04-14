@@ -5,13 +5,6 @@ CHANGELOG
 
 ### Improvements
 
-- [cli] Display richer diffs for JSON/YAML property values.
-  [#9380](https://github.com/pulumi/pulumi/pull/9380)
-
-## 3.29.0 (2022-04-13)
-
-### Improvements
-
 - [cli] - Installing of language specific project dependencies is now managed by the language plugins, not the pulumi cli.
   [#9294](https://github.com/pulumi/pulumi/pull/9294)
 
@@ -26,6 +19,9 @@ CHANGELOG
 
 - [cli] Display richer diffs for texutal property values.
   [#9376](https://github.com/pulumi/pulumi/pull/9376)
+
+- [cli] Display richer diffs for JSON/YAML property values.
+  [#9380](https://github.com/pulumi/pulumi/pull/9380)
 
 ### Bug Fixes
 
