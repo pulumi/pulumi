@@ -16,6 +16,7 @@ package display
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
@@ -24,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
+	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -1042,6 +1044,10 @@ func escape(s string) string {
 }
 
 func (p *propertyPrinter) printTextDiff(old, new string) {
+	if p.printEncodedValueDiff(old, new) {
+		return
+	}
+
 	differ := diffmatchpatch.New()
 	differ.DiffTimeout = 0
 
@@ -1151,4 +1157,58 @@ func (p *propertyPrinter) printLineDiff(diffs []diffmatchpatch.Diff) {
 			printLines(deploy.OpSame, 0, len(lines))
 		}
 	}
+}
+
+func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
+	oldValue, oldKind, ok := p.decodeValue(old)
+	if !ok {
+		return false
+	}
+
+	newValue, newKind, ok := p.decodeValue(new)
+	if !ok {
+		return false
+	}
+
+	if oldKind == newKind {
+		p.write("(%s) ", oldKind)
+	} else {
+		p.write("(%s => %s) ", oldKind, newKind)
+	}
+
+	diff := oldValue.Diff(newValue, resource.IsInternalPropertyKey)
+	if diff == nil {
+		p.withOp(deploy.OpSame).printPropertyValue(oldValue)
+		return true
+	}
+
+	p.printPropertyValueDiff(func(*propertyPrinter) {}, *diff)
+	return true
+}
+
+func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, string, bool) {
+	decode := func() (interface{}, string, bool) {
+		r := strings.NewReader(repr)
+
+		var object interface{}
+		if err := json.NewDecoder(r).Decode(&object); err == nil {
+			return object, "json", true
+		}
+
+		r.Reset(repr)
+		if err := yaml.NewDecoder(r).Decode(&object); err == nil {
+			return object, "yaml", true
+		}
+
+		return nil, "", false
+	}
+
+	object, kind, ok := decode()
+	if ok {
+		switch object.(type) {
+		case []interface{}, map[string]interface{}:
+			return resource.NewPropertyValue(object), kind, true
+		}
+	}
+	return resource.PropertyValue{}, "", false
 }
