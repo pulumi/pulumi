@@ -66,7 +66,7 @@ func (s *ResourceState) GetProvider(token string) ProviderResource {
 // InternalGetRawOutputs obtains the full PropertyMap returned during resource registration,
 // allowing a caller of RegisterResource to obtain directly information about the outputs and their
 // known and secret attributes.
-func InternalGetRawOutputs(ctx *Context, res *ResourceState) Output {
+func InternalGetRawOutputs(res *ResourceState) Output {
 	return res.rawOutputs
 }
 

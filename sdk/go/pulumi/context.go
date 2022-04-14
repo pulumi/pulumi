@@ -1158,6 +1158,7 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		for _, output := range state.outputs {
 			output.getState().reject(err)
 		}
+		state.rawOutputs.getState().reject(err)
 		return
 	}
 

@@ -188,7 +188,7 @@ func TestRegisterResource(t *testing.T) {
 		}, &res3)
 		assert.NoError(t, err)
 		assert.NotNil(t, res3.rawOutputs)
-		output := InternalGetRawOutputs(ctx, &res3.ResourceState)
+		output := InternalGetRawOutputs(&res3.ResourceState)
 		rawOutputsTmp, _, _, _, err := await(output)
 		assert.NoError(t, err)
 		rawOutputs, ok := rawOutputsTmp.(resource.PropertyMap)
