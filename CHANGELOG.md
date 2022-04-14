@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+## 3.29.1 (2022-04-13)
+
+### Improvements
+
+- [cli] Display richer diffs for JSON/YAML property values.
+  [#9380](https://github.com/pulumi/pulumi/pull/9380)
+
 ## 3.29.0 (2022-04-13)
 
 ### Improvements
