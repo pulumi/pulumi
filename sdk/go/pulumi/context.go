@@ -282,7 +282,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 
 	// Now, invoke the RPC to the provider synchronously.
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
-	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
+	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok:               tok,
 		Args:              rpcArgs,
 		Provider:          providerRef,
@@ -699,7 +699,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 
 	tok := "pulumi:pulumi:getResource"
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
-	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
+	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok:  "pulumi:pulumi:getResource",
 		Args: rpcArgs,
 	})

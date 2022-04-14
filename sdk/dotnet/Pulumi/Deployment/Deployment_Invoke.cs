@@ -105,7 +105,7 @@ namespace Pulumi
 
             var provider = await ProviderResource.RegisterAsync(GetProvider(token, options)).ConfigureAwait(false);
 
-            var result = await this.Monitor.InvokeAsync(new InvokeRequest
+            var result = await this.Monitor.InvokeAsync(new ResourceInvokeRequest
             {
                 Tok = token,
                 Provider = provider ?? "",

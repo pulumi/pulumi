@@ -634,7 +634,7 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 }
 
 // Invoke performs an invocation of a member located in a resource provider.
-func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	// Fetch the token and load up the resource provider if necessary.
 	tok := tokens.ModuleMember(req.GetTok())
 	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion(), req.GetPluginDownloadURL())
@@ -668,7 +668,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
 		Label:         label,
 		KeepUnknowns:  true,
-		KeepResources: true,
+		KeepResources: req.GetAcceptResources(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
@@ -770,7 +770,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 }
 
 func (rm *resmon) StreamInvoke(
-	req *pulumirpc.InvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
+	req *pulumirpc.ResourceInvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
 
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
@@ -1320,7 +1320,7 @@ func decorateResourceSpans(span opentracing.Span, method string, req, resp inter
 
 	switch method {
 	case "/pulumirpc.ResourceMonitor/Invoke":
-		span.SetTag("pulumi-decorator", req.(*pulumirpc.InvokeRequest).Tok)
+		span.SetTag("pulumi-decorator", req.(*pulumirpc.ResourceInvokeRequest).Tok)
 	case "/pulumirpc.ResourceMonitor/ReadResource":
 		span.SetTag("pulumi-decorator", req.(*pulumirpc.ReadResourceRequest).Type)
 	case "/pulumirpc.ResourceMonitor/RegisterResource":

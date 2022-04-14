@@ -549,13 +549,13 @@ func (i *interceptingResourceMonitor) SupportsFeature(ctx context.Context,
 }
 
 func (i *interceptingResourceMonitor) Invoke(ctx context.Context,
-	in *pulumirpc.InvokeRequest,
+	in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
 	return i.inner.Invoke(ctx, in, opts...)
 }
 
 func (i *interceptingResourceMonitor) StreamInvoke(ctx context.Context,
-	in *pulumirpc.InvokeRequest,
+	in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
 	return i.inner.StreamInvoke(ctx, in, opts...)
 }

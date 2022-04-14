@@ -243,7 +243,7 @@ def get_resource(
 
             monitor = settings.get_monitor()
             inputs = await rpc.serialize_properties({"urn": urn}, {})
-            req = provider_pb2.InvokeRequest(
+            req = resource_pb2.ResourceInvokeRequest(
                 tok="pulumi:pulumi:getResource", args=inputs, provider="", version=""
             )
 

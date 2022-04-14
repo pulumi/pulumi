@@ -88,7 +88,7 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 	}, nil
 }
 
-func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
+func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
 
 	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{
@@ -128,7 +128,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
 
 	result, err := plugin.MarshalProperties(resultV, plugin.MarshalOptions{
 		KeepSecrets:   true,
-		KeepResources: true,
+		KeepResources: in.GetAcceptResources(),
 	})
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
 	}, nil
 }
 
-func (m *mockMonitor) StreamInvoke(ctx context.Context, in *pulumirpc.InvokeRequest,
+func (m *mockMonitor) StreamInvoke(ctx context.Context, in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
 
 	panic("not implemented")
