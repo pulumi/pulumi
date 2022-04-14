@@ -29,7 +29,7 @@ namespace Pulumi
                 // A channel already exists for this address
                 this._client = new ResourceMonitor.ResourceMonitorClient(monitorChannel);
             }
-            else 
+            else
             {
                 lock (_channelsLock)
                 {
@@ -38,7 +38,7 @@ namespace Pulumi
                         // A channel already exists for this address
                         this._client = new ResourceMonitor.ResourceMonitorClient(monitorChannel);
                     }
-                    else 
+                    else
                     {
                         // Inititialize the monitor channel once for this monitor address
                         var channel = GrpcChannel.ForAddress(new Uri($"http://{monitorAddress}"), new GrpcChannelOptions
@@ -54,22 +54,22 @@ namespace Pulumi
                 }
             }
         }
-        
+
         public async Task<SupportsFeatureResponse> SupportsFeatureAsync(SupportsFeatureRequest request)
             => await this._client.SupportsFeatureAsync(request);
 
-        public async Task<InvokeResponse> InvokeAsync(InvokeRequest request)
+        public async Task<InvokeResponse> InvokeAsync(ResourceInvokeRequest request)
             => await this._client.InvokeAsync(request);
 
         public async Task<CallResponse> CallAsync(CallRequest request)
             => await this._client.CallAsync(request);
-        
+
         public async Task<ReadResourceResponse> ReadResourceAsync(Resource resource, ReadResourceRequest request)
             => await this._client.ReadResourceAsync(request);
 
         public async Task<RegisterResourceResponse> RegisterResourceAsync(Resource resource, RegisterResourceRequest request)
             => await this._client.RegisterResourceAsync(request);
-        
+
         public async Task RegisterResourceOutputsAsync(RegisterResourceOutputsRequest request)
             => await this._client.RegisterResourceOutputsAsync(request);
     }

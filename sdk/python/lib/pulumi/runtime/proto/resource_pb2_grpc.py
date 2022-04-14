@@ -22,12 +22,12 @@ class ResourceMonitorStub(object):
         )
         self.Invoke = channel.unary_unary(
             "/pulumirpc.ResourceMonitor/Invoke",
-            request_serializer=provider__pb2.InvokeRequest.SerializeToString,
+            request_serializer=resource__pb2.ResourceInvokeRequest.SerializeToString,
             response_deserializer=provider__pb2.InvokeResponse.FromString,
         )
         self.StreamInvoke = channel.unary_stream(
             "/pulumirpc.ResourceMonitor/StreamInvoke",
-            request_serializer=provider__pb2.InvokeRequest.SerializeToString,
+            request_serializer=resource__pb2.ResourceInvokeRequest.SerializeToString,
             response_deserializer=provider__pb2.InvokeResponse.FromString,
         )
         self.Call = channel.unary_unary(
@@ -114,12 +114,12 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
         ),
         "Invoke": grpc.unary_unary_rpc_method_handler(
             servicer.Invoke,
-            request_deserializer=provider__pb2.InvokeRequest.FromString,
+            request_deserializer=resource__pb2.ResourceInvokeRequest.FromString,
             response_serializer=provider__pb2.InvokeResponse.SerializeToString,
         ),
         "StreamInvoke": grpc.unary_stream_rpc_method_handler(
             servicer.StreamInvoke,
-            request_deserializer=provider__pb2.InvokeRequest.FromString,
+            request_deserializer=resource__pb2.ResourceInvokeRequest.FromString,
             response_serializer=provider__pb2.InvokeResponse.SerializeToString,
         ),
         "Call": grpc.unary_unary_rpc_method_handler(

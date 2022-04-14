@@ -1040,17 +1040,17 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, string, error) {
 	var filename string
 
-	// We currently bundle some language plugins with "pulumi" and thus expect them to be next to the pulumi
-	// binary. We also always allow these language plugins to be picked up from PATH even if
-	// PULUMI_IGNORE_AMBIENT_PLUGINS is set. New languages will not be specially treated and will behave like
-	// any other plugin.
-	isBundledLangauge := kind == LanguagePlugin &&
-		(name == "dotnet" || name == "go" || name == "nodejs" || name == "python")
+	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We
+	// also always allow these plugins to be picked up from PATH even if PULUMI_IGNORE_AMBIENT_PLUGINS is set.
+	// Eventually we want to fix this so new plugins are true plugins in the plugin cache.
+	isBundled := kind == LanguagePlugin ||
+		(kind == ResourcePlugin && name == "pulumi-nodejs") ||
+		(kind == ResourcePlugin && name == "pulumi-python")
 
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
 	optOut, isFound := os.LookupEnv("PULUMI_IGNORE_AMBIENT_PLUGINS")
-	includeAmbient := !(isFound && cmdutil.IsTruthy(optOut)) || isBundledLangauge
+	includeAmbient := !(isFound && cmdutil.IsTruthy(optOut)) || isBundled
 	if includeAmbient {
 		filename = (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
 		if path, err := exec.LookPath(filename); err == nil {
@@ -1059,13 +1059,14 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		}
 	}
 
-	// At some point in the future, language plugins will be located in the plugin cache, just like regular plugins
-	// (see pulumi/pulumi#956 for some of the reasons why this isn't the case today). For now, they ship next to the
-	// `pulumi` binary. While we encourage this folder to be on the $PATH (and so the check above would have found
-	// the language plugin) it's possible someone is running `pulumi` with an explicit path on the command line or
-	// has done symlink magic such that `pulumi` is on the path, but the language plugins are not. So, if possible,
-	// look next to the instance of `pulumi` that is running to find this language plugin.
-	if isBundledLangauge {
+	// At some point in the future, bundled plugins will be located in the plugin cache, just like regular
+	// plugins (see pulumi/pulumi#956 for some of the reasons why this isn't the case today). For now, they
+	// ship next to the `pulumi` binary. While we encourage this folder to be on the $PATH (and so the check
+	// above would have found the plugin) it's possible someone is running `pulumi` with an explicit path on
+	// the command line or has done symlink magic such that `pulumi` is on the path, but the bundled plugins
+	// are not. So, if possible, look next to the instance of `pulumi` that is running to find this bundled
+	// plugin.
+	if isBundled {
 		exePath, exeErr := os.Executable()
 		if exeErr == nil {
 			fullPath, fullErr := filepath.EvalSymlinks(exePath)
