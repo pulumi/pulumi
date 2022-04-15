@@ -16,6 +16,7 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"testing"
@@ -142,16 +143,21 @@ func TestConfig(t *testing.T) {
 	testStruct = TestStruct{}
 	// missing TryObject
 	err = cfg.TryObject("missing", &testStruct)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, emptyTestStruct, testStruct)
+	assert.True(t, errors.Is(err, ErrMissingVar))
 	testStruct = TestStruct{}
 	// malformed TryObject
 	err = cfg.TryObject("malobj", &testStruct)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, emptyTestStruct, testStruct)
+	assert.False(t, errors.Is(err, ErrMissingVar))
 	testStruct = TestStruct{}
 	_, err = cfg.Try("missing")
-	assert.NotNil(t, err)
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(),
+		"missing required configuration variable 'testpkg:missing'; run `pulumi config` to set")
+	assert.True(t, errors.Is(err, ErrMissingVar))
 }
 
 func TestSecretConfig(t *testing.T) {

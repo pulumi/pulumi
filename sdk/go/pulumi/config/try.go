@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,11 +25,28 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+var ErrMissingVar = missingVariable{}
+
+type missingVariable struct {
+	key string
+}
+
+func (m missingVariable) Error() string {
+	if m.key == "" {
+		return "missing required configuration variable"
+	}
+	return fmt.Sprintf("missing required configuration variable '%s'; run `pulumi config` to set", m.key)
+}
+
+func (m missingVariable) Is(target error) bool {
+	_, ok := target.(missingVariable)
+	return ok
+}
+
 func try(ctx *pulumi.Context, key, use, insteadOf string) (string, error) {
 	v, ok := get(ctx, key, use, insteadOf)
 	if !ok {
-		return "",
-			fmt.Errorf("missing required configuration variable '%s'; run `pulumi config` to set", key)
+		return "", missingVariable{key}
 	}
 	return v, nil
 }
