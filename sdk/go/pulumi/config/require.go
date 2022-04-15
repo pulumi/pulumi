@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,7 +53,11 @@ func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
 
 func requireBool(ctx *pulumi.Context, key, use, insteadOf string) bool {
 	v := require(ctx, key, use, insteadOf)
-	return cast.ToBool(v)
+	o, err := cast.ToBoolE(v)
+	if err != nil {
+		contract.Failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+	}
+	return o
 }
 
 // RequireBool loads an optional configuration value by its key, as a bool, or panics if it doesn't exist.
@@ -63,7 +67,11 @@ func RequireBool(ctx *pulumi.Context, key string) bool {
 
 func requireFloat64(ctx *pulumi.Context, key, use, insteadOf string) float64 {
 	v := require(ctx, key, use, insteadOf)
-	return cast.ToFloat64(v)
+	o, err := cast.ToFloat64E(v)
+	if err != nil {
+		contract.Failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+	}
+	return o
 }
 
 // RequireFloat64 loads an optional configuration value by its key, as a float64, or panics if it doesn't exist.
@@ -73,7 +81,11 @@ func RequireFloat64(ctx *pulumi.Context, key string) float64 {
 
 func requireInt(ctx *pulumi.Context, key, use, insteadOf string) int {
 	v := require(ctx, key, use, insteadOf)
-	return cast.ToInt(v)
+	o, err := cast.ToIntE(v)
+	if err != nil {
+		contract.Failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+	}
+	return o
 }
 
 // RequireInt loads an optional configuration value by its key, as a int, or panics if it doesn't exist.

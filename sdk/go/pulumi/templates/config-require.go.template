@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,7 +55,11 @@ func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
 {{if .GenerateConfig}}
 func require{{.Name}}(ctx *pulumi.Context, key, use, insteadOf string) {{.Type}} {
 	v := require(ctx, key, use, insteadOf)
-	return cast.To{{.Name}}(v)
+    o, err := cast.To{{.Name}}E(v)
+    if err != nil {
+		contract.Failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+	}
+	return o
 }
 
 // Require{{.Name}} loads an optional configuration value by its key, as a {{.Type}}, or panics if it doesn't exist.
