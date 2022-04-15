@@ -23,8 +23,8 @@ package pulumirpc;
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
-    rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
-    rpc StreamInvoke(InvokeRequest) returns (stream InvokeResponse) {}
+    rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
+    rpc StreamInvoke(ResourceInvokeRequest) returns (stream InvokeResponse) {}
     rpc Call(CallRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
@@ -130,4 +130,13 @@ message RegisterResourceResponse {
 message RegisterResourceOutputsRequest {
     string urn = 1;                     // the URN for the resource to attach output properties to.
     google.protobuf.Struct outputs = 2; // additional output properties to add to the existing resource.
+}
+
+message ResourceInvokeRequest {
+    string tok = 1;                  // the function token to invoke.
+    google.protobuf.Struct args = 2; // the arguments for the function invocation.
+    string provider = 3;             // an optional reference to the provider version to use for this invoke.
+    string version = 4;              // the version of the provider to use when servicing this request.
+    bool acceptResources = 5;        // when true operations should return resource references as strongly typed.
+    string pluginDownloadURL = 6;    // an optional reference to the provider url to use for this invoke.
 }
