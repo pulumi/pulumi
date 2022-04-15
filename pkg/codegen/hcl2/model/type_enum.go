@@ -45,6 +45,8 @@ type EnumType struct {
 	//
 	// Failure to do so may lead to panics.
 	Token string
+	// TODO: Refactor the token out into NamedType<EnumType>
+	// See https://github.com/pulumi/pulumi/pull/9290#discussion_r851356288
 
 	// Annotations records any annotations associated with the object type.
 	Annotations []interface{}
@@ -53,13 +55,14 @@ type EnumType struct {
 }
 
 func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...interface{}) *EnumType {
-	if len(elements) != 0 {
-		t := elements[0].Type()
-		for _, e := range elements[1:] {
-			contract.Assertf(e.Type() == t,
-				"Elements in an emum must have the same type")
-		}
+	contract.Assertf(len(elements) > 0, "Enums must be represent-able")
+
+	t := elements[0].Type()
+	for _, e := range elements[1:] {
+		contract.Assertf(e.Type() == t,
+			"Elements in an emum must have the same type")
 	}
+
 	return &EnumType{
 		Type:        typ,
 		Annotations: annotations,
