@@ -75,10 +75,11 @@ func tryBool(ctx *pulumi.Context, key, use, insteadOf string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return cast.ToBool(v), nil
+	return cast.ToBoolE(v)
 }
 
-// TryBool loads an optional configuration value by its key, as a bool, or returns an error if it doesn't exist.
+// TryBool loads an optional configuration value by its key, as a bool,
+// or returns an error if it doesn't exist or can't be parsed.
 func TryBool(ctx *pulumi.Context, key string) (bool, error) {
 	return tryBool(ctx, key, "TrySecretBool", "TryBool")
 }
@@ -88,10 +89,11 @@ func tryFloat64(ctx *pulumi.Context, key, use, insteadOf string) (float64, error
 	if err != nil {
 		return 0, err
 	}
-	return cast.ToFloat64(v), nil
+	return cast.ToFloat64E(v)
 }
 
-// TryFloat64 loads an optional configuration value by its key, as a float64, or returns an error if it doesn't exist.
+// TryFloat64 loads an optional configuration value by its key, as a float64,
+// or returns an error if it doesn't exist or can't be parsed.
 func TryFloat64(ctx *pulumi.Context, key string) (float64, error) {
 	return tryFloat64(ctx, key, "TrySecretFloat64", "TryFloat64")
 }
@@ -101,10 +103,11 @@ func tryInt(ctx *pulumi.Context, key, use, insteadOf string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return cast.ToInt(v), nil
+	return cast.ToIntE(v)
 }
 
-// TryInt loads an optional configuration value by its key, as a int, or returns an error if it doesn't exist.
+// TryInt loads an optional configuration value by its key, as a int,
+// or returns an error if it doesn't exist or can't be parsed.
 func TryInt(ctx *pulumi.Context, key string) (int, error) {
 	return tryInt(ctx, key, "TrySecretInt", "TryInt")
 }

@@ -40,6 +40,7 @@ func TestConfig(t *testing.T) {
 			"testpkg:sss":    "a string value",
 			"testpkg:bbb":    "true",
 			"testpkg:intint": "42",
+			"testpkg:badint": "4d2",
 			"testpkg:fpfpfp": "99.963",
 			"testpkg:obj": `
 				{
@@ -123,7 +124,7 @@ func TestConfig(t *testing.T) {
 		_ = cfg.Require("missing")
 	}()
 
-	// Test Try, which returns an error for missing entries.
+	// Test Try, which returns an error for missing or invalid entries.
 	k1, err := cfg.Try("sss")
 	assert.Nil(t, err)
 	assert.Equal(t, "a string value", k1)
@@ -133,6 +134,9 @@ func TestConfig(t *testing.T) {
 	k3, err := cfg.TryInt("intint")
 	assert.Nil(t, err)
 	assert.Equal(t, 42, k3)
+	invalidInt, err := cfg.TryInt("badint")
+	assert.Error(t, err)
+	assert.Zero(t, invalidInt)
 	k4, err := cfg.TryFloat64("fpfpfp")
 	assert.Nil(t, err)
 	assert.Equal(t, 99.963, k4)

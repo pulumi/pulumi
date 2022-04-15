@@ -77,10 +77,11 @@ func try{{.Name}}(ctx *pulumi.Context, key, use, insteadOf string) ({{.Type}}, e
 	if err != nil {
 		return {{.DefaultConfig}}, err
 	}
-	return cast.To{{.Name}}(v), nil
+	return cast.To{{.Name}}E(v)
 }
 
-// Try{{.Name}} loads an optional configuration value by its key, as a {{.Type}}, or returns an error if it doesn't exist.
+// Try{{.Name}} loads an optional configuration value by its key, as a {{.Type}},
+// or returns an error if it doesn't exist or can't be parsed.
 func Try{{.Name}}(ctx *pulumi.Context, key string) ({{.Type}}, error) {
 	return try{{.Name}}(ctx, key, "TrySecret{{.Name}}", "Try{{.Name}}")
 }
