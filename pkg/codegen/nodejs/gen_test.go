@@ -15,7 +15,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
 func TestGeneratePackage(t *testing.T) {
@@ -25,26 +24,13 @@ func TestGeneratePackage(t *testing.T) {
 		Language:   "nodejs",
 		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
-			"nodejs/compile": typeCheckGeneratedPackage,
-			"nodejs/test":    testGeneratedPackage,
+			"nodejs/compile": func(t *testing.T, pwd string) {
+				typeCheckGeneratedPackage(t, pwd, true)
+			},
+			"nodejs/test": testGeneratedPackage,
 		},
 		TestCases: test.PulumiPulumiSDKTests,
 	})
-}
-
-func typeCheckGeneratedPackage(t *testing.T, pwd string) {
-	// NOTE: previous attempt used npm. It may be more popular and
-	// better target than yarn, however our build uses yarn in
-	// other places at the moment, and yarn does not run into the
-	// ${VERSION} problem; use yarn for now.
-
-	test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
-	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
-	tscOptions := &integration.ProgramTestOptions{
-		// Avoid Out of Memory error on CI:
-		Env: []string{"NODE_OPTIONS=--max_old_space_size=4096"},
-	}
-	test.RunCommandWithOptions(t, tscOptions, "tsc", pwd, "yarn", "run", "tsc", "--noEmit")
 }
 
 // Runs unit tests against the generated code.

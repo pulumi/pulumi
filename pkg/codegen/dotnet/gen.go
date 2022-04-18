@@ -128,7 +128,11 @@ func namespaceName(namespaces map[string]string, name string) string {
 	if ns, ok := namespaces[name]; ok {
 		return ns
 	}
-	return Title(name)
+	names := strings.Split(name, "-")
+	for i, name := range names {
+		names[i] = Title(name)
+	}
+	return strings.Join(names, "")
 }
 
 type modContext struct {

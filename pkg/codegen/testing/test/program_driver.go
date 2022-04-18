@@ -153,6 +153,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet("python", "nodejs", "dotnet"),
 	},
 	{
+		Directory:   "typed-enum",
+		Description: "Supply strongly typed enums",
+	},
+	{
 		Directory:   "python-resource-names",
 		Description: "Repro for #9357",
 		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
