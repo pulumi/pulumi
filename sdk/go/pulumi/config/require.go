@@ -18,17 +18,21 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/spf13/cast"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
+
+func failf(format string, a ...interface{}) {
+	panic(fmt.Sprintf(format, a...))
+}
 
 func require(ctx *pulumi.Context, key, use, insteadOf string) string {
 	v, ok := get(ctx, key, use, insteadOf)
 	if !ok {
-		contract.Failf("missing required configuration variable '%s'; run `pulumi config` to set", key)
+		failf("missing required configuration variable '%s'; run `pulumi config` to set", key)
 	}
 	return v
 }
@@ -41,7 +45,7 @@ func Require(ctx *pulumi.Context, key string) string {
 func requireObject(ctx *pulumi.Context, key string, output interface{}, use, insteadOf string) {
 	v := require(ctx, key, use, insteadOf)
 	if err := json.Unmarshal([]byte(v), output); err != nil {
-		contract.Failf("unable to unmarshall required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to unmarshall required configuration variable '%s'; %s", key, err.Error())
 	}
 }
 
@@ -55,7 +59,7 @@ func requireBool(ctx *pulumi.Context, key, use, insteadOf string) bool {
 	v := require(ctx, key, use, insteadOf)
 	o, err := cast.ToBoolE(v)
 	if err != nil {
-		contract.Failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
 	}
 	return o
 }
@@ -69,7 +73,7 @@ func requireFloat64(ctx *pulumi.Context, key, use, insteadOf string) float64 {
 	v := require(ctx, key, use, insteadOf)
 	o, err := cast.ToFloat64E(v)
 	if err != nil {
-		contract.Failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
 	}
 	return o
 }
@@ -83,7 +87,7 @@ func requireInt(ctx *pulumi.Context, key, use, insteadOf string) int {
 	v := require(ctx, key, use, insteadOf)
 	o, err := cast.ToIntE(v)
 	if err != nil {
-		contract.Failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
+		failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
 	}
 	return o
 }
