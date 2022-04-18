@@ -364,6 +364,8 @@ func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
 }
 
 func TestGenHeader(t *testing.T) {
+	t.Parallel()
+
 	pkg := &pkgContext{
 		tool: "a tool",
 		pkg:  &schema.Package{Name: "test-pkg"},
