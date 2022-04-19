@@ -102,6 +102,8 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		// Done; store the connection and return the plugin info.
 		plug = &plugin{
 			Conn: conn,
+			// Nothing to kill
+			Kill: func() error { return nil },
 		}
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
