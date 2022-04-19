@@ -740,11 +740,8 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 }
 
 // This test validates the wiring of the ReplaceOnChanges prop in the go SDK.
-// It doesn't attempt to validate underlying behavior.
 func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 	t.Parallel()
-
-	var expectedReplaceOnChanges []string
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -754,69 +751,74 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 
 					return "created-id", news, resource.StatusOK, nil
 				},
-				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
-				},
-				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, replaceOnChanges []string) (plugin.DiffResult, error) {
-					// just verify that the ReplaceOnChanges prop made it through
-					assert.Equal(t, expectedReplaceOnChanges, replaceOnChanges)
-					return plugin.DiffResult{}, nil
-				},
 			}, nil
 		}),
 	}
 
-	setupAndRunProgram := func(replaceOnChanges []string) *deploy.Snapshot {
-		program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
-				Project:     info.Project,
-				Stack:       info.Stack,
-				Parallel:    info.Parallel,
-				DryRun:      info.DryRun,
-				MonitorAddr: info.MonitorAddress,
-			})
-			assert.NoError(t, err)
-
-			return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
-				var res pulumi.CustomResourceState
-				err := ctx.RegisterResource("pkgA:m:typA", "resA", nil, &res, pulumi.ReplaceOnChanges(replaceOnChanges))
-				assert.NoError(t, err)
-
-				return nil
-			})
-		})
-
-		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-		p := &TestPlan{
-			Options: UpdateOptions{Host: host},
-			Steps: []TestStep{
-				{
-					Op: Update,
-					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result) result.Result {
-						for _, event := range events {
-							if event.Type == ResourcePreEvent {
-								payload := event.Payload().(ResourcePreEventPayload)
-								assert.Equal(t, []deploy.StepOp{deploy.OpCreate}, []deploy.StepOp{payload.Metadata.Op})
-							}
-						}
-						return res
-					},
-				},
-			},
-		}
-		return p.Run(t, nil)
+	resourceProperties := &testResourceInputs{
+		Foo: pulumi.String("bar"),
 	}
 
-	// replace on changes specified
-	replaceOnChanges := []string{"b"}
-	setupAndRunProgram(replaceOnChanges)
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+			Project:     info.Project,
+			Stack:       info.Stack,
+			Parallel:    info.Parallel,
+			DryRun:      info.DryRun,
+			MonitorAddr: info.MonitorAddress,
+		})
+		assert.NoError(t, err)
 
-	// replace on changes empty
-	replaceOnChanges = []string{}
-	setupAndRunProgram(replaceOnChanges)
+		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
+			var res pulumi.CustomResourceState
+			err := ctx.RegisterResource("pkgA:m:typA", "resA", resourceProperties, &res,
+				pulumi.ReplaceOnChanges([]string{"foo"}))
+			assert.NoError(t, err)
+
+			return nil
+		})
+	})
+
+	expectedOps := []deploy.StepOp{deploy.OpCreate}
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps: []TestStep{
+			{
+				Op: Update,
+				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+					events []Event, res result.Result) result.Result {
+
+					collectedOps := make([]deploy.StepOp, 0)
+					for _, event := range events {
+						if event.Type == ResourcePreEvent {
+							payload := event.Payload().(ResourcePreEventPayload)
+							if payload.Metadata.URN == "urn:pulumi:test::test::pkgA:m:typA::resA" {
+								collectedOps = append(collectedOps, payload.Metadata.Op)
+							}
+						}
+					}
+
+					assert.Equal(t, expectedOps, collectedOps)
+
+					return res
+				},
+			},
+		},
+	}
+
+	snap := p.Run(t, nil)
+	assert.NotNil(t, snap)
+
+	// Change the property Foo, should now replace
+	resourceProperties = &testResourceInputs{
+		Foo: pulumi.String("baz"),
+	}
+	expectedOps = []deploy.StepOp{deploy.OpCreateReplacement, deploy.OpReplace, deploy.OpDeleteReplaced}
+
+	snap = p.Run(t, snap)
+	assert.NotNil(t, snap)
 }
 
 type remoteComponentArgs struct {
