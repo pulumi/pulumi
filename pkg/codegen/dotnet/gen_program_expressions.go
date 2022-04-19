@@ -20,13 +20,14 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/zclconf/go-cty/cty"
 )
 
 type nameInfo int
@@ -279,6 +280,74 @@ func (g *generator) visitToMarkTypesUsedInFunctionOutputVersionInputs(expr model
 	model.VisitExpression(expr, nil, visitor) // nolint:errcheck
 }
 
+func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *schema.Enum) {
+	return func(member *schema.Enum) {
+		// We know the enum value at the call site, so we can directly stamp in a
+		// valid enum instance. We don't need to convert.
+		pkg, name := enumName(to)
+		contract.Assertf(pkg != "", "pkg cannot be empty")
+		contract.Assertf(name != "", "name cannot be empty")
+		memberTag := member.Name
+		if memberTag == "" {
+			memberTag = member.Value.(string)
+		}
+		memberTag, err := makeSafeEnumName(memberTag, name)
+		contract.AssertNoErrorf(err, "Enum is invalid")
+		g.Fgenf(w, "%s.%s.%s", pkg, name, memberTag)
+	}
+}
+
+func enumName(enum *model.EnumType) (string, string) {
+	components := strings.Split(enum.Token, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
+	enumName := tokenToName(enum.Token)
+	e, ok := pcl.GetSchemaForType(enum)
+	if !ok {
+		return "", ""
+	}
+	namespaceMap := e.(*schema.EnumType).Package.Language["csharp"].(CSharpPackageInfo).Namespaces
+	namespace := namespaceName(namespaceMap, components[0])
+	if components[1] != "" && components[1] != "index" {
+		namespace += "." + namespaceName(namespaceMap, components[1])
+	}
+	return namespace, enumName
+}
+
+func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Type) {
+	to = pcl.LowerConversion(from, to)
+	output, isOutput := to.(*model.OutputType)
+	if isOutput {
+		to = output.ElementType
+	}
+	switch to := to.(type) {
+	case *model.EnumType:
+		pkg, name := enumName(to)
+		if pkg == "" || name == "" {
+			// Something has gone wrong. Produce a best effort result.
+			g.Fgenf(w, "%.v", from)
+			return
+		}
+		var convertFn string
+		switch {
+		case to.Type.Equals(model.StringType):
+			convertFn = fmt.Sprintf("System.Enum.Parse<%s.%s>", pkg, name)
+		default:
+			panic(fmt.Sprintf(
+				"Unsafe enum conversions from type %s not implemented yet: %s => %s",
+				from.Type(), from, to))
+		}
+		if isOutput {
+			g.Fgenf(w, "%.v.Apply(%s)", from, convertFn)
+		} else {
+			pcl.GenEnum(to, from, g.genSafeEnum(w, to), func(from model.Expression) {
+				g.Fgenf(w, "%s(%v)", convertFn, from)
+			})
+		}
+	default:
+		g.Fgenf(w, "%.v", from) // <- probably wrong w.r.t. precedence
+	}
+}
+
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
@@ -286,7 +355,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		case *model.ObjectConsExpression:
 			g.genObjectConsExpression(w, arg, expr.Type())
 		default:
-			g.Fgenf(w, "%.v", expr.Args[0]) // <- probably wrong w.r.t. precedence
+			g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)

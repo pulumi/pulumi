@@ -1261,9 +1261,8 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	}
 
 	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
-		Tok:             string(tok),
-		Args:            margs,
-		AcceptResources: p.acceptResources,
+		Tok:  string(tok),
+		Args: margs,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -1326,9 +1325,8 @@ func (p *provider) StreamInvoke(
 
 	streamClient, err := client.StreamInvoke(
 		p.requestContext(), &pulumirpc.InvokeRequest{
-			Tok:             string(tok),
-			Args:            margs,
-			AcceptResources: p.acceptResources,
+			Tok:  string(tok),
+			Args: margs,
 		})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

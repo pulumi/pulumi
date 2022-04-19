@@ -86,7 +86,11 @@ func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
 	case *UnionType:
 		return src.conversionTo(dest, unifying, seen)
 	case *ConstType:
-		return conversionFrom(dest, src.Type, unifying, seen, conversionFromImpl)
+		// We want `EnumType`s too see const types, since they allow safe
+		// conversions.
+		if _, ok := dest.(*EnumType); !ok {
+			return conversionFrom(dest, src.Type, unifying, seen, conversionFromImpl)
+		}
 	}
 	if src == DynamicType {
 		return UnsafeConversion, nil

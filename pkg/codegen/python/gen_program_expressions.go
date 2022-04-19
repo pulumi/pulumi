@@ -11,10 +11,12 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/zclconf/go-cty/cty"
 )
 
 type nameInfo int
@@ -208,11 +210,52 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
-		switch arg := expr.Args[0].(type) {
-		case *model.ObjectConsExpression:
-			g.genObjectConsExpression(w, arg, expr.Type())
+		from := expr.Args[0]
+		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
+		output, isOutput := to.(*model.OutputType)
+		if isOutput {
+			to = output.ElementType
+		}
+		switch to := to.(type) {
+		case *model.EnumType:
+			components := strings.Split(to.Token, ":")
+			contract.Assertf(len(components) == 3, "malformed token %v", to.Token)
+			enum, ok := pcl.GetSchemaForType(to)
+			if !ok {
+				// No schema was provided
+				g.Fgenf(w, "%.v", expr.Args[0])
+				return
+			}
+			moduleNameOverrides := enum.(*schema.EnumType).Package.Language["python"].(PackageInfo).ModuleNameOverrides
+			pkg := strings.ReplaceAll(components[0], "-", "_")
+			if m := tokenToModule(to.Token, &schema.Package{}, moduleNameOverrides); m != "" {
+				pkg += "." + m
+			}
+			enumName := tokenToName(to.Token)
+
+			if isOutput {
+				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)
+			} else {
+				pcl.GenEnum(to, from, func(member *schema.Enum) {
+					tag := member.Name
+					if tag == "" {
+						tag = fmt.Sprintf("%v", member.Value)
+					}
+					tag, err := makeSafeEnumName(tag, enumName)
+					contract.AssertNoError(err)
+					g.Fgenf(w, "%s.%s.%s", pkg, enumName, tag)
+				}, func(from model.Expression) {
+					g.Fgenf(w, "%s.%s(%.v)", pkg, enumName, from)
+				})
+			}
 		default:
-			g.Fgenf(w, "%.v", expr.Args[0])
+			switch arg := from.(type) {
+			case *model.ObjectConsExpression:
+				g.genObjectConsExpression(w, arg, expr.Type())
+			default:
+				g.Fgenf(w, "%.v", expr.Args[0])
+			}
+
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)

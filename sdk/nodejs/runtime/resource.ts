@@ -111,7 +111,7 @@ export function getResource(res: Resource, props: Inputs, custom: boolean, urn: 
     debuggablePromise(resopAsync.then(async (resop) => {
         const inputs = await serializeProperties(label, { urn });
 
-        const req = new providerproto.InvokeRequest();
+        const req = new resproto.ResourceInvokeRequest();
         req.setTok("pulumi:pulumi:getResource");
         req.setArgs(gstruct.Struct.fromJavaScript(inputs));
         req.setProvider("");

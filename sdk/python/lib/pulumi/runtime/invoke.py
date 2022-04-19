@@ -21,7 +21,7 @@ import grpc
 from .. import log
 from .. import _types
 from ..invoke import InvokeOptions
-from ..runtime.proto import provider_pb2
+from ..runtime.proto import provider_pb2, resource_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
 from .settings import get_monitor, grpc_error_to_exception, handle_grpc_error
@@ -111,7 +111,7 @@ def invoke(
             os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"}
         )
         log.debug(f"Invoking function prepared: tok={tok}")
-        req = provider_pb2.InvokeRequest(
+        req = resource_pb2.ResourceInvokeRequest(
             tok=tok,
             args=inputs,
             provider=provider_ref,

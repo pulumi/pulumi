@@ -12,8 +12,8 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/mattn/go-runewidth v0.0.9 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.28.0
-	github.com/pulumi/pulumi/sdk/v3 v3.28.0
+	github.com/pulumi/pulumi/pkg/v3 v3.29.1
+	github.com/pulumi/pulumi/sdk/v3 v3.29.1
 	github.com/stretchr/testify v1.7.1
 	google.golang.org/grpc v1.37.0
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0
@@ -49,7 +49,7 @@ require (
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813 // indirect
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
-	github.com/gogo/protobuf v1.3.1 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.3 // indirect

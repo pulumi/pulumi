@@ -18,7 +18,6 @@ package display
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"math"
 	"os"
 	"sort"
@@ -898,7 +897,7 @@ func (display *ProgressDisplay) printOutputs() {
 
 	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 
-	props := engine.GetResourceOutputsPropertiesString(
+	props := GetResourceOutputsPropertiesString(
 		stackStep, 1, display.isPreview, display.opts.Debug,
 		false /* refresh */, display.opts.ShowSameResources)
 	if props != "" {
@@ -914,7 +913,7 @@ func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
 		return
 	}
 
-	msg := renderSummaryEvent(display.action, *display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
 	display.writeSimpleMessage(msg)
 }
 
@@ -1443,9 +1442,4 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 		return ""
 	}
 	return op.ColorProgress() + getDescription() + colors.Reset
-}
-
-func writeString(b io.StringWriter, s string) {
-	_, err := b.WriteString(s)
-	contract.IgnoreError(err)
 }
