@@ -97,6 +97,11 @@ class ResourceProviderStub(object):
             request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             response_deserializer=plugin__pb2.PluginInfo.FromString,
         )
+        self.Attach = channel.unary_unary(
+            "/pulumirpc.ResourceProvider/Attach",
+            request_serializer=plugin__pb2.PluginAttach.SerializeToString,
+            response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        )
 
 
 class ResourceProviderServicer(object):
@@ -211,6 +216,12 @@ class ResourceProviderServicer(object):
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
 
+    def Attach(self, request, context):
+        """Attach sends the engine address to an already running plugin."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("Method not implemented!")
+        raise NotImplementedError("Method not implemented!")
+
 
 def add_ResourceProviderServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -293,6 +304,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
             servicer.GetPluginInfo,
             request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             response_serializer=plugin__pb2.PluginInfo.SerializeToString,
+        ),
+        "Attach": grpc.unary_unary_rpc_method_handler(
+            servicer.Attach,
+            request_deserializer=plugin__pb2.PluginAttach.FromString,
+            response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         ),
     }
     generic_handler = grpc.method_handlers_generic_handler(

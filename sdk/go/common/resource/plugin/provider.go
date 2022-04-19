@@ -103,6 +103,15 @@ type Provider interface {
 	SignalCancellation() error
 }
 
+type GrpcProvider interface {
+	Provider
+
+	// Attach triggers an attach for a currently running provider to the engine
+	// TODO It would be nice if this was a HostClient rather than the string address but due to dependency
+	// ordering we don't have access to declare that here.
+	Attach(address string) error
+}
+
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.
 type CheckFailure struct {
 	Property resource.PropertyKey // the property that failed checking.

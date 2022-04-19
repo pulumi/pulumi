@@ -76,31 +76,63 @@ type provider struct {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
 	options map[string]interface{}, disableProviderPreview bool) (Provider, error) {
-	// Load the plugin's path by using the standard workspace logic.
-	_, path, err := workspace.GetPluginPath(
-		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
-	if err != nil {
-		return nil, err
+
+	// See if this is a provider we just want to attach to
+	var plug *plugin
+	var optAttach string
+	if providersEnvVar, has := os.LookupEnv("PULUMI_DEBUG_PROVIDERS"); has {
+		for _, provider := range strings.Split(providersEnvVar, ",") {
+			parts := strings.SplitN(provider, ":", 2)
+
+			if parts[0] == pkg.String() {
+				optAttach = parts[1]
+				break
+			}
+		}
 	}
 
-	contract.Assert(path != "")
+	prefix := fmt.Sprintf("%v (resource)", pkg)
 
-	// Runtime options are passed as environment variables to the provider.
-	env := os.Environ()
-	for k, v := range options {
-		env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
+	if optAttach != "" {
+		conn, err := dialPlugin(optAttach, pkg.String(), prefix)
+		if err != nil {
+			return nil, err
+		}
+
+		// Done; store the connection and return the plugin info.
+		plug = &plugin{
+			Conn: conn,
+			// Nothing to kill
+			Kill: func() error { return nil },
+		}
+	} else {
+		// Load the plugin's path by using the standard workspace logic.
+		_, path, err := workspace.GetPluginPath(
+			workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
+		if err != nil {
+			return nil, err
+		}
+
+		contract.Assert(path != "")
+
+		// Runtime options are passed as environment variables to the provider.
+		env := os.Environ()
+		for k, v := range options {
+			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
+		}
+
+		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
+			[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg),
-		[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
-	if err != nil {
-		return nil, err
-	}
 	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
-	return &provider{
+	p := &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
 		plug:                   plug,
@@ -108,7 +140,17 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		cfgdone:                make(chan bool),
 		disableProviderPreview: disableProviderPreview,
 		legacyPreview:          legacyPreview,
-	}, nil
+	}
+
+	// If we just attached (i.e. plugin bin is nil) we need to call attach
+	if plug.Bin == "" {
+		err := p.Attach(host.ServerAddr())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return p, nil
 }
 
 func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
@@ -1460,6 +1502,23 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 		Kind:    workspace.ResourcePlugin,
 		Version: version,
 	}, nil
+}
+
+// Attach attaches this plugin to the engine
+func (p *provider) Attach(address string) error {
+	label := fmt.Sprintf("%s.Attach()", p.label())
+	logging.V(7).Infof("%s executing", label)
+
+	// Calling Attach happens immediately after loading, and does not require configuration to proceed.
+	// Thus, we access the clientRaw property, rather than calling getClient.
+	_, err := p.clientRaw.Attach(p.requestContext(), &pulumirpc.PluginAttach{Address: address})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		return rpcError
+	}
+
+	return nil
 }
 
 func (p *provider) SignalCancellation() error {
