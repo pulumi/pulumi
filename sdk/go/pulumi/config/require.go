@@ -26,7 +26,7 @@ import (
 )
 
 func failf(format string, a ...interface{}) {
-	panic(fmt.Sprintf(format, a...))
+	panic(fmt.Errorf(format, a...))
 }
 
 func require(ctx *pulumi.Context, key, use, insteadOf string) string {
