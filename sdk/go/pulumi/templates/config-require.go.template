@@ -18,7 +18,7 @@ package config
 
 import (
 	"encoding/json"
-    "fmt"
+	"fmt"
 
 	"github.com/spf13/cast"
 
@@ -59,8 +59,8 @@ func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
 {{if .GenerateConfig}}
 func require{{.Name}}(ctx *pulumi.Context, key, use, insteadOf string) {{.Type}} {
 	v := require(ctx, key, use, insteadOf)
-    o, err := cast.To{{.Name}}E(v)
-    if err != nil {
+	o, err := cast.To{{.Name}}E(v)
+	if err != nil {
 		failf("unable to parse required configuration variable '%s'; %s", key, err.Error())
 	}
 	return o
