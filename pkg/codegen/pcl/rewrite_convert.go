@@ -1,7 +1,6 @@
 package pcl
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
