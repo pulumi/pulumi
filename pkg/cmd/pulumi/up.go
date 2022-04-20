@@ -314,6 +314,8 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("building project context: %w", err))
 		}
 
+		defer ctx.Close()
+
 		if err = installDependencies(ctx, &proj.Runtime, pwd); err != nil {
 			return result.FromError(err)
 		}
