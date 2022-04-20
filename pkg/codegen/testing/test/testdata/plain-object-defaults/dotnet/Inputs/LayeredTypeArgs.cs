@@ -28,7 +28,7 @@ namespace Pulumi.Example.Inputs
         /// Test how plain types interact
         /// </summary>
         [Input("plainOther")]
-        public Inputs.HelmReleaseSettingsArgs? PlainOther { get; set; }
+        public Inputs.HelmReleaseSettings? PlainOther { get; set; }
 
         /// <summary>
         /// The question already answered
