@@ -293,6 +293,8 @@ func runNew(args newArgs) error {
 			return err
 		}
 
+		defer ctx.Close()
+
 		if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
 			return err
 		}
