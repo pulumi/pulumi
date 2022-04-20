@@ -54,7 +54,7 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 	err = os.WriteFile(filepath.Join(dir, "tsconfig.json"), tsConfigJSON, 0600)
 	require.NoError(t, err)
 
-	typeCheckGeneratedPackage(t, dir, true)
+	typeCheckGeneratedPackage(t, dir, linkLocal)
 }
 
 func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
@@ -63,7 +63,9 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 	// other places at the moment, and yarn does not run into the
 	// ${VERSION} problem; use yarn for now.
 
-	test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
+	if linkLocal {
+		test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
+	}
 	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
 	tscOptions := &integration.ProgramTestOptions{
 		// Avoid Out of Memory error on CI:
