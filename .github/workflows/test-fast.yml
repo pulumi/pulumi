@@ -197,7 +197,7 @@ jobs:
         with:
           repo: pulumi/pulumictl
       - name: Install gotestsum
-        uses: aaronfriel/action-install-gh-release@v1.4.0-beta.4
+        uses: jaxxstorm/action-install-gh-release@v1.5.0
         with:
           repo: gotestyourself/gotestsum
           tag: v1.7.0
