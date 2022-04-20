@@ -14,3 +14,6 @@
 - [sdk/go] - Fail appropriatly for `config.Try*` and `config.Require*` where the
   key is present but of the wrong type.
   [#9407](https://github.com/pulumi/pulumi/pull/9407)
+
+- [codegen] - Ensure that plain properties are always plain.
+  [#9430](https://github.com/pulumi/pulumi/pull/9430)
