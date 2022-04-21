@@ -111,6 +111,10 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function, outputVersion
 
 		case "python":
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
+		case "java":
+			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
+		case "yaml":
+			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 		default:
 			panic(fmt.Errorf("cannot generate function resource info for unhandled language %q", lang))
 		}
@@ -235,6 +239,40 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string, output
 	return params
 }
 
+func (mod *modContext) genFunctionJava(f *schema.Function, funcName string, outputVersion bool) []formalParam {
+	dctx := mod.docGenContext
+
+	argsTypeSuffix := "Args"
+	if outputVersion {
+		argsTypeSuffix = "InvokeArgs"
+
+	}
+
+	argsType := title(funcName+argsTypeSuffix, "java")
+	docLangHelper := dctx.getLanguageDocHelper("java")
+	var params []formalParam
+	if f.Inputs != nil {
+		params = append(params, formalParam{
+			Name:         "args",
+			OptionalFlag: "",
+			DefaultValue: "",
+			Type: propertyType{
+				Name: argsType,
+			},
+		})
+	}
+
+	params = append(params, formalParam{
+		Name:         "options",
+		OptionalFlag: "@Nullable",
+		Type: propertyType{
+			Name: "InvokeOptions",
+			Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "InvokeOptions"),
+		},
+	})
+	return params
+}
+
 func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string, outputVersion bool) []formalParam {
 	dctx := mod.docGenContext
 	docLanguageHelper := dctx.getLanguageDocHelper("python")
@@ -311,6 +349,11 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 		case "csharp":
 			params = mod.genFunctionCS(f, funcNameMap["csharp"], outputVersion)
 			paramTemplate = "csharp_formal_param"
+		case "java":
+			params = mod.genFunctionJava(f, funcNameMap["java"], outputVersion)
+			paramTemplate = "java_formal_param"
+		case "yaml":
+			// Left blank
 		case "python":
 			params = mod.genFunctionPython(f, funcNameMap["python"], outputVersion)
 			paramTemplate = "py_formal_param"
@@ -371,6 +414,9 @@ func (mod *modContext) genFunctionOutputVersionMap(f *schema.Function) map[strin
 		hasOutputVersion := f.NeedsOutputVersion()
 		if lang == "go" {
 			hasOutputVersion = go_gen.NeedsGoOutputVersion(f)
+		}
+		if lang == "java" || lang == "yaml" {
+			hasOutputVersion = false
 		}
 		result[lang] = hasOutputVersion
 	}
