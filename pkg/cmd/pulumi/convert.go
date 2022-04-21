@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -45,13 +46,13 @@ func newConvertCmd() *cobra.Command {
 
 			var programGenerator programGeneratorFunc
 			switch language {
-			case "dotnet":
+			case langDotnet:
 				programGenerator = dotnet.GenerateProgram
-			case "go":
+			case langGo:
 				programGenerator = gogen.GenerateProgram
-			case "nodejs":
+			case langNodejs:
 				programGenerator = nodejs.GenerateProgram
-			case "python":
+			case langPython:
 				programGenerator = python.GenerateProgram
 			default:
 				return result.Errorf("cannot generate programs for %v", language)
@@ -60,14 +61,14 @@ func newConvertCmd() *cobra.Command {
 			parser := syntax.NewParser()
 			err := parser.ParseFile(os.Stdin, "main.pp")
 			if err != nil {
-				return result.Errorf("could not read stdin: %w", err)
+				return result.FromError(fmt.Errorf("could not read stdin: %w", err))
 			}
 			if parser.Diagnostics.HasErrors() {
 				return result.Errorf("could not parse input: %v", parser.Diagnostics)
 			}
 			pclProgram, diagnostics, err := pcl.BindProgram(parser.Files)
 			if err != nil {
-				return result.Errorf("could not bind input program: %w", err)
+				return result.FromError(fmt.Errorf("could not bind input program: %w", err))
 			}
 			if diagnostics.HasErrors() {
 				return result.Errorf("could not bind input program: %v", diagnostics)
@@ -75,14 +76,17 @@ func newConvertCmd() *cobra.Command {
 
 			files, diagnostics, err := programGenerator(pclProgram)
 			if err != nil {
-				return result.Errorf("could not generate output program: %w", err)
+				return result.FromError(fmt.Errorf("could not generate output program: %w", err))
 			}
 			if diagnostics.HasErrors() {
 				return result.Errorf("could not generate output program: %v", diagnostics)
 			}
 
 			for filename, data := range files {
-				ioutil.WriteFile(filename, data, 0644)
+				err := ioutil.WriteFile(filename, data, 0600)
+				if err != nil {
+					return result.FromError(fmt.Errorf("could not write output program: %w", err))
+				}
 			}
 
 			return nil
