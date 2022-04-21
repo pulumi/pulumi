@@ -269,6 +269,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Emit Go internal dependencies",
 		Skip:        allLanguages.Except("go/any"),
 	},
+	{
+		Directory:   "go-plain-ref-repro",
+		Description: "Generate a resource that accepts a plain input type",
+		Skip:        allLanguages.Except("go/any"),
+	},
 }
 
 var genSDKOnly bool

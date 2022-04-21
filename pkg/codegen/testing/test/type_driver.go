@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -63,7 +64,7 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 
 	typeName := newTypeNameGenerator(pkg)
 
-	if os.Getenv("PULUMI_ACCEPT") == "" {
+	if !cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
 		runTests := func(where string, props []*schema.Property, inputShape bool) {
 			for _, p := range props {
 				p := p
@@ -85,7 +86,9 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 								}
 							}
 
-							assert.Equal(t, expectedName, typeName(typ))
+							assert.Equalf(t, expectedName, typeName(typ),
+								"Property '%s' with type %s (inputShape=%t)",
+								p.Name, p.Type, inputShape)
 						})
 					}
 				}

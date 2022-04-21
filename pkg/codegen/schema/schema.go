@@ -251,7 +251,7 @@ func (t *ObjectType) IsPlainShape() bool {
 	return t.PlainShape == nil
 }
 
-// IsInputShape returns true if this object type is the plain shape of a (plain, input)
+// IsInputShape returns true if this object type is the input shape of a (plain, input)
 // pair. The input shape of an object may contain *InputType values and may
 // reference other input shapes.
 func (t *ObjectType) IsInputShape() bool {
@@ -2312,8 +2312,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 	var result []*Property
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
-
-		typ, typDiags, err := t.bindType(propertyPath, spec.TypeSpec, inputShape)
+		typ, typDiags, err := t.bindType(propertyPath, spec.TypeSpec, inputShape && !spec.Plain)
 		diags = diags.Extend(typDiags)
 		if err != nil {
 			return nil, nil, diags, fmt.Errorf("error binding type for property %q: %w", name, err)

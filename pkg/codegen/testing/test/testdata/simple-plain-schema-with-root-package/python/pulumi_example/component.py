@@ -19,8 +19,8 @@ class ComponentArgs:
                  c: int,
                  e: str,
                  b: Optional[bool] = None,
-                 bar: Optional['FooArgs'] = None,
-                 baz: Optional[Sequence[pulumi.Input['FooArgs']]] = None,
+                 bar: Optional['Foo'] = None,
+                 baz: Optional[Sequence['Foo']] = None,
                  d: Optional[int] = None,
                  f: Optional[str] = None,
                  foo: Optional[pulumi.Input['FooArgs']] = None):
@@ -81,20 +81,20 @@ class ComponentArgs:
 
     @property
     @pulumi.getter
-    def bar(self) -> Optional['FooArgs']:
+    def bar(self) -> Optional['Foo']:
         return pulumi.get(self, "bar")
 
     @bar.setter
-    def bar(self, value: Optional['FooArgs']):
+    def bar(self, value: Optional['Foo']):
         pulumi.set(self, "bar", value)
 
     @property
     @pulumi.getter
-    def baz(self) -> Optional[Sequence[pulumi.Input['FooArgs']]]:
+    def baz(self) -> Optional[Sequence['Foo']]:
         return pulumi.get(self, "baz")
 
     @baz.setter
-    def baz(self, value: Optional[Sequence[pulumi.Input['FooArgs']]]):
+    def baz(self, value: Optional[Sequence['Foo']]):
         pulumi.set(self, "baz", value)
 
     @property
@@ -132,8 +132,8 @@ class Component(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  a: Optional[bool] = None,
                  b: Optional[bool] = None,
-                 bar: Optional[pulumi.InputType['FooArgs']] = None,
-                 baz: Optional[Sequence[pulumi.Input[pulumi.InputType['FooArgs']]]] = None,
+                 bar: Optional[pulumi.InputType['Foo']] = None,
+                 baz: Optional[Sequence[pulumi.InputType['Foo']]] = None,
                  c: Optional[int] = None,
                  d: Optional[int] = None,
                  e: Optional[str] = None,
@@ -170,8 +170,8 @@ class Component(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  a: Optional[bool] = None,
                  b: Optional[bool] = None,
-                 bar: Optional[pulumi.InputType['FooArgs']] = None,
-                 baz: Optional[Sequence[pulumi.Input[pulumi.InputType['FooArgs']]]] = None,
+                 bar: Optional[pulumi.InputType['Foo']] = None,
+                 baz: Optional[Sequence[pulumi.InputType['Foo']]] = None,
                  c: Optional[int] = None,
                  d: Optional[int] = None,
                  e: Optional[str] = None,

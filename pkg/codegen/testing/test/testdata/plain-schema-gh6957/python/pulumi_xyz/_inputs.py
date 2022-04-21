@@ -9,23 +9,23 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
-    'FooArgs',
+    'Foo',
 ]
 
 @pulumi.input_type
-class FooArgs:
+class Foo:
     def __init__(__self__, *,
-                 a: Optional[pulumi.Input[bool]] = None):
+                 a: Optional[bool] = None):
         if a is not None:
             pulumi.set(__self__, "a", a)
 
     @property
     @pulumi.getter
-    def a(self) -> Optional[pulumi.Input[bool]]:
+    def a(self) -> Optional[bool]:
         return pulumi.get(self, "a")
 
     @a.setter
-    def a(self, value: Optional[pulumi.Input[bool]]):
+    def a(self, value: Optional[bool]):
         pulumi.set(self, "a", value)
 
 

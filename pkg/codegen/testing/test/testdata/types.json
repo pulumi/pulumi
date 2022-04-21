@@ -19,22 +19,23 @@
           },
           "plain": true,
           "language": {
+            "explanation": "Because the collection is marked as plain, we should see a plain type regardless of inputShape.",
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "ImmutableArray<Input<string>>",
+                  "input": "ImmutableArray<string>",
                   "plain": "ImmutableArray<string>"
                 },
                 "go": {
-                  "input": "[]pulumi.StringInput",
+                  "input": "[]string",
                   "plain": "[]string"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<string>[] | undefined",
+                  "input": "string[] | undefined",
                   "plain": "string[] | undefined"
                 },
                 "python": {
-                  "input": "Optional[Sequence[pulumi.Input[str]]]",
+                  "input": "Optional[Sequence[str]]",
                   "plain": "Optional[Sequence[str]]"
                 }
               }
