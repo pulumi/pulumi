@@ -4,6 +4,15 @@
 import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "../types";
 
+export interface Foo {
+    a: boolean;
+    b?: boolean;
+    c: number;
+    d?: number;
+    e: string;
+    f?: string;
+}
+
 export interface FooArgs {
     a: boolean;
     b?: boolean;
