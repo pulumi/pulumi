@@ -59,7 +59,7 @@ func newConvertCmd() *cobra.Command {
 			}
 
 			parser := syntax.NewParser()
-			err := parser.ParseFile(os.Stdin, "main.pp")
+                        err := parser.ParseFile(os.Stdin, "<stdin>")
 			if err != nil {
 				return result.FromError(fmt.Errorf("could not read stdin: %w", err))
 			}
