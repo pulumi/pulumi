@@ -16,7 +16,7 @@
 ## Create a {{ .Header.Title }} Resource {#create}
 
 {{- if eq .LangChooserLanguages "" }}
-{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
+{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp,java,yaml\" / >}}" }}
 {{- else }}
 {{ htmlSafe "{{< chooser language \"" }}{{ .LangChooserLanguages }}{{ htmlSafe "\" / >}}" }}
 {{- end }}
@@ -45,6 +45,19 @@
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.csharp }}<span class="p">)</span></code></pre></div>
 {{ htmlSafe "{{% /choosable %}}" }}
 
+{{ htmlSafe "{{% choosable language java %}}" }}
+<div class="highlight"><pre class="chroma">
+<code class="language-java" data-lang="java"><span class="k">public </span>{{ template "linkify_param" .ConstructorResource.java }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.javaargs }}<span class="p">)</span>
+<span class="k">public </span>{{ template "linkify_param" .ConstructorResource.java }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.java }}<span class="p">)</span>
+</code></pre></div>
+{{ htmlSafe "{{% /choosable %}}" }}
+
+{{ htmlSafe "{{% choosable language yaml %}}" }}
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: {{ template "linkify_param" .ConstructorResource.yaml }}<span class="p"></span>
+{{ template "yaml_constructor" .ConstructorParamsTyped.yaml }}
+</code></pre></div>
+{{ htmlSafe "{{% /choosable %}}" }}
+
 {{ htmlSafe "{{% choosable language nodejs %}}" }}
 {{ template "constructor_args" .ConstructorParamsTyped.nodejs }}
 {{ htmlSafe "{{% /choosable %}}" }}
@@ -59,6 +72,10 @@
 
 {{ htmlSafe "{{% choosable language csharp %}}" }}
 {{ template "constructor_args" .ConstructorParamsTyped.csharp }}
+{{ htmlSafe "{{% /choosable %}}" }}
+
+{{ htmlSafe "{{% choosable language java %}}" }}
+{{ template "constructor_args" .ConstructorParamsTyped.java }}
 {{ htmlSafe "{{% /choosable %}}" }}
 
 ## {{ .Header.Title }} Resource Properties {#properties}
@@ -96,7 +113,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 #### Using {{ .Title }}
 
-{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
+{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp,java,yaml\" / >}}" }}
 
 <!-- TS/JS -->
 {{ print "{{% choosable language nodejs %}}" }}
@@ -139,7 +156,7 @@ The following arguments are supported:
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 
 {{- if eq .LangChooserLanguages "" }}
-{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
+{{ htmlSafe "{{< chooser language \"typescript,python,go,csharp,java,yaml\" / >}}" }}
 {{- else }}
 {{ htmlSafe "{{< chooser language \"" }}{{ .LangChooserLanguages }}{{ htmlSafe "\" / >}}" }}
 {{- end }}
@@ -162,6 +179,14 @@ Get an existing {{.Header.Title}} resource's state with the given name, ID, and 
 
 {{ htmlSafe "{{% choosable language csharp %}}" }}
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="nf"> Get</span><span class="p">(</span>{{ htmlSafe .LookupParams.csharp }}<span class="p">)</span></code></pre></div>
+{{ htmlSafe "{{% /choosable %}}" }}
+
+{{ htmlSafe "{{% choosable language java %}}" }}
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static </span>{{ template "linkify_param" .ConstructorResource.java }}<span class="nf"> get</span><span class="p">(</span>{{ htmlSafe .LookupParams.java }}<span class="p">)</span></code></pre></div>
+{{ htmlSafe "{{% /choosable %}}" }}
+
+{{ htmlSafe "{{% choosable language yaml %}}" }}
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">Resource lookup is not supported in YAML</code></pre></div>
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language nodejs %}}" }}
@@ -191,8 +216,14 @@ Get an existing {{.Header.Title}} resource's state with the given name, ID, and 
 {{ template "read_inputs" }}
 {{ htmlSafe "{{% /choosable %}}" }}
 
+{{ htmlSafe "{{% choosable language java %}}" }}
+{{ template "read_inputs" }}
+{{ htmlSafe "{{% /choosable %}}" }}
+
+{{ htmlSafe "{{% choosable language \"nodejs,python,go,csharp,java\" %}}" }}
 The following state arguments are supported:
 {{ template "properties" .StateInputs }}
+{{ htmlSafe "{{% /choosable %}}" }}
 
 {{ end }}
 
