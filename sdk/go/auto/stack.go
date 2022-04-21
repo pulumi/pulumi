@@ -261,19 +261,17 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	var summaryEvents []apitype.SummaryEvent
 	eventChannel := make(chan events.EngineEvent)
-	eventsDone := make(chan bool)
-	go func() {
+	go func(ch chan events.EngineEvent, events *[]apitype.SummaryEvent) {
 		for {
 			event, ok := <-eventChannel
 			if !ok {
-				close(eventsDone)
 				return
 			}
 			if event.SummaryEvent != nil {
 				summaryEvents = append(summaryEvents, *event.SummaryEvent)
 			}
 		}
-	}()
+	}(eventChannel, &summaryEvents)
 
 	eventChannels := []chan<- events.EngineEvent{eventChannel}
 	eventChannels = append(eventChannels, preOpts.EventStreams...)
@@ -289,9 +287,6 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
-
-	// Wait for events to finish reading
-	<-eventsDone
 
 	if len(summaryEvents) == 0 {
 		return res, newAutoError(errors.New("failed to get preview summary"), stdout, stderr, code)
