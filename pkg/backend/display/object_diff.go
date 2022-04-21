@@ -743,10 +743,10 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 				elemPrinter.printDelete(delete, elemTitleFunc)
 			} else if update, isupdate := a.Updates[i]; isupdate {
 				elemPrinter.printPropertyValueDiff(elemTitleFunc, update)
-			} else if !p.summary {
+			} else if same, issame := a.Sames[i]; issame && !p.summary {
 				elemPrinter = elemPrinter.withOp(deploy.OpSame).withPrefix(false)
 				elemTitleFunc(elemPrinter)
-				elemPrinter.printPropertyValue(a.Sames[i])
+				elemPrinter.printPropertyValue(same)
 			}
 		}
 		p.writeWithIndentNoPrefix("]\n")
