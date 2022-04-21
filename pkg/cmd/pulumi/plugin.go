@@ -63,6 +63,8 @@ func getProjectPlugins() ([]workspace.PluginInfo, error) {
 		return nil, err
 	}
 
+	defer ctx.Close()
+
 	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	var results []workspace.PluginInfo
