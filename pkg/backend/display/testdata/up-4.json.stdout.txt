@@ -42,7 +42,6 @@
 <{%reset%}><{%reset%}>        [urn=urn:pulumi:dev::eks::aws:ec2/securityGroup:SecurityGroup::eks-sg]
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
 <{%reset%}><{%fg 3%}>      ~ ingress: <{%reset%}><{%fg 3%}>[
-<{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}><null><{%reset%}><{%reset%}>
 <{%reset%}><{%fg 2%}>          + [1]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                  + cidrBlocks: <{%reset%}><{%fg 2%}>[
 <{%reset%}><{%fg 2%}>                  +     [0]: <{%reset%}><{%fg 2%}>"0.0.0.0/0"<{%reset%}><{%fg 2%}>
