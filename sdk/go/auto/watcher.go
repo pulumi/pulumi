@@ -15,6 +15,7 @@ package auto
 
 import (
 	"encoding/json"
+
 	"github.com/nxadm/tail"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
@@ -48,6 +49,9 @@ func watchFile(path string, receivers []chan<- events.EngineEvent) (*tail.Tail, 
 			for _, r := range receivers {
 				r <- events.EngineEvent{EngineEvent: e}
 			}
+		}
+		for _, r := range receivers {
+			close(r)
 		}
 	}(t)
 	return t, nil
