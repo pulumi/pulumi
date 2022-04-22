@@ -32,6 +32,7 @@ class CloudAuditOptionsLogName(str, Enum):
     """
     What if triple quotes \"\"\" are used in the description
     """
+    CLOUD_AUDIT_OPTIONS_LOG_NAME_N_O_NAME = "_NO_NAME"
 
 
 class ContainerBrightness(float, Enum):
