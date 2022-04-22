@@ -48,6 +48,9 @@ func runPulumiCommandSync(
 	err := cmd.Run()
 	if exitError, ok := err.(*exec.ExitError); ok {
 		code = exitError.ExitCode()
+	} else if err == nil {
+		// If there was no error then the exit code was 0
+		code = 0
 	}
 	return stdout.String(), stderr.String(), code, err
 }
