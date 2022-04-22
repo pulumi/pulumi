@@ -326,7 +326,7 @@ class Stack:
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
-        :param plan: Path to a file to save the update plan from the preview to.
+        :param plan: Plan specifies the path where the update plan should be saved.
         :returns: PreviewResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args

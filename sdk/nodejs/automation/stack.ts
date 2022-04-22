@@ -753,6 +753,9 @@ export interface UpOptions {
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
     color?: "always" | "never" | "raw" | "auto";
+    /**
+     * Plan specifies the path to an update plan to use for the update.
+     */
     plan?: string;
 }
 
@@ -772,6 +775,9 @@ export interface PreviewOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     color?: "always" | "never" | "raw" | "auto";
+    /**
+     * Plan specifies the path where the update plan should be saved.
+     */
     plan?: string;
 }
 

@@ -101,7 +101,7 @@ func UserAgent(agent string) Option {
 	})
 }
 
-// Plan specifies the path to save the update plan from the preview to.
+// Plan specifies the path where the update plan should be saved.
 func Plan(path string) Option {
 	return optionFunc(func(opts *Options) {
 		opts.Plan = path

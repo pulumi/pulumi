@@ -20,6 +20,9 @@ namespace Pulumi.Automation
 
         public PulumiFn? Program { get; set; }
 
+        /// <summary>
+        /// Plan specifies the path to an update plan to use for the update.
+        /// </summary>
         public string? Plan {get; set; }
 
         /// <summary>
