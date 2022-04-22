@@ -221,6 +221,7 @@ func NewPulumiCmd() *cobra.Command {
 	// We have a set of commands that are still experimental and that are hidden unless PULUMI_EXPERIMENTAL is set
 	// to true.
 	cmd.AddCommand(newQueryCmd())
+	cmd.AddCommand(newConvertCmd())
 
 	// We have a set of options that are useful for developers of pulumi that are hidden unless PULUMI_DEBUG_COMMANDS is
 	// set to true.
