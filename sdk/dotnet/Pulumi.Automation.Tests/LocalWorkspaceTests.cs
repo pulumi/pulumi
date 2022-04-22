@@ -2032,6 +2032,40 @@ namespace Pulumi.Automation.Tests
             }
         }
 
+        [Fact]
+        public async Task TestUpdatePlans()
+        {
+            var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
+            using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
+            {
+                WorkDir = workingDir
+            });
+            var stackName = $"{RandomStackName()}";
+
+            var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
+            try
+            {
+                var planFile = System.IO.Path.GetTempFileName();
+
+                await stack.PreviewAsync(new PreviewOptions {
+                    Plan = planFile,
+                });
+
+                var planFileStream = System.IO.File.OpenRead(planFile);
+                Assert.NotEqual(0, planFileStream.Length);
+
+                await stack.UpAsync(new UpOptions {
+                    Plan = planFile,
+                });
+
+                await stack.DestroyAsync();
+            }
+            finally
+            {
+                await workspace.RemoveStackAsync(stackName);
+            }
+        }
+
         private string ResourcePath(string path, [CallerFilePath] string pathBase = "LocalWorkspaceTests.cs")
         {
             var dir = Path.GetDirectoryName(pathBase) ?? ".";
