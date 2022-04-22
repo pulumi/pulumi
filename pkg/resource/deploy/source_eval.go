@@ -979,9 +979,28 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	aliases := []resource.URN{}
+	aliases := []resource.Alias{}
 	for _, aliasURN := range req.GetAliases() {
-		aliases = append(aliases, resource.URN(aliasURN))
+		aliases = append(aliases, resource.Alias{URN: resource.URN(aliasURN)})
+	}
+	for _, aliasObject := range req.GetSmartAliases() {
+		smartAlias := aliasObject.GetSmartAlias()
+		var alias resource.Alias
+		if smartAlias != nil {
+			alias = resource.Alias{
+				Name:     smartAlias.GetName(),
+				Type:     smartAlias.GetType(),
+				Stack:    smartAlias.GetStack(),
+				Project:  smartAlias.GetProject(),
+				Parent:   resource.URN(smartAlias.GetParentUrn()),
+				NoParent: smartAlias.GetNoParent(),
+			}
+		} else {
+			alias = resource.Alias{
+				URN: resource.URN(aliasObject.GetUrn()),
+			}
+		}
+		aliases = append(aliases, alias)
 	}
 
 	dependencies := []resource.URN{}
@@ -1087,7 +1106,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		// Invoke the provider's Construct RPC method.
 		options := plugin.ConstructOptions{
-			Aliases:              aliases,
+			// We don't actually need to send a list of aliases to construct anymore because the engine does
+			// all alias construction.
+			Aliases:              []resource.URN{},
 			Dependencies:         dependencies,
 			Protect:              protect,
 			PropertyDependencies: propertyDependencies,

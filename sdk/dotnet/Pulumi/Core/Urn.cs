@@ -1,7 +1,6 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2022, Pulumi Corporation
 
 using System;
-using System.Collections.Generic;
 
 namespace Pulumi
 {
@@ -42,50 +41,5 @@ namespace Pulumi
 
             return Output.Format($"{parentPrefix}{type}::{name}");
         }
-
-        /// <summary>
-        /// <see cref="InheritedChildAlias"/> computes the alias that should be applied to a child
-        /// based on an alias applied to it's parent. This may involve changing the name of the
-        /// resource in cases where the resource has a named derived from the name of the parent,
-        /// and the parent name changed.
-        /// </summary>
-        internal static Output<string> InheritedChildAlias(string childName, string parentName, Input<string> parentAlias, string childType)
-        {
-            // If the child name has the parent name as a prefix, then we make the assumption that
-            // it was constructed from the convention of using '{name}-details' as the name of the
-            // child resource.  To ensure this is aliased correctly, we must then also replace the
-            // parent aliases name in the prefix of the child resource name.
-            //
-            // For example:
-            // * name: "newapp-function"
-            // * options.parent.__name: "newapp"
-            // * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
-            // * parentAliasName: "app"
-            // * aliasName: "app-function"
-            // * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
-            var aliasName = Output.Create(childName);
-            if (childName!.StartsWith(parentName, StringComparison.Ordinal))
-            {
-                aliasName = parentAlias.ToOutput().Apply<string>(parentAliasUrn =>
-                    parentAliasUrn.Substring(parentAliasUrn.LastIndexOf("::", StringComparison.Ordinal) + 2) + childName.Substring(parentName.Length));
-            }
-
-            var urn = Create(
-                aliasName, childType, parent: null,
-                parentUrn: parentAlias, project: null, stack: null);
-            return urn;
-        }
-
-        internal static string Name(string urn) {
-            var parts = urn.Split("::");
-            return parts[3];
-        }
-
-        internal static string Type(string urn) {
-            var parts = urn.Split("::");
-            var typeParts = parts[2].Split("$");
-            return typeParts[typeParts.Length-1];
-        }
-
     }
 }

@@ -41,6 +41,28 @@ message SupportsFeatureResponse {
     bool hasSupport = 1; // true when the resource monitor supports this feature.
 }
 
+// Alias is a description of an alias.
+message Alias {
+
+    message SmartAlias {
+        string name = 1; // The previous name of the resource. If not set, the current name of the resource is used.
+        string type = 2; // The previous type of the resource. If not set, the current type of the resource is used.
+        string stack = 3; // The previous stack of the resource. If not set, the current stack of the resource is used.
+        string project = 4; // The previous project of the resource. If not set, the current project of the resource is used.
+
+        // The previous parent of the resource. If not set, the current parent of the resource is used.
+        oneof parent {
+            string parentUrn = 5; // The urn of the previous parent.
+            bool noParent = 6; // Used to indicate the resource previously had no parent.  If false this property is ignored.
+        }
+    }
+
+    oneof alias {
+        string urn = 1; // The previous urn to alias to.
+        SmartAlias smartAlias = 2;
+    }
+}
+
 // There is a clear distinction here between the "properties" bag sent across the wire as part of these RPCs and
 // properties that exist on Pulumi resources as projected into the target language. It is important to call out that the
 // properties here are in the format that a provider will expect. This is to say that they are usually in camel case.
@@ -59,9 +81,10 @@ message ReadResourceRequest {
     string version = 8;                    // the version of the provider to use when servicing this request.
     bool acceptSecrets = 9;                // when true operations should return secrets as strongly typed.
     repeated string additionalSecretOutputs = 10;   // a list of output properties that should also be treated as secret, in addition to ones we detect.
-    repeated string aliases = 11;          // a list of additional URNs that shoud be considered the same.
+    repeated string aliases = 11;          // a list of additional URNs that should be considered the same.
     bool acceptResources = 12;             // when true operations should return resource references as strongly typed.
     string pluginDownloadURL = 13;         // the server url of the provider to use when servicing this request.
+    repeated Alias smartAliases = 14;      // a list of additional aliases that should be considered the same.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -97,7 +120,7 @@ message RegisterResourceRequest {
     repeated string ignoreChanges = 12;                         // a list of property selectors to ignore during updates.
     bool acceptSecrets = 13;                                    // when true operations should return secrets as strongly typed.
     repeated string additionalSecretOutputs = 14;               // a list of output properties that should also be treated as secret, in addition to ones we detect.
-    repeated string aliases = 15;                               // a list of additional URNs that shoud be considered the same.
+    repeated string aliases = 15;                               // a list of additional URNs that should be considered the same.
     string importId = 16;                                       // if set, this resource's state should be imported from the given ID.
     CustomTimeouts customTimeouts = 17;                         // ability to pass a custom Timeout block.
     bool deleteBeforeReplaceDefined = 18;                       // true if the deleteBeforeReplace property should be treated as defined even if it is false.
@@ -108,6 +131,7 @@ message RegisterResourceRequest {
     repeated string replaceOnChanges = 23;                      // a list of properties that if changed should force a replacement.
     string pluginDownloadURL = 24;                              // the server URL of the provider to use when servicing this request.
     bool retainOnDelete = 25;                                   // if true the engine will not call the resource providers delete method for this resource.
+    repeated Alias smartAliases = 26;                           // a list of additional aliases that should be considered the same.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
