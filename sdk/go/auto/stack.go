@@ -244,6 +244,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.Color != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%s", preOpts.Color))
 	}
+	if preOpts.Plan != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--save-plan=%s", preOpts.Plan))
+	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
 	if program := s.Workspace().Program(); program != nil {
@@ -341,6 +344,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	if upOpts.Color != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%q", upOpts.Color))
+	}
+	if upOpts.Plan != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--plan=%s", upOpts.Plan))
 	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}

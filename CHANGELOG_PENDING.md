@@ -1,5 +1,8 @@
 ### Improvements
 
+- [auto/*] Add `--save-plan` and `--plan` options to automation API.
+  [#9391](https://github.com/pulumi/pulumi/pull/9391)
+
 ### Bug Fixes
 
 - [codegen] - Ensure that plain properties are always plain.

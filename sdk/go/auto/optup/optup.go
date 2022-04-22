@@ -101,6 +101,13 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// Plan specifies the path to an update plan to use for the update.
+func Plan(path string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Plan = path
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Up() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -135,6 +142,8 @@ type Options struct {
 	UserAgent string
 	// Colorize output. Choices are: always, never, raw, auto (default "auto")
 	Color string
+	// Use the update plan at the given path.
+	Plan string
 }
 
 type optionFunc func(*Options)
