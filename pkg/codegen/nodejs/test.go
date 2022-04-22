@@ -12,24 +12,25 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal bool) {
-	ex, err := executable.FindExecutable("yarn")
-	require.NoError(t, err, "Could not find yarn executable")
 	dir := filepath.Dir(path)
-	pkgs := nodejsPackages(t, dependencies)
-	// We delete and regenerate package files for each run.
-	packageJSONPath := filepath.Join(dir, "package.json")
-	if err := os.Remove(packageJSONPath); !os.IsNotExist(err) {
-		require.NoError(t, err, "Failed to delete %s", packageJSONPath)
-	}
-	yarnLock := filepath.Join(dir, "yarn.lock")
-	if err := os.Remove(yarnLock); !os.IsNotExist(err) {
-		require.NoError(t, err, "Failed to delete %s", yarnLock)
+
+	removeFile := func(name string) {
+		path := filepath.Join(dir, name)
+		if err := os.Remove(path); !os.IsNotExist(err) {
+			require.NoError(t, err, "Failed to delete '%s'", path)
+		}
 	}
 
+	// We delete and regenerate package files for each run.
+	removeFile("yarn.lock")
+	removeFile("package.json")
+	removeFile("tsconfig.json")
+
+	// Write out package.json
+	pkgs := nodejsPackages(t, dependencies)
 	pkgInfo := npmPackage{
 		Dependencies: map[string]string{
 			"@pulumi/pulumi": "latest",
@@ -44,24 +45,33 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 	}
 	pkgJSON, err := json.MarshalIndent(pkgInfo, "", "    ")
 	require.NoError(t, err)
-	err = os.WriteFile(packageJSONPath, pkgJSON, 0600)
+	err = os.WriteFile(filepath.Join(dir, "package.json"), pkgJSON, 0600)
 	require.NoError(t, err)
 
+	tsConfig := map[string]string{}
+	tsConfigJSON, err := json.MarshalIndent(tsConfig, "", "    ")
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(dir, "tsconfig.json"), tsConfigJSON, 0600)
+	require.NoError(t, err)
+
+	typeCheckGeneratedPackage(t, dir, linkLocal)
+}
+
+func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
+	// NOTE: previous attempt used npm. It may be more popular and
+	// better target than yarn, however our build uses yarn in
+	// other places at the moment, and yarn does not run into the
+	// ${VERSION} problem; use yarn for now.
+
 	if linkLocal {
-		err = integration.RunCommand(t, "Link local pulumi",
-			[]string{ex, "link", "@pulumi/pulumi"},
-			dir, &integration.ProgramTestOptions{})
-		require.NoError(t, err, "Failed local link")
+		test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
 	}
-
-	err = integration.RunCommand(t, "Install dependencies",
-		[]string{ex, "install"},
-		dir, &integration.ProgramTestOptions{})
-	require.NoError(t, err, "Failed install")
-
-	err = integration.RunCommand(t, "tsc check",
-		[]string{ex, "run", "tsc", "--noEmit", filepath.Base(path)}, dir, &integration.ProgramTestOptions{})
-	require.NoError(t, err, "Failed to build %q", path)
+	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
+	tscOptions := &integration.ProgramTestOptions{
+		// Avoid Out of Memory error on CI:
+		Env: []string{"NODE_OPTIONS=--max_old_space_size=4096"},
+	}
+	test.RunCommandWithOptions(t, tscOptions, "tsc", pwd, "yarn", "run", "tsc", "--noEmit")
 }
 
 // Returns the nodejs equivalent to the hcl2 package names provided.

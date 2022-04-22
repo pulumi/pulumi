@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "repro/doc.go",
+    "repro/ecs/fargateTaskDefinition.go",
+    "repro/ecs/init.go",
+    "repro/ecs/pulumiTypes.go",
+    "repro/init.go",
+    "repro/provider.go",
+    "repro/pulumi-plugin.json",
+    "repro/pulumiUtilities.go"
+  ]
+}

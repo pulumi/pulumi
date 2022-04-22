@@ -115,6 +115,63 @@ var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy 
 // errPluginNotFound is returned when we try to execute a plugin but it is not found on disk.
 var errPluginNotFound = errors.New("plugin not found")
 
+func dialPlugin(port, bin, prefix string) (*grpc.ClientConn, error) {
+	// Now that we have the port, go ahead and create a gRPC client connection to it.
+	conn, err := grpc.Dial(
+		"127.0.0.1:"+port,
+		grpc.WithInsecure(),
+		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
+	}
+
+	// Now wait for the gRPC connection to the plugin to become ready.
+	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
+	//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
+	//     while this bug exists, we'll simply do a bit of waiting of our own up front.
+	timeout, _ := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
+	for {
+		s := conn.GetState()
+		if s == connectivity.Ready {
+			// The connection is supposedly ready; but we will make sure it is *actually* ready by sending a dummy
+			// method invocation to the server.  Until it responds successfully, we can't safely proceed.
+		outer:
+			for {
+				err = grpc.Invoke(timeout, "", nil, nil, conn)
+				if err == nil {
+					break // successful connect
+				} else {
+					// We have an error; see if it's a known status and, if so, react appropriately.
+					status, ok := status.FromError(err)
+					if ok {
+						switch status.Code() {
+						case codes.Unavailable:
+							// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
+							time.Sleep(time.Millisecond * 10)
+							continue // keep retrying
+						default:
+							// Since we sent "" as the method above, this is the expected response.  Ready to go.
+							break outer
+						}
+					}
+
+					// Unexpected error; get outta dodge.
+					return nil, errors.Wrapf(err, "%v plugin [%v] did not come alive", prefix, bin)
+				}
+			}
+			break
+		}
+		// Not ready yet; ask the gRPC client APIs to block until the state transitions again so we can retry.
+		if !conn.WaitForStateChange(timeout, s) {
+			return nil, errors.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
+		}
+	}
+
+	return conn, nil
+}
+
 func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, options ...otgrpc.Option) (*plugin, error) {
 	if logging.V(9) {
 		var argstr string
@@ -225,57 +282,9 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, false, stdoutDone)
 
-	// Now that we have the port, go ahead and create a gRPC client connection to it.
-	conn, err := grpc.Dial(
-		"127.0.0.1:"+port,
-		grpc.WithInsecure(),
-		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
-		rpcutil.GrpcChannelOptions(),
-	)
+	conn, err := dialPlugin(port, bin, prefix)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
-	}
-
-	// Now wait for the gRPC connection to the plugin to become ready.
-	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
-	//     should auto-retry appropriately.  On Linux, however, we are observing different behavior.  In the meantime
-	//     while this bug exists, we'll simply do a bit of waiting of our own up front.
-	timeout, _ := context.WithTimeout(context.Background(), pluginRPCConnectionTimeout)
-	for {
-		s := conn.GetState()
-		if s == connectivity.Ready {
-			// The connection is supposedly ready; but we will make sure it is *actually* ready by sending a dummy
-			// method invocation to the server.  Until it responds successfully, we can't safely proceed.
-		outer:
-			for {
-				err = grpc.Invoke(timeout, "", nil, nil, conn)
-				if err == nil {
-					break // successful connect
-				} else {
-					// We have an error; see if it's a known status and, if so, react appropriately.
-					status, ok := status.FromError(err)
-					if ok {
-						switch status.Code() {
-						case codes.Unavailable:
-							// The server is unavailable.  This is the Linux bug.  Wait a little and retry.
-							time.Sleep(time.Millisecond * 10)
-							continue // keep retrying
-						default:
-							// Since we sent "" as the method above, this is the expected response.  Ready to go.
-							break outer
-						}
-					}
-
-					// Unexpected error; get outta dodge.
-					return nil, errors.Wrapf(err, "%v plugin [%v] did not come alive", prefix, bin)
-				}
-			}
-			break
-		}
-		// Not ready yet; ask the gRPC client APIs to block until the state transitions again so we can retry.
-		if !conn.WaitForStateChange(timeout, s) {
-			return nil, errors.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
-		}
+		return nil, err
 	}
 
 	// Done; store the connection and return the plugin info.
@@ -382,7 +391,7 @@ func (p *plugin) Close() error {
 
 	result := p.Kill()
 
-	// Wait for stdout and stderr to drain.
+	// Wait for stdout and stderr to drain if we attached to the plugin we won't have a stdout/err
 	if p.stdoutDone != nil {
 		<-p.stdoutDone
 	}

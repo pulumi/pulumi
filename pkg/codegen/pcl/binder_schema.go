@@ -202,16 +202,44 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	return nil
 }
 
+func buildEnumValue(v interface{}) cty.Value {
+	switch v := v.(type) {
+	case string:
+		return cty.StringVal(v)
+	case bool:
+		return cty.BoolVal(v)
+	case int:
+		return cty.NumberIntVal(int64(v))
+	case int64:
+		return cty.NumberIntVal(v)
+	case float64:
+		return cty.NumberFloatVal(v)
+	default:
+		contract.Failf("Found unexpected constant type %T: %[1]v", v)
+		return cty.NilVal
+	}
+}
+
+// A marker struct to ensure type safety when retrieving the type from an
+// annotated `model.EnumType`.
+type enumSchemaType struct {
+	Type *schema.EnumType
+}
+
 // schemaTypeToType converts a schema.Type to a model Type.
-func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
+func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 	switch src := src.(type) {
 	case *schema.ArrayType:
 		return model.NewListType(b.schemaTypeToType(src.ElementType))
 	case *schema.MapType:
 		return model.NewMapType(b.schemaTypeToType(src.ElementType))
 	case *schema.EnumType:
-		// TODO(codegen): make this a union of constant types.
-		return b.schemaTypeToType(src.ElementType)
+		values := []cty.Value{}
+		elType := b.schemaTypeToType(src.ElementType)
+		for _, el := range src.Elements {
+			values = append(values, buildEnumValue(el.Value))
+		}
+		return model.NewEnumType(src.Token, elType, values, enumSchemaType{src})
 	case *schema.ObjectType:
 		if t, ok := b.schemaTypes[src]; ok {
 			return t
@@ -360,6 +388,14 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 			return schemaTypes[0], true
 		}
 		return &schema.UnionType{ElementTypes: schemaTypes}, true
+	case *model.EnumType:
+		for _, t := range t.Annotations {
+			if t, ok := t.(enumSchemaType); ok {
+				contract.Assert(t.Type != nil)
+				return t.Type, true
+			}
+		}
+		return nil, false
 	default:
 		return nil, false
 	}
@@ -392,4 +428,81 @@ func getDiscriminatedUnionObjectItem(t model.Type) (string, model.Type) {
 		return getDiscriminatedUnionObjectItem(t.ElementType)
 	}
 	return "", nil
+}
+
+// EnumMember returns the name of the member that matches the given `value`. If
+// no member if found, (nil, true) returned. If the query is nonsensical, either
+// because no schema is associated with the EnumMember or if the type of value
+// mismatches the type of the schema, (nil, false) is returned.
+func EnumMember(t *model.EnumType, value cty.Value) (*schema.Enum, bool) {
+	srcBase, ok := GetSchemaForType(t)
+	if !ok {
+		return nil, false
+	}
+	src := srcBase.(*schema.EnumType)
+
+	switch {
+	case t.Type.Equals(model.StringType):
+		s := value.AsString()
+		for _, el := range src.Elements {
+			v := el.Value.(string)
+			if v == s {
+				return el, true
+			}
+		}
+		return nil, true
+	case t.Type.Equals(model.NumberType):
+		f, _ := value.AsBigFloat().Float64()
+		for _, el := range src.Elements {
+			if el.Value.(float64) == f {
+				return el, true
+			}
+		}
+		return nil, true
+	case t.Type.Equals(model.IntType):
+		f, _ := value.AsBigFloat().Int64()
+		for _, el := range src.Elements {
+			if el.Value.(int64) == f {
+				return el, true
+			}
+		}
+		return nil, true
+	default:
+		return nil, false
+	}
+}
+
+// GenEnum is a helper function when generating an enum.
+// Given an enum, and instructions on what to do when you find a known value,
+// and an unknown value, return a function that will generate an the given enum
+// from the given expression.
+//
+// This function should probably live in the `codegen` namespace, but cannot
+// because of import cycles.
+func GenEnum(
+	t *model.EnumType,
+	from model.Expression,
+	safeEnum func(member *schema.Enum),
+	unsafeEnum func(from model.Expression),
+) {
+	known := cty.NilVal
+	if from, ok := from.(*model.TemplateExpression); ok && len(from.Parts) == 1 {
+		if from, ok := from.Parts[0].(*model.LiteralValueExpression); ok {
+			known = from.Value
+		}
+	}
+	if from, ok := from.(*model.LiteralValueExpression); ok {
+		known = from.Value
+	}
+	if known != cty.NilVal {
+		// If the value is known, but we can't find a member, we should have
+		// indicated a conversion is impossible when type checking.
+		member, ok := EnumMember(t, known)
+		contract.Assertf(ok,
+			"We have determined %s is a safe enum, which we define as "+
+				"being able to calculate a member for", t)
+		safeEnum(member)
+	} else {
+		unsafeEnum(from)
+	}
 }

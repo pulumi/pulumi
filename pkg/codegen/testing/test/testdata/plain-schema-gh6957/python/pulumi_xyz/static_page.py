@@ -16,7 +16,7 @@ __all__ = ['StaticPageArgs', 'StaticPage']
 class StaticPageArgs:
     def __init__(__self__, *,
                  index_content: pulumi.Input[str],
-                 foo: Optional['FooArgs'] = None):
+                 foo: Optional['Foo'] = None):
         """
         The set of arguments for constructing a StaticPage resource.
         :param pulumi.Input[str] index_content: The HTML content for index.html.
@@ -39,11 +39,11 @@ class StaticPageArgs:
 
     @property
     @pulumi.getter
-    def foo(self) -> Optional['FooArgs']:
+    def foo(self) -> Optional['Foo']:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional['FooArgs']):
+    def foo(self, value: Optional['Foo']):
         pulumi.set(self, "foo", value)
 
 
@@ -52,7 +52,7 @@ class StaticPage(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 foo: Optional[pulumi.InputType['FooArgs']] = None,
+                 foo: Optional[pulumi.InputType['Foo']] = None,
                  index_content: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         """
@@ -84,7 +84,7 @@ class StaticPage(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 foo: Optional[pulumi.InputType['FooArgs']] = None,
+                 foo: Optional[pulumi.InputType['Foo']] = None,
                  index_content: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         if opts is None:

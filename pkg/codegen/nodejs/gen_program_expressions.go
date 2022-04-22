@@ -9,11 +9,13 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type nameInfo int
@@ -22,13 +24,16 @@ func (nameInfo) Format(name string) string {
 	return makeValidIdentifier(name)
 }
 
-func (g *generator) lowerExpression(expr model.Expression) model.Expression {
+func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model.Expression {
 	// TODO(pdg): diagnostics
 	if g.asyncMain {
 		expr = g.awaitInvokes(expr)
 	}
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, _ = pcl.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
+	if typ != nil {
+		expr = pcl.RewriteConversions(expr, typ)
+	}
 	expr, _ = g.lowerProxyApplies(expr)
 	return expr
 }
@@ -287,8 +292,58 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 	return []string{"@pulumi/" + pkg}
 }
 
+func enumName(enum *model.EnumType) (string, error) {
+	components := strings.Split(enum.Token, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
+	name := tokenToName(enum.Token)
+	module := func(m string) string {
+		pkg := strings.ToLower(m)
+		return strings.ReplaceAll(pkg, "-", "_")
+	}
+	pkg := components[0]
+	e, ok := pcl.GetSchemaForType(enum)
+	if !ok {
+		return "", fmt.Errorf("Could not get associated enum")
+	}
+	if name := e.(*schema.EnumType).Package.Language["nodejs"].(NodePackageInfo).PackageName; name != "" {
+		pkg = name
+	}
+	pkg = module(pkg)
+	if components[1] != "" && components[1] != "index" {
+		pkg += "." + module(components[1])
+	}
+	return fmt.Sprintf("%s.%s", pkg, name), nil
+}
+
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
+	case pcl.IntrinsicConvert:
+		from := expr.Args[0]
+		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
+		output, isOutput := to.(*model.OutputType)
+		if isOutput {
+			to = output.ElementType
+		}
+		switch to := to.(type) {
+		case *model.EnumType:
+			if enum, err := enumName(to); err == nil {
+				if isOutput {
+					g.Fgenf(w, "%.v.apply((x) => %s[x])", from, enum)
+				} else {
+					pcl.GenEnum(to, from, func(member *schema.Enum) {
+						memberTag, err := enumMemberName(tokenToName(to.Token), member)
+						contract.AssertNoErrorf(err, "Failed to get member name on enum '%s'", enum)
+						g.Fgenf(w, "%s.%s", enum, memberTag)
+					}, func(from model.Expression) {
+						g.Fgenf(w, "%s[%.v]", enum, from)
+					})
+				}
+			} else {
+				g.Fgenf(w, "%v", from)
+			}
+		default:
+			g.Fgenf(w, "%v", from)
+		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
 	case intrinsicAwait:
