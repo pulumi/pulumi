@@ -109,10 +109,54 @@ func (sg *stepGenerator) Errored() bool {
 	return sg.sawError
 }
 
+// checkParent checks that the parent given is valid for the given resource type, and returns a default parent if there is one.
+func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Type) (resource.URN, result.Result) {
+	// Some goal settings are based on the parent settings so make sure our parent is correct.
+	if resourceType == resource.RootStackType {
+		// The RootStack must not have a parent set
+		if parent != "" {
+			return "", result.Errorf("root stack resource can not have a parent (tried to set it to %v)", parent)
+		}
+	} else {
+		// For other resources they may or may not have a parent.
+		//
+		// TODO(fraser): I think every resource but the RootStack should have a parent, however currently a
+		// number of our tests do not create a RootStack resource, feels odd that it's possible for the engine
+		// to run without a RootStack resource. I feel this ought to be fixed by making the engine always
+		// create the RootStack before running the user program, however that leaves some questions of what to
+		// do if we ever support changing any of the settings (such as the provider map) on the RootStack
+		// resource. For now we set it to the root stack if we can find it, but we don't error on blank parents
+
+		// If it is set check the parent exists.
+		if parent != "" {
+			// The parent for this resource hasn't been registered yet. That's an error and we can't continue.
+			if _, hasParent := sg.urns[parent]; !hasParent {
+				return "", result.Errorf("could not find parent resource %v", parent)
+			}
+		} else {
+			// Else try and set it to the root stack
+			for urn := range sg.urns {
+				if urn.Type() == resource.RootStackType {
+					return urn, nil
+				}
+			}
+		}
+	}
+
+	return parent, nil
+}
+
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
 func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, result.Result) {
-	urn := sg.deployment.generateURN(event.Parent(), event.Type(), event.Name())
+
+	// Some event settings are based on the parent settings so make sure our parent is correct.
+	parent, res := sg.checkParent(event.Parent(), event.Type())
+	if res != nil {
+		return nil, res
+	}
+
+	urn := sg.deployment.generateURN(parent, event.Type(), event.Name())
 	newState := resource.NewState(event.Type(),
 		urn,
 		true,  /*custom*/
@@ -120,7 +164,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		event.ID(),
 		event.Properties(),
 		make(resource.PropertyMap), /* outputs */
-		event.Parent(),
+		parent,
 		false, /*protect*/
 		true,  /*external*/
 		event.Dependencies(),
@@ -275,6 +319,14 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
+
+	// Some goal settings are based on the parent settings so make sure our parent is correct.
+	parent, res := sg.checkParent(goal.Parent, goal.Type)
+	if res != nil {
+		return nil, res
+	}
+	goal.Parent = parent
+
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(goal.Parent, goal.Type, goal.Name)
 	if sg.urns[urn] {
