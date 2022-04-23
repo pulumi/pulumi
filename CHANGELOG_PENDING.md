@@ -3,6 +3,9 @@
 - [auto/*] Add `--save-plan` and `--plan` options to automation API.
   [#9391](https://github.com/pulumi/pulumi/pull/9391)
 
+- [cli] "down" is now treated as an alias of "destroy".
+  [#9458](https://github.com/pulumi/pulumi/pull/9458)
+
 ### Bug Fixes
 
 - [codegen] - Ensure that plain properties are always plain.
