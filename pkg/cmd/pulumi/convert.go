@@ -32,9 +32,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-var outDir string
-
 func newConvertCmd() *cobra.Command {
+	var outDir string
 	var language string
 
 	cmd := &cobra.Command{
@@ -49,7 +48,7 @@ func newConvertCmd() *cobra.Command {
 
 			var programGenerator programGeneratorFunc
 			switch language {
-			case "c#":
+			case "csharp", "c#":
 				programGenerator = dotnet.GenerateProgram
 			case langGo:
 				programGenerator = gogen.GenerateProgram
@@ -109,7 +108,7 @@ func newConvertCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
-		&outDir, "out", ".", "Which language plugin to use to generate the pulumi program")
+		&outDir, "out", ".", "The output directory to write the convert project to")
 
 	return cmd
 }
