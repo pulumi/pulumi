@@ -193,6 +193,68 @@ func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
 	assert.Equal(t, false, opts.DeleteBeforeReplace)
 }
 
+func TestResourceOptionComposite(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name  string
+		input []ResourceOption
+		want  *resourceOptions
+	}{
+		{
+			name:  "no options",
+			input: []ResourceOption{},
+			want:  &resourceOptions{},
+		},
+		{
+			name: "single option",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: true,
+			},
+		},
+		{
+			name: "multiple conflicting options",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+				DeleteBeforeReplace(false),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: false,
+			},
+		},
+		{
+			name: "bouncing options",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+				DeleteBeforeReplace(false),
+				DeleteBeforeReplace(true),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: true,
+			},
+		},
+		{
+			name: "different options",
+			input: []ResourceOption{
+				DeleteBeforeReplace(true),
+				Protect(true),
+			},
+			want: &resourceOptions{
+				DeleteBeforeReplace: true,
+				Protect:             true,
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			opts := merge(Composite(tc.input...))
+			assert.Equal(t, tc.want, opts)
+		})
+	}
+}
+
 func TestResourceOptionMergingImport(t *testing.T) {
 	t.Parallel()
 
