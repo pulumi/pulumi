@@ -354,7 +354,8 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	optionsBag, temps := g.lowerResourceOptions(r.Options)
 
-	name := PyName(r.Name())
+	name := r.UniqueName()
+	nameVar := PyName(r.Name())
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.Labels {
@@ -394,15 +395,15 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	if r.Options != nil && r.Options.Range != nil {
 		rangeExpr := r.Options.Range
 		if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
-			g.Fgenf(w, "%s%s = None\n", g.Indent, name)
+			g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			g.Fgenf(w, "%sif %.v:\n", g.Indent, rangeExpr)
 			g.Indented(func() {
-				g.Fprintf(w, "%s%s = ", g.Indent, name)
-				instantiate(g.makeResourceName(r.Name(), ""))
+				g.Fprintf(w, "%s%s = ", g.Indent, nameVar)
+				instantiate(g.makeResourceName(name, ""))
 				g.Fprint(w, "\n")
 			})
 		} else {
-			g.Fgenf(w, "%s%s = []\n", g.Indent, name)
+			g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
@@ -412,16 +413,16 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
 			}
 
-			resName := g.makeResourceName(r.Name(), fmt.Sprintf("range['%s']", resKey))
+			resName := g.makeResourceName(name, fmt.Sprintf("range['%s']", resKey))
 			g.Indented(func() {
-				g.Fgenf(w, "%s%s.append(", g.Indent, name)
+				g.Fgenf(w, "%s%s.append(", g.Indent, nameVar)
 				instantiate(resName)
 				g.Fprint(w, ")\n")
 			})
 		}
 	} else {
-		g.Fgenf(w, "%s%s = ", g.Indent, name)
-		instantiate(g.makeResourceName(r.Name(), ""))
+		g.Fgenf(w, "%s%s = ", g.Indent, nameVar)
+		instantiate(g.makeResourceName(name, ""))
 		g.Fprint(w, "\n")
 	}
 
@@ -490,7 +491,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 	g.genTemps(w, temps)
 
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.Name(), value)
+	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.UniqueName(), value)
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

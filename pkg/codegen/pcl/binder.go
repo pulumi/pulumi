@@ -29,6 +29,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+const UniqueNamePropertyKey = "__uniqueName"
+
 type bindOptions struct {
 	allowMissingVariables  bool
 	allowMissingProperties bool
@@ -166,6 +168,7 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	var diagnostics hcl.Diagnostics
 
 	// Declare body items in source order.
+Items:
 	for _, item := range model.SourceOrderBody(file.Body) {
 		switch item := item.(type) {
 		case *hclsyntax.Attribute:
@@ -213,8 +216,15 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
 				}
 
+				uniqueName, diagErr := popStringAttr(item.Body.Attributes, UniqueNamePropertyKey)
+				if diagErr != nil {
+					diagnostics = append(diagnostics, diagErr)
+					break Items
+				}
+
 				resource := &Resource{
-					syntax: item,
+					syntax:     item,
+					uniqueName: uniqueName,
 				}
 				declareDiags := b.declareNode(item.Labels[0], resource)
 				diagnostics = append(diagnostics, declareDiags...)
@@ -238,10 +248,16 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				}
 
 				// TODO(pdg): check body for valid contents
+				uniqueName, diagErr := popStringAttr(item.Body.Attributes, UniqueNamePropertyKey)
+				if diagErr != nil {
+					diagnostics = append(diagnostics, diagErr)
+					break Items
+				}
 
 				v := &OutputVariable{
-					typ:    typ,
-					syntax: item,
+					typ:        typ,
+					syntax:     item,
+					uniqueName: uniqueName,
 				}
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
@@ -254,6 +270,33 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	}
 
 	return diagnostics, nil
+}
+
+// Pop an attribute that's internal to Pulumi, e.g.: "__uniqueName" on a resource or output.
+func popStringAttr(attrs hclsyntax.Attributes, key string) (string, *hcl.Diagnostic) {
+	var value string
+	if attr, found := attrs[key]; found {
+		switch lit := attr.Expr.(type) {
+		case *hclsyntax.LiteralValueExpr:
+			if lit.Val.Type() != cty.String {
+				return "", stringAttributeError(attr)
+			}
+			value = lit.Val.AsString()
+		case *hclsyntax.TemplateExpr:
+			if len(lit.Parts) != 1 {
+				return "", stringAttributeError(attr)
+			}
+			part, ok := lit.Parts[0].(*hclsyntax.LiteralValueExpr)
+			if !ok || part.Val.Type() != cty.String {
+				return "", stringAttributeError(attr)
+			}
+			value = part.Val.AsString()
+		default:
+			return "", stringAttributeError(attr)
+		}
+	}
+	delete(attrs, key)
+	return value, nil
 }
 
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an

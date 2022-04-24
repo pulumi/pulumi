@@ -68,3 +68,7 @@ func tokenMustBeStringLiteral(tokenExpr model.Expression) *hcl.Diagnostic {
 func duplicateBlock(blockType string, typeRange hcl.Range) *hcl.Diagnostic {
 	return errorf(typeRange, "duplicate block of type '%v'", blockType)
 }
+
+func stringAttributeError(attr *hclsyntax.Attribute) *hcl.Diagnostic {
+	return errorf(attr.Expr.Range(), "attribute %v must be a string literal", attr.Name)
+}

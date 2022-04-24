@@ -479,8 +479,8 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
 	}
 
-	name := r.Name()
-	variableName := makeValidIdentifier(name)
+	name := r.UniqueName()
+	variableName := makeValidIdentifier(r.Name())
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.GetLabels(nil) {
@@ -589,8 +589,9 @@ func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 }
 
 func (g *generator) genOutputProperty(w io.Writer, v *pcl.OutputVariable) {
+	outputID := fmt.Sprintf(`"%s"`, g.escapeString(v.UniqueName(), false, false))
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%s[Output(\"%s\")]\n", g.Indent, v.Name())
+	g.Fgenf(w, "%s[Output(%s)]\n", g.Indent, outputID)
 	// TODO(msh): derive the element type of the Output from the type of its value.
 	g.Fgenf(w, "%spublic Output<string> %s { get; set; }\n", g.Indent, propertyName(v.Name()))
 }
