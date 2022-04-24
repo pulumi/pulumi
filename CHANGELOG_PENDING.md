@@ -9,7 +9,7 @@
 - [go] Add `Composite` resource option allowing several options to be encapsulated into a "single" option.
   [#9459](https://github.com/pulumi/pulumi/pull/9459)
 
-- [codegen] - Support all [Assets and Archives](https://www.pulumi.com/docs/intro/concepts/assets-archives/) types.
+- [codegen] - Support all [Asset and Archive](https://www.pulumi.com/docs/intro/concepts/assets-archives/) types.
   [#9463](https://github.com/pulumi/pulumi/pull/9463)
 
 ### Bug Fixes
