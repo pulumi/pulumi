@@ -383,7 +383,7 @@ func DeleteBeforeReplace(o bool) ResourceOption {
 func Composite(opts ...ResourceOption) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		for _, o := range opts {
-			o(ro)
+			o.applyResourceOption(ro)
 		}
 	})
 }
