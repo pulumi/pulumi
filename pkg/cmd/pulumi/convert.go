@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 
 	"github.com/spf13/cobra"
 
@@ -30,6 +31,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
+
+var outDir string
 
 func newConvertCmd() *cobra.Command {
 	var language string
@@ -46,11 +49,11 @@ func newConvertCmd() *cobra.Command {
 
 			var programGenerator programGeneratorFunc
 			switch language {
-			case langDotnet:
+			case "c#":
 				programGenerator = dotnet.GenerateProgram
 			case langGo:
 				programGenerator = gogen.GenerateProgram
-			case langNodejs:
+			case "typescript":
 				programGenerator = nodejs.GenerateProgram
 			case langPython:
 				programGenerator = python.GenerateProgram
@@ -82,8 +85,15 @@ func newConvertCmd() *cobra.Command {
 				return result.Errorf("could not generate output program: %v", diagnostics)
 			}
 
+			if outDir != "." {
+				err := os.MkdirAll(outDir, 0755)
+				if err != nil {
+					return result.FromError(fmt.Errorf("could not create output directory: %w", err))
+				}
+			}
 			for filename, data := range files {
-				err := ioutil.WriteFile(filename, data, 0600)
+				outPath := path.Join(outDir, filename)
+				err := ioutil.WriteFile(outPath, data, 0600)
 				if err != nil {
 					return result.FromError(fmt.Errorf("could not write output program: %w", err))
 				}
@@ -96,6 +106,10 @@ func newConvertCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
 		&language, "language", "", "Which language plugin to use to generate the pulumi program")
+
+	cmd.PersistentFlags().StringVar(
+		//nolint:lll
+		&outDir, "out", ".", "Which language plugin to use to generate the pulumi program")
 
 	return cmd
 }
