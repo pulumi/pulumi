@@ -6,6 +6,9 @@
 - [cli] "down" is now treated as an alias of "destroy".
   [#9458](https://github.com/pulumi/pulumi/pull/9458)
 
+- [go] Add `Composite` resource option allowing several options to be encapsulated into a "single" option.
+  [#9459](https://github.com/pulumi/pulumi/pull/9459)
+
 ### Bug Fixes
 
 - [codegen] - Ensure that plain properties are always plain.

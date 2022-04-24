@@ -379,6 +379,15 @@ func DeleteBeforeReplace(o bool) ResourceOption {
 	})
 }
 
+// Composite is a resource option that contains other resource options.
+func Composite(opts ...ResourceOption) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		for _, o := range opts {
+			o.applyResourceOption(ro)
+		}
+	})
+}
+
 // DependsOn is an optional array of explicit dependencies on other resources.
 func DependsOn(o []Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
