@@ -196,7 +196,7 @@ func TestResourceOptionMergingDeleteBeforeReplace(t *testing.T) {
 func TestResourceOptionComposite(t *testing.T) {
 	t.Parallel()
 
-	for _, tc := range []struct {
+	tests := []struct {
 		name  string
 		input []ResourceOption
 		want  *resourceOptions
@@ -247,10 +247,13 @@ func TestResourceOptionComposite(t *testing.T) {
 				Protect:             true,
 			},
 		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			opts := merge(Composite(tc.input...))
-			assert.Equal(t, tc.want, opts)
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			opts := merge(Composite(tt.input...))
+			assert.Equal(t, tt.want, opts)
 		})
 	}
 }
