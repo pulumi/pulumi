@@ -504,6 +504,14 @@ func ToSecret(input interface{}) Output {
 	return ToSecretWithContext(context.Background(), input)
 }
 
+// Creates an unknown output. This is a low level API and should not be used in programs as this
+// will cause "pulumi up" to fail if called and used during a non-dryrun deployment.
+func UnsafeUnknownOutput() Output {
+	output, _, _ := NewOutput()
+	output.getState().resolve(nil, false, false, nil)
+	return output
+}
+
 // ToSecretWithContext wraps the input in an Output marked as secret
 // that will resolve when all Inputs contained in the given value have resolved.
 func ToSecretWithContext(ctx context.Context, input interface{}) Output {

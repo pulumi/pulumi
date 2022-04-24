@@ -78,19 +78,39 @@ func TestRegisterResource(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			switch args.TypeToken {
+			case "test:resource:type":
+				assert.Equal(t, "resA", args.Name)
+				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+					"foo":  "oof",
+					"bar":  "rab",
+					"baz":  "zab",
+					"bang": "gnab",
+				})))
+				assert.Equal(t, "", args.Provider)
+				assert.Equal(t, "", args.ID)
 
-			assert.Equal(t, "test:resource:type", args.TypeToken)
-			assert.Equal(t, "resA", args.Name)
-			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"foo":  "oof",
-				"bar":  "rab",
-				"baz":  "zab",
-				"bang": "gnab",
-			})))
-			assert.Equal(t, "", args.Provider)
-			assert.Equal(t, "", args.ID)
+				return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			case "test:resource:complextype":
+				assert.Equal(t, "resB", args.Name)
+				assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+					"foo":  "oof",
+					"bar":  "rab",
+					"baz":  "zab",
+					"bang": "gnab",
+				})))
+				assert.Equal(t, "", args.Provider)
+				assert.Equal(t, "", args.ID)
 
-			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+				return "someID", resource.PropertyMap{
+					"foo":    resource.NewStringProperty("qux"),
+					"secret": resource.MakeSecret(resource.NewStringProperty("shh")),
+					"output": resource.MakeOutput(resource.NewStringProperty("known unknown")),
+				}, nil
+			default:
+				assert.Fail(t, "Expected a valid resource type, got %v", args.TypeToken)
+				return "someID", nil, nil
+			}
 		},
 	}
 
@@ -135,6 +155,7 @@ func TestRegisterResource(t *testing.T) {
 			"bang": String("gnab"),
 		}, &res2)
 		assert.NoError(t, err)
+		assert.NotNil(t, res2.rawOutputs)
 
 		id, known, secret, deps, err = await(res2.ID())
 		assert.NoError(t, err)
@@ -156,6 +177,25 @@ func TestRegisterResource(t *testing.T) {
 		assert.False(t, secret)
 		assert.Equal(t, []Resource{&res2}, deps)
 		assert.Equal(t, map[string]interface{}{"foo": "qux"}, outputs)
+
+		// Test raw access to property values:
+		var res3 testResource3
+		err = ctx.RegisterResource("test:resource:complextype", "resB", Map{
+			"foo":  String("oof"),
+			"bar":  String("rab"),
+			"baz":  String("zab"),
+			"bang": String("gnab"),
+		}, &res3)
+		assert.NoError(t, err)
+		assert.NotNil(t, res3.rawOutputs)
+		output := InternalGetRawOutputs(&res3.ResourceState)
+		rawOutputsTmp, _, _, _, err := await(output)
+		assert.NoError(t, err)
+		rawOutputs, ok := rawOutputsTmp.(resource.PropertyMap)
+		assert.True(t, ok)
+		assert.True(t, rawOutputs.HasValue("foo"))
+		assert.True(t, rawOutputs.HasValue("secret"))
+		assert.True(t, rawOutputs.ContainsSecrets())
 
 		return nil
 	}, WithMocks("project", "stack", mocks))
