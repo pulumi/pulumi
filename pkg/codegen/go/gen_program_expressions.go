@@ -231,8 +231,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// g.Fgenf(w, " => new { Key = k, Value = v })")
 	case "fileArchive":
 		g.Fgenf(w, "pulumi.NewFileArchive(%.v)", expr.Args[0])
+	case "remoteArchive":
+		g.Fgenf(w, "pulumi.NewRemoteArchive(%.v)", expr.Args[0])
+	case "assetArchive":
+		g.Fgenf(w, "pulumi.NewAssetArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.NewFileAsset(%.v)", expr.Args[0])
+	case "stringAsset":
+		g.Fgenf(w, "pulumi.NewStringAsset(%.v)", expr.Args[0])
+	case "remoteAsset":
+		g.Fgenf(w, "pulumi.NewRemoteAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "filebase64OrPanic(%v)", expr.Args[0])

@@ -185,7 +185,11 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 
 var functionImports = map[string][]string{
 	"fileArchive":      {"pulumi"},
+	"remoteArchive":    {"pulumi"},
+	"assetArchive":     {"pulumi"},
 	"fileAsset":        {"pulumi"},
+	"stringAsset":      {"pulumi"},
+	"remoteAsset":      {"pulumi"},
 	"filebase64":       {"base64"},
 	"filebase64sha256": {"base64", "hashlib"},
 	"readDir":          {"os"},
@@ -265,8 +269,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, `[{"key": k, "value": v} for k, v in %.v]`, expr.Args[0])
 	case "fileArchive":
 		g.Fgenf(w, "pulumi.FileArchive(%.v)", expr.Args[0])
+	case "remoteArchive":
+		g.Fgenf(w, "pulumi.RemoteArchive(%.v)", expr.Args[0])
+	case "assetArchive":
+		g.Fgenf(w, "pulumi.AssetArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.FileAsset(%.v)", expr.Args[0])
+	case "stringAsset":
+		g.Fgenf(w, "pulumi.StringAsset(%.v)", expr.Args[0])
+	case "remoteAsset":
+		g.Fgenf(w, "pulumi.remoteAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		g.Fgenf(w, "(lambda path: base64.b64encode(open(path).read().encode()).decode())(%.v)", expr.Args[0])
 	case "filebase64sha256":

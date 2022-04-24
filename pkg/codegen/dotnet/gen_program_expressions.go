@@ -379,8 +379,18 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, " => new { Key = k, Value = v })")
 	case "fileArchive":
 		g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
+	case "remoteArchive":
+		g.Fgenf(w, "new RemoteArchive(%.v)", expr.Args[0])
+	case "assetArchive":
+		g.Fgen(w, "new AssetArchive(")
+		g.genDictionary(w, expr.Args[0])
+		g.Fgen(w, ")")
 	case "fileAsset":
 		g.Fgenf(w, "new FileAsset(%.v)", expr.Args[0])
+	case "stringAsset":
+		g.Fgenf(w, "new StringAsset(%.v)", expr.Args[0])
+	case "remoteAsset":
+		g.Fgenf(w, "new RemoteAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "ReadFileBase64(%v)", expr.Args[0])
