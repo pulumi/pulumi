@@ -1,2 +1,0 @@
-Pulumi.Automation.UpdateOptions.Color.get -> string
-Pulumi.Automation.UpdateOptions.Color.set -> void

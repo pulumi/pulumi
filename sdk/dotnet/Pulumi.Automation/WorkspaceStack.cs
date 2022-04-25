@@ -237,6 +237,12 @@ namespace Pulumi.Automation
                 if (options.Diff is true)
                     args.Add("--diff");
 
+                if (options.Plan != null)
+                {
+                    args.Add("--plan");
+                    args.Add(options.Plan);
+                }
+
                 if (options.Replace?.Any() == true)
                 {
                     foreach (var item in options.Replace)
@@ -359,6 +365,12 @@ namespace Pulumi.Automation
 
                 if (options.Diff is true)
                     args.Add("--diff");
+
+                if (options.Plan != null)
+                {
+                    args.Add("--save-plan");
+                    args.Add(options.Plan);
+                }
 
                 if (options.Replace?.Any() == true)
                 {

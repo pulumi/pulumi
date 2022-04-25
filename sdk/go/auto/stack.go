@@ -244,6 +244,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.Color != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%s", preOpts.Color))
 	}
+	if preOpts.Plan != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--save-plan=%s", preOpts.Plan))
+	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
 	if program := s.Workspace().Program(); program != nil {
@@ -261,17 +264,19 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	var summaryEvents []apitype.SummaryEvent
 	eventChannel := make(chan events.EngineEvent)
-	go func(ch chan events.EngineEvent, events *[]apitype.SummaryEvent) {
+	eventsDone := make(chan bool)
+	go func() {
 		for {
 			event, ok := <-eventChannel
 			if !ok {
+				close(eventsDone)
 				return
 			}
 			if event.SummaryEvent != nil {
 				summaryEvents = append(summaryEvents, *event.SummaryEvent)
 			}
 		}
-	}(eventChannel, &summaryEvents)
+	}()
 
 	eventChannels := []chan<- events.EngineEvent{eventChannel}
 	eventChannels = append(eventChannels, preOpts.EventStreams...)
@@ -280,13 +285,17 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if err != nil {
 		return res, errors.Wrap(err, "failed to tail logs")
 	}
-	defer cleanup(t, eventChannels)
+	defer t.Close()
 	args = append(args, "--event-log", t.Filename)
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, preOpts.ProgressStreams /* additionalOutput */, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
+
+	// Close the file watcher wait for all events to send
+	t.Close()
+	<-eventsDone
 
 	if len(summaryEvents) == 0 {
 		return res, newAutoError(errors.New("failed to get preview summary"), stdout, stderr, code)
@@ -342,6 +351,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if upOpts.Color != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--color=%q", upOpts.Color))
 	}
+	if upOpts.Plan != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--plan=%s", upOpts.Plan))
+	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
 	if program := s.Workspace().Program(); program != nil {
@@ -361,7 +373,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		if err != nil {
 			return res, errors.Wrap(err, "failed to tail logs")
 		}
-		defer cleanup(t, eventChannels)
+		defer t.Close()
 		args = append(args, "--event-log", t.Filename)
 	}
 
@@ -438,7 +450,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		if err != nil {
 			return res, errors.Wrap(err, "failed to tail logs")
 		}
-		defer cleanup(t, eventChannels)
+		defer t.Close()
 		args = append(args, "--event-log", t.Filename)
 	}
 
@@ -509,7 +521,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		if err != nil {
 			return res, errors.Wrap(err, "failed to tail logs")
 		}
-		defer cleanup(t, eventChannels)
+		defer t.Close()
 		args = append(args, "--event-log", t.Filename)
 	}
 
@@ -977,7 +989,56 @@ func (s *languageRuntimeServer) InstallDependencies(
 	return nil
 }
 
-func tailLogs(command string, receivers []chan<- events.EngineEvent) (*tail.Tail, error) {
+type fileWatcher struct {
+	Filename  string
+	tail      *tail.Tail
+	receivers []chan<- events.EngineEvent
+	done      chan bool
+}
+
+func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
+	t, err := tail.TailFile(path, tail.Config{
+		Follow: true,
+		Logger: tail.DiscardingLogger,
+	})
+	if err != nil {
+		return nil, err
+	}
+	done := make(chan bool)
+	go func(tailedLog *tail.Tail) {
+		for line := range tailedLog.Lines {
+			if line.Err != nil {
+				for _, r := range receivers {
+					r <- events.EngineEvent{Error: line.Err}
+				}
+				continue
+			}
+			var e apitype.EngineEvent
+			err = json.Unmarshal([]byte(line.Text), &e)
+			if err != nil {
+				for _, r := range receivers {
+					r <- events.EngineEvent{Error: err}
+				}
+				continue
+			}
+			for _, r := range receivers {
+				r <- events.EngineEvent{EngineEvent: e}
+			}
+		}
+		for _, r := range receivers {
+			close(r)
+		}
+		close(done)
+	}(t)
+	return &fileWatcher{
+		Filename:  t.Filename,
+		tail:      t,
+		receivers: receivers,
+		done:      done,
+	}, nil
+}
+
+func tailLogs(command string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
 	logDir, err := ioutil.TempDir("", fmt.Sprintf("automation-logs-%s-", command))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create logdir")
@@ -992,11 +1053,20 @@ func tailLogs(command string, receivers []chan<- events.EngineEvent) (*tail.Tail
 	return t, nil
 }
 
-func cleanup(t *tail.Tail, channels []chan<- events.EngineEvent) {
-	logDir := filepath.Dir(t.Filename)
-	t.Cleanup()
-	os.RemoveAll(logDir)
-	for _, ch := range channels {
-		close(ch)
+func (fw *fileWatcher) Close() {
+	if fw.tail == nil {
+		return
 	}
+
+	// Tell the watcher to end on next EoF, wait for the done event, then cleanup.
+
+	// nolint: errcheck
+	fw.tail.StopAtEOF()
+	<-fw.done
+	logDir := filepath.Dir(fw.tail.Filename)
+	fw.tail.Cleanup()
+	os.RemoveAll(logDir)
+
+	// set to nil so we can safely close again in defer
+	fw.tail = nil
 }

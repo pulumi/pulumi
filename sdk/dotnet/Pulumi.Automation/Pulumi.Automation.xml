@@ -682,6 +682,11 @@
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.PreviewAsync(Pulumi.Automation.PreviewOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.PreviewOptions.Plan">
+            <summary>
+            Plan specifies the path where the update plan should be saved.
+            </summary>
+        </member>
         <member name="P:Pulumi.Automation.PreviewOptions.Logger">
             <summary>
             A custom logger instance that will be used for the action. Note that it will only be used
@@ -907,6 +912,11 @@
         <member name="T:Pulumi.Automation.UpOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpOptions.Plan">
+            <summary>
+            Plan specifies the path to an update plan to use for the update.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.UpOptions.Logger">
