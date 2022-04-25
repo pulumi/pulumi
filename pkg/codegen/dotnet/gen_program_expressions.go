@@ -239,6 +239,7 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 }
 
 var functionNamespaces = map[string][]string{
+	"assetArchive":     {"System.Collections.Generic"},
 	"readDir":          {"System.IO", "System.Linq"},
 	"readFile":         {"System.IO"},
 	"cwd":              {"System.IO"},
@@ -379,8 +380,18 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, " => new { Key = k, Value = v })")
 	case "fileArchive":
 		g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
+	case "remoteArchive":
+		g.Fgenf(w, "new RemoteArchive(%.v)", expr.Args[0])
+	case "assetArchive":
+		g.Fgen(w, "new AssetArchive(")
+		g.genDictionary(w, expr.Args[0].(*model.ObjectConsExpression), "AssetOrArchive")
+		g.Fgen(w, ")")
 	case "fileAsset":
 		g.Fgenf(w, "new FileAsset(%.v)", expr.Args[0])
+	case "stringAsset":
+		g.Fgenf(w, "new StringAsset(%.v)", expr.Args[0])
+	case "remoteAsset":
+		g.Fgenf(w, "new RemoteAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "ReadFileBase64(%v)", expr.Args[0])
@@ -430,7 +441,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "Convert.ToBase64String(System.Text.UTF8.GetBytes(%v))", expr.Args[0])
 	case "toJSON":
 		g.Fgen(w, "JsonSerializer.Serialize(")
-		g.genDictionary(w, expr.Args[0])
+		g.genDictionaryOrTuple(w, expr.Args[0])
 		g.Fgen(w, ")")
 	case "sha1":
 		// Assuming the existence of the following helper method located earlier in the preamble
@@ -446,19 +457,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	}
 }
 
-func (g *generator) genDictionary(w io.Writer, expr model.Expression) {
+func (g *generator) genDictionaryOrTuple(w io.Writer, expr model.Expression) {
 	switch expr := expr.(type) {
 	case *model.ObjectConsExpression:
-		g.Fgen(w, "new Dictionary<string, object?>\n")
-		g.Fgenf(w, "%s{\n", g.Indent)
-		g.Indented(func() {
-			for _, item := range expr.Items {
-				g.Fgenf(w, "%s{ %.v, ", g.Indent, item.Key)
-				g.genDictionary(w, item.Value)
-				g.Fgen(w, " },\n")
-			}
-		})
-		g.Fgenf(w, "%s}", g.Indent)
+		g.genDictionary(w, expr, "object?")
 	case *model.TupleConsExpression:
 		g.Fgen(w, "new[]\n")
 		g.Indented(func() {
@@ -466,7 +468,7 @@ func (g *generator) genDictionary(w io.Writer, expr model.Expression) {
 			g.Indented(func() {
 				for _, v := range expr.Expressions {
 					g.Fgenf(w, "%s", g.Indent)
-					g.genDictionary(w, v)
+					g.genDictionaryOrTuple(w, v)
 					g.Fgen(w, ",\n")
 				}
 			})
@@ -476,6 +478,19 @@ func (g *generator) genDictionary(w io.Writer, expr model.Expression) {
 	default:
 		g.Fgenf(w, "%.v", expr)
 	}
+}
+
+func (g *generator) genDictionary(w io.Writer, expr *model.ObjectConsExpression, valueType string) {
+	g.Fgenf(w, "new Dictionary<string, %s>\n", valueType)
+	g.Fgenf(w, "%s{\n", g.Indent)
+	g.Indented(func() {
+		for _, item := range expr.Items {
+			g.Fgenf(w, "%s{ %.v, ", g.Indent, item.Key)
+			g.genDictionaryOrTuple(w, item.Value)
+			g.Fgen(w, " },\n")
+		}
+	})
+	g.Fgenf(w, "%s}", g.Indent)
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {

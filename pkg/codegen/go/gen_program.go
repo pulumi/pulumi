@@ -673,7 +673,9 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 				g.Fgenf(w, "return err\n")
 				g.Fgenf(w, "}\n")
 			}
-		case "join", "toBase64", "mimeType", "fileAsset":
+		case "join", "toBase64", "mimeType",
+			"fileArchive", "remoteArchive", "assetArchive",
+			"fileAsset", "stringAsset", "remoteAsset":
 			g.Fgenf(w, "%s := %.3v;\n", name, expr)
 		}
 	default:

@@ -274,7 +274,11 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 var functionImports = map[string][]string{
 	intrinsicInterpolate: {"@pulumi/pulumi"},
 	"fileArchive":        {"@pulumi/pulumi"},
+	"remoteArchive":      {"@pulumi/pulumi"},
+	"assetArchive":       {"@pulumi/pulumi"},
 	"fileAsset":          {"@pulumi/pulumi"},
+	"stringAsset":        {"@pulumi/pulumi"},
+	"remoteAsset":        {"@pulumi/pulumi"},
 	"filebase64":         {"fs"},
 	"filebase64sha256":   {"fs", "crypto"},
 	"readFile":           {"fs"},
@@ -374,8 +378,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, " => {key: k, value: v})")
 	case "fileArchive":
 		g.Fgenf(w, "new pulumi.asset.FileArchive(%.v)", expr.Args[0])
+	case "remoteArchive":
+		g.Fgenf(w, "new pulumi.asset.RemoteArchive(%.v)", expr.Args[0])
+	case "assetArchive":
+		g.Fgenf(w, "new pulumi.asset.AssetArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "new pulumi.asset.FileAsset(%.v)", expr.Args[0])
+	case "stringAsset":
+		g.Fgenf(w, "new pulumi.asset.StringAsset(%.v)", expr.Args[0])
+	case "remoteAsset":
+		g.Fgenf(w, "new pulumi.asset.RemoteAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		g.Fgenf(w, "Buffer.from(fs.readFileSync(%v), 'binary').toString('base64')", expr.Args[0])
 	case "filebase64sha256":
