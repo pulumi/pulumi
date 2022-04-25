@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
@@ -28,13 +29,19 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+type projectGeneratorFunc func(project workspace.Project, p *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
 func newConvertCmd() *cobra.Command {
 	var outDir string
 	var language string
+	var projectName string
+	var prjectDescription string
 
 	cmd := &cobra.Command{
 		Use:    "convert",
@@ -46,16 +53,16 @@ func newConvertCmd() *cobra.Command {
 			"The PCL program to convert should be supplied on stdin.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 
-			var programGenerator programGeneratorFunc
+			var projectGenerator projectGeneratorFunc
 			switch language {
 			case "csharp", "c#":
-				programGenerator = dotnet.GenerateProgram
+				projectGenerator = dotnet.GenerateProject
 			case langGo:
-				programGenerator = gogen.GenerateProgram
+				projectGenerator = gogen.GenerateProject
 			case "typescript":
-				programGenerator = nodejs.GenerateProgram
+				projectGenerator = nodejs.GenerateProject
 			case langPython:
-				programGenerator = python.GenerateProgram
+				projectGenerator = python.GenerateProject
 			default:
 				return result.Errorf("cannot generate programs for %v", language)
 			}
@@ -76,7 +83,19 @@ func newConvertCmd() *cobra.Command {
 				return result.Errorf("could not bind input program: %v", diagnostics)
 			}
 
-			files, diagnostics, err := programGenerator(pclProgram)
+			if projectName == "" {
+				return result.Errorf("Need to pass project name with --name")
+			}
+			if prjectDescription == "" {
+				return result.Errorf("Need to pass project description with --description")
+			}
+
+			project := workspace.Project{
+				Name:        tokens.PackageName(projectName),
+				Description: &prjectDescription,
+			}
+
+			files, diagnostics, err := projectGenerator(project, pclProgram)
 			if err != nil {
 				return result.FromError(fmt.Errorf("could not generate output program: %w", err))
 			}
@@ -104,7 +123,15 @@ func newConvertCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
-		&language, "language", "", "Which language plugin to use to generate the pulumi program")
+		&language, "language", "", "Which language plugin to use to generate the pulumi project")
+
+	cmd.PersistentFlags().StringVarP(
+		&projectName, "name", "n", "",
+		"The project name; if not specified, a prompt will request it")
+
+	cmd.PersistentFlags().StringVarP(
+		&prjectDescription, "description", "d", "",
+		"The project description; if not specified, a prompt will request it")
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
