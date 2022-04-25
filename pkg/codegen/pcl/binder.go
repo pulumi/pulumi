@@ -29,6 +29,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+const LogicalNamePropertyKey = "__logicalName"
+
 type bindOptions struct {
 	allowMissingVariables  bool
 	allowMissingProperties bool
@@ -165,7 +167,6 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	var diagnostics hcl.Diagnostics
 
-	// Declare body items in source order.
 	for _, item := range model.SourceOrderBody(file.Body) {
 		switch item := item.(type) {
 		case *hclsyntax.Attribute:
@@ -237,8 +238,6 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 					diagnostics = append(diagnostics, labelsErrorf(item, "config variables must have exactly one or two labels"))
 				}
 
-				// TODO(pdg): check body for valid contents
-
 				v := &OutputVariable{
 					typ:    typ,
 					syntax: item,
@@ -254,6 +253,28 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	}
 
 	return diagnostics, nil
+}
+
+// Evaluate a constant string attribute that's internal to Pulumi, e.g.: the Logical Name on a resource or output.
+func getStringAttrValue(attr *model.Attribute) (string, *hcl.Diagnostic) {
+	switch lit := attr.Syntax.Expr.(type) {
+	case *hclsyntax.LiteralValueExpr:
+		if lit.Val.Type() != cty.String {
+			return "", stringAttributeError(attr)
+		}
+		return lit.Val.AsString(), nil
+	case *hclsyntax.TemplateExpr:
+		if len(lit.Parts) != 1 {
+			return "", stringAttributeError(attr)
+		}
+		part, ok := lit.Parts[0].(*hclsyntax.LiteralValueExpr)
+		if !ok || part.Val.Type() != cty.String {
+			return "", stringAttributeError(attr)
+		}
+		return part.Val.AsString(), nil
+	default:
+		return "", stringAttributeError(attr)
+	}
 }
 
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an

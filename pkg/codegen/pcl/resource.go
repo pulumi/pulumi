@@ -47,6 +47,11 @@ type Resource struct {
 
 	syntax *hclsyntax.Block
 
+	// The name visible to API calls related to the resource. Used as the Name argument in resource
+	// constructors, and through those calls to RegisterResource. Must not be modified during code
+	// generation to ensure that resources are not renamed (deleted and recreated).
+	logicalName string
+
 	// The definition of the resource.
 	Definition *model.Block
 
@@ -89,9 +94,19 @@ func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Dia
 	return r.VariableType.Traverse(traverser)
 }
 
-// Name returns the name of the resource.
+// Deprecated: Name returns the variable or declaration name of the resource.
 func (r *Resource) Name() string {
 	return r.Definition.Labels[0]
+}
+
+// Returns the unique name of the resource; if the resource has an unique name it is formatted with
+// the format string and returned, otherwise the defaultValue is returned as is.
+func (r *Resource) LogicalName() string {
+	if r.logicalName != "" {
+		return r.logicalName
+	}
+
+	return r.Name()
 }
 
 // DecomposeToken attempts to decompose the resource's type token into its package, module, and type. If decomposition
