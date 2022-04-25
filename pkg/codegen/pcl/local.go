@@ -47,6 +47,10 @@ func (lv *LocalVariable) Name() string {
 	return lv.Definition.Name
 }
 
+func (lv *LocalVariable) LogicalName() string {
+	return lv.Definition.Name
+}
+
 // Type returns the type of the local variable.
 func (lv *LocalVariable) Type() model.Type {
 	return lv.Definition.Type()

@@ -29,7 +29,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-const UniqueNamePropertyKey = "__uniqueName"
+const LogicalNamePropertyKey = "__logicalName"
 
 type bindOptions struct {
 	allowMissingVariables  bool
@@ -167,8 +167,6 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	var diagnostics hcl.Diagnostics
 
-	// Declare body items in source order.
-Items:
 	for _, item := range model.SourceOrderBody(file.Body) {
 		switch item := item.(type) {
 		case *hclsyntax.Attribute:
@@ -216,15 +214,8 @@ Items:
 					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
 				}
 
-				uniqueName, diagErr := popStringAttr(item.Body.Attributes, UniqueNamePropertyKey)
-				if diagErr != nil {
-					diagnostics = append(diagnostics, diagErr)
-					break Items
-				}
-
 				resource := &Resource{
-					syntax:     item,
-					uniqueName: uniqueName,
+					syntax: item,
 				}
 				declareDiags := b.declareNode(item.Labels[0], resource)
 				diagnostics = append(diagnostics, declareDiags...)
@@ -247,17 +238,9 @@ Items:
 					diagnostics = append(diagnostics, labelsErrorf(item, "config variables must have exactly one or two labels"))
 				}
 
-				// TODO(pdg): check body for valid contents
-				uniqueName, diagErr := popStringAttr(item.Body.Attributes, UniqueNamePropertyKey)
-				if diagErr != nil {
-					diagnostics = append(diagnostics, diagErr)
-					break Items
-				}
-
 				v := &OutputVariable{
-					typ:        typ,
-					syntax:     item,
-					uniqueName: uniqueName,
+					typ:    typ,
+					syntax: item,
 				}
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
@@ -272,31 +255,26 @@ Items:
 	return diagnostics, nil
 }
 
-// Pop an attribute that's internal to Pulumi, e.g.: "__uniqueName" on a resource or output.
-func popStringAttr(attrs hclsyntax.Attributes, key string) (string, *hcl.Diagnostic) {
-	var value string
-	if attr, found := attrs[key]; found {
-		switch lit := attr.Expr.(type) {
-		case *hclsyntax.LiteralValueExpr:
-			if lit.Val.Type() != cty.String {
-				return "", stringAttributeError(attr)
-			}
-			value = lit.Val.AsString()
-		case *hclsyntax.TemplateExpr:
-			if len(lit.Parts) != 1 {
-				return "", stringAttributeError(attr)
-			}
-			part, ok := lit.Parts[0].(*hclsyntax.LiteralValueExpr)
-			if !ok || part.Val.Type() != cty.String {
-				return "", stringAttributeError(attr)
-			}
-			value = part.Val.AsString()
-		default:
+// Evaluate a constant string attribute that's internal to Pulumi, e.g.: the Logical Name on a resource or output.
+func getStringAttrValue(attr *model.Attribute) (string, *hcl.Diagnostic) {
+	switch lit := attr.Syntax.Expr.(type) {
+	case *hclsyntax.LiteralValueExpr:
+		if lit.Val.Type() != cty.String {
 			return "", stringAttributeError(attr)
 		}
+		return lit.Val.AsString(), nil
+	case *hclsyntax.TemplateExpr:
+		if len(lit.Parts) != 1 {
+			return "", stringAttributeError(attr)
+		}
+		part, ok := lit.Parts[0].(*hclsyntax.LiteralValueExpr)
+		if !ok || part.Val.Type() != cty.String {
+			return "", stringAttributeError(attr)
+		}
+		return part.Val.AsString(), nil
+	default:
+		return "", stringAttributeError(attr)
 	}
-	delete(attrs, key)
-	return value, nil
 }
 
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an

@@ -31,7 +31,7 @@ type OutputVariable struct {
 	// constructors (typically a method called "export"), and through those calls to
 	// RegisterResourceOutputs. Must not be modified during code generation to ensure that stack
 	// outputs are not renamed, breaking stack references.
-	uniqueName string
+	logicalName string
 	// The definition of the output.
 	Definition *model.Block
 	// The value of the output.
@@ -51,22 +51,21 @@ func (ov *OutputVariable) VisitExpressions(pre, post model.ExpressionVisitor) hc
 	return model.VisitExpressions(ov.Definition, pre, post)
 }
 
-// Name returns the variable or declaration name of the output.
 func (ov *OutputVariable) Name() string {
 	return ov.Definition.Labels[0]
+}
+
+// Returns the ID of the output, if the output has an ID it is returned surrounded by double
+// quotes, otherwise the defaultValue is returned as is.
+func (ov *OutputVariable) LogicalName() string {
+	if ov.logicalName != "" {
+		return ov.logicalName
+	}
+
+	return ov.Name()
 }
 
 // Type returns the type of the output variable.
 func (ov *OutputVariable) Type() model.Type {
 	return ov.typ
-}
-
-// Returns the ID of the output, if the output has an ID it is returned surrounded by double
-// quotes, otherwise the defaultValue is returned as is.
-func (ov *OutputVariable) UniqueName() string {
-	if ov.uniqueName != "" {
-		return ov.uniqueName
-	}
-
-	return ov.Name()
 }

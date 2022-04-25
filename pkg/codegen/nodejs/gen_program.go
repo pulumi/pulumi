@@ -98,7 +98,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 					if result == nil {
 						result = &model.ObjectConsExpression{}
 					}
-					name := o.UniqueName()
+					name := o.LogicalName()
 					nameVar := makeValidIdentifier(o.Name())
 					result.Items = append(result.Items, model.ObjectConsItem{
 						Key: &model.LiteralValueExpression{Value: cty.StringVal(name)},
@@ -245,7 +245,7 @@ func resourceRequiresAsyncMain(r *pcl.Resource) bool {
 }
 
 func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
-	outputName := ov.UniqueName()
+	outputName := ov.LogicalName()
 	if makeValidIdentifier(outputName) != outputName {
 		return true
 	}
@@ -343,7 +343,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	optionsBag := g.genResourceOptions(r.Options)
 
-	name := r.UniqueName()
+	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))

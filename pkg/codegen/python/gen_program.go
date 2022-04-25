@@ -354,7 +354,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	optionsBag, temps := g.lowerResourceOptions(r.Options)
 
-	name := r.UniqueName()
+	name := r.LogicalName()
 	nameVar := PyName(r.Name())
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
@@ -491,7 +491,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 	g.genTemps(w, temps)
 
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.UniqueName(), value)
+	g.Fgenf(w, "%spulumi.export(\"%s\", %.v)\n", g.Indent, v.LogicalName(), value)
 }
 
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {

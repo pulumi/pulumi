@@ -165,6 +165,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Repro for #9357",
 		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
 	},
+	{
+		Directory:   "logical-name",
+		Description: "Logical names",
+	},
 }
 
 // Checks that a generated program is correct
