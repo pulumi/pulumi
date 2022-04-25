@@ -506,9 +506,9 @@ func ToSecret(input interface{}) Output {
 
 // Creates an unknown output. This is a low level API and should not be used in programs as this
 // will cause "pulumi up" to fail if called and used during a non-dryrun deployment.
-func UnsafeUnknownOutput() Output {
+func UnsafeUnknownOutput(deps []Resource) Output {
 	output, _, _ := NewOutput()
-	output.getState().resolve(nil, false, false, nil)
+	output.getState().resolve(nil, false, false, deps)
 	return output
 }
 
