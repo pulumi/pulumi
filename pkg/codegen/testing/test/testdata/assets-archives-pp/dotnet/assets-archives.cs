@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Pulumi;
 using Aws = Pulumi.Aws;
 
@@ -36,14 +37,14 @@ class MyStack : Stack
         var testAssetArchive = new Aws.S3.BucketObject("testAssetArchive", new Aws.S3.BucketObjectArgs
         {
             Bucket = siteBucket.Id,
-            Source = new AssetArchive(new Dictionary<string, object?>
+            Source = new AssetArchive(new Dictionary<string, AssetOrArchive>
             {
                 { "file.txt", new FileAsset("file.txt") },
                 { "string.txt", new StringAsset("<h1>File contents</h1>") },
                 { "remote.txt", new RemoteAsset("https://pulumi.test") },
                 { "file.tar", new FileArchive("file.tar.gz") },
                 { "remote.tar", new RemoteArchive("https://pulumi.test/foo.tar.gz") },
-                { ".nestedDir", new AssetArchive(new Dictionary<string, object?>
+                { ".nestedDir", new AssetArchive(new Dictionary<string, AssetOrArchive>
                 {
                     { "file.txt", new FileAsset("file.txt") },
                     { "string.txt", new StringAsset("<h1>File contents</h1>") },
