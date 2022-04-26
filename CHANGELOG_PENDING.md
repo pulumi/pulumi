@@ -12,6 +12,9 @@
 - [codegen] - Support all [Asset and Archive](https://www.pulumi.com/docs/intro/concepts/assets-archives/) types.
   [#9463](https://github.com/pulumi/pulumi/pull/9463)
 
+- [cli] Split call request protobufs, as monitors and providers take different arguments.
+  [#9478](https://github.com/pulumi/pulumi/pull/9478)
+
 ### Bug Fixes
 
 - [codegen] - Ensure that plain properties are always plain.
