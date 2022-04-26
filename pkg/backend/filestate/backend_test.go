@@ -281,3 +281,47 @@ func TestCancel(t *testing.T) {
 	err = lb.checkForLock(ctx, aStackRef)
 	assert.NoError(t, err)
 }
+
+func TestRemoveMakesBackups(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	tmpDir, err := ioutil.TempDir("", "filestatebackend")
+	assert.NoError(t, err)
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	// Grab the bucket interface to test with
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Check that creating a new stack doesn't make a backup file
+	aStackRef, err := b.ParseStackReference("a")
+	assert.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+
+	// Check the stack file now exists, but the backup file doesn't
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+	backupFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name())+".bak")
+	assert.NoError(t, err)
+	assert.False(t, backupFileExists)
+
+	// Now remove the stack
+	removed, err := b.RemoveStack(ctx, aStack, false)
+	assert.NoError(t, err)
+	assert.False(t, removed)
+
+	// Check the stack file is now gone, but the backup file exists
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	assert.NoError(t, err)
+	assert.False(t, stackFileExists)
+	backupFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name())+".bak")
+	assert.NoError(t, err)
+	assert.True(t, backupFileExists)
+}
