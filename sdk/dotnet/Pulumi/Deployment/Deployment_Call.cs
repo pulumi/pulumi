@@ -79,7 +79,7 @@ namespace Pulumi
             var providerReference = await ProviderResource.RegisterAsync(provider).ConfigureAwait(false);
 
             // Create the request.
-            var request = new CallRequest
+            var request = new CallResourceRequest
             {
                 Tok = token,
                 Provider = providerReference ?? "",
@@ -92,7 +92,7 @@ namespace Pulumi
             foreach (var (argName, directDependencies) in argDependencies)
             {
                 var urns = await GetAllTransitivelyReferencedResourceUrnsAsync(directDependencies).ConfigureAwait(false);
-                var deps = new CallRequest.Types.ArgumentDependencies();
+                var deps = new CallResourceRequest.Types.ArgumentDependencies();
                 deps.Urns.AddRange(urns);
                 request.ArgDependencies.Add(argName, deps);
             }

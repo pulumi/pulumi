@@ -11,7 +11,7 @@ namespace Pulumi
 
         Task<InvokeResponse> InvokeAsync(ResourceInvokeRequest request);
 
-        Task<CallResponse> CallAsync(CallRequest request);
+        Task<CallResponse> CallAsync(CallResourceRequest request);
 
         Task<ReadResourceResponse> ReadResourceAsync(Resource resource, ReadResourceRequest request);
 

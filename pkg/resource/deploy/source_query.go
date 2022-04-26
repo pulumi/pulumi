@@ -427,7 +427,7 @@ func (rm *queryResmon) StreamInvoke(
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.
-func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallResourceRequest) (*pulumirpc.CallResponse, error) {
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("QueryResourceMonitor.Call(%s)", tok)
 

@@ -58,7 +58,7 @@ namespace Pulumi.Testing
             return new InvokeResponse { Return = await SerializeAsync(result).ConfigureAwait(false) };
         }
 
-        public async Task<CallResponse> CallAsync(CallRequest request)
+        public async Task<CallResponse> CallAsync(CallResourceRequest request)
         {
             // For now, we'll route both Invoke and Call through IMocks.CallAsync.
             var args = ToDictionary(request.Args);

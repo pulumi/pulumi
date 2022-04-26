@@ -33,15 +33,15 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
   return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_CallRequest(arg) {
-  if (!(arg instanceof provider_pb.CallRequest)) {
-    throw new Error('Expected argument of type pulumirpc.CallRequest');
+function serialize_pulumirpc_CallResourceRequest(arg) {
+  if (!(arg instanceof resource_pb.CallResourceRequest)) {
+    throw new Error('Expected argument of type pulumirpc.CallResourceRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_pulumirpc_CallRequest(buffer_arg) {
-  return provider_pb.CallRequest.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_pulumirpc_CallResourceRequest(buffer_arg) {
+  return resource_pb.CallResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_CallResponse(arg) {
@@ -194,10 +194,10 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     path: '/pulumirpc.ResourceMonitor/Call',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.CallRequest,
+    requestType: resource_pb.CallResourceRequest,
     responseType: provider_pb.CallResponse,
-    requestSerialize: serialize_pulumirpc_CallRequest,
-    requestDeserialize: deserialize_pulumirpc_CallRequest,
+    requestSerialize: serialize_pulumirpc_CallResourceRequest,
+    requestDeserialize: deserialize_pulumirpc_CallResourceRequest,
     responseSerialize: serialize_pulumirpc_CallResponse,
     responseDeserialize: deserialize_pulumirpc_CallResponse,
   },

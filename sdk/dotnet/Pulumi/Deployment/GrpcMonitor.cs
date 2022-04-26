@@ -61,7 +61,7 @@ namespace Pulumi
         public async Task<InvokeResponse> InvokeAsync(ResourceInvokeRequest request)
             => await this._client.InvokeAsync(request);
 
-        public async Task<CallResponse> CallAsync(CallRequest request)
+        public async Task<CallResponse> CallAsync(CallResourceRequest request)
             => await this._client.CallAsync(request);
 
         public async Task<ReadResourceResponse> ReadResourceAsync(Resource resource, ReadResourceRequest request)

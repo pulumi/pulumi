@@ -25,10 +25,30 @@ service ResourceMonitor {
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
     rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
     rpc StreamInvoke(ResourceInvokeRequest) returns (stream InvokeResponse) {}
-    rpc Call(CallRequest) returns (CallResponse) {}
+    rpc Call(CallResourceRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
+}
+
+message CallResourceRequest {
+    // ArgumentDependencies describes the resources that a particular argument depends on.
+    message ArgumentDependencies {
+        repeated string urns = 1; // A list of URNs this argument depends on.
+    }
+
+    string tok = 1;                                        // the function token to invoke.
+    google.protobuf.Struct args = 2;                       // the arguments for the function invocation.
+    map<string, ArgumentDependencies> argDependencies = 3; // a map from argument keys to the dependencies of the argument.
+    string provider = 4;                                   // an optional reference to the provider to use for this invoke.
+    string version = 5;                                    // the version of the provider to use when servicing this request.
+    string pluginDownloadURL = 13;                         // the pluginDownloadURL of the provider to use when servicing this request.
+
+    // We used to send CallRequest for both provider invokes and monitor invokes, despite them being
+    // different. We've now split them but need to make sure we don't confuse any old plugins/monitors making
+    // sure those fields don't get reused.
+    reserved 6 to 12;
+    reserved "project", "stack", "config", "configSecretKeys", "dryRun", "parallel", "monitorEndpoint";
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use

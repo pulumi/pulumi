@@ -2158,9 +2158,6 @@ proto.pulumirpc.CallRequest.toObject = function(includeInstance, msg) {
     tok: jspb.Message.getFieldWithDefault(msg, 1, ""),
     args: (f = msg.getArgs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
     argdependenciesMap: (f = msg.getArgdependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.CallRequest.ArgumentDependencies.toObject) : [],
-    provider: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    version: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
     project: jspb.Message.getFieldWithDefault(msg, 6, ""),
     stack: jspb.Message.getFieldWithDefault(msg, 7, ""),
     configMap: (f = msg.getConfigMap()) ? f.toObject(includeInstance, undefined) : [],
@@ -2218,18 +2215,6 @@ proto.pulumirpc.CallRequest.deserializeBinaryFromReader = function(msg, reader) 
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.pulumirpc.CallRequest.ArgumentDependencies.deserializeBinaryFromReader, "", new proto.pulumirpc.CallRequest.ArgumentDependencies());
          });
-      break;
-    case 4:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setProvider(value);
-      break;
-    case 5:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setVersion(value);
-      break;
-    case 13:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setPlugindownloadurl(value);
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
@@ -2308,27 +2293,6 @@ proto.pulumirpc.CallRequest.serializeBinaryToWriter = function(message, writer) 
   f = message.getArgdependenciesMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(3, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.pulumirpc.CallRequest.ArgumentDependencies.serializeBinaryToWriter);
-  }
-  f = message.getProvider();
-  if (f.length > 0) {
-    writer.writeString(
-      4,
-      f
-    );
-  }
-  f = message.getVersion();
-  if (f.length > 0) {
-    writer.writeString(
-      5,
-      f
-    );
-  }
-  f = message.getPlugindownloadurl();
-  if (f.length > 0) {
-    writer.writeString(
-      13,
-      f
-    );
   }
   f = message.getProject();
   if (f.length > 0) {
@@ -2610,60 +2574,6 @@ proto.pulumirpc.CallRequest.prototype.getArgdependenciesMap = function(opt_noLaz
 proto.pulumirpc.CallRequest.prototype.clearArgdependenciesMap = function() {
   this.getArgdependenciesMap().clear();
   return this;};
-
-
-/**
- * optional string provider = 4;
- * @return {string}
- */
-proto.pulumirpc.CallRequest.prototype.getProvider = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.CallRequest} returns this
- */
-proto.pulumirpc.CallRequest.prototype.setProvider = function(value) {
-  return jspb.Message.setProto3StringField(this, 4, value);
-};
-
-
-/**
- * optional string version = 5;
- * @return {string}
- */
-proto.pulumirpc.CallRequest.prototype.getVersion = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.CallRequest} returns this
- */
-proto.pulumirpc.CallRequest.prototype.setVersion = function(value) {
-  return jspb.Message.setProto3StringField(this, 5, value);
-};
-
-
-/**
- * optional string pluginDownloadURL = 13;
- * @return {string}
- */
-proto.pulumirpc.CallRequest.prototype.getPlugindownloadurl = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 13, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.CallRequest} returns this
- */
-proto.pulumirpc.CallRequest.prototype.setPlugindownloadurl = function(value) {
-  return jspb.Message.setProto3StringField(this, 13, value);
-};
 
 
 /**

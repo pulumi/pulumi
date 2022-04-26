@@ -32,7 +32,7 @@ class ResourceMonitorStub(object):
         )
         self.Call = channel.unary_unary(
             "/pulumirpc.ResourceMonitor/Call",
-            request_serializer=provider__pb2.CallRequest.SerializeToString,
+            request_serializer=resource__pb2.CallResourceRequest.SerializeToString,
             response_deserializer=provider__pb2.CallResponse.FromString,
         )
         self.ReadResource = channel.unary_unary(
@@ -124,7 +124,7 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
         ),
         "Call": grpc.unary_unary_rpc_method_handler(
             servicer.Call,
-            request_deserializer=provider__pb2.CallRequest.FromString,
+            request_deserializer=resource__pb2.CallResourceRequest.FromString,
             response_serializer=provider__pb2.CallResponse.SerializeToString,
         ),
         "ReadResource": grpc.unary_unary_rpc_method_handler(
