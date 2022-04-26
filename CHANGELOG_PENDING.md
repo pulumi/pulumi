@@ -28,3 +28,6 @@
 
 - [auto/go] Fixed a race condition that could cause `Preview` to fail with "failed to get preview summary".
   [#9467](https://github.com/pulumi/pulumi/pull/9467)
+
+- [backend/filestate] - Fix a bug creating `stack.json.bak` files.
+  [#9476](https://github.com/pulumi/pulumi/pull/9476)
