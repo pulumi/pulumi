@@ -41,7 +41,7 @@ func newConvertCmd() *cobra.Command {
 	var outDir string
 	var language string
 	var projectName string
-	var prjectDescription string
+	var projectDescription string
 
 	cmd := &cobra.Command{
 		Use:    "convert",
@@ -86,13 +86,13 @@ func newConvertCmd() *cobra.Command {
 			if projectName == "" {
 				return result.Errorf("Need to pass project name with --name")
 			}
-			if prjectDescription == "" {
+			if projectDescription == "" {
 				return result.Errorf("Need to pass project description with --description")
 			}
 
 			project := workspace.Project{
 				Name:        tokens.PackageName(projectName),
-				Description: &prjectDescription,
+				Description: &projectDescription,
 			}
 
 			files, diagnostics, err := projectGenerator(project, pclProgram)
@@ -130,7 +130,7 @@ func newConvertCmd() *cobra.Command {
 		"The project name; if not specified, a prompt will request it")
 
 	cmd.PersistentFlags().StringVarP(
-		&prjectDescription, "description", "d", "",
+		&projectDescription, "description", "d", "",
 		"The project description; if not specified, a prompt will request it")
 
 	cmd.PersistentFlags().StringVar(
