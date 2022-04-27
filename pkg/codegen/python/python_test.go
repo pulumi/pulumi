@@ -46,14 +46,6 @@ func TestPyName(t *testing.T) {
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
-			// TODO[pulumi/pulumi#5201]: Once the assertion has been removed, we can remove this `if` block.
-			// Prevent this input from panic'ing.
-			if tt.input == "someTHINGsAREWeird" {
-				result := pyName(tt.input, false /*legacy*/)
-				assert.Equal(t, tt.expected, result)
-				return
-			}
-
 			result := PyName(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
