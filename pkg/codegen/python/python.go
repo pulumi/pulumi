@@ -122,7 +122,7 @@ func pyName(name string, legacy bool) string {
 				currentComponent.Reset()
 			}
 
-			if currentComponent.Len() > 0 || result.Len() == 0 {
+			if result.Len() == 0 {
 				result.WriteRune('_')
 			}
 			continue
