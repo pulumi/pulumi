@@ -157,7 +157,15 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		return nil, res
 	}
 
+	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(parent, event.Type(), event.Name())
+	if sg.urns[urn] {
+		// TODO[pulumi/pulumi-framework#19]: improve this error message!
+		sg.deployment.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
+		return nil, result.Bail()
+	}
+	sg.urns[urn] = true
+
 	newState := resource.NewState(event.Type(),
 		urn,
 		true,  /*custom*/
