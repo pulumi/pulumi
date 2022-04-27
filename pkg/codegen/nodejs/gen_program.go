@@ -151,8 +151,8 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	files["Pulumi.yaml"] = projectBytes
 
 	// Build the pacakge.json
-	var packageJson bytes.Buffer
-	packageJson.WriteString(fmt.Sprintf(`{
+	var packageJSON bytes.Buffer
+	packageJSON.WriteString(fmt.Sprintf(`{
 		"name": "%s",
 		"devDependencies": {
 			"@types/node": "^14"
@@ -172,13 +172,13 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			packageName = info.PackageName
 		}
 		dependencyTemplate := ",\n			\"%s\": \"%s\""
-		packageJson.WriteString(fmt.Sprintf(dependencyTemplate, packageName, p.Version.String()))
+		packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, p.Version.String()))
 	}
-	packageJson.WriteString(`
+	packageJSON.WriteString(`
 		}
 }`)
 
-	files["package.json"] = packageJson.Bytes()
+	files["package.json"] = packageJSON.Bytes()
 
 	// Add the language specific .gitignore
 	files[".gitignore"] = []byte(`/bin/
@@ -203,7 +203,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		"files": [
 `)
 
-	for file, _ := range files {
+	for file := range files {
 		if strings.HasSuffix(file, ".ts") {
 			tsConfig.WriteString("			\"" + file + "\"\n")
 		}
