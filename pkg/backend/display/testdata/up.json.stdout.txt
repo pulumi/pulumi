@@ -24,7 +24,19 @@
 <{%reset%}><{%reset%}>        path               : <{%reset%}><{%reset%}>"/"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>        --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
 <{%reset%}>        arn                : <{%reset%}><{%reset%}>"arn:aws:iam::616138583583:role/eks-role-24b1266"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>        assumeRolePolicy   : <{%reset%}><{%reset%}>"{\"Version\":\"2008-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"eks.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        assumeRolePolicy   : <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>            Statement: <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                    Action   : <{%reset%}><{%reset%}>"sts:AssumeRole"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    Effect   : <{%reset%}><{%reset%}>"Allow"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    Principal: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                        Service: <{%reset%}><{%reset%}>"eks.amazonaws.com"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            Version  : <{%reset%}><{%reset%}>"2008-10-17"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        createDate         : <{%reset%}><{%reset%}>"2022-02-09T23:14:50Z"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        id                 : <{%reset%}><{%reset%}>"eks-role-24b1266"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        inlinePolicies     : <{%reset%}><{%reset%}>[
