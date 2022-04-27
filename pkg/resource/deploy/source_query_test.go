@@ -189,7 +189,7 @@ func (rm *mockQueryResmon) Invoke(ctx context.Context,
 	panic("not implemented")
 }
 func (rm *mockQueryResmon) Call(ctx context.Context,
-	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	req *pulumirpc.CallResourceRequest) (*pulumirpc.CallResponse, error) {
 
 	panic("not implemented")
 }

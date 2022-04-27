@@ -604,7 +604,7 @@ func newInterceptingResourceMonitor(inner pulumirpc.ResourceMonitorClient) *inte
 }
 
 func (i *interceptingResourceMonitor) Call(
-	ctx context.Context, req *pulumirpc.CallRequest, options ...grpc.CallOption) (*pulumirpc.CallResponse, error) {
+	ctx context.Context, req *pulumirpc.CallResourceRequest, options ...grpc.CallOption) (*pulumirpc.CallResponse, error) {
 	return i.inner.Call(ctx, req, options...)
 }
 
