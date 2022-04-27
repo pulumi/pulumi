@@ -112,7 +112,15 @@ func (sg *stepGenerator) Errored() bool {
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
 func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, result.Result) {
+	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(event.Parent(), event.Type(), event.Name())
+	if sg.urns[urn] {
+		// TODO[pulumi/pulumi-framework#19]: improve this error message!
+		sg.deployment.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
+		return nil, result.Bail()
+	}
+	sg.urns[urn] = true
+
 	newState := resource.NewState(event.Type(),
 		urn,
 		true,  /*custom*/
