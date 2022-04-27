@@ -4914,3 +4914,47 @@ func TestEventSecrets(t *testing.T) {
 	}
 	p.Run(t, snap)
 }
+
+func TestDefaultParents(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource(resource.RootStackType, info.Project+"-"+info.Stack, false, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 3)
+
+	// Assert that resource 0 is the stack
+	assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
+	// Assert that the other 2 resources have the stack as a parent
+	assert.Equal(t, snap.Resources[0].URN, snap.Resources[1].Parent)
+	assert.Equal(t, snap.Resources[0].URN, snap.Resources[2].Parent)
+}
