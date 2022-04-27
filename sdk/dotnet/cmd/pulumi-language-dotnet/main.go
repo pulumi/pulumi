@@ -810,5 +810,74 @@ func (host *dotnetLanguageHost) GetProgramDependencies(
 
 func (host *dotnetLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer) error {
-	return errors.New("not supported")
+	logging.V(5).Infof("Attempting to run dotnet plugin in %s", req.Program)
+
+	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	executable := host.exec
+	args := []string{}
+
+	switch {
+	case host.binary != "" && strings.HasSuffix(host.binary, ".dll"):
+		// Portable pre-compiled dll: run `dotnet <name>.dll`
+		args = append(args, host.binary)
+	case host.binary != "":
+		// Self-contained executable: run it directly.
+		executable = host.binary
+	default:
+		// Run from source.
+		args = append(args, "run")
+
+		// If we are certain the project has been built,
+		// passing a --no-build flag to dotnet run results in
+		// up to 1s time savings.
+		if host.dotnetBuildSucceeded {
+			args = append(args, "--no-build")
+		}
+
+		if req.Program != "" {
+			args = append(args, req.Program)
+		}
+	}
+
+	if logging.V(5) {
+		commandStr := strings.Join(args, " ")
+		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
+	}
+
+	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
+	cmd := exec.Command(executable, req.Args...) // nolint: gas // intentionally running dynamic program name.
+	cmd.Dir = req.Pwd
+	cmd.Env = req.Env
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+	if err := cmd.Run(); err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
+			// errors will trigger this.  So, the error message should look as nice as possible.
+			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
+				err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
+			} else {
+				err = errors.Wrapf(exiterr, "Program exited unexpectedly")
+			}
+		} else {
+			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
+			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
+			err = errors.Wrapf(err, "Problem executing plugin program (could not run language executor)")
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }

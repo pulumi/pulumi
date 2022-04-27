@@ -523,3 +523,10 @@ func TestAboutDotnet(t *testing.T) {
 	// This one doesn't have a current stack. Assert that we caught it.
 	assert.Contains(t, stderr, "No current stack")
 }
+
+func TestProviderDotnet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dependencies: []string{"Pulumi"},
+		Dir:          filepath.Join("provider", "dotnet"),
+	})
+}
