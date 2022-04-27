@@ -113,6 +113,21 @@ func pyName(name string, legacy bool) string {
 
 	state := stateFirst
 	for _, char := range name {
+
+		// '_' indicates an explicit break, so end the current component.
+		if char == '_' {
+			state = stateFirst
+			if currentComponent.Len() > 0 {
+				result.WriteString(currentComponent.String())
+				currentComponent.Reset()
+			}
+
+			if currentComponent.Len() > 0 || result.Len() == 0 {
+				result.WriteRune('_')
+			}
+			continue
+		}
+
 		// If this is an illegal character for a Python identifier, replace it.
 		if !isLegalIdentifierPart(char) {
 			char = '_'
@@ -120,7 +135,7 @@ func pyName(name string, legacy bool) string {
 
 		switch state {
 		case stateFirst:
-			if !isLegalIdentifierStart(char) {
+			if !isLegalIdentifierStart(char) && result.Len() == 0 {
 				currentComponent.WriteRune('_')
 			}
 

@@ -22,6 +22,16 @@ var pyNameTests = []struct {
 	{"Sha256Hash", "sha256_hash", "sha256_hash"},
 	{"SHA256Hash", "sha256_hash", "sha256_hash"},
 
+	// Handle embedded underscores
+	{"_NO_NAME", "_no_name", "_no_name"},
+	{"_no_NAME", "_no_name", "_no_name"},
+	{"_NO_name", "_no_name", "_no_name"},
+	{"_no_name", "_no_name", "_no_name"},
+	{"NO_NAME", "no_name", "no_name"},
+	{"no_NAME", "no_name", "no_name"},
+	{"NO_name", "no_name", "no_name"},
+	{"no_name", "no_name", "no_name"},
+
 	// PyName should return the legacy name for these:
 	{"openXJsonSerDe", "open_x_json_ser_de", "open_x_json_ser_de"},
 	{"GetPublicIPs", "get_public_i_ps", "get_public_i_ps"},
