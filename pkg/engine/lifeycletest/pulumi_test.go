@@ -4930,10 +4930,18 @@ func TestDefaultParents(t *testing.T) {
 	}
 
 	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource(resource.RootStackType, info.Project+"-"+info.Stack, false, deploytest.ResourceOptions{})
+		_, _, _, err := monitor.RegisterResource(
+			resource.RootStackType,
+			info.Project+"-"+info.Stack,
+			false,
+			deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
-		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		_, _, _, err = monitor.RegisterResource(
+			"pkgA:m:typA",
+			"resA",
+			true,
+			deploytest.ResourceOptions{})
 		assert.NoError(t, err)
 
 		return nil

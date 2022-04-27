@@ -109,7 +109,8 @@ func (sg *stepGenerator) Errored() bool {
 	return sg.sawError
 }
 
-// checkParent checks that the parent given is valid for the given resource type, and returns a default parent if there is one.
+// checkParent checks that the parent given is valid for the given resource type, and returns a default parent
+// if there is one.
 func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Type) (resource.URN, result.Result) {
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
 	if resourceType == resource.RootStackType {
