@@ -16,11 +16,8 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
@@ -35,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type projectGeneratorFunc func(project workspace.Project, p *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
+type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
 
 func newConvertCmd() *cobra.Command {
 	var outDir string
@@ -95,26 +92,16 @@ func newConvertCmd() *cobra.Command {
 				Description: &projectDescription,
 			}
 
-			files, diagnostics, err := projectGenerator(project, pclProgram)
-			if err != nil {
-				return result.FromError(fmt.Errorf("could not generate output program: %w", err))
-			}
-			if diagnostics.HasErrors() {
-				return result.Errorf("could not generate output program: %v", diagnostics)
-			}
-
 			if outDir != "." {
 				err := os.MkdirAll(outDir, 0755)
 				if err != nil {
 					return result.FromError(fmt.Errorf("could not create output directory: %w", err))
 				}
 			}
-			for filename, data := range files {
-				outPath := path.Join(outDir, filename)
-				err := ioutil.WriteFile(outPath, data, 0600)
-				if err != nil {
-					return result.FromError(fmt.Errorf("could not write output program: %w", err))
-				}
+
+			err = projectGenerator(outDir, project, pclProgram)
+			if err != nil {
+				return result.FromError(fmt.Errorf("could not generate output program: %w", err))
 			}
 
 			return nil

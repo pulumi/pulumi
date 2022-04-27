@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"path"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -124,17 +126,20 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
-func GenerateProject(project workspace.Project, program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
-		return nil, diagnostics, err
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
 	}
 
 	// Set the runtime to "dotnet" then marshal to Pulumi.yaml
 	project.Runtime = workspace.NewProjectRuntimeInfo("dotnet", nil)
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
-		return nil, diagnostics, err
+		return err
 	}
 	files["Pulumi.yaml"] = projectBytes
 
@@ -158,7 +163,7 @@ func GenerateProject(project workspace.Project, program *pcl.Program) (map[strin
 		packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
 
 		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
-			return nil, nil, err
+			return err
 		}
 
 		csharpInfo := p.Language["csharp"].(CSharpPackageInfo)
@@ -187,7 +192,15 @@ class Program
 	// Add the language specific .gitignore
 	files[".gitignore"] = []byte(dotnetGitIgnore)
 
-	return files, diagnostics, nil
+	for filename, data := range files {
+		outPath := path.Join(directory, filename)
+		err := ioutil.WriteFile(outPath, data, 0600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // genTrivia generates the list of trivia associated with a given token.

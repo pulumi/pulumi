@@ -5,6 +5,8 @@ import (
 	"fmt"
 	gofmt "go/format"
 	"io"
+	"io/ioutil"
+	"path"
 	"strings"
 	"sync"
 
@@ -121,17 +123,20 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	return files, g.diagnostics, nil
 }
 
-func GenerateProject(project workspace.Project, program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
-		return nil, diagnostics, err
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
 	}
 
 	// Set the runtime to "go" then marshal to Pulumi.yaml
 	project.Runtime = workspace.NewProjectRuntimeInfo("go", nil)
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
-		return nil, diagnostics, err
+		return err
 	}
 	files["Pulumi.yaml"] = projectBytes
 
@@ -149,7 +154,7 @@ require (
 	packages := program.Packages()
 	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
-			return nil, nil, err
+			return err
 		}
 
 		goInfo := p.Language["go"].(GoPackageInfo)
@@ -169,7 +174,15 @@ require (
 
 	files["go.mod"] = gomod.Bytes()
 
-	return files, diagnostics, nil
+	for filename, data := range files {
+		outPath := path.Join(directory, filename)
+		err := ioutil.WriteFile(outPath, data, 0600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
+	}
+
+	return nil
 }
 
 var packageContexts sync.Map

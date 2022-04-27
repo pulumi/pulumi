@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"path"
 	"sort"
 	"strings"
@@ -132,17 +133,20 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
-func GenerateProject(project workspace.Project, program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
-		return nil, diagnostics, err
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
 	}
 
 	// Set the runtime to "nodejs" then marshal to Pulumi.yaml
 	project.Runtime = workspace.NewProjectRuntimeInfo("nodejs", nil)
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
-		return nil, diagnostics, err
+		return err
 	}
 	files["Pulumi.yaml"] = projectBytes
 
@@ -159,7 +163,7 @@ func GenerateProject(project workspace.Project, program *pcl.Program) (map[strin
 	packages := program.Packages()
 	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
-			return nil, nil, err
+			return err
 		}
 
 		info := p.Language["nodejs"].(NodePackageInfo)
@@ -209,7 +213,15 @@ func GenerateProject(project workspace.Project, program *pcl.Program) (map[strin
 }`)
 	files["tsconfig.json"] = tsConfig.Bytes()
 
-	return files, diagnostics, nil
+	for filename, data := range files {
+		outPath := path.Join(directory, filename)
+		err := ioutil.WriteFile(outPath, data, 0600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // genLeadingTrivia generates the list of leading trivia assicated with a given token.
