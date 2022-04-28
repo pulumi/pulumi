@@ -14,7 +14,7 @@ __all__ = ['OtherResourceArgs', 'OtherResource']
 @pulumi.input_type
 class OtherResourceArgs:
     def __init__(__self__, *,
-                 bar: Optional[Sequence[str]] = None,
+                 bar: Optional[Sequence[pulumi.Input[str]]] = None,
                  foo: Optional[pulumi.Input['Resource']] = None):
         """
         The set of arguments for constructing a OtherResource resource.
@@ -26,11 +26,11 @@ class OtherResourceArgs:
 
     @property
     @pulumi.getter
-    def bar(self) -> Optional[Sequence[str]]:
+    def bar(self) -> Optional[Sequence[pulumi.Input[str]]]:
         return pulumi.get(self, "bar")
 
     @bar.setter
-    def bar(self, value: Optional[Sequence[str]]):
+    def bar(self, value: Optional[Sequence[pulumi.Input[str]]]):
         pulumi.set(self, "bar", value)
 
     @property
@@ -48,7 +48,7 @@ class OtherResource(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 bar: Optional[Sequence[str]] = None,
+                 bar: Optional[Sequence[pulumi.Input[str]]] = None,
                  foo: Optional[pulumi.Input['Resource']] = None,
                  __props__=None):
         """
@@ -79,7 +79,7 @@ class OtherResource(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 bar: Optional[Sequence[str]] = None,
+                 bar: Optional[Sequence[pulumi.Input[str]]] = None,
                  foo: Optional[pulumi.Input['Resource']] = None,
                  __props__=None):
         if opts is None:

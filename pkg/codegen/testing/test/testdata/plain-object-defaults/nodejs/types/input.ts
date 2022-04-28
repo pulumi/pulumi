@@ -100,7 +100,7 @@ export interface LayeredTypeArgs {
     /**
      * Test how plain types interact
      */
-    plainOther?: inputs.HelmReleaseSettings;
+    plainOther?: inputs.HelmReleaseSettingsArgs;
     /**
      * The question already answered
      */
@@ -119,7 +119,7 @@ export function layeredTypeArgsProvideDefaults(val: LayeredTypeArgs): LayeredTyp
         ...val,
         answer: (val.answer) ?? 42,
         other: pulumi.output(val.other).apply(inputs.helmReleaseSettingsArgsProvideDefaults),
-        plainOther: (val.plainOther ? inputs.helmReleaseSettingsProvideDefaults(val.plainOther) : undefined),
+        plainOther: (val.plainOther ? inputs.helmReleaseSettingsArgsProvideDefaults(val.plainOther) : undefined),
         question: (val.question) ?? (utilities.getEnv("PULUMI_THE_QUESTION") || "<unknown>"),
         recursive: (val.recursive ? pulumi.output(val.recursive).apply(inputs.layeredTypeArgsProvideDefaults) : undefined),
         thinker: (val.thinker) ?? "not a good interaction",

@@ -1,7 +1,6 @@
 {
   "emittedFiles": [
     "Component.cs",
-    "Inputs/Foo.cs",
     "Inputs/FooArgs.cs",
     "Outputs/Foo.cs",
     "Provider.cs",

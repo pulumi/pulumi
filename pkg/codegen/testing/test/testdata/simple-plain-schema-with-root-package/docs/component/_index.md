@@ -29,8 +29,8 @@ no_edit_this_page: true
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
               <span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
               <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
-              <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[Foo]</span> = None<span class="p">,</span>
-              <span class="nx">baz</span><span class="p">:</span> <span class="nx">Optional[Sequence[Foo]]</span> = None<span class="p">,</span>
+              <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[FooArgs]</span> = None<span class="p">,</span>
+              <span class="nx">baz</span><span class="p">:</span> <span class="nx">Optional[Sequence[FooArgs]]</span> = None<span class="p">,</span>
               <span class="nx">c</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
               <span class="nx">d</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
               <span class="nx">e</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
@@ -201,7 +201,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo</a></span>
+        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -209,7 +209,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_csharp" style="color: inherit; text-decoration: inherit;">Baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">List&lt;Foo&gt;</a></span>
+        <span class="property-type"><a href="#foo">List&lt;Foo<wbr>Args&gt;</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -277,7 +277,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_go" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo</a></span>
+        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -285,7 +285,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_go" style="color: inherit; text-decoration: inherit;">Baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">[]Foo</a></span>
+        <span class="property-type"><a href="#foo">[]Foo<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -353,7 +353,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_nodejs" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo</a></span>
+        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -361,7 +361,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_nodejs" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo[]</a></span>
+        <span class="property-type"><a href="#foo">Foo<wbr>Args[]</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -429,7 +429,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_python" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo</a></span>
+        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -437,7 +437,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_python" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Sequence[Foo]</a></span>
+        <span class="property-type"><a href="#foo">Sequence[Foo<wbr>Args]</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
