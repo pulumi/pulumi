@@ -108,7 +108,7 @@ func newConvertCmd() *cobra.Command {
 			// Project should now exist at outDir. Run installDependencies in that directory
 			// Change the working directory to the specified directory.
 			if err := os.Chdir(outDir); err != nil {
-				return result.Errorf("changing the working directory: %w", err)
+				return result.FromError(fmt.Errorf("changing the working directory: %w", err))
 			}
 
 			// Load the project, to
