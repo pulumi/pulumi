@@ -897,7 +897,7 @@ func (display *ProgressDisplay) printOutputs() {
 
 	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
 
-	props := GetResourceOutputsPropertiesString(
+	props := getResourceOutputsPropertiesString(
 		stackStep, 1, display.isPreview, display.opts.Debug,
 		false /* refresh */, display.opts.ShowSameResources)
 	if props != "" {
