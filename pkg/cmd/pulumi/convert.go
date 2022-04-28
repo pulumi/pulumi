@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -102,6 +103,30 @@ func newConvertCmd() *cobra.Command {
 			err = projectGenerator(outDir, project, pclProgram)
 			if err != nil {
 				return result.FromError(fmt.Errorf("could not generate output program: %w", err))
+			}
+
+			// Project should now exist at outDir. Run installDependencies in that directory
+			// Change the working directory to the specified directory.
+			if err := os.Chdir(outDir); err != nil {
+				return result.Errorf("changing the working directory: %w", err)
+			}
+
+			// Load the project, to
+			proj, root, err := readProject()
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			projinfo := &engine.Projinfo{Proj: proj, Root: root}
+			pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			defer ctx.Close()
+
+			if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
+				return result.FromError(err)
 			}
 
 			return nil
