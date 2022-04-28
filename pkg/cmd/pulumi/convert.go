@@ -78,7 +78,7 @@ func newConvertCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("could not bind input program: %w", err))
 			}
 			if diagnostics.HasErrors() {
-				return result.Errorf("could not bind input program: %v", diagnostics)
+				return result.FromError(fmt.Errorf("could not bind input program: %v", diagnostics))
 			}
 
 			if projectName == "" {
