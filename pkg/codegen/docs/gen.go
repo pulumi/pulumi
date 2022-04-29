@@ -33,6 +33,8 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/pgavlin/goldmark"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -1940,6 +1942,11 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 			// which will most certainly fail.
 			// nolint gosec
 			return template.HTML(html)
+		},
+		"markdownify": func(md string) template.HTML {
+			var buf bytes.Buffer
+			goldmark.Convert([]byte(md), &buf)
+			return template.HTML(buf.String())
 		},
 	})
 
