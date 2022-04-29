@@ -11,8 +11,9 @@
 
 ### Bug Fixes
 
-- [codegen] - Ensure that plain properties are always plain.
+- [codegen/go] - Ensure that plain properties are plain.
   [#9430](https://github.com/pulumi/pulumi/pull/9430)
+  [#9488](https://github.com/pulumi/pulumi/pull/9488)
 
 - [cli] Fixed some context leaks where shutdown code wasn't correctly called.
   [#9438](https://github.com/pulumi/pulumi/pull/9438)
