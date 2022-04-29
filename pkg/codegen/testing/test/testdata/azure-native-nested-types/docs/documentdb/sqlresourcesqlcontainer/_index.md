@@ -15,17 +15,17 @@ no_edit_this_page: true
 An Azure Cosmos DB container.
 API Version: 2021-03-15.
 
-{{% examples %}}
+<div><pulumi-examples>
 
 ## Example Usage
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div><pulumi-chooser type="language" options="typescript,python,go,csharp"></pulumi-chooser></div>
 
 
 ### CosmosDBSqlContainerCreateUpdate
 
 
-{{< example csharp >}}
+<div><pulumi-choosable type="language" values="csharp">
 
 ```csharp
 using Pulumi;
@@ -111,10 +111,10 @@ class MyStack : Stack
 ```
 
 
-{{< /example >}}
+</pulumi-choosable></div>
 
 
-{{< example go >}}
+<div><pulumi-choosable type="language" values="go">
 
 
 ```go
@@ -191,10 +191,10 @@ func main() {
 ```
 
 
-{{< /example >}}
+</pulumi-choosable></div>
 
 
-{{< example python >}}
+<div><pulumi-choosable type="language" values="python">
 
 
 ```python
@@ -250,10 +250,10 @@ sql_resource_sql_container = azure_native.documentdb.SqlResourceSqlContainer("sq
 ```
 
 
-{{< /example >}}
+</pulumi-choosable></div>
 
 
-{{< example typescript >}}
+<div><pulumi-choosable type="language" values="typescript">
 
 
 ```typescript
@@ -310,13 +310,13 @@ const sqlResourceSqlContainer = new azure_native.documentdb.SqlResourceSqlContai
 ```
 
 
-{{< /example >}}
+</pulumi-choosable></div>
 
 
 
 
 
-{{% /examples %}}
+</pulumi-examples></div>
 
 
 
@@ -325,11 +325,14 @@ const sqlResourceSqlContainer = new azure_native.documentdb.SqlResourceSqlContai
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">SqlResourceSqlContainer</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">SqlResourceSqlContainerArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">SqlResourceSqlContainer</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span>
@@ -337,17 +340,23 @@ const sqlResourceSqlContainer = new azure_native.documentdb.SqlResourceSqlContai
 <span class="k">def </span><span class="nx">SqlResourceSqlContainer</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                             <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[SqlResourceSqlContainerArgs]</a></span> = None<span class="p">,</span>
                             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewSqlResourceSqlContainer</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">SqlResourceSqlContainerArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">SqlResourceSqlContainer</span>, error)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">SqlResourceSqlContainer</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">SqlResourceSqlContainerArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -369,9 +378,11 @@ const sqlResourceSqlContainer = new azure_native.documentdb.SqlResourceSqlContai
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -393,9 +404,11 @@ const sqlResourceSqlContainer = new azure_native.documentdb.SqlResourceSqlContai
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 
 <dl class="resources-properties"><dt
         class="property-optional" title="Optional">
@@ -423,9 +436,11 @@ const sqlResourceSqlContainer = new azure_native.documentdb.SqlResourceSqlContai
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -447,7 +462,8 @@ const sqlResourceSqlContainer = new azure_native.documentdb.SqlResourceSqlContai
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 ## SqlResourceSqlContainer Resource Properties {#properties}
 
@@ -459,21 +475,29 @@ The SqlResourceSqlContainer resource accepts the following [input]({{< relref "/
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 ### Outputs
@@ -482,7 +506,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
@@ -501,9 +526,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#sqlcontainergetpropertiesresponseresource">Pulumi.<wbr>Azure<wbr>Native.<wbr>Document<wbr>DB.<wbr>Outputs.<wbr>Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
@@ -522,9 +549,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#sqlcontainergetpropertiesresponseresource">Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
@@ -543,9 +572,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#sqlcontainergetpropertiesresponseresource">Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
@@ -564,7 +595,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#sqlcontainergetpropertiesresponseresource">Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -578,7 +610,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 <h4 id="compositepathresponse">Composite<wbr>Path<wbr>Response</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="order_csharp">
@@ -598,9 +631,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*)</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="order_go">
@@ -620,9 +655,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*)</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="order_nodejs">
@@ -642,9 +679,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*)</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="order_python">
@@ -664,11 +703,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*)</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="indexingpolicyresponse">Indexing<wbr>Policy<wbr>Response</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="compositeindexes_csharp">
@@ -679,9 +720,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>List of composite path list</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="compositeindexes_go">
@@ -692,9 +735,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>List of composite path list</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="compositeindexes_nodejs">
@@ -705,9 +750,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>List of composite path list</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="composite_indexes_python">
@@ -718,11 +765,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>List of composite path list</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="sqlcontainergetpropertiesresponseresource">Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="indexingpolicy_csharp">
@@ -733,9 +782,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="indexingpolicy_go">
@@ -746,9 +797,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="indexingpolicy_nodejs">
@@ -759,9 +812,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="indexing_policy_python">
@@ -772,7 +827,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 ## Import
 
 

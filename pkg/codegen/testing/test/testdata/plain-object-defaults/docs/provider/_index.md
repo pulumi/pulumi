@@ -21,11 +21,14 @@ The provider type for the kubernetes package.
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">?:</span> <span class="nx"><a href="#inputs">ProviderArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
@@ -34,17 +37,23 @@ The provider type for the kubernetes package.
 <span class="k">def </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ProviderArgs]</a></span> = None<span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewProvider</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx"><a href="#inputs">ProviderArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Provider</span>, error)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ProviderArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -66,9 +75,11 @@ The provider type for the kubernetes package.
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -90,9 +101,11 @@ The provider type for the kubernetes package.
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 
 <dl class="resources-properties"><dt
         class="property-optional" title="Optional">
@@ -120,9 +133,11 @@ The provider type for the kubernetes package.
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -144,7 +159,8 @@ The provider type for the kubernetes package.
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 ## Provider Resource Properties {#properties}
 
@@ -156,7 +172,8 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="helmreleasesettings_csharp">
@@ -167,9 +184,11 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="helmreleasesettings_go">
@@ -180,9 +199,11 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="helmreleasesettings_nodejs">
@@ -193,9 +214,11 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="helm_release_settings_python">
@@ -206,7 +229,8 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 ### Outputs
@@ -215,7 +239,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
@@ -226,9 +251,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
@@ -239,9 +266,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
@@ -252,9 +281,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
@@ -265,7 +296,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -279,7 +311,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 <h4 id="helmreleasesettings">Helm<wbr>Release<wbr>Settings</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_csharp">
@@ -308,9 +341,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path to the helm plugins directory.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_go">
@@ -339,9 +374,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path to the helm plugins directory.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_nodejs">
@@ -370,9 +407,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path to the helm plugins directory.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="required_arg_python">
@@ -401,7 +440,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path to the helm plugins directory.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 <h2 id="package-details">Package Details</h2>

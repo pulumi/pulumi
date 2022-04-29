@@ -28,17 +28,20 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>getIntegrationRuntimeObjectMetadatum<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetIntegrationRuntimeObjectMetadatumArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">GetIntegrationRuntimeObjectMetadatumResult</a></span>></span
 ><span class="k">
 function </span>getIntegrationRuntimeObjectMetadatumOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetIntegrationRuntimeObjectMetadatumOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">GetIntegrationRuntimeObjectMetadatumResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>get_integration_runtime_object_metadatum<span class="p">(</span><span class="nx">factory_name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                                              <span class="nx">integration_runtime_name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
@@ -52,10 +55,12 @@ def </span>get_integration_runtime_object_metadatum_output<span class="p">(</spa
                                              <span class="nx">resource_group_name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                                              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetIntegrationRuntimeObjectMetadatumResult]</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>GetIntegrationRuntimeObjectMetadatum<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">GetIntegrationRuntimeObjectMetadatumArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">GetIntegrationRuntimeObjectMetadatumResult</a></span>, error)</span
 ><span class="k">
@@ -64,23 +69,27 @@ func </span>GetIntegrationRuntimeObjectMetadatumOutput<span class="p">(</span><s
 
 &gt; Note: This function is named `GetIntegrationRuntimeObjectMetadatum` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">GetIntegrationRuntimeObjectMetadatum </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">GetIntegrationRuntimeObjectMetadatumResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">GetIntegrationRuntimeObjectMetadatumArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">GetIntegrationRuntimeObjectMetadatumResult</a></span>> <span class="p">Invoke(</span><span class="nx">GetIntegrationRuntimeObjectMetadatumInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="factoryname_csharp">
@@ -118,9 +127,11 @@ The following arguments are supported:
     </dt>
     <dd><p>Metadata path.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="factoryname_go">
@@ -158,9 +169,11 @@ The following arguments are supported:
     </dt>
     <dd><p>Metadata path.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="factoryname_nodejs">
@@ -198,9 +211,11 @@ The following arguments are supported:
     </dt>
     <dd><p>Metadata path.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="factory_name_python">
@@ -238,7 +253,8 @@ The following arguments are supported:
     </dt>
     <dd><p>Metadata path.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -249,7 +265,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_csharp">
@@ -269,9 +286,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of SSIS object metadata.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_go">
@@ -291,9 +310,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of SSIS object metadata.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_nodejs">
@@ -313,9 +334,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of SSIS object metadata.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="next_link_python">
@@ -335,7 +358,8 @@ The following output properties are available:
     </dt>
     <dd><p>List of SSIS object metadata.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -347,7 +371,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="environmentfoldername_csharp">
@@ -385,9 +410,11 @@ The following output properties are available:
     </dt>
     <dd><p>Reference type</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="environmentfoldername_go">
@@ -425,9 +452,11 @@ The following output properties are available:
     </dt>
     <dd><p>Reference type</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="environmentfoldername_nodejs">
@@ -465,9 +494,11 @@ The following output properties are available:
     </dt>
     <dd><p>Reference type</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="environment_folder_name_python">
@@ -505,13 +536,15 @@ The following output properties are available:
     </dt>
     <dd><p>Reference type</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="ssisenvironmentresponse">Ssis<wbr>Environment<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
@@ -558,9 +591,11 @@ The following output properties are available:
     </dt>
     <dd><p>Variable in environment</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_go">
@@ -607,9 +642,11 @@ The following output properties are available:
     </dt>
     <dd><p>Variable in environment</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
@@ -656,9 +693,11 @@ The following output properties are available:
     </dt>
     <dd><p>Variable in environment</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_python">
@@ -705,13 +744,15 @@ The following output properties are available:
     </dt>
     <dd><p>Variable in environment</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="ssisfolderresponse">Ssis<wbr>Folder<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
@@ -740,9 +781,11 @@ The following output properties are available:
     </dt>
     <dd><p>Metadata name.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_go">
@@ -771,9 +814,11 @@ The following output properties are available:
     </dt>
     <dd><p>Metadata name.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
@@ -802,9 +847,11 @@ The following output properties are available:
     </dt>
     <dd><p>Metadata name.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_python">
@@ -833,13 +880,15 @@ The following output properties are available:
     </dt>
     <dd><p>Metadata name.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="ssispackageresponse">Ssis<wbr>Package<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
@@ -904,9 +953,11 @@ The following output properties are available:
     </dt>
     <dd><p>Project version which contains package.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_go">
@@ -971,9 +1022,11 @@ The following output properties are available:
     </dt>
     <dd><p>Project version which contains package.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
@@ -1038,9 +1091,11 @@ The following output properties are available:
     </dt>
     <dd><p>Project version which contains package.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_python">
@@ -1105,13 +1160,15 @@ The following output properties are available:
     </dt>
     <dd><p>Project version which contains package.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="ssisparameterresponse">Ssis<wbr>Parameter<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_csharp">
@@ -1221,9 +1278,11 @@ The following output properties are available:
     </dt>
     <dd><p>Parameter reference variable.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_go">
@@ -1333,9 +1392,11 @@ The following output properties are available:
     </dt>
     <dd><p>Parameter reference variable.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_nodejs">
@@ -1445,9 +1506,11 @@ The following output properties are available:
     </dt>
     <dd><p>Parameter reference variable.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="data_type_python">
@@ -1557,13 +1620,15 @@ The following output properties are available:
     </dt>
     <dd><p>Parameter reference variable.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="ssisprojectresponse">Ssis<wbr>Project<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_csharp">
@@ -1628,9 +1693,11 @@ The following output properties are available:
     </dt>
     <dd><p>Project version.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_go">
@@ -1695,9 +1762,11 @@ The following output properties are available:
     </dt>
     <dd><p>Project version.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_nodejs">
@@ -1762,9 +1831,11 @@ The following output properties are available:
     </dt>
     <dd><p>Project version.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="description_python">
@@ -1829,13 +1900,15 @@ The following output properties are available:
     </dt>
     <dd><p>Project version.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="ssisvariableresponse">Ssis<wbr>Variable<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_csharp">
@@ -1900,9 +1973,11 @@ The following output properties are available:
     </dt>
     <dd><p>Variable value.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_go">
@@ -1967,9 +2042,11 @@ The following output properties are available:
     </dt>
     <dd><p>Variable value.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="datatype_nodejs">
@@ -2034,9 +2111,11 @@ The following output properties are available:
     </dt>
     <dd><p>Variable value.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="data_type_python">
@@ -2101,7 +2180,8 @@ The following output properties are available:
     </dt>
     <dd><p>Variable value.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 

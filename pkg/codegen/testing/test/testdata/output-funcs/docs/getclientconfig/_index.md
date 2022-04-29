@@ -22,37 +22,45 @@ Failing example taken from azure-native. Original doc: Use this function to acce
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>getClientConfig<span class="p">(</span><span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">GetClientConfigResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>get_client_config<span class="p">(</span><span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>GetClientConfigResult</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>GetClientConfig<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">GetClientConfigResult</a></span>, error)</span
 ></code></pre></div>
 
 &gt; Note: This function is named `GetClientConfig` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">GetClientConfig </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">GetClientConfigResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -63,7 +71,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="clientid_csharp">
@@ -101,9 +110,11 @@ The following output properties are available:
     </dt>
     <dd><p>Azure Tenant ID</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="clientid_go">
@@ -141,9 +152,11 @@ The following output properties are available:
     </dt>
     <dd><p>Azure Tenant ID</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="clientid_nodejs">
@@ -181,9 +194,11 @@ The following output properties are available:
     </dt>
     <dd><p>Azure Tenant ID</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="client_id_python">
@@ -221,7 +236,8 @@ The following output properties are available:
     </dt>
     <dd><p>Azure Tenant ID</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 

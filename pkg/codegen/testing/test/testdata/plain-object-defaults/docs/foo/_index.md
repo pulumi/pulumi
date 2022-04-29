@@ -21,11 +21,14 @@ test new feature with resoruces
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
@@ -37,17 +40,23 @@ test new feature with resoruces
 <span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewFoo</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">Foo</span>, error)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -69,9 +78,11 @@ test new feature with resoruces
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -93,9 +104,11 @@ test new feature with resoruces
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 
 <dl class="resources-properties"><dt
         class="property-optional" title="Optional">
@@ -123,9 +136,11 @@ test new feature with resoruces
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -147,7 +162,8 @@ test new feature with resoruces
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 ## Foo Resource Properties {#properties}
 
@@ -159,7 +175,8 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="backupkubeclientsettings_csharp">
@@ -196,9 +213,11 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
     </dt>
     <dd><p>describing things</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="backupkubeclientsettings_go">
@@ -235,9 +254,11 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
     </dt>
     <dd><p>describing things</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="backupkubeclientsettings_nodejs">
@@ -274,9 +295,11 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
     </dt>
     <dd><p>describing things</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="backup_kube_client_settings_python">
@@ -313,7 +336,8 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
     </dt>
     <dd><p>describing things</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 ### Outputs
@@ -322,7 +346,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
@@ -342,9 +367,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>A test for plain types</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
@@ -364,9 +391,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>A test for plain types</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
@@ -386,9 +415,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>A test for plain types</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
@@ -408,7 +439,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>A test for plain types</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -422,7 +454,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 <h4 id="helmreleasesettings">Helm<wbr>Release<wbr>Settings</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_csharp">
@@ -451,9 +484,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path to the helm plugins directory.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_go">
@@ -482,9 +517,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path to the helm plugins directory.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="requiredarg_nodejs">
@@ -513,9 +550,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path to the helm plugins directory.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="required_arg_python">
@@ -544,11 +583,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The path to the helm plugins directory.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="kubeclientsettings">Kube<wbr>Client<wbr>Settings</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="burst_csharp">
@@ -576,9 +617,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="burst_go">
@@ -606,9 +649,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="burst_nodejs">
@@ -636,9 +681,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="burst_python">
@@ -666,11 +713,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="layeredtype">Layered<wbr>Type</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="other_csharp">
@@ -724,9 +773,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="other_go">
@@ -780,9 +831,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="other_nodejs">
@@ -836,9 +889,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="other_python">
@@ -892,7 +947,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-type"><a href="#layeredtype">Layered<wbr>Type</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 <h2 id="package-details">Package Details</h2>

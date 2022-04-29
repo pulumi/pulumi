@@ -19,11 +19,14 @@ no_edit_this_page: true
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
@@ -36,17 +39,23 @@ no_edit_this_page: true
 <span class="k">def </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p">,</span>
                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewRubberTree</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">RubberTree</span>, error)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -68,9 +77,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -92,9 +103,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 
 <dl class="resources-properties"><dt
         class="property-optional" title="Optional">
@@ -122,9 +135,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -146,7 +161,8 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 ## RubberTree Resource Properties {#properties}
 
@@ -158,7 +174,8 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_csharp">
@@ -200,9 +217,11 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
         <span class="property-type"><a href="#treesize">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_go">
@@ -244,9 +263,11 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
         <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_nodejs">
@@ -288,9 +309,11 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
         <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="diameter_python">
@@ -332,7 +355,8 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
         <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 ### Outputs
@@ -341,7 +365,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
@@ -352,9 +377,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
@@ -365,9 +392,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
@@ -378,9 +407,11 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
@@ -391,7 +422,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -400,27 +432,36 @@ All [input](#inputs) properties are implicitly available as output properties. A
 Get an existing RubberTree resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 {{< chooser language "typescript,python,go,csharp" / >}}
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">public static </span><span class="nf">get</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">id</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#ID">Input&lt;ID&gt;</a></span><span class="p">,</span> <span class="nx">state</span><span class="p">?:</span> <span class="nx">RubberTreeState</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">): </span><span class="nx">RubberTree</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@staticmethod</span>
 <span class="k">def </span><span class="nf">get</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">id</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
         <span class="nx">farm</span><span class="p">:</span> <span class="nx">Optional[Union[Farm, str]]</span> = None<span class="p">) -&gt;</span> RubberTree</code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>GetRubberTree<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">id</span><span class="p"> </span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#IDInput">IDInput</a></span><span class="p">,</span> <span class="nx">state</span><span class="p"> *</span><span class="nx">RubberTreeState</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">RubberTree</span>, error)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static </span><span class="nx">RubberTree</span><span class="nf"> Get</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.Input-1.html">Input&lt;string&gt;</a></span><span class="p"> </span><span class="nx">id<span class="p">,</span> <span class="nx">RubberTreeState</span><span class="p">? </span><span class="nx">state<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 
 <dl class="resources-properties">
     <dt class="property-required" title="Required">
@@ -445,9 +486,11 @@ Get an existing RubberTree resource's state with the given name, ID, and optiona
     <dd>A bag of options that control this resource's behavior.</dd>
 </dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties">
     <dt class="property-required" title="Required">
         <span>resource_name</span>
@@ -460,36 +503,11 @@ Get an existing RubberTree resource's state with the given name, ID, and optiona
     </dt>
     <dd>The <em>unique</em> provider ID of the resource to lookup.</dd>
 </dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
-
-<dl class="resources-properties">
-    <dt class="property-required" title="Required">
-        <span>name</span>
-        <span class="property-indicator"></span>
-    </dt>
-    <dd>The unique name of the resulting resource.</dd>
-    <dt class="property-required" title="Required">
-        <span>id</span>
-        <span class="property-indicator"></span>
-    </dt>
-    <dd>The <em>unique</em> provider ID of the resource to lookup.</dd>
-    <dt class="property-optional" title="Optional">
-        <span>state</span>
-        <span class="property-indicator"></span>
-    </dt>
-    <dd>Any extra arguments used during the lookup.</dd>
-    <dt class="property-optional" title="Optional">
-        <span>opts</span>
-        <span class="property-indicator"></span>
-    </dt>
-    <dd>A bag of options that control this resource's behavior.</dd>
-</dl>
-
-{{% /choosable %}}
-
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="go">
 
 <dl class="resources-properties">
     <dt class="property-required" title="Required">
@@ -514,12 +532,43 @@ Get an existing RubberTree resource's state with the given name, ID, and optiona
     <dd>A bag of options that control this resource's behavior.</dd>
 </dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+
+<dl class="resources-properties">
+    <dt class="property-required" title="Required">
+        <span>name</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>The unique name of the resulting resource.</dd>
+    <dt class="property-required" title="Required">
+        <span>id</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>The <em>unique</em> provider ID of the resource to lookup.</dd>
+    <dt class="property-optional" title="Optional">
+        <span>state</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>Any extra arguments used during the lookup.</dd>
+    <dt class="property-optional" title="Optional">
+        <span>opts</span>
+        <span class="property-indicator"></span>
+    </dt>
+    <dd>A bag of options that control this resource's behavior.</dd>
+</dl>
+
+</pulumi-choosable>
+</div>
 
 The following state arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_csharp">
@@ -529,9 +578,11 @@ The following state arguments are supported:
         <span class="property-type"><a href="#farm">Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Farm</a> | string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_go">
@@ -541,9 +592,11 @@ The following state arguments are supported:
         <span class="property-type"><a href="#farm">Farm</a> | string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_nodejs">
@@ -553,9 +606,11 @@ The following state arguments are supported:
         <span class="property-type"><a href="#farm">Farm</a> | string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="state_farm_python">
@@ -565,7 +620,8 @@ The following state arguments are supported:
         <span class="property-type"><a href="#farm">Farm</a> | str</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -578,7 +634,8 @@ The following state arguments are supported:
 
 <h4 id="container">Container</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_csharp">
@@ -612,9 +669,11 @@ The following state arguments are supported:
         <span class="property-type">string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_go">
@@ -648,9 +707,11 @@ The following state arguments are supported:
         <span class="property-type">string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_nodejs">
@@ -684,9 +745,11 @@ The following state arguments are supported:
         <span class="property-type">string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="size_python">
@@ -720,153 +783,195 @@ The following state arguments are supported:
         <span class="property-type">str</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="containerbrightness">Container<wbr>Brightness</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Zero<wbr>Point<wbr>One</dt>
     <dd>0.1</dd><dt>One</dt>
     <dd>1</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Container<wbr>Brightness<wbr>Zero<wbr>Point<wbr>One</dt>
     <dd>0.1</dd><dt>Container<wbr>Brightness<wbr>One</dt>
     <dd>1</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Zero<wbr>Point<wbr>One</dt>
     <dd>0.1</dd><dt>One</dt>
     <dd>1</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>ZERO_POINT_ONE</dt>
     <dd>0.1</dd><dt>ONE</dt>
     <dd>1</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="containercolor">Container<wbr>Color</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Red</dt>
     <dd>red</dd><dt>Blue</dt>
     <dd>blue</dd><dt>Yellow</dt>
     <dd>yellow</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Container<wbr>Color<wbr>Red</dt>
     <dd>red</dd><dt>Container<wbr>Color<wbr>Blue</dt>
     <dd>blue</dd><dt>Container<wbr>Color<wbr>Yellow</dt>
     <dd>yellow</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Red</dt>
     <dd>red</dd><dt>Blue</dt>
     <dd>blue</dd><dt>Yellow</dt>
     <dd>yellow</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>RED</dt>
     <dd>red</dd><dt>BLUE</dt>
     <dd>blue</dd><dt>YELLOW</dt>
     <dd>yellow</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="containersize">Container<wbr>Size</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Six<wbr>Inch</dt>
     <dd>6</dd><dt>Eight<wbr>Inch</dt>
     <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
 </p></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Container<wbr>Size<wbr>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Container<wbr>Size<wbr>Six<wbr>Inch</dt>
     <dd>6</dd><dt>Container<wbr>Size<wbr>Eight<wbr>Inch</dt>
     <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
 </p></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Six<wbr>Inch</dt>
     <dd>6</dd><dt>Eight<wbr>Inch</dt>
     <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
 </p></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>FOUR_INCH</dt>
     <dd>4</dd><dt>SIX_INCH</dt>
     <dd>6</dd><dt>EIGHT_INCH</dt>
     <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
 </p></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="diameter">Diameter</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Sixinch</dt>
     <dd>6</dd><dt>Twelveinch</dt>
     <dd>12</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Diameter<wbr>Sixinch</dt>
     <dd>6</dd><dt>Diameter<wbr>Twelveinch</dt>
     <dd>12</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Sixinch</dt>
     <dd>6</dd><dt>Twelveinch</dt>
     <dd>12</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>SIXINCH</dt>
     <dd>6</dd><dt>TWELVEINCH</dt>
     <dd>12</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="farm">Farm</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Pulumi_Planters_Inc_</dt>
     <dd>Pulumi Planters Inc.</dd><dt>Plants_R_Us</dt>
     <dd>Plants'R'Us</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Farm_Pulumi_Planters_Inc_</dt>
     <dd>Pulumi Planters Inc.</dd><dt>Farm_Plants_R_Us</dt>
     <dd>Plants'R'Us</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Pulumi_Planters_Inc_</dt>
     <dd>Pulumi Planters Inc.</dd><dt>Plants_R_Us</dt>
     <dd>Plants'R'Us</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>PULUMI_PLANTERS_INC_</dt>
     <dd>Pulumi Planters Inc.</dd><dt>PLANTS_R_US</dt>
     <dd>Plants'R'Us</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Burgundy</dt>
     <dd>Burgundy<p>A burgundy rubber tree.</p>
 </dd><dt>Ruby</dt>
@@ -874,9 +979,11 @@ The following state arguments are supported:
 </dd><dt>Tineke</dt>
     <dd>Tineke<p>A tineke rubber tree.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Burgundy</dt>
     <dd>Burgundy<p>A burgundy rubber tree.</p>
 </dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
@@ -884,9 +991,11 @@ The following state arguments are supported:
 </dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
     <dd>Tineke<p>A tineke rubber tree.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Burgundy</dt>
     <dd>Burgundy<p>A burgundy rubber tree.</p>
 </dd><dt>Ruby</dt>
@@ -894,9 +1003,11 @@ The following state arguments are supported:
 </dd><dt>Tineke</dt>
     <dd>Tineke<p>A tineke rubber tree.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>BURGUNDY</dt>
     <dd>Burgundy<p>A burgundy rubber tree.</p>
 </dd><dt>RUBY</dt>
@@ -904,37 +1015,46 @@ The following state arguments are supported:
 </dd><dt>TINEKE</dt>
     <dd>Tineke<p>A tineke rubber tree.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="treesize">Tree<wbr>Size</h4>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Small</dt>
     <dd>small</dd><dt>Medium</dt>
     <dd>medium</dd><dt>Large</dt>
     <dd>large</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Tree<wbr>Size<wbr>Small</dt>
     <dd>small</dd><dt>Tree<wbr>Size<wbr>Medium</dt>
     <dd>medium</dd><dt>Tree<wbr>Size<wbr>Large</dt>
     <dd>large</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Small</dt>
     <dd>small</dd><dt>Medium</dt>
     <dd>medium</dd><dt>Large</dt>
     <dd>large</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>SMALL</dt>
     <dd>small</dd><dt>MEDIUM</dt>
     <dd>medium</dd><dt>LARGE</dt>
     <dd>large</dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 <h2 id="package-details">Package Details</h2>

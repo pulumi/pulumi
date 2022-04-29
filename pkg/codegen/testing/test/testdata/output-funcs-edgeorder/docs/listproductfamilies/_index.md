@@ -28,17 +28,20 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>listProductFamilies<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ListProductFamiliesArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>></span
 ><span class="k">
 function </span>listProductFamiliesOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ListProductFamiliesOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>list_product_families<span class="p">(</span><span class="nx">customer_subscription_details</span><span class="p">:</span> <span class="nx">Optional[CustomerSubscriptionDetails]</span> = None<span class="p">,</span>
                           <span class="nx">expand</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
@@ -52,10 +55,12 @@ def </span>list_product_families_output<span class="p">(</span><span class="nx">
                           <span class="nx">skip_token</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                           <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[ListProductFamiliesResult]</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>ListProductFamilies<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ListProductFamiliesArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>, error)</span
 ><span class="k">
@@ -64,23 +69,27 @@ func </span>ListProductFamiliesOutput<span class="p">(</span><span class="nx">ct
 
 &gt; Note: This function is named `ListProductFamilies` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">ListProductFamilies </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">ListProductFamiliesArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>> <span class="p">Invoke(</span><span class="nx">ListProductFamiliesInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="filterableproperties_csharp">
@@ -118,9 +127,11 @@ The following arguments are supported:
     </dt>
     <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="filterableproperties_go">
@@ -158,9 +169,11 @@ The following arguments are supported:
     </dt>
     <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="filterableproperties_nodejs">
@@ -198,9 +211,11 @@ The following arguments are supported:
     </dt>
     <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="filterable_properties_python">
@@ -238,7 +253,8 @@ The following arguments are supported:
     </dt>
     <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -249,7 +265,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_csharp">
@@ -269,9 +286,11 @@ The following output properties are available:
     </dt>
     <dd><p>Link for the next set of product families.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_go">
@@ -291,9 +310,11 @@ The following output properties are available:
     </dt>
     <dd><p>Link for the next set of product families.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_nodejs">
@@ -313,9 +334,11 @@ The following output properties are available:
     </dt>
     <dd><p>Link for the next set of product families.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_python">
@@ -335,7 +358,8 @@ The following output properties are available:
     </dt>
     <dd><p>Link for the next set of product families.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -347,7 +371,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilitystage_csharp">
@@ -376,9 +401,11 @@ The following output properties are available:
     </dt>
     <dd><p>Message for why the product is disabled.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilitystage_go">
@@ -407,9 +434,11 @@ The following output properties are available:
     </dt>
     <dd><p>Message for why the product is disabled.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilitystage_nodejs">
@@ -438,9 +467,11 @@ The following output properties are available:
     </dt>
     <dd><p>Message for why the product is disabled.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_stage_python">
@@ -469,13 +500,15 @@ The following output properties are available:
     </dt>
     <dd><p>Message for why the product is disabled.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="billingmeterdetailsresponse">Billing<wbr>Meter<wbr>Details<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_csharp">
@@ -513,9 +546,11 @@ The following output properties are available:
     </dt>
     <dd><p>Represents Billing type name</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_go">
@@ -553,9 +588,11 @@ The following output properties are available:
     </dt>
     <dd><p>Represents Billing type name</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_nodejs">
@@ -593,9 +630,11 @@ The following output properties are available:
     </dt>
     <dd><p>Represents Billing type name</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_python">
@@ -633,13 +672,15 @@ The following output properties are available:
     </dt>
     <dd><p>Represents Billing type name</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="configurationresponse">Configuration<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_csharp">
@@ -722,9 +763,11 @@ The following output properties are available:
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_go">
@@ -807,9 +850,11 @@ The following output properties are available:
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_nodejs">
@@ -892,9 +937,11 @@ The following output properties are available:
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_information_python">
@@ -977,13 +1024,15 @@ The following output properties are available:
     </dt>
     <dd><p>Specifications of the configuration</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="costinformationresponse">Cost<wbr>Information<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billinginfourl_csharp">
@@ -1003,9 +1052,11 @@ The following output properties are available:
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billinginfourl_go">
@@ -1025,9 +1076,11 @@ The following output properties are available:
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billinginfourl_nodejs">
@@ -1047,9 +1100,11 @@ The following output properties are available:
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billing_info_url_python">
@@ -1069,13 +1124,15 @@ The following output properties are available:
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quotaid_csharp">
@@ -1104,9 +1161,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quotaid_go">
@@ -1135,9 +1194,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quotaid_nodejs">
@@ -1166,9 +1227,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quota_id_python">
@@ -1197,13 +1260,15 @@ The following output properties are available:
     </dt>
     <dd><p>List of registered feature flags for subscription</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="customersubscriptionregisteredfeatures">Customer<wbr>Subscription<wbr>Registered<wbr>Features</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
@@ -1223,9 +1288,11 @@ The following output properties are available:
     </dt>
     <dd><p>State of subscription registered feature</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_go">
@@ -1245,9 +1312,11 @@ The following output properties are available:
     </dt>
     <dd><p>State of subscription registered feature</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
@@ -1267,9 +1336,11 @@ The following output properties are available:
     </dt>
     <dd><p>State of subscription registered feature</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_python">
@@ -1289,13 +1360,15 @@ The following output properties are available:
     </dt>
     <dd><p>State of subscription registered feature</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="descriptionresponse">Description<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_csharp">
@@ -1351,9 +1424,11 @@ The following output properties are available:
     </dt>
     <dd><p>Short description of the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_go">
@@ -1409,9 +1484,11 @@ The following output properties are available:
     </dt>
     <dd><p>Short description of the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_nodejs">
@@ -1467,9 +1544,11 @@ The following output properties are available:
     </dt>
     <dd><p>Short description of the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_python">
@@ -1525,13 +1604,15 @@ The following output properties are available:
     </dt>
     <dd><p>Short description of the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="dimensionsresponse">Dimensions<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_csharp">
@@ -1596,9 +1677,11 @@ The following output properties are available:
     </dt>
     <dd><p>Width of the device.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_go">
@@ -1663,9 +1746,11 @@ The following output properties are available:
     </dt>
     <dd><p>Width of the device.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_nodejs">
@@ -1730,9 +1815,11 @@ The following output properties are available:
     </dt>
     <dd><p>Width of the device.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_python">
@@ -1797,13 +1884,15 @@ The following output properties are available:
     </dt>
     <dd><p>Width of the device.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="filterableproperty">Filterable<wbr>Property</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_csharp">
@@ -1823,9 +1912,11 @@ The following output properties are available:
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_go">
@@ -1845,9 +1936,11 @@ The following output properties are available:
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_nodejs">
@@ -1867,9 +1960,11 @@ The following output properties are available:
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supported_values_python">
@@ -1889,13 +1984,15 @@ The following output properties are available:
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="filterablepropertyresponse">Filterable<wbr>Property<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_csharp">
@@ -1915,9 +2012,11 @@ The following output properties are available:
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_go">
@@ -1937,9 +2036,11 @@ The following output properties are available:
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_nodejs">
@@ -1959,9 +2060,11 @@ The following output properties are available:
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supported_values_python">
@@ -1981,13 +2084,15 @@ The following output properties are available:
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_csharp">
@@ -2025,9 +2130,11 @@ The following output properties are available:
     </dt>
     <dd><p>Represents product name that uniquely identifies product</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_go">
@@ -2065,9 +2172,11 @@ The following output properties are available:
     </dt>
     <dd><p>Represents product name that uniquely identifies product</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_nodejs">
@@ -2105,9 +2214,11 @@ The following output properties are available:
     </dt>
     <dd><p>Represents product name that uniquely identifies product</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configuration_name_python">
@@ -2145,13 +2256,15 @@ The following output properties are available:
     </dt>
     <dd><p>Represents product name that uniquely identifies product</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="imageinformationresponse">Image<wbr>Information<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="imagetype_csharp">
@@ -2171,9 +2284,11 @@ The following output properties are available:
     </dt>
     <dd><p>Url of the image</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="imagetype_go">
@@ -2193,9 +2308,11 @@ The following output properties are available:
     </dt>
     <dd><p>Url of the image</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="imagetype_nodejs">
@@ -2215,9 +2332,11 @@ The following output properties are available:
     </dt>
     <dd><p>Url of the image</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="image_type_python">
@@ -2237,13 +2356,15 @@ The following output properties are available:
     </dt>
     <dd><p>Url of the image</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="linkresponse">Link<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="linktype_csharp">
@@ -2263,9 +2384,11 @@ The following output properties are available:
     </dt>
     <dd><p>Url of the link</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="linktype_go">
@@ -2285,9 +2408,11 @@ The following output properties are available:
     </dt>
     <dd><p>Url of the link</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="linktype_nodejs">
@@ -2307,9 +2432,11 @@ The following output properties are available:
     </dt>
     <dd><p>Url of the link</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="link_type_python">
@@ -2329,13 +2456,15 @@ The following output properties are available:
     </dt>
     <dd><p>Url of the link</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_csharp">
@@ -2364,9 +2493,11 @@ The following output properties are available:
     </dt>
     <dd><p>Billing unit applicable for Pav2 billing</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_go">
@@ -2395,9 +2526,11 @@ The following output properties are available:
     </dt>
     <dd><p>Billing unit applicable for Pav2 billing</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_nodejs">
@@ -2426,9 +2559,11 @@ The following output properties are available:
     </dt>
     <dd><p>Billing unit applicable for Pav2 billing</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="charging_type_python">
@@ -2457,13 +2592,15 @@ The following output properties are available:
     </dt>
     <dd><p>Billing unit applicable for Pav2 billing</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="productfamilyresponse">Product<wbr>Family<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_csharp">
@@ -2537,9 +2674,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of product lines supported in the product family</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_go">
@@ -2613,9 +2752,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of product lines supported in the product family</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_nodejs">
@@ -2689,9 +2830,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of product lines supported in the product family</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_information_python">
@@ -2765,13 +2908,15 @@ The following output properties are available:
     </dt>
     <dd><p>List of product lines supported in the product family</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="productlineresponse">Product<wbr>Line<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_csharp">
@@ -2845,9 +2990,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of products in the product line</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_go">
@@ -2921,9 +3068,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of products in the product line</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_nodejs">
@@ -2997,9 +3146,11 @@ The following output properties are available:
     </dt>
     <dd><p>List of products in the product line</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_information_python">
@@ -3073,13 +3224,15 @@ The following output properties are available:
     </dt>
     <dd><p>List of products in the product line</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="productresponse">Product<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_csharp">
@@ -3153,9 +3306,11 @@ The following output properties are available:
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_go">
@@ -3229,9 +3384,11 @@ The following output properties are available:
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_nodejs">
@@ -3305,9 +3462,11 @@ The following output properties are available:
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_information_python">
@@ -3381,13 +3540,15 @@ The following output properties are available:
     </dt>
     <dd><p>Image information for the product system.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_csharp">
@@ -3434,9 +3595,11 @@ The following output properties are available:
     </dt>
     <dd><p>Term Id</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_go">
@@ -3483,9 +3646,11 @@ The following output properties are available:
     </dt>
     <dd><p>Term Id</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_nodejs">
@@ -3532,9 +3697,11 @@ The following output properties are available:
     </dt>
     <dd><p>Term Id</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="charging_type_python">
@@ -3581,13 +3748,15 @@ The following output properties are available:
     </dt>
     <dd><p>Term Id</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="specificationresponse">Specification<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_csharp">
@@ -3607,9 +3776,11 @@ The following output properties are available:
     </dt>
     <dd><p>Value of the specification</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_go">
@@ -3629,9 +3800,11 @@ The following output properties are available:
     </dt>
     <dd><p>Value of the specification</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_nodejs">
@@ -3651,9 +3824,11 @@ The following output properties are available:
     </dt>
     <dd><p>Value of the specification</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_python">
@@ -3673,7 +3848,8 @@ The following output properties are available:
     </dt>
     <dd><p>Value of the specification</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 <h4 id="supportedfiltertypes">Supported<wbr>Filter<wbr>Types</h4>
 

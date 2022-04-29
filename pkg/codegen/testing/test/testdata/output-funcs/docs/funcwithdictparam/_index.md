@@ -27,17 +27,20 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>funcWithDictParam<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">FuncWithDictParamArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">FuncWithDictParamResult</a></span>></span
 ><span class="k">
 function </span>funcWithDictParamOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">FuncWithDictParamOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">FuncWithDictParamResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>func_with_dict_param<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, str]]</span> = None<span class="p">,</span>
                          <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
@@ -47,10 +50,12 @@ def </span>func_with_dict_param_output<span class="p">(</span><span class="nx">a
                          <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                          <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[FuncWithDictParamResult]</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>FuncWithDictParam<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">FuncWithDictParamArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">FuncWithDictParamResult</a></span>, error)</span
 ><span class="k">
@@ -59,23 +64,27 @@ func </span>FuncWithDictParamOutput<span class="p">(</span><span class="nx">ctx<
 
 &gt; Note: This function is named `FuncWithDictParam` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">FuncWithDictParam </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">FuncWithDictParamResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">FuncWithDictParamArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">FuncWithDictParamResult</a></span>> <span class="p">Invoke(</span><span class="nx">FuncWithDictParamInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_csharp">
@@ -93,9 +102,11 @@ The following arguments are supported:
         <span class="property-type">string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_go">
@@ -113,9 +124,11 @@ The following arguments are supported:
         <span class="property-type">string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_nodejs">
@@ -133,9 +146,11 @@ The following arguments are supported:
         <span class="property-type">string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_python">
@@ -153,7 +168,8 @@ The following arguments are supported:
         <span class="property-type">str</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -164,7 +180,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_csharp">
@@ -174,9 +191,11 @@ The following output properties are available:
         <span class="property-type">string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_go">
@@ -186,9 +205,11 @@ The following output properties are available:
         <span class="property-type">string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_nodejs">
@@ -198,9 +219,11 @@ The following output properties are available:
         <span class="property-type">string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="r_python">
@@ -210,7 +233,8 @@ The following output properties are available:
         <span class="property-type">str</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 

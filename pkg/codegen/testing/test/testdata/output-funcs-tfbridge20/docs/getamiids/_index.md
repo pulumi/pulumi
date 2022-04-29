@@ -29,17 +29,20 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>getAmiIds<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetAmiIdsArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">GetAmiIdsResult</a></span>></span
 ><span class="k">
 function </span>getAmiIdsOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetAmiIdsOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">GetAmiIdsResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>get_ami_ids<span class="p">(</span><span class="nx">executable_users</span><span class="p">:</span> <span class="nx">Optional[Sequence[str]]</span> = None<span class="p">,</span>
                 <span class="nx">filters</span><span class="p">:</span> <span class="nx">Optional[Sequence[GetAmiIdsFilter]]</span> = None<span class="p">,</span>
@@ -55,10 +58,12 @@ def </span>get_ami_ids_output<span class="p">(</span><span class="nx">executable
                 <span class="nx">sort_ascending</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[bool]]</span> = None<span class="p">,</span>
                 <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetAmiIdsResult]</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>GetAmiIds<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">GetAmiIdsArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">GetAmiIdsResult</a></span>, error)</span
 ><span class="k">
@@ -67,23 +72,27 @@ func </span>GetAmiIdsOutput<span class="p">(</span><span class="nx">ctx</span><s
 
 &gt; Note: This function is named `GetAmiIds` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">GetAmiIds </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">GetAmiIdsResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">GetAmiIdsArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">GetAmiIdsResult</a></span>> <span class="p">Invoke(</span><span class="nx">GetAmiIdsInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="owners_csharp">
@@ -137,9 +146,11 @@ options to narrow down the list AWS returns.</p>
     </dt>
     <dd><p>Used to sort AMIs by creation time.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="owners_go">
@@ -193,9 +204,11 @@ options to narrow down the list AWS returns.</p>
     </dt>
     <dd><p>Used to sort AMIs by creation time.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="owners_nodejs">
@@ -249,9 +262,11 @@ options to narrow down the list AWS returns.</p>
     </dt>
     <dd><p>Used to sort AMIs by creation time.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="owners_python">
@@ -305,7 +320,8 @@ options to narrow down the list AWS returns.</p>
     </dt>
     <dd><p>Used to sort AMIs by creation time.</p>
 </dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -316,7 +332,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_csharp">
@@ -375,9 +392,11 @@ The following output properties are available:
         <span class="property-type">bool</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_go">
@@ -436,9 +455,11 @@ The following output properties are available:
         <span class="property-type">bool</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
@@ -497,9 +518,11 @@ The following output properties are available:
         <span class="property-type">boolean</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_python">
@@ -558,7 +581,8 @@ The following output properties are available:
         <span class="property-type">bool</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -570,7 +594,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_csharp">
@@ -588,9 +613,11 @@ The following output properties are available:
         <span class="property-type">List&lt;string&gt;</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_go">
@@ -608,9 +635,11 @@ The following output properties are available:
         <span class="property-type">[]string</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_nodejs">
@@ -628,9 +657,11 @@ The following output properties are available:
         <span class="property-type">string[]</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_python">
@@ -648,7 +679,8 @@ The following output properties are available:
         <span class="property-type">Sequence[str]</span>
     </dt>
     <dd></dd></dl>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
