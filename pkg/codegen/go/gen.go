@@ -1613,6 +1613,9 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			originalValue := fmt.Sprintf("args.%s.%s()", Title(p.Name), toOutputMethod)
 			valueWithDefaults := fmt.Sprintf("%[1]v.ApplyT(func (v %[2]s) %[2]s { return %[3]sv.%[4]s() }).(%[5]s)",
 				originalValue, resolvedType, optionalDeref, name, outputType)
+			if p.Plain {
+				valueWithDefaults = fmt.Sprintf("args.%v.Defaults()", Title(p.Name))
+			}
 
 			if !p.IsRequired() {
 				fmt.Fprintf(w, "if args.%s != nil {\n", Title(p.Name))
