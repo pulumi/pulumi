@@ -20,45 +20,54 @@ no_edit_this_page: true
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>doFoo<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">DoFooArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">DoFooResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>do_foo<span class="p">(</span><span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[Foo]</span> = None<span class="p">,</span>
            <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>DoFooResult</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>DoFoo<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">DoFooArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">DoFooResult</a></span>, error)</span
 ></code></pre></div>
 
 &gt; Note: This function is named `DoFoo` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">DoFoo </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">DoFooResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">DoFooArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="foo_csharp">
@@ -67,10 +76,12 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="foo_go">
@@ -79,10 +90,12 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="foo_nodejs">
@@ -91,10 +104,12 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="foo_python">
@@ -103,8 +118,9 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -125,7 +141,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="a_csharp">
@@ -134,7 +151,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="c_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#c_csharp" style="color: inherit; text-decoration: inherit;">C</a>
@@ -142,7 +159,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="e_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#e_csharp" style="color: inherit; text-decoration: inherit;">E</a>
@@ -150,7 +167,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="b_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_csharp" style="color: inherit; text-decoration: inherit;">B</a>
@@ -158,7 +175,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="d_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#d_csharp" style="color: inherit; text-decoration: inherit;">D</a>
@@ -166,7 +183,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="f_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#f_csharp" style="color: inherit; text-decoration: inherit;">F</a>
@@ -174,10 +191,12 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="a_go">
@@ -186,7 +205,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="c_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#c_go" style="color: inherit; text-decoration: inherit;">C</a>
@@ -194,7 +213,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="e_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#e_go" style="color: inherit; text-decoration: inherit;">E</a>
@@ -202,7 +221,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="b_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_go" style="color: inherit; text-decoration: inherit;">B</a>
@@ -210,7 +229,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="d_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#d_go" style="color: inherit; text-decoration: inherit;">D</a>
@@ -218,7 +237,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="f_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#f_go" style="color: inherit; text-decoration: inherit;">F</a>
@@ -226,10 +245,12 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="a_nodejs">
@@ -238,7 +259,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="c_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#c_nodejs" style="color: inherit; text-decoration: inherit;">c</a>
@@ -246,7 +267,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="e_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#e_nodejs" style="color: inherit; text-decoration: inherit;">e</a>
@@ -254,7 +275,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="b_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_nodejs" style="color: inherit; text-decoration: inherit;">b</a>
@@ -262,7 +283,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="d_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#d_nodejs" style="color: inherit; text-decoration: inherit;">d</a>
@@ -270,7 +291,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="f_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#f_nodejs" style="color: inherit; text-decoration: inherit;">f</a>
@@ -278,10 +299,12 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="a_python">
@@ -290,7 +313,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="c_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#c_python" style="color: inherit; text-decoration: inherit;">c</a>
@@ -298,7 +321,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="e_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#e_python" style="color: inherit; text-decoration: inherit;">e</a>
@@ -306,7 +329,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="b_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_python" style="color: inherit; text-decoration: inherit;">b</a>
@@ -314,7 +337,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="d_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#d_python" style="color: inherit; text-decoration: inherit;">d</a>
@@ -322,7 +345,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">int</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="f_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#f_python" style="color: inherit; text-decoration: inherit;">f</a>
@@ -330,8 +353,9 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
 
 
 

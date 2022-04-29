@@ -19,11 +19,14 @@ no_edit_this_page: true
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions">CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                            <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
@@ -32,17 +35,23 @@ no_edit_this_page: true
 <span class="k">def </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                            <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p">,</span>
                            <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span><span class="nx">NewRegistryGeoReplication</span><span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">name</span><span class="p"> </span><span class="nx">string</span><span class="p">,</span> <span class="nx">args</span><span class="p"> </span><span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption">ResourceOption</a></span><span class="p">) (*<span class="nx">RegistryGeoReplication</span>, error)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">RegistryGeoReplication</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">RegistryGeoReplicationArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -64,9 +73,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -88,9 +99,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 
 <dl class="resources-properties"><dt
         class="property-optional" title="Optional">
@@ -118,9 +131,11 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 
 <dl class="resources-properties"><dt
         class="property-required" title="Required">
@@ -142,7 +157,8 @@ no_edit_this_page: true
     </dt>
     <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 ## RegistryGeoReplication Resource Properties {#properties}
 
@@ -154,7 +170,8 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="resourcegroup_csharp">
@@ -163,10 +180,13 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Resources.<wbr>Resource<wbr>Group</span>
     </dt>
-    <dd>{{% md %}}The resource group that hosts the component resource{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The resource group that hosts the component resource</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="resourcegroup_go">
@@ -175,10 +195,13 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
         <span class="property-indicator"></span>
         <span class="property-type">Resource<wbr>Group</span>
     </dt>
-    <dd>{{% md %}}The resource group that hosts the component resource{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The resource group that hosts the component resource</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="resourcegroup_nodejs">
@@ -187,10 +210,13 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativeresources<wbr>Resource<wbr>Group</span>
     </dt>
-    <dd>{{% md %}}The resource group that hosts the component resource{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The resource group that hosts the component resource</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="resource_group_python">
@@ -199,8 +225,10 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
         <span class="property-indicator"></span>
         <span class="property-type">Resource<wbr>Group</span>
     </dt>
-    <dd>{{% md %}}The resource group that hosts the component resource{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The resource group that hosts the component resource</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 ### Outputs
@@ -209,7 +237,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="acrloginserverout_csharp">
@@ -218,7 +247,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
+    <dd><p>The login server url</p>
+</dd><dt class="property-"
             title="">
         <span id="id_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -226,7 +256,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="registry_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_csharp" style="color: inherit; text-decoration: inherit;">Registry</a>
@@ -234,7 +265,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Container<wbr>Registry.<wbr>Registry</span>
     </dt>
-    <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
+    <dd><p>The Registry</p>
+</dd><dt class="property-"
             title="">
         <span id="replication_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_csharp" style="color: inherit; text-decoration: inherit;">Replication</a>
@@ -242,10 +274,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Container<wbr>Registry.<wbr>Replication</span>
     </dt>
-    <dd>{{% md %}}The replication policy{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The replication policy</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="acrloginserverout_go">
@@ -254,7 +289,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
+    <dd><p>The login server url</p>
+</dd><dt class="property-"
             title="">
         <span id="id_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -262,7 +298,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="registry_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_go" style="color: inherit; text-decoration: inherit;">Registry</a>
@@ -270,7 +307,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Registry</span>
     </dt>
-    <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
+    <dd><p>The Registry</p>
+</dd><dt class="property-"
             title="">
         <span id="replication_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_go" style="color: inherit; text-decoration: inherit;">Replication</a>
@@ -278,10 +316,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Replication</span>
     </dt>
-    <dd>{{% md %}}The replication policy{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The replication policy</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="acrloginserverout_nodejs">
@@ -290,7 +331,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
+    <dd><p>The login server url</p>
+</dd><dt class="property-"
             title="">
         <span id="id_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
@@ -298,7 +340,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="registry_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_nodejs" style="color: inherit; text-decoration: inherit;">registry</a>
@@ -306,7 +349,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativecontainerregistry<wbr>Registry</span>
     </dt>
-    <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
+    <dd><p>The Registry</p>
+</dd><dt class="property-"
             title="">
         <span id="replication_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_nodejs" style="color: inherit; text-decoration: inherit;">replication</a>
@@ -314,10 +358,13 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativecontainerregistry<wbr>Replication</span>
     </dt>
-    <dd>{{% md %}}The replication policy{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The replication policy</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="acr_login_server_out_python">
@@ -326,7 +373,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
+    <dd><p>The login server url</p>
+</dd><dt class="property-"
             title="">
         <span id="id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
@@ -334,7 +382,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="registry_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_python" style="color: inherit; text-decoration: inherit;">registry</a>
@@ -342,7 +391,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Registry</span>
     </dt>
-    <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
+    <dd><p>The Registry</p>
+</dd><dt class="property-"
             title="">
         <span id="replication_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_python" style="color: inherit; text-decoration: inherit;">replication</a>
@@ -350,8 +400,10 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Replication</span>
     </dt>
-    <dd>{{% md %}}The replication policy{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The replication policy</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 

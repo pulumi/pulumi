@@ -22,37 +22,45 @@ Failing example taken from azure-native. Original doc: Use this function to acce
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>getClientConfig<span class="p">(</span><span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">GetClientConfigResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>get_client_config<span class="p">(</span><span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>GetClientConfigResult</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>GetClientConfig<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">GetClientConfigResult</a></span>, error)</span
 ></code></pre></div>
 
 &gt; Note: This function is named `GetClientConfig` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">GetClientConfig </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">GetClientConfigResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
@@ -63,7 +71,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="clientid_csharp">
@@ -72,7 +81,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Client ID (Application Object ID).{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Client ID (Application Object ID).</p>
+</dd><dt class="property-"
             title="">
         <span id="objectid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#objectid_csharp" style="color: inherit; text-decoration: inherit;">Object<wbr>Id</a>
@@ -80,7 +90,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Object ID of the current user or service principal.{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Object ID of the current user or service principal.</p>
+</dd><dt class="property-"
             title="">
         <span id="subscriptionid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#subscriptionid_csharp" style="color: inherit; text-decoration: inherit;">Subscription<wbr>Id</a>
@@ -88,7 +99,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Subscription ID{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Subscription ID</p>
+</dd><dt class="property-"
             title="">
         <span id="tenantid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#tenantid_csharp" style="color: inherit; text-decoration: inherit;">Tenant<wbr>Id</a>
@@ -96,10 +108,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Tenant ID{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Azure Tenant ID</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="clientid_go">
@@ -108,7 +123,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Client ID (Application Object ID).{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Client ID (Application Object ID).</p>
+</dd><dt class="property-"
             title="">
         <span id="objectid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#objectid_go" style="color: inherit; text-decoration: inherit;">Object<wbr>Id</a>
@@ -116,7 +132,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Object ID of the current user or service principal.{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Object ID of the current user or service principal.</p>
+</dd><dt class="property-"
             title="">
         <span id="subscriptionid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#subscriptionid_go" style="color: inherit; text-decoration: inherit;">Subscription<wbr>Id</a>
@@ -124,7 +141,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Subscription ID{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Subscription ID</p>
+</dd><dt class="property-"
             title="">
         <span id="tenantid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#tenantid_go" style="color: inherit; text-decoration: inherit;">Tenant<wbr>Id</a>
@@ -132,10 +150,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Tenant ID{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Azure Tenant ID</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="clientid_nodejs">
@@ -144,7 +165,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Client ID (Application Object ID).{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Client ID (Application Object ID).</p>
+</dd><dt class="property-"
             title="">
         <span id="objectid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#objectid_nodejs" style="color: inherit; text-decoration: inherit;">object<wbr>Id</a>
@@ -152,7 +174,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Object ID of the current user or service principal.{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Object ID of the current user or service principal.</p>
+</dd><dt class="property-"
             title="">
         <span id="subscriptionid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#subscriptionid_nodejs" style="color: inherit; text-decoration: inherit;">subscription<wbr>Id</a>
@@ -160,7 +183,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Subscription ID{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Subscription ID</p>
+</dd><dt class="property-"
             title="">
         <span id="tenantid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#tenantid_nodejs" style="color: inherit; text-decoration: inherit;">tenant<wbr>Id</a>
@@ -168,10 +192,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Azure Tenant ID{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Azure Tenant ID</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="client_id_python">
@@ -180,7 +207,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Azure Client ID (Application Object ID).{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Client ID (Application Object ID).</p>
+</dd><dt class="property-"
             title="">
         <span id="object_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#object_id_python" style="color: inherit; text-decoration: inherit;">object_<wbr>id</a>
@@ -188,7 +216,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Azure Object ID of the current user or service principal.{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Object ID of the current user or service principal.</p>
+</dd><dt class="property-"
             title="">
         <span id="subscription_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#subscription_id_python" style="color: inherit; text-decoration: inherit;">subscription_<wbr>id</a>
@@ -196,7 +225,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Azure Subscription ID{{% /md %}}</dd><dt class="property-"
+    <dd><p>Azure Subscription ID</p>
+</dd><dt class="property-"
             title="">
         <span id="tenant_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#tenant_id_python" style="color: inherit; text-decoration: inherit;">tenant_<wbr>id</a>
@@ -204,8 +234,10 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Azure Tenant ID{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Azure Tenant ID</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
