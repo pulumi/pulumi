@@ -47,7 +47,7 @@ type staticPageArgs struct {
 
 // The set of arguments for constructing a StaticPage resource.
 type StaticPageArgs struct {
-	Foo *FooArgs
+	Foo *Foo
 	// The HTML content for index.html.
 	IndexContent pulumi.StringInput
 }

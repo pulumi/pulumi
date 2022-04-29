@@ -57,7 +57,7 @@ type componentArgs struct {
 type ComponentArgs struct {
 	A      bool
 	B      *bool
-	Bar    *FooArgs
+	Bar    *Foo
 	Baz    []FooInput
 	BazMap map[string]FooInput
 	C      int

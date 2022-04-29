@@ -38,8 +38,8 @@ type fargateTaskDefinitionArgs struct {
 
 // The set of arguments for constructing a FargateTaskDefinition resource.
 type FargateTaskDefinitionArgs struct {
-	Container  *TaskDefinitionContainerDefinitionArgs
-	Containers map[string]TaskDefinitionContainerDefinitionArgs
+	Container  *TaskDefinitionContainerDefinition
+	Containers map[string]TaskDefinitionContainerDefinition
 }
 
 func (FargateTaskDefinitionArgs) ElementType() reflect.Type {
