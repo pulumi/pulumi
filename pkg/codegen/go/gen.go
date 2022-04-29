@@ -2551,7 +2551,10 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 
 		if recurse {
 			for _, p := range t.Properties {
-				pkg.getTypeImports(p.Type, recurse, importsAndAliases, seen)
+				// We only recurse one level into objects, since we need to name
+				// their properties but not the properties named in their
+				// properties.
+				pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 			}
 		}
 	case *schema.ResourceType:
