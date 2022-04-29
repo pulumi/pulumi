@@ -90,7 +90,7 @@ export namespace Foo {
      */
     export interface BarArgs {
         baz?: pulumi.Input<inputs.nested.BazArgs>;
-        bazPlain?: inputs.nested.Baz;
+        bazPlain?: inputs.nested.BazArgs;
         bazRequired: pulumi.Input<inputs.nested.BazArgs>;
         boolValue?: pulumi.Input<boolean>;
         boolValuePlain?: boolean;

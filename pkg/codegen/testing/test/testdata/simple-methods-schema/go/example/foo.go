@@ -69,7 +69,7 @@ type fooBarArgs struct {
 // The set of arguments for the Bar method of the Foo resource.
 type FooBarArgs struct {
 	Baz                 nested.BazPtrInput
-	BazPlain            *nested.Baz
+	BazPlain            *nested.BazArgs
 	BazRequired         nested.BazInput
 	BoolValue           pulumi.BoolPtrInput
 	BoolValuePlain      *bool

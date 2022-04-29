@@ -251,7 +251,7 @@ A description of bar.
         <span class="nx">name_required</span><span class="p">:</span> <span class="nx">pulumi.Input[pulumi_random.RandomPet]</span><span class="p">,</span>
         <span class="nx">string_value_required</span><span class="p">:</span> <span class="nx">pulumi.Input[str]</span><span class="p">,</span>
         <span class="nx">baz</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[_nested.BazArgs]]</span> = None<span class="p">,</span>
-        <span class="nx">baz_plain</span><span class="p">:</span> <span class="nx">Optional[_nested.Baz]</span> = None<span class="p">,</span>
+        <span class="nx">baz_plain</span><span class="p">:</span> <span class="nx">Optional[_nested.BazArgs]</span> = None<span class="p">,</span>
         <span class="nx">bool_value</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[bool]]</span> = None<span class="p">,</span>
         <span class="nx">bool_value_plain</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
         <span class="nx">name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[pulumi_random.RandomPet]]</span> = None<span class="p">,</span>

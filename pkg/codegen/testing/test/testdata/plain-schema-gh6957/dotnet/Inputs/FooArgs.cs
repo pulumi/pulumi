@@ -10,12 +10,12 @@ using Pulumi.Serialization;
 namespace Pulumi.Xyz.Inputs
 {
 
-    public sealed class Foo : Pulumi.ResourceArgs
+    public sealed class FooArgs : Pulumi.ResourceArgs
     {
         [Input("a")]
-        public bool? A { get; set; }
+        public Input<bool>? A { get; set; }
 
-        public Foo()
+        public FooArgs()
         {
         }
     }
