@@ -309,8 +309,8 @@ func renderDiff(
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options) {
 
-	indent := GetIndent(metadata, seen)
-	summary := GetResourcePropertiesSummary(metadata, indent)
+	indent := getIndent(metadata, seen)
+	summary := getResourcePropertiesSummary(metadata, indent)
 
 	var details string
 	if metadata.DetailedDiff != nil {
@@ -323,7 +323,7 @@ func renderDiff(
 		}
 		details = buf.String()
 	} else {
-		details = GetResourcePropertiesDetails(
+		details = getResourcePropertiesDetails(
 			metadata, indent, planning, opts.SummaryDiff, debug)
 	}
 
@@ -362,24 +362,24 @@ func renderDiffResourceOutputsEvent(
 			return out.String()
 		}
 
-		indent := GetIndent(payload.Metadata, seen)
+		indent := getIndent(payload.Metadata, seen)
 
 		refresh := false // are these outputs from a refresh?
 		if m, has := seen[payload.Metadata.URN]; has && m.Op == deploy.OpRefresh {
 			refresh = true
-			summary := GetResourcePropertiesSummary(payload.Metadata, indent)
+			summary := getResourcePropertiesSummary(payload.Metadata, indent)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}
 
 		if !opts.SuppressOutputs {
 			// We want to hide same outputs if we're doing a read and the user didn't ask to see
 			// things that are the same.
-			text := GetResourceOutputsPropertiesString(
+			text := getResourceOutputsPropertiesString(
 				payload.Metadata, indent+1, payload.Planning,
 				payload.Debug, refresh, opts.ShowSameResources)
 			if text != "" {
 				header := fmt.Sprintf("%v%v--outputs:--%v\n",
-					payload.Metadata.Op.Color(), GetIndentationString(indent+1), colors.Reset)
+					payload.Metadata.Op.Color(), getIndentationString(indent+1, payload.Metadata.Op, false), colors.Reset)
 				fprintfIgnoreError(out, opts.Color.Colorize(header))
 				fprintIgnoreError(out, opts.Color.Colorize(text))
 			}
