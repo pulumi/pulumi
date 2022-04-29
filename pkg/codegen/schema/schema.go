@@ -242,10 +242,6 @@ type ObjectType struct {
 	PlainShape *ObjectType
 
 	properties map[string]*Property
-
-	// If the bound type is marked as plain the the property where the type is referenced.
-	// In theory, plainProperty => IsPlainShape, but that isn't true due to a bug in codegen.
-	plainProperty bool
 }
 
 // IsPlainShape returns true if this object type is the plain shape of a (plain, input)
@@ -253,10 +249,6 @@ type ObjectType struct {
 // references other plain shapes.
 func (t *ObjectType) IsPlainShape() bool {
 	return t.PlainShape == nil
-}
-
-func (t *ObjectType) ShouldBePlainShape() bool {
-	return t.plainProperty
 }
 
 // IsInputShape returns true if this object type is the input shape of a (plain, input)
