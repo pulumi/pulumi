@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"path"
 	"sort"
 	"strings"
@@ -29,7 +30,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -128,6 +131,97 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		"index.ts": index.Bytes(),
 	}
 	return files, g.diagnostics, nil
+}
+
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+	files, diagnostics, err := GenerateProgram(program)
+	if err != nil {
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
+	}
+
+	// Set the runtime to "nodejs" then marshal to Pulumi.yaml
+	project.Runtime = workspace.NewProjectRuntimeInfo("nodejs", nil)
+	projectBytes, err := encoding.YAML.Marshal(project)
+	if err != nil {
+		return err
+	}
+	files["Pulumi.yaml"] = projectBytes
+
+	// Build the pacakge.json
+	var packageJSON bytes.Buffer
+	packageJSON.WriteString(fmt.Sprintf(`{
+		"name": "%s",
+		"devDependencies": {
+			"@types/node": "^14"
+		},
+		"dependencies": {
+			"@pulumi/pulumi": "^3.0.0"`, project.Name.String()))
+	// For each package add a dependency line
+	packages := program.Packages()
+	for _, p := range packages {
+		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+			return err
+		}
+
+		info := p.Language["nodejs"].(NodePackageInfo)
+		packageName := "@pulumi/" + p.Name
+		if info.PackageName != "" {
+			packageName = info.PackageName
+		}
+		dependencyTemplate := ",\n			\"%s\": \"%s\""
+		packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, p.Version.String()))
+	}
+	packageJSON.WriteString(`
+		}
+}`)
+
+	files["package.json"] = packageJSON.Bytes()
+
+	// Add the language specific .gitignore
+	files[".gitignore"] = []byte(`/bin/
+/node_modules/`)
+
+	// Add the basic tsconfig
+	var tsConfig bytes.Buffer
+	tsConfig.WriteString(`{
+		"compilerOptions": {
+			"strict": true,
+			"outDir": "bin",
+			"target": "es2016",
+			"module": "commonjs",
+			"moduleResolution": "node",
+			"sourceMap": true,
+			"experimentalDecorators": true,
+			"pretty": true,
+			"noFallthroughCasesInSwitch": true,
+			"noImplicitReturns": true,
+			"forceConsistentCasingInFileNames": true
+		},
+		"files": [
+`)
+
+	for file := range files {
+		if strings.HasSuffix(file, ".ts") {
+			tsConfig.WriteString("			\"" + file + "\"\n")
+		}
+	}
+
+	tsConfig.WriteString(`		]
+}`)
+	files["tsconfig.json"] = tsConfig.Bytes()
+
+	for filename, data := range files {
+		outPath := path.Join(directory, filename)
+		err := ioutil.WriteFile(outPath, data, 0600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // genLeadingTrivia generates the list of leading trivia assicated with a given token.

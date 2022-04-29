@@ -17,6 +17,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"path"
 	"sort"
 	"strings"
 
@@ -27,7 +29,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type generator struct {
@@ -63,6 +67,59 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		"__main__.py": main.Bytes(),
 	}
 	return files, g.diagnostics, nil
+}
+
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+	files, diagnostics, err := GenerateProgram(program)
+	if err != nil {
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
+	}
+
+	// Set the runtime to "python" then marshal to Pulumi.yaml
+	project.Runtime = workspace.NewProjectRuntimeInfo("python", nil)
+	projectBytes, err := encoding.YAML.Marshal(project)
+	if err != nil {
+		return err
+	}
+	files["Pulumi.yaml"] = projectBytes
+
+	// Build a requirements.txt based on the packages used by program
+	var requirementsTxt bytes.Buffer
+	requirementsTxt.WriteString("pulumi>=3.0.0,<4.0.0\n")
+
+	// For each package add a PackageReference line
+	packages := program.Packages()
+	for _, p := range packages {
+		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
+			return err
+		}
+
+		pyInfo := p.Language["python"].(PackageInfo)
+		packageName := p.Name
+		if pyInfo.PackageName != "" {
+			packageName = pyInfo.PackageName
+		}
+		requirementsTxt.WriteString(fmt.Sprintf("%s==%s\n", packageName, p.Version.String()))
+	}
+
+	files["requirements.txt"] = requirementsTxt.Bytes()
+
+	// Add the language specific .gitignore
+	files[".gitignore"] = []byte(`*.pyc
+venv/`)
+
+	for filename, data := range files {
+		outPath := path.Join(directory, filename)
+		err := ioutil.WriteFile(outPath, data, 0600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func newGenerator(program *pcl.Program) (*generator, error) {
