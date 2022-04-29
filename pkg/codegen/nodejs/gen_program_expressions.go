@@ -300,11 +300,7 @@ func enumName(enum *model.EnumType) (string, error) {
 	components := strings.Split(enum.Token, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
 	name := tokenToName(enum.Token)
-	module := func(m string) string {
-		pkg := strings.ToLower(m)
-		return strings.ReplaceAll(pkg, "-", "_")
-	}
-	pkg := components[0]
+	pkg := makeValidIdentifier(components[0])
 	e, ok := pcl.GetSchemaForType(enum)
 	if !ok {
 		return "", fmt.Errorf("Could not get associated enum")
@@ -312,9 +308,11 @@ func enumName(enum *model.EnumType) (string, error) {
 	if name := e.(*schema.EnumType).Package.Language["nodejs"].(NodePackageInfo).PackageName; name != "" {
 		pkg = name
 	}
-	pkg = module(pkg)
-	if components[1] != "" && components[1] != "index" {
-		pkg += "." + module(components[1])
+	if mod := components[1]; mod != "" && mod != "index" {
+		if pkg := e.(*schema.EnumType).Package; pkg != nil {
+			mod = moduleName(mod, pkg)
+		}
+		pkg += "." + mod
 	}
 	return fmt.Sprintf("%s.%s", pkg, name), nil
 }
