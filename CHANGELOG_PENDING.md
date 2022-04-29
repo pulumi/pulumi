@@ -9,7 +9,7 @@
 - [go] Add `Composite` resource option allowing several options to be encapsulated into a "single" option.
   [#9459](https://github.com/pulumi/pulumi/pull/9459)
 
-- [codegen] - Support all [Asset and Archive](https://www.pulumi.com/docs/intro/concepts/assets-archives/) types.
+- [codegen] Support all [Asset and Archive](https://www.pulumi.com/docs/intro/concepts/assets-archives/) types.
   [#9463](https://github.com/pulumi/pulumi/pull/9463)
 
 - [cli] Display JSON/YAML property values as objects for creates, sames, and deletes.
@@ -17,7 +17,7 @@
 
 ### Bug Fixes
 
-- [codegen] - Ensure that plain properties are always plain.
+- [codegen] Ensure that plain properties are always plain.
   [#9430](https://github.com/pulumi/pulumi/pull/9430)
 
 - [cli] Fixed some context leaks where shutdown code wasn't correctly called.
@@ -32,5 +32,8 @@
 - [auto/go] Fixed a race condition that could cause `Preview` to fail with "failed to get preview summary".
   [#9467](https://github.com/pulumi/pulumi/pull/9467)
 
-- [backend/filestate] - Fix a bug creating `stack.json.bak` files.
+- [backend/filestate] Fix a bug creating `stack.json.bak` files.
   [#9476](https://github.com/pulumi/pulumi/pull/9476)
+
+- [cli] Empty passphrases environment variables are now treated as if the variable was not set.
+  [#9490](https://github.com/pulumi/pulumi/pull/9490)
