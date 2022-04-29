@@ -4,7 +4,7 @@
 {{ htmlSafe "<!-- Do not edit by hand unless you're certain you know what you are doing! -->" }}
 
 {{- if .DeprecationMessage }}
-<p class="resource-deprecated">Deprecated: {{- .DeprecationMessage -}}</p>
+<p class="resource-deprecated">Deprecated: {{- markdownify .DeprecationMessage -}}</p>
 {{- end }}
 
 {{ htmlSafe .Comment }}
@@ -26,40 +26,56 @@
     "new Bucket(name: string, args?: BucketArgs, opts?: pulumi.ResourceOptions);"
     "def Bucket(resource_name, opts=None, acceleration_status=None, ..."
 */}}
-{{ htmlSafe "{{% choosable language nodejs %}}" }}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.nodejs }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language python %}}" }}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span>{{ template "linkify_param" .ConstructorResource.python }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.python }}<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span>{{ template "linkify_param" .ConstructorResource.python }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.pythonargs }}<span class="p">)</span></code></pre></div>
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language go %}}" }}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>{{ template "linkify_go_param" .ConstructorResource.go }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language csharp %}}" }}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.csharp }}<span class="p">)</span></code></pre></div>
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language nodejs %}}" }}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 {{ template "constructor_args" .ConstructorParamsTyped.nodejs }}
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language python %}}" }}
+<div>
+<pulumi-choosable type="language" values="python">
 {{ template "constructor_args" .ConstructorParamsTyped.pythonargs }}
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language go %}}" }}
+<div>
+<pulumi-choosable type="language" values="go">
 {{ template "constructor_args" .ConstructorParamsTyped.go }}
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language csharp %}}" }}
+<div>
+<pulumi-choosable type="language" values="csharp">
 {{ template "constructor_args" .ConstructorParamsTyped.csharp }}
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 ## {{ .Header.Title }} Resource Properties {#properties}
 
@@ -99,24 +115,32 @@ All [input](#inputs) properties are implicitly available as output properties. A
 {{ htmlSafe "{{< chooser language \"typescript,python,go,csharp\" / >}}" }}
 
 <!-- TS/JS -->
-{{ print "{{% choosable language nodejs %}}" }}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript">{{ .MethodName.nodejs }}<span class="p">(</span>{{ if ne .MethodArgs.nodejs "" }}{{ htmlSafe .MethodArgs.nodejs }}{{ end }}<span class="p">): {{ if ne .MethodResult.nodejs.Name "" }}Output&lt;{{ template "linkify_param" .MethodResult.nodejs }}&gt;{{ else }}void{{ end }}</span></code></pre></div>
-{{ print "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 <!-- Python -->
-{{ print "{{% choosable language python %}}" }}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>{{ .MethodName.python }}(</span>{{ if ne .MethodArgs.python "" }}{{ htmlSafe .MethodArgs.python }}{{ end }}<span class="p">) -&gt;</span> {{ if ne .MethodResult.python.Name "" }}Output[{{ template "linkify_param" .MethodResult.python }}]{{ else }}None{{ end }}</code></pre></div>
-{{ print "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 <!-- Go -->
-{{ print "{{% choosable language go %}}" }}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func</span> <span class="p">(r *{{ .ResourceName }})</span> {{ .MethodName.go }}<span class="p">(</span>{{ if ne .MethodArgs.go "" }}{{ htmlSafe .MethodArgs.go }}{{ end }}<span class="p">) {{ if ne .MethodResult.go.Name "" }}({{ template "linkify_param" .MethodResult.go }}, error){{ else }}error{{ end }}</span></code></pre></div>
-{{ print "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 <!-- C# -->
-{{ print "{{% choosable language csharp %}}" }}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ if ne .MethodResult.csharp.Name "" }}Output&lt;{{ template "linkify_param" .MethodResult.csharp }}&gt;{{ else }}void{{ end }} <span class="nx">{{ .MethodName.csharp }}</span><span class="p">({{ if ne .MethodArgs.csharp "" }}{{ htmlSafe .MethodArgs.csharp }}{{ end }})</span></code></pre></div>
-{{ print "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 {{ if ne (len .InputProperties) 0 }}
 
@@ -144,31 +168,42 @@ Get an existing {{.Header.Title}} resource's state with the given name, ID, and 
 {{ htmlSafe "{{< chooser language \"" }}{{ .LangChooserLanguages }}{{ htmlSafe "\" / >}}" }}
 {{- end }}
 
-{{ htmlSafe "{{% choosable language nodejs %}}" }}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">public static </span><span class="nf">get</span><span class="p">(</span>{{ htmlSafe .LookupParams.nodejs }}<span class="p">): </span>{{ template "linkify_param" .ConstructorResource.nodejs }}</code></pre></div>
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language python %}}" }}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@staticmethod</span>
 <span class="k">def </span><span class="nf">get</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">id</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
         {{ htmlSafe .LookupParams.python }}<span class="p">) -&gt;</span> {{ .ConstructorResource.python.Name }}</code></pre></div>
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language go %}}" }}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func </span>Get{{ .Header.Title }}<span class="p">(</span>{{ htmlSafe .LookupParams.go }}<span class="p">) (*{{ template "linkify_param" .ConstructorResource.go }}, error)</span></code></pre></div>
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language csharp %}}" }}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="nf"> Get</span><span class="p">(</span>{{ htmlSafe .LookupParams.csharp }}<span class="p">)</span></code></pre></div>
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language nodejs %}}" }}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 {{ template "read_inputs" }}
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language python %}}" }}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties">
     <dt class="property-required" title="Required">
         <span>resource_name</span>
@@ -181,15 +216,20 @@ Get an existing {{.Header.Title}} resource's state with the given name, ID, and 
     </dt>
     <dd>The <em>unique</em> provider ID of the resource to lookup.</dd>
 </dl>
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language go %}}" }}
+<div>
+<pulumi-choosable type="language" values="go">
 {{ template "read_inputs" }}
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
-{{ htmlSafe "{{% choosable language csharp %}}" }}
+<div>
+<pulumi-choosable type="language" values="csharp">
 {{ template "read_inputs" }}
-{{ htmlSafe "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 The following state arguments are supported:
 {{ template "properties" .StateInputs }}
