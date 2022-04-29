@@ -102,7 +102,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		if pyInfo.PackageName != "" {
 			packageName = pyInfo.PackageName
 		}
-		requirementsTxt.WriteString(fmt.Sprintf("%s=%s\n", packageName, p.Version.String()))
+		requirementsTxt.WriteString(fmt.Sprintf("%s==%s\n", packageName, p.Version.String()))
 	}
 
 	files["requirements.txt"] = requirementsTxt.Bytes()
