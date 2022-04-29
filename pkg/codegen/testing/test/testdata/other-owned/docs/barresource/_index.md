@@ -163,7 +163,7 @@ The BarResource resource accepts the following [input]({{< relref "/docs/intro/c
         <span class="property-indicator"></span>
         <span class="property-type">Other.<wbr>Example.<wbr>Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -175,7 +175,7 @@ The BarResource resource accepts the following [input]({{< relref "/docs/intro/c
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -187,7 +187,7 @@ The BarResource resource accepts the following [input]({{< relref "/docs/intro/c
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -199,7 +199,7 @@ The BarResource resource accepts the following [input]({{< relref "/docs/intro/c
         <span class="property-indicator"></span>
         <span class="property-type">Resource</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 
@@ -218,7 +218,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -230,7 +231,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -242,7 +244,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -254,7 +257,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 

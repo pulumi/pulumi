@@ -67,7 +67,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;Union&lt;string, Pulumi.<wbr>My8110.<wbr>My<wbr>Enum&gt;&gt;</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -79,7 +79,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -91,7 +91,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">(string | My<wbr>Enum)[]</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -103,7 +103,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[Union[str, My<wbr>Enum]]</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 

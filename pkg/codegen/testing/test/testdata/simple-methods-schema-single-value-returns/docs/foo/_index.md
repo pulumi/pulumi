@@ -185,7 +185,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -197,7 +198,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -209,7 +211,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -221,7 +224,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 
@@ -272,7 +276,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_rolearn_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_rolearn_csharp" style="color: inherit; text-decoration: inherit;">Role<wbr>Arn</a>
@@ -280,7 +284,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -292,7 +296,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_rolearn_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_rolearn_go" style="color: inherit; text-decoration: inherit;">Role<wbr>Arn</a>
@@ -300,7 +304,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -312,7 +316,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_rolearn_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_rolearn_nodejs" style="color: inherit; text-decoration: inherit;">role<wbr>Arn</a>
@@ -320,7 +324,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -332,7 +336,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="getKubeconfig_arg_role_arn_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#getKubeconfig_arg_role_arn_python" style="color: inherit; text-decoration: inherit;">role_<wbr>arn</a>
@@ -340,7 +344,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 
@@ -357,7 +361,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -369,7 +373,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -381,7 +385,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -393,7 +397,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 

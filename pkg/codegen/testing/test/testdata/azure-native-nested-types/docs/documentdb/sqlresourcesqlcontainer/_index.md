@@ -491,7 +491,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="resource_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_csharp" style="color: inherit; text-decoration: inherit;">Resource</a>
@@ -499,7 +500,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#sqlcontainergetpropertiesresponseresource">Pulumi.<wbr>Azure<wbr>Native.<wbr>Document<wbr>DB.<wbr>Outputs.<wbr>Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -511,7 +512,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="resource_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_go" style="color: inherit; text-decoration: inherit;">Resource</a>
@@ -519,7 +521,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#sqlcontainergetpropertiesresponseresource">Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -531,7 +533,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="resource_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_nodejs" style="color: inherit; text-decoration: inherit;">resource</a>
@@ -539,7 +542,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#sqlcontainergetpropertiesresponseresource">Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -551,7 +554,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="resource_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_python" style="color: inherit; text-decoration: inherit;">resource</a>
@@ -559,7 +563,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#sqlcontainergetpropertiesresponseresource">Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 
@@ -583,7 +587,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Sort order for composite paths.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Sort order for composite paths.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="path_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#path_csharp" style="color: inherit; text-decoration: inherit;">Path</a>
@@ -591,7 +596,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*){{% /md %}}</dd></dl>
+    <dd><p>The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*)</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -603,7 +609,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Sort order for composite paths.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Sort order for composite paths.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="path_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#path_go" style="color: inherit; text-decoration: inherit;">Path</a>
@@ -611,7 +618,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*){{% /md %}}</dd></dl>
+    <dd><p>The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*)</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -623,7 +631,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Sort order for composite paths.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Sort order for composite paths.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="path_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#path_nodejs" style="color: inherit; text-decoration: inherit;">path</a>
@@ -631,7 +640,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*){{% /md %}}</dd></dl>
+    <dd><p>The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*)</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -643,7 +653,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Sort order for composite paths.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Sort order for composite paths.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="path_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#path_python" style="color: inherit; text-decoration: inherit;">path</a>
@@ -651,7 +662,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*){{% /md %}}</dd></dl>
+    <dd><p>The path for which the indexing behavior applies to. Index paths typically start with root and end with wildcard (/path/*)</p>
+</dd></dl>
 {{% /choosable %}}
 
 <h4 id="indexingpolicyresponse">Indexing<wbr>Policy<wbr>Response</h4>
@@ -665,7 +677,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#compositepathresponse">List&lt;Immutable<wbr>Array&lt;Pulumi.<wbr>Azure<wbr>Native.<wbr>Document<wbr>DB.<wbr>Inputs.<wbr>Composite<wbr>Path<wbr>Response&gt;&gt;</a></span>
     </dt>
-    <dd>{{% md %}}List of composite path list{{% /md %}}</dd></dl>
+    <dd><p>List of composite path list</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -677,7 +690,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#compositepathresponse">[][]Composite<wbr>Path<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}List of composite path list{{% /md %}}</dd></dl>
+    <dd><p>List of composite path list</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -689,7 +703,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#compositepathresponse">Composite<wbr>Path<wbr>Response[][]</a></span>
     </dt>
-    <dd>{{% md %}}List of composite path list{{% /md %}}</dd></dl>
+    <dd><p>List of composite path list</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -701,7 +716,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#compositepathresponse">Sequence[Sequence[Composite<wbr>Path<wbr>Response]]</a></span>
     </dt>
-    <dd>{{% md %}}List of composite path list{{% /md %}}</dd></dl>
+    <dd><p>List of composite path list</p>
+</dd></dl>
 {{% /choosable %}}
 
 <h4 id="sqlcontainergetpropertiesresponseresource">Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</h4>
@@ -715,7 +731,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#indexingpolicyresponse">Pulumi.<wbr>Azure<wbr>Native.<wbr>Document<wbr>DB.<wbr>Inputs.<wbr>Indexing<wbr>Policy<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container{{% /md %}}</dd></dl>
+    <dd><p>The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -727,7 +744,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#indexingpolicyresponse">Indexing<wbr>Policy<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container{{% /md %}}</dd></dl>
+    <dd><p>The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -739,7 +757,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#indexingpolicyresponse">Indexing<wbr>Policy<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container{{% /md %}}</dd></dl>
+    <dd><p>The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -751,7 +770,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#indexingpolicyresponse">Indexing<wbr>Policy<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container{{% /md %}}</dd></dl>
+    <dd><p>The configuration of the indexing policy. By default, the indexing is automatic for all document paths within the container</p>
+</dd></dl>
 {{% /choosable %}}
 ## Import
 

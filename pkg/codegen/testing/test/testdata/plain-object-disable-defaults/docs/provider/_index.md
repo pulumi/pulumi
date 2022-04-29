@@ -165,7 +165,8 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}BETA FEATURE - Options to configure the Helm Release resource.{{% /md %}}</dd></dl>
+    <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -177,7 +178,8 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}BETA FEATURE - Options to configure the Helm Release resource.{{% /md %}}</dd></dl>
+    <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -189,7 +191,8 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}BETA FEATURE - Options to configure the Helm Release resource.{{% /md %}}</dd></dl>
+    <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -201,7 +204,8 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
     </dt>
-    <dd>{{% md %}}BETA FEATURE - Options to configure the Helm Release resource.{{% /md %}}</dd></dl>
+    <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 
@@ -220,7 +224,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -232,7 +237,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -244,7 +250,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -256,7 +263,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 
@@ -280,7 +288,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_csharp" style="color: inherit; text-decoration: inherit;">Driver</a>
@@ -288,7 +297,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_csharp" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
@@ -296,7 +306,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -308,7 +319,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_go" style="color: inherit; text-decoration: inherit;">Driver</a>
@@ -316,7 +328,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_go" style="color: inherit; text-decoration: inherit;">Plugins<wbr>Path</a>
@@ -324,7 +337,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -336,7 +350,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_nodejs" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -344,7 +359,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="pluginspath_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pluginspath_nodejs" style="color: inherit; text-decoration: inherit;">plugins<wbr>Path</a>
@@ -352,7 +368,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -364,7 +381,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}to test required args{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>to test required args</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="driver_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#driver_python" style="color: inherit; text-decoration: inherit;">driver</a>
@@ -372,7 +390,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The backend storage driver for Helm. Values are: configmap, secret, memory, sql.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The backend storage driver for Helm. Values are: configmap, secret, memory, sql.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="plugins_path_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#plugins_path_python" style="color: inherit; text-decoration: inherit;">plugins_<wbr>path</a>
@@ -380,7 +399,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The path to the helm plugins directory.{{% /md %}}</dd></dl>
+    <dd><p>The path to the helm plugins directory.</p>
+</dd></dl>
 {{% /choosable %}}
 
 

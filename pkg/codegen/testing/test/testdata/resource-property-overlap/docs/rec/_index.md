@@ -185,7 +185,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="rec_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_csharp" style="color: inherit; text-decoration: inherit;">Rec</a>
@@ -193,7 +194,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Example.<wbr>Rec</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -205,7 +206,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="rec_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_go" style="color: inherit; text-decoration: inherit;">Rec</a>
@@ -213,7 +215,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Rec</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -225,7 +227,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="rec_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_nodejs" style="color: inherit; text-decoration: inherit;">rec</a>
@@ -233,7 +236,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Rec</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -245,7 +248,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="rec_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#rec_python" style="color: inherit; text-decoration: inherit;">rec</a>
@@ -253,7 +257,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Rec</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 

@@ -163,7 +163,8 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Resources.<wbr>Resource<wbr>Group</span>
     </dt>
-    <dd>{{% md %}}The resource group that hosts the component resource{{% /md %}}</dd></dl>
+    <dd><p>The resource group that hosts the component resource</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -175,7 +176,8 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
         <span class="property-indicator"></span>
         <span class="property-type">Resource<wbr>Group</span>
     </dt>
-    <dd>{{% md %}}The resource group that hosts the component resource{{% /md %}}</dd></dl>
+    <dd><p>The resource group that hosts the component resource</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -187,7 +189,8 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativeresources<wbr>Resource<wbr>Group</span>
     </dt>
-    <dd>{{% md %}}The resource group that hosts the component resource{{% /md %}}</dd></dl>
+    <dd><p>The resource group that hosts the component resource</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -199,7 +202,8 @@ The RegistryGeoReplication resource accepts the following [input]({{< relref "/d
         <span class="property-indicator"></span>
         <span class="property-type">Resource<wbr>Group</span>
     </dt>
-    <dd>{{% md %}}The resource group that hosts the component resource{{% /md %}}</dd></dl>
+    <dd><p>The resource group that hosts the component resource</p>
+</dd></dl>
 {{% /choosable %}}
 
 
@@ -218,7 +222,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
+    <dd><p>The login server url</p>
+</dd><dt class="property-"
             title="">
         <span id="id_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_csharp" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -226,7 +231,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="registry_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_csharp" style="color: inherit; text-decoration: inherit;">Registry</a>
@@ -234,7 +240,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Container<wbr>Registry.<wbr>Registry</span>
     </dt>
-    <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
+    <dd><p>The Registry</p>
+</dd><dt class="property-"
             title="">
         <span id="replication_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_csharp" style="color: inherit; text-decoration: inherit;">Replication</a>
@@ -242,7 +249,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Azure<wbr>Native.<wbr>Container<wbr>Registry.<wbr>Replication</span>
     </dt>
-    <dd>{{% md %}}The replication policy{{% /md %}}</dd></dl>
+    <dd><p>The replication policy</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -254,7 +262,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
+    <dd><p>The login server url</p>
+</dd><dt class="property-"
             title="">
         <span id="id_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_go" style="color: inherit; text-decoration: inherit;">Id</a>
@@ -262,7 +271,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="registry_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_go" style="color: inherit; text-decoration: inherit;">Registry</a>
@@ -270,7 +280,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Registry</span>
     </dt>
-    <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
+    <dd><p>The Registry</p>
+</dd><dt class="property-"
             title="">
         <span id="replication_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_go" style="color: inherit; text-decoration: inherit;">Replication</a>
@@ -278,7 +289,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Replication</span>
     </dt>
-    <dd>{{% md %}}The replication policy{{% /md %}}</dd></dl>
+    <dd><p>The replication policy</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -290,7 +302,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
+    <dd><p>The login server url</p>
+</dd><dt class="property-"
             title="">
         <span id="id_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_nodejs" style="color: inherit; text-decoration: inherit;">id</a>
@@ -298,7 +311,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="registry_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_nodejs" style="color: inherit; text-decoration: inherit;">registry</a>
@@ -306,7 +320,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativecontainerregistry<wbr>Registry</span>
     </dt>
-    <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
+    <dd><p>The Registry</p>
+</dd><dt class="property-"
             title="">
         <span id="replication_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_nodejs" style="color: inherit; text-decoration: inherit;">replication</a>
@@ -314,7 +329,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Azure<wbr>Nativecontainerregistry<wbr>Replication</span>
     </dt>
-    <dd>{{% md %}}The replication policy{{% /md %}}</dd></dl>
+    <dd><p>The replication policy</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -326,7 +342,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The login server url{{% /md %}}</dd><dt class="property-"
+    <dd><p>The login server url</p>
+</dd><dt class="property-"
             title="">
         <span id="id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_python" style="color: inherit; text-decoration: inherit;">id</a>
@@ -334,7 +351,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd><dt class="property-"
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
             title="">
         <span id="registry_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registry_python" style="color: inherit; text-decoration: inherit;">registry</a>
@@ -342,7 +360,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Registry</span>
     </dt>
-    <dd>{{% md %}}The Registry{{% /md %}}</dd><dt class="property-"
+    <dd><p>The Registry</p>
+</dd><dt class="property-"
             title="">
         <span id="replication_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#replication_python" style="color: inherit; text-decoration: inherit;">replication</a>
@@ -350,7 +369,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Replication</span>
     </dt>
-    <dd>{{% md %}}The replication policy{{% /md %}}</dd></dl>
+    <dd><p>The replication policy</p>
+</dd></dl>
 {{% /choosable %}}
 
 

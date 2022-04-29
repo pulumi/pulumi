@@ -185,7 +185,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -197,7 +198,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -209,7 +211,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -221,7 +224,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 
@@ -284,7 +288,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">Pulumi.<wbr>Example.<wbr>Nested.<wbr>Inputs.<wbr>Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_boolvaluerequired_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvaluerequired_csharp" style="color: inherit; text-decoration: inherit;">Bool<wbr>Value<wbr>Required</a>
@@ -292,7 +296,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_namerequired_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_namerequired_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Required</a>
@@ -300,7 +304,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_csharp" style="color: inherit; text-decoration: inherit;">String<wbr>Value<wbr>Required</a>
@@ -308,7 +312,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_baz_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_csharp" style="color: inherit; text-decoration: inherit;">Baz</a>
@@ -316,7 +320,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">Pulumi.<wbr>Example.<wbr>Nested.<wbr>Inputs.<wbr>Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_bazplain_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_bazplain_csharp" style="color: inherit; text-decoration: inherit;">Baz<wbr>Plain</a>
@@ -324,7 +328,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">Pulumi.<wbr>Example.<wbr>Nested.<wbr>Inputs.<wbr>Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_boolvalue_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvalue_csharp" style="color: inherit; text-decoration: inherit;">Bool<wbr>Value</a>
@@ -332,7 +336,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_boolvalueplain_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvalueplain_csharp" style="color: inherit; text-decoration: inherit;">Bool<wbr>Value<wbr>Plain</a>
@@ -340,7 +344,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_name_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -348,7 +352,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Plain</a>
@@ -356,7 +360,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_csharp" style="color: inherit; text-decoration: inherit;">String<wbr>Value</a>
@@ -364,7 +368,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalueplain_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalueplain_csharp" style="color: inherit; text-decoration: inherit;">String<wbr>Value<wbr>Plain</a>
@@ -372,7 +376,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -384,7 +388,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_boolvaluerequired_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvaluerequired_go" style="color: inherit; text-decoration: inherit;">Bool<wbr>Value<wbr>Required</a>
@@ -392,7 +396,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_namerequired_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_namerequired_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Required</a>
@@ -400,7 +404,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_go" style="color: inherit; text-decoration: inherit;">String<wbr>Value<wbr>Required</a>
@@ -408,7 +412,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_baz_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_go" style="color: inherit; text-decoration: inherit;">Baz</a>
@@ -416,7 +420,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_bazplain_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_bazplain_go" style="color: inherit; text-decoration: inherit;">Baz<wbr>Plain</a>
@@ -424,7 +428,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_boolvalue_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvalue_go" style="color: inherit; text-decoration: inherit;">Bool<wbr>Value</a>
@@ -432,7 +436,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_boolvalueplain_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvalueplain_go" style="color: inherit; text-decoration: inherit;">Bool<wbr>Value<wbr>Plain</a>
@@ -440,7 +444,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_name_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_go" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -448,7 +452,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Plain</a>
@@ -456,7 +460,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_go" style="color: inherit; text-decoration: inherit;">String<wbr>Value</a>
@@ -464,7 +468,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalueplain_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalueplain_go" style="color: inherit; text-decoration: inherit;">String<wbr>Value<wbr>Plain</a>
@@ -472,7 +476,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -484,7 +488,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">nested<wbr>Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_boolvaluerequired_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvaluerequired_nodejs" style="color: inherit; text-decoration: inherit;">bool<wbr>Value<wbr>Required</a>
@@ -492,7 +496,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_namerequired_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_namerequired_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Required</a>
@@ -500,7 +504,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_stringvaluerequired_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_nodejs" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Required</a>
@@ -508,7 +512,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_baz_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_nodejs" style="color: inherit; text-decoration: inherit;">baz</a>
@@ -516,7 +520,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">nested<wbr>Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_bazplain_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_bazplain_nodejs" style="color: inherit; text-decoration: inherit;">baz<wbr>Plain</a>
@@ -524,7 +528,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">nested<wbr>Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_boolvalue_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvalue_nodejs" style="color: inherit; text-decoration: inherit;">bool<wbr>Value</a>
@@ -532,7 +536,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_boolvalueplain_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvalueplain_nodejs" style="color: inherit; text-decoration: inherit;">bool<wbr>Value<wbr>Plain</a>
@@ -540,7 +544,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_name_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
@@ -548,7 +552,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_nameplain_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Plain</a>
@@ -556,7 +560,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalue_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_nodejs" style="color: inherit; text-decoration: inherit;">string<wbr>Value</a>
@@ -564,7 +568,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_stringvalueplain_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalueplain_nodejs" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Plain</a>
@@ -572,7 +576,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -584,7 +588,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_bool_value_required_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_bool_value_required_python" style="color: inherit; text-decoration: inherit;">bool_<wbr>value_<wbr>required</a>
@@ -592,7 +596,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_name_required_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_required_python" style="color: inherit; text-decoration: inherit;">name_<wbr>required</a>
@@ -600,7 +604,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+    <dd></dd><dt class="property-required"
             title="Required">
         <span id="bar_arg_string_value_required_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_string_value_required_python" style="color: inherit; text-decoration: inherit;">string_<wbr>value_<wbr>required</a>
@@ -608,7 +612,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_baz_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_python" style="color: inherit; text-decoration: inherit;">baz</a>
@@ -616,7 +620,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_baz_plain_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_plain_python" style="color: inherit; text-decoration: inherit;">baz_<wbr>plain</a>
@@ -624,7 +628,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#baz">Baz</a></span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_bool_value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_bool_value_python" style="color: inherit; text-decoration: inherit;">bool_<wbr>value</a>
@@ -632,7 +636,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_bool_value_plain_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_bool_value_plain_python" style="color: inherit; text-decoration: inherit;">bool_<wbr>value_<wbr>plain</a>
@@ -640,7 +644,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_python" style="color: inherit; text-decoration: inherit;">name</a>
@@ -648,7 +652,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_name_plain_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_plain_python" style="color: inherit; text-decoration: inherit;">name_<wbr>plain</a>
@@ -656,7 +660,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_string_value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_string_value_python" style="color: inherit; text-decoration: inherit;">string_<wbr>value</a>
@@ -664,7 +668,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="bar_arg_string_value_plain_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_string_value_plain_python" style="color: inherit; text-decoration: inherit;">string_<wbr>value_<wbr>plain</a>
@@ -672,7 +676,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 
@@ -689,7 +693,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -701,7 +705,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -713,7 +717,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -725,7 +729,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 
@@ -808,7 +812,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -820,7 +824,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -832,7 +836,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">boolean</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -844,7 +848,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 
@@ -861,7 +865,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -873,7 +877,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -885,7 +889,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -897,7 +901,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 
@@ -922,7 +926,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="world_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#world_csharp" style="color: inherit; text-decoration: inherit;">World</a>
@@ -930,7 +934,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -942,7 +946,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="world_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#world_go" style="color: inherit; text-decoration: inherit;">World</a>
@@ -950,7 +954,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -962,7 +966,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="world_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#world_nodejs" style="color: inherit; text-decoration: inherit;">world</a>
@@ -970,7 +974,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -982,7 +986,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+    <dd></dd><dt class="property-optional"
             title="Optional">
         <span id="world_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#world_python" style="color: inherit; text-decoration: inherit;">world</a>
@@ -990,7 +994,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}{{% /md %}}</dd></dl>
+    <dd></dd></dl>
 {{% /choosable %}}
 
 

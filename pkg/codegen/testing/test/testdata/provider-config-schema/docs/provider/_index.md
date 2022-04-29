@@ -163,7 +163,8 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#color">Pulumi.<wbr>Configstation.<wbr>Color</a></span>
     </dt>
-    <dd>{{% md %}}this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: `FAVE_COLOR`{{% /md %}}</dd></dl>
+    <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -175,7 +176,8 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#color">Color</a></span>
     </dt>
-    <dd>{{% md %}}this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: `FAVE_COLOR`{{% /md %}}</dd></dl>
+    <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -187,7 +189,8 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#color">Color</a></span>
     </dt>
-    <dd>{{% md %}}this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: `FAVE_COLOR`{{% /md %}}</dd></dl>
+    <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -199,7 +202,8 @@ The Provider resource accepts the following [input]({{< relref "/docs/intro/conc
         <span class="property-indicator"></span>
         <span class="property-type">str | <a href="#color">Color</a></span>
     </dt>
-    <dd>{{% md %}}this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: `FAVE_COLOR`{{% /md %}}</dd></dl>
+    <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
+</dd></dl>
 {{% /choosable %}}
 
 
@@ -218,7 +222,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -230,7 +235,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -242,7 +248,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -254,7 +261,8 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The provider-assigned unique ID for this managed resource.{{% /md %}}</dd></dl>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 

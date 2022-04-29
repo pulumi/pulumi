@@ -87,7 +87,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -95,7 +96,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_csharp" style="color: inherit; text-decoration: inherit;">Expand</a>
@@ -103,7 +105,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Specifies type of the key to be listed. Possible value is kerb.{{% /md %}}</dd></dl>
+    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -115,7 +118,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -123,7 +127,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_go" style="color: inherit; text-decoration: inherit;">Expand</a>
@@ -131,7 +136,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Specifies type of the key to be listed. Possible value is kerb.{{% /md %}}</dd></dl>
+    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -143,7 +149,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -151,7 +158,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_nodejs" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -159,7 +167,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Specifies type of the key to be listed. Possible value is kerb.{{% /md %}}</dd></dl>
+    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -171,7 +180,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resource_group_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
@@ -179,7 +189,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_python" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -187,7 +198,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Specifies type of the key to be listed. Possible value is kerb.{{% /md %}}</dd></dl>
+    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
+</dd></dl>
 {{% /choosable %}}
 
 
@@ -208,7 +220,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">List&lt;Storage<wbr>Account<wbr>Key<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Gets the list of storage account keys and their properties for the specified storage account.{{% /md %}}</dd></dl>
+    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -220,7 +233,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">[]Storage<wbr>Account<wbr>Key<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Gets the list of storage account keys and their properties for the specified storage account.{{% /md %}}</dd></dl>
+    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -232,7 +246,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">Storage<wbr>Account<wbr>Key<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Gets the list of storage account keys and their properties for the specified storage account.{{% /md %}}</dd></dl>
+    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -244,7 +259,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">Sequence[Storage<wbr>Account<wbr>Key<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Gets the list of storage account keys and their properties for the specified storage account.{{% /md %}}</dd></dl>
+    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
+</dd></dl>
 {{% /choosable %}}
 
 
@@ -266,7 +282,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Creation time of the key, in round trip date format.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="keyname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_csharp" style="color: inherit; text-decoration: inherit;">Key<wbr>Name</a>
@@ -274,7 +291,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the key.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="permissions_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_csharp" style="color: inherit; text-decoration: inherit;">Permissions</a>
@@ -282,7 +300,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Permissions for the key -- read-only or full permissions.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -290,7 +309,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Base 64-encoded value of the key.{{% /md %}}</dd></dl>
+    <dd><p>Base 64-encoded value of the key.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -302,7 +322,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Creation time of the key, in round trip date format.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="keyname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_go" style="color: inherit; text-decoration: inherit;">Key<wbr>Name</a>
@@ -310,7 +331,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the key.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="permissions_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_go" style="color: inherit; text-decoration: inherit;">Permissions</a>
@@ -318,7 +340,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Permissions for the key -- read-only or full permissions.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -326,7 +349,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Base 64-encoded value of the key.{{% /md %}}</dd></dl>
+    <dd><p>Base 64-encoded value of the key.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -338,7 +362,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Creation time of the key, in round trip date format.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="keyname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_nodejs" style="color: inherit; text-decoration: inherit;">key<wbr>Name</a>
@@ -346,7 +371,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the key.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="permissions_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_nodejs" style="color: inherit; text-decoration: inherit;">permissions</a>
@@ -354,7 +380,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Permissions for the key -- read-only or full permissions.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
@@ -362,7 +389,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Base 64-encoded value of the key.{{% /md %}}</dd></dl>
+    <dd><p>Base 64-encoded value of the key.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -374,7 +402,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Creation time of the key, in round trip date format.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="key_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#key_name_python" style="color: inherit; text-decoration: inherit;">key_<wbr>name</a>
@@ -382,7 +411,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the key.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="permissions_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_python" style="color: inherit; text-decoration: inherit;">permissions</a>
@@ -390,7 +420,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Permissions for the key -- read-only or full permissions.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
@@ -398,7 +429,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Base 64-encoded value of the key.{{% /md %}}</dd></dl>
+    <dd><p>Base 64-encoded value of the key.</p>
+</dd></dl>
 {{% /choosable %}}
 
 

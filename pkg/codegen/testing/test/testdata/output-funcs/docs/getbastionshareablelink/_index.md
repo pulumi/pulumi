@@ -87,7 +87,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the Bastion Host.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the Bastion Host.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -95,7 +96,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_csharp" style="color: inherit; text-decoration: inherit;">Vms</a>
@@ -103,7 +105,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">List&lt;Bastion<wbr>Shareable<wbr>Link&gt;</a></span>
     </dt>
-    <dd>{{% md %}}List of VM references.{{% /md %}}</dd></dl>
+    <dd><p>List of VM references.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -115,7 +118,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the Bastion Host.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the Bastion Host.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -123,7 +127,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_go" style="color: inherit; text-decoration: inherit;">Vms</a>
@@ -131,7 +136,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">[]Bastion<wbr>Shareable<wbr>Link</a></span>
     </dt>
-    <dd>{{% md %}}List of VM references.{{% /md %}}</dd></dl>
+    <dd><p>List of VM references.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -143,7 +149,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the Bastion Host.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the Bastion Host.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -151,7 +158,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_nodejs" style="color: inherit; text-decoration: inherit;">vms</a>
@@ -159,7 +167,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">Bastion<wbr>Shareable<wbr>Link[]</a></span>
     </dt>
-    <dd>{{% md %}}List of VM references.{{% /md %}}</dd></dl>
+    <dd><p>List of VM references.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -171,7 +180,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The name of the Bastion Host.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the Bastion Host.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resource_group_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
@@ -179,7 +189,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_python" style="color: inherit; text-decoration: inherit;">vms</a>
@@ -187,7 +198,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">Sequence[Bastion<wbr>Shareable<wbr>Link]</a></span>
     </dt>
-    <dd>{{% md %}}List of VM references.{{% /md %}}</dd></dl>
+    <dd><p>List of VM references.</p>
+</dd></dl>
 {{% /choosable %}}
 
 
@@ -208,7 +220,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The URL to get the next set of results.{{% /md %}}</dd></dl>
+    <dd><p>The URL to get the next set of results.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -220,7 +233,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The URL to get the next set of results.{{% /md %}}</dd></dl>
+    <dd><p>The URL to get the next set of results.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -232,7 +246,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The URL to get the next set of results.{{% /md %}}</dd></dl>
+    <dd><p>The URL to get the next set of results.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -244,7 +259,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The URL to get the next set of results.{{% /md %}}</dd></dl>
+    <dd><p>The URL to get the next set of results.</p>
+</dd></dl>
 {{% /choosable %}}
 
 
@@ -266,7 +282,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reference of the virtual machine resource.{{% /md %}}</dd></dl>
+    <dd><p>Reference of the virtual machine resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -278,7 +295,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reference of the virtual machine resource.{{% /md %}}</dd></dl>
+    <dd><p>Reference of the virtual machine resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
@@ -290,7 +308,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reference of the virtual machine resource.{{% /md %}}</dd></dl>
+    <dd><p>Reference of the virtual machine resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
@@ -302,7 +321,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Reference of the virtual machine resource.{{% /md %}}</dd></dl>
+    <dd><p>Reference of the virtual machine resource.</p>
+</dd></dl>
 {{% /choosable %}}
 
 
