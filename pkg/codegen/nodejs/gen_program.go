@@ -65,9 +65,18 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	var index bytes.Buffer
 	g.genPreamble(&index, program, preambleHelperMethods)
 	for _, n := range nodes {
-		if r, ok := n.(*pcl.Resource); ok && requiresAsyncMain(r) {
-			g.asyncMain = true
+		if g.asyncMain {
 			break
+		}
+		switch x := n.(type) {
+		case *pcl.Resource:
+			if resourceRequiresAsyncMain(x) {
+				g.asyncMain = true
+			}
+		case *pcl.OutputVariable:
+			if outputRequiresAsyncMain(x) {
+				g.asyncMain = true
+			}
 		}
 	}
 
@@ -89,14 +98,15 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 					if result == nil {
 						result = &model.ObjectConsExpression{}
 					}
-					name := makeValidIdentifier(o.Name())
+					name := o.LogicalName()
+					nameVar := makeValidIdentifier(o.Name())
 					result.Items = append(result.Items, model.ObjectConsItem{
 						Key: &model.LiteralValueExpression{Value: cty.StringVal(name)},
 						Value: &model.ScopeTraversalExpression{
-							RootName:  name,
+							RootName:  nameVar,
 							Traversal: hcl.Traversal{hcl.TraverseRoot{Name: name}},
 							Parts: []model.Traversable{&model.Variable{
-								Name:         name,
+								Name:         nameVar,
 								VariableType: o.Type(),
 							}},
 						},
@@ -226,12 +236,21 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 	}
 }
 
-func requiresAsyncMain(r *pcl.Resource) bool {
+func resourceRequiresAsyncMain(r *pcl.Resource) bool {
 	if r.Options == nil || r.Options.Range == nil {
 		return false
 	}
 
 	return model.ContainsPromises(r.Options.Range.Type())
+}
+
+func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
+	outputName := ov.LogicalName()
+	if makeValidIdentifier(outputName) != outputName {
+		return true
+	}
+
+	return false
 }
 
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.
@@ -324,8 +343,8 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	optionsBag := g.genResourceOptions(r.Options)
 
-	name := r.Name()
-	variableName := makeValidIdentifier(name)
+	name := r.LogicalName()
+	variableName := makeValidIdentifier(r.Name())
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.GetLabels(nil) {

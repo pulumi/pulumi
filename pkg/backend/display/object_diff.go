@@ -35,8 +35,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// GetIndent computes a step's parent indentation.
-func GetIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) int {
+// getIndent computes a step's parent indentation.
+func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) int {
 	indent := 0
 	for p := step.Res.Parent; p != ""; {
 		if par, has := seen[p]; !has {
@@ -66,16 +66,8 @@ func printStepHeader(b io.StringWriter, step engine.StepEventMetadata) {
 	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
 }
 
-func GetIndentationString(indent int) string {
-	var result string
-	for i := 0; i < indent; i++ {
-		result += "    "
-	}
-	return result
-}
-
 func getIndentationString(indent int, op deploy.StepOp, prefix bool) string {
-	var result = GetIndentationString(indent)
+	result := strings.Repeat("    ", indent)
 
 	if !prefix {
 		return result
@@ -116,7 +108,7 @@ func writeVerbatim(b io.StringWriter, op deploy.StepOp, value string) {
 	writeWithIndentNoPrefix(b, 0, op, "%s", value)
 }
 
-func GetResourcePropertiesSummary(step engine.StepEventMetadata, indent int) string {
+func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) string {
 	var b bytes.Buffer
 
 	op := step.Op
@@ -178,7 +170,7 @@ func GetResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 	return b.String()
 }
 
-func GetResourcePropertiesDetails(
+func getResourcePropertiesDetails(
 	step engine.StepEventMetadata, indent int, planning bool, summary bool, debug bool) string {
 	var b bytes.Buffer
 
@@ -340,9 +332,9 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 	}
 }
 
-// GetResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
+// getResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
-func GetResourceOutputsPropertiesString(
+func getResourceOutputsPropertiesString(
 	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
 
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
@@ -809,6 +801,11 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 	} else if v.IsNumber() {
 		p.write("%v", v.NumberValue())
 	} else if v.IsString() {
+		if vv, kind, ok := p.decodeValue(v.StringValue()); ok {
+			p.write("(%s) ", kind)
+			p.printPropertyValue(vv)
+			return
+		}
 		p.write("%q", v.StringValue())
 	} else if v.IsComputed() || v.IsOutput() {
 		// We render computed and output values differently depending on whether or not we are

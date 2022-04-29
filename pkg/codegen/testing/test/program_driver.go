@@ -34,6 +34,10 @@ var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 var PulumiPulumiProgramTests = []ProgramTest{
 	{
+		Directory:   "assets-archives",
+		Description: "Assets and archives",
+	},
+	{
 		Directory:      "aws-s3-folder",
 		Description:    "AWS S3 Folder",
 		ExpectNYIDiags: allProgLanguages.Except("go"),
@@ -160,6 +164,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "python-resource-names",
 		Description: "Repro for #9357",
 		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
+	},
+	{
+		Directory:   "logical-name",
+		Description: "Logical names",
 	},
 }
 

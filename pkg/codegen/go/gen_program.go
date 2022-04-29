@@ -474,7 +474,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
-	resName, resNameVar := r.Name(), makeValidIdentifier(r.Name())
+	resName, resNameVar := r.LogicalName(), makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
 	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
 		mod = pkg
@@ -562,7 +562,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	expr, temps := g.lowerExpression(v.Value, v.Type())
 	g.genTemps(w, temps)
-	g.Fgenf(w, "ctx.Export(\"%s\", %.3v)\n", v.Name(), expr)
+	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
 }
 func (g *generator) genTemps(w io.Writer, temps []interface{}) {
 	singleReturn := ""
@@ -673,7 +673,9 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 				g.Fgenf(w, "return err\n")
 				g.Fgenf(w, "}\n")
 			}
-		case "join", "toBase64", "mimeType", "fileAsset":
+		case "join", "toBase64", "mimeType",
+			"fileArchive", "remoteArchive", "assetArchive",
+			"fileAsset", "stringAsset", "remoteAsset":
 			g.Fgenf(w, "%s := %.3v;\n", name, expr)
 		}
 	default:

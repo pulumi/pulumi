@@ -9,6 +9,12 @@
 - [go] Add `Composite` resource option allowing several options to be encapsulated into a "single" option.
   [#9459](https://github.com/pulumi/pulumi/pull/9459)
 
+- [codegen] - Support all [Asset and Archive](https://www.pulumi.com/docs/intro/concepts/assets-archives/) types.
+  [#9463](https://github.com/pulumi/pulumi/pull/9463)
+
+- [cli] Display JSON/YAML property values as objects for creates, sames, and deletes.
+  [#9484](https://github.com/pulumi/pulumi/pull/9484)
+
 ### Bug Fixes
 
 - [codegen/go] - Ensure that plain properties are plain.
@@ -26,3 +32,6 @@
 
 - [auto/go] Fixed a race condition that could cause `Preview` to fail with "failed to get preview summary".
   [#9467](https://github.com/pulumi/pulumi/pull/9467)
+
+- [backend/filestate] - Fix a bug creating `stack.json.bak` files.
+  [#9476](https://github.com/pulumi/pulumi/pull/9476)

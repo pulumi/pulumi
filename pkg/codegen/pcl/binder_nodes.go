@@ -120,6 +120,16 @@ func (b *binder) bindLocalVariable(node *LocalVariable) hcl.Diagnostics {
 
 func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 	block, diagnostics := model.BindBlock(node.syntax, model.StaticScope(b.root), b.tokens, b.options.modelOptions()...)
+
+	if logicalNameAttr, ok := block.Body.Attribute(LogicalNamePropertyKey); ok {
+		logicalName, lDiags := getStringAttrValue(logicalNameAttr)
+		if lDiags != nil {
+			diagnostics = diagnostics.Append(lDiags)
+		} else {
+			node.logicalName = logicalName
+		}
+	}
+
 	if value, ok := block.Body.Attribute("value"); ok {
 		node.Value = value.Value
 		if model.InputType(node.typ).ConversionFrom(node.Value.Type()) == model.NoConversion {
