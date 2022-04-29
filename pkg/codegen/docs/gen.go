@@ -1944,8 +1944,11 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 			return template.HTML(html)
 		},
 		"markdownify": func(md string) template.HTML {
+			// Convert a string of Markdown into HTML.
 			var buf bytes.Buffer
-			goldmark.Convert([]byte(md), &buf)
+			if err := goldmark.Convert([]byte(md), &buf); err != nil {
+				glog.Fatalf("rendering Markdown: %v", err)
+			}
 			return template.HTML(buf.String())
 		},
 	})

@@ -9,11 +9,13 @@
 {{ .Title }}
 
 {{ range $key, $val := .Snippets }}
-{{ htmlSafe "<div><pulumi-choosable type=\"language\" values=\"" }}{{ $key }}{{ htmlSafe "\">" }}
+{{ htmlSafe "<div>" }}
+{{ htmlSafe "<pulumi-choosable type=\"language\" values=\"" }}{{ $key }}{{ htmlSafe "\">" }}
 
 {{ htmlSafe $val }}
 
-{{ htmlSafe "</pulumi-choosable></div>" }}
+{{ htmlSafe "</pulumi-choosable>" }}
+{{ htmlSafe "</div>" }}
 
 {{ end }}
 

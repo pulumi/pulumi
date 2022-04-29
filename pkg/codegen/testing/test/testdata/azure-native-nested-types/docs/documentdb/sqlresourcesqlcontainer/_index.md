@@ -25,7 +25,8 @@ API Version: 2021-03-15.
 ### CosmosDBSqlContainerCreateUpdate
 
 
-<div><pulumi-choosable type="language" values="csharp">
+<div>
+<pulumi-choosable type="language" values="csharp">
 
 ```csharp
 using Pulumi;
@@ -111,10 +112,12 @@ class MyStack : Stack
 ```
 
 
-</pulumi-choosable></div>
+</pulumi-choosable>
+</div>
 
 
-<div><pulumi-choosable type="language" values="go">
+<div>
+<pulumi-choosable type="language" values="go">
 
 
 ```go
@@ -191,10 +194,12 @@ func main() {
 ```
 
 
-</pulumi-choosable></div>
+</pulumi-choosable>
+</div>
 
 
-<div><pulumi-choosable type="language" values="python">
+<div>
+<pulumi-choosable type="language" values="python">
 
 
 ```python
@@ -250,10 +255,12 @@ sql_resource_sql_container = azure_native.documentdb.SqlResourceSqlContainer("sq
 ```
 
 
-</pulumi-choosable></div>
+</pulumi-choosable>
+</div>
 
 
-<div><pulumi-choosable type="language" values="typescript">
+<div>
+<pulumi-choosable type="language" values="typescript">
 
 
 ```typescript
@@ -310,7 +317,8 @@ const sqlResourceSqlContainer = new azure_native.documentdb.SqlResourceSqlContai
 ```
 
 
-</pulumi-choosable></div>
+</pulumi-choosable>
+</div>
 
 
 
