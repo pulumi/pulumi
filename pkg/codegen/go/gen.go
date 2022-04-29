@@ -1742,8 +1742,18 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	fmt.Fprintf(w, "// The set of arguments for constructing a %s resource.\n", name)
 	fmt.Fprintf(w, "type %sArgs struct {\n", name)
 	for _, p := range r.InputProperties {
+		typ := p.Type
+		if p.Plain {
+			typ = codegen.MapInnerType(typ, func(typ schema.Type) schema.Type {
+				if obj, ok := typ.(*schema.ObjectType); ok && obj.IsInputShape() {
+					return obj.PlainShape
+				}
+				return typ
+			})
+		}
+
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-		fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.typeString(p.Type))
+		fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.typeString(typ))
 	}
 	fmt.Fprintf(w, "}\n\n")
 

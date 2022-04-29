@@ -192,8 +192,6 @@ type ProgramCodegenOptions struct {
 //nolint: revive
 func TestProgramCodegen(
 	t *testing.T,
-	// language string,
-	// genProgram func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error
 	testcase ProgramCodegenOptions,
 ) {
 	if runtime.GOOS == "windows" {

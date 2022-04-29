@@ -369,6 +369,8 @@ type Property struct {
 	Secret bool
 	// ReplaceOnChanges specifies if the property is to be replaced instead of updated (default false).
 	ReplaceOnChanges bool
+
+	Plain bool
 }
 
 // IsRequired returns true if this property is required (i.e. its type is not Optional).
@@ -2112,20 +2114,13 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 	}
 }
 
-func (t *types) bindType(path string, spec TypeSpec, inputShape, plainProperty bool) (result Type, diags hcl.Diagnostics, err error) {
+func (t *types) bindType(path string, spec TypeSpec, inputShape bool) (result Type, diags hcl.Diagnostics, err error) {
 	// NOTE: `spec.Plain` is the spec of the type, not to be confused with the
 	// `Plain` property of the underlying `Property`, which is passed as
 	// `plainProperty`.
 	if inputShape && !spec.Plain {
 		defer func() {
 			result = t.newInputType(result)
-		}()
-	}
-	if plainProperty {
-		defer func() {
-			if obj, ok := result.(*ObjectType); ok {
-				obj.plainProperty = true
-			}
 		}()
 	}
 
@@ -2148,7 +2143,7 @@ func (t *types) bindType(path string, spec TypeSpec, inputShape, plainProperty b
 
 		elements := make([]Type, len(spec.OneOf))
 		for i, spec := range spec.OneOf {
-			e, typDiags, err := t.bindType(fmt.Sprintf("%s/oneOf/%v", path, i), spec, inputShape, plainProperty)
+			e, typDiags, err := t.bindType(fmt.Sprintf("%s/oneOf/%v", path, i), spec, inputShape)
 			diags = diags.Extend(typDiags)
 
 			if err != nil {
@@ -2185,7 +2180,7 @@ func (t *types) bindType(path string, spec TypeSpec, inputShape, plainProperty b
 			return typ, diags, nil
 		}
 
-		elementType, elementDiags, err := t.bindType(path+"/items", *spec.Items, inputShape, plainProperty)
+		elementType, elementDiags, err := t.bindType(path+"/items", *spec.Items, inputShape)
 		diags = diags.Extend(elementDiags)
 		if err != nil {
 			return nil, diags, err
@@ -2193,12 +2188,12 @@ func (t *types) bindType(path string, spec TypeSpec, inputShape, plainProperty b
 
 		return t.newArrayType(elementType), diags, nil
 	case "object":
-		elementType, elementDiags, err := t.bindType(path, TypeSpec{Type: "string"}, inputShape, plainProperty)
+		elementType, elementDiags, err := t.bindType(path, TypeSpec{Type: "string"}, inputShape)
 		contract.Assert(len(elementDiags) == 0)
 		contract.Assert(err == nil)
 
 		if spec.AdditionalProperties != nil {
-			et, elementDiags, err := t.bindType(path+"/additionalProperties", *spec.AdditionalProperties, inputShape, plainProperty)
+			et, elementDiags, err := t.bindType(path+"/additionalProperties", *spec.AdditionalProperties, inputShape)
 			diags = diags.Extend(elementDiags)
 			if err != nil {
 				return nil, diags, err
@@ -2338,7 +2333,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		// since `arg(inputShape, t.bindType) <=> inputShape && !spec.Plain`.
 		// Unfortunately, this fix breaks backwards compatibility in a major
 		// way, across all providers.
-		typ, typDiags, err := t.bindType(propertyPath, spec.TypeSpec, inputShape, spec.Plain)
+		typ, typDiags, err := t.bindType(propertyPath, spec.TypeSpec, inputShape)
 		diags = diags.Extend(typDiags)
 		if err != nil {
 			return nil, nil, diags, fmt.Errorf("error binding type for property %q: %w", name, err)
@@ -2365,6 +2360,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 			Language:           language,
 			Secret:             spec.Secret,
 			ReplaceOnChanges:   spec.ReplaceOnChanges,
+			Plain:              spec.Plain,
 		}
 
 		propertyMap[name], result = p, append(result, p)
