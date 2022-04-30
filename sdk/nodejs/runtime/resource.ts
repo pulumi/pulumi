@@ -49,8 +49,6 @@ import {
 import {
     excessiveDebugOutput,
     getMonitor,
-    getProject,
-    getRootResource,
     getStack,
     isDryRun,
     isLegacyApplyEnabled,
@@ -58,9 +56,9 @@ import {
     serialize,
     terminateRpcs,
 } from "./settings";
+import { getStackResource } from "./stack";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
-const providerproto = require("../proto/provider_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
 interface ResourceResolverOperation {
@@ -521,9 +519,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
 
         // Wait for the parent to complete.
         // If no parent was provided, parent to the root resource.
-        const parentURN = opts.parent
-            ? await opts.parent.urn.promise()
-            : await getRootResource();
+        const parent = opts.parent ?? getStackResource();
+        const parentURN = parent ? await parent.urn.promise() : undefined;
 
         let providerRef: string | undefined;
         let importID: ID | undefined;
