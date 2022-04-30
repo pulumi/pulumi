@@ -23,19 +23,19 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "ImmutableArray<string>",
+                  "input": "ImmutableArray<Input<string>>",
                   "plain": "ImmutableArray<string>"
                 },
                 "go": {
-                  "input": "[]string",
+                  "input": "[]pulumi.StringInput",
                   "plain": "[]string"
                 },
                 "nodejs": {
-                  "input": "string[] | undefined",
+                  "input": "pulumi.Input<string>[] | undefined",
                   "plain": "string[] | undefined"
                 },
                 "python": {
-                  "input": "Optional[Sequence[str]]",
+                  "input": "Optional[Sequence[pulumi.Input[str]]]",
                   "plain": "Optional[Sequence[str]]"
                 }
               }

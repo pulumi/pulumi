@@ -2,7 +2,8 @@
 
 {{- range $lang, $props := . }}
 
-{{ print "{{% choosable language" }} {{ print $lang }} {{ print "%}}" }}
+<div>
+<pulumi-choosable type="language" values="{{ print $lang }}">
 <dl class="resources-properties">
 {{- range . -}}
     <dt class="property-{{- if .IsInput -}}{{- if .IsRequired -}}required{{- else -}}optional{{- end -}}{{- end -}}{{ if .DeprecationMessage }} property-deprecated{{- end -}}"
@@ -16,11 +17,12 @@
         {{- end -}}
         </span>
     </dt>
-    <dd>{{- print "{{% md %}}" -}}{{- htmlSafe .Comment -}}{{- print "{{% /md %}}" -}}{{- if .DeprecationMessage -}}<p class="property-message">Deprecated: {{ print "{{% md %}}" -}}{{- .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>{{- end -}}
+    <dd>{{- markdownify .Comment -}}{{- if .DeprecationMessage -}}<p class="property-message">Deprecated: {{- markdownify .DeprecationMessage -}}</p>{{- end -}}
     </dd>
 {{- end -}}
 </dl>
-{{ print "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 {{- end }}
 

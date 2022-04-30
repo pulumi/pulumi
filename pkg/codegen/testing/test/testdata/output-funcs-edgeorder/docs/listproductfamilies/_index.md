@@ -28,17 +28,20 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>listProductFamilies<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ListProductFamiliesArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>></span
 ><span class="k">
 function </span>listProductFamiliesOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ListProductFamiliesOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>list_product_families<span class="p">(</span><span class="nx">customer_subscription_details</span><span class="p">:</span> <span class="nx">Optional[CustomerSubscriptionDetails]</span> = None<span class="p">,</span>
                           <span class="nx">expand</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
@@ -52,10 +55,12 @@ def </span>list_product_families_output<span class="p">(</span><span class="nx">
                           <span class="nx">skip_token</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                           <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[ListProductFamiliesResult]</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>ListProductFamilies<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ListProductFamiliesArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>, error)</span
 ><span class="k">
@@ -64,23 +69,27 @@ func </span>ListProductFamiliesOutput<span class="p">(</span><span class="nx">ct
 
 &gt; Note: This function is named `ListProductFamilies` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">ListProductFamilies </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">ListProductFamiliesArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">ListProductFamiliesResult</a></span>> <span class="p">Invoke(</span><span class="nx">ListProductFamiliesInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="filterableproperties_csharp">
@@ -89,7 +98,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Immutable<wbr>Array&lt;Filterable<wbr>Property&gt;&gt;</span>
     </dt>
-    <dd>{{% md %}}Dictionary of filterable properties on product family.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Dictionary of filterable properties on product family.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_csharp" style="color: inherit; text-decoration: inherit;">Customer<wbr>Subscription<wbr>Details</a>
@@ -97,7 +107,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
-    <dd>{{% md %}}Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_csharp" style="color: inherit; text-decoration: inherit;">Expand</a>
@@ -105,7 +116,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}$expand is supported on configurations parameter for product, which provides details on the configurations for the product.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_csharp" style="color: inherit; text-decoration: inherit;">Skip<wbr>Token</a>
@@ -113,10 +125,13 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}$skipToken is supported on list of product families, which provides the next page in the list of product families.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="filterableproperties_go">
@@ -125,7 +140,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">map[string][]Filterable<wbr>Property</span>
     </dt>
-    <dd>{{% md %}}Dictionary of filterable properties on product family.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Dictionary of filterable properties on product family.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_go" style="color: inherit; text-decoration: inherit;">Customer<wbr>Subscription<wbr>Details</a>
@@ -133,7 +149,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
-    <dd>{{% md %}}Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_go" style="color: inherit; text-decoration: inherit;">Expand</a>
@@ -141,7 +158,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}$expand is supported on configurations parameter for product, which provides details on the configurations for the product.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_go" style="color: inherit; text-decoration: inherit;">Skip<wbr>Token</a>
@@ -149,10 +167,13 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}$skipToken is supported on list of product families, which provides the next page in the list of product families.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="filterableproperties_nodejs">
@@ -161,7 +182,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: Filterable<wbr>Property[]}</span>
     </dt>
-    <dd>{{% md %}}Dictionary of filterable properties on product family.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Dictionary of filterable properties on product family.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="customersubscriptiondetails_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_nodejs" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
@@ -169,7 +191,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
-    <dd>{{% md %}}Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_nodejs" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -177,7 +200,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}$expand is supported on configurations parameter for product, which provides details on the configurations for the product.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="skiptoken_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_nodejs" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
@@ -185,10 +209,13 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}$skipToken is supported on list of product families, which provides the next page in the list of product families.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="filterable_properties_python">
@@ -197,7 +224,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">Mapping[str, Sequence[Filterable<wbr>Property]]</span>
     </dt>
-    <dd>{{% md %}}Dictionary of filterable properties on product family.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Dictionary of filterable properties on product family.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="customer_subscription_details_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customer_subscription_details_python" style="color: inherit; text-decoration: inherit;">customer_<wbr>subscription_<wbr>details</a>
@@ -205,7 +233,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
     </dt>
-    <dd>{{% md %}}Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_python" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -213,7 +242,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}$expand is supported on configurations parameter for product, which provides details on the configurations for the product.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>$expand is supported on configurations parameter for product, which provides details on the configurations for the product.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="skip_token_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skip_token_python" style="color: inherit; text-decoration: inherit;">skip_<wbr>token</a>
@@ -221,8 +251,10 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}$skipToken is supported on list of product families, which provides the next page in the list of product families.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>$skipToken is supported on list of product families, which provides the next page in the list of product families.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -233,7 +265,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_csharp">
@@ -242,7 +275,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productfamilyresponse">List&lt;Product<wbr>Family<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}List of product families.{{% /md %}}</dd><dt class="property-"
+    <dd><p>List of product families.</p>
+</dd><dt class="property-"
             title="">
         <span id="nextlink_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_csharp" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
@@ -250,10 +284,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Link for the next set of product families.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Link for the next set of product families.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_go">
@@ -262,7 +299,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productfamilyresponse">[]Product<wbr>Family<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}List of product families.{{% /md %}}</dd><dt class="property-"
+    <dd><p>List of product families.</p>
+</dd><dt class="property-"
             title="">
         <span id="nextlink_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_go" style="color: inherit; text-decoration: inherit;">Next<wbr>Link</a>
@@ -270,10 +308,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Link for the next set of product families.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Link for the next set of product families.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_nodejs">
@@ -282,7 +323,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productfamilyresponse">Product<wbr>Family<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}List of product families.{{% /md %}}</dd><dt class="property-"
+    <dd><p>List of product families.</p>
+</dd><dt class="property-"
             title="">
         <span id="nextlink_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_nodejs" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
@@ -290,10 +332,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Link for the next set of product families.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Link for the next set of product families.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="value_python">
@@ -302,7 +347,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productfamilyresponse">Sequence[Product<wbr>Family<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}List of product families.{{% /md %}}</dd><dt class="property-"
+    <dd><p>List of product families.</p>
+</dd><dt class="property-"
             title="">
         <span id="next_link_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#next_link_python" style="color: inherit; text-decoration: inherit;">next_<wbr>link</a>
@@ -310,8 +356,10 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Link for the next set of product families.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Link for the next set of product families.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -323,7 +371,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilitystage_csharp">
@@ -332,7 +381,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Current availability stage of the product. Availability stage{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Current availability stage of the product. Availability stage</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_csharp" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason</a>
@@ -340,7 +390,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reason why the product is disabled.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Reason why the product is disabled.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_csharp" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason<wbr>Message</a>
@@ -348,10 +399,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Message for why the product is disabled.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Message for why the product is disabled.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilitystage_go">
@@ -360,7 +414,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Current availability stage of the product. Availability stage{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Current availability stage of the product. Availability stage</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_go" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason</a>
@@ -368,7 +423,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reason why the product is disabled.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Reason why the product is disabled.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_go" style="color: inherit; text-decoration: inherit;">Disabled<wbr>Reason<wbr>Message</a>
@@ -376,10 +432,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Message for why the product is disabled.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Message for why the product is disabled.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilitystage_nodejs">
@@ -388,7 +447,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Current availability stage of the product. Availability stage{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Current availability stage of the product. Availability stage</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="disabledreason_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_nodejs" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
@@ -396,7 +456,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reason why the product is disabled.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Reason why the product is disabled.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="disabledreasonmessage_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_nodejs" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
@@ -404,10 +465,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Message for why the product is disabled.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Message for why the product is disabled.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_stage_python">
@@ -416,7 +480,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Current availability stage of the product. Availability stage{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Current availability stage of the product. Availability stage</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="disabled_reason_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabled_reason_python" style="color: inherit; text-decoration: inherit;">disabled_<wbr>reason</a>
@@ -424,7 +489,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Reason why the product is disabled.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Reason why the product is disabled.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="disabled_reason_message_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabled_reason_message_python" style="color: inherit; text-decoration: inherit;">disabled_<wbr>reason_<wbr>message</a>
@@ -432,14 +498,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Message for why the product is disabled.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Message for why the product is disabled.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="billingmeterdetailsresponse">Billing<wbr>Meter<wbr>Details<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_csharp">
@@ -448,7 +517,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Frequency of recurrence{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Frequency of recurrence</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_csharp" style="color: inherit; text-decoration: inherit;">Meter<wbr>Details</a>
@@ -456,7 +526,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Represents MeterDetails{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Represents MeterDetails</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_csharp" style="color: inherit; text-decoration: inherit;">Metering<wbr>Type</a>
@@ -464,7 +535,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents Metering type (eg one-time or recurrent){{% /md %}}</dd><dt class="property-required"
+    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="name_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -472,10 +544,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents Billing type name{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Represents Billing type name</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_go">
@@ -484,7 +559,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Frequency of recurrence{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Frequency of recurrence</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_go" style="color: inherit; text-decoration: inherit;">Meter<wbr>Details</a>
@@ -492,7 +568,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Represents MeterDetails{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Represents MeterDetails</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_go" style="color: inherit; text-decoration: inherit;">Metering<wbr>Type</a>
@@ -500,7 +577,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents Metering type (eg one-time or recurrent){{% /md %}}</dd><dt class="property-required"
+    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="name_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_go" style="color: inherit; text-decoration: inherit;">Name</a>
@@ -508,10 +586,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents Billing type name{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Represents Billing type name</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_nodejs">
@@ -520,7 +601,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Frequency of recurrence{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Frequency of recurrence</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="meterdetails_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_nodejs" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
@@ -528,7 +610,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Represents MeterDetails{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Represents MeterDetails</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="meteringtype_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_nodejs" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
@@ -536,7 +619,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents Metering type (eg one-time or recurrent){{% /md %}}</dd><dt class="property-required"
+    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="name_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
@@ -544,10 +628,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents Billing type name{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Represents Billing type name</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="frequency_python">
@@ -556,7 +643,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Frequency of recurrence{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Frequency of recurrence</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="meter_details_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meter_details_python" style="color: inherit; text-decoration: inherit;">meter_<wbr>details</a>
@@ -564,7 +652,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Represents MeterDetails{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Represents MeterDetails</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="metering_type_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metering_type_python" style="color: inherit; text-decoration: inherit;">metering_<wbr>type</a>
@@ -572,7 +661,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Represents Metering type (eg one-time or recurrent){{% /md %}}</dd><dt class="property-required"
+    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
@@ -580,14 +670,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Represents Billing type name{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Represents Billing type name</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="configurationresponse">Configuration<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_csharp">
@@ -596,7 +689,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -604,7 +698,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -612,7 +707,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="dimensions_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_csharp" style="color: inherit; text-decoration: inherit;">Dimensions</a>
@@ -620,7 +716,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Dimensions of the configuration{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Dimensions of the configuration</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_csharp" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -628,7 +725,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -636,7 +734,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -644,7 +743,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -652,7 +752,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="specifications_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_csharp" style="color: inherit; text-decoration: inherit;">Specifications</a>
@@ -660,10 +761,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#specificationresponse">List&lt;Specification<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Specifications of the configuration{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Specifications of the configuration</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_go">
@@ -672,7 +776,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_go" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -680,7 +785,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -688,7 +794,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="dimensions_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_go" style="color: inherit; text-decoration: inherit;">Dimensions</a>
@@ -696,7 +803,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Dimensions of the configuration{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Dimensions of the configuration</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_go" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -704,7 +812,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_go" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -712,7 +821,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">[]Filterable<wbr>Property<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -720,7 +830,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -728,7 +839,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">[]Image<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="specifications_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_go" style="color: inherit; text-decoration: inherit;">Specifications</a>
@@ -736,10 +848,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#specificationresponse">[]Specification<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Specifications of the configuration{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Specifications of the configuration</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_nodejs">
@@ -748,7 +863,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_nodejs" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -756,7 +872,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
@@ -764,7 +881,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="dimensions_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_nodejs" style="color: inherit; text-decoration: inherit;">dimensions</a>
@@ -772,7 +890,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Dimensions of the configuration{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Dimensions of the configuration</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_nodejs" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -780,7 +899,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_nodejs" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -788,7 +908,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Filterable<wbr>Property<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -796,7 +917,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -804,7 +926,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Image<wbr>Information<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="specifications_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_nodejs" style="color: inherit; text-decoration: inherit;">specifications</a>
@@ -812,10 +935,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#specificationresponse">Specification<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Specifications of the configuration{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Specifications of the configuration</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_information_python">
@@ -824,7 +950,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="cost_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#cost_information_python" style="color: inherit; text-decoration: inherit;">cost_<wbr>information</a>
@@ -832,7 +959,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
@@ -840,7 +968,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="dimensions_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_python" style="color: inherit; text-decoration: inherit;">dimensions</a>
@@ -848,7 +977,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Dimensions of the configuration{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Dimensions of the configuration</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="display_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#display_name_python" style="color: inherit; text-decoration: inherit;">display_<wbr>name</a>
@@ -856,7 +986,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterable_properties_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_properties_python" style="color: inherit; text-decoration: inherit;">filterable_<wbr>properties</a>
@@ -864,7 +995,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Sequence[Filterable<wbr>Property<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchy_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
@@ -872,7 +1004,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="image_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_information_python" style="color: inherit; text-decoration: inherit;">image_<wbr>information</a>
@@ -880,7 +1013,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Sequence[Image<wbr>Information<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="specifications_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_python" style="color: inherit; text-decoration: inherit;">specifications</a>
@@ -888,14 +1022,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#specificationresponse">Sequence[Specification<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Specifications of the configuration{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Specifications of the configuration</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="costinformationresponse">Cost<wbr>Information<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billinginfourl_csharp">
@@ -904,7 +1041,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Default url to display billing information{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Default url to display billing information</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_csharp" style="color: inherit; text-decoration: inherit;">Billing<wbr>Meter<wbr>Details</a>
@@ -912,10 +1050,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#billingmeterdetailsresponse">List&lt;Billing<wbr>Meter<wbr>Details<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Details on the various billing aspects for the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Details on the various billing aspects for the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billinginfourl_go">
@@ -924,7 +1065,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Default url to display billing information{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Default url to display billing information</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_go" style="color: inherit; text-decoration: inherit;">Billing<wbr>Meter<wbr>Details</a>
@@ -932,10 +1074,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#billingmeterdetailsresponse">[]Billing<wbr>Meter<wbr>Details<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Details on the various billing aspects for the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Details on the various billing aspects for the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billinginfourl_nodejs">
@@ -944,7 +1089,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Default url to display billing information{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Default url to display billing information</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="billingmeterdetails_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_nodejs" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
@@ -952,10 +1098,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#billingmeterdetailsresponse">Billing<wbr>Meter<wbr>Details<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Details on the various billing aspects for the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Details on the various billing aspects for the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="billing_info_url_python">
@@ -964,7 +1113,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Default url to display billing information{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Default url to display billing information</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="billing_meter_details_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billing_meter_details_python" style="color: inherit; text-decoration: inherit;">billing_<wbr>meter_<wbr>details</a>
@@ -972,14 +1122,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#billingmeterdetailsresponse">Sequence[Billing<wbr>Meter<wbr>Details<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Details on the various billing aspects for the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Details on the various billing aspects for the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quotaid_csharp">
@@ -988,7 +1141,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Quota ID of a subscription{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Quota ID of a subscription</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_csharp" style="color: inherit; text-decoration: inherit;">Location<wbr>Placement<wbr>Id</a>
@@ -996,7 +1150,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Location placement Id of a subscription{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Location placement Id of a subscription</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_csharp" style="color: inherit; text-decoration: inherit;">Registered<wbr>Features</a>
@@ -1004,10 +1159,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List&lt;Customer<wbr>Subscription<wbr>Registered<wbr>Features&gt;</a></span>
     </dt>
-    <dd>{{% md %}}List of registered feature flags for subscription{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of registered feature flags for subscription</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quotaid_go">
@@ -1016,7 +1174,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Quota ID of a subscription{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Quota ID of a subscription</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_go" style="color: inherit; text-decoration: inherit;">Location<wbr>Placement<wbr>Id</a>
@@ -1024,7 +1183,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Location placement Id of a subscription{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Location placement Id of a subscription</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_go" style="color: inherit; text-decoration: inherit;">Registered<wbr>Features</a>
@@ -1032,10 +1192,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptionregisteredfeatures">[]Customer<wbr>Subscription<wbr>Registered<wbr>Features</a></span>
     </dt>
-    <dd>{{% md %}}List of registered feature flags for subscription{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of registered feature flags for subscription</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quotaid_nodejs">
@@ -1044,7 +1207,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Quota ID of a subscription{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Quota ID of a subscription</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="locationplacementid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_nodejs" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
@@ -1052,7 +1216,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Location placement Id of a subscription{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Location placement Id of a subscription</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="registeredfeatures_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_nodejs" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
@@ -1060,10 +1225,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptionregisteredfeatures">Customer<wbr>Subscription<wbr>Registered<wbr>Features[]</a></span>
     </dt>
-    <dd>{{% md %}}List of registered feature flags for subscription{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of registered feature flags for subscription</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="quota_id_python">
@@ -1072,7 +1240,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Quota ID of a subscription{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Quota ID of a subscription</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="location_placement_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#location_placement_id_python" style="color: inherit; text-decoration: inherit;">location_<wbr>placement_<wbr>id</a>
@@ -1080,7 +1249,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Location placement Id of a subscription{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Location placement Id of a subscription</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="registered_features_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registered_features_python" style="color: inherit; text-decoration: inherit;">registered_<wbr>features</a>
@@ -1088,14 +1258,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#customersubscriptionregisteredfeatures">Sequence[Customer<wbr>Subscription<wbr>Registered<wbr>Features]</a></span>
     </dt>
-    <dd>{{% md %}}List of registered feature flags for subscription{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of registered feature flags for subscription</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="customersubscriptionregisteredfeatures">Customer<wbr>Subscription<wbr>Registered<wbr>Features</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_csharp">
@@ -1104,7 +1277,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of subscription registered feature{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Name of subscription registered feature</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="state_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_csharp" style="color: inherit; text-decoration: inherit;">State</a>
@@ -1112,10 +1286,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}State of subscription registered feature{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>State of subscription registered feature</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_go">
@@ -1124,7 +1301,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of subscription registered feature{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Name of subscription registered feature</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="state_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_go" style="color: inherit; text-decoration: inherit;">State</a>
@@ -1132,10 +1310,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}State of subscription registered feature{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>State of subscription registered feature</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_nodejs">
@@ -1144,7 +1325,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of subscription registered feature{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Name of subscription registered feature</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="state_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_nodejs" style="color: inherit; text-decoration: inherit;">state</a>
@@ -1152,10 +1334,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}State of subscription registered feature{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>State of subscription registered feature</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="name_python">
@@ -1164,7 +1349,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Name of subscription registered feature{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Name of subscription registered feature</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="state_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_python" style="color: inherit; text-decoration: inherit;">state</a>
@@ -1172,14 +1358,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}State of subscription registered feature{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>State of subscription registered feature</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="descriptionresponse">Description<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_csharp">
@@ -1188,7 +1377,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
     </dt>
-    <dd>{{% md %}}Attributes for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Attributes for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_csharp" style="color: inherit; text-decoration: inherit;">Description<wbr>Type</a>
@@ -1196,7 +1386,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of description.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of description.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="keywords_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_csharp" style="color: inherit; text-decoration: inherit;">Keywords</a>
@@ -1204,7 +1395,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
     </dt>
-    <dd>{{% md %}}Keywords for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Keywords for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="links_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_csharp" style="color: inherit; text-decoration: inherit;">Links</a>
@@ -1212,7 +1404,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#linkresponse">List&lt;Link<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Links for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Links for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="longdescription_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_csharp" style="color: inherit; text-decoration: inherit;">Long<wbr>Description</a>
@@ -1220,7 +1413,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Long description of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Long description of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_csharp" style="color: inherit; text-decoration: inherit;">Short<wbr>Description</a>
@@ -1228,10 +1422,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Short description of the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Short description of the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_go">
@@ -1240,7 +1437,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
     </dt>
-    <dd>{{% md %}}Attributes for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Attributes for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_go" style="color: inherit; text-decoration: inherit;">Description<wbr>Type</a>
@@ -1248,7 +1446,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of description.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of description.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="keywords_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_go" style="color: inherit; text-decoration: inherit;">Keywords</a>
@@ -1256,7 +1455,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
     </dt>
-    <dd>{{% md %}}Keywords for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Keywords for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="links_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_go" style="color: inherit; text-decoration: inherit;">Links</a>
@@ -1264,7 +1464,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#linkresponse">[]Link<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Links for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Links for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="longdescription_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_go" style="color: inherit; text-decoration: inherit;">Long<wbr>Description</a>
@@ -1272,7 +1473,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Long description of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Long description of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_go" style="color: inherit; text-decoration: inherit;">Short<wbr>Description</a>
@@ -1280,10 +1482,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Short description of the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Short description of the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_nodejs">
@@ -1292,7 +1497,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
     </dt>
-    <dd>{{% md %}}Attributes for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Attributes for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="descriptiontype_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_nodejs" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
@@ -1300,7 +1506,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of description.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of description.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="keywords_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_nodejs" style="color: inherit; text-decoration: inherit;">keywords</a>
@@ -1308,7 +1515,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
     </dt>
-    <dd>{{% md %}}Keywords for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Keywords for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="links_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_nodejs" style="color: inherit; text-decoration: inherit;">links</a>
@@ -1316,7 +1524,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#linkresponse">Link<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Links for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Links for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="longdescription_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_nodejs" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
@@ -1324,7 +1533,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Long description of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Long description of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="shortdescription_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_nodejs" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
@@ -1332,10 +1542,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Short description of the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Short description of the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="attributes_python">
@@ -1344,7 +1557,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
     </dt>
-    <dd>{{% md %}}Attributes for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Attributes for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_type_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_type_python" style="color: inherit; text-decoration: inherit;">description_<wbr>type</a>
@@ -1352,7 +1566,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Type of description.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of description.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="keywords_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_python" style="color: inherit; text-decoration: inherit;">keywords</a>
@@ -1360,7 +1575,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
     </dt>
-    <dd>{{% md %}}Keywords for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Keywords for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="links_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_python" style="color: inherit; text-decoration: inherit;">links</a>
@@ -1368,7 +1584,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#linkresponse">Sequence[Link<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Links for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Links for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="long_description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#long_description_python" style="color: inherit; text-decoration: inherit;">long_<wbr>description</a>
@@ -1376,7 +1593,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Long description of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Long description of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="short_description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#short_description_python" style="color: inherit; text-decoration: inherit;">short_<wbr>description</a>
@@ -1384,14 +1602,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Short description of the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Short description of the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="dimensionsresponse">Dimensions<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_csharp">
@@ -1400,7 +1621,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Depth of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Depth of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="height_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_csharp" style="color: inherit; text-decoration: inherit;">Height</a>
@@ -1408,7 +1630,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Height of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Height of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="length_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_csharp" style="color: inherit; text-decoration: inherit;">Length</a>
@@ -1416,7 +1639,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Length of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Length of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_csharp" style="color: inherit; text-decoration: inherit;">Length<wbr>Height<wbr>Unit</a>
@@ -1424,7 +1648,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Unit for the dimensions of length, height and width.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Unit for the dimensions of length, height and width.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="weight_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_csharp" style="color: inherit; text-decoration: inherit;">Weight</a>
@@ -1432,7 +1657,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Weight of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Weight of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="weightunit_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_csharp" style="color: inherit; text-decoration: inherit;">Weight<wbr>Unit</a>
@@ -1440,7 +1666,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Unit for the dimensions of weight.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Unit for the dimensions of weight.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="width_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_csharp" style="color: inherit; text-decoration: inherit;">Width</a>
@@ -1448,10 +1675,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Width of the device.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Width of the device.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_go">
@@ -1460,7 +1690,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Depth of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Depth of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="height_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_go" style="color: inherit; text-decoration: inherit;">Height</a>
@@ -1468,7 +1699,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Height of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Height of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="length_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_go" style="color: inherit; text-decoration: inherit;">Length</a>
@@ -1476,7 +1708,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Length of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Length of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_go" style="color: inherit; text-decoration: inherit;">Length<wbr>Height<wbr>Unit</a>
@@ -1484,7 +1717,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Unit for the dimensions of length, height and width.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Unit for the dimensions of length, height and width.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="weight_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_go" style="color: inherit; text-decoration: inherit;">Weight</a>
@@ -1492,7 +1726,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Weight of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Weight of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="weightunit_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_go" style="color: inherit; text-decoration: inherit;">Weight<wbr>Unit</a>
@@ -1500,7 +1735,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Unit for the dimensions of weight.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Unit for the dimensions of weight.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="width_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_go" style="color: inherit; text-decoration: inherit;">Width</a>
@@ -1508,10 +1744,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Width of the device.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Width of the device.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_nodejs">
@@ -1520,7 +1759,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Depth of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Depth of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="height_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_nodejs" style="color: inherit; text-decoration: inherit;">height</a>
@@ -1528,7 +1768,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Height of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Height of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="length_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_nodejs" style="color: inherit; text-decoration: inherit;">length</a>
@@ -1536,7 +1777,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Length of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Length of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="lengthheightunit_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_nodejs" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
@@ -1544,7 +1786,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Unit for the dimensions of length, height and width.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Unit for the dimensions of length, height and width.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="weight_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_nodejs" style="color: inherit; text-decoration: inherit;">weight</a>
@@ -1552,7 +1795,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Weight of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Weight of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="weightunit_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_nodejs" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
@@ -1560,7 +1804,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Unit for the dimensions of weight.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Unit for the dimensions of weight.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="width_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_nodejs" style="color: inherit; text-decoration: inherit;">width</a>
@@ -1568,10 +1813,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Width of the device.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Width of the device.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="depth_python">
@@ -1580,7 +1828,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Depth of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Depth of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="height_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_python" style="color: inherit; text-decoration: inherit;">height</a>
@@ -1588,7 +1837,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Height of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Height of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="length_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_python" style="color: inherit; text-decoration: inherit;">length</a>
@@ -1596,7 +1846,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Length of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Length of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="length_height_unit_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_height_unit_python" style="color: inherit; text-decoration: inherit;">length_<wbr>height_<wbr>unit</a>
@@ -1604,7 +1855,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Unit for the dimensions of length, height and width.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Unit for the dimensions of length, height and width.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="weight_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_python" style="color: inherit; text-decoration: inherit;">weight</a>
@@ -1612,7 +1864,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Weight of the device.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Weight of the device.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="weight_unit_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_unit_python" style="color: inherit; text-decoration: inherit;">weight_<wbr>unit</a>
@@ -1620,7 +1873,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Unit for the dimensions of weight.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Unit for the dimensions of weight.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="width_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_python" style="color: inherit; text-decoration: inherit;">width</a>
@@ -1628,14 +1882,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Width of the device.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Width of the device.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="filterableproperty">Filterable<wbr>Property</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_csharp">
@@ -1644,7 +1901,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
     </dt>
-    <dd>{{% md %}}Values to be filtered.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="type_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
@@ -1652,10 +1910,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#supportedfiltertypes">Pulumi.<wbr>Myedgeorder.<wbr>Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
-    <dd>{{% md %}}Type of product filter.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_go">
@@ -1664,7 +1925,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
     </dt>
-    <dd>{{% md %}}Values to be filtered.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="type_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_go" style="color: inherit; text-decoration: inherit;">Type</a>
@@ -1672,10 +1934,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
-    <dd>{{% md %}}Type of product filter.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_nodejs">
@@ -1684,7 +1949,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
     </dt>
-    <dd>{{% md %}}Values to be filtered.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="type_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
@@ -1692,10 +1958,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
-    <dd>{{% md %}}Type of product filter.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supported_values_python">
@@ -1704,7 +1973,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
     </dt>
-    <dd>{{% md %}}Values to be filtered.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="type_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
@@ -1712,14 +1982,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
     </dt>
-    <dd>{{% md %}}Type of product filter.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="filterablepropertyresponse">Filterable<wbr>Property<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_csharp">
@@ -1728,7 +2001,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">List&lt;string&gt;</span>
     </dt>
-    <dd>{{% md %}}Values to be filtered.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="type_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_csharp" style="color: inherit; text-decoration: inherit;">Type</a>
@@ -1736,10 +2010,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of product filter.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_go">
@@ -1748,7 +2025,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">[]string</span>
     </dt>
-    <dd>{{% md %}}Values to be filtered.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="type_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_go" style="color: inherit; text-decoration: inherit;">Type</a>
@@ -1756,10 +2034,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of product filter.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supportedvalues_nodejs">
@@ -1768,7 +2049,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string[]</span>
     </dt>
-    <dd>{{% md %}}Values to be filtered.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="type_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
@@ -1776,10 +2058,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of product filter.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="supported_values_python">
@@ -1788,7 +2073,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
     </dt>
-    <dd>{{% md %}}Values to be filtered.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="type_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
@@ -1796,14 +2082,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Type of product filter.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_csharp">
@@ -1812,7 +2101,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents configuration name that uniquely identifies configuration{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents configuration name that uniquely identifies configuration</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
@@ -1820,7 +2110,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents product family name that uniquely identifies product family{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents product family name that uniquely identifies product family</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
@@ -1828,7 +2119,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents product line name that uniquely identifies product line{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents product line name that uniquely identifies product line</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="productname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
@@ -1836,10 +2128,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents product name that uniquely identifies product{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Represents product name that uniquely identifies product</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_go">
@@ -1848,7 +2143,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents configuration name that uniquely identifies configuration{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents configuration name that uniquely identifies configuration</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Family<wbr>Name</a>
@@ -1856,7 +2152,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents product family name that uniquely identifies product family{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents product family name that uniquely identifies product family</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Line<wbr>Name</a>
@@ -1864,7 +2161,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents product line name that uniquely identifies product line{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents product line name that uniquely identifies product line</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="productname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Name</a>
@@ -1872,10 +2170,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents product name that uniquely identifies product{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Represents product name that uniquely identifies product</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configurationname_nodejs">
@@ -1884,7 +2185,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents configuration name that uniquely identifies configuration{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents configuration name that uniquely identifies configuration</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="productfamilyname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
@@ -1892,7 +2194,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents product family name that uniquely identifies product family{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents product family name that uniquely identifies product family</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="productlinename_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
@@ -1900,7 +2203,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents product line name that uniquely identifies product line{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents product line name that uniquely identifies product line</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="productname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
@@ -1908,10 +2212,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Represents product name that uniquely identifies product{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Represents product name that uniquely identifies product</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="configuration_name_python">
@@ -1920,7 +2227,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Represents configuration name that uniquely identifies configuration{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents configuration name that uniquely identifies configuration</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="product_family_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_family_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>family_<wbr>name</a>
@@ -1928,7 +2236,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Represents product family name that uniquely identifies product family{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents product family name that uniquely identifies product family</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="product_line_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_line_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>line_<wbr>name</a>
@@ -1936,7 +2245,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Represents product line name that uniquely identifies product line{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>Represents product line name that uniquely identifies product line</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="product_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_name_python" style="color: inherit; text-decoration: inherit;">product_<wbr>name</a>
@@ -1944,14 +2254,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Represents product name that uniquely identifies product{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Represents product name that uniquely identifies product</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="imageinformationresponse">Image<wbr>Information<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="imagetype_csharp">
@@ -1960,7 +2273,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of the image{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of the image</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageurl_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Url</a>
@@ -1968,10 +2282,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Url of the image{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Url of the image</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="imagetype_go">
@@ -1980,7 +2297,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of the image{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of the image</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageurl_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Url</a>
@@ -1988,10 +2306,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Url of the image{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Url of the image</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="imagetype_nodejs">
@@ -2000,7 +2321,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of the image{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of the image</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageurl_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
@@ -2008,10 +2330,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Url of the image{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Url of the image</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="image_type_python">
@@ -2020,7 +2345,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Type of the image{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of the image</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="image_url_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_url_python" style="color: inherit; text-decoration: inherit;">image_<wbr>url</a>
@@ -2028,14 +2354,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Url of the image{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Url of the image</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="linkresponse">Link<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="linktype_csharp">
@@ -2044,7 +2373,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of link{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of link</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="linkurl_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_csharp" style="color: inherit; text-decoration: inherit;">Link<wbr>Url</a>
@@ -2052,10 +2382,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Url of the link{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Url of the link</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="linktype_go">
@@ -2064,7 +2397,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of link{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of link</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="linkurl_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_go" style="color: inherit; text-decoration: inherit;">Link<wbr>Url</a>
@@ -2072,10 +2406,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Url of the link{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Url of the link</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="linktype_nodejs">
@@ -2084,7 +2421,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Type of link{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of link</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="linkurl_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_nodejs" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
@@ -2092,10 +2430,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Url of the link{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Url of the link</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="link_type_python">
@@ -2104,7 +2445,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Type of link{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Type of link</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="link_url_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#link_url_python" style="color: inherit; text-decoration: inherit;">link_<wbr>url</a>
@@ -2112,14 +2454,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Url of the link{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Url of the link</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_csharp">
@@ -2128,7 +2473,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Charging type.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="meterguid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_csharp" style="color: inherit; text-decoration: inherit;">Meter<wbr>Guid</a>
@@ -2136,7 +2482,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Validation status of requested data center and transport.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Validation status of requested data center and transport.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_csharp" style="color: inherit; text-decoration: inherit;">Multiplier</a>
@@ -2144,10 +2491,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Billing unit applicable for Pav2 billing{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_go">
@@ -2156,7 +2506,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Charging type.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="meterguid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_go" style="color: inherit; text-decoration: inherit;">Meter<wbr>Guid</a>
@@ -2164,7 +2515,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Validation status of requested data center and transport.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Validation status of requested data center and transport.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_go" style="color: inherit; text-decoration: inherit;">Multiplier</a>
@@ -2172,10 +2524,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Billing unit applicable for Pav2 billing{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_nodejs">
@@ -2184,7 +2539,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Charging type.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="meterguid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_nodejs" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
@@ -2192,7 +2548,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Validation status of requested data center and transport.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Validation status of requested data center and transport.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_nodejs" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -2200,10 +2557,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Billing unit applicable for Pav2 billing{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="charging_type_python">
@@ -2212,7 +2572,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Charging type.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="meter_guid_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meter_guid_python" style="color: inherit; text-decoration: inherit;">meter_<wbr>guid</a>
@@ -2220,7 +2581,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Validation status of requested data center and transport.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Validation status of requested data center and transport.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_python" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -2228,14 +2590,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Billing unit applicable for Pav2 billing{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="productfamilyresponse">Product<wbr>Family<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_csharp">
@@ -2244,7 +2609,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -2252,7 +2618,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -2260,7 +2627,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_csharp" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -2268,7 +2636,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -2276,7 +2645,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -2284,7 +2654,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -2292,7 +2663,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="productlines_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlines_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Lines</a>
@@ -2300,10 +2672,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productlineresponse">List&lt;Product<wbr>Line<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}List of product lines supported in the product family{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of product lines supported in the product family</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_go">
@@ -2312,7 +2687,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_go" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -2320,7 +2696,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -2328,7 +2705,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_go" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -2336,7 +2714,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_go" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -2344,7 +2723,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">[]Filterable<wbr>Property<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -2352,7 +2732,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -2360,7 +2741,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">[]Image<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="productlines_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlines_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Lines</a>
@@ -2368,10 +2750,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productlineresponse">[]Product<wbr>Line<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}List of product lines supported in the product family{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of product lines supported in the product family</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_nodejs">
@@ -2380,7 +2765,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_nodejs" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -2388,7 +2774,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
@@ -2396,7 +2783,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_nodejs" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -2404,7 +2792,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_nodejs" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -2412,7 +2801,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Filterable<wbr>Property<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -2420,7 +2810,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -2428,7 +2819,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Image<wbr>Information<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="productlines_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlines_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Lines</a>
@@ -2436,10 +2828,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productlineresponse">Product<wbr>Line<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}List of product lines supported in the product family{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of product lines supported in the product family</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_information_python">
@@ -2448,7 +2843,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="cost_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#cost_information_python" style="color: inherit; text-decoration: inherit;">cost_<wbr>information</a>
@@ -2456,7 +2852,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
@@ -2464,7 +2861,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="display_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#display_name_python" style="color: inherit; text-decoration: inherit;">display_<wbr>name</a>
@@ -2472,7 +2870,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterable_properties_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_properties_python" style="color: inherit; text-decoration: inherit;">filterable_<wbr>properties</a>
@@ -2480,7 +2879,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Sequence[Filterable<wbr>Property<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchy_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
@@ -2488,7 +2888,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="image_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_information_python" style="color: inherit; text-decoration: inherit;">image_<wbr>information</a>
@@ -2496,7 +2897,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Sequence[Image<wbr>Information<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="product_lines_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_lines_python" style="color: inherit; text-decoration: inherit;">product_<wbr>lines</a>
@@ -2504,14 +2906,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productlineresponse">Sequence[Product<wbr>Line<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}List of product lines supported in the product family{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of product lines supported in the product family</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="productlineresponse">Product<wbr>Line<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_csharp">
@@ -2520,7 +2925,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -2528,7 +2934,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -2536,7 +2943,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_csharp" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -2544,7 +2952,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -2552,7 +2961,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -2560,7 +2970,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -2568,7 +2979,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="products_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_csharp" style="color: inherit; text-decoration: inherit;">Products</a>
@@ -2576,10 +2988,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productresponse">List&lt;Product<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}List of products in the product line{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of products in the product line</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_go">
@@ -2588,7 +3003,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_go" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -2596,7 +3012,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -2604,7 +3021,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_go" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -2612,7 +3030,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_go" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -2620,7 +3039,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">[]Filterable<wbr>Property<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -2628,7 +3048,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -2636,7 +3057,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">[]Image<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="products_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_go" style="color: inherit; text-decoration: inherit;">Products</a>
@@ -2644,10 +3066,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productresponse">[]Product<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}List of products in the product line{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of products in the product line</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_nodejs">
@@ -2656,7 +3081,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_nodejs" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -2664,7 +3090,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
@@ -2672,7 +3099,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_nodejs" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -2680,7 +3108,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_nodejs" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -2688,7 +3117,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Filterable<wbr>Property<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -2696,7 +3126,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -2704,7 +3135,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Image<wbr>Information<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="products_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_nodejs" style="color: inherit; text-decoration: inherit;">products</a>
@@ -2712,10 +3144,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productresponse">Product<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}List of products in the product line{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of products in the product line</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_information_python">
@@ -2724,7 +3159,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="cost_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#cost_information_python" style="color: inherit; text-decoration: inherit;">cost_<wbr>information</a>
@@ -2732,7 +3168,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
@@ -2740,7 +3177,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="display_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#display_name_python" style="color: inherit; text-decoration: inherit;">display_<wbr>name</a>
@@ -2748,7 +3186,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterable_properties_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_properties_python" style="color: inherit; text-decoration: inherit;">filterable_<wbr>properties</a>
@@ -2756,7 +3195,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Sequence[Filterable<wbr>Property<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchy_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
@@ -2764,7 +3204,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="image_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_information_python" style="color: inherit; text-decoration: inherit;">image_<wbr>information</a>
@@ -2772,7 +3213,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Sequence[Image<wbr>Information<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="products_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#products_python" style="color: inherit; text-decoration: inherit;">products</a>
@@ -2780,14 +3222,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#productresponse">Sequence[Product<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}List of products in the product line{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of products in the product line</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="productresponse">Product<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_csharp">
@@ -2796,7 +3241,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="configurations_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_csharp" style="color: inherit; text-decoration: inherit;">Configurations</a>
@@ -2804,7 +3250,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#configurationresponse">List&lt;Configuration<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}List of configurations for the product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>List of configurations for the product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_csharp" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -2812,7 +3259,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_csharp" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -2820,7 +3268,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_csharp" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -2828,7 +3277,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_csharp" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -2836,7 +3286,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">List&lt;Filterable<wbr>Property<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_csharp" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -2844,7 +3295,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_csharp" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -2852,10 +3304,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">List&lt;Image<wbr>Information<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Image information for the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_go">
@@ -2864,7 +3319,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="configurations_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_go" style="color: inherit; text-decoration: inherit;">Configurations</a>
@@ -2872,7 +3328,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#configurationresponse">[]Configuration<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}List of configurations for the product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>List of configurations for the product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_go" style="color: inherit; text-decoration: inherit;">Cost<wbr>Information</a>
@@ -2880,7 +3337,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_go" style="color: inherit; text-decoration: inherit;">Description</a>
@@ -2888,7 +3346,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_go" style="color: inherit; text-decoration: inherit;">Display<wbr>Name</a>
@@ -2896,7 +3355,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_go" style="color: inherit; text-decoration: inherit;">Filterable<wbr>Properties</a>
@@ -2904,7 +3364,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">[]Filterable<wbr>Property<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_go" style="color: inherit; text-decoration: inherit;">Hierarchy<wbr>Information</a>
@@ -2912,7 +3373,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_go" style="color: inherit; text-decoration: inherit;">Image<wbr>Information</a>
@@ -2920,10 +3382,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">[]Image<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Image information for the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availabilityinformation_nodejs">
@@ -2932,7 +3397,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="configurations_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_nodejs" style="color: inherit; text-decoration: inherit;">configurations</a>
@@ -2940,7 +3406,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#configurationresponse">Configuration<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}List of configurations for the product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>List of configurations for the product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="costinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_nodejs" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
@@ -2948,7 +3415,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_nodejs" style="color: inherit; text-decoration: inherit;">description</a>
@@ -2956,7 +3424,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="displayname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_nodejs" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
@@ -2964,7 +3433,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterableproperties_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_nodejs" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
@@ -2972,7 +3442,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Filterable<wbr>Property<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchyinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_nodejs" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
@@ -2980,7 +3451,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="imageinformation_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_nodejs" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
@@ -2988,10 +3460,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Image<wbr>Information<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Image information for the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="availability_information_python">
@@ -3000,7 +3475,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Availability information of the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="configurations_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurations_python" style="color: inherit; text-decoration: inherit;">configurations</a>
@@ -3008,7 +3484,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#configurationresponse">Sequence[Configuration<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}List of configurations for the product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>List of configurations for the product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="cost_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#cost_information_python" style="color: inherit; text-decoration: inherit;">cost_<wbr>information</a>
@@ -3016,7 +3493,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Cost information for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="description_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_python" style="color: inherit; text-decoration: inherit;">description</a>
@@ -3024,7 +3502,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Description related to the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="display_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#display_name_python" style="color: inherit; text-decoration: inherit;">display_<wbr>name</a>
@@ -3032,7 +3511,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Display Name for the product system.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="filterable_properties_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterable_properties_python" style="color: inherit; text-decoration: inherit;">filterable_<wbr>properties</a>
@@ -3040,7 +3520,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterablepropertyresponse">Sequence[Filterable<wbr>Property<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}list of filters supported for a product{{% /md %}}</dd><dt class="property-required"
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="hierarchy_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchy_information_python" style="color: inherit; text-decoration: inherit;">hierarchy_<wbr>information</a>
@@ -3048,7 +3529,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Hierarchy information of a product.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="image_information_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#image_information_python" style="color: inherit; text-decoration: inherit;">image_<wbr>information</a>
@@ -3056,14 +3538,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#imageinformationresponse">Sequence[Image<wbr>Information<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Image information for the product system.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Image information for the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_csharp">
@@ -3072,7 +3557,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Charging type.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_csharp" style="color: inherit; text-decoration: inherit;">Multiplier</a>
@@ -3080,7 +3566,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">double</span>
     </dt>
-    <dd>{{% md %}}Billing unit applicable for Pav2 billing{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="productid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_csharp" style="color: inherit; text-decoration: inherit;">Product<wbr>Id</a>
@@ -3088,7 +3575,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Product Id{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Product Id</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="skuid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_csharp" style="color: inherit; text-decoration: inherit;">Sku<wbr>Id</a>
@@ -3096,7 +3584,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Sku Id{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Sku Id</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="termid_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_csharp" style="color: inherit; text-decoration: inherit;">Term<wbr>Id</a>
@@ -3104,10 +3593,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Term Id{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Term Id</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_go">
@@ -3116,7 +3608,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Charging type.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_go" style="color: inherit; text-decoration: inherit;">Multiplier</a>
@@ -3124,7 +3617,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float64</span>
     </dt>
-    <dd>{{% md %}}Billing unit applicable for Pav2 billing{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="productid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_go" style="color: inherit; text-decoration: inherit;">Product<wbr>Id</a>
@@ -3132,7 +3626,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Product Id{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Product Id</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="skuid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_go" style="color: inherit; text-decoration: inherit;">Sku<wbr>Id</a>
@@ -3140,7 +3635,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Sku Id{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Sku Id</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="termid_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_go" style="color: inherit; text-decoration: inherit;">Term<wbr>Id</a>
@@ -3148,10 +3644,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Term Id{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Term Id</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="chargingtype_nodejs">
@@ -3160,7 +3659,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Charging type.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_nodejs" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -3168,7 +3668,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">number</span>
     </dt>
-    <dd>{{% md %}}Billing unit applicable for Pav2 billing{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="productid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_nodejs" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
@@ -3176,7 +3677,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Product Id{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Product Id</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="skuid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_nodejs" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
@@ -3184,7 +3686,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Sku Id{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Sku Id</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="termid_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_nodejs" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
@@ -3192,10 +3695,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Term Id{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Term Id</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="charging_type_python">
@@ -3204,7 +3710,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Charging type.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="multiplier_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_python" style="color: inherit; text-decoration: inherit;">multiplier</a>
@@ -3212,7 +3719,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
     </dt>
-    <dd>{{% md %}}Billing unit applicable for Pav2 billing{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="product_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#product_id_python" style="color: inherit; text-decoration: inherit;">product_<wbr>id</a>
@@ -3220,7 +3728,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Product Id{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Product Id</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="sku_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sku_id_python" style="color: inherit; text-decoration: inherit;">sku_<wbr>id</a>
@@ -3228,7 +3737,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Sku Id{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Sku Id</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="term_id_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#term_id_python" style="color: inherit; text-decoration: inherit;">term_<wbr>id</a>
@@ -3236,14 +3746,17 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Term Id{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Term Id</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="specificationresponse">Specification<wbr>Response</h4>
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_csharp">
@@ -3252,7 +3765,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of the specification{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the specification</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -3260,10 +3774,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Value of the specification{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Value of the specification</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_go">
@@ -3272,7 +3789,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of the specification{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the specification</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -3280,10 +3798,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Value of the specification{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Value of the specification</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_nodejs">
@@ -3292,7 +3813,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of the specification{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the specification</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
@@ -3300,10 +3822,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Value of the specification{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Value of the specification</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="name_python">
@@ -3312,7 +3837,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Name of the specification{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the specification</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
@@ -3320,8 +3846,10 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Value of the specification{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Value of the specification</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 <h4 id="supportedfiltertypes">Supported<wbr>Filter<wbr>Types</h4>
 

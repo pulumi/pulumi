@@ -4,7 +4,7 @@
 {{ htmlSafe "<!-- Do not edit by hand unless you're certain you know what you are doing! -->" }}
 
 {{- if .DeprecationMessage }}
-<p class="resource-deprecated">Deprecated: {{ print "{{% md %}}" -}}{{- .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>
+<p class="resource-deprecated">Deprecated: {{- markdownify .DeprecationMessage -}}</p>
 {{- end }}
 
 {{ htmlSafe .Comment }}
@@ -27,7 +27,8 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{ htmlSafe "{{< chooser language \"typescript,python,go,csharp,java,yaml\" / >}}" }}
 
 <!-- TS/JS -->
-{{ print "{{% choosable language nodejs %}}" }}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>{{ .FunctionName.nodejs }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.nodejs }}<span class="p">): Promise<{{ template "linkify_param" .FunctionResult.nodejs }}></span
@@ -36,10 +37,12 @@ Input-wrapped arguments and returns an Output-wrapped result.
 function </span>{{ .FunctionName.nodejs }}Output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.nodejs }}<span class="p">): Output<{{ template "linkify_param" .FunctionResult.nodejs }}></span
 {{- end }}
 ></code></pre></div>
-{{ print "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 <!-- Python -->
-{{ print "{{% choosable language python %}}" }}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>{{ .FunctionName.python }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.python }}<span class="p">) -&gt;</span> <span>{{ .FunctionResult.python.Name }}</span
 {{- if .HasOutputVersion.python }}
@@ -47,10 +50,12 @@ function </span>{{ .FunctionName.nodejs }}Output<span class="p">(</span>{{ htmlS
 def </span>{{ .FunctionName.python }}_output<span class="p">(</span>{{ htmlSafe .FunctionArgsOutputVersion.python }}<span class="p">) -&gt;</span> <span>Output[{{ .FunctionResult.python.Name }}]</span
 {{- end }}
 ></code></pre></div>
-{{ print "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 <!-- Go -->
-{{ print "{{% choosable language go %}}" }}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>{{ .FunctionName.go }}<span class="p">(</span>{{ htmlSafe .FunctionArgs.go }}<span class="p">) (*{{ template "linkify_param" .FunctionResult.go }}, error)</span
 {{- if .HasOutputVersion.go }}
@@ -61,16 +66,19 @@ func </span>{{ .FunctionName.go }}Output<span class="p">(</span>{{ htmlSafe .Fun
 {{ if ne .FunctionName.go .Header.Title }}
 &gt; Note: This function is named `{{ .FunctionName.go }}` in the Go SDK.
 {{ end }}
-{{ print "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 <!-- C# -->
-{{ print "{{% choosable language csharp %}}" }}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">{{ .FunctionName.csharp }} </span><span class="p">
 {</span><span class="k">
     public static </span>Task<{{ template "linkify_param" .FunctionResult.csharp }}> <span class="p">InvokeAsync(</span>{{ htmlSafe .FunctionArgs.csharp }}<span class="p">)</span>{{- if .HasOutputVersion.csharp }}<span class="k">
     public static </span>Output<{{ template "linkify_param" .FunctionResult.csharp }}> <span class="p">Invoke(</span>{{ htmlSafe .FunctionArgsOutputVersion.csharp }}<span class="p">)</span>{{- end }}<span class="p">
 }</span></code></pre></div>
-{{ print "{{% /choosable %}}" }}
+</pulumi-choosable>
+</div>
 
 <!-- Java -->
 {{ print "{{% choosable language java %}}" }}

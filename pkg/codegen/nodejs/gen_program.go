@@ -361,9 +361,16 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 		pkg, module, member = member, "", "Provider"
 	}
 
-	// Normalize module.
 	if r.Schema != nil {
-		pkg := r.Schema.Package
+		module = moduleName(module, r.Schema.Package)
+	}
+
+	return makeValidIdentifier(pkg), module, title(member), diagnostics
+}
+
+func moduleName(module string, pkg *schema.Package) string {
+	// Normalize module.
+	if pkg != nil {
 		if lang, ok := pkg.Language["nodejs"]; ok {
 			pkgInfo := lang.(NodePackageInfo)
 			if m, ok := pkgInfo.ModuleToPackage[module]; ok {
@@ -371,9 +378,7 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 			}
 		}
 	}
-
-	module = strings.ToLower(strings.Replace(module, "/", ".", -1))
-	return makeValidIdentifier(pkg), module, title(member), diagnostics
+	return strings.ToLower(strings.ReplaceAll(module, "/", "."))
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name

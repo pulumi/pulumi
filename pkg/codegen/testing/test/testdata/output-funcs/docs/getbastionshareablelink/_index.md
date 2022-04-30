@@ -28,17 +28,20 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>getBastionShareableLink<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetBastionShareableLinkArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>></span
 ><span class="k">
 function </span>getBastionShareableLinkOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">GetBastionShareableLinkOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>get_bastion_shareable_link<span class="p">(</span><span class="nx">bastion_host_name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                                <span class="nx">resource_group_name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
@@ -50,10 +53,12 @@ def </span>get_bastion_shareable_link_output<span class="p">(</span><span class=
                                <span class="nx">vms</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Sequence[pulumi.Input[BastionShareableLinkArgs]]]]</span> = None<span class="p">,</span>
                                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetBastionShareableLinkResult]</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>GetBastionShareableLink<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">GetBastionShareableLinkArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>, error)</span
 ><span class="k">
@@ -62,23 +67,27 @@ func </span>GetBastionShareableLinkOutput<span class="p">(</span><span class="nx
 
 &gt; Note: This function is named `GetBastionShareableLink` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">GetBastionShareableLink </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">GetBastionShareableLinkArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>> <span class="p">Invoke(</span><span class="nx">GetBastionShareableLinkInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="bastionhostname_csharp">
@@ -87,7 +96,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the Bastion Host.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the Bastion Host.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -95,7 +105,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_csharp" style="color: inherit; text-decoration: inherit;">Vms</a>
@@ -103,10 +114,13 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">List&lt;Bastion<wbr>Shareable<wbr>Link&gt;</a></span>
     </dt>
-    <dd>{{% md %}}List of VM references.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of VM references.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="bastionhostname_go">
@@ -115,7 +129,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the Bastion Host.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the Bastion Host.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -123,7 +138,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_go" style="color: inherit; text-decoration: inherit;">Vms</a>
@@ -131,10 +147,13 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">[]Bastion<wbr>Shareable<wbr>Link</a></span>
     </dt>
-    <dd>{{% md %}}List of VM references.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of VM references.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="bastionhostname_nodejs">
@@ -143,7 +162,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the Bastion Host.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the Bastion Host.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -151,7 +171,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_nodejs" style="color: inherit; text-decoration: inherit;">vms</a>
@@ -159,10 +180,13 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">Bastion<wbr>Shareable<wbr>Link[]</a></span>
     </dt>
-    <dd>{{% md %}}List of VM references.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of VM references.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="bastion_host_name_python">
@@ -171,7 +195,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The name of the Bastion Host.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the Bastion Host.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resource_group_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
@@ -179,7 +204,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="vms_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_python" style="color: inherit; text-decoration: inherit;">vms</a>
@@ -187,8 +213,10 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#bastionshareablelink">Sequence[Bastion<wbr>Shareable<wbr>Link]</a></span>
     </dt>
-    <dd>{{% md %}}List of VM references.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>List of VM references.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -199,7 +227,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_csharp">
@@ -208,10 +237,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The URL to get the next set of results.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The URL to get the next set of results.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_go">
@@ -220,10 +252,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The URL to get the next set of results.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The URL to get the next set of results.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="nextlink_nodejs">
@@ -232,10 +267,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The URL to get the next set of results.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The URL to get the next set of results.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="next_link_python">
@@ -244,8 +282,10 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The URL to get the next set of results.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>The URL to get the next set of results.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -257,7 +297,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="vm_csharp">
@@ -266,10 +307,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reference of the virtual machine resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Reference of the virtual machine resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="vm_go">
@@ -278,10 +322,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reference of the virtual machine resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Reference of the virtual machine resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="vm_nodejs">
@@ -290,10 +337,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Reference of the virtual machine resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Reference of the virtual machine resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="vm_python">
@@ -302,8 +352,10 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Reference of the virtual machine resource.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Reference of the virtual machine resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 

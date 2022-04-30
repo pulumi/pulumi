@@ -28,17 +28,20 @@ Input-wrapped arguments and returns an Output-wrapped result.
 {{< chooser language "typescript,python,go,csharp" / >}}
 
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>listStorageAccountKeys<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ListStorageAccountKeysArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">ListStorageAccountKeysResult</a></span>></span
 ><span class="k">
 function </span>listStorageAccountKeysOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">ListStorageAccountKeysOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">ListStorageAccountKeysResult</a></span>></span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>list_storage_account_keys<span class="p">(</span><span class="nx">account_name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                               <span class="nx">expand</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
@@ -50,10 +53,12 @@ def </span>list_storage_account_keys_output<span class="p">(</span><span class="
                               <span class="nx">resource_group_name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[ListStorageAccountKeysResult]</span
 ></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>ListStorageAccountKeys<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">ListStorageAccountKeysArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">ListStorageAccountKeysResult</a></span>, error)</span
 ><span class="k">
@@ -62,23 +67,27 @@ func </span>ListStorageAccountKeysOutput<span class="p">(</span><span class="nx"
 
 &gt; Note: This function is named `ListStorageAccountKeys` in the Go SDK.
 
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">ListStorageAccountKeys </span><span class="p">
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">ListStorageAccountKeysResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">ListStorageAccountKeysArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">ListStorageAccountKeysResult</a></span>> <span class="p">Invoke(</span><span class="nx">ListStorageAccountKeysInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
-{{% /choosable %}}
+</pulumi-choosable>
+</div>
 
 
 
 The following arguments are supported:
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="accountname_csharp">
@@ -87,7 +96,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -95,7 +105,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_csharp" style="color: inherit; text-decoration: inherit;">Expand</a>
@@ -103,10 +114,13 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Specifies type of the key to be listed. Possible value is kerb.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="accountname_go">
@@ -115,7 +129,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -123,7 +138,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_go" style="color: inherit; text-decoration: inherit;">Expand</a>
@@ -131,10 +147,13 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Specifies type of the key to be listed. Possible value is kerb.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="accountname_nodejs">
@@ -143,7 +162,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -151,7 +171,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_nodejs" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -159,10 +180,13 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Specifies type of the key to be listed. Possible value is kerb.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="account_name_python">
@@ -171,7 +195,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="resource_group_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
@@ -179,7 +204,8 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}The name of the resource group within the user's subscription. The name is case insensitive.{{% /md %}}</dd><dt class="property-optional"
+    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
+</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_python" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -187,8 +213,10 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Specifies type of the key to be listed. Possible value is kerb.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -199,7 +227,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="keys_csharp">
@@ -208,10 +237,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">List&lt;Storage<wbr>Account<wbr>Key<wbr>Response&gt;</a></span>
     </dt>
-    <dd>{{% md %}}Gets the list of storage account keys and their properties for the specified storage account.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="keys_go">
@@ -220,10 +252,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">[]Storage<wbr>Account<wbr>Key<wbr>Response</a></span>
     </dt>
-    <dd>{{% md %}}Gets the list of storage account keys and their properties for the specified storage account.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="keys_nodejs">
@@ -232,10 +267,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">Storage<wbr>Account<wbr>Key<wbr>Response[]</a></span>
     </dt>
-    <dd>{{% md %}}Gets the list of storage account keys and their properties for the specified storage account.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="keys_python">
@@ -244,8 +282,10 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">Sequence[Storage<wbr>Account<wbr>Key<wbr>Response]</a></span>
     </dt>
-    <dd>{{% md %}}Gets the list of storage account keys and their properties for the specified storage account.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 
@@ -257,7 +297,8 @@ The following output properties are available:
 
 
 
-{{% choosable language csharp %}}
+<div>
+<pulumi-choosable type="language" values="csharp">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="creationtime_csharp">
@@ -266,7 +307,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Creation time of the key, in round trip date format.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="keyname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_csharp" style="color: inherit; text-decoration: inherit;">Key<wbr>Name</a>
@@ -274,7 +316,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the key.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="permissions_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_csharp" style="color: inherit; text-decoration: inherit;">Permissions</a>
@@ -282,7 +325,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Permissions for the key -- read-only or full permissions.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -290,10 +334,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Base 64-encoded value of the key.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Base 64-encoded value of the key.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language go %}}
+<div>
+<pulumi-choosable type="language" values="go">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="creationtime_go">
@@ -302,7 +349,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Creation time of the key, in round trip date format.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="keyname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_go" style="color: inherit; text-decoration: inherit;">Key<wbr>Name</a>
@@ -310,7 +358,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the key.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="permissions_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_go" style="color: inherit; text-decoration: inherit;">Permissions</a>
@@ -318,7 +367,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Permissions for the key -- read-only or full permissions.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -326,10 +376,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Base 64-encoded value of the key.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Base 64-encoded value of the key.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language nodejs %}}
+<div>
+<pulumi-choosable type="language" values="nodejs">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="creationtime_nodejs">
@@ -338,7 +391,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Creation time of the key, in round trip date format.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="keyname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_nodejs" style="color: inherit; text-decoration: inherit;">key<wbr>Name</a>
@@ -346,7 +400,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the key.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="permissions_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_nodejs" style="color: inherit; text-decoration: inherit;">permissions</a>
@@ -354,7 +409,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Permissions for the key -- read-only or full permissions.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
@@ -362,10 +418,13 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd>{{% md %}}Base 64-encoded value of the key.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Base 64-encoded value of the key.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
-{{% choosable language python %}}
+<div>
+<pulumi-choosable type="language" values="python">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="creation_time_python">
@@ -374,7 +433,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Creation time of the key, in round trip date format.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Creation time of the key, in round trip date format.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="key_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#key_name_python" style="color: inherit; text-decoration: inherit;">key_<wbr>name</a>
@@ -382,7 +442,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Name of the key.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Name of the key.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="permissions_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_python" style="color: inherit; text-decoration: inherit;">permissions</a>
@@ -390,7 +451,8 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Permissions for the key -- read-only or full permissions.{{% /md %}}</dd><dt class="property-required"
+    <dd><p>Permissions for the key -- read-only or full permissions.</p>
+</dd><dt class="property-required"
             title="Required">
         <span id="value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
@@ -398,8 +460,10 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd>{{% md %}}Base 64-encoded value of the key.{{% /md %}}</dd></dl>
-{{% /choosable %}}
+    <dd><p>Base 64-encoded value of the key.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
 
 
 

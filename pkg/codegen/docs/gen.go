@@ -32,6 +32,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/pgavlin/goldmark"
 
 	"github.com/pulumi/pulumi-java/pkg/codegen/java"
 	yaml "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
@@ -2056,6 +2057,15 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 			// which will most certainly fail.
 			// nolint gosec
 			return template.HTML(html)
+		},
+		"markdownify": func(html string) template.HTML {
+			// Convert a string of Markdown into HTML.
+			var buf bytes.Buffer
+			if err := goldmark.Convert([]byte(html), &buf); err != nil {
+				glog.Fatalf("rendering Markdown: %v", err)
+			}
+			// nolint gosec
+			return template.HTML(buf.String())
 		},
 	})
 
