@@ -62,8 +62,6 @@ interface RunCase {
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
         t: string, name: string, res: any, outputs: any | undefined) => void;
     log?: (ctx: any, severity: any, message: string, urn: URN, streamId: number) => void;
-    getRootResource?: (ctx: any) => { urn: string };
-    setRootResource?: (ctx: any, urn: string) => void;
 }
 
 let cleanupFns: (() => Promise<void>)[] = [];
@@ -1244,7 +1242,6 @@ describe("rpc", () => {
                 // First we need to mock the resource monitor.
                 const ctx: any = {};
                 const regs: any = {};
-                let rootResource: string | undefined;
                 let regCnt = 0;
                 let logCnt = 0;
                 const monitor = await createMockEngineAsync(opts,
@@ -1353,31 +1350,6 @@ describe("rpc", () => {
                         }
 
                         callback(undefined, new gempty.Empty());
-                    },
-                    // GetRootResource callback
-                    (call: any, callback: any) => {
-                        let root: { urn: string };
-                        if (opts.getRootResource) {
-                            root = opts.getRootResource(ctx);
-                        } else {
-                            root = { urn: rootResource! };
-                        }
-
-                        const resp = new engineproto.GetRootResourceResponse();
-                        resp.setUrn(root.urn);
-                        callback(undefined, resp);
-                    },
-                    // SetRootResource callback
-                    (call: any, callback: any) => {
-                        const req: any = call.request;
-                        const urn: string = req.getUrn();
-                        if (opts.setRootResource) {
-                            opts.setRootResource(ctx, urn);
-                        } else {
-                            rootResource = urn;
-                        }
-
-                        callback(undefined, new engineproto.SetRootResourceResponse());
                     },
                     // SupportsFeature callback
                     (call: any, callback: any) => {
@@ -1525,8 +1497,6 @@ async function createMockEngineAsync(
     registerResourceCallback: (call: any, request: any) => any,
     registerResourceOutputsCallback: (call: any, request: any) => any,
     logCallback: (call: any, request: any) => any,
-    getRootResourceCallback: (call: any, request: any) => any,
-    setRootResourceCallback: (call: any, request: any) => any,
     supportsFeatureCallback: (call: any, request: any) => any) {
     // The resource monitor is hosted in the current process so it can record state, etc.
     const server = new grpc.Server({
@@ -1548,8 +1518,6 @@ async function createMockEngineAsync(
     if (!opts.skipRootResourceEndpoints) {
         engineImpl = {
             ...engineImpl,
-            getRootResource: getRootResourceCallback,
-            setRootResource: setRootResourceCallback,
         };
     }
 
