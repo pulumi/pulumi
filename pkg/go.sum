@@ -399,6 +399,7 @@ github.com/google/pprof v0.0.0-20210609004039-a478d1d731e9/go.mod h1:kpwsk12EmLe
 github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 h1:K6RDEckDVWvDI9JAJYCmNdQXq6neHJOYx3V6jnqNEec=
 github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1/go.mod h1:kpwsk12EmLew5upagYY7GY0pfYCcupk39gWOCRROcvE=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
+github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 h1:El6M4kTTCOh6aBiKaUGG7oYTSPP8MxqL4YI3kZKwcP4=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=
 github.com/google/subcommands v1.0.1/go.mod h1:ZjhPrFU+Olkh9WazFPsl27BQ4UPiG37m3yTrtFlrHVk=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
@@ -675,10 +676,10 @@ github.com/prometheus/procfs v0.0.8/go.mod h1:7Qr8sr6344vo1JqZ6HhLceV9o3AJ1Ff+Gx
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
 github.com/pulumi/pulumi-java/pkg v0.0.0-20220428205003-0b5fd9c92195 h1:O/vJQEDxR9qTEs/n3t4J+iLnIkl9BLgYILjoWpsPtwA=
 github.com/pulumi/pulumi-java/pkg v0.0.0-20220428205003-0b5fd9c92195/go.mod h1:Dw5klQSJCD6hHaHN4BcCoOW+KjC6NafdBtDsy6sY6uc=
-github.com/pulumi/pulumi-yaml v0.2.1-0.20220427001638-3613f3443349 h1:a9T0LyPRS6gD4DHiYLpwuBy2DX8F/irCKKyrd4jxB+I=
-github.com/pulumi/pulumi-yaml v0.2.1-0.20220427001638-3613f3443349/go.mod h1:/15X52nIkZmqAKQGOYUZwlzOkxcI36dPA8ZeqCQzeVI=
+github.com/pulumi/pulumi-yaml v0.2.1-0.20220430000753-60a04b25f654 h1:bF7jiugHMpes5rCdAZLprJl8mgxL0iVSgNlBN/oPxz0=
+github.com/pulumi/pulumi-yaml v0.2.1-0.20220430000753-60a04b25f654/go.mod h1:6pQ0QcQqLYbq+i5vYjir/gDnpCvTkKcHqB5+mt0d3So=
 github.com/pulumi/pulumi/pkg/v3 v3.26.0/go.mod h1:L9E+MXe05AbrSmX1GjX3jIrVNpE2RrauKEjME+BNzi4=
-github.com/pulumi/pulumi/pkg/v3 v3.30.1-0.20220425233152-77eb530a1117/go.mod h1:U1BGP/1QmebZE35OfFAT96zN2lhexAktkGLAbnAv+lI=
+github.com/pulumi/pulumi/pkg/v3 v3.31.1-0.20220429232336-81582c4dcb93/go.mod h1:bO/BHZJoG2Mm8C3dxP414vLPvjxFfsetPE3Ep7Ffgro=
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rjeczalik/notify v0.9.2 h1:MiTWrPj55mNDHEiIX5YUSKefw/+lCQVoAFmD6oQm5w8=

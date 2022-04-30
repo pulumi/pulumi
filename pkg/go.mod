@@ -35,7 +35,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
-	github.com/pulumi/pulumi/sdk/v3 v3.30.1-0.20220425233152-77eb530a1117
+	github.com/pulumi/pulumi/sdk/v3 v3.31.0
 	github.com/rjeczalik/notify v0.9.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.2.0
@@ -155,7 +155,7 @@ require (
 
 require (
 	github.com/pulumi/pulumi-java/pkg v0.0.0-20220428205003-0b5fd9c92195
-	github.com/pulumi/pulumi-yaml v0.2.1-0.20220427001638-3613f3443349
+	github.com/pulumi/pulumi-yaml v0.2.1-0.20220430000753-60a04b25f654
 	github.com/shirou/gopsutil/v3 v3.22.3
 )
 
@@ -170,6 +170,7 @@ require (
 	github.com/envoyproxy/go-control-plane v0.10.1 // indirect
 	github.com/envoyproxy/protoc-gen-validate v0.6.2 // indirect
 	github.com/ettle/strcase v0.1.1 // indirect
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/hashicorp/go-version v1.4.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/pkg/term v1.1.0 // indirect
