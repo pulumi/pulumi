@@ -236,21 +236,6 @@ The following state arguments are supported:
 
 {{ end }}
 
-<!-- Supporting types -->
-{{ if ne (len .NestedTypes) 0 }}
-
-## Supporting Types
-
-{{ range .NestedTypes }}
-
-<h4 id="{{ .AnchorID }}">{{ htmlSafe .Name }}</h4>
-
-{{- if .Properties }}{{template "properties" .Properties -}}{{ end -}}
-{{- if .EnumValues }}{{- template "enums" .EnumValues -}}{{ end -}}
-{{- end -}}
-
-{{- end -}}
-
 {{ if .ImportDocs  }}
 
 ## Import
