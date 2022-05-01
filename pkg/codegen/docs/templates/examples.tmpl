@@ -19,28 +19,6 @@
 
 {{ end }}
 
-{{ range $key, $val := .Snippets }}
-{{ htmlSafe "<div>" }}
-{{ htmlSafe "<pulumi-choosable type=\"language\" values=\"" }}{{ $key }}{{ htmlSafe "\">" }}
-
-{{ htmlSafe $val }}
-
-{{ htmlSafe "</pulumi-choosable>" }}
-{{ htmlSafe "</div>" }}
-
-{{ end }}
-
-{{ range $key, $val := .Snippets }}
-{{ htmlSafe "<div>" }}
-{{ htmlSafe "<pulumi-choosable type=\"language\" values=\"" }}{{ $key }}{{ htmlSafe "\">" }}
-
-{{ htmlSafe $val }}
-
-{{ htmlSafe "</pulumi-choosable>" }}
-{{ htmlSafe "</div>" }}
-
-{{ end }}
-
 {{ end }}
 
 {{ htmlSafe "</pulumi-examples></div>" }}

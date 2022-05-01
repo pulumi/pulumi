@@ -10,6 +10,8 @@
 {{ htmlSafe .Comment }}
 {{- if ne (len .ExamplesSection) 0 }}
 {{ template "examples" .ExamplesSection }}
+{{ template "examples" .ExamplesSection }}
+{{ template "examples" .ExamplesSection }}
 {{- end }}
 
 <!-- Create resource -->
