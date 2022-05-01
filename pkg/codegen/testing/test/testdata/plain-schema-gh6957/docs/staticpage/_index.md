@@ -218,7 +218,7 @@ The StaticPage resource accepts the following [input]({{< relref "/docs/intro/co
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="indexcontent_nodejs">
@@ -337,7 +337,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="bucket_nodejs">
@@ -443,7 +443,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="a_nodejs">

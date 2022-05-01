@@ -182,7 +182,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"></dl>
 </pulumi-choosable>
 </div>
@@ -311,7 +311,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
@@ -493,7 +493,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="associated_nodejs">
