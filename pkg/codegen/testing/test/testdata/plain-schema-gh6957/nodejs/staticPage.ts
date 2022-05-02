@@ -62,7 +62,7 @@ export class StaticPage extends pulumi.ComponentResource {
  * The set of arguments for constructing a StaticPage resource.
  */
 export interface StaticPageArgs {
-    foo?: inputs.Foo;
+    foo?: inputs.FooArgs;
     /**
      * The HTML content for index.html.
      */

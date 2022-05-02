@@ -74,21 +74,21 @@ namespace Pulumi.Example
         public bool? B { get; set; }
 
         [Input("bar")]
-        public Inputs.Foo? Bar { get; set; }
+        public Inputs.FooArgs? Bar { get; set; }
 
         [Input("baz")]
-        private List<Inputs.Foo>? _baz;
-        public List<Inputs.Foo> Baz
+        private List<Input<Inputs.FooArgs>>? _baz;
+        public List<Input<Inputs.FooArgs>> Baz
         {
-            get => _baz ?? (_baz = new List<Inputs.Foo>());
+            get => _baz ?? (_baz = new List<Input<Inputs.FooArgs>>());
             set => _baz = value;
         }
 
         [Input("bazMap")]
-        private Dictionary<string, Inputs.Foo>? _bazMap;
-        public Dictionary<string, Inputs.Foo> BazMap
+        private Dictionary<string, Input<Inputs.FooArgs>>? _bazMap;
+        public Dictionary<string, Input<Inputs.FooArgs>> BazMap
         {
-            get => _bazMap ?? (_bazMap = new Dictionary<string, Inputs.Foo>());
+            get => _bazMap ?? (_bazMap = new Dictionary<string, Input<Inputs.FooArgs>>());
             set => _bazMap = value;
         }
 
