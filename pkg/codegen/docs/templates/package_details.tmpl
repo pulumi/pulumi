@@ -7,7 +7,7 @@
 	<dd>{{ htmlSafe .License }}</dd>
     {{- if ne .Notes "" }}
 	<dt>Notes</dt>
-	<dd>{{ print "{{% md %}}" -}}{{ htmlSafe .Notes }}{{- print "{{% /md %}}" -}}</dd>
+	<dd>{{ markdownify .Notes }}</dd>
 	{{- end }}
 	{{- if ne .Version "" }}
 	<dt>Version</dt>

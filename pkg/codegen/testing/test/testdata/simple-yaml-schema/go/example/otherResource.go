@@ -38,7 +38,7 @@ type otherResourceArgs struct {
 
 // The set of arguments for constructing a OtherResource resource.
 type OtherResourceArgs struct {
-	Bar []string
+	Bar []pulumi.StringInput
 	Foo ResourceInput
 }
 

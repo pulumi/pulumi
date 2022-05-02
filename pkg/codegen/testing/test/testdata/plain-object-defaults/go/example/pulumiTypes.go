@@ -457,7 +457,7 @@ type LayeredTypeArgs struct {
 	Answer pulumi.Float64PtrInput   `pulumi:"answer"`
 	Other  HelmReleaseSettingsInput `pulumi:"other"`
 	// Test how plain types interact
-	PlainOther *HelmReleaseSettings `pulumi:"plainOther"`
+	PlainOther *HelmReleaseSettingsArgs `pulumi:"plainOther"`
 	// The question already answered
 	Question  pulumi.StringPtrInput `pulumi:"question"`
 	Recursive LayeredTypePtrInput   `pulumi:"recursive"`

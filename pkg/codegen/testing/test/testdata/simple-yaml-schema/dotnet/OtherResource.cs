@@ -44,10 +44,10 @@ namespace Pulumi.Example
     public sealed class OtherResourceArgs : Pulumi.ResourceArgs
     {
         [Input("bar")]
-        private List<string>? _bar;
-        public List<string> Bar
+        private List<Input<string>>? _bar;
+        public List<Input<string>> Bar
         {
-            get => _bar ?? (_bar = new List<string>());
+            get => _bar ?? (_bar = new List<Input<string>>());
             set => _bar = value;
         }
 
