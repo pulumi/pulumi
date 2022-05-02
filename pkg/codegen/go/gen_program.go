@@ -157,17 +157,55 @@ require (
 			return err
 		}
 
-		goInfo := p.Language["go"].(GoPackageInfo)
-		vPath := ""
-		if p.Version != nil && p.Version.Major > 1 {
-			vPath = fmt.Sprintf("/v%d", p.Version.Major)
-		}
-		packageName := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", p.Name, vPath, p.Name)
-		if goInfo.ImportBasePath != "" {
-			packageName = goInfo.ImportBasePath
+		if p.Version != nil && p.Version.Major <= 0 {
+			// Let `go mod tidy` resolve pre-1.0 and non-module package versions on InstallDependencies,
+			// as it better handles the way we use `importBasePath`. What we need is a `modulePath`. `go
+			// get` handles these cases, which are not parseable, they depend on retrieving the target
+			// repository and downloading it to disk.
+			//
+			// Here are two cases, first the parseable case:
+			//
+			// * go get github.com/pulumi/pulumi-aws/sdk/v5/go/aws@v5.3.0
+			//          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ module path
+			//                                           ~~ major version
+			//                                              ~~~~~~ package path - can be any number of path parts
+			//                                                     ~~~~~~ version
+			//
+			// Here, we can cut on the major version.
+
+			// * go get github.com/pulumi/pulumi-aws-native/sdk/go/aws@v0.16.0
+			//          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ module path
+			//                                                  ~~~~~~ package path - can be any number of path parts
+			//                                                         ~~~~~~~ version
+			//
+			// Here we cannot cut on the major version, as it isn't present. The only way to resolve this
+			// package is to pull the repo.
+			//
+			// Fortunately for these pre-1.0 releases, `go mod tidy` on the generated repo will at least
+			// add the module based on the import generated in the .go files, but it will always get the
+			// latest version.
+
+			continue
 		}
 
-		gomod.WriteString(fmt.Sprintf("	%s v%s\n", packageName, p.Version.String()))
+		// Relatively safe default, this works for Pulumi provider packages:
+		vPath := fmt.Sprintf("/v%d", p.Version.Major)
+		packageName := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", p.Name, vPath, p.Name)
+		if langInfo, found := p.Language["go"]; found {
+			goInfo, ok := langInfo.(GoPackageInfo)
+			if ok && goInfo.ImportBasePath != "" {
+				modulePrefix, _, found := strings.Cut(goInfo.ImportBasePath, vPath)
+				if found {
+					packageName = fmt.Sprintf("%s%s", modulePrefix, vPath)
+				} else {
+					packageName = ""
+				}
+			}
+		}
+
+		if packageName != "" {
+			gomod.WriteString(fmt.Sprintf("	%s v%s\n", packageName, p.Version.String()))
+		}
 	}
 
 	gomod.WriteString(")")
