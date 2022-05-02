@@ -4,7 +4,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "../types";
 
-export interface Foo {
-    a?: boolean;
+export interface FooArgs {
+    a?: pulumi.Input<boolean>;
 }
-

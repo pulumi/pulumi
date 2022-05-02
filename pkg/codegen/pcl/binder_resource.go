@@ -245,6 +245,15 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	for _, item := range block.Body.Items {
 		switch item := item.(type) {
 		case *model.Attribute:
+			if item.Name == LogicalNamePropertyKey {
+				logicalName, lDiags := getStringAttrValue(item)
+				if lDiags != nil {
+					diagnostics = diagnostics.Append(lDiags)
+				} else {
+					node.logicalName = logicalName
+				}
+				continue
+			}
 			node.Inputs = append(node.Inputs, item)
 		case *model.Block:
 			switch item.Type {

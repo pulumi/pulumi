@@ -198,14 +198,14 @@ class LayeredTypeArgs:
                  other: pulumi.Input['HelmReleaseSettingsArgs'],
                  thinker: pulumi.Input[str],
                  answer: Optional[pulumi.Input[float]] = None,
-                 plain_other: Optional['HelmReleaseSettings'] = None,
+                 plain_other: Optional['HelmReleaseSettingsArgs'] = None,
                  question: Optional[pulumi.Input[str]] = None,
                  recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None):
         """
         Make sure that defaults propagate through types
         :param pulumi.Input[str] thinker: To ask and answer
         :param pulumi.Input[float] answer: The answer to the question
-        :param 'HelmReleaseSettings' plain_other: Test how plain types interact
+        :param 'HelmReleaseSettingsArgs' plain_other: Test how plain types interact
         :param pulumi.Input[str] question: The question already answered
         """
         pulumi.set(__self__, "other", other)
@@ -260,14 +260,14 @@ class LayeredTypeArgs:
 
     @property
     @pulumi.getter(name="plainOther")
-    def plain_other(self) -> Optional['HelmReleaseSettings']:
+    def plain_other(self) -> Optional['HelmReleaseSettingsArgs']:
         """
         Test how plain types interact
         """
         return pulumi.get(self, "plain_other")
 
     @plain_other.setter
-    def plain_other(self, value: Optional['HelmReleaseSettings']):
+    def plain_other(self, value: Optional['HelmReleaseSettingsArgs']):
         pulumi.set(self, "plain_other", value)
 
     @property

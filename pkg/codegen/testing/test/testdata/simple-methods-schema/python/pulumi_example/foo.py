@@ -94,7 +94,7 @@ class Foo(pulumi.ComponentResource):
             name_required: pulumi.Input['pulumi_random.RandomPet'],
             string_value_required: pulumi.Input[str],
             baz: Optional[pulumi.Input['_nested.BazArgs']] = None,
-            baz_plain: Optional['_nested.Baz'] = None,
+            baz_plain: Optional['_nested.BazArgs'] = None,
             bool_value: Optional[pulumi.Input[bool]] = None,
             bool_value_plain: Optional[bool] = None,
             name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None,

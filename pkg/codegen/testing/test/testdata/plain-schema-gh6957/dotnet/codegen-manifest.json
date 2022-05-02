@@ -1,6 +1,6 @@
 {
   "emittedFiles": [
-    "Inputs/Foo.cs",
+    "Inputs/FooArgs.cs",
     "Provider.cs",
     "Pulumi.Xyz.csproj",
     "README.md",

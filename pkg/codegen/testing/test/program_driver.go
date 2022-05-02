@@ -34,6 +34,10 @@ var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 var PulumiPulumiProgramTests = []ProgramTest{
 	{
+		Directory:   "assets-archives",
+		Description: "Assets and archives",
+	},
+	{
 		Directory:      "aws-s3-folder",
 		Description:    "AWS S3 Folder",
 		ExpectNYIDiags: allProgLanguages.Except("go"),
@@ -161,6 +165,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Repro for #9357",
 		Skip:        codegen.NewStringSet("go", "nodejs", "dotnet"),
 	},
+	{
+		Directory:   "logical-name",
+		Description: "Logical names",
+	},
 }
 
 // Checks that a generated program is correct
@@ -192,8 +200,6 @@ type ProgramCodegenOptions struct {
 //nolint: revive
 func TestProgramCodegen(
 	t *testing.T,
-	// language string,
-	// genProgram func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error
 	testcase ProgramCodegenOptions,
 ) {
 	if runtime.GOOS == "windows" {

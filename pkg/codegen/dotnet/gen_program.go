@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"path"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -27,7 +29,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type generator struct {
@@ -120,6 +124,83 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		"MyStack.cs": index.Bytes(),
 	}
 	return files, g.diagnostics, nil
+}
+
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+	files, diagnostics, err := GenerateProgram(program)
+	if err != nil {
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
+	}
+
+	// Set the runtime to "dotnet" then marshal to Pulumi.yaml
+	project.Runtime = workspace.NewProjectRuntimeInfo("dotnet", nil)
+	projectBytes, err := encoding.YAML.Marshal(project)
+	if err != nil {
+		return err
+	}
+	files["Pulumi.yaml"] = projectBytes
+
+	// Build a .csproj based on the packages used by program
+	var csproj bytes.Buffer
+	csproj.WriteString(`<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>netcoreapp3.1</TargetFramework>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Pulumi" Version="3.*" />
+`)
+
+	// For each package add a PackageReference line
+	packages := program.Packages()
+	for _, p := range packages {
+		packageTemplate := "		<PackageReference Include=\"%s\" Version=\"%s\" />\n"
+
+		if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
+			return err
+		}
+
+		csharpInfo := p.Language["csharp"].(CSharpPackageInfo)
+		namespace := namespaceName(csharpInfo.Namespaces, p.Name)
+		packageName := fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
+		csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, p.Version.String()))
+	}
+
+	csproj.WriteString(`	</ItemGroup>
+
+</Project>`)
+
+	files[project.Name.String()+".csproj"] = csproj.Bytes()
+
+	// write the basic Program.cs
+	var programCs bytes.Buffer
+	programCs.WriteString(`using System.Threading.Tasks;
+using Pulumi;
+
+class Program
+{
+	static Task<int> Main() => Deployment.RunAsync<MyStack>();
+}`)
+	files["Program.cs"] = programCs.Bytes()
+
+	// Add the language specific .gitignore
+	files[".gitignore"] = []byte(dotnetGitIgnore)
+
+	for filename, data := range files {
+		outPath := path.Join(directory, filename)
+		err := ioutil.WriteFile(outPath, data, 0600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // genTrivia generates the list of trivia associated with a given token.
@@ -479,8 +560,8 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
 	}
 
-	name := r.Name()
-	variableName := makeValidIdentifier(name)
+	name := r.LogicalName()
+	variableName := makeValidIdentifier(r.Name())
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.GetLabels(nil) {
@@ -589,8 +670,9 @@ func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 }
 
 func (g *generator) genOutputProperty(w io.Writer, v *pcl.OutputVariable) {
+	outputID := fmt.Sprintf(`"%s"`, g.escapeString(v.LogicalName(), false, false))
 	// TODO(pdg): trivia
-	g.Fgenf(w, "%s[Output(\"%s\")]\n", g.Indent, v.Name())
+	g.Fgenf(w, "%s[Output(%s)]\n", g.Indent, outputID)
 	// TODO(msh): derive the element type of the Output from the type of its value.
 	g.Fgenf(w, "%spublic Output<string> %s { get; set; }\n", g.Indent, propertyName(v.Name()))
 }

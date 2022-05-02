@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -27,12 +26,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
+
 func newConvertCmd() *cobra.Command {
+	var outDir string
 	var language string
+	var projectName string
+	var projectDescription string
 
 	cmd := &cobra.Command{
 		Use:    "convert",
@@ -44,16 +51,16 @@ func newConvertCmd() *cobra.Command {
 			"The PCL program to convert should be supplied on stdin.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 
-			var programGenerator programGeneratorFunc
+			var projectGenerator projectGeneratorFunc
 			switch language {
-			case langDotnet:
-				programGenerator = dotnet.GenerateProgram
+			case "csharp", "c#":
+				projectGenerator = dotnet.GenerateProject
 			case langGo:
-				programGenerator = gogen.GenerateProgram
-			case langNodejs:
-				programGenerator = nodejs.GenerateProgram
+				projectGenerator = gogen.GenerateProject
+			case "typescript":
+				projectGenerator = nodejs.GenerateProject
 			case langPython:
-				programGenerator = python.GenerateProgram
+				projectGenerator = python.GenerateProject
 			default:
 				return result.Errorf("cannot generate programs for %v", language)
 			}
@@ -71,22 +78,55 @@ func newConvertCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("could not bind input program: %w", err))
 			}
 			if diagnostics.HasErrors() {
-				return result.Errorf("could not bind input program: %v", diagnostics)
+				return result.FromError(fmt.Errorf("could not bind input program: %v", diagnostics))
 			}
 
-			files, diagnostics, err := programGenerator(pclProgram)
+			if projectName == "" {
+				return result.Errorf("Need to pass project name with --name")
+			}
+			if projectDescription == "" {
+				return result.Errorf("Need to pass project description with --description")
+			}
+
+			project := workspace.Project{
+				Name:        tokens.PackageName(projectName),
+				Description: &projectDescription,
+			}
+
+			if outDir != "." {
+				err := os.MkdirAll(outDir, 0755)
+				if err != nil {
+					return result.FromError(fmt.Errorf("could not create output directory: %w", err))
+				}
+			}
+
+			err = projectGenerator(outDir, project, pclProgram)
 			if err != nil {
 				return result.FromError(fmt.Errorf("could not generate output program: %w", err))
 			}
-			if diagnostics.HasErrors() {
-				return result.Errorf("could not generate output program: %v", diagnostics)
+
+			// Project should now exist at outDir. Run installDependencies in that directory
+			// Change the working directory to the specified directory.
+			if err := os.Chdir(outDir); err != nil {
+				return result.FromError(fmt.Errorf("changing the working directory: %w", err))
 			}
 
-			for filename, data := range files {
-				err := ioutil.WriteFile(filename, data, 0600)
-				if err != nil {
-					return result.FromError(fmt.Errorf("could not write output program: %w", err))
-				}
+			// Load the project, to
+			proj, root, err := readProject()
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			projinfo := &engine.Projinfo{Proj: proj, Root: root}
+			pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			defer ctx.Close()
+
+			if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
+				return result.FromError(err)
 			}
 
 			return nil
@@ -95,7 +135,19 @@ func newConvertCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
-		&language, "language", "", "Which language plugin to use to generate the pulumi program")
+		&language, "language", "", "Which language plugin to use to generate the pulumi project")
+
+	cmd.PersistentFlags().StringVarP(
+		&projectName, "name", "n", "",
+		"The project name; if not specified, a prompt will request it")
+
+	cmd.PersistentFlags().StringVarP(
+		&projectDescription, "description", "d", "",
+		"The project description; if not specified, a prompt will request it")
+
+	cmd.PersistentFlags().StringVar(
+		//nolint:lll
+		&outDir, "out", ".", "The output directory to write the convert project to")
 
 	return cmd
 }

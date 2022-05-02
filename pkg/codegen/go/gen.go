@@ -1613,6 +1613,9 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			originalValue := fmt.Sprintf("args.%s.%s()", Title(p.Name), toOutputMethod)
 			valueWithDefaults := fmt.Sprintf("%[1]v.ApplyT(func (v %[2]s) %[2]s { return %[3]sv.%[4]s() }).(%[5]s)",
 				originalValue, resolvedType, optionalDeref, name, outputType)
+			if p.Plain {
+				valueWithDefaults = fmt.Sprintf("args.%v.Defaults()", Title(p.Name))
+			}
 
 			if !p.IsRequired() {
 				fmt.Fprintf(w, "if args.%s != nil {\n", Title(p.Name))
@@ -1742,8 +1745,18 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	fmt.Fprintf(w, "// The set of arguments for constructing a %s resource.\n", name)
 	fmt.Fprintf(w, "type %sArgs struct {\n", name)
 	for _, p := range r.InputProperties {
+		typ := p.Type
+		if p.Plain {
+			typ = codegen.MapInnerType(typ, func(typ schema.Type) schema.Type {
+				if obj, ok := typ.(*schema.ObjectType); ok && obj.IsInputShape() {
+					return obj.PlainShape
+				}
+				return typ
+			})
+		}
+
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-		fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.typeString(p.Type))
+		fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.typeString(typ))
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -2541,7 +2554,10 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 
 		if recurse {
 			for _, p := range t.Properties {
-				pkg.getTypeImports(p.Type, recurse, importsAndAliases, seen)
+				// We only recurse one level into objects, since we need to name
+				// their properties but not the properties named in their
+				// properties.
+				pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 			}
 		}
 	case *schema.ResourceType:

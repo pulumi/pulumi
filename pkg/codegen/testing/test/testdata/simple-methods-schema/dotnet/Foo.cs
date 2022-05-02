@@ -68,7 +68,7 @@ namespace Pulumi.Example
         public Input<Pulumi.Example.Nested.Inputs.BazArgs>? Baz { get; set; }
 
         [Input("bazPlain")]
-        public Pulumi.Example.Nested.Inputs.Baz? BazPlain { get; set; }
+        public Pulumi.Example.Nested.Inputs.BazArgs? BazPlain { get; set; }
 
         [Input("bazRequired", required: true)]
         public Input<Pulumi.Example.Nested.Inputs.BazArgs> BazRequired { get; set; } = null!;
