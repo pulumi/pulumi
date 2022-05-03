@@ -153,6 +153,9 @@ jobs:
           role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
       - name: Set PreRelease Version
         run: echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
+      - name: Download pulumi-language-*
+        run: |
+          ./scripts/get-language-providers.sh
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
