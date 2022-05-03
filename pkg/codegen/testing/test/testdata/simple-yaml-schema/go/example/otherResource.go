@@ -79,6 +79,10 @@ func (o OtherResourceOutput) ToOtherResourceOutputWithContext(ctx context.Contex
 	return o
 }
 
+func (o OtherResourceOutput) Foo() ResourceOutput {
+	return o.ApplyT(func(v *OtherResource) ResourceOutput { return v.Foo }).(ResourceOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*OtherResourceInput)(nil)).Elem(), &OtherResource{})
 	pulumi.RegisterOutputType(OtherResourceOutput{})

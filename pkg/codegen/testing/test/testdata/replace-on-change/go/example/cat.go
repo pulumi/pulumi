@@ -165,6 +165,26 @@ func (o CatOutput) ToCatOutputWithContext(ctx context.Context) CatOutput {
 	return o
 }
 
+func (o CatOutput) Foes() ToyMapOutput {
+	return o.ApplyT(func(v *Cat) ToyMapOutput { return v.Foes }).(ToyMapOutput)
+}
+
+func (o CatOutput) Friends() ToyArrayOutput {
+	return o.ApplyT(func(v *Cat) ToyArrayOutput { return v.Friends }).(ToyArrayOutput)
+}
+
+func (o CatOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *Cat) pulumi.StringPtrOutput { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+func (o CatOutput) Other() GodOutput {
+	return o.ApplyT(func(v *Cat) GodOutput { return v.Other }).(GodOutput)
+}
+
+func (o CatOutput) Toy() ToyPtrOutput {
+	return o.ApplyT(func(v *Cat) ToyPtrOutput { return v.Toy }).(ToyPtrOutput)
+}
+
 type CatArrayOutput struct{ *pulumi.OutputState }
 
 func (CatArrayOutput) ElementType() reflect.Type {

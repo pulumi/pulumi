@@ -152,6 +152,10 @@ func (o DogOutput) ToDogOutputWithContext(ctx context.Context) DogOutput {
 	return o
 }
 
+func (o DogOutput) Bone() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *Dog) pulumi.StringPtrOutput { return v.Bone }).(pulumi.StringPtrOutput)
+}
+
 type DogArrayOutput struct{ *pulumi.OutputState }
 
 func (DogArrayOutput) ElementType() reflect.Type {

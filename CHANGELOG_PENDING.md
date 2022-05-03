@@ -1,6 +1,15 @@
 ### Improvements
 
+- [dotnet] No longer roundtrips requests for the stack URN via the engine.
+  [#9515](https://github.com/pulumi/pulumi/pull/9515)
+
 ### Bug Fixes
+
+- [codegen/go] Enable obtaining resource outputs off a ResourceOutput.
+  [#9513](https://github.com/pulumi/pulumi/pull/9513)
+
+- [codegen/go] Ensure that "plain" generates shallowly plain types.
+  [#9512](https://github.com/pulumi/pulumi/pull/9512)
 
 - [codegen/nodejs] Fix enum naming when the enum name starts with `_`.
   [#9453](https://github.com/pulumi/pulumi/pull/9453)
@@ -16,6 +25,6 @@
 
 - [cli] Fix an issue with explicit and default organization names in `pulumi new`
   [#9514](https://github.com/pulumi/pulumi/pull/9514)
-  
+
 - [cli] Engine now correctly tracks that resource reads have unique URNs.
   [#9516](https://github.com/pulumi/pulumi/pull/9516)

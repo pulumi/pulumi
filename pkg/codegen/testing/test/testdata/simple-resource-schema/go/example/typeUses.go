@@ -107,6 +107,18 @@ func (o TypeUsesOutput) ToTypeUsesOutputWithContext(ctx context.Context) TypeUse
 	return o
 }
 
+func (o TypeUsesOutput) Bar() SomeOtherObjectPtrOutput {
+	return o.ApplyT(func(v *TypeUses) SomeOtherObjectPtrOutput { return v.Bar }).(SomeOtherObjectPtrOutput)
+}
+
+func (o TypeUsesOutput) Baz() ObjectWithNodeOptionalInputsPtrOutput {
+	return o.ApplyT(func(v *TypeUses) ObjectWithNodeOptionalInputsPtrOutput { return v.Baz }).(ObjectWithNodeOptionalInputsPtrOutput)
+}
+
+func (o TypeUsesOutput) Foo() ObjectPtrOutput {
+	return o.ApplyT(func(v *TypeUses) ObjectPtrOutput { return v.Foo }).(ObjectPtrOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*TypeUsesInput)(nil)).Elem(), &TypeUses{})
 	pulumi.RegisterOutputType(TypeUsesOutput{})

@@ -140,6 +140,21 @@ func (o RegistryGeoReplicationOutput) ToRegistryGeoReplicationOutputWithContext(
 	return o
 }
 
+// The login server url
+func (o RegistryGeoReplicationOutput) AcrLoginServerOut() pulumi.StringOutput {
+	return o.ApplyT(func(v *RegistryGeoReplication) pulumi.StringOutput { return v.AcrLoginServerOut }).(pulumi.StringOutput)
+}
+
+// The Registry
+func (o RegistryGeoReplicationOutput) Registry() containerregistry.RegistryOutput {
+	return o.ApplyT(func(v *RegistryGeoReplication) containerregistry.RegistryOutput { return v.Registry }).(containerregistry.RegistryOutput)
+}
+
+// The replication policy
+func (o RegistryGeoReplicationOutput) Replication() containerregistry.ReplicationOutput {
+	return o.ApplyT(func(v *RegistryGeoReplication) containerregistry.ReplicationOutput { return v.Replication }).(containerregistry.ReplicationOutput)
+}
+
 type RegistryGeoReplicationArrayOutput struct{ *pulumi.OutputState }
 
 func (RegistryGeoReplicationArrayOutput) ElementType() reflect.Type {
