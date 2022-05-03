@@ -184,6 +184,10 @@ func (o SqlResourceSqlContainerOutput) ToSqlResourceSqlContainerOutputWithContex
 	return o
 }
 
+func (o SqlResourceSqlContainerOutput) Resource() SqlContainerGetPropertiesResponseResourcePtrOutput {
+	return o.ApplyT(func(v *SqlResourceSqlContainer) SqlContainerGetPropertiesResponseResourcePtrOutput { return v.Resource }).(SqlContainerGetPropertiesResponseResourcePtrOutput)
+}
+
 func init() {
 	pulumi.RegisterOutputType(SqlResourceSqlContainerOutput{})
 }

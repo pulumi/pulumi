@@ -153,6 +153,14 @@ func (o PersonOutput) ToPersonOutputWithContext(ctx context.Context) PersonOutpu
 	return o
 }
 
+func (o PersonOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *Person) pulumi.StringPtrOutput { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+func (o PersonOutput) Pets() PetTypeArrayOutput {
+	return o.ApplyT(func(v *Person) PetTypeArrayOutput { return v.Pets }).(PetTypeArrayOutput)
+}
+
 type PersonArrayOutput struct{ *pulumi.OutputState }
 
 func (PersonArrayOutput) ElementType() reflect.Type {

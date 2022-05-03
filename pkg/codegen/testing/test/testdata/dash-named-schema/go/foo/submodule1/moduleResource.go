@@ -101,6 +101,10 @@ func (o ModuleResourceOutput) ToModuleResourceOutputWithContext(ctx context.Cont
 	return o
 }
 
+func (o ModuleResourceOutput) Thing() foo.TopLevelPtrOutput {
+	return o.ApplyT(func(v *ModuleResource) foo.TopLevelPtrOutput { return v.Thing }).(foo.TopLevelPtrOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*ModuleResourceInput)(nil)).Elem(), &ModuleResource{})
 	pulumi.RegisterOutputType(ModuleResourceOutput{})

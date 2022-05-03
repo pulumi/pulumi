@@ -131,6 +131,26 @@ func (o RubberTreeOutput) ToRubberTreeOutputWithContext(ctx context.Context) Rub
 	return o
 }
 
+func (o RubberTreeOutput) Container() plant.ContainerPtrOutput {
+	return o.ApplyT(func(v *RubberTree) plant.ContainerPtrOutput { return v.Container }).(plant.ContainerPtrOutput)
+}
+
+func (o RubberTreeOutput) Diameter() DiameterOutput {
+	return o.ApplyT(func(v *RubberTree) DiameterOutput { return v.Diameter }).(DiameterOutput)
+}
+
+func (o RubberTreeOutput) Farm() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *RubberTree) pulumi.StringPtrOutput { return v.Farm }).(pulumi.StringPtrOutput)
+}
+
+func (o RubberTreeOutput) Size() TreeSizePtrOutput {
+	return o.ApplyT(func(v *RubberTree) TreeSizePtrOutput { return v.Size }).(TreeSizePtrOutput)
+}
+
+func (o RubberTreeOutput) Type() RubberTreeVarietyOutput {
+	return o.ApplyT(func(v *RubberTree) RubberTreeVarietyOutput { return v.Type }).(RubberTreeVarietyOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*RubberTreeInput)(nil)).Elem(), &RubberTree{})
 	pulumi.RegisterOutputType(RubberTreeOutput{})
