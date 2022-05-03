@@ -1919,6 +1919,22 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	// Emit the resource output type.
 	genOutputType(w, name, "*"+name, false)
 
+	// Emit chaining methods for the resource output type.
+	for _, p := range r.Properties {
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
+		outputType := pkg.outputType(p.Type)
+
+		propName := Title(p.Name)
+		switch strings.ToLower(p.Name) {
+		case "elementtype", "issecret":
+			propName = "Get" + propName
+		}
+		fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
+		fmt.Fprintf(w, "\treturn o.ApplyT(func (v *%s) %s { return v.%s }).(%s)\n",
+			name, outputType, Title(p.Name), outputType)
+		fmt.Fprintf(w, "}\n\n")
+	}
+
 	if generateResourceContainerTypes && !r.IsProvider {
 		genArrayOutput(w, name, "*"+name)
 		genMapOutput(w, name, "*"+name)
