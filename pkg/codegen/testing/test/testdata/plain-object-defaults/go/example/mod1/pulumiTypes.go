@@ -44,6 +44,17 @@ type TypArgs struct {
 	Val pulumi.StringPtrInput `pulumi:"val"`
 }
 
+// Defaults sets the appropriate defaults for TypArgs
+func (val *TypArgs) Defaults() *TypArgs {
+	if val == nil {
+		return nil
+	}
+	tmp := *val
+	if isZero(tmp.Val) {
+		tmp.Val = pulumi.StringPtr(getEnvOrDefault("mod1", nil, "PULUMI_EXAMPLE_MOD1_DEFAULT").(string))
+	}
+	return &tmp
+}
 func (TypArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*Typ)(nil)).Elem()
 }
