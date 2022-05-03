@@ -196,19 +196,28 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 			// We didn't get any new dependencies, so no need to merge.
 			return
 		}
-		depSet := make(map[Resource]struct{})
-		for _, d := range o.deps {
-			depSet[d] = struct{}{}
-		}
-		for _, d := range deps {
-			depSet[d] = struct{}{}
-		}
-		mergedDeps := make([]Resource, 0, len(depSet))
-		for d := range depSet {
-			mergedDeps = append(mergedDeps, d)
-		}
-		o.deps = mergedDeps
+		o.deps = mergeDependencies(o.deps, deps)
 	}
+}
+
+func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
+	if theirs == nil {
+		return ours
+	} else if ours == nil {
+		return theirs
+	}
+	depSet := make(map[Resource]struct{})
+	for _, d := range ours {
+		depSet[d] = struct{}{}
+	}
+	for _, d := range theirs {
+		depSet[d] = struct{}{}
+	}
+	mergedDeps := make([]Resource, 0, len(depSet))
+	for d := range depSet {
+		mergedDeps = append(mergedDeps, d)
+	}
+	return mergedDeps
 }
 
 func (o *OutputState) resolve(value interface{}, known, secret bool, deps []Resource) {
@@ -247,11 +256,13 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 		//
 		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
 		// the element type of the outer output. We should reconsider this.
-		ov, ok := o.value.(Output)
-		if !ok {
+		if ov, ok := o.value.(Output); ok {
+			deps := o.deps
+			o = ov.getState()
+			o.deps = mergeDependencies(o.deps, deps)
+		} else {
 			return o.value, true, o.secret, o.deps, nil
 		}
-		o = ov.getState()
 	}
 }
 
@@ -450,8 +461,12 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 	fn := checkApplier(applier, o.elementType())
 
 	resultType := anyOutputType
-	if ot, ok := concreteTypeToOutputType.Load(fn.Type().Out(0)); ok {
+	applierReturnType := fn.Type().Out(0)
+
+	if ot, ok := concreteTypeToOutputType.Load(applierReturnType); ok {
 		resultType = ot.(reflect.Type)
+	} else if applierReturnType.Implements(outputType) {
+		resultType = applierReturnType
 	}
 
 	result := newOutput(o.join, resultType, o.dependencies()...)
@@ -472,9 +487,13 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 			result.getState().reject(results[1].Interface().(error))
 			return
 		}
-
+		var fulfilledDeps []Resource
+		fulfilledDeps = append(fulfilledDeps, deps...)
+		if resultOutput, ok := results[0].Interface().(Output); ok {
+			fulfilledDeps = append(fulfilledDeps, resultOutput.getState().dependencies()...)
+		}
 		// Fulfill the result.
-		result.getState().fulfillValue(results[0], true, secret, deps, nil)
+		result.getState().fulfillValue(results[0], true, secret, fulfilledDeps, nil)
 	}()
 	return result
 }

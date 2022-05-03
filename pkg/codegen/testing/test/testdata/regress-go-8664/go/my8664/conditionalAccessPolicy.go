@@ -106,6 +106,10 @@ func (o ConditionalAccessPolicyOutput) ToConditionalAccessPolicyOutputWithContex
 	return o
 }
 
+func (o ConditionalAccessPolicyOutput) Conditions() ConditionalAccessPolicyConditionsOutput {
+	return o.ApplyT(func(v *ConditionalAccessPolicy) ConditionalAccessPolicyConditionsOutput { return v.Conditions }).(ConditionalAccessPolicyConditionsOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*ConditionalAccessPolicyInput)(nil)).Elem(), &ConditionalAccessPolicy{})
 	pulumi.RegisterOutputType(ConditionalAccessPolicyOutput{})

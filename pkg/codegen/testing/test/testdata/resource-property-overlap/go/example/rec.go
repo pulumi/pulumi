@@ -148,6 +148,10 @@ func (o RecOutput) ToRecOutputWithContext(ctx context.Context) RecOutput {
 	return o
 }
 
+func (o RecOutput) Rec() RecOutput {
+	return o.ApplyT(func(v *Rec) RecOutput { return v.Rec }).(RecOutput)
+}
+
 type RecArrayOutput struct{ *pulumi.OutputState }
 
 func (RecArrayOutput) ElementType() reflect.Type {

@@ -125,6 +125,11 @@ func (o FooOutput) ToFooOutputWithContext(ctx context.Context) FooOutput {
 	return o
 }
 
+// A test for plain types
+func (o FooOutput) DefaultKubeClientSettings() KubeClientSettingsPtrOutput {
+	return o.ApplyT(func(v *Foo) KubeClientSettingsPtrOutput { return v.DefaultKubeClientSettings }).(KubeClientSettingsPtrOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*FooInput)(nil)).Elem(), &Foo{})
 	pulumi.RegisterOutputType(FooOutput{})

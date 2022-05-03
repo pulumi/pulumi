@@ -152,6 +152,10 @@ func (o CatOutput) ToCatOutputWithContext(ctx context.Context) CatOutput {
 	return o
 }
 
+func (o CatOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *Cat) pulumi.StringPtrOutput { return v.Name }).(pulumi.StringPtrOutput)
+}
+
 type CatArrayOutput struct{ *pulumi.OutputState }
 
 func (CatArrayOutput) ElementType() reflect.Type {
