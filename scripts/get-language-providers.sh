@@ -14,8 +14,7 @@ for i in "java v0.1.0" "yaml v0.3.0"; do
   cd "${LANG_DIST}"
 
   rm -rf ./*
-  gh release download "${TAG}" --repo "pulumi/pulumi-${PULUMI_LANG}" --pattern '*.tar.gz' || true
-  gh release download "${TAG}" --repo "pulumi/pulumi-${PULUMI_LANG}" --pattern '*.zip' || true
+  gh release download "${TAG}" --repo "pulumi/pulumi-${PULUMI_LANG}"
 
   for DIST_OS in darwin linux windows; do
     for DIST_ARCH in amd64 arm64; do
