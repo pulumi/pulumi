@@ -64,5 +64,6 @@ pulumi-analyzer-policy-python.cmd
 artifacts/
 goreleaser-downloads/
 goreleaser-prebuilt/
+goreleaser-lang/
 
 __pycache__

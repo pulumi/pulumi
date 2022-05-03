@@ -324,6 +324,9 @@ jobs:
           sort goreleaser/*-checksums.txt
           echo "Checking that tested and release checksums are identical:"
           diff <(sort goreleaser/*-checksums.txt) $C
+      - name: Download pulumi-language-*
+        run: |
+          ./scripts/get-language-providers.sh
       - name: Run GoReleaser to actually release
         uses: goreleaser/goreleaser-action@v2
         with:
