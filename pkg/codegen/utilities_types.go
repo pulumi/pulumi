@@ -108,6 +108,15 @@ func MapInnerType(t schema.Type, f func(schema.Type) schema.Type) schema.Type {
 	}
 }
 
+// Applies f to the first non-optional type in t.
+// If t is Optional{v} then returns Optional{f(v)}, otherwise f(t) is returned
+func MapOptionalType(t schema.Type, f func(schema.Type) schema.Type) schema.Type {
+	if opt, ok := t.(*schema.OptionalType); ok {
+		return &schema.OptionalType{ElementType: f(opt.ElementType)}
+	}
+	return f(t)
+}
+
 func IsNOptionalInput(t schema.Type) bool {
 	for {
 		switch typ := t.(type) {

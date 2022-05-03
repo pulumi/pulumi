@@ -5,6 +5,9 @@
 
 ### Bug Fixes
 
+- [codegen/go] Ensure that "plain" generates shallowly plain types.
+  [#9512](https://github.com/pulumi/pulumi/pull/9512)
+
 - [codegen/nodejs] Fix enum naming when the enum name starts with `_`.
   [#9453](https://github.com/pulumi/pulumi/pull/9453)
 
