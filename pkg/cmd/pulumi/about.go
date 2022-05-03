@@ -110,7 +110,7 @@ type summaryAbout struct {
 	LogMessage    string                    `json:"-"`
 }
 
-func getSummaryAbout(transitiveDependencies bool, stack string) summaryAbout {
+func getSummaryAbout(transitiveDependencies bool, selectedStack string) summaryAbout {
 	var err error
 	cli := getCLIAbout()
 	result := summaryAbout{
@@ -161,11 +161,11 @@ func getSummaryAbout(transitiveDependencies bool, stack string) summaryAbout {
 	if err != nil {
 		addError(err, "Could not access the backend")
 	} else {
-		var stackAbout currentStackAbout
-		if stackAbout, err = getCurrentStackAbout(backend, stack); err != nil {
+		var stack currentStackAbout
+		if stack, err = getCurrentStackAbout(backend, selectedStack); err != nil {
 			addError(err, "Failed to get information about the current stack")
 		} else {
-			result.CurrentStack = &stackAbout
+			result.CurrentStack = &stack
 		}
 
 		tmp := getBackendAbout(backend)
