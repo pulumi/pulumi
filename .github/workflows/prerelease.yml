@@ -99,7 +99,7 @@ jobs:
   publish-binaries:
     name: Publish Binaries
     runs-on: macos-latest
-    needs: [lint, build, test-linux, test-macos, test-windows]
+    needs: [lint, build]
     strategy:
       matrix:
         go-version: [1.17.x]
@@ -342,33 +342,6 @@ jobs:
       enable-coverage: false
       goreleaser-config: '.goreleaser.prerelease.yml'
       goreleaser-flags: '-p 3 --skip-publish --skip-announce --skip-validate'
-  test-linux:
-    name: Test Linux
-    needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
-    with:
-      enable-coverage: false
-      platform: ubuntu-latest
-    secrets:
-      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
-  test-macos:
-    name: Test MacOS
-    needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
-    with:
-      enable-coverage: false
-      platform: macos-latest
-    secrets:
-      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
-  test-windows:
-    name: Test Windows
-    needs: build
-    uses: pulumi/pulumi/.github/workflows/test-fast.yml@master
-    with:
-      enable-coverage: false
-      platform: windows-latest
-    secrets:
-      pulumi-access-token: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   dispatch-docker-containers-ci-build:
     name: Dispatch Docker containers CI build
     needs: [publish-binaries, publish-sdks]
