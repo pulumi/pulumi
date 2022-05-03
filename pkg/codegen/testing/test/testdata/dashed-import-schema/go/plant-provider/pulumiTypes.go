@@ -48,6 +48,17 @@ type ContainerArgs struct {
 	Size       ContainerSizeInput          `pulumi:"size"`
 }
 
+// Defaults sets the appropriate defaults for ContainerArgs
+func (val *ContainerArgs) Defaults() *ContainerArgs {
+	if val == nil {
+		return nil
+	}
+	tmp := *val
+	if isZero(tmp.Brightness) {
+		tmp.Brightness = ContainerBrightness(1.0)
+	}
+	return &tmp
+}
 func (ContainerArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*Container)(nil)).Elem()
 }

@@ -2,9 +2,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 using Grpc.Net.Client;
 using Pulumirpc;
@@ -58,11 +55,5 @@ namespace Pulumi
         
         public async Task LogAsync(LogRequest request)
             => await this._engine.LogAsync(request);
-
-        public async Task<SetRootResourceResponse> SetRootResourceAsync(SetRootResourceRequest request)
-            => await this._engine.SetRootResourceAsync(request);
-
-        public async Task<GetRootResourceResponse> GetRootResourceAsync(GetRootResourceRequest request)
-            => await this._engine.GetRootResourceAsync(request);
     }
 }
