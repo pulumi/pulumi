@@ -272,9 +272,8 @@ func runNew(args newArgs) error {
 		appendFile := filepath.Join(root, appendFileName)
 		m, err := ioutil.ReadFile(appendFile)
 		if err == nil {
-			combined := append(f, '\n')
-			combined = append(combined, m...)
-			ioutil.WriteFile(projFile, combined, 0600)
+			f = append(f, m...)
+			ioutil.WriteFile(projFile, f, 0600)
 			err = os.Remove(appendFile)
 			if err != nil {
 				return fmt.Errorf("Could not remove %s: %w", appendFileName, err)
