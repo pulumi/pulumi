@@ -153,6 +153,14 @@ func (o NoRecursiveOutput) ToNoRecursiveOutputWithContext(ctx context.Context) N
 	return o
 }
 
+func (o NoRecursiveOutput) Rec() RecPtrOutput {
+	return o.ApplyT(func(v *NoRecursive) RecPtrOutput { return v.Rec }).(RecPtrOutput)
+}
+
+func (o NoRecursiveOutput) Replace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *NoRecursive) pulumi.StringPtrOutput { return v.Replace }).(pulumi.StringPtrOutput)
+}
+
 type NoRecursiveArrayOutput struct{ *pulumi.OutputState }
 
 func (NoRecursiveArrayOutput) ElementType() reflect.Type {

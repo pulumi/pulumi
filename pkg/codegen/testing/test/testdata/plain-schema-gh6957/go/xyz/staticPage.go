@@ -139,6 +139,16 @@ func (o StaticPageOutput) ToStaticPageOutputWithContext(ctx context.Context) Sta
 	return o
 }
 
+// The bucket resource.
+func (o StaticPageOutput) Bucket() s3.BucketOutput {
+	return o.ApplyT(func(v *StaticPage) s3.BucketOutput { return v.Bucket }).(s3.BucketOutput)
+}
+
+// The website URL.
+func (o StaticPageOutput) WebsiteUrl() pulumi.StringOutput {
+	return o.ApplyT(func(v *StaticPage) pulumi.StringOutput { return v.WebsiteUrl }).(pulumi.StringOutput)
+}
+
 type StaticPageArrayOutput struct{ *pulumi.OutputState }
 
 func (StaticPageArrayOutput) ElementType() reflect.Type {

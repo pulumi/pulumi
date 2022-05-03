@@ -790,3 +790,30 @@ func TestAll(t *testing.T) {
 	assert.ElementsMatch(t, []Resource{}, deps)
 	assert.NoError(t, err)
 }
+
+func TestApplyTOutput(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+	r1 := newSimpleCustomResource(ctx, URN("urn1"), ID("id1"))
+	r2 := newSimpleCustomResource(ctx, URN("urn2"), ID("id2"))
+	r3 := newSimpleCustomResource(ctx, URN("urn3"), ID("id3"))
+	r4 := newSimpleCustomResource(ctx, URN("urn4"), ID("id4"))
+	out1 := StringOutput{newOutputState(nil, reflect.TypeOf(""), r1)}
+	out2 := IntOutput{newOutputState(nil, reflect.TypeOf(0), r2)}
+	go func() {
+		out1.resolve("r1 output", true, false, []Resource{r3})
+		out2.resolve(42, true, false, []Resource{r4})
+	}()
+	{
+		out3 := out1.ApplyT(func(v string) (IntOutput, error) {
+			return out2, nil
+		})
+		v, _, _, deps, err := out3.getState().await(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, 42, v)
+		assert.Equal(t, fmt.Sprintf("%v", reflect.TypeOf(v)), "int")
+		assert.Len(t, deps, 4)
+	}
+}

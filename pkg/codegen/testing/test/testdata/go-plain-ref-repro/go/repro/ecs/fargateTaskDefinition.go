@@ -129,6 +129,10 @@ func (o FargateTaskDefinitionOutput) ToFargateTaskDefinitionOutputWithContext(ct
 	return o
 }
 
+func (o FargateTaskDefinitionOutput) LoadBalancers() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *FargateTaskDefinition) pulumi.StringArrayOutput { return v.LoadBalancers }).(pulumi.StringArrayOutput)
+}
+
 type FargateTaskDefinitionArrayOutput struct{ *pulumi.OutputState }
 
 func (FargateTaskDefinitionArrayOutput) ElementType() reflect.Type {
