@@ -60,7 +60,7 @@ func newConvertCmd() *cobra.Command {
 				projectGenerator = nodejs.GenerateProject
 			case langPython:
 				projectGenerator = python.GenerateProject
-			case "yaml":
+			case "yaml": // nolint: goconst
 				projectGenerator = yamlgen.GenerateProject
 			default:
 				return result.Errorf("cannot generate programs for %v", language)
