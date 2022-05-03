@@ -194,11 +194,12 @@ require (
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
 			if ok && goInfo.ImportBasePath != "" {
-				modulePrefix, _, found := strings.Cut(goInfo.ImportBasePath, vPath)
-				if found {
-					packageName = fmt.Sprintf("%s%s", modulePrefix, vPath)
-				} else {
+				separatorIndex := strings.Index(goInfo.ImportBasePath, vPath)
+				if separatorIndex < 0 {
 					packageName = ""
+				} else {
+					modulePrefix := goInfo.ImportBasePath[:separatorIndex]
+					packageName = fmt.Sprintf("%s%s", modulePrefix, vPath)
 				}
 			}
 		}
