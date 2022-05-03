@@ -22,6 +22,7 @@ const (
 	CloudAuditOptionsLogNameDataAccess = CloudAuditOptionsLogName("DATA_ACCESS")
 	// What if triple quotes """ are used in the description
 	CloudAuditOptionsLogNameSynthetic = CloudAuditOptionsLogName("SYNTHETIC")
+	CloudAuditOptionsLogName_NO_NAME  = CloudAuditOptionsLogName("_NO_NAME")
 )
 
 func (CloudAuditOptionsLogName) ElementType() reflect.Type {

@@ -3,7 +3,7 @@
 {{- range $lang, $props := . }}
 
 <div>
-<pulumi-choosable type="language" values="{{ print $lang }}">
+<pulumi-choosable type="language" values="{{- if eq $lang "nodejs" -}}{{ print "javascript,typescript" }}{{- else -}}{{ print $lang }}{{- end -}}">
 <dl class="resources-properties">
 {{- range . -}}
     <dt class="property-{{- if .IsInput -}}{{- if .IsRequired -}}required{{- else -}}optional{{- end -}}{{- end -}}{{ if .DeprecationMessage }} property-deprecated{{- end -}}"

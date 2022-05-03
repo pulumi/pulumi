@@ -8,9 +8,5 @@ namespace Pulumi
     internal interface IEngine
     {
         Task LogAsync(LogRequest request);
-        
-        Task<SetRootResourceResponse> SetRootResourceAsync(SetRootResourceRequest request);
-
-        Task<GetRootResourceResponse> GetRootResourceAsync(GetRootResourceRequest request);
     }
 }

@@ -496,7 +496,7 @@ The SqlResourceSqlContainer resource accepts the following [input]({{< relref "/
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"></dl>
 </pulumi-choosable>
 </div>
@@ -561,7 +561,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
         <span id="id_nodejs">
@@ -667,7 +667,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="order_nodejs">
@@ -747,7 +747,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="compositeindexes_nodejs">
@@ -809,7 +809,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
         <span id="indexingpolicy_nodejs">
@@ -837,7 +837,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd></dl>
 </pulumi-choosable>
 </div>
+
 ## Import
+
 
 
 An existing resource can be imported using its type token, name, and identifier, e.g.
@@ -845,6 +847,7 @@ An existing resource can be imported using its type token, name, and identifier,
 ```sh
 $ pulumi import azure-native:documentdb:SqlResourceSqlContainer containerName /subscriptions/subid/resourceGroups/rg1/providers/Microsoft.DocumentDB/databaseAccounts/ddb1/sqlDatabases/databaseName/sqlContainers/containerName 
 ```
+
 
 
 

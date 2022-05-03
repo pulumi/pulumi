@@ -1194,7 +1194,11 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 
 		r.Reset(repr)
 		if err := yaml.NewDecoder(r).Decode(&object); err == nil {
-			return object, "yaml", true
+			translated, ok := p.translateYAMLValue(object)
+			if !ok {
+				return nil, "", false
+			}
+			return translated, "yaml", true
 		}
 
 		return nil, "", false
@@ -1208,4 +1212,59 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 		}
 	}
 	return resource.PropertyValue{}, "", false
+}
+
+// translateYAMLValue attempts to replace map[interface{}]interface{} values in a decoded YAML value with
+// map[string]interface{} values. map[interface{}]interface{} values can arise from YAML mappings with keys that are
+// not strings. This method only translates such maps if they have purely numeric keys--maps with slice or map keys
+// are not translated.
+func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) {
+	switch v := v.(type) {
+	case []interface{}:
+		for i, e := range v {
+			ee, ok := p.translateYAMLValue(e)
+			if !ok {
+				return nil, false
+			}
+			v[i] = ee
+		}
+		return v, true
+	case map[string]interface{}:
+		for k, e := range v {
+			ee, ok := p.translateYAMLValue(e)
+			if !ok {
+				return nil, false
+			}
+			v[k] = ee
+		}
+		return v, true
+	case map[interface{}]interface{}:
+		vv := make(map[string]interface{}, len(v))
+		for k, e := range v {
+			sk := ""
+			switch k := k.(type) {
+			case string:
+				sk = k
+			case int:
+				sk = strconv.FormatInt(int64(k), 10)
+			case int64:
+				sk = strconv.FormatInt(k, 10)
+			case uint64:
+				sk = strconv.FormatUint(k, 10)
+			case float64:
+				sk = strconv.FormatFloat(k, 'g', -1, 64)
+			default:
+				return nil, false
+			}
+
+			ee, ok := p.translateYAMLValue(e)
+			if !ok {
+				return nil, false
+			}
+			vv[sk] = ee
+		}
+		return vv, true
+	default:
+		return v, true
+	}
 }
