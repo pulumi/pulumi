@@ -14,5 +14,8 @@
 - [cli] Decode YAML mappings with numeric keys during diff.
   [#9502](https://github.com/pulumi/pulumi/pull/9503)
 
+- [cli] Fix an issue with explicit and default organization names in `pulumi new`
+  [#9514](https://github.com/pulumi/pulumi/pull/9514)
+  
 - [cli] Engine now correctly tracks that resource reads have unique URNs.
   [#9516](https://github.com/pulumi/pulumi/pull/9516)

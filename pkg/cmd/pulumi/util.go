@@ -900,7 +900,8 @@ func readPlan(path string, dec config.Decrypter, enc config.Encrypter) (*deploy.
 }
 
 func buildStackName(stackName string) (string, error) {
-	if strings.Count(stackName, "/") == 2 {
+	// If we already have a slash (e.g. org/stack, or org/proj/stack) don't add the default org.
+	if strings.Contains(stackName, "/") {
 		return stackName, nil
 	}
 
