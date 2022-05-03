@@ -13,3 +13,6 @@
 
 - [cli] Decode YAML mappings with numeric keys during diff.
   [#9502](https://github.com/pulumi/pulumi/pull/9503)
+
+- [cli] Engine now correctly tracks that resource reads have unique URNs.
+  [#9516](https://github.com/pulumi/pulumi/pull/9516)
