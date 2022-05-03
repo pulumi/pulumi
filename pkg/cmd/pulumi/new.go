@@ -268,18 +268,19 @@ func runNew(args newArgs) error {
 		if err != nil {
 			return fmt.Errorf("Could not find Pulumi.yaml: %w", err)
 		}
-		mainFile := filepath.Join(root, "Main.yaml")
-		m, err := ioutil.ReadFile(mainFile)
+		appendFileName := "Pulumi.yaml.append"
+		appendFile := filepath.Join(root, appendFileName)
+		m, err := ioutil.ReadFile(appendFile)
 		if err == nil {
 			combined := append(f, '\n')
-			combined = append(f, m...)
+			combined = append(combined, m...)
 			ioutil.WriteFile(projFile, combined, 0600)
-			err = os.Remove(mainFile)
+			err = os.Remove(appendFile)
 			if err != nil {
-				return fmt.Errorf("Could not remove Main.yaml: %w", err)
+				return fmt.Errorf("Could not remove %s: %w", appendFileName, err)
 			}
 		} else if !os.IsNotExist(err) {
-			return fmt.Errorf("Could not get Main.yaml", err)
+			return fmt.Errorf("Could not get %s", appendFileName, err)
 		}
 	}
 
