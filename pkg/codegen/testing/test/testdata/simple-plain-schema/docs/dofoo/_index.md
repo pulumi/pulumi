@@ -95,7 +95,7 @@ The following arguments are supported:
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="foo_nodejs">
@@ -250,7 +250,7 @@ The following output properties are available:
 </div>
 
 <div>
-<pulumi-choosable type="language" values="nodejs">
+<pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
         <span id="a_nodejs">

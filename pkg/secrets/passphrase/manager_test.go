@@ -17,13 +17,11 @@ const (
 `
 )
 
-func setIncorrectPassphraseTestEnvVars() func() {
+func resetPassphraseTestEnvVars() func() {
 	clearCachedSecretsManagers()
 
 	oldPassphrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
 	oldPassphraseFile := os.Getenv("PULUMI_CONFIG_PASSPHRASE_FILE")
-	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password123")
-	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 	return func() {
 		os.Setenv("PULUMI_CONFIG_PASSPHRASE", oldPassphrase)
 		os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", oldPassphraseFile)
@@ -32,8 +30,11 @@ func setIncorrectPassphraseTestEnvVars() func() {
 
 //nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
-	setupEnv := setIncorrectPassphraseTestEnvVars()
-	defer setupEnv()
+	resetEnv := resetPassphraseTestEnvVars()
+	defer resetEnv()
+
+	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password123")
+	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	manager, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
 	assert.NoError(t, err) // even if we pass the wrong provider, we should get a lockedPassphraseProvider
@@ -44,23 +45,13 @@ func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 	})
 }
 
-func setCorrectPassphraseTestEnvVars() func() {
-	clearCachedSecretsManagers()
-
-	oldPassphrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
-	oldPassphraseFile := os.Getenv("PULUMI_CONFIG_PASSPHRASE_FILE")
-	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
-	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
-	return func() {
-		os.Setenv("PULUMI_CONFIG_PASSPHRASE", oldPassphrase)
-		os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", oldPassphraseFile)
-	}
-}
-
 //nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
-	setupEnv := setCorrectPassphraseTestEnvVars()
-	defer setupEnv()
+	resetEnv := resetPassphraseTestEnvVars()
+	defer resetEnv()
+
+	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
+	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(brokenState))
 	assert.Error(t, err)
@@ -68,30 +59,36 @@ func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
-	setupEnv := setCorrectPassphraseTestEnvVars()
-	defer setupEnv()
+	resetEnv := resetPassphraseTestEnvVars()
+	defer resetEnv()
+
+	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
+	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	sm, _ := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
 	assert.NotNil(t, sm)
 }
 
-func unsetAllPassphraseEnvVars() func() {
-	clearCachedSecretsManagers()
+//nolint:paralleltest // mutates environment variables
+func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
+	resetEnv := resetPassphraseTestEnvVars()
+	defer resetEnv()
 
-	oldPassphrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
-	oldPassphraseFile := os.Getenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
-	return func() {
-		os.Setenv("PULUMI_CONFIG_PASSPHRASE", oldPassphrase)
-		os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", oldPassphraseFile)
-	}
+
+	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
+		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
 }
 
 //nolint:paralleltest // mutates environment variables
-func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
-	setupEnv := unsetAllPassphraseEnvVars()
-	defer setupEnv()
+func TestPassphraseManagerEmptyPassphraseReturnsError(t *testing.T) {
+	resetEnv := resetPassphraseTestEnvVars()
+	defer resetEnv()
+
+	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
+	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
 	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
