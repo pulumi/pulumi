@@ -18,6 +18,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"reflect"
+	"strings"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -100,7 +102,21 @@ func (m *yamlMarshaler) IsYAMLLike() bool {
 }
 
 func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {
-	return yaml.Marshal(v)
+	o, err := yaml.Marshal(v)
+	if err != nil {
+		return o, err
+	}
+	if v, ok := getExtraFields(v); ok {
+		if !v.IsZero() {
+			extra, err := yaml.Marshal(v.Interface())
+			if err != nil {
+				return nil, err
+			}
+			o = append(o, '\n')
+			o = append(o, extra...)
+		}
+	}
+	return o, nil
 }
 
 func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
@@ -116,5 +132,57 @@ func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
 		// Other errors will be parse errors due to invalid syntax
 		return fmt.Errorf("invalid YAML file: %w", err)
 	}
+
+	if extra, ok := getExtraFields(v); ok {
+		unusedFields := collectUnusedFields(data, v)
+		extra.Set(reflect.ValueOf(unusedFields))
+	}
+
 	return nil
+}
+
+func getExtraFields(v interface{}) (reflect.Value, bool) {
+	vv := reflect.ValueOf(v)
+	if vv.IsValid() && vv.Kind() == reflect.Ptr {
+		t := vv.Type().Elem()
+		if t.Kind() == reflect.Struct {
+			_, ok := t.FieldByName("ExtraFields")
+			if ok {
+				return vv.Elem().FieldByName("ExtraFields"), true
+			}
+		}
+	}
+	var out reflect.Value
+	return out, false
+}
+
+func collectUnusedFields(data []byte, i interface{}) map[string]interface{} {
+	v := reflect.ValueOf(i)
+	if v.Type().Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return nil
+		}
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		return nil
+	}
+
+	topLevel := map[string]interface{}{}
+	if err := yaml.Unmarshal(data, &topLevel); err != nil {
+		return nil
+	}
+	out := map[string]interface{}{}
+	names := map[string]struct{}{}
+	for i := 0; i < v.Type().NumField(); i++ {
+		names[v.Type().Field(i).Name] = struct{}{}
+	}
+	for k, kv := range topLevel {
+		name := strings.ToUpper(k[:1]) + k[1:]
+		if _, ok := v.Type().FieldByName(name); !ok {
+			out[k] = kv
+		}
+	}
+	return out
 }

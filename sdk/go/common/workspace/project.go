@@ -102,6 +102,9 @@ type Project struct {
 
 	// Options is an optional set of project options
 	Options *ProjectOptions `json:"options,omitempty" yaml:"options,omitempty"`
+
+	// Used to round trip extra fields. Should not be touched manually.
+	ExtraFields map[string]interface{} `json:"-" yaml:"-"`
 }
 
 func (proj *Project) Validate() error {
