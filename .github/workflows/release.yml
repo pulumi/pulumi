@@ -2,6 +2,7 @@ on:
   push:
     tags:
       - v*.*.*
+      - '!v*.*.*-**'
     paths-ignore:
       - "CHANGELOG.md"
       - "CHANGELOG_PENDING.md"
