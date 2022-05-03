@@ -1,5 +1,8 @@
 ### Improvements
 
+- [dotnet] No longer roundtrips requests for the stack URN via the engine.
+  [#9515](https://github.com/pulumi/pulumi/pull/9515)
+
 ### Bug Fixes
 
 - [codegen/nodejs] Fix enum naming when the enum name starts with `_`.
