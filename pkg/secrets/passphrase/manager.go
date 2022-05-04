@@ -275,7 +275,7 @@ func readPassphrase(prompt string, useEnv bool) (phrase string, interactive bool
 		if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok && phrase != "" {
 			return phrase, false, nil
 		}
-		if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok && phrase != "" {
+		if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok && phraseFile != "" {
 			phraseFilePath, err := filepath.Abs(phraseFile)
 			if err != nil {
 				return "", false, fmt.Errorf("unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)

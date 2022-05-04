@@ -1,6 +1,7 @@
 package passphrase
 
 import (
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -89,6 +90,37 @@ func TestPassphraseManagerEmptyPassphraseReturnsError(t *testing.T) {
 
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
+
+	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
+		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
+	resetEnv := resetPassphraseTestEnvVars()
+	defer resetEnv()
+
+	tmpFile, err := ioutil.TempFile("", "pulumi-secret-test")
+	assert.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+	_, err = tmpFile.WriteString("password")
+	assert.NoError(t, err)
+
+	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+	os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", tmpFile.Name())
+
+	sm, _ := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	assert.NotNil(t, sm)
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestPassphraseManagerEmptyPassfileReturnsError(t *testing.T) {
+	resetEnv := resetPassphraseTestEnvVars()
+	defer resetEnv()
+
+	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+	os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", "")
 
 	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
 	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
