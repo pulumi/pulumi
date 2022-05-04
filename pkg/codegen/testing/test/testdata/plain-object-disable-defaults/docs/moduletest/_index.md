@@ -16,7 +16,9 @@ no_edit_this_page: true
 
 
 ## Create a ModuleTest Resource {#create}
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -48,6 +50,25 @@ no_edit_this_page: true
 <div>
 <pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">ModuleTest</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ModuleTestArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma">
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">ModuleTest</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ModuleTestArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">ModuleTest</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">ModuleTestArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:moduleTest</span><span class="p"></span>
+<span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
+<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
+<span class="p"></span>
+</code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -161,13 +182,39 @@ no_edit_this_page: true
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="java">
+
+<dl class="resources-properties"><dt
+        class="property-required" title="Required">
+        <span>name</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd>The unique name of the resource.</dd><dt
+        class="property-required" title="Required">
+        <span>args</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#inputs">ModuleTestArgs</a></span>
+    </dt>
+    <dd>The arguments to resource properties.</dd><dt
+        class="property-optional" title="Optional">
+        <span>options</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">CustomResourceOptions</span>
+    </dt>
+    <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
+
+</pulumi-choosable>
+</div>
+
 ## ModuleTest Resource Properties {#properties}
 
-To learn more about resource properties and how to use them, see [Inputs and Outputs]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) in the Architecture and Concepts docs.
+To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
 
-The ModuleTest resource accepts the following [input]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) properties:
+The ModuleTest resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 
 
 
@@ -207,6 +254,28 @@ The ModuleTest resource accepts the following [input]({{< relref "/docs/intro/co
             title="Optional">
         <span id="val_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_go" style="color: inherit; text-decoration: inherit;">Val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="mod1_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_java" style="color: inherit; text-decoration: inherit;">mod1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="val_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_java" style="color: inherit; text-decoration: inherit;">val</a>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
@@ -259,6 +328,28 @@ The ModuleTest resource accepts the following [input]({{< relref "/docs/intro/co
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="mod1_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_yaml" style="color: inherit; text-decoration: inherit;">mod1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#typ">Property Map</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="val_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_yaml" style="color: inherit; text-decoration: inherit;">val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#typ">Property Map</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
 
 ### Outputs
 
@@ -297,6 +388,21 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
@@ -320,6 +426,21 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd></dl>
@@ -399,6 +520,36 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="mod1_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_java" style="color: inherit; text-decoration: inherit;">mod1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#typ">Typ</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="mod2_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod2_java" style="color: inherit; text-decoration: inherit;">mod2</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#typ">Typ</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="val_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_java" style="color: inherit; text-decoration: inherit;">val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
@@ -458,6 +609,36 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="mod1_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_yaml" style="color: inherit; text-decoration: inherit;">mod1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#typ">Property Map</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="mod2_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod2_yaml" style="color: inherit; text-decoration: inherit;">mod2</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#typ">Property Map</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="val_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_yaml" style="color: inherit; text-decoration: inherit;">val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
 <h4 id="typ">Typ</h4>
 
 <div>
@@ -489,6 +670,20 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="val_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_java" style="color: inherit; text-decoration: inherit;">val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
@@ -511,6 +706,20 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="val_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_yaml" style="color: inherit; text-decoration: inherit;">val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -563,6 +772,28 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="mod1_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_java" style="color: inherit; text-decoration: inherit;">mod1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#typ">Typ</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="val_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_java" style="color: inherit; text-decoration: inherit;">val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
@@ -601,6 +832,28 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="mod1_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_yaml" style="color: inherit; text-decoration: inherit;">mod1</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#typ">Property Map</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="val_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_yaml" style="color: inherit; text-decoration: inherit;">val</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

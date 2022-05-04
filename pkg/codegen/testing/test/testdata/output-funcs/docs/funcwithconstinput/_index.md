@@ -19,7 +19,9 @@ Codegen demo with const inputs
 
 ## Using funcWithConstInput {#using}
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -64,6 +66,25 @@ Codegen demo with const inputs
 </div>
 
 
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static CompletableFuture&lt;<span class="nx"><a href="#result">FuncWithConstInputResult</a></span>> </span>funcWithConstInput<span class="p">(</span><span class="nx">FuncWithConstInputArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">InvokeOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<span class="c">// Output-based functions aren't available in Java yet</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
+<span class="k">&nbsp;&nbsp;Function:</span> mypkg:funcWithConstInput
+<span class="k">&nbsp;&nbsp;Arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
 
 The following arguments are supported:
 
@@ -81,6 +102,12 @@ The following arguments are supported:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"></dl>
 </pulumi-choosable>
@@ -88,6 +115,12 @@ The following arguments are supported:
 
 <div>
 <pulumi-choosable type="language" values="python">
+<dl class="resources-properties"></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
 <dl class="resources-properties"></dl>
 </pulumi-choosable>
 </div>
