@@ -25,7 +25,9 @@ arguments and either blocks until the result value is available, or
 returns a Promise-wrapped result. The output form accepts
 Input-wrapped arguments and returns an Output-wrapped result.
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -78,6 +80,25 @@ func </span>ListConfigurationsOutput<span class="p">(</span><span class="nx">ctx
     public static </span>Task&lt;<span class="nx"><a href="#result">ListConfigurationsResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">ListConfigurationsArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">ListConfigurationsResult</a></span>> <span class="p">Invoke(</span><span class="nx">ListConfigurationsInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static CompletableFuture&lt;<span class="nx"><a href="#result">ListConfigurationsResult</a></span>> </span>listConfigurations<span class="p">(</span><span class="nx">ListConfigurationsArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">InvokeOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<span class="c">// Output-based functions aren't available in Java yet</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
+<span class="k">&nbsp;&nbsp;Function:</span> myedgeorder:listConfigurations
+<span class="k">&nbsp;&nbsp;Arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -153,6 +174,39 @@ The following arguments are supported:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="configurationfilters_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_java" style="color: inherit; text-decoration: inherit;">configuration<wbr>Filters</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#configurationfilters">List<Configuration<wbr>Filters></a></span>
+    </dt>
+    <dd><p>Holds details about product hierarchy information and filterable property.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="customersubscriptiondetails_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_java" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#customersubscriptiondetails">Customer<wbr>Subscription<wbr>Details</a></span>
+    </dt>
+    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="skiptoken_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_java" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>$skipToken is supported on list of configurations, which provides the next page in the list of configurations.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -218,6 +272,39 @@ The following arguments are supported:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="configurationfilters_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationfilters_yaml" style="color: inherit; text-decoration: inherit;">configuration<wbr>Filters</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#configurationfilters">List<Property Map></a></span>
+    </dt>
+    <dd><p>Holds details about product hierarchy information and filterable property.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="customersubscriptiondetails_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#customersubscriptiondetails_yaml" style="color: inherit; text-decoration: inherit;">customer<wbr>Subscription<wbr>Details</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#customersubscriptiondetails">Property Map</a></span>
+    </dt>
+    <dd><p>Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="skiptoken_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skiptoken_yaml" style="color: inherit; text-decoration: inherit;">skip<wbr>Token</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>$skipToken is supported on list of configurations, which provides the next page in the list of configurations.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
 
 
 
@@ -276,6 +363,30 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="value_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#configurationresponse">List<Configuration<wbr>Response></a></span>
+    </dt>
+    <dd><p>List of configurations.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="nextlink_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_java" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Link for the next set of configurations.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
@@ -317,6 +428,30 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>Link for the next set of configurations.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="value_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#configurationresponse">List<Property Map></a></span>
+    </dt>
+    <dd><p>List of configurations.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="nextlink_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_yaml" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>Link for the next set of configurations.</p>
 </dd></dl>
@@ -400,6 +535,39 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="availabilitystage_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_java" style="color: inherit; text-decoration: inherit;">availability<wbr>Stage</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Current availability stage of the product. Availability stage</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="disabledreason_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_java" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Reason why the product is disabled.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="disabledreasonmessage_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_java" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Message for why the product is disabled.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -459,6 +627,39 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>Message for why the product is disabled.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="availabilitystage_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilitystage_yaml" style="color: inherit; text-decoration: inherit;">availability<wbr>Stage</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Current availability stage of the product. Availability stage</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="disabledreason_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreason_yaml" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Reason why the product is disabled.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="disabledreasonmessage_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#disabledreasonmessage_yaml" style="color: inherit; text-decoration: inherit;">disabled<wbr>Reason<wbr>Message</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>Message for why the product is disabled.</p>
 </dd></dl>
@@ -554,6 +755,48 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="frequency_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_java" style="color: inherit; text-decoration: inherit;">frequency</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Frequency of recurrence</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="meterdetails_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_java" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#pav2meterdetailsresponse">Pav2Meter<wbr>Details<wbr>Response</a> | <a href="#purchasemeterdetailsresponse">Purchase<wbr>Meter<wbr>Details<wbr>Response</a></span>
+    </dt>
+    <dd><p>Represents MeterDetails</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="meteringtype_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_java" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="name_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents Billing type name</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -637,6 +880,48 @@ The following output properties are available:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="frequency_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#frequency_yaml" style="color: inherit; text-decoration: inherit;">frequency</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Frequency of recurrence</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="meterdetails_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterdetails_yaml" style="color: inherit; text-decoration: inherit;">meter<wbr>Details</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#pav2meterdetailsresponse">Property Map</a> | <a href="#purchasemeterdetailsresponse">Property Map</a></span>
+    </dt>
+    <dd><p>Represents MeterDetails</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="meteringtype_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meteringtype_yaml" style="color: inherit; text-decoration: inherit;">metering<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents Metering type (eg one-time or recurrent)</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="name_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents Billing type name</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
 <h4 id="configurationfilters">Configuration<wbr>Filters</h4>
 
 
@@ -690,6 +975,30 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="hierarchyinformation_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_java" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#hierarchyinformation">Hierarchy<wbr>Information</a></span>
+    </dt>
+    <dd><p>Product hierarchy information</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="filterableproperty_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Property</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#filterableproperty">List<Filterable<wbr>Property></a></span>
+    </dt>
+    <dd><p>Filters specific to product</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -731,6 +1040,30 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#filterableproperty">Sequence[Filterable<wbr>Property]</a></span>
+    </dt>
+    <dd><p>Filters specific to product</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="hierarchyinformation_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_yaml" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#hierarchyinformation">Property Map</a></span>
+    </dt>
+    <dd><p>Product hierarchy information</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="filterableproperty_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperty_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Property</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#filterableproperty">List<Property Map></a></span>
     </dt>
     <dd><p>Filters specific to product</p>
 </dd></dl>
@@ -916,6 +1249,93 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="availabilityinformation_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_java" style="color: inherit; text-decoration: inherit;">availability<wbr>Information</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#availabilityinformationresponse">Availability<wbr>Information<wbr>Response</a></span>
+    </dt>
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="costinformation_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_java" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#costinformationresponse">Cost<wbr>Information<wbr>Response</a></span>
+    </dt>
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="description_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_java" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#descriptionresponse">Description<wbr>Response</a></span>
+    </dt>
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="dimensions_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_java" style="color: inherit; text-decoration: inherit;">dimensions</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#dimensionsresponse">Dimensions<wbr>Response</a></span>
+    </dt>
+    <dd><p>Dimensions of the configuration</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="displayname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_java" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="filterableproperties_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_java" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List<Filterable<wbr>Property<wbr>Response></a></span>
+    </dt>
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="hierarchyinformation_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_java" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse">Hierarchy<wbr>Information<wbr>Response</a></span>
+    </dt>
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="imageinformation_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_java" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#imageinformationresponse">List<Image<wbr>Information<wbr>Response></a></span>
+    </dt>
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="specifications_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_java" style="color: inherit; text-decoration: inherit;">specifications</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#specificationresponse">List<Specification<wbr>Response></a></span>
+    </dt>
+    <dd><p>Specifications of the configuration</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -1089,6 +1509,93 @@ The following output properties are available:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="availabilityinformation_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#availabilityinformation_yaml" style="color: inherit; text-decoration: inherit;">availability<wbr>Information</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#availabilityinformationresponse">Property Map</a></span>
+    </dt>
+    <dd><p>Availability information of the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="costinformation_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#costinformation_yaml" style="color: inherit; text-decoration: inherit;">cost<wbr>Information</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#costinformationresponse">Property Map</a></span>
+    </dt>
+    <dd><p>Cost information for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="description_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#description_yaml" style="color: inherit; text-decoration: inherit;">description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#descriptionresponse">Property Map</a></span>
+    </dt>
+    <dd><p>Description related to the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="dimensions_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#dimensions_yaml" style="color: inherit; text-decoration: inherit;">dimensions</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#dimensionsresponse">Property Map</a></span>
+    </dt>
+    <dd><p>Dimensions of the configuration</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="displayname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#displayname_yaml" style="color: inherit; text-decoration: inherit;">display<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Display Name for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="filterableproperties_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filterableproperties_yaml" style="color: inherit; text-decoration: inherit;">filterable<wbr>Properties</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#filterablepropertyresponse">List<Property Map></a></span>
+    </dt>
+    <dd><p>list of filters supported for a product</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="hierarchyinformation_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hierarchyinformation_yaml" style="color: inherit; text-decoration: inherit;">hierarchy<wbr>Information</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#hierarchyinformationresponse">Property Map</a></span>
+    </dt>
+    <dd><p>Hierarchy information of a product.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="imageinformation_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageinformation_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Information</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#imageinformationresponse">List<Property Map></a></span>
+    </dt>
+    <dd><p>Image information for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="specifications_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#specifications_yaml" style="color: inherit; text-decoration: inherit;">specifications</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#specificationresponse">List<Property Map></a></span>
+    </dt>
+    <dd><p>Specifications of the configuration</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
 <h4 id="costinformationresponse">Cost<wbr>Information<wbr>Response</h4>
 
 
@@ -1142,6 +1649,30 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="billinginfourl_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_java" style="color: inherit; text-decoration: inherit;">billing<wbr>Info<wbr>Url</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Default url to display billing information</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="billingmeterdetails_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_java" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#billingmeterdetailsresponse">List<Billing<wbr>Meter<wbr>Details<wbr>Response></a></span>
+    </dt>
+    <dd><p>Details on the various billing aspects for the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -1183,6 +1714,30 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#billingmeterdetailsresponse">Sequence[Billing<wbr>Meter<wbr>Details<wbr>Response]</a></span>
+    </dt>
+    <dd><p>Details on the various billing aspects for the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="billinginfourl_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billinginfourl_yaml" style="color: inherit; text-decoration: inherit;">billing<wbr>Info<wbr>Url</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Default url to display billing information</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="billingmeterdetails_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#billingmeterdetails_yaml" style="color: inherit; text-decoration: inherit;">billing<wbr>Meter<wbr>Details</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#billingmeterdetailsresponse">List<Property Map></a></span>
     </dt>
     <dd><p>Details on the various billing aspects for the product system.</p>
 </dd></dl>
@@ -1260,6 +1815,39 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="quotaid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_java" style="color: inherit; text-decoration: inherit;">quota<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Quota ID of a subscription</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="locationplacementid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_java" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Location placement Id of a subscription</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="registeredfeatures_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_java" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List<Customer<wbr>Subscription<wbr>Registered<wbr>Features></a></span>
+    </dt>
+    <dd><p>List of registered feature flags for subscription</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -1325,6 +1913,39 @@ The following output properties are available:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="quotaid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#quotaid_yaml" style="color: inherit; text-decoration: inherit;">quota<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Quota ID of a subscription</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="locationplacementid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#locationplacementid_yaml" style="color: inherit; text-decoration: inherit;">location<wbr>Placement<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Location placement Id of a subscription</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="registeredfeatures_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#registeredfeatures_yaml" style="color: inherit; text-decoration: inherit;">registered<wbr>Features</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#customersubscriptionregisteredfeatures">List<Property Map></a></span>
+    </dt>
+    <dd><p>List of registered feature flags for subscription</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
 <h4 id="customersubscriptionregisteredfeatures">Customer<wbr>Subscription<wbr>Registered<wbr>Features</h4>
 
 
@@ -1378,6 +1999,30 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="name_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Name of subscription registered feature</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="state_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_java" style="color: inherit; text-decoration: inherit;">state</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>State of subscription registered feature</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
@@ -1419,6 +2064,30 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>State of subscription registered feature</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="name_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Name of subscription registered feature</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="state_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#state_yaml" style="color: inherit; text-decoration: inherit;">state</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>State of subscription registered feature</p>
 </dd></dl>
@@ -1550,6 +2219,66 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="attributes_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_java" style="color: inherit; text-decoration: inherit;">attributes</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>Attributes for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="descriptiontype_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_java" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Type of description.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="keywords_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_java" style="color: inherit; text-decoration: inherit;">keywords</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>Keywords for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="links_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_java" style="color: inherit; text-decoration: inherit;">links</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#linkresponse">List<Link<wbr>Response></a></span>
+    </dt>
+    <dd><p>Links for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="longdescription_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_java" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Long description of the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="shortdescription_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_java" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Short description of the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -1663,6 +2392,66 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>Short description of the product system.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="attributes_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#attributes_yaml" style="color: inherit; text-decoration: inherit;">attributes</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>Attributes for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="descriptiontype_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#descriptiontype_yaml" style="color: inherit; text-decoration: inherit;">description<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Type of description.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="keywords_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keywords_yaml" style="color: inherit; text-decoration: inherit;">keywords</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>Keywords for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="links_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#links_yaml" style="color: inherit; text-decoration: inherit;">links</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#linkresponse">List<Property Map></a></span>
+    </dt>
+    <dd><p>Links for the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="longdescription_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#longdescription_yaml" style="color: inherit; text-decoration: inherit;">long<wbr>Description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Long description of the product system.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="shortdescription_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#shortdescription_yaml" style="color: inherit; text-decoration: inherit;">short<wbr>Description</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>Short description of the product system.</p>
 </dd></dl>
@@ -1812,6 +2601,75 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="depth_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_java" style="color: inherit; text-decoration: inherit;">depth</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Depth of the device.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="height_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_java" style="color: inherit; text-decoration: inherit;">height</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Height of the device.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="length_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_java" style="color: inherit; text-decoration: inherit;">length</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Length of the device.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="lengthheightunit_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_java" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Unit for the dimensions of length, height and width.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="weight_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_java" style="color: inherit; text-decoration: inherit;">weight</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Weight of the device.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="weightunit_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_java" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Unit for the dimensions of weight.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="width_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_java" style="color: inherit; text-decoration: inherit;">width</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Width of the device.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -1949,6 +2807,75 @@ The following output properties are available:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="depth_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#depth_yaml" style="color: inherit; text-decoration: inherit;">depth</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Depth of the device.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="height_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#height_yaml" style="color: inherit; text-decoration: inherit;">height</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Height of the device.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="length_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#length_yaml" style="color: inherit; text-decoration: inherit;">length</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Length of the device.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="lengthheightunit_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#lengthheightunit_yaml" style="color: inherit; text-decoration: inherit;">length<wbr>Height<wbr>Unit</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Unit for the dimensions of length, height and width.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="weight_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weight_yaml" style="color: inherit; text-decoration: inherit;">weight</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Weight of the device.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="weightunit_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#weightunit_yaml" style="color: inherit; text-decoration: inherit;">weight<wbr>Unit</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Unit for the dimensions of weight.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="width_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#width_yaml" style="color: inherit; text-decoration: inherit;">width</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Width of the device.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
 <h4 id="filterableproperty">Filterable<wbr>Property</h4>
 
 
@@ -2002,6 +2929,30 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="supportedvalues_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_java" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="type_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_java" style="color: inherit; text-decoration: inherit;">type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
+    </dt>
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -2043,6 +2994,30 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str | <a href="#supportedfiltertypes">Supported<wbr>Filter<wbr>Types</a></span>
+    </dt>
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="supportedvalues_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_yaml" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="type_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_yaml" style="color: inherit; text-decoration: inherit;">type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String | <a href="#supportedfiltertypes">"Ship<wbr>To<wbr>Countries" | "Double<wbr>Encryption<wbr>Status"</a></span>
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
@@ -2102,6 +3077,30 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="supportedvalues_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_java" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="type_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_java" style="color: inherit; text-decoration: inherit;">type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -2143,6 +3142,30 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>Type of product filter.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="supportedvalues_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#supportedvalues_yaml" style="color: inherit; text-decoration: inherit;">supported<wbr>Values</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>Values to be filtered.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="type_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#type_yaml" style="color: inherit; text-decoration: inherit;">type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>Type of product filter.</p>
 </dd></dl>
@@ -2238,6 +3261,48 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="configurationname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_java" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents configuration name that uniquely identifies configuration</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productfamilyname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_java" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents product family name that uniquely identifies product family</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productlinename_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_java" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents product line name that uniquely identifies product line</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_java" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents product name that uniquely identifies product</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
@@ -2315,6 +3380,48 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>Represents product name that uniquely identifies product</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="configurationname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_yaml" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents configuration name that uniquely identifies configuration</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productfamilyname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents product family name that uniquely identifies product family</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productlinename_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents product line name that uniquely identifies product line</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>Represents product name that uniquely identifies product</p>
 </dd></dl>
@@ -2410,6 +3517,48 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="configurationname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_java" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents configuration name that uniquely identifies configuration</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productfamilyname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_java" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents product family name that uniquely identifies product family</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productlinename_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_java" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents product line name that uniquely identifies product line</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_java" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents product name that uniquely identifies product</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
@@ -2493,6 +3642,48 @@ The following output properties are available:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="configurationname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configurationname_yaml" style="color: inherit; text-decoration: inherit;">configuration<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents configuration name that uniquely identifies configuration</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productfamilyname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productfamilyname_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Family<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents product family name that uniquely identifies product family</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productlinename_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productlinename_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Line<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents product line name that uniquely identifies product line</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="productname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productname_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Represents product name that uniquely identifies product</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
 <h4 id="imageinformationresponse">Image<wbr>Information<wbr>Response</h4>
 
 
@@ -2546,6 +3737,30 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="imagetype_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_java" style="color: inherit; text-decoration: inherit;">image<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Type of the image</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="imageurl_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_java" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Url of the image</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -2587,6 +3802,30 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>Url of the image</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="imagetype_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imagetype_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Type of the image</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="imageurl_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#imageurl_yaml" style="color: inherit; text-decoration: inherit;">image<wbr>Url</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>Url of the image</p>
 </dd></dl>
@@ -2646,6 +3885,30 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="linktype_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_java" style="color: inherit; text-decoration: inherit;">link<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Type of link</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="linkurl_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_java" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Url of the link</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -2687,6 +3950,30 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>Url of the link</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="linktype_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linktype_yaml" style="color: inherit; text-decoration: inherit;">link<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Type of link</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="linkurl_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#linkurl_yaml" style="color: inherit; text-decoration: inherit;">link<wbr>Url</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>Url of the link</p>
 </dd></dl>
@@ -2764,6 +4051,39 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="chargingtype_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_java" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="meterguid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_java" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Validation status of requested data center and transport.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="multiplier_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_java" style="color: inherit; text-decoration: inherit;">multiplier</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -2823,6 +4143,39 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">float</span>
+    </dt>
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="chargingtype_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_yaml" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="meterguid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#meterguid_yaml" style="color: inherit; text-decoration: inherit;">meter<wbr>Guid</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Validation status of requested data center and transport.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="multiplier_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_yaml" style="color: inherit; text-decoration: inherit;">multiplier</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
     </dt>
     <dd><p>Billing unit applicable for Pav2 billing</p>
 </dd></dl>
@@ -2936,6 +4289,57 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="chargingtype_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_java" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="multiplier_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_java" style="color: inherit; text-decoration: inherit;">multiplier</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Double</span>
+    </dt>
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="productid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_java" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Product Id</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="skuid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_java" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Sku Id</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="termid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_java" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Term Id</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -3037,6 +4441,57 @@ The following output properties are available:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="chargingtype_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#chargingtype_yaml" style="color: inherit; text-decoration: inherit;">charging<wbr>Type</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Charging type.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="multiplier_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#multiplier_yaml" style="color: inherit; text-decoration: inherit;">multiplier</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Number</span>
+    </dt>
+    <dd><p>Billing unit applicable for Pav2 billing</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="productid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#productid_yaml" style="color: inherit; text-decoration: inherit;">product<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Product Id</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="skuid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#skuid_yaml" style="color: inherit; text-decoration: inherit;">sku<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Sku Id</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="termid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#termid_yaml" style="color: inherit; text-decoration: inherit;">term<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Term Id</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
 <h4 id="specificationresponse">Specification<wbr>Response</h4>
 
 
@@ -3090,6 +4545,30 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="name_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Name of the specification</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="value_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Value of the specification</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -3131,6 +4610,30 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>Value of the specification</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="name_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Name of the specification</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="value_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>Value of the specification</p>
 </dd></dl>
