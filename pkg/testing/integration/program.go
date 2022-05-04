@@ -2131,10 +2131,12 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 }
 
 func (pt *ProgramTester) prepareYAMLProject(projinfo *engine.Projinfo) error {
+	// YAML doesn't need any system setup, and should auto-install required plugins
 	return nil
 }
 
 func (pt *ProgramTester) prepareJavaProject(projinfo *engine.Projinfo) error {
+	// Java doesn't need any system setup, and should auto-install required plugins
 	return nil
 }
 
