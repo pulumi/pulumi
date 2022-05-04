@@ -433,10 +433,14 @@ func (display *ProgressDisplay) refreshColumns(
 
 	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns, maxColumnLengths)
 
-	if display.isTerminal {
-		display.colorizeAndWriteProgress(makeActionProgress(id, msg))
-	} else {
-		display.writeSimpleMessage(msg)
+	// getPaddedmessage trims our message and potentially trims it to "" which will trigger
+	// asserts in later display functions if we try to show it
+	if msg != "" {
+		if display.isTerminal {
+			display.colorizeAndWriteProgress(makeActionProgress(id, msg))
+		} else {
+			display.writeSimpleMessage(msg)
+		}
 	}
 }
 
