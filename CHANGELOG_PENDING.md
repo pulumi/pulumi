@@ -6,4 +6,6 @@
 
 - [cli] Fix an issue using PULUMI_CONFIG_PASSPHRASE_FILE.
   [#9540](https://github.com/pulumi/pulumi/pull/9540)
-
+  
+- [cli/display] Avoid an assert in the table display logic.
+  [#9543](https://github.com/pulumi/pulumi/pull/9543)
