@@ -4,6 +4,7 @@ go 1.17
 
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
+	github.com/hashicorp/hcl/v2 => github.com/hashicorp/hcl/v2 v2.3.0
 	github.com/pulumi/pulumi/sdk/v3 => ../sdk
 )
 
@@ -162,6 +163,7 @@ require (
 require (
 	cloud.google.com/go/kms v1.1.0 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
+	github.com/apparentlymart/go-textseg v1.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
