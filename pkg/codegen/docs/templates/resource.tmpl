@@ -76,7 +76,6 @@
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-{{ htmlSafe "{{% choosable language nodejs %}}" }}
 {{ template "constructor_args" .ConstructorParamsTyped.nodejs }}
 </pulumi-choosable>
 </div>
@@ -244,7 +243,6 @@ Get an existing {{.Header.Title}} resource's state with the given name, ID, and 
 
 <div>
 <pulumi-choosable type="language" values="javascript,typescript">
-{{ htmlSafe "{{% choosable language nodejs %}}" }}
 {{ template "read_inputs" }}
 </pulumi-choosable>
 </div>
