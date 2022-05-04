@@ -104,7 +104,7 @@ func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	tmpFile, err := ioutil.TempFile("", "pulumi-secret-test")
 	assert.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
-	tmpFile.WriteString("password")
+	_, err = tmpFile.WriteString("password")
 	assert.NoError(t, err)
 
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
