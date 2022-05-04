@@ -38,8 +38,8 @@ type fargateTaskDefinitionArgs struct {
 
 // The set of arguments for constructing a FargateTaskDefinition resource.
 type FargateTaskDefinitionArgs struct {
-	Container  *TaskDefinitionContainerDefinition
-	Containers map[string]TaskDefinitionContainerDefinition
+	Container  *TaskDefinitionContainerDefinitionArgs
+	Containers map[string]TaskDefinitionContainerDefinitionArgs
 }
 
 func (FargateTaskDefinitionArgs) ElementType() reflect.Type {
@@ -127,6 +127,10 @@ func (o FargateTaskDefinitionOutput) ToFargateTaskDefinitionOutput() FargateTask
 
 func (o FargateTaskDefinitionOutput) ToFargateTaskDefinitionOutputWithContext(ctx context.Context) FargateTaskDefinitionOutput {
 	return o
+}
+
+func (o FargateTaskDefinitionOutput) LoadBalancers() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *FargateTaskDefinition) pulumi.StringArrayOutput { return v.LoadBalancers }).(pulumi.StringArrayOutput)
 }
 
 type FargateTaskDefinitionArrayOutput struct{ *pulumi.OutputState }

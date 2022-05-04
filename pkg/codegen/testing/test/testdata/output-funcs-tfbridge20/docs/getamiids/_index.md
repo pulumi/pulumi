@@ -26,7 +26,9 @@ arguments and either blocks until the result value is available, or
 returns a Promise-wrapped result. The output form accepts
 Input-wrapped arguments and returns an Output-wrapped result.
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -83,6 +85,25 @@ func </span>GetAmiIdsOutput<span class="p">(</span><span class="nx">ctx</span><s
     public static </span>Task&lt;<span class="nx"><a href="#result">GetAmiIdsResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">GetAmiIdsArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">GetAmiIdsResult</a></span>> <span class="p">Invoke(</span><span class="nx">GetAmiIdsInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static CompletableFuture&lt;<span class="nx"><a href="#result">GetAmiIdsResult</a></span>> </span>getAmiIds<span class="p">(</span><span class="nx">GetAmiIdsArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">InvokeOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<span class="c">// Output-based functions aren't available in Java yet</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
+<span class="k">&nbsp;&nbsp;Function:</span> mypkg:getAmiIds
+<span class="k">&nbsp;&nbsp;Arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -208,6 +229,64 @@ options to narrow down the list AWS returns.</p>
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="owners_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_java" style="color: inherit; text-decoration: inherit;">owners</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>List of AMI owners to limit search. At least 1 value must be specified. Valid values: an AWS account ID, <code>self</code> (the current account), or an AWS owner alias (e.g. <code>amazon</code>, <code>aws-marketplace</code>, <code>microsoft</code>).</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="executableusers_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_java" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>Limit search to users with <em>explicit</em> launch
+permission on  the image. Valid items are the numeric account ID or <code>self</code>.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="filters_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_java" style="color: inherit; text-decoration: inherit;">filters</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#getamiidsfilter">List<Get<wbr>Ami<wbr>Ids<wbr>Filter></a></span>
+    </dt>
+    <dd><p>One or more name/value pairs to filter off of. There
+are several valid keys, for a full reference, check out
+[describe-images in the AWS CLI reference][1].</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="nameregex_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_java" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>A regex string to apply to the AMI list returned
+by AWS. This allows more advanced filtering not supported from the AWS API.
+This filtering is done locally on what AWS returns, and could have a performance
+impact if the result is large. It is recommended to combine this with other
+options to narrow down the list AWS returns.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sortascending_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_java" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd><p>Used to sort AMIs by creation time.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -317,6 +396,64 @@ options to narrow down the list AWS returns.</p>
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
+    </dt>
+    <dd><p>Used to sort AMIs by creation time.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="owners_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_yaml" style="color: inherit; text-decoration: inherit;">owners</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>List of AMI owners to limit search. At least 1 value must be specified. Valid values: an AWS account ID, <code>self</code> (the current account), or an AWS owner alias (e.g. <code>amazon</code>, <code>aws-marketplace</code>, <code>microsoft</code>).</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="executableusers_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_yaml" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd><p>Limit search to users with <em>explicit</em> launch
+permission on  the image. Valid items are the numeric account ID or <code>self</code>.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="filters_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_yaml" style="color: inherit; text-decoration: inherit;">filters</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#getamiidsfilter">List<Property Map></a></span>
+    </dt>
+    <dd><p>One or more name/value pairs to filter off of. There
+are several valid keys, for a full reference, check out
+[describe-images in the AWS CLI reference][1].</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="nameregex_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>A regex string to apply to the AMI list returned
+by AWS. This allows more advanced filtering not supported from the AWS API.
+This filtering is done locally on what AWS returns, and could have a performance
+impact if the result is large. It is recommended to combine this with other
+options to narrow down the list AWS returns.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sortascending_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_yaml" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
     </dt>
     <dd><p>Used to sort AMIs by creation time.</p>
 </dd></dl>
@@ -459,6 +596,69 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="ids_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_java" style="color: inherit; text-decoration: inherit;">ids</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="owners_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_java" style="color: inherit; text-decoration: inherit;">owners</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="executableusers_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_java" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="filters_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_java" style="color: inherit; text-decoration: inherit;">filters</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#getamiidsfilter">List<Get<wbr>Ami<wbr>Ids<wbr>Filter></a></span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="nameregex_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_java" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="sortascending_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_java" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
@@ -584,6 +784,69 @@ The following output properties are available:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="ids_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#ids_yaml" style="color: inherit; text-decoration: inherit;">ids</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="owners_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#owners_yaml" style="color: inherit; text-decoration: inherit;">owners</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="executableusers_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#executableusers_yaml" style="color: inherit; text-decoration: inherit;">executable<wbr>Users</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="filters_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#filters_yaml" style="color: inherit; text-decoration: inherit;">filters</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#getamiidsfilter">List<Property Map></a></span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="nameregex_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nameregex_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Regex</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-"
+            title="">
+        <span id="sortascending_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sortascending_yaml" style="color: inherit; text-decoration: inherit;">sort<wbr>Ascending</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
 
 
 
@@ -639,6 +902,28 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="name_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="values_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_java" style="color: inherit; text-decoration: inherit;">values</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -677,6 +962,28 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Sequence[str]</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="name_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="values_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#values_yaml" style="color: inherit; text-decoration: inherit;">values</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List<String></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

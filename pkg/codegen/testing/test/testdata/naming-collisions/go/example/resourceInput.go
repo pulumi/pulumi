@@ -98,6 +98,10 @@ func (o ResourceInputResourceOutput) ToResourceInputResourceOutputWithContext(ct
 	return o
 }
 
+func (o ResourceInputResourceOutput) Bar() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *ResourceInputResource) pulumi.StringPtrOutput { return v.Bar }).(pulumi.StringPtrOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*ResourceInputResourceInput)(nil)).Elem(), &ResourceInputResource{})
 	pulumi.RegisterOutputType(ResourceInputResourceOutput{})

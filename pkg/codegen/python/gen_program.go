@@ -97,10 +97,12 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			return err
 		}
 
-		pyInfo := p.Language["python"].(PackageInfo)
-		packageName := p.Name
-		if pyInfo.PackageName != "" {
-			packageName = pyInfo.PackageName
+		packageName := "pulumi-" + p.Name
+		if langInfo, found := p.Language["python"]; found {
+			pyInfo, ok := langInfo.(PackageInfo)
+			if ok && pyInfo.PackageName != "" {
+				packageName = pyInfo.PackageName
+			}
 		}
 		requirementsTxt.WriteString(fmt.Sprintf("%s==%s\n", packageName, p.Version.String()))
 	}

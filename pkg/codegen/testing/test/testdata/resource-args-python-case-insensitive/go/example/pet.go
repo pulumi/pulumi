@@ -150,6 +150,10 @@ func (o PetOutput) ToPetOutputWithContext(ctx context.Context) PetOutput {
 	return o
 }
 
+func (o PetOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *Pet) pulumi.StringPtrOutput { return v.Name }).(pulumi.StringPtrOutput)
+}
+
 type PetArrayOutput struct{ *pulumi.OutputState }
 
 func (PetArrayOutput) ElementType() reflect.Type {

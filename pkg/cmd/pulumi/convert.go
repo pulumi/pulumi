@@ -20,14 +20,13 @@ import (
 
 	"github.com/spf13/cobra"
 
+	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -61,36 +60,15 @@ func newConvertCmd() *cobra.Command {
 				projectGenerator = nodejs.GenerateProject
 			case langPython:
 				projectGenerator = python.GenerateProject
+			case "yaml": // nolint: goconst
+				projectGenerator = yamlgen.GenerateProject
 			default:
 				return result.Errorf("cannot generate programs for %v", language)
 			}
 
-			parser := syntax.NewParser()
-			err := parser.ParseFile(os.Stdin, "<stdin>")
+			cwd, err := os.Getwd()
 			if err != nil {
-				return result.FromError(fmt.Errorf("could not read stdin: %w", err))
-			}
-			if parser.Diagnostics.HasErrors() {
-				return result.Errorf("could not parse input: %v", parser.Diagnostics)
-			}
-			pclProgram, diagnostics, err := pcl.BindProgram(parser.Files)
-			if err != nil {
-				return result.FromError(fmt.Errorf("could not bind input program: %w", err))
-			}
-			if diagnostics.HasErrors() {
-				return result.FromError(fmt.Errorf("could not bind input program: %v", diagnostics))
-			}
-
-			if projectName == "" {
-				return result.Errorf("Need to pass project name with --name")
-			}
-			if projectDescription == "" {
-				return result.Errorf("Need to pass project description with --description")
-			}
-
-			project := workspace.Project{
-				Name:        tokens.PackageName(projectName),
-				Description: &projectDescription,
+				return result.FromError(fmt.Errorf("could not resolve current working directory"))
 			}
 
 			if outDir != "." {
@@ -100,7 +78,12 @@ func newConvertCmd() *cobra.Command {
 				}
 			}
 
-			err = projectGenerator(outDir, project, pclProgram)
+			proj, pclProgram, err := yamlgen.Eject(cwd, nil)
+			if err != nil {
+				return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
+			}
+
+			err = projectGenerator(outDir, *proj, pclProgram)
 			if err != nil {
 				return result.FromError(fmt.Errorf("could not generate output program: %w", err))
 			}

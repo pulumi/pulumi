@@ -166,13 +166,19 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			return err
 		}
 
-		info := p.Language["nodejs"].(NodePackageInfo)
 		packageName := "@pulumi/" + p.Name
-		if info.PackageName != "" {
-			packageName = info.PackageName
+		if langInfo, found := p.Language["nodejs"]; found {
+			nodeInfo, ok := langInfo.(NodePackageInfo)
+			if ok && nodeInfo.PackageName != "" {
+				packageName = nodeInfo.PackageName
+			}
 		}
 		dependencyTemplate := ",\n			\"%s\": \"%s\""
-		packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, p.Version.String()))
+		if p.Version != nil {
+			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, p.Version.String()))
+		} else {
+			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, "*"))
+		}
 	}
 	packageJSON.WriteString(`
 		}

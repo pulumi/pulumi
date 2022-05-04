@@ -176,6 +176,18 @@ func (o ComponentOutput) ToComponentOutputWithContext(ctx context.Context) Compo
 	return o
 }
 
+func (o ComponentOutput) Provider() kubernetes.ProviderOutput {
+	return o.ApplyT(func(v *Component) kubernetes.ProviderOutput { return v.Provider }).(kubernetes.ProviderOutput)
+}
+
+func (o ComponentOutput) SecurityGroup() ec2.SecurityGroupOutput {
+	return o.ApplyT(func(v *Component) ec2.SecurityGroupOutput { return v.SecurityGroup }).(ec2.SecurityGroupOutput)
+}
+
+func (o ComponentOutput) StorageClasses() storagev1.StorageClassMapOutput {
+	return o.ApplyT(func(v *Component) storagev1.StorageClassMapOutput { return v.StorageClasses }).(storagev1.StorageClassMapOutput)
+}
+
 type ComponentArrayOutput struct{ *pulumi.OutputState }
 
 func (ComponentArrayOutput) ElementType() reflect.Type {

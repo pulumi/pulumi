@@ -148,6 +148,10 @@ func (o GodOutput) ToGodOutputWithContext(ctx context.Context) GodOutput {
 	return o
 }
 
+func (o GodOutput) Backwards() DogOutput {
+	return o.ApplyT(func(v *God) DogOutput { return v.Backwards }).(DogOutput)
+}
+
 type GodArrayOutput struct{ *pulumi.OutputState }
 
 func (GodArrayOutput) ElementType() reflect.Type {

@@ -25,7 +25,9 @@ arguments and either blocks until the result value is available, or
 returns a Promise-wrapped result. The output form accepts
 Input-wrapped arguments and returns an Output-wrapped result.
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -78,6 +80,25 @@ func </span>ListStorageAccountKeysOutput<span class="p">(</span><span class="nx"
     public static </span>Task&lt;<span class="nx"><a href="#result">ListStorageAccountKeysResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">ListStorageAccountKeysArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">ListStorageAccountKeysResult</a></span>> <span class="p">Invoke(</span><span class="nx">ListStorageAccountKeysInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static CompletableFuture&lt;<span class="nx"><a href="#result">ListStorageAccountKeysResult</a></span>> </span>listStorageAccountKeys<span class="p">(</span><span class="nx">ListStorageAccountKeysArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">InvokeOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<span class="c">// Output-based functions aren't available in Java yet</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
+<span class="k">&nbsp;&nbsp;Function:</span> mypkg:listStorageAccountKeys
+<span class="k">&nbsp;&nbsp;Arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -153,6 +174,39 @@ The following arguments are supported:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="accountname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#accountname_java" style="color: inherit; text-decoration: inherit;">account<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="resourcegroupname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_java" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="expand_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_java" style="color: inherit; text-decoration: inherit;">expand</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -218,6 +272,39 @@ The following arguments are supported:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="accountname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#accountname_yaml" style="color: inherit; text-decoration: inherit;">account<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="resourcegroupname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_yaml" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="expand_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_yaml" style="color: inherit; text-decoration: inherit;">expand</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
 
 
 
@@ -258,6 +345,21 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="keys_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keys_java" style="color: inherit; text-decoration: inherit;">keys</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#storageaccountkeyresponse">List<Storage<wbr>Account<wbr>Key<wbr>Response></a></span>
+    </dt>
+    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
@@ -281,6 +383,21 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">Sequence[Storage<wbr>Account<wbr>Key<wbr>Response]</a></span>
+    </dt>
+    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="keys_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keys_yaml" style="color: inherit; text-decoration: inherit;">keys</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#storageaccountkeyresponse">List<Property Map></a></span>
     </dt>
     <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
 </dd></dl>
@@ -382,6 +499,48 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="creationtime_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#creationtime_java" style="color: inherit; text-decoration: inherit;">creation<wbr>Time</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Creation time of the key, in round trip date format.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="keyname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_java" style="color: inherit; text-decoration: inherit;">key<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Name of the key.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="permissions_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_java" style="color: inherit; text-decoration: inherit;">permissions</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Permissions for the key -- read-only or full permissions.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="value_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Base 64-encoded value of the key.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -459,6 +618,48 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>Base 64-encoded value of the key.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="creationtime_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#creationtime_yaml" style="color: inherit; text-decoration: inherit;">creation<wbr>Time</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Creation time of the key, in round trip date format.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="keyname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_yaml" style="color: inherit; text-decoration: inherit;">key<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Name of the key.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="permissions_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_yaml" style="color: inherit; text-decoration: inherit;">permissions</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Permissions for the key -- read-only or full permissions.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="value_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>Base 64-encoded value of the key.</p>
 </dd></dl>
