@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+## 3.32.0 (2022-05-04)
+
+### Improvements
+
+- Pulumi Java support
+- Pulumi YAML support
+
 ## 3.31.1 (2022-05-03)
 
 ### Improvements
