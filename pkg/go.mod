@@ -6,6 +6,7 @@ replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
 	github.com/hashicorp/hcl/v2 => github.com/hashicorp/hcl/v2 v2.3.0
 	github.com/pulumi/pulumi/sdk/v3 => ../sdk
+	github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
 )
 
 require (
