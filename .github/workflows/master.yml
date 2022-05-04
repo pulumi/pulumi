@@ -157,7 +157,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -p 3 -f /tmp/.goreleaser.current.yml --skip-publish --skip-announce --skip-validate --rm-dist
+          args: -p 3 -f .goreleaser.prerelease.yml --rm-dist --skip-validate --skip-publish --skip-announce
       - name: Download pulumi-windows-checksums
         uses: actions/download-artifact@v2
         with:
