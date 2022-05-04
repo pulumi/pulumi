@@ -16,7 +16,9 @@ no_edit_this_page: true
 
 
 ## Create a Foo Resource {#create}
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -46,6 +48,25 @@ no_edit_this_page: true
 <div>
 <pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">? </span><span class="nx">args = null<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma">
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">example:Foo</span><span class="p"></span>
+<span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
+<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
+<span class="p"></span>
+</code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -159,13 +180,39 @@ no_edit_this_page: true
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="java">
+
+<dl class="resources-properties"><dt
+        class="property-required" title="Required">
+        <span>name</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd>The unique name of the resource.</dd><dt
+        class="property-required" title="Required">
+        <span>args</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#inputs">FooArgs</a></span>
+    </dt>
+    <dd>The arguments to resource properties.</dd><dt
+        class="property-optional" title="Optional">
+        <span>options</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">CustomResourceOptions</span>
+    </dt>
+    <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
+
+</pulumi-choosable>
+</div>
+
 ## Foo Resource Properties {#properties}
 
-To learn more about resource properties and how to use them, see [Inputs and Outputs]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) in the Architecture and Concepts docs.
+To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
 
-The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) properties:
+The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 
 
 
@@ -182,6 +229,12 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"></dl>
 </pulumi-choosable>
@@ -189,6 +242,12 @@ The Foo resource accepts the following [input]({{< relref "/docs/intro/concepts/
 
 <div>
 <pulumi-choosable type="language" values="python">
+<dl class="resources-properties"></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
 <dl class="resources-properties"></dl>
 </pulumi-choosable>
 </div>
@@ -231,6 +290,21 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
@@ -260,6 +334,21 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
 
 ## Foo Resource Methods {#methods}
 
@@ -272,7 +361,9 @@ A description of bar.
 
 #### Using Bar
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -524,6 +615,108 @@ The following arguments are supported:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="bar_arg_bazrequired_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_bazrequired_java" style="color: inherit; text-decoration: inherit;">baz<wbr>Required</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#baz">Baz</a></span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="bar_arg_boolvaluerequired_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvaluerequired_java" style="color: inherit; text-decoration: inherit;">bool<wbr>Value<wbr>Required</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="bar_arg_namerequired_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_namerequired_java" style="color: inherit; text-decoration: inherit;">name<wbr>Required</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="bar_arg_stringvaluerequired_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_java" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Required</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_baz_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_java" style="color: inherit; text-decoration: inherit;">baz</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#baz">Baz</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_bazplain_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_bazplain_java" style="color: inherit; text-decoration: inherit;">baz<wbr>Plain</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#baz">Baz</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_boolvalue_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvalue_java" style="color: inherit; text-decoration: inherit;">bool<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_boolvalueplain_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvalueplain_java" style="color: inherit; text-decoration: inherit;">bool<wbr>Value<wbr>Plain</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_name_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_java" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_nameplain_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_java" style="color: inherit; text-decoration: inherit;">name<wbr>Plain</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_stringvalue_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_java" style="color: inherit; text-decoration: inherit;">string<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_stringvalueplain_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalueplain_java" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Plain</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -727,6 +920,108 @@ The following arguments are supported:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="bar_arg_bazrequired_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_bazrequired_yaml" style="color: inherit; text-decoration: inherit;">baz<wbr>Required</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#baz">Property Map</a></span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="bar_arg_boolvaluerequired_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvaluerequired_yaml" style="color: inherit; text-decoration: inherit;">bool<wbr>Value<wbr>Required</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="bar_arg_namerequired_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_namerequired_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Required</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">random:Random<wbr>Pet</span>
+    </dt>
+    <dd></dd><dt class="property-required"
+            title="Required">
+        <span id="bar_arg_stringvaluerequired_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvaluerequired_yaml" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Required</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_baz_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_baz_yaml" style="color: inherit; text-decoration: inherit;">baz</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#baz">Property Map</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_bazplain_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_bazplain_yaml" style="color: inherit; text-decoration: inherit;">baz<wbr>Plain</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#baz">Property Map</a></span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_boolvalue_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvalue_yaml" style="color: inherit; text-decoration: inherit;">bool<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_boolvalueplain_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_boolvalueplain_yaml" style="color: inherit; text-decoration: inherit;">bool<wbr>Value<wbr>Plain</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_name_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_name_yaml" style="color: inherit; text-decoration: inherit;">name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">random:Random<wbr>Pet</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_nameplain_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_nameplain_yaml" style="color: inherit; text-decoration: inherit;">name<wbr>Plain</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">random:Random<wbr>Pet</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_stringvalue_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalue_yaml" style="color: inherit; text-decoration: inherit;">string<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="bar_arg_stringvalueplain_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_arg_stringvalueplain_yaml" style="color: inherit; text-decoration: inherit;">string<wbr>Value<wbr>Plain</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
 
 
 #### Bar Result {#method_Bar_result}
@@ -761,6 +1056,20 @@ The following arguments are supported:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="bar_result_somevalue_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_result_somevalue_java" style="color: inherit; text-decoration: inherit;">some<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
@@ -788,6 +1097,20 @@ The following arguments are supported:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="bar_result_somevalue_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_result_somevalue_yaml" style="color: inherit; text-decoration: inherit;">some<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
 
 
 ### Baz Method {#method_Baz}
@@ -796,7 +1119,9 @@ The following arguments are supported:
 
 #### Using Baz
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -839,7 +1164,9 @@ Do something with something else
 
 #### Using GenerateKubeconfig
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -904,6 +1231,20 @@ The following arguments are supported:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="generateKubeconfig_arg_boolvalue_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#generateKubeconfig_arg_boolvalue_java" style="color: inherit; text-decoration: inherit;">bool<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -926,6 +1267,20 @@ The following arguments are supported:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">bool</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="generateKubeconfig_arg_boolvalue_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#generateKubeconfig_arg_boolvalue_yaml" style="color: inherit; text-decoration: inherit;">bool<wbr>Value</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Boolean</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -965,6 +1320,20 @@ The following arguments are supported:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="generateKubeconfig_result_kubeconfig_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#generateKubeconfig_result_kubeconfig_java" style="color: inherit; text-decoration: inherit;">kubeconfig</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
@@ -987,6 +1356,20 @@ The following arguments are supported:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="generateKubeconfig_result_kubeconfig_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#generateKubeconfig_result_kubeconfig_yaml" style="color: inherit; text-decoration: inherit;">kubeconfig</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -1050,6 +1433,28 @@ The following arguments are supported:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="hello_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hello_java" style="color: inherit; text-decoration: inherit;">hello</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="world_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#world_java" style="color: inherit; text-decoration: inherit;">world</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-optional"
             title="Optional">
@@ -1088,6 +1493,28 @@ The following arguments are supported:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="hello_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#hello_yaml" style="color: inherit; text-decoration: inherit;">hello</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd></dd><dt class="property-optional"
+            title="Optional">
+        <span id="world_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#world_yaml" style="color: inherit; text-decoration: inherit;">world</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

@@ -17,7 +17,9 @@ no_edit_this_page: true
 
 ## Using getCustomDbRoles {#using}
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -61,6 +63,25 @@ no_edit_this_page: true
 </div>
 
 
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static CompletableFuture&lt;<span class="nx"><a href="#result">GetCustomDbRolesResult</a></span>> </span>getCustomDbRoles<span class="p">(</span><span class="nx">GetCustomDbRolesArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">InvokeOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<span class="c">// Output-based functions aren't available in Java yet</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
+<span class="k">&nbsp;&nbsp;Function:</span> mongodbatlas:getCustomDbRoles
+<span class="k">&nbsp;&nbsp;Arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
 
 The following arguments are supported:
 
@@ -78,6 +99,12 @@ The following arguments are supported:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"></dl>
 </pulumi-choosable>
@@ -85,6 +112,12 @@ The following arguments are supported:
 
 <div>
 <pulumi-choosable type="language" values="python">
+<dl class="resources-properties"></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
 <dl class="resources-properties"></dl>
 </pulumi-choosable>
 </div>
@@ -127,6 +160,20 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="result_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_java" style="color: inherit; text-decoration: inherit;">result</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
@@ -149,6 +196,20 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#getcustomdbrolesresult">Get<wbr>Custom<wbr>Db<wbr>Roles<wbr>Result</a></span>
+    </dt>
+    <dd></dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="result_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#result_yaml" style="color: inherit; text-decoration: inherit;">result</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#getcustomdbrolesresult">Property Map</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

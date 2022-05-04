@@ -164,6 +164,17 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 	if diags.HasErrors() {
 		return nil, diags
 	}
+	// Insert a version into the bound schema if the package does not provide one
+	if p.Version == nil {
+		if version == nil {
+			providerInfo, err := provider.GetPluginInfo()
+			if err == nil {
+				version = providerInfo.Version
+			}
+		}
+
+		p.Version = version
+	}
 
 	l.m.Lock()
 	defer l.m.Unlock()

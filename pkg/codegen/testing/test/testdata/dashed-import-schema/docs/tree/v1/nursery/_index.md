@@ -16,7 +16,9 @@ no_edit_this_page: true
 
 
 ## Create a Nursery Resource {#create}
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -48,6 +50,25 @@ no_edit_this_page: true
 <div>
 <pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">string</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">NurseryArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.CustomResourceOptions.html">CustomResourceOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma">
+<code class="language-java" data-lang="java"><span class="k">public </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">NurseryArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">)</span>
+<span class="k">public </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">String</span><span class="p"> </span><span class="nx">name<span class="p">,</span> <span class="nx"><a href="#inputs">NurseryArgs</a></span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">CustomResourceOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml">type: <span class="nx">plant:tree/v1:Nursery</span><span class="p"></span>
+<span class="p">properties</span><span class="p">: </span><span class="c">#&nbsp;The arguments to resource properties.</span>
+<span class="p"></span><span class="p">options</span><span class="p">: </span><span class="c">#&nbsp;Bag of options to control resource&#39;s behavior.</span>
+<span class="p"></span>
+</code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -161,13 +182,39 @@ no_edit_this_page: true
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="java">
+
+<dl class="resources-properties"><dt
+        class="property-required" title="Required">
+        <span>name</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd>The unique name of the resource.</dd><dt
+        class="property-required" title="Required">
+        <span>args</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#inputs">NurseryArgs</a></span>
+    </dt>
+    <dd>The arguments to resource properties.</dd><dt
+        class="property-optional" title="Optional">
+        <span>options</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">CustomResourceOptions</span>
+    </dt>
+    <dd>Bag of options to control resource&#39;s behavior.</dd></dl>
+
+</pulumi-choosable>
+</div>
+
 ## Nursery Resource Properties {#properties}
 
-To learn more about resource properties and how to use them, see [Inputs and Outputs]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) in the Architecture and Concepts docs.
+To learn more about resource properties and how to use them, see [Inputs and Outputs](/docs/intro/concepts/inputs-outputs) in the Architecture and Concepts docs.
 
 ### Inputs
 
-The Nursery resource accepts the following [input]({{< relref "/docs/intro/concepts/inputs-outputs" >}}) properties:
+The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-outputs) properties:
 
 
 
@@ -213,6 +260,30 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">map[string]Tree<wbr>Size</span>
+    </dt>
+    <dd><p>The sizes of trees available</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="varieties_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_java" style="color: inherit; text-decoration: inherit;">varieties</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#rubbertreevariety">List<Rubber<wbr>Tree<wbr>Variety></a></span>
+    </dt>
+    <dd><p>The varieties available</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sizes_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_java" style="color: inherit; text-decoration: inherit;">sizes</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Map<String,Tree<wbr>Size></span>
     </dt>
     <dd><p>The sizes of trees available</p>
 </dd></dl>
@@ -267,6 +338,30 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="varieties_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#varieties_yaml" style="color: inherit; text-decoration: inherit;">varieties</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#rubbertreevariety">List<"Burgundy" | "Ruby" | "Tineke"></a></span>
+    </dt>
+    <dd><p>The varieties available</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="sizes_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_yaml" style="color: inherit; text-decoration: inherit;">sizes</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Map<"small" | "medium" | "large"></span>
+    </dt>
+    <dd><p>The sizes of trees available</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
 
 ### Outputs
 
@@ -305,6 +400,21 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_java" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
@@ -328,6 +438,21 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>The provider-assigned unique ID for this managed resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="id_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#id_yaml" style="color: inherit; text-decoration: inherit;">id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>The provider-assigned unique ID for this managed resource.</p>
 </dd></dl>
@@ -371,6 +496,18 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="tabular"><dt>Burgundy</dt>
+    <dd>Burgundy<p>A burgundy rubber tree.</p>
+</dd><dt>Ruby</dt>
+    <dd>Ruby<p>A ruby rubber tree.</p>
+</dd><dt>Tineke</dt>
+    <dd>Tineke<p>A tineke rubber tree.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Burgundy</dt>
     <dd>Burgundy<p>A burgundy rubber tree.</p>
@@ -389,6 +526,18 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </dd><dt>RUBY</dt>
     <dd>Ruby<p>A ruby rubber tree.</p>
 </dd><dt>TINEKE</dt>
+    <dd>Tineke<p>A tineke rubber tree.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="tabular"><dt>"Burgundy"</dt>
+    <dd>Burgundy<p>A burgundy rubber tree.</p>
+</dd><dt>"Ruby"</dt>
+    <dd>Ruby<p>A ruby rubber tree.</p>
+</dd><dt>"Tineke"</dt>
     <dd>Tineke<p>A tineke rubber tree.</p>
 </dd></dl>
 </pulumi-choosable>
@@ -415,6 +564,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="tabular"><dt>Small</dt>
+    <dd>small</dd><dt>Medium</dt>
+    <dd>medium</dd><dt>Large</dt>
+    <dd>large</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Small</dt>
     <dd>small</dd><dt>Medium</dt>
@@ -428,6 +586,15 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <dl class="tabular"><dt>SMALL</dt>
     <dd>small</dd><dt>MEDIUM</dt>
     <dd>medium</dd><dt>LARGE</dt>
+    <dd>large</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="tabular"><dt>"small"</dt>
+    <dd>small</dd><dt>"medium"</dt>
+    <dd>medium</dd><dt>"large"</dt>
     <dd>large</dd></dl>
 </pulumi-choosable>
 </div>

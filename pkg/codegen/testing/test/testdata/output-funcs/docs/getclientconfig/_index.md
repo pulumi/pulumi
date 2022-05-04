@@ -19,7 +19,9 @@ Failing example taken from azure-native. Original doc: Use this function to acce
 
 ## Using getClientConfig {#using}
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -59,6 +61,25 @@ Failing example taken from azure-native. Original doc: Use this function to acce
 {</span><span class="k">
     public static </span>Task&lt;<span class="nx"><a href="#result">GetClientConfigResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static CompletableFuture&lt;<span class="nx"><a href="#result">GetClientConfigResult</a></span>> </span>getClientConfig<span class="p">(</span><span class="nx">InvokeOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<span class="c">// Output-based functions aren't available in Java yet</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
+<span class="k">&nbsp;&nbsp;Function:</span> mypkg:getClientConfig
+<span class="k">&nbsp;&nbsp;Arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -156,6 +177,48 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="clientid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#clientid_java" style="color: inherit; text-decoration: inherit;">client<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Azure Client ID (Application Object ID).</p>
+</dd><dt class="property-"
+            title="">
+        <span id="objectid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#objectid_java" style="color: inherit; text-decoration: inherit;">object<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Azure Object ID of the current user or service principal.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="subscriptionid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#subscriptionid_java" style="color: inherit; text-decoration: inherit;">subscription<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Azure Subscription ID</p>
+</dd><dt class="property-"
+            title="">
+        <span id="tenantid_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#tenantid_java" style="color: inherit; text-decoration: inherit;">tenant<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Azure Tenant ID</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
@@ -233,6 +296,48 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>Azure Tenant ID</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="clientid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#clientid_yaml" style="color: inherit; text-decoration: inherit;">client<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Azure Client ID (Application Object ID).</p>
+</dd><dt class="property-"
+            title="">
+        <span id="objectid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#objectid_yaml" style="color: inherit; text-decoration: inherit;">object<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Azure Object ID of the current user or service principal.</p>
+</dd><dt class="property-"
+            title="">
+        <span id="subscriptionid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#subscriptionid_yaml" style="color: inherit; text-decoration: inherit;">subscription<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Azure Subscription ID</p>
+</dd><dt class="property-"
+            title="">
+        <span id="tenantid_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#tenantid_yaml" style="color: inherit; text-decoration: inherit;">tenant<wbr>Id</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>Azure Tenant ID</p>
 </dd></dl>

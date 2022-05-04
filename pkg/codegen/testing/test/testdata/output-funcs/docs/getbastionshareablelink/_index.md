@@ -25,7 +25,9 @@ arguments and either blocks until the result value is available, or
 returns a Promise-wrapped result. The output form accepts
 Input-wrapped arguments and returns an Output-wrapped result.
 
-{{< chooser language "typescript,python,go,csharp" / >}}
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
 
 
 <div>
@@ -78,6 +80,25 @@ func </span>GetBastionShareableLinkOutput<span class="p">(</span><span class="nx
     public static </span>Task&lt;<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">GetBastionShareableLinkArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
     public static </span>Output&lt;<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>> <span class="p">Invoke(</span><span class="nx">GetBastionShareableLinkInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="k">public static CompletableFuture&lt;<span class="nx"><a href="#result">GetBastionShareableLinkResult</a></span>> </span>getBastionShareableLink<span class="p">(</span><span class="nx">GetBastionShareableLinkArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx">InvokeOptions</span><span class="p"> </span><span class="nx">options<span class="p">)</span>
+<span class="c">// Output-based functions aren't available in Java yet</span>
+</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="java">
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
+<span class="k">&nbsp;&nbsp;Function:</span> mypkg:getBastionShareableLink
+<span class="k">&nbsp;&nbsp;Arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -153,6 +174,39 @@ The following arguments are supported:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="bastionhostname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_java" style="color: inherit; text-decoration: inherit;">bastion<wbr>Host<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The name of the Bastion Host.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="resourcegroupname_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_java" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The name of the resource group.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="vms_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_java" style="color: inherit; text-decoration: inherit;">vms</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#bastionshareablelink">List<Bastion<wbr>Shareable<wbr>Link></a></span>
+    </dt>
+    <dd><p>List of VM references.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -218,6 +272,39 @@ The following arguments are supported:
 </pulumi-choosable>
 </div>
 
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="bastionhostname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bastionhostname_yaml" style="color: inherit; text-decoration: inherit;">bastion<wbr>Host<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The name of the Bastion Host.</p>
+</dd><dt class="property-required"
+            title="Required">
+        <span id="resourcegroupname_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_yaml" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The name of the resource group.</p>
+</dd><dt class="property-optional"
+            title="Optional">
+        <span id="vms_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vms_yaml" style="color: inherit; text-decoration: inherit;">vms</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type"><a href="#bastionshareablelink">List<Property Map></a></span>
+    </dt>
+    <dd><p>List of VM references.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
 
 
 
@@ -258,6 +345,21 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="nextlink_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_java" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>The URL to get the next set of results.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-"
             title="">
@@ -281,6 +383,21 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>The URL to get the next set of results.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-"
+            title="">
+        <span id="nextlink_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#nextlink_yaml" style="color: inherit; text-decoration: inherit;">next<wbr>Link</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>The URL to get the next set of results.</p>
 </dd></dl>
@@ -328,6 +445,21 @@ The following output properties are available:
 </div>
 
 <div>
+<pulumi-choosable type="language" values="java">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="vm_java">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_java" style="color: inherit; text-decoration: inherit;">vm</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
+    </dt>
+    <dd><p>Reference of the virtual machine resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
 <pulumi-choosable type="language" values="javascript,typescript">
 <dl class="resources-properties"><dt class="property-required"
             title="Required">
@@ -351,6 +483,21 @@ The following output properties are available:
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
+    </dt>
+    <dd><p>Reference of the virtual machine resource.</p>
+</dd></dl>
+</pulumi-choosable>
+</div>
+
+<div>
+<pulumi-choosable type="language" values="yaml">
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="vm_yaml">
+<a data-swiftype-name="resource-property" data-swiftype-type="text" href="#vm_yaml" style="color: inherit; text-decoration: inherit;">vm</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">String</span>
     </dt>
     <dd><p>Reference of the virtual machine resource.</p>
 </dd></dl>

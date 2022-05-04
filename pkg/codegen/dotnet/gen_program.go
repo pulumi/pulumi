@@ -166,9 +166,14 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			return err
 		}
 
-		csharpInfo := p.Language["csharp"].(CSharpPackageInfo)
-		namespace := namespaceName(csharpInfo.Namespaces, p.Name)
-		packageName := fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
+		packageName := fmt.Sprintf("Pulumi.%s", namespaceName(map[string]string{}, p.Name))
+		if langInfo, found := p.Language["csharp"]; found {
+			csharpInfo, ok := langInfo.(CSharpPackageInfo)
+			if ok {
+				namespace := namespaceName(csharpInfo.Namespaces, p.Name)
+				packageName = fmt.Sprintf("%s.%s", csharpInfo.GetRootNamespace(), namespace)
+			}
+		}
 		csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, p.Version.String()))
 	}
 
