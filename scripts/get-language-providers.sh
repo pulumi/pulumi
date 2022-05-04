@@ -14,13 +14,29 @@ for i in "java v0.1.0" "yaml v0.3.0"; do
   cd "${LANG_DIST}"
 
   rm -rf ./*
-  gh release download "${TAG}" --repo "pulumi/pulumi-${PULUMI_LANG}"
+
+  # Currently avoiding a dependency on GH CLI in favor of curl, so
+  # that this script works in the context of the Brew formula:
+  #
+  # https://github.com/Homebrew/homebrew-core/blob/master/Formula/pulumi.rb
+  #
+  # Formerly:
+  #
+  # gh release download "${TAG}" --repo "pulumi/pulumi-${PULUMI_LANG}"
 
   for DIST_OS in darwin linux windows; do
     for i in "amd64 x64" "arm64 arm64"; do
       set -- $i # treat strings in loop as args
       DIST_ARCH="$1"
       RENAMED_ARCH="$2" # goreleaser in pulumi/pulumi renames amd64 to x64
+
+      ARCHIVE="pulumi-language-${PULUMI_LANG}-${TAG}-${DIST_OS}-${DIST_ARCH}"
+
+      # No consistency on whether Windows archives use .zip or
+      # .tar.gz, try both.
+
+      curl -OL --fail "https://github.com/pulumi/pulumi-${PULUMI_LANG}/releases/download/${TAG}/${ARCHIVE}.tar.gz" || echo "ignoring download"
+      curl -OL --fail "https://github.com/pulumi/pulumi-${PULUMI_LANG}/releases/download/${TAG}/${ARCHIVE}.zip" || echo "ignoring download"
 
       OUTDIR="$DIST_OS-$RENAMED_ARCH"
 
