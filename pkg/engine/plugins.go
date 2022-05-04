@@ -173,6 +173,18 @@ func installPlugin(plugin workspace.PluginInfo) error {
 		return nil
 	}
 
+	// If we don't have a version yet try and call GetLatestVersion to fill it in
+	if plugin.Version == nil {
+		logging.V(preparePluginVerboseLog).Infof(
+			"installPlugin(%s): version not specified, trying to lookup latest version", plugin.Name)
+
+		version, err := plugin.GetLatestVersion()
+		if err != nil {
+			return fmt.Errorf("could not get latest version for plugin %s: %w", plugin.Name, err)
+		}
+		plugin.Version = version
+	}
+
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
 	stream, size, err := plugin.Download()
