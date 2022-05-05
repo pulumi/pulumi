@@ -15,6 +15,8 @@
 package workspace
 
 import (
+	cryptorand "crypto/rand"
+	"encoding/base64"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -131,8 +133,16 @@ func (singleton *projectStackLoader) load(path string) (*ProjectStack, error) {
 	var projectStack ProjectStack
 	b, err := readFileStripUTF8BOM(path)
 	if os.IsNotExist(err) {
+		entropyBytes := make([]byte, 64)
+		_, err := cryptorand.Read(entropyBytes)
+		if err != nil {
+			return nil, err
+		}
+		entropy := base64.StdEncoding.EncodeToString(entropyBytes)
+
 		projectStack = ProjectStack{
-			Config: make(config.Map),
+			Entropy: entropy,
+			Config:  make(config.Map),
 		}
 		singleton.internal[path] = &projectStack
 		return &projectStack, nil
