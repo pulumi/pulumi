@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passthrough"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -54,6 +55,9 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 
 	sm, err := func() (secrets.Manager, error) {
 		if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
+			if ps.SecretsProvider == passthrough.Type {
+				return newPassthroughSecretsManager(s.Ref().Name(), stackConfigFile)
+			}
 			return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
 		}
 
@@ -80,7 +84,7 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 
 func validateSecretsProvider(typ string) error {
 	kind := strings.SplitN(typ, ":", 2)[0]
-	supportedKinds := []string{"default", "passphrase", "awskms", "azurekeyvault", "gcpkms", "hashivault"}
+	supportedKinds := []string{"default", "passphrase", "awskms", "azurekeyvault", "gcpkms", "hashivault", "passthrough"}
 	for _, supportedKind := range supportedKinds {
 		if kind == supportedKind {
 			return nil

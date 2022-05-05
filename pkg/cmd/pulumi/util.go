@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passthrough"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -175,9 +176,13 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 	}
 
 	if secretsProvider == passphrase.Type {
-		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile,
-			rotatePassphraseSecretsProvider); pharseErr != nil {
-			return pharseErr
+		if _, phraseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile,
+			rotatePassphraseSecretsProvider); phraseErr != nil {
+			return phraseErr
+		}
+	} else if secretsProvider == passthrough.Type {
+		if _, secretsErr := newPassthroughSecretsManager(stackRef.Name(), stackConfigFile); secretsErr != nil {
+			return secretsErr
 		}
 	} else if !isDefaultSecretsProvider {
 		// All other non-default secrets providers are handled by the cloud secrets provider which

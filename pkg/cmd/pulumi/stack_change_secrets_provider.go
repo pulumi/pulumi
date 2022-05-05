@@ -34,7 +34,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Change the secrets provider for the current stack",
 		Long: "Change the secrets provider for the current stack. " +
-			"Valid secret providers types are `default`, `passphrase`, `awskms`, `azurekeyvault`, `gcpkms`, `hashivault`.\n\n" +
+			"Valid secret providers types are `default`, `passphrase`, `awskms`, `azurekeyvault`, `gcpkms`, `hashivault`, 'passthrough'.\n\n" +
 			"To change to using the Pulumi Default Secrets Provider, use the following:\n" +
 			"\n" +
 			"pulumi stack change-secrets-provider default" +

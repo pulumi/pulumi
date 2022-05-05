@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passthrough"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -49,6 +50,8 @@ func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.
 	switch ty {
 	case b64.Type:
 		sm = b64.NewBase64SecretsManager()
+	case passthrough.Type:
+		sm = passthrough.NewPassthroughSecretsManager()
 	case passphrase.Type:
 		sm, err = passphrase.NewPromptingPassphaseSecretsManagerFromState(state)
 	case service.Type:

@@ -230,6 +230,13 @@ func PromptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 		if err != nil {
 			return "", nil, err
 		}
+		if first == "" {
+			// Warn that empty passwords should probably use 'passthrough' instead, but give a work around if
+			// they really want an empty password.
+			cmdutil.Diag().Warningf(diag.Message("", "empty passphrases are not recommended, "+
+				"you probably want to use --secret-provider=passthrough."))
+		}
+
 		secondMessage := "Re-enter your passphrase to confirm"
 		if rotate {
 			secondMessage = "Re-enter your new passphrase to confirm"
