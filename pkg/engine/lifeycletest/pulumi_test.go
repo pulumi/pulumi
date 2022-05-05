@@ -185,7 +185,8 @@ func TestCheckFailureRecord(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap,
+					sequenceNumber int, entropy []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, nil, errors.New("oh no, check had an error")
 				},
 			}, nil
@@ -234,7 +235,8 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap,
+					sequenceNumber int, entropy []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, []plugin.CheckFailure{{
 						Property: "someprop",
 						Reason:   "field is not valid",
@@ -2950,7 +2952,7 @@ func TestProviderDeterministicPreview(t *testing.T) {
 				CheckF: func(
 					urn resource.URN,
 					olds, news resource.PropertyMap,
-					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					sequenceNumber int, entropy []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					// make a deterministic autoname
 					if _, has := news["name"]; !has {
 						if name, has := olds["name"]; has {
@@ -3061,7 +3063,7 @@ func TestSequenceNumberResetsAfterReplace(t *testing.T) {
 				CheckF: func(
 					urn resource.URN,
 					olds, news resource.PropertyMap,
-					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					sequenceNumber int, entropy []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					news["name"] = names[sequenceNumber]
 					return news, nil, nil
 				},
@@ -4507,7 +4509,7 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 					return news, resource.StatusOK, nil
 				},
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap, _ int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap, _ int, _ []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 					// If we have name use it, else use olds name, else make one up
 					if _, has := news["name"]; has {
@@ -4752,7 +4754,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 					return news, resource.StatusOK, nil
 				},
 				CheckF: func(urn resource.URN, olds, news resource.PropertyMap,
-					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					sequenceNumber int, entropy []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					if news["foo"].StringValue() == "bad" {
 						return nil, []plugin.CheckFailure{
 							{Property: resource.PropertyKey("foo"), Reason: "Bad foo"},

@@ -168,6 +168,7 @@ func NewUniqueString(entropy []byte, prefix string, randlen, maxlen int, randcha
 	hasher := crypto.SHA512.New()
 	hasher.Write(entropy)
 	source := &hashSource{hasher: hasher}
+	// nolint: gosec
 	rand := rand.New(source)
 
 	b := make([]rune, randlen)

@@ -36,7 +36,7 @@ type Target struct {
 // Build the entropy for a resource call, this is a 512 bit hash of the stack entropy, the urn and the sequence number
 func (t *Target) GetEntropy(urn resource.URN, sequenceNumber int) []byte {
 	hasher := crypto.SHA512.New()
-	_, err := hasher.Write([]byte(t.Entropy))
+	_, err := hasher.Write(t.Entropy)
 	contract.AssertNoError(err)
 	_, err = hasher.Write([]byte(urn))
 	contract.AssertNoError(err)

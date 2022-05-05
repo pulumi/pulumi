@@ -809,7 +809,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 				},
 				CheckF: func(
 					urn resource.URN, olds, news resource.PropertyMap,
-					sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					sequenceNumber int, entropy []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					// Error unless "foo" and "frob" are in news
 
 					if _, has := news["foo"]; !has {
