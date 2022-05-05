@@ -160,6 +160,7 @@ message CheckRequest {
     google.protobuf.Struct olds = 2; // the old Pulumi inputs for this resource, if any.
     google.protobuf.Struct news = 3; // the new Pulumi inputs for this resource.
     int32 sequenceNumber = 4;        // the sequence number for this resource, or 0 if sequence is unknown.
+    bytes entropy = 5;               // the entropy for this resource, a function of stack entropy the resource urn and sequence number.
 }
 
 message CheckResponse {
