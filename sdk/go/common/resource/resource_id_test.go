@@ -198,3 +198,48 @@ func TestNewUniqueV2HexDeterminism(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEqual(t, id2, id3)
 }
+
+func TestNewUniqueStringDefaults(t *testing.T) {
+	t.Parallel()
+
+	entropy := []byte{1, 2, 3, 4}
+	prefix := "prefix"
+	id, err := NewUniqueString(entropy, prefix, -1, -1, nil)
+	assert.Nil(t, err)
+	assert.Equal(t, len(prefix)+8, len(id))
+	assert.Equal(t, true, strings.HasPrefix(id, prefix))
+}
+
+func TestNewUniqueStringDeterminism(t *testing.T) {
+	t.Parallel()
+
+	entropy := []byte{1, 2, 3, 4}
+	prefix := "prefix"
+	randlen := 8
+	maxlen := 100
+	id1, err := NewUniqueString(entropy, prefix, randlen, maxlen, nil)
+	assert.Nil(t, err)
+	id2, err := NewUniqueString(entropy, prefix, randlen, maxlen, nil)
+	assert.Nil(t, err)
+	assert.Equal(t, id1, id2)
+	differntEntropy := []byte{4, 3, 2, 1}
+	id3, err := NewUniqueString(differntEntropy, prefix, randlen, maxlen, nil)
+	assert.Nil(t, err)
+	assert.NotEqual(t, id2, id3)
+}
+
+func TestNewUniqueStringRandChars(t *testing.T) {
+	t.Parallel()
+
+	entropy := []byte{1, 2, 3, 4}
+	prefix := "prefix"
+	randchars := []rune("xyz")
+	id, err := NewUniqueString(entropy, prefix, -1, -1, randchars)
+	assert.Nil(t, err)
+	assert.Equal(t, "prefixyxxzyzxx", id)
+
+	differntEntropy := []byte{4, 3, 2, 1}
+	id, err = NewUniqueString(differntEntropy, prefix, -1, -1, randchars)
+	assert.Nil(t, err)
+	assert.Equal(t, "prefixyzyxzyxx", id)
+}
