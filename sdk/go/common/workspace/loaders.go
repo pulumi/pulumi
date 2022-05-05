@@ -159,6 +159,22 @@ func (singleton *projectStackLoader) load(path string) (*ProjectStack, error) {
 		projectStack.Config = make(config.Map)
 	}
 
+	if projectStack.Entropy == "" {
+		entropyBytes := make([]byte, 64)
+		_, err := cryptorand.Read(entropyBytes)
+		if err != nil {
+			return nil, err
+		}
+		entropy := base64.StdEncoding.EncodeToString(entropyBytes)
+
+		projectStack.Entropy = entropy
+		// Make sure we save this entropy
+		err = projectStack.Save(path)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	singleton.internal[path] = &projectStack
 	return &projectStack, nil
 }
