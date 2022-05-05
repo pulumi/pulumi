@@ -244,6 +244,7 @@ type QueryOperation struct {
 type StackConfiguration struct {
 	Config    config.Map
 	Decrypter config.Decrypter
+	Entropy   []byte
 }
 
 // UpdateOptions is the full set of update options, including backend and engine options.

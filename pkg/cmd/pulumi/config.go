@@ -15,6 +15,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -918,11 +919,17 @@ func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.Sta
 		return backend.StackConfiguration{}, fmt.Errorf("loading stack configuration: %w", err)
 	}
 
+	entropy, err := base64.StdEncoding.DecodeString(workspaceStack.Entropy)
+	if err != nil {
+		return backend.StackConfiguration{}, fmt.Errorf("getting configuration entropy: %w", err)
+	}
+
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
 	// the correct decrypter for the local backend would involve prompting for a passphrase)
 	if !workspaceStack.Config.HasSecureValue() {
 		return backend.StackConfiguration{
+			Entropy:   entropy,
 			Config:    workspaceStack.Config,
 			Decrypter: config.NewPanicCrypter(),
 		}, nil
@@ -934,6 +941,7 @@ func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.Sta
 	}
 
 	return backend.StackConfiguration{
+		Entropy:   entropy,
 		Config:    workspaceStack.Config,
 		Decrypter: crypter,
 	}, nil

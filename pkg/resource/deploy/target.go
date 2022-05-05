@@ -15,9 +15,13 @@
 package deploy
 
 import (
+	"crypto"
+	"encoding/binary"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Target represents information about a deployment target.
@@ -26,6 +30,21 @@ type Target struct {
 	Config    config.Map       // optional configuration key/value pairs.
 	Decrypter config.Decrypter // decrypter for secret configuration values.
 	Snapshot  *Snapshot        // the last snapshot deployed to the target.
+	Entropy   []byte           // the entropy for this target.
+}
+
+// Build the entropy for a resource call, this is a 512 bit hash of the stack entropy, the urn and the sequence number
+func (t *Target) GetEntropy(urn resource.URN, sequenceNumber int) []byte {
+	hasher := crypto.SHA512.New()
+	_, err := hasher.Write([]byte(t.Entropy))
+	contract.AssertNoError(err)
+	_, err = hasher.Write([]byte(urn))
+	contract.AssertNoError(err)
+	err = binary.Write(hasher, binary.LittleEndian, uint32(sequenceNumber))
+	contract.AssertNoError(err)
+	entropy := hasher.Sum(nil)
+	contract.Assert(len(entropy) == 64)
+	return entropy
 }
 
 // GetPackageConfig returns the set of configuration parameters for the indicated package, if any.

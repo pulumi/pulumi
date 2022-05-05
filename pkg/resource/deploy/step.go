@@ -928,6 +928,8 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID,
 		s.new.SequenceNumber, s.new.RetainOnDelete)
 
+	entropy := s.deployment.target.GetEntropy(s.new.URN, s.new.SequenceNumber)
+
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {
 		contract.Assert(len(s.new.Inputs) == 0)
@@ -957,7 +959,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Check the provider inputs for consistency. If the inputs fail validation, the import will still succeed, but
 		// we will display the validation failures and a message informing the user that the failures are almost
 		// definitely a provider bug.
-		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber)
+		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber, entropy)
 		if err != nil {
 			return rst, nil, err
 		}
@@ -997,7 +999,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.new.Inputs = processedInputs
 
 	// Check the inputs using the provider inputs for defaults.
-	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber)
+	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber, entropy)
 	if err != nil {
 		return rst, nil, err
 	}

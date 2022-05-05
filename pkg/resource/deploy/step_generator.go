@@ -444,14 +444,14 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				}
 			}
 
-			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns, checkNumber)
+			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns, checkNumber, sg.deployment.target.GetEntropy(urn, checkNumber))
 		} else {
 			checkNumber := new.SequenceNumber
 			// We don't want to call check with -1, that's just an internal state file marker
 			if checkNumber == -1 {
 				checkNumber = 0
 			}
-			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, checkNumber)
+			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, checkNumber, sg.deployment.target.GetEntropy(urn, checkNumber))
 		}
 
 		if err != nil {
@@ -757,7 +757,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 				}
 
 				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, checkNumber)
+				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, checkNumber, sg.deployment.target.GetEntropy(urn, checkNumber))
 				if err != nil {
 					return nil, result.FromError(err)
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {

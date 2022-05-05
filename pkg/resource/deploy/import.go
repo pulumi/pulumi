@@ -248,7 +248,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if url := req.PluginDownloadURL(); url != "" {
 			providers.SetProviderURL(inputs, url)
 		}
-		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, 0)
+		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, 0, nil)
 		if err != nil {
 			return nil, result.Errorf("failed to validate provider config: %v", err), false
 		}

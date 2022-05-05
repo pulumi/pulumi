@@ -189,8 +189,8 @@ type ProjectStack struct {
 	// EncryptionSalt is this stack's base64 encoded encryption salt.  Only used for
 	// passphrase-based secrets providers.
 	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
-	// EntropySeed is a randomly generated base64 encoded string used as an entropy source for pseudo-random operations.
-	EntropySeed string `json:"entropyseed,omitempty" yaml:"entropyseed,omitempty"`
+	// Entropy is a randomly generated base64 encoded string used as an entropy source for pseudo-random operations.
+	Entropy string `json:"entropy,omitempty" yaml:"entropy,omitempty"`
 	// Config is an optional config bag.
 	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
 }
