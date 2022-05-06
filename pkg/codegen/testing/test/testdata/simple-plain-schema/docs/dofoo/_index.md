@@ -74,7 +74,7 @@ no_edit_this_page: true
 
 
 <div>
-<pulumi-choosable type="language" values="java">
+<pulumi-choosable type="language" values="yaml">
 <div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
 <span class="k">&nbsp;&nbsp;Function:</span> example:doFoo
 <span class="k">&nbsp;&nbsp;Arguments:</span>

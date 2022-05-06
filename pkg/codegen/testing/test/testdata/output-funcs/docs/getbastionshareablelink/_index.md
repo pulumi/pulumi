@@ -94,7 +94,7 @@ func </span>GetBastionShareableLinkOutput<span class="p">(</span><span class="nx
 
 
 <div>
-<pulumi-choosable type="language" values="java">
+<pulumi-choosable type="language" values="yaml">
 <div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
 <span class="k">&nbsp;&nbsp;Function:</span> mypkg:getBastionShareableLink
 <span class="k">&nbsp;&nbsp;Arguments:</span>
