@@ -96,7 +96,7 @@ func </span>GetIntegrationRuntimeObjectMetadatumOutput<span class="p">(</span><s
 
 
 <div>
-<pulumi-choosable type="language" values="java">
+<pulumi-choosable type="language" values="yaml">
 <div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
 <span class="k">&nbsp;&nbsp;Function:</span> mypkg:getIntegrationRuntimeObjectMetadatum
 <span class="k">&nbsp;&nbsp;Arguments:</span>

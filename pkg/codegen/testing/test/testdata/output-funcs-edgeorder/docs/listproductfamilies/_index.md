@@ -96,7 +96,7 @@ func </span>ListProductFamiliesOutput<span class="p">(</span><span class="nx">ct
 
 
 <div>
-<pulumi-choosable type="language" values="java">
+<pulumi-choosable type="language" values="yaml">
 <div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
 <span class="k">&nbsp;&nbsp;Function:</span> myedgeorder:listProductFamilies
 <span class="k">&nbsp;&nbsp;Arguments:</span>
