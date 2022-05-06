@@ -16,7 +16,7 @@ import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransformation } from "../resource";
-import { getRootResource, isDryRun, isQueryMode } from "./settings";
+import { isDryRun, isQueryMode } from "./settings";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -27,6 +27,8 @@ export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
 // The stack resource needs to be a a true global, so that if we end up with multiple Pulumi modules loaded they all resolve to the same variable.
 declare global {
+    // globals have to be vars
+    // eslint-disable-next-line no-var
     var stackResource: Stack | undefined;
 }
 
@@ -76,7 +78,7 @@ class Stack extends ComponentResource<Inputs> {
         }
 
         // Set the global reference to the stack resource before invoking this init() function
-        globalThis.stackResource = this
+        globalThis.stackResource = this;
 
         let outputs: Inputs | undefined;
         try {

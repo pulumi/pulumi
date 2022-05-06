@@ -433,7 +433,7 @@ export function rpcKeepAlive(): () => void {
  * can be used to ensure that all resources without explicit parents are parented to a common parent resource.
  */
 export async function getRootResource(): Promise<URN | undefined> {
-    var stack = globalThis.stackResource;
+    const stack = globalThis.stackResource;
     if (stack === undefined) {
         return undefined;
     }
