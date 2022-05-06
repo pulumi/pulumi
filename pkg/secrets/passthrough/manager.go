@@ -31,19 +31,5 @@ type manager struct{}
 
 func (m *manager) Type() string                         { return Type }
 func (m *manager) State() interface{}                   { return map[string]string{} }
-func (m *manager) Encrypter() (config.Encrypter, error) { return &passthroughCrypter{}, nil }
-func (m *manager) Decrypter() (config.Decrypter, error) { return &passthroughCrypter{}, nil }
-
-type passthroughCrypter struct{}
-
-func (c *passthroughCrypter) EncryptValue(s string) (string, error) {
-	return s, nil
-}
-
-func (c *passthroughCrypter) DecryptValue(s string) (string, error) {
-	return s, nil
-}
-
-func (c *passthroughCrypter) BulkDecrypt(ciphertexts []string) (map[string]string, error) {
-	return config.DefaultBulkDecrypt(c, ciphertexts)
-}
+func (m *manager) Encrypter() (config.Encrypter, error) { return config.NopEncrypter, nil }
+func (m *manager) Decrypter() (config.Decrypter, error) { return config.NopDecrypter, nil }
