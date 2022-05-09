@@ -299,6 +299,7 @@ type types struct {
 	optionals map[Type]*OptionalType
 }
 
+//nolint: goconst
 func (t *types) bindPrimitiveType(path, name string) (Type, hcl.Diagnostics) {
 	switch name {
 	case "boolean":
