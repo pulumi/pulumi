@@ -179,17 +179,18 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 
 	// Create a type binder.
 	types := &types{
-		pkg:       pkg,
-		spec:      &spec,
-		loader:    loader,
-		typeDefs:  map[string]Type{},
-		resources: map[string]*ResourceType{},
-		arrays:    map[Type]*ArrayType{},
-		maps:      map[Type]*MapType{},
-		unions:    map[string]*UnionType{},
-		tokens:    map[string]*TokenType{},
-		inputs:    map[Type]*InputType{},
-		optionals: map[Type]*OptionalType{},
+		pkg:          pkg,
+		spec:         &spec,
+		loader:       loader,
+		typeDefs:     map[string]Type{},
+		functionDefs: map[string]*Function{},
+		resources:    map[string]*ResourceType{},
+		arrays:       map[Type]*ArrayType{},
+		maps:         map[Type]*MapType{},
+		unions:       map[string]*UnionType{},
+		tokens:       map[string]*TokenType{},
+		inputs:       map[Type]*InputType{},
+		optionals:    map[Type]*OptionalType{},
 	}
 
 	config, configDiags, err := bindConfig(spec.Config, types)
@@ -198,32 +199,29 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	}
 	diags = diags.Extend(configDiags)
 
-	functions, functionTable, functionDiags, err := bindFunctions(spec.Functions, types)
-	if err != nil {
-		return nil, nil, err
-	}
-	diags = diags.Extend(functionDiags)
-
-	provider, providerDiags, err := bindProvider(spec.Name, spec.Provider, types, functionTable)
+	provider, providerDiags, err := bindProvider(spec.Name, spec.Provider, types)
 	if err != nil {
 		return nil, nil, err
 	}
 	diags = diags.Extend(providerDiags)
 
-	resources, resourceTable, resourceDiags, err := bindResources(spec.Resources, types, functionTable)
+	resources, resourceTable, resourceDiags, err := bindResources(spec.Resources, types)
 	if err != nil {
 		return nil, nil, err
 	}
 	diags = diags.Extend(resourceDiags)
 
-	// Ensure all of the types defined by the package are bound.
-	for token := range spec.Types {
-		_, typeDiags, err := types.bindTypeDef(token)
-		if err != nil {
-			return nil, nil, err
-		}
-		diags = diags.Extend(typeDiags)
+	typeDiags, err := types.finishTypes()
+	if err != nil {
+		return nil, nil, err
 	}
+	diags = diags.Extend(typeDiags)
+
+	functions, functionDiags, err := types.finishFunctions()
+	if err != nil {
+		return nil, nil, err
+	}
+	diags = diags.Extend(functionDiags)
 
 	// Build the type list.
 	var typeList []Type
@@ -279,7 +277,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		Functions:         functions,
 		Language:          language,
 		resourceTable:     resourceTable,
-		functionTable:     functionTable,
+		functionTable:     types.functionDefs,
 		typeTable:         types.typeDefs,
 		resourceTypeTable: types.resources,
 	}
@@ -319,7 +317,8 @@ type types struct {
 	spec   *PackageSpec
 	loader Loader
 
-	typeDefs map[string]Type // objects and enums
+	typeDefs     map[string]Type      // objects and enums
+	functionDefs map[string]*Function // function definitions
 
 	resources map[string]*ResourceType
 	arrays    map[Type]*ArrayType
@@ -1055,8 +1054,23 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 	}, diags
 }
 
+func (t *types) finishTypes() (hcl.Diagnostics, error) {
+	var diags hcl.Diagnostics
+
+	// Ensure all of the types defined by the package are bound.
+	for token := range t.spec.Types {
+		_, typeDiags, err := t.bindTypeDef(token)
+		if err != nil {
+			return nil, fmt.Errorf("error binding type %v", token)
+		}
+		diags = diags.Extend(typeDiags)
+	}
+
+	return diags, nil
+}
+
 func bindMethods(path, resourceToken string, methods map[string]string,
-	functionTable map[string]*Function) ([]*Method, hcl.Diagnostics) {
+	types *types) ([]*Method, hcl.Diagnostics, error) {
 
 	var diags hcl.Diagnostics
 
@@ -1072,8 +1086,13 @@ func bindMethods(path, resourceToken string, methods map[string]string,
 
 		methodPath := path + "/" + name
 
-		function, ok := functionTable[token]
-		if !ok {
+		function, functionDiags, err := types.bindFunctionDef(token)
+		if err != nil {
+			return nil, nil, err
+		}
+		diags = diags.Extend(functionDiags)
+
+		if function == nil {
 			diags = diags.Append(errorf(methodPath, "unknown function %s", token))
 			continue
 		}
@@ -1097,7 +1116,7 @@ func bindMethods(path, resourceToken string, methods map[string]string,
 			Function: function,
 		})
 	}
-	return result, diags
+	return result, diags, nil
 }
 
 func bindConfig(spec ConfigSpec, types *types) ([]*Property, hcl.Diagnostics, error) {
@@ -1106,9 +1125,7 @@ func bindConfig(spec ConfigSpec, types *types) ([]*Property, hcl.Diagnostics, er
 	return properties, diags, err
 }
 
-func bindResource(path, token string, spec ResourceSpec, types *types,
-	functionTable map[string]*Function) (*Resource, hcl.Diagnostics, error) {
-
+func bindResource(path, token string, spec ResourceSpec, types *types) (*Resource, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	if len(spec.Plain) > 0 {
@@ -1133,8 +1150,11 @@ func bindResource(path, token string, spec ResourceSpec, types *types,
 		return nil, diags, fmt.Errorf("failed to bind input properties for %v: %w", token, err)
 	}
 
-	methods, methodDiags := bindMethods(path+"/methods", token, spec.Methods, functionTable)
+	methods, methodDiags, err := bindMethods(path+"/methods", token, spec.Methods, types)
 	diags = diags.Extend(methodDiags)
+	if err != nil {
+		return nil, diags, fmt.Errorf("failed to bind methods for %v: %w", token, err)
+	}
 
 	for _, method := range methods {
 		if _, ok := spec.Properties[method.Name]; ok {
@@ -1178,10 +1198,10 @@ func bindResource(path, token string, spec ResourceSpec, types *types,
 	}, diags, nil
 }
 
-func bindProvider(pkgName string, spec ResourceSpec, types *types,
-	functionTable map[string]*Function) (*Resource, hcl.Diagnostics, error) {
+func bindProvider(pkgName string, spec ResourceSpec,
+	types *types) (*Resource, hcl.Diagnostics, error) {
 
-	res, diags, err := bindResource("#/provider", "pulumi:providers:"+pkgName, spec, types, functionTable)
+	res, diags, err := bindResource("#/provider", "pulumi:providers:"+pkgName, spec, types)
 	if err != nil {
 		return nil, diags, fmt.Errorf("error binding provider: %w", err)
 	}
@@ -1216,15 +1236,15 @@ func bindProvider(pkgName string, spec ResourceSpec, types *types,
 	return res, diags, nil
 }
 
-func bindResources(specs map[string]ResourceSpec, types *types,
-	functionTable map[string]*Function) ([]*Resource, map[string]*Resource, hcl.Diagnostics, error) {
+func bindResources(specs map[string]ResourceSpec,
+	types *types) ([]*Resource, map[string]*Resource, hcl.Diagnostics, error) {
 
 	var diags hcl.Diagnostics
 
 	resourceTable := map[string]*Resource{}
 	var resources []*Resource
 	for token, spec := range specs {
-		res, resDiags, err := bindResource(memberPath("resources", token), token, spec, types, functionTable)
+		res, resDiags, err := bindResource(memberPath("resources", token), token, spec, types)
 		diags = diags.Extend(resDiags)
 		if err != nil {
 			return nil, nil, diags, fmt.Errorf("error binding resource %v: %w", token, err)
@@ -1252,14 +1272,23 @@ func bindResources(specs map[string]ResourceSpec, types *types,
 	return resources, resourceTable, diags, nil
 }
 
-func bindFunction(token string, spec FunctionSpec, types *types) (*Function, hcl.Diagnostics, error) {
+func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error) {
+	if fn, ok := t.functionDefs[token]; ok {
+		return fn, nil, nil
+	}
+
+	spec, ok := t.spec.Functions[token]
+	if !ok {
+		return nil, nil, nil
+	}
+
 	var diags hcl.Diagnostics
 
 	path := memberPath("functions", token)
 
 	var inputs *ObjectType
 	if spec.Inputs != nil {
-		ins, inDiags, err := types.bindAnonymousObjectType(path+"/inputs", token+"Args", *spec.Inputs)
+		ins, inDiags, err := t.bindAnonymousObjectType(path+"/inputs", token+"Args", *spec.Inputs)
 		diags = diags.Extend(inDiags)
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding inputs for function %v: %w", token, err)
@@ -1269,7 +1298,7 @@ func bindFunction(token string, spec FunctionSpec, types *types) (*Function, hcl
 
 	var outputs *ObjectType
 	if spec.Outputs != nil {
-		outs, outDiags, err := types.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.Outputs)
+		outs, outDiags, err := t.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.Outputs)
 		diags = diags.Extend(outDiags)
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
@@ -1282,8 +1311,8 @@ func bindFunction(token string, spec FunctionSpec, types *types) (*Function, hcl
 		language[name] = json.RawMessage(raw)
 	}
 
-	return &Function{
-		Package:            types.pkg,
+	fn := &Function{
+		Package:            t.pkg,
 		Token:              token,
 		Comment:            spec.Description,
 		Inputs:             inputs,
@@ -1291,29 +1320,27 @@ func bindFunction(token string, spec FunctionSpec, types *types) (*Function, hcl
 		DeprecationMessage: spec.DeprecationMessage,
 		Language:           language,
 		IsOverlay:          spec.IsOverlay,
-	}, diags, nil
+	}
+	t.functionDefs[token] = fn
+
+	return fn, diags, nil
 }
 
-func bindFunctions(specs map[string]FunctionSpec,
-	types *types) ([]*Function, map[string]*Function, hcl.Diagnostics, error) {
-
+func (t *types) finishFunctions() ([]*Function, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	functionTable := map[string]*Function{}
 	var functions []*Function
-	for token, spec := range specs {
-		f, fdiags, err := bindFunction(token, spec, types)
+	for token := range t.spec.Functions {
+		f, fdiags, err := t.bindFunctionDef(token)
 		diags = diags.Extend(fdiags)
 		if err != nil {
-			return nil, nil, diags, fmt.Errorf("error binding function %v: %w", token, err)
+			return nil, diags, fmt.Errorf("error binding function %v: %w", token, err)
 		}
-		functionTable[token] = f
 		functions = append(functions, f)
 	}
-
 	sort.Slice(functions, func(i, j int) bool {
 		return functions[i].Token < functions[j].Token
 	})
 
-	return functions, functionTable, diags, nil
+	return functions, diags, nil
 }
