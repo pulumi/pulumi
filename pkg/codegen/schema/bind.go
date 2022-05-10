@@ -184,6 +184,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		loader:       loader,
 		typeDefs:     map[string]Type{},
 		functionDefs: map[string]*Function{},
+		resourceDefs: map[string]*Resource{},
 		resources:    map[string]*ResourceType{},
 		arrays:       map[Type]*ArrayType{},
 		maps:         map[Type]*MapType{},
@@ -199,13 +200,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	}
 	diags = diags.Extend(configDiags)
 
-	provider, providerDiags, err := bindProvider(spec.Name, spec.Provider, types)
-	if err != nil {
-		return nil, nil, err
-	}
-	diags = diags.Extend(providerDiags)
-
-	resources, resourceTable, resourceDiags, err := bindResources(spec.Resources, types)
+	provider, resources, resourceDiags, err := types.finishResources()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -276,7 +271,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		Resources:         resources,
 		Functions:         functions,
 		Language:          language,
-		resourceTable:     resourceTable,
+		resourceTable:     types.resourceDefs,
 		functionTable:     types.functionDefs,
 		typeTable:         types.typeDefs,
 		resourceTypeTable: types.resources,
@@ -319,6 +314,7 @@ type types struct {
 
 	typeDefs     map[string]Type      // objects and enums
 	functionDefs map[string]*Function // function definitions
+	resourceDefs map[string]*Resource // resource definitions
 
 	resources map[string]*ResourceType
 	arrays    map[Type]*ArrayType
@@ -578,6 +574,23 @@ func (t *types) bindTypeDef(token string) (Type, hcl.Diagnostics, error) {
 	return enum, diags, nil
 }
 
+func (t *types) bindResourceTypeDef(token string) (*ResourceType, hcl.Diagnostics, error) {
+	if typ, ok := t.resources[token]; ok {
+		return typ, nil, nil
+	}
+
+	res, diags, err := t.bindResourceDef(token)
+	if err != nil {
+		return nil, nil, err
+	}
+	if res == nil {
+		return nil, nil, nil
+	}
+	typ := &ResourceType{Token: token, Resource: res}
+	t.resources[token] = typ
+	return typ, diags, nil
+}
+
 func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Type, hcl.Diagnostics, error) {
 	path = path + "/$ref"
 
@@ -633,7 +646,7 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 		// Try to bind this as a reference to a type defined by this package.
 		typ, diags, err := t.bindTypeDef(ref.Token)
 		if err != nil {
-			return nil, nil, err
+			return nil, diags, err
 		}
 		switch typ := typ.(type) {
 		case *ObjectType:
@@ -662,12 +675,15 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 		}
 		return tokenType, diags, nil
 	case resourcesRef, providerRef:
-		typ, ok := t.resources[ref.Token]
-		if !ok {
-			typ = &ResourceType{Token: ref.Token}
-			t.resources[ref.Token] = typ
+		typ, diags, err := t.bindResourceTypeDef(ref.Token)
+		if err != nil {
+			return nil, diags, err
 		}
-		return typ, nil, nil
+		if typ == nil {
+			typ, diags := invalidType(errorf(path, "resource type %v not found in package %v", ref.Token, ref.Package))
+			return typ, diags, nil
+		}
+		return typ, diags, nil
 	default:
 		typ, diags := invalidType(errorf(path, "failed to parse ref %s", spec.Ref))
 		return typ, diags, nil
@@ -1125,7 +1141,31 @@ func bindConfig(spec ConfigSpec, types *types) ([]*Property, hcl.Diagnostics, er
 	return properties, diags, err
 }
 
-func bindResource(path, token string, spec ResourceSpec, types *types) (*Resource, hcl.Diagnostics, error) {
+func (t *types) bindResourceDef(token string) (res *Resource, diags hcl.Diagnostics, err error) {
+	if res, ok := t.resourceDefs[token]; ok {
+		return res, nil, nil
+	}
+
+	// Declare the resource.
+	res = &Resource{}
+	t.resourceDefs[token] = res
+
+	if token == "pulumi:providers:"+t.spec.Name {
+		diags, err = t.bindProvider(res)
+	} else {
+		spec, ok := t.spec.Resources[token]
+		if !ok {
+			return nil, nil, nil
+		}
+		diags, err = t.bindResourceDetails(memberPath("resources", token), token, spec, res)
+	}
+	if err != nil {
+		return nil, diags, err
+	}
+	return res, diags, nil
+}
+
+func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl *Resource) (hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	if len(spec.Plain) > 0 {
@@ -1136,24 +1176,24 @@ func bindResource(path, token string, spec ResourceSpec, types *types) (*Resourc
 			"plainInputs has been removed; individual property types must be marked as plain instead"))
 	}
 
-	properties, _, propertyDiags, err := types.bindProperties(path+"/properties", spec.Properties,
+	properties, _, propertyDiags, err := t.bindProperties(path+"/properties", spec.Properties,
 		path+"/required", spec.Required, false)
 	diags = diags.Extend(propertyDiags)
 	if err != nil {
-		return nil, diags, fmt.Errorf("failed to bind properties for %v: %w", token, err)
+		return diags, fmt.Errorf("failed to bind properties for %v: %w", token, err)
 	}
 
-	inputProperties, _, inputDiags, err := types.bindProperties(path+"/inputProperties", spec.InputProperties,
+	inputProperties, _, inputDiags, err := t.bindProperties(path+"/inputProperties", spec.InputProperties,
 		path+"/requiredInputs", spec.RequiredInputs, true)
 	diags = diags.Extend(inputDiags)
 	if err != nil {
-		return nil, diags, fmt.Errorf("failed to bind input properties for %v: %w", token, err)
+		return diags, fmt.Errorf("failed to bind input properties for %v: %w", token, err)
 	}
 
-	methods, methodDiags, err := bindMethods(path+"/methods", token, spec.Methods, types)
+	methods, methodDiags, err := bindMethods(path+"/methods", token, spec.Methods, t)
 	diags = diags.Extend(methodDiags)
 	if err != nil {
-		return nil, diags, fmt.Errorf("failed to bind methods for %v: %w", token, err)
+		return diags, fmt.Errorf("failed to bind methods for %v: %w", token, err)
 	}
 
 	for _, method := range methods {
@@ -1164,10 +1204,10 @@ func bindResource(path, token string, spec ResourceSpec, types *types) (*Resourc
 
 	var stateInputs *ObjectType
 	if spec.StateInputs != nil {
-		si, stateDiags, err := types.bindAnonymousObjectType(path+"/stateInputs", token+"Args", *spec.StateInputs)
+		si, stateDiags, err := t.bindAnonymousObjectType(path+"/stateInputs", token+"Args", *spec.StateInputs)
 		diags = diags.Extend(stateDiags)
 		if err != nil {
-			return nil, diags, fmt.Errorf("error binding inputs for %v: %w", token, err)
+			return diags, fmt.Errorf("error binding inputs for %v: %w", token, err)
 		}
 		stateInputs = si.InputShape
 	}
@@ -1182,8 +1222,8 @@ func bindResource(path, token string, spec ResourceSpec, types *types) (*Resourc
 		language[name] = json.RawMessage(raw)
 	}
 
-	return &Resource{
-		Package:            types.pkg,
+	*decl = Resource{
+		Package:            t.pkg,
 		Token:              token,
 		Comment:            spec.Description,
 		InputProperties:    inputProperties,
@@ -1195,24 +1235,23 @@ func bindResource(path, token string, spec ResourceSpec, types *types) (*Resourc
 		IsComponent:        spec.IsComponent,
 		Methods:            methods,
 		IsOverlay:          spec.IsOverlay,
-	}, diags, nil
+	}
+	return diags, nil
 }
 
-func bindProvider(pkgName string, spec ResourceSpec,
-	types *types) (*Resource, hcl.Diagnostics, error) {
-
-	res, diags, err := bindResource("#/provider", "pulumi:providers:"+pkgName, spec, types)
+func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
+	diags, err := t.bindResourceDetails("#/provider", "pulumi:providers:"+t.spec.Name, t.spec.Provider, decl)
 	if err != nil {
-		return nil, diags, fmt.Errorf("error binding provider: %w", err)
+		return diags, err
 	}
-	res.IsProvider = true
+	decl.IsProvider = true
 
 	// Since non-primitive provider configuration is currently JSON serialized, we can't handle it without
 	// modifying the path by which it's looked up. As a temporary workaround to enable access to config which
 	// values which are primitives, we'll simply remove any properties for the provider resource which are not
 	// strings, or types with an underlying type of string, before we generate the provider code.
 	var stringProperties []*Property
-	for _, prop := range res.Properties {
+	for _, prop := range decl.Properties {
 		typ := plainType(prop.Type)
 		if tokenType, isTokenType := typ.(*TokenType); isTokenType {
 			if tokenType.UnderlyingType != stringType {
@@ -1226,50 +1265,35 @@ func bindProvider(pkgName string, spec ResourceSpec,
 
 		stringProperties = append(stringProperties, prop)
 	}
-	res.Properties = stringProperties
+	decl.Properties = stringProperties
 
-	types.resources[res.Token] = &ResourceType{
-		Token:    res.Token,
-		Resource: res,
-	}
-
-	return res, diags, nil
+	return diags, nil
 }
 
-func bindResources(specs map[string]ResourceSpec,
-	types *types) ([]*Resource, map[string]*Resource, hcl.Diagnostics, error) {
-
+func (t *types) finishResources() (*Resource, []*Resource, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	resourceTable := map[string]*Resource{}
+	provider, provDiags, err := t.bindResourceTypeDef("pulumi:providers:" + t.spec.Name)
+	if err != nil {
+		return nil, nil, diags, fmt.Errorf("error binding provider: %w", err)
+	}
+	diags = diags.Extend(provDiags)
+
 	var resources []*Resource
-	for token, spec := range specs {
-		res, resDiags, err := bindResource(memberPath("resources", token), token, spec, types)
+	for token := range t.spec.Resources {
+		res, resDiags, err := t.bindResourceTypeDef(token)
 		diags = diags.Extend(resDiags)
 		if err != nil {
 			return nil, nil, diags, fmt.Errorf("error binding resource %v: %w", token, err)
 		}
-		resourceTable[token] = res
-
-		if rt, ok := types.resources[token]; ok {
-			if rt.Resource == nil {
-				rt.Resource = res
-			}
-		} else {
-			types.resources[token] = &ResourceType{
-				Token:    res.Token,
-				Resource: res,
-			}
-		}
-
-		resources = append(resources, res)
+		resources = append(resources, res.Resource)
 	}
 
 	sort.Slice(resources, func(i, j int) bool {
 		return resources[i].Token < resources[j].Token
 	})
 
-	return resources, resourceTable, diags, nil
+	return provider.Resource, resources, diags, nil
 }
 
 func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error) {
