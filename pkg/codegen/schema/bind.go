@@ -212,10 +212,12 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	for _, t := range types.resources {
 		typeList = append(typeList, t)
 	}
-	for _, t := range types.objects {
-		// t is a plain shape: add it and its corresponding input shape to the type list.
+	for _, t := range types.typeDefs {
 		typeList = append(typeList, t)
-		typeList = append(typeList, t.InputShape)
+		if obj, ok := t.(*ObjectType); ok {
+			// t is a plain shape: add it and its corresponding input shape to the type list.
+			typeList = append(typeList, obj.InputShape)
+		}
 	}
 	for _, t := range types.arrays {
 		typeList = append(typeList, t)
@@ -227,9 +229,6 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		typeList = append(typeList, t)
 	}
 	for _, t := range types.tokens {
-		typeList = append(typeList, t)
-	}
-	for _, t := range types.enums {
 		typeList = append(typeList, t)
 	}
 
@@ -263,7 +262,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		Language:          language,
 		resourceTable:     resourceTable,
 		functionTable:     functionTable,
-		typeTable:         types.named,
+		typeTable:         types.typeDefs,
 		resourceTypeTable: types.resources,
 	}
 	if err := pkg.ImportLanguages(languages); err != nil {
@@ -301,14 +300,13 @@ type types struct {
 	pkg    *Package
 	loader Loader
 
+	typeDefs map[string]Type // objects and enums
+
 	resources map[string]*ResourceType
-	objects   map[string]*ObjectType
 	arrays    map[Type]*ArrayType
 	maps      map[Type]*MapType
 	unions    map[string]*UnionType
 	tokens    map[string]*TokenType
-	enums     map[string]*EnumType
-	named     map[string]Type // objects and enums
 	inputs    map[Type]*InputType
 	optionals map[Type]*OptionalType
 }
@@ -575,16 +573,21 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 
 	switch ref.Kind {
 	case typesRef:
-		if typ, ok := t.objects[ref.Token]; ok {
-			if inputShape {
-				return typ.InputShape, nil, nil
+		// Check to see if this is a known type.
+		if typ, ok := t.typeDefs[ref.Token]; ok {
+			// If the type is an object type, we might need to return its input shape.
+			if obj, isObj := typ.(*ObjectType); isObj {
+				if inputShape {
+					return obj.InputShape, nil, nil
+				}
+				return obj, nil, nil
 			}
-			return typ, nil, nil
-		}
-		if typ, ok := t.enums[ref.Token]; ok {
-			return typ, nil, nil
+
+			// Otherwise, the type is an enum type.
+			return typ.(*EnumType), nil, nil
 		}
 
+		// If the type is not a known type, bind it as an opaque token type.
 		var diags hcl.Diagnostics
 		typ, ok := t.tokens[ref.Token]
 		if !ok {
@@ -1017,14 +1020,12 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 	typs := &types{
 		pkg:       pkg,
 		loader:    loader,
+		typeDefs:  map[string]Type{},
 		resources: map[string]*ResourceType{},
-		objects:   map[string]*ObjectType{},
 		arrays:    map[Type]*ArrayType{},
 		maps:      map[Type]*MapType{},
 		unions:    map[string]*UnionType{},
 		tokens:    map[string]*TokenType{},
-		enums:     map[string]*EnumType{},
-		named:     map[string]Type{},
 		inputs:    map[Type]*InputType{},
 		optionals: map[Type]*OptionalType{},
 	}
@@ -1038,15 +1039,13 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 			// that reference object types (e.g. arrays, maps, unions)
 			typ := &ObjectType{Token: token}
 			typ.InputShape = &ObjectType{Token: token, PlainShape: typ, IsOverlay: spec.IsOverlay}
-			typs.objects[token] = typ
-			typs.named[token] = typ
+			typs.typeDefs[token] = typ
 		} else if len(spec.Enum) > 0 {
 			typ := &EnumType{Token: token}
-			typs.enums[token] = typ
-			typs.named[token] = typ
+			typs.typeDefs[token] = typ
 
 			// Bind enums before object types because object type generation depends on enum values to be present.
-			enumDiags := typs.bindEnumTypeDetails(typs.enums[token], token, spec)
+			enumDiags := typs.bindEnumTypeDetails(typ, token, spec)
 			diags = diags.Extend(enumDiags)
 		}
 	}
@@ -1060,7 +1059,7 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 	for token, spec := range complexTypes {
 		if spec.Type == "object" {
 			path := memberPath("types", token)
-			objDiags, err := typs.bindObjectTypeDetails(path, typs.objects[token], token, spec.ObjectTypeSpec)
+			objDiags, err := typs.bindObjectTypeDetails(path, typs.typeDefs[token].(*ObjectType), token, spec.ObjectTypeSpec)
 			diags = diags.Extend(objDiags)
 
 			if err != nil {
