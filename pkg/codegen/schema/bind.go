@@ -999,7 +999,10 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	return diags, nil
 }
 
-func (t *types) bindObjectType(path, token string, spec ObjectTypeSpec) (*ObjectType, hcl.Diagnostics, error) {
+// bindAnonymousObjectType is used for binding object types that do not appear as part of a package's defined types.
+// This includes state inputs for resources that have them and function inputs and outputs.
+// Object types defined by a package are bound by bindTypeDef.
+func (t *types) bindAnonymousObjectType(path, token string, spec ObjectTypeSpec) (*ObjectType, hcl.Diagnostics, error) {
 	obj := &ObjectType{}
 	obj.InputShape = &ObjectType{PlainShape: obj}
 	obj.IsOverlay = spec.IsOverlay
@@ -1009,19 +1012,6 @@ func (t *types) bindObjectType(path, token string, spec ObjectTypeSpec) (*Object
 		return nil, diags, err
 	}
 	return obj, diags, nil
-}
-
-func (t *types) bindResourceTypeDetails(obj *ResourceType, token string) error {
-	obj.Token = token
-	return nil
-}
-
-func (t *types) bindResourceType(token string) (*ResourceType, error) {
-	r := &ResourceType{}
-	if err := t.bindResourceTypeDetails(r, token); err != nil {
-		return nil, err
-	}
-	return r, nil
 }
 
 func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl.Diagnostics) {
@@ -1154,7 +1144,7 @@ func bindResource(path, token string, spec ResourceSpec, types *types,
 
 	var stateInputs *ObjectType
 	if spec.StateInputs != nil {
-		si, stateDiags, err := types.bindObjectType(path+"/stateInputs", token+"Args", *spec.StateInputs)
+		si, stateDiags, err := types.bindAnonymousObjectType(path+"/stateInputs", token+"Args", *spec.StateInputs)
 		diags = diags.Extend(stateDiags)
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding inputs for %v: %w", token, err)
@@ -1269,7 +1259,7 @@ func bindFunction(token string, spec FunctionSpec, types *types) (*Function, hcl
 
 	var inputs *ObjectType
 	if spec.Inputs != nil {
-		ins, inDiags, err := types.bindObjectType(path+"/inputs", token+"Args", *spec.Inputs)
+		ins, inDiags, err := types.bindAnonymousObjectType(path+"/inputs", token+"Args", *spec.Inputs)
 		diags = diags.Extend(inDiags)
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding inputs for function %v: %w", token, err)
@@ -1279,7 +1269,7 @@ func bindFunction(token string, spec FunctionSpec, types *types) (*Function, hcl
 
 	var outputs *ObjectType
 	if spec.Outputs != nil {
-		outs, outDiags, err := types.bindObjectType(path+"/outputs", token+"Result", *spec.Outputs)
+		outs, outDiags, err := types.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.Outputs)
 		diags = diags.Extend(outDiags)
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
