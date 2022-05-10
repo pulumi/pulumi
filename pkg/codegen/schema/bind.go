@@ -177,11 +177,20 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		loader = NewPluginLoader(ctx.Host)
 	}
 
-	types, typeDiags, err := bindTypes(pkg, spec.Types, loader)
-	if err != nil {
-		return nil, nil, err
+	// Create a type binder.
+	types := &types{
+		pkg:       pkg,
+		spec:      &spec,
+		loader:    loader,
+		typeDefs:  map[string]Type{},
+		resources: map[string]*ResourceType{},
+		arrays:    map[Type]*ArrayType{},
+		maps:      map[Type]*MapType{},
+		unions:    map[string]*UnionType{},
+		tokens:    map[string]*TokenType{},
+		inputs:    map[Type]*InputType{},
+		optionals: map[Type]*OptionalType{},
 	}
-	diags = diags.Extend(typeDiags)
 
 	config, configDiags, err := bindConfig(spec.Config, types)
 	if err != nil {
@@ -206,6 +215,15 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		return nil, nil, err
 	}
 	diags = diags.Extend(resourceDiags)
+
+	// Ensure all of the types defined by the package are bound.
+	for token := range spec.Types {
+		_, typeDiags, err := types.bindTypeDef(token)
+		if err != nil {
+			return nil, nil, err
+		}
+		diags = diags.Extend(typeDiags)
+	}
 
 	// Build the type list.
 	var typeList []Type
@@ -523,12 +541,42 @@ func (t *types) newUnionType(
 }
 
 func (t *types) bindTypeDef(token string) (Type, hcl.Diagnostics, error) {
-	// Check to see if this is a known type.
-	typ, ok := t.typeDefs[token]
+	// Check to see if this type has already been bound.
+	if typ, ok := t.typeDefs[token]; ok {
+		return typ, nil, nil
+	}
+
+	// Check to see if we have a definition for this type. If we don't, just return nil.
+	spec, ok := t.spec.Types[token]
 	if !ok {
 		return nil, nil, nil
 	}
-	return typ, nil, nil
+
+	path := memberPath("types", token)
+
+	// Is this an object type?
+	if spec.Type == "object" {
+		// Declare the type.
+		//
+		// It's important that we set the token here. This package interns types so that they can be equality-compared
+		// for identity. Types are interned based on their string representation, and the string representation of an
+		// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
+		// that reference object types (e.g. arrays, maps, unions)
+		obj := &ObjectType{Token: token, IsOverlay: spec.IsOverlay}
+		obj.InputShape = &ObjectType{Token: token, PlainShape: obj, IsOverlay: spec.IsOverlay}
+		t.typeDefs[token] = obj
+
+		diags, err := t.bindObjectTypeDetails(path, obj, token, spec.ObjectTypeSpec)
+		if err != nil {
+			return nil, diags, err
+		}
+		return obj, diags, nil
+	}
+
+	// Otherwise, bind an enum type.
+	enum, diags := t.bindEnumType(token, spec)
+	t.typeDefs[token] = enum
+	return enum, diags, nil
 }
 
 func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Type, hcl.Diagnostics, error) {
@@ -976,10 +1024,12 @@ func (t *types) bindResourceType(token string) (*ResourceType, error) {
 	return r, nil
 }
 
-func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTypeSpec) hcl.Diagnostics {
+func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl.Diagnostics) {
 	var diags hcl.Diagnostics
 
-	typ, typDiags := t.bindPrimitiveType(memberPath("types", token, "type"), spec.Type)
+	path := memberPath("types", token)
+
+	typ, typDiags := t.bindPrimitiveType(path+"/type", spec.Type)
 	diags = diags.Extend(typDiags)
 
 	switch typ {
@@ -987,106 +1037,32 @@ func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTy
 		// OK
 	default:
 		if _, isInvalid := typ.(*InvalidType); !isInvalid {
-			diags = diags.Append(errorf(memberPath("types", token, "type"),
+			diags = diags.Append(errorf(path+"/type",
 				"enums may only be of type string, integer, number or boolean"))
 		}
 	}
 
-	values, valuesDiags := t.bindEnumValues(memberPath("types", token, "enum"), spec.Enum, typ)
-	diags = diags.Extend(valuesDiags)
-
-	enum.Package = t.pkg
-	enum.Token = token
-	enum.Elements = values
-	enum.ElementType = typ
-	enum.Comment = spec.Description
-	enum.IsOverlay = spec.IsOverlay
-
-	return diags
-}
-
-func (t *types) bindEnumValues(path string, values []EnumValueSpec, typ Type) ([]*Enum, hcl.Diagnostics) {
-	var enums []*Enum
-	var diags hcl.Diagnostics
-
-	for i, spec := range values {
-		value, valueDiags := bindConstValue(fmt.Sprintf("%s/%v/value", path, i), "enum", spec.Value, typ)
+	values := make([]*Enum, len(spec.Enum))
+	for i, spec := range spec.Enum {
+		value, valueDiags := bindConstValue(fmt.Sprintf("%s/enum/%v/value", path, i), "enum", spec.Value, typ)
 		diags = diags.Extend(valueDiags)
 
-		enum := &Enum{
+		values[i] = &Enum{
 			Value:              value,
 			Comment:            spec.Description,
 			Name:               spec.Name,
 			DeprecationMessage: spec.DeprecationMessage,
 		}
-		enums = append(enums, enum)
-	}
-	return enums, diags
-}
-
-func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, error) {
-	enum := &EnumType{}
-	if err := t.bindEnumTypeDetails(enum, token, spec); err != nil {
-		return nil, err
-	}
-	return enum, nil
-}
-
-func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loader) (*types, hcl.Diagnostics, error) {
-	var diags hcl.Diagnostics
-
-	typs := &types{
-		pkg:       pkg,
-		loader:    loader,
-		typeDefs:  map[string]Type{},
-		resources: map[string]*ResourceType{},
-		arrays:    map[Type]*ArrayType{},
-		maps:      map[Type]*MapType{},
-		unions:    map[string]*UnionType{},
-		tokens:    map[string]*TokenType{},
-		inputs:    map[Type]*InputType{},
-		optionals: map[Type]*OptionalType{},
 	}
 
-	// Declare object and enum types before processing properties.
-	for token, spec := range complexTypes {
-		if spec.Type == "object" {
-			// It's important that we set the token here. This package interns types so that they can be equality-compared
-			// for identity. Types are interned based on their string representation, and the string representation of an
-			// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
-			// that reference object types (e.g. arrays, maps, unions)
-			typ := &ObjectType{Token: token}
-			typ.InputShape = &ObjectType{Token: token, PlainShape: typ, IsOverlay: spec.IsOverlay}
-			typs.typeDefs[token] = typ
-		} else if len(spec.Enum) > 0 {
-			typ := &EnumType{Token: token}
-			typs.typeDefs[token] = typ
-
-			// Bind enums before object types because object type generation depends on enum values to be present.
-			enumDiags := typs.bindEnumTypeDetails(typ, token, spec)
-			diags = diags.Extend(enumDiags)
-		}
-	}
-
-	// Process resources.
-	for _, r := range pkg.Resources {
-		typs.resources[r.Token] = &ResourceType{Token: r.Token}
-	}
-
-	// Process object types.
-	for token, spec := range complexTypes {
-		if spec.Type == "object" {
-			path := memberPath("types", token)
-			objDiags, err := typs.bindObjectTypeDetails(path, typs.typeDefs[token].(*ObjectType), token, spec.ObjectTypeSpec)
-			diags = diags.Extend(objDiags)
-
-			if err != nil {
-				return nil, diags, fmt.Errorf("failed to bind type %s: %w", token, err)
-			}
-		}
-	}
-
-	return typs, diags, nil
+	return &EnumType{
+		Package:     t.pkg,
+		Token:       token,
+		Elements:    values,
+		ElementType: typ,
+		Comment:     spec.Description,
+		IsOverlay:   spec.IsOverlay,
+	}, diags
 }
 
 func bindMethods(path, resourceToken string, methods map[string]string,
