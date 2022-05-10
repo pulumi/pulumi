@@ -7,7 +7,6 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
-from .. import iam
 import pulumi_google_native
 
 __all__ = ['IamResourceArgs', 'IamResource']
