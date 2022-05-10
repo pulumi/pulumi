@@ -14,7 +14,6 @@
 
 import * as assert from "assert";
 import * as childProcess from "child_process";
-import * as os from "os";
 import * as path from "path";
 import { ID, runtime, URN } from "../../../index";
 import { asyncTest } from "../../util";
@@ -62,6 +61,7 @@ interface RunCase {
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
         t: string, name: string, res: any, outputs: any | undefined) => void;
     log?: (ctx: any, severity: any, message: string, urn: URN, streamId: number) => void;
+    getRootResource?: (ctx: any) => { urn: string };
     setRootResource?: (ctx: any, urn: string) => void;
 }
 
@@ -1353,6 +1353,19 @@ describe("rpc", () => {
 
                         callback(undefined, new gempty.Empty());
                     },
+                    // GetRootResource callback
+                    (call: any, callback: any) => {
+                        let root: { urn: string };
+                        if (opts.getRootResource) {
+                            root = opts.getRootResource(ctx);
+                        } else {
+                            root = { urn: rootResource! };
+                        }
+
+                        const resp = new engineproto.GetRootResourceResponse();
+                        resp.setUrn(root.urn);
+                        callback(undefined, resp);
+                    },
                     // SetRootResource callback
                     (call: any, callback: any) => {
                         const req: any = call.request;
@@ -1511,6 +1524,7 @@ async function createMockEngineAsync(
     registerResourceCallback: (call: any, request: any) => any,
     registerResourceOutputsCallback: (call: any, request: any) => any,
     logCallback: (call: any, request: any) => any,
+    getRootResourceCallback: (call: any, request: any) => any,
     setRootResourceCallback: (call: any, request: any) => any,
     supportsFeatureCallback: (call: any, request: any) => any) {
     // The resource monitor is hosted in the current process so it can record state, etc.
@@ -1533,6 +1547,7 @@ async function createMockEngineAsync(
     if (!opts.skipRootResourceEndpoints) {
         engineImpl = {
             ...engineImpl,
+            getRootResource: getRootResourceCallback,
             setRootResource: setRootResourceCallback,
         };
     }

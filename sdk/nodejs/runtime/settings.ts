@@ -460,7 +460,7 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         engineRef.setRootResource(req, (err: grpc.ServiceError, resp: any) => {
             // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root
-            // resources, we can just ignore this case there's nothing we can do.
+            // resources, fall back to the old behavior.
             if (err && err.code === grpc.status.UNIMPLEMENTED) {
                 return resolve();
             }
