@@ -159,7 +159,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 
 	diags = diags.Extend(spec.validateTypeTokens())
 
-	pkg := &Package{}
+	pkg := &Package{Name: spec.Name}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
 	// reference is nil.
@@ -180,7 +180,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	// Create a type binder.
 	types := &types{
 		pkg:          pkg,
-		spec:         &spec,
+		spec:         packageSpecSource{&spec},
 		loader:       loader,
 		typeDefs:     map[string]Type{},
 		functionDefs: map[string]*Function{},
@@ -200,19 +200,19 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	}
 	diags = diags.Extend(configDiags)
 
-	provider, resources, resourceDiags, err := types.finishResources()
+	provider, resources, resourceDiags, err := types.finishResources(spec)
 	if err != nil {
 		return nil, nil, err
 	}
 	diags = diags.Extend(resourceDiags)
 
-	typeDiags, err := types.finishTypes()
+	typeDiags, err := types.finishTypes(spec)
 	if err != nil {
 		return nil, nil, err
 	}
 	diags = diags.Extend(typeDiags)
 
-	functions, functionDiags, err := types.finishFunctions()
+	functions, functionDiags, err := types.finishFunctions(spec)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -305,11 +305,39 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 	return pkg, nil
 }
 
+type specSource interface {
+	GetTypeDefSpec(token string) (ComplexTypeSpec, bool, error)
+	GetFunctionSpec(token string) (FunctionSpec, bool, error)
+	GetResourceSpec(token string) (ResourceSpec, bool, error)
+}
+
+type packageSpecSource struct {
+	spec *PackageSpec
+}
+
+func (s packageSpecSource) GetTypeDefSpec(token string) (ComplexTypeSpec, bool, error) {
+	spec, ok := s.spec.Types[token]
+	return spec, ok, nil
+}
+
+func (s packageSpecSource) GetFunctionSpec(token string) (FunctionSpec, bool, error) {
+	spec, ok := s.spec.Functions[token]
+	return spec, ok, nil
+}
+
+func (s packageSpecSource) GetResourceSpec(token string) (ResourceSpec, bool, error) {
+	if token == "pulumi:providers:"+s.spec.Name {
+		return s.spec.Provider, true, nil
+	}
+	spec, ok := s.spec.Resources[token]
+	return spec, ok, nil
+}
+
 // types facilitates interning (only storing a single reference to an object) during schema processing. The fields
 // correspond to fields in the schema, and are populated during the binding process.
 type types struct {
 	pkg    *Package
-	spec   *PackageSpec
+	spec   specSource
 	loader Loader
 
 	typeDefs     map[string]Type      // objects and enums
@@ -542,9 +570,9 @@ func (t *types) bindTypeDef(token string) (Type, hcl.Diagnostics, error) {
 	}
 
 	// Check to see if we have a definition for this type. If we don't, just return nil.
-	spec, ok := t.spec.Types[token]
-	if !ok {
-		return nil, nil, nil
+	spec, ok, err := t.spec.GetTypeDefSpec(token)
+	if err != nil || !ok {
+		return nil, nil, err
 	}
 
 	path := memberPath("types", token)
@@ -1070,11 +1098,11 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 	}, diags
 }
 
-func (t *types) finishTypes() (hcl.Diagnostics, error) {
+func (t *types) finishTypes(spec PackageSpec) (hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Ensure all of the types defined by the package are bound.
-	for token := range t.spec.Types {
+	for token := range spec.Types {
 		_, typeDiags, err := t.bindTypeDef(token)
 		if err != nil {
 			return nil, fmt.Errorf("error binding type %v", token)
@@ -1150,12 +1178,12 @@ func (t *types) bindResourceDef(token string) (res *Resource, diags hcl.Diagnost
 	res = &Resource{}
 	t.resourceDefs[token] = res
 
-	if token == "pulumi:providers:"+t.spec.Name {
+	if token == "pulumi:providers:"+t.pkg.Name {
 		diags, err = t.bindProvider(res)
 	} else {
-		spec, ok := t.spec.Resources[token]
-		if !ok {
-			return nil, nil, nil
+		spec, ok, err := t.spec.GetResourceSpec(token)
+		if err != nil || !ok {
+			return nil, nil, err
 		}
 		diags, err = t.bindResourceDetails(memberPath("resources", token), token, spec, res)
 	}
@@ -1240,7 +1268,13 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 }
 
 func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
-	diags, err := t.bindResourceDetails("#/provider", "pulumi:providers:"+t.spec.Name, t.spec.Provider, decl)
+	spec, ok, err := t.spec.GetResourceSpec("pulumi:providers:" + t.pkg.Name)
+	if err != nil {
+		return nil, err
+	}
+	contract.Assert(ok)
+
+	diags, err := t.bindResourceDetails("#/provider", "pulumi:providers:"+t.pkg.Name, spec, decl)
 	if err != nil {
 		return diags, err
 	}
@@ -1270,17 +1304,17 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 	return diags, nil
 }
 
-func (t *types) finishResources() (*Resource, []*Resource, hcl.Diagnostics, error) {
+func (t *types) finishResources(spec PackageSpec) (*Resource, []*Resource, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	provider, provDiags, err := t.bindResourceTypeDef("pulumi:providers:" + t.spec.Name)
+	provider, provDiags, err := t.bindResourceTypeDef("pulumi:providers:" + t.pkg.Name)
 	if err != nil {
 		return nil, nil, diags, fmt.Errorf("error binding provider: %w", err)
 	}
 	diags = diags.Extend(provDiags)
 
 	var resources []*Resource
-	for token := range t.spec.Resources {
+	for token := range spec.Resources {
 		res, resDiags, err := t.bindResourceTypeDef(token)
 		diags = diags.Extend(resDiags)
 		if err != nil {
@@ -1301,8 +1335,8 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 		return fn, nil, nil
 	}
 
-	spec, ok := t.spec.Functions[token]
-	if !ok {
+	spec, ok, err := t.spec.GetFunctionSpec(token)
+	if err != nil || !ok {
 		return nil, nil, nil
 	}
 
@@ -1350,11 +1384,11 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 	return fn, diags, nil
 }
 
-func (t *types) finishFunctions() ([]*Function, hcl.Diagnostics, error) {
+func (t *types) finishFunctions(spec PackageSpec) ([]*Function, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	var functions []*Function
-	for token := range t.spec.Functions {
+	for token := range spec.Functions {
 		f, fdiags, err := t.bindFunctionDef(token)
 		diags = diags.Extend(fdiags)
 		if err != nil {
