@@ -9,20 +9,20 @@ from .provider import *
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:
-    import pulumi_example.iam as __iam
-    iam = __iam
+    import pulumi_example.mymodule as __mymodule
+    mymodule = __mymodule
 else:
-    iam = _utilities.lazy_import('pulumi_example.iam')
+    mymodule = _utilities.lazy_import('pulumi_example.mymodule')
 
 _utilities.register(
     resource_modules="""
 [
  {
   "pkg": "example",
-  "mod": "iam",
-  "fqn": "pulumi_example.iam",
+  "mod": "myModule",
+  "fqn": "pulumi_example.mymodule",
   "classes": {
-   "example:iam:IamResource": "IamResource"
+   "example:myModule:IamResource": "IamResource"
   }
  }
 ]

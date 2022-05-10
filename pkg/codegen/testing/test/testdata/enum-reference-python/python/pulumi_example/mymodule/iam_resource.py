@@ -84,7 +84,7 @@ class IamResource(pulumi.ComponentResource):
 
             __props__.__dict__["config"] = config
         super(IamResource, __self__).__init__(
-            'example:iam:IamResource',
+            'example:myModule:IamResource',
             resource_name,
             __props__,
             opts,

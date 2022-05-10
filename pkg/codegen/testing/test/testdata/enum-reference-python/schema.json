@@ -1,7 +1,7 @@
 {
     "name": "example",
     "resources": {
-        "example:iam:IamResource": {
+        "example:myModule:IamResource": {
             "inputProperties": {
                 "config": {
                     "$ref": "/google-native/v0.18.2/schema.json#/types/google-native:iam%2Fv1:AuditConfig"
