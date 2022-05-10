@@ -15,10 +15,11 @@
 import * as grpc from "@grpc/grpc-js";
 import * as fs from "fs";
 import * as path from "path";
-import { URN } from "../resource";
+import { ComponentResource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
 
 const engrpc = require("../proto/engine_grpc_pb.js");
+const engproto = require("../proto/engine_pb.js");
 const resrpc = require("../proto/resource_grpc_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
@@ -433,11 +434,44 @@ export function rpcKeepAlive(): () => void {
  * can be used to ensure that all resources without explicit parents are parented to a common parent resource.
  */
 export async function getRootResource(): Promise<URN | undefined> {
+    // We used to ask the engine for this urn to support side-by-side pulumi modules. We don't need this
+    // anymore because stackResource is now a global not a module variable, so even different pulumi modules
+    // get the same stack. However because we might be side-by-side with an old pulumi module that did use
+    // this engine data fetch we still need to _set_ the root resource.
     const stack = globalThis.stackResource;
     if (stack === undefined) {
         return undefined;
     }
     return await stack.urn.promise();
+}
+
+/**
+ * setRootResource registers a resource that will become the default parent for all resources without explicit parents.
+ */
+export async function setRootResource(res: ComponentResource): Promise<void> {
+    const engineRef: any = getEngine();
+    if (!engineRef) {
+        return Promise.resolve();
+    }
+
+    const req = new engproto.SetRootResourceRequest();
+    const urn = await res.urn.promise();
+    req.setUrn(urn);
+    return new Promise<void>((resolve, reject) => {
+        engineRef.setRootResource(req, (err: grpc.ServiceError, resp: any) => {
+            // Back-compat case - if the engine we're speaking to isn't aware that it can save and load root
+            // resources, we can just ignore this case there's nothing we can do.
+            if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                return resolve();
+            }
+
+            if (err) {
+                return reject(err);
+            }
+
+            return resolve();
+        });
+    });
 }
 
 /**

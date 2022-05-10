@@ -16,7 +16,7 @@ import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransformation } from "../resource";
-import { isDryRun, isQueryMode } from "./settings";
+import { isDryRun, isQueryMode, setRootResource } from "./settings";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -61,6 +61,10 @@ class Stack extends ComponentResource<Inputs> {
     public readonly outputs: Output<Inputs>;
 
     constructor(init: () => Promise<Inputs>) {
+        const parent = globalThis.stackResource;
+        if (parent !== undefined) {
+            throw new Error("Only one root Pulumi Stack may be active at once");
+        }
         super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`, { init });
         const data = this.getData();
         this.outputs = output(data);
@@ -73,12 +77,9 @@ class Stack extends ComponentResource<Inputs> {
      * @param init The callback to run in the context of this Pulumi stack
      */
     async initialize(args: { init: () => Promise<Inputs> }): Promise<Inputs> {
-        if (globalThis.stackResource !== undefined) {
-            throw new Error("Only one root Pulumi Stack may be active at once");
-        }
-
         // Set the global reference to the stack resource before invoking this init() function
         globalThis.stackResource = this;
+        await setRootResource(this);
 
         let outputs: Inputs | undefined;
         try {
@@ -91,6 +92,7 @@ class Stack extends ComponentResource<Inputs> {
             // Resources.
             super.registerOutputs(outputs);
         }
+
         return outputs!;
     }
 }
@@ -216,8 +218,8 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
  * Add a transformation to all future resources constructed in this Pulumi stack.
  */
 export function registerStackTransformation(t: ResourceTransformation) {
-    if (!stackResource) {
+    if (!globalThis.stackResource) {
         throw new Error("The root stack resource was referenced before it was initialized.");
     }
-    stackResource.__transformations = [...(stackResource.__transformations || []), t];
+    globalThis.stackResource.__transformations = [...(globalThis.stackResource.__transformations || []), t];
 }
