@@ -298,6 +298,7 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 // correspond to fields in the schema, and are populated during the binding process.
 type types struct {
 	pkg    *Package
+	spec   *PackageSpec
 	loader Loader
 
 	typeDefs map[string]Type // objects and enums
@@ -521,6 +522,15 @@ func (t *types) newUnionType(
 	return union
 }
 
+func (t *types) bindTypeDef(token string) (Type, hcl.Diagnostics, error) {
+	// Check to see if this is a known type.
+	typ, ok := t.typeDefs[token]
+	if !ok {
+		return nil, nil, nil
+	}
+	return typ, nil, nil
+}
+
 func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Type, hcl.Diagnostics, error) {
 	path = path + "/$ref"
 
@@ -573,34 +583,37 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 
 	switch ref.Kind {
 	case typesRef:
-		// Check to see if this is a known type.
-		if typ, ok := t.typeDefs[ref.Token]; ok {
+		// Try to bind this as a reference to a type defined by this package.
+		typ, diags, err := t.bindTypeDef(ref.Token)
+		if err != nil {
+			return nil, nil, err
+		}
+		switch typ := typ.(type) {
+		case *ObjectType:
 			// If the type is an object type, we might need to return its input shape.
-			if obj, isObj := typ.(*ObjectType); isObj {
-				if inputShape {
-					return obj.InputShape, nil, nil
-				}
-				return obj, nil, nil
+			if inputShape {
+				return typ.InputShape, diags, nil
 			}
-
-			// Otherwise, the type is an enum type.
-			return typ.(*EnumType), nil, nil
+			return typ, diags, nil
+		case *EnumType:
+			return typ, diags, nil
+		default:
+			contract.Assert(typ == nil)
 		}
 
 		// If the type is not a known type, bind it as an opaque token type.
-		var diags hcl.Diagnostics
-		typ, ok := t.tokens[ref.Token]
+		tokenType, ok := t.tokens[ref.Token]
 		if !ok {
-			typ = &TokenType{Token: ref.Token}
+			tokenType = &TokenType{Token: ref.Token}
 			if spec.Type != "" {
 				ut, primDiags := t.bindPrimitiveType(path, spec.Type)
 				diags = diags.Extend(primDiags)
 
-				typ.UnderlyingType = ut
+				tokenType.UnderlyingType = ut
 			}
-			t.tokens[ref.Token] = typ
+			t.tokens[ref.Token] = tokenType
 		}
-		return typ, diags, nil
+		return tokenType, diags, nil
 	case resourcesRef, providerRef:
 		typ, ok := t.resources[ref.Token]
 		if !ok {
