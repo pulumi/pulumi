@@ -630,7 +630,7 @@ func (t *types) bindTypeSpecOneOf(path string, spec TypeSpec, inputShape bool) (
 
 	elements := make([]Type, len(spec.OneOf))
 	for i, spec := range spec.OneOf {
-		e, typDiags, err := t.bindType(fmt.Sprintf("%s/oneOf/%v", path, i), spec, inputShape)
+		e, typDiags, err := t.bindTypeSpec(fmt.Sprintf("%s/oneOf/%v", path, i), spec, inputShape)
 		diags = diags.Extend(typDiags)
 
 		if err != nil {
@@ -653,7 +653,7 @@ func (t *types) bindTypeSpecOneOf(path string, spec TypeSpec, inputShape bool) (
 	return t.newUnionType(elements, defaultType, discriminator, mapping), diags, nil
 }
 
-func (t *types) bindType(path string, spec TypeSpec, inputShape bool) (result Type, diags hcl.Diagnostics, err error) {
+func (t *types) bindTypeSpec(path string, spec TypeSpec, inputShape bool) (result Type, diags hcl.Diagnostics, err error) {
 	// NOTE: `spec.Plain` is the spec of the type, not to be confused with the
 	// `Plain` property of the underlying `Property`, which is passed as
 	// `plainProperty`.
@@ -685,7 +685,7 @@ func (t *types) bindType(path string, spec TypeSpec, inputShape bool) (result Ty
 			return typ, diags, nil
 		}
 
-		elementType, elementDiags, err := t.bindType(path+"/items", *spec.Items, inputShape)
+		elementType, elementDiags, err := t.bindTypeSpec(path+"/items", *spec.Items, inputShape)
 		diags = diags.Extend(elementDiags)
 		if err != nil {
 			return nil, diags, err
@@ -693,12 +693,12 @@ func (t *types) bindType(path string, spec TypeSpec, inputShape bool) (result Ty
 
 		return t.newArrayType(elementType), diags, nil
 	case "object":
-		elementType, elementDiags, err := t.bindType(path, TypeSpec{Type: "string"}, inputShape)
+		elementType, elementDiags, err := t.bindTypeSpec(path, TypeSpec{Type: "string"}, inputShape)
 		contract.Assert(len(elementDiags) == 0)
 		contract.Assert(err == nil)
 
 		if spec.AdditionalProperties != nil {
-			et, elementDiags, err := t.bindType(path+"/additionalProperties", *spec.AdditionalProperties, inputShape)
+			et, elementDiags, err := t.bindTypeSpec(path+"/additionalProperties", *spec.AdditionalProperties, inputShape)
 			diags = diags.Extend(elementDiags)
 			if err != nil {
 				return nil, diags, err
@@ -838,7 +838,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		// since `arg(inputShape, t.bindType) <=> inputShape && !spec.Plain`.
 		// Unfortunately, this fix breaks backwards compatibility in a major
 		// way, across all providers.
-		typ, typDiags, err := t.bindType(propertyPath, spec.TypeSpec, inputShape)
+		typ, typDiags, err := t.bindTypeSpec(propertyPath, spec.TypeSpec, inputShape)
 		diags = diags.Extend(typDiags)
 		if err != nil {
 			return nil, nil, diags, fmt.Errorf("error binding type for property %q: %w", name, err)
