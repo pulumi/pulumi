@@ -614,6 +614,45 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 	}
 }
 
+func (t *types) bindTypeSpecOneOf(path string, spec TypeSpec, inputShape bool) (Type, hcl.Diagnostics, error) {
+	var diags hcl.Diagnostics
+	if len(spec.OneOf) < 2 {
+		diags = diags.Append(errorf(path+"/oneOf", "oneOf should list at least two types"))
+	}
+
+	var defaultType Type
+	if spec.Type != "" {
+		dt, primDiags := t.bindPrimitiveType(path+"/type", spec.Type)
+		diags = diags.Extend(primDiags)
+
+		defaultType = dt
+	}
+
+	elements := make([]Type, len(spec.OneOf))
+	for i, spec := range spec.OneOf {
+		e, typDiags, err := t.bindType(fmt.Sprintf("%s/oneOf/%v", path, i), spec, inputShape)
+		diags = diags.Extend(typDiags)
+
+		if err != nil {
+			return nil, diags, err
+		}
+
+		elements[i] = e
+	}
+
+	var discriminator string
+	var mapping map[string]string
+	if spec.Discriminator != nil {
+		if spec.Discriminator.PropertyName == "" {
+			diags = diags.Append(errorf(path, "discriminator must provide a property name"))
+		}
+		discriminator = spec.Discriminator.PropertyName
+		mapping = spec.Discriminator.Mapping
+	}
+
+	return t.newUnionType(elements, defaultType, discriminator, mapping), diags, nil
+}
+
 func (t *types) bindType(path string, spec TypeSpec, inputShape bool) (result Type, diags hcl.Diagnostics, err error) {
 	// NOTE: `spec.Plain` is the spec of the type, not to be confused with the
 	// `Plain` property of the underlying `Property`, which is passed as
@@ -629,41 +668,7 @@ func (t *types) bindType(path string, spec TypeSpec, inputShape bool) (result Ty
 	}
 
 	if spec.OneOf != nil {
-		if len(spec.OneOf) < 2 {
-			diags = diags.Append(errorf(path+"/oneOf", "oneOf should list at least two types"))
-		}
-
-		var defaultType Type
-		if spec.Type != "" {
-			dt, primDiags := t.bindPrimitiveType(path+"/type", spec.Type)
-			diags = diags.Extend(primDiags)
-
-			defaultType = dt
-		}
-
-		elements := make([]Type, len(spec.OneOf))
-		for i, spec := range spec.OneOf {
-			e, typDiags, err := t.bindType(fmt.Sprintf("%s/oneOf/%v", path, i), spec, inputShape)
-			diags = diags.Extend(typDiags)
-
-			if err != nil {
-				return nil, diags, err
-			}
-
-			elements[i] = e
-		}
-
-		var discriminator string
-		var mapping map[string]string
-		if spec.Discriminator != nil {
-			if spec.Discriminator.PropertyName == "" {
-				diags = diags.Append(errorf(path, "discriminator must provide a property name"))
-			}
-			discriminator = spec.Discriminator.PropertyName
-			mapping = spec.Discriminator.Mapping
-		}
-
-		return t.newUnionType(elements, defaultType, discriminator, mapping), diags, nil
+		return t.bindTypeSpecOneOf(path, spec, inputShape)
 	}
 
 	// nolint: goconst
