@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/segmentio/encoding/json"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -18,24 +18,24 @@ import (
 )
 
 type Loader interface {
-	LoadPackage(pkg string, version *semver.Version) (*Package, error)
+	LoadPackage(pkg string, version *semver.Version) (PackageReference, error)
 }
 
 type pluginLoader struct {
 	m sync.RWMutex
 
 	host    plugin.Host
-	entries map[string]*Package
+	entries map[string]PackageReference
 }
 
 func NewPluginLoader(host plugin.Host) Loader {
 	return &pluginLoader{
 		host:    host,
-		entries: map[string]*Package{},
+		entries: map[string]PackageReference{},
 	}
 }
 
-func (l *pluginLoader) getPackage(key string) (*Package, bool) {
+func (l *pluginLoader) getPackage(key string) (PackageReference, bool) {
 	l.m.RLock()
 	defer l.m.RUnlock()
 
@@ -126,7 +126,7 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 	return nil
 }
 
-func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
+func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (PackageReference, error) {
 	key := pkg + "@"
 	if version != nil {
 		key += version.String()
@@ -152,28 +152,27 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return nil, err
 	}
 
-	var spec PackageSpec
-	if err := jsoniter.Unmarshal(schemaBytes, &spec); err != nil {
+	var spec PartialPackageSpec
+	if _, err = json.Parse(schemaBytes, &spec, json.ZeroCopy); err != nil {
 		return nil, err
 	}
 
-	p, diags, err := bindSpec(spec, nil, l, false)
-	if err != nil {
-		return nil, err
-	}
-	if diags.HasErrors() {
-		return nil, diags
-	}
-	// Insert a version into the bound schema if the package does not provide one
-	if p.Version == nil {
+	// Insert a version into the spec if the package does not provide one
+	if spec.PackageInfoSpec.Version == "" {
 		if version == nil {
 			providerInfo, err := provider.GetPluginInfo()
 			if err == nil {
 				version = providerInfo.Version
 			}
 		}
+		if version != nil {
+			spec.PackageInfoSpec.Version = version.String()
+		}
+	}
 
-		p.Version = version
+	p, err := importPartialSpec(spec, nil, l)
+	if err != nil {
+		return nil, err
 	}
 
 	l.m.Lock()

@@ -29,7 +29,6 @@ require (
 	github.com/hashicorp/hcl/v2 v2.11.1
 	github.com/iancoleman/strcase v0.2.0
 	github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
-	github.com/json-iterator/go v1.1.12
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/moby/moby v20.10.14+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
@@ -121,8 +120,6 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/mitchellh/reflectwalk v1.0.0 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -157,6 +154,7 @@ require (
 require (
 	github.com/pulumi/pulumi-java/pkg v0.2.0
 	github.com/pulumi/pulumi-yaml v0.3.0
+	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
 )
 
@@ -187,6 +185,7 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
+	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 )

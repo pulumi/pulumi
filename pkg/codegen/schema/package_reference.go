@@ -37,6 +37,7 @@ type TypesIter interface {
 type PackageResources interface {
 	Range() ResourcesIter
 	Get(token string) (*Resource, bool, error)
+	GetType(token string) (Type, bool, error)
 }
 
 type ResourcesIter interface {
@@ -144,6 +145,11 @@ func (p packageDefResources) Get(token string) (*Resource, bool, error) {
 
 	def, ok := p.resourceTable[token]
 	return def, ok, nil
+}
+
+func (p packageDefResources) GetType(token string) (Type, bool, error) {
+	typ, ok := p.GetResourceType(token)
+	return typ, ok, nil
 }
 
 type packageDefResourcesIter struct {
@@ -455,6 +461,17 @@ func (p partialPackageResources) Get(token string) (*Resource, bool, error) {
 		return nil, false, diags
 	}
 	return res, res != nil, nil
+}
+
+func (p partialPackageResources) GetType(token string) (Type, bool, error) {
+	typ, diags, err := p.types.bindResourceTypeDef(token)
+	if err != nil {
+		return nil, false, err
+	}
+	if diags.HasErrors() {
+		return nil, false, diags
+	}
+	return typ, typ != nil, nil
 }
 
 type partialPackageResourcesIter struct {

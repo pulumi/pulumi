@@ -300,11 +300,8 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 	return pkg, nil
 }
 
-// ImportPartialSpec converts a serializable PartialPackageSpec into a PartialPackage. Unlike a typical Package, a
-// PartialPackage loads and binds its members on-demand rather than at import time. This is useful when the entire
-// contents of a package are not needed (e.g. for referenced packages).
-func ImportPartialSpec(spec PartialPackageSpec, languages map[string]Language) (*PartialPackage, error) {
-	types, diags, err := newBinder(spec.PackageInfoSpec, partialPackageSpecSource{&spec}, nil)
+func importPartialSpec(spec PartialPackageSpec, languages map[string]Language, loader Loader) (*PartialPackage, error) {
+	types, diags, err := newBinder(spec.PackageInfoSpec, partialPackageSpecSource{&spec}, loader)
 	if err != nil {
 		return nil, err
 	}
@@ -317,6 +314,13 @@ func ImportPartialSpec(spec PartialPackageSpec, languages map[string]Language) (
 		languages: languages,
 		types:     types,
 	}, nil
+}
+
+// ImportPartialSpec converts a serializable PartialPackageSpec into a PartialPackage. Unlike a typical Package, a
+// PartialPackage loads and binds its members on-demand rather than at import time. This is useful when the entire
+// contents of a package are not needed (e.g. for referenced packages).
+func ImportPartialSpec(spec PartialPackageSpec, languages map[string]Language) (*PartialPackage, error) {
+	return importPartialSpec(spec, languages, nil)
 }
 
 type specSource interface {
@@ -721,7 +725,10 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 
 		switch ref.Kind {
 		case typesRef:
-			typ, ok := pkg.GetType(ref.Token)
+			typ, ok, err := pkg.Types().Get(ref.Token)
+			if err != nil {
+				return nil, nil, fmt.Errorf("loading type %v: %w", ref.Token, err)
+			}
 			if !ok {
 				typ, diags := invalidType(errorf(path, "type %v not found in package %v", ref.Token, ref.Package))
 				return typ, diags, nil
@@ -731,7 +738,10 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 			}
 			return typ, nil, nil
 		case resourcesRef, providerRef:
-			typ, ok := pkg.GetResourceType(ref.Token)
+			typ, ok, err := pkg.Resources().GetType(ref.Token)
+			if err != nil {
+				return nil, nil, fmt.Errorf("loading type %v: %w", ref.Token, err)
+			}
 			if !ok {
 				typ, diags := invalidType(errorf(path, "resource type %v not found in package %v", ref.Token, ref.Package))
 				return typ, diags, nil
