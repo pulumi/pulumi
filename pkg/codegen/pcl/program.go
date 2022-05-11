@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"fmt"
 	"io"
 	"sort"
 
@@ -100,7 +101,7 @@ func (p *Program) BindExpression(node hclsyntax.Node) (model.Expression, hcl.Dia
 	return p.binder.bindExpression(node)
 }
 
-// Packages returns the list of package schemas used by this program.
+// Packages returns the list of package referenced used by this program.
 func (p *Program) Packages() []schema.PackageReference {
 	keys := make([]string, 0, len(p.binder.referencedPackages))
 	for k := range p.binder.referencedPackages {
@@ -113,4 +114,34 @@ func (p *Program) Packages() []schema.PackageReference {
 		values = append(values, p.binder.referencedPackages[k])
 	}
 	return values
+}
+
+// PackageSnapshots returns the list of packages schemas used by this program. If a referenced package is partial,
+// its returned value is a snapshot that contains only the package members referenced by the program. Otherwise, its
+// returned value is the full package definition.
+func (p *Program) PackageSnapshots() ([]*schema.Package, error) {
+	keys := make([]string, 0, len(p.binder.referencedPackages))
+	for k := range p.binder.referencedPackages {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	values := make([]*schema.Package, 0, len(p.binder.referencedPackages))
+	for _, k := range keys {
+		ref := p.binder.referencedPackages[k]
+
+		var pkg *schema.Package
+		var err error
+		if partial, ok := ref.(*schema.PartialPackage); ok {
+			pkg, err = partial.Snapshot()
+		} else {
+			pkg, err = ref.Definition()
+		}
+		if err != nil {
+			return nil, fmt.Errorf("defining package '%v': %w", ref.Name(), err)
+		}
+
+		values = append(values, pkg)
+	}
+	return values, nil
 }

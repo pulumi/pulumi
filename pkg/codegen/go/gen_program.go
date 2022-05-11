@@ -58,7 +58,11 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOptions) (
 	map[string][]byte, hcl.Diagnostics, error) {
 	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
-	for _, pkg := range program.Packages() {
+	packageDefs, err := program.PackageSnapshots()
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, pkg := range packageDefs {
 		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
 	}
 
@@ -151,7 +155,10 @@ require (
 `)
 
 	// For each package add a PackageReference line
-	packages := program.Packages()
+	packages, err := program.PackageSnapshots()
+	if err != nil {
+		return err
+	}
 	for _, p := range packages {
 		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 			return err
@@ -423,9 +430,9 @@ func (g *generator) collectConvertImports(
 
 func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, error) {
 	for _, p := range program.Packages() {
-		if p.Name == pkg {
-			if p.Version != nil && p.Version.Major > 1 {
-				return fmt.Sprintf("/v%d", p.Version.Major), nil
+		if p.Name() == pkg {
+			if ver := p.Version(); ver != nil && ver.Major > 1 {
+				return fmt.Sprintf("/v%d", ver.Major), nil
 			}
 			return "", nil
 		}
